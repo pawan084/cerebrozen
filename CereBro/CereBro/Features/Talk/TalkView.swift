@@ -45,7 +45,7 @@ struct TalkView: View {
             .accessibilityLabel(voice.isRecording ? "Stop recording"
                                 : (voice.phase == .speaking ? "Interrupt and talk" : "Start talking"))
 
-            Text(backend.isConnected ? voice.phase.label : "Connect cloud sync to talk live")
+            Text(backend.isConnected ? voice.phase.label : "Sign in to talk live")
                 .appFont(13, weight: .heavy)
                 .foregroundStyle(phaseColor)
                 .frame(maxWidth: .infinity)
@@ -88,7 +88,7 @@ struct TalkView: View {
 
             VStack(spacing: 10) {
                 if !backend.isConnected {
-                    NavRow(title: "Connect to talk live", subtitle: "Sign in to use the voice companion", systemImage: "icloud", imageURL: Dummy.Img.chat, emphasis: true) { CloudSyncView() }
+                    NavRow(title: "Sign in to talk live", subtitle: "Apple, Google or email", systemImage: "person.crop.circle", imageURL: Dummy.Img.chat, emphasis: true) { CloudSyncView() }
                 }
                 NavRow(title: "Quick SOS reset", subtitle: "Fast anxiety/stress reset", systemImage: "exclamationmark.triangle", imageURL: Dummy.Img.mood, emphasis: true) { SOSView() }
                 NavRow(title: "Switch to chat", subtitle: "Text fallback", systemImage: "bubble.left", imageURL: Dummy.Img.chat) { ChatView() }

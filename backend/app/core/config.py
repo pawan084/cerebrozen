@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     # Verification is always attempted; a bad/foreign token simply fails to 401.
     apple_client_id: str = ""
 
+    # Sign in with Google. `google_client_id` is the OAuth client ID (the token
+    # *audience*). Leave empty to skip audience checks (dev); set it in production.
+    google_client_id: str = ""
+
     # APNs (token-based push). Leave key path empty to log instead of send.
     apns_key_path: str = ""        # path to the .p8 auth key
     apns_key_id: str = ""

@@ -255,14 +255,14 @@ final class CereBroUITests: XCTestCase {
 
         // Connect cloud sync with a fresh signup so starters generate live.
         rootYou(app)
-        guard tap(app, "Cloud sync") else { throw XCTSkip("Cloud sync row missing") }
+        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
         app.buttons["Create account"].tap()
         let unique = "ui-mot-\(Int(Date().timeIntervalSince1970))@test.app"
         guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
         clearAndType(app.textFields["Name"], "UI Tester")
         clearAndType(app.textFields["Email"], unique)
         clearAndType(app.secureTextFields["Password"], "password123")
-        _ = tap(app, "Create & connect")
+        _ = tap(app, "Create my account")
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
         guard connected.waitForExistence(timeout: 20) else { throw XCTSkip("Backend not reachable") }
@@ -516,10 +516,12 @@ final class CereBroUITests: XCTestCase {
         let app = XCUIApplication()
         launchIntoApp(app)
         rootYou(app)
-        guard tap(app, "Cloud sync") else { throw XCTSkip("Cloud sync row missing") }
+        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        _ = app.staticTexts["Sign in"].waitForExistence(timeout: 4)
+        snapshot(app, "signin-form")   // modern layout: Apple · Google · email
 
         // Default mode is Sign in with the seeded demo credentials pre-filled.
-        _ = tap(app, "Connect")
+        _ = tap(app, "Continue with email")
 
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
@@ -540,8 +542,8 @@ final class CereBroUITests: XCTestCase {
         let app = XCUIApplication()
         launchIntoApp(app)
         rootYou(app)
-        guard tap(app, "Cloud sync") else { throw XCTSkip("Cloud sync row missing") }
-        _ = tap(app, "Connect")
+        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        _ = tap(app, "Continue with email")
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
         guard connected.waitForExistence(timeout: 20) else { throw XCTSkip("Backend not reachable") }
@@ -594,7 +596,7 @@ final class CereBroUITests: XCTestCase {
         let app = XCUIApplication()
         launchIntoApp(app)
         rootYou(app)
-        guard tap(app, "Cloud sync") else { throw XCTSkip("Cloud sync row missing") }
+        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
 
         // Switch to "Create account" and fill a unique signup.
         app.buttons["Create account"].tap()
@@ -603,7 +605,7 @@ final class CereBroUITests: XCTestCase {
         clearAndType(app.textFields["Name"], "UI Tester")
         clearAndType(app.textFields["Email"], unique)
         clearAndType(app.secureTextFields["Password"], "password123")
-        _ = tap(app, "Create & connect")
+        _ = tap(app, "Create my account")
 
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
@@ -666,7 +668,7 @@ final class CereBroUITests: XCTestCase {
 
         // Sign in with Apple is offered alongside email auth.
         rootYou(app)
-        if tap(app, "Cloud sync") {
+        if tap(app, "Sign in") {
             XCTAssertTrue(app.buttons["Sign in with Apple"].waitForExistence(timeout: 4), "Sign in with Apple button missing")
             snapshot(app, "cloud-apple")
         }

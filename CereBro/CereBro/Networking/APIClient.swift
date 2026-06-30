@@ -173,6 +173,15 @@ actor APIClient {
         return tokens
     }
 
+    /// Sign in with Google: exchange the Google ID token for our tokens.
+    func googleSignIn(idToken: String, name: String) async throws -> AuthTokens {
+        let tokens: AuthTokens = try await request(
+            "/auth/google", method: "POST",
+            json: ["id_token": idToken, "name": name], authed: false)
+        storeToken(tokens.access_token)
+        return tokens
+    }
+
     /// Permanently delete the account + all server data (App Store 5.1.1(v)).
     func deleteAccount() async throws {
         let _: EmptyResponse = try await request("/users/me", method: "DELETE")

@@ -108,6 +108,17 @@ final class BackendService: ObservableObject {
         }
     }
 
+    /// Sign in with Google — exchange the ID token, then connect.
+    func signInWithGoogle(idToken: String, name: String) async {
+        status = .connecting
+        do {
+            _ = try await APIClient.shared.googleSignIn(idToken: idToken, name: name)
+            try await finishConnect()
+        } catch {
+            status = .error(message(error))
+        }
+    }
+
     /// Permanently delete the account + all server data, then sign out locally.
     /// Returns false (still signs out) if the server call fails.
     @discardableResult

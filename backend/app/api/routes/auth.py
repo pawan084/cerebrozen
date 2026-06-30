@@ -19,9 +19,15 @@ from app.core.security import (
 )
 from app.models.consent import Consent
 from app.models.user import User
-from app.schemas.auth import AppleSignInRequest, RefreshRequest, SignupRequest, TokenPair
+from app.schemas.auth import (
+    AppleSignInRequest,
+    GoogleSignInRequest,
+    RefreshRequest,
+    SignupRequest,
+    TokenPair,
+)
 from app.schemas.user import UserOut
-from app.services import apple, nudges
+from app.services import apple, google, nudges
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,6 +95,39 @@ async def apple_sign_in(
             email=email,
             hashed_password=hash_password(secrets.token_urlsafe(32)),
             name=payload.name,
+        )
+        user.consent = Consent()
+        db.add(user)
+        await db.flush()
+        await nudges.schedule_default_nudges(db, user)
+        await db.commit()
+        await db.refresh(user)
+    elif not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    return _tokens(user)
+
+
+@router.post("/google", response_model=TokenPair)
+@limiter.limit("20/minute")
+async def google_sign_in(
+    request: Request, payload: GoogleSignInRequest, db: AsyncSession = Depends(get_db)
+):
+    """Sign in with Google: verify the ID token, then find-or-create the user by
+    their verified Google email and issue our own token pair."""
+    claims = await google.verify_id_token(payload.id_token)
+    if not claims:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+    email = (claims.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google did not provide an email")
+
+    user = await db.scalar(select(User).where(User.email == email))
+    if user is None:
+        # New Google user — no password, so store an unusable random hash.
+        user = User(
+            email=email,
+            hashed_password=hash_password(secrets.token_urlsafe(32)),
+            name=payload.name or claims.get("name", ""),
         )
         user.consent = Consent()
         db.add(user)

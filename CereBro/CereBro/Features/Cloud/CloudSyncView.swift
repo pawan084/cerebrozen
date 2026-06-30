@@ -10,14 +10,17 @@ struct CloudSyncView: View {
     @State private var name = ""
     @State private var server = ""
     @State private var mode: Mode = .signIn
+    @State private var googleAuth = GoogleAuth()
+    @State private var googleMessage: String?
 
     enum Mode { case signIn, signUp }
 
     var body: some View {
-        ScreenScaffold(eyebrow: "Sync across your devices", title: "Cloud Sync",
-                       trailingSystemImage: "cloud", accent: Theme.Palette.lav) {
-            ToolBanner(imageURL: Dummy.Img.privacy, symbol: "cloud",
-                       caption: "Connect to keep your plan, journal and check-ins in sync.")
+        ScreenScaffold(eyebrow: backend.isConnected ? "Your account" : "Private by design",
+                       title: backend.isConnected ? "Account" : "Sign in",
+                       trailingSystemImage: "person.crop.circle", accent: Theme.Palette.lav) {
+            ToolBanner(imageURL: Dummy.Img.privacy, symbol: "person.crop.circle",
+                       caption: "Sign in to keep your plan, journal and check-ins in sync across devices.")
 
             statusCard
 
@@ -65,6 +68,30 @@ struct CloudSyncView: View {
 
     private var authForm: some View {
         VStack(spacing: 12) {
+            // Social sign-in first — the modern pattern. (Apple is required by the
+            // App Store wherever a third-party sign-in like Google is offered.)
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                handleApple(result)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 50)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityIdentifier("Sign in with Apple")
+
+            googleButton
+            if let googleMessage {
+                Text(googleMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 8) {
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+                Text("or use email").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.muted2)
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+            }
+
             Picker("", selection: $mode) {
                 Text("Sign in").tag(Mode.signIn)
                 Text("Create account").tag(Mode.signUp)
@@ -81,8 +108,8 @@ struct CloudSyncView: View {
             field("Email", text: $email, keyboard: .emailAddress)
             field("Password", text: $password, secure: true)
 
-            PrimaryButton(title: mode == .signIn ? "Connect" : "Create & connect",
-                          systemImage: "cloud.fill") {
+            PrimaryButton(title: mode == .signIn ? "Continue with email" : "Create my account",
+                          systemImage: "envelope.fill") {
                 Task {
                     await backend.setServer(server)   // point at this server first
                     if mode == .signIn {
@@ -92,24 +119,6 @@ struct CloudSyncView: View {
                     }
                 }
             }
-
-            // Apple requires Sign in with Apple wherever third-party sign-in is
-            // offered. Needs the "Sign in with Apple" capability enabled in Xcode
-            // + your Apple Developer account; failures degrade gracefully.
-            HStack(spacing: 8) {
-                Rectangle().fill(Theme.Palette.line).frame(height: 1)
-                Text("or").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.muted2)
-                Rectangle().fill(Theme.Palette.line).frame(height: 1)
-            }
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.fullName, .email]
-            } onCompletion: { result in
-                handleApple(result)
-            }
-            .signInWithAppleButtonStyle(.white)
-            .frame(height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .accessibilityIdentifier("Sign in with Apple")
             #if DEBUG
             Text("On device, use your Mac's LAN address, e.g. http://192.168.x.x:8000")
                 .appFont(11.5).foregroundStyle(Theme.Palette.muted)
@@ -161,6 +170,37 @@ struct CloudSyncView: View {
             }
             SecondaryButton(title: "Sign out", systemImage: "rectangle.portrait.and.arrow.right") {
                 backend.signOut()
+            }
+        }
+    }
+
+    // Modern "Continue with Google" button (white, matching the Apple button).
+    private var googleButton: some View {
+        Button { signInWithGoogle() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "g.circle.fill").appFont(18, weight: .bold)
+                Text("Continue with Google").appFont(15, weight: .semibold)
+            }
+            .foregroundStyle(Theme.Palette.ink)
+            .frame(maxWidth: .infinity).frame(height: 50)
+            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.pressable)
+        .accessibilityIdentifier("Continue with Google")
+    }
+
+    /// Run Google's OAuth, then exchange the ID token with the backend.
+    private func signInWithGoogle() {
+        googleMessage = nil
+        Task {
+            do {
+                await backend.setServer(server)
+                let token = try await googleAuth.signIn()
+                await backend.signInWithGoogle(idToken: token, name: "")
+            } catch GoogleAuthError.cancelled {
+                // user backed out — no message
+            } catch {
+                googleMessage = (error as? LocalizedError)?.errorDescription ?? "Google sign-in failed."
             }
         }
     }

@@ -27,3 +27,9 @@ class AppleSignInRequest(BaseModel):
     only provides on the very first authorization (optional thereafter)."""
     identity_token: str
     name: str = Field(default="", max_length=120)
+
+
+class GoogleSignInRequest(BaseModel):
+    """The ID token from Google Sign-In, plus the display name Google returns."""
+    id_token: str
+    name: str = Field(default="", max_length=120)
