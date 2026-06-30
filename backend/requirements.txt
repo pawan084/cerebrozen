@@ -1,0 +1,32 @@
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0          # production process manager (uvicorn workers)
+python-multipart==0.0.17
+slowapi==0.1.9            # rate limiting on auth endpoints
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Validation / settings
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# Auth / security
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+
+# AI (proactive: agentic plan + safety detection)
+anthropic==0.42.0
+openai==1.59.6
+httpx==0.28.1
+h2==4.1.0          # HTTP/2 for APNs push
+
+# Agentic "Oracle" (LangGraph: tool-calling + confirm-before-write + streaming)
+langgraph==0.2.62
+langchain-core==0.3.29
+langchain-openai==0.2.14
+langchain-anthropic==0.3.1

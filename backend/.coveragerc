@@ -1,0 +1,16 @@
+# Coverage configuration.
+#
+# Operational scripts that only run at container start (Alembic/seed bootstrap)
+# are excluded — they're exercised by the Docker entrypoint, not unit tests.
+[run]
+source = app
+omit =
+    app/prestart.py
+    app/seed.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    \.\.\.

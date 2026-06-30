@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Env / secrets — never commit real keys
+.env
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
+*.pem
+*.p8
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Test / coverage artifacts
+playwright-report/
+test-results/
+.coverage
+htmlcov/
+
+# Scratch / references — not part of the production build
+temp/
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Xcode
+xcuserdata/
+*.xcresult
+DerivedData/
+build/
+*.xcuserstate
+
+# Local agent settings (keep shared skills/config, drop local prefs)
+.claude/settings.local.json
+
+# Large screenshot assets — kept on disk, out of git history (regenerate via tests)
+/screenshots/
+
+# Session-generated deliverables (regenerate as needed; not source)
+/CereBro-screens-*.zip
+/CereBro-showcase.zip
+/CereBro-showcase/
+/CereBro-onboarding-flow.png

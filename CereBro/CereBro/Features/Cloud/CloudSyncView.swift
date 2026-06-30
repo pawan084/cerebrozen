@@ -1,0 +1,204 @@
+import AuthenticationServices
+import SwiftUI
+
+struct CloudSyncView: View {
+    @EnvironmentObject var backend: BackendService
+    // Empty by default — production users start with a clean form. Demo
+    // credentials + the local server are pre-filled only in DEBUG (see onAppear).
+    @State private var email = ""
+    @State private var password = ""
+    @State private var name = ""
+    @State private var server = ""
+    @State private var mode: Mode = .signIn
+
+    enum Mode { case signIn, signUp }
+
+    var body: some View {
+        ScreenScaffold(eyebrow: "Sync across your devices", title: "Cloud Sync",
+                       trailingSystemImage: "cloud", accent: Theme.Palette.lav) {
+            ToolBanner(imageURL: Dummy.Img.privacy, symbol: "cloud",
+                       caption: "Connect to keep your plan, journal and check-ins in sync.")
+
+            statusCard
+
+            if backend.isConnected {
+                connectedBody
+            } else {
+                authForm
+            }
+        }
+    }
+
+    // MARK: Status
+
+    private var statusCard: some View {
+        Card {
+            HStack(spacing: 12) {
+                Circle().fill(statusColor).frame(width: 10, height: 10)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(statusTitle).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                    Text(backend.baseURL).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private var statusColor: Color {
+        switch backend.status {
+        case .connected: return Theme.Palette.success
+        case .connecting: return Theme.Palette.cream
+        case .error: return Theme.Palette.danger
+        case .signedOut: return Theme.Palette.muted
+        }
+    }
+    private var statusTitle: String {
+        switch backend.status {
+        case let .connected(email): return "Connected as \(email)"
+        case .connecting: return "Connecting…"
+        case let .error(msg): return msg
+        case .signedOut: return "Not connected"
+        }
+    }
+
+    // MARK: Auth form
+
+    private var authForm: some View {
+        VStack(spacing: 12) {
+            Picker("", selection: $mode) {
+                Text("Sign in").tag(Mode.signIn)
+                Text("Create account").tag(Mode.signUp)
+            }
+            .pickerStyle(.segmented)
+
+            #if DEBUG
+            field("Server URL", text: $server, keyboard: .URL)
+            #endif
+
+            if mode == .signUp {
+                field("Name", text: $name)
+            }
+            field("Email", text: $email, keyboard: .emailAddress)
+            field("Password", text: $password, secure: true)
+
+            PrimaryButton(title: mode == .signIn ? "Connect" : "Create & connect",
+                          systemImage: "cloud.fill") {
+                Task {
+                    await backend.setServer(server)   // point at this server first
+                    if mode == .signIn {
+                        await backend.signIn(email: email, password: password)
+                    } else {
+                        await backend.signUp(email: email, password: password, name: name)
+                    }
+                }
+            }
+
+            // Apple requires Sign in with Apple wherever third-party sign-in is
+            // offered. Needs the "Sign in with Apple" capability enabled in Xcode
+            // + your Apple Developer account; failures degrade gracefully.
+            HStack(spacing: 8) {
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+                Text("or").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.muted2)
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+            }
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                handleApple(result)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 50)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityIdentifier("Sign in with Apple")
+            #if DEBUG
+            Text("On device, use your Mac's LAN address, e.g. http://192.168.x.x:8000")
+                .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            Text("Demo: pawan@cerebro.app · demo12345")
+                .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            #endif
+        }
+        .onAppear {
+            if server.isEmpty { server = backend.baseURL }
+            #if DEBUG
+            // Dev convenience only: pre-fill the seeded demo login.
+            if email.isEmpty { email = "pawan@cerebro.app" }
+            if password.isEmpty { password = "demo12345" }
+            if name.isEmpty { name = "Pawan" }
+            #endif
+        }
+    }
+
+    // MARK: Connected body — shows server-driven plan + insights
+
+    private var connectedBody: some View {
+        VStack(spacing: 14) {
+            if let plan = backend.plan {
+                SectionTitle(title: "Your agentic plan", trailing: nil)
+                InsightCard(label: plan.source == "ai" ? "AI-generated" : "Adaptive plan",
+                            title: plan.title, detail: plan.rationale)
+                ForEach(plan.steps) { step in
+                    Button {
+                        Task { await backend.toggleStep(step.id, done: !step.done) }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
+                                .appFont(20, weight: .semibold)
+                                .foregroundStyle(step.done ? Theme.Palette.lav : Theme.Palette.muted)
+                            RowLabel(title: step.title, subtitle: step.detail,
+                                     systemImage: step.symbol, emphasis: step.done)
+                        }
+                    }
+                    .buttonStyle(.pressable)
+                    .accessibilityLabel(step.done ? "Mark \(step.title) not done" : "Mark \(step.title) done")
+                }
+            }
+            if let insight = backend.insight {
+                SectionTitle(title: "This week", trailing: nil)
+                InsightCard(label: insight.headline, title: insight.summary)
+                ForEach(insight.metrics, id: \.label) { m in
+                    MetricBar(label: m.label, value: m.value, progress: m.progress)
+                }
+            }
+            SecondaryButton(title: "Sign out", systemImage: "rectangle.portrait.and.arrow.right") {
+                backend.signOut()
+            }
+        }
+    }
+
+    /// Extract Apple's identity token and exchange it with the backend.
+    private func handleApple(_ result: Result<ASAuthorization, Error>) {
+        guard case let .success(auth) = result,
+              let cred = auth.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = cred.identityToken,
+              let token = String(data: tokenData, encoding: .utf8) else { return }
+        let fullName = [cred.fullName?.givenName, cred.fullName?.familyName]
+            .compactMap { $0 }.joined(separator: " ")
+        Task {
+            await backend.setServer(server)
+            await backend.signInWithApple(identityToken: token, name: fullName)
+        }
+    }
+
+    private func field(_ label: String, text: Binding<String>,
+                       secure: Bool = false, keyboard: UIKeyboardType = .default) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            Group {
+                if secure {
+                    SecureField(label, text: text).accessibilityIdentifier(label)
+                } else {
+                    TextField(label, text: text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier(label)
+                }
+            }
+            .foregroundStyle(Theme.Palette.text)
+            .padding(.horizontal, 14).frame(height: 48)
+            .background(Theme.Palette.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.Palette.line))
+        }
+    }
+}

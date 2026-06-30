@@ -1,0 +1,55 @@
+# Isolated end-to-end test stack. Runs entirely on its own network with no host
+# port mappings, so it won't clash with the dev stack.
+#   docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e
+name: cerebro-e2e
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cerebro
+      POSTGRES_PASSWORD: cerebro
+      POSTGRES_DB: cerebro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cerebro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@db:5432/cerebro
+      # Browsers in the e2e network load pages from these origins.
+      CORS_ORIGINS: http://web:3000,http://admin:3001
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Browsers in the e2e network reach the API by service name.
+        NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      - api
+
+  admin:
+    build:
+      context: ./apps/admin
+      args:
+        NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      - api
+
+  e2e:
+    build: ./e2e
+    environment:
+      API_URL: http://api:8000
+      WEB_URL: http://web:3000
+      ADMIN_URL: http://admin:3001
+    depends_on:
+      - web
+      - admin

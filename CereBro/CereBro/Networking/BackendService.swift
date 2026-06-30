@@ -1,0 +1,274 @@
+import Foundation
+import SwiftUI
+
+/// Observable wrapper around `APIClient` that the UI binds to. Keeps cloud sync
+/// strictly additive: when not connected, the app behaves exactly as the local
+/// prototype. When connected, writes are mirrored best-effort and the agentic
+/// plan + insights are fetched from the server.
+@MainActor
+final class BackendService: ObservableObject {
+    enum Status: Equatable {
+        case signedOut
+        case connecting
+        case connected(email: String)
+        case error(String)
+    }
+
+    @Published private(set) var status: Status = .signedOut
+    @Published private(set) var user: RemoteUser?
+    @Published private(set) var plan: RemotePlan?
+    @Published private(set) var insight: RemoteInsight?
+    @Published private(set) var chat: [RemoteChat] = []
+    @Published private(set) var suggestions: [RemoteSuggestion] = []
+    /// Personalized, tappable conversation starters from the self-reflection.
+    @Published private(set) var starters: [RemoteTopic] = []
+    @Published var baseURL: String = APIClient.defaultBaseURL
+
+    // Oracle (streaming agent) state.
+    @Published private(set) var oracleAvailable = false
+    @Published private(set) var isStreaming = false
+    @Published private(set) var streamingText = ""
+    @Published private(set) var streamingWidget: RemoteWidget?
+    @Published private(set) var pendingConfirm: OracleConfirm?
+    private var oracleThread: String { "ios-" + (user?.id ?? "anon") }
+
+    var isConnected: Bool { if case .connected = status { return true } else { return false } }
+
+    init() {
+        Task { await bootstrap() }
+    }
+
+    /// Restore an existing session on launch (silent — no error surfaced).
+    private func bootstrap() async {
+        baseURL = await APIClient.shared.currentBaseURL
+        guard await APIClient.shared.isAuthenticated else { return }
+        do {
+            let me = try await APIClient.shared.me()
+            user = me
+            status = .connected(email: me.email)
+            await refresh()   // restored sessions should load the plan + insights too
+            oracleAvailable = await APIClient.shared.oracleStatus()
+        } catch {
+            // Token stale/unreachable — fall back to local silently.
+            status = .signedOut
+        }
+    }
+
+    func updateBaseURL(_ string: String) {
+        baseURL = string
+        Task { await APIClient.shared.setBaseURL(string) }
+    }
+
+    /// Apply a new server URL and wait for it to take effect before the caller
+    /// proceeds (used on real devices to point at the Mac's LAN address before
+    /// signing in — avoids a race with the next request).
+    func setServer(_ string: String) async {
+        let url = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+        baseURL = url
+        await APIClient.shared.setBaseURL(url)
+    }
+
+    func signUp(email: String, password: String, name: String) async {
+        status = .connecting
+        do {
+            _ = try await APIClient.shared.signup(email: email, password: password, name: name)
+            try await finishConnect()
+        } catch {
+            status = .error(message(error))
+        }
+    }
+
+    func signIn(email: String, password: String) async {
+        status = .connecting
+        do {
+            _ = try await APIClient.shared.login(email: email, password: password)
+            try await finishConnect()
+        } catch {
+            status = .error(message(error))
+        }
+    }
+
+    private func finishConnect() async throws {
+        let me = try await APIClient.shared.me()
+        user = me
+        status = .connected(email: me.email)
+        await refresh()
+        oracleAvailable = await APIClient.shared.oracleStatus()
+    }
+
+    /// Sign in with Apple — exchange the identity token, then connect.
+    func signInWithApple(identityToken: String, name: String) async {
+        status = .connecting
+        do {
+            _ = try await APIClient.shared.appleSignIn(identityToken: identityToken, name: name)
+            try await finishConnect()
+        } catch {
+            status = .error(message(error))
+        }
+    }
+
+    /// Permanently delete the account + all server data, then sign out locally.
+    /// Returns false (still signs out) if the server call fails.
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        var ok = true
+        if isConnected { ok = ((try? await APIClient.shared.deleteAccount()) != nil) }
+        signOut()
+        return ok
+    }
+
+    /// Raw JSON export of everything the server holds for this user.
+    func exportData() async -> Data? {
+        guard isConnected else { return nil }
+        return try? await APIClient.shared.exportData()
+    }
+
+    func signOut() {
+        Task { await APIClient.shared.signOut() }
+        user = nil; plan = nil; insight = nil; chat = []; suggestions = []; starters = []
+        oracleAvailable = false; isStreaming = false; streamingText = ""
+        streamingWidget = nil; pendingConfirm = nil
+        status = .signedOut
+    }
+
+    /// Pull the agentic plan + weekly insights from the server.
+    func refresh() async {
+        guard isConnected else { return }
+        plan = try? await APIClient.shared.activePlan()
+        insight = try? await APIClient.shared.weeklyInsights()
+    }
+
+    // MARK: Assessment (self-reflection → conversation starters)
+
+    /// Persist the onboarding self-reflection to the profile (best-effort).
+    func saveAssessment(motivations: [String], goals: [String]) {
+        guard isConnected else { return }
+        Task { _ = try? await APIClient.shared.updateProfile(goals: goals, motivations: motivations) }
+    }
+
+    /// Fetch personalized conversation starters for the given selection. The
+    /// caller passes the local onboarding choices so topics work before any
+    /// profile sync. No-op (keeps prior list) on failure.
+    func loadStarters(motivations: [String], goals: [String], language: String) async {
+        guard isConnected else { return }
+        if let topics = try? await APIClient.shared.assessmentTopics(
+            motivations: motivations, goals: goals, language: language) {
+            starters = topics
+        }
+    }
+
+    // MARK: Chat (live AI companion when connected)
+
+    func loadChat() async {
+        guard isConnected else { return }
+        chat = (try? await APIClient.shared.chatHistory()) ?? []
+        suggestions = []
+    }
+
+    /// Send a message and append both it and the assistant reply. Returns false
+    /// if not connected (caller falls back to the local transcript).
+    @discardableResult
+    func sendChat(_ text: String) async -> Bool {
+        await sendChatGetReply(text) != nil
+    }
+
+    /// Like `sendChat` but returns the assistant's reply text (used by the voice
+    /// companion so it can speak the response). Appends both messages to `chat`.
+    func sendChatGetReply(_ text: String) async -> String? {
+        guard isConnected else { return nil }
+        guard let reply = try? await APIClient.shared.sendChat(text) else { return nil }
+        chat.append(reply.user_message)
+        var assistant = reply.reply
+        assistant.widget = reply.widget          // render the inline activity
+        chat.append(assistant)
+        suggestions = reply.suggestions
+        return reply.reply.text
+    }
+
+    // MARK: Oracle (streaming agent — tool-calling + confirm-before-write)
+
+    /// Send a message through the LangGraph Oracle, streaming the reply token by
+    /// token and rendering inline activities / confirmation prompts.
+    func sendOracle(_ text: String) async {
+        guard isConnected, oracleAvailable, !isStreaming else { return }
+        chat.append(RemoteChat(id: UUID().uuidString, role: "user", text: text, created_at: ""))
+        suggestions = []
+        guard let req = await APIClient.shared.oracleRequest(
+            path: "/oracle/messages", json: ["text": text, "thread_id": oracleThread]) else { return }
+        await consume(req)
+    }
+
+    /// Approve or decline a paused write action; resumes the same thread.
+    func resolveConfirm(approved: Bool) async {
+        guard let confirm = pendingConfirm else { return }
+        pendingConfirm = nil
+        guard let req = await APIClient.shared.oracleRequest(
+            path: "/oracle/confirm", json: ["thread_id": confirm.threadId, "approved": approved]) else { return }
+        await consume(req)
+        await refresh()   // a confirmed write (mood/journal) may change insights
+    }
+
+    private func consume(_ request: URLRequest) async {
+        isStreaming = true; streamingText = ""; streamingWidget = nil
+        do {
+            for try await event in oracleEventStream(request) {
+                switch event {
+                case .token(let t):       streamingText += t
+                case .widget(let w):      streamingWidget = w
+                case .toolConfirm(let c): pendingConfirm = c
+                case .awaitingConfirm:    break
+                case .done(let final):    finishStreaming(text: final.isEmpty ? streamingText : final)
+                case .error(let e):       finishStreaming(text: streamingText.isEmpty ? e : streamingText)
+                }
+            }
+        } catch {
+            // Stream ended/failed; fall through to finalize below.
+        }
+        if pendingConfirm != nil {
+            // Paused for confirmation — clear the live bubble, keep the card.
+            isStreaming = false; streamingText = ""; streamingWidget = nil
+        } else if isStreaming {
+            finishStreaming(text: streamingText)
+        }
+    }
+
+    private func finishStreaming(text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty || streamingWidget != nil {
+            var msg = RemoteChat(id: UUID().uuidString, role: "assistant", text: t, created_at: "")
+            msg.widget = streamingWidget
+            chat.append(msg)
+        }
+        streamingText = ""; streamingWidget = nil; isStreaming = false
+    }
+
+    // MARK: Plan step completion (server-driven plan)
+
+    func toggleStep(_ id: String, done: Bool) async {
+        guard isConnected else { return }
+        if let updated = try? await APIClient.shared.toggleStep(id, done: done) {
+            plan = updated
+        }
+    }
+
+    // MARK: Best-effort write mirroring (no-ops when not connected)
+
+    func mirrorMood(_ mood: MoodLog) {
+        guard isConnected else { return }
+        Task {
+            _ = try? await APIClient.shared.createMood(
+                mood: mood.mood, note: mood.note, symbol: mood.symbol, intensity: 3)
+            await refresh()
+        }
+    }
+
+    func mirrorJournal(_ entry: JournalEntry, body: String) {
+        guard isConnected else { return }
+        Task { _ = try? await APIClient.shared.createJournal(title: entry.title, body: body, tags: entry.tags) }
+    }
+
+    private func message(_ error: Error) -> String {
+        (error as? APIError)?.errorDescription ?? error.localizedDescription
+    }
+}

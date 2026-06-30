@@ -1,0 +1,58 @@
+# CereBro monorepo — local development stack.
+#   docker compose up --build
+# Brings up Postgres + the FastAPI backend (auto-creates tables and seeds demo data).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cerebro
+      POSTGRES_PASSWORD: cerebro
+      POSTGRES_DB: cerebro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cerebro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override the host so the API reaches the compose Postgres service.
+      DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@db:5432/cerebro
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Inlined into the client bundle at build time.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  admin:
+    build:
+      context: ./apps/admin
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

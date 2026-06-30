@@ -1,0 +1,64 @@
+# Production stack. Differs from the dev compose:
+#   - secrets/config come from .env.production (NOT committed)
+#   - Postgres is NOT published to the host (reachable only inside the network)
+#   - the API runs gunicorn with multiple uvicorn workers (WEB_CONCURRENCY)
+#   - app ports bind to 127.0.0.1 only — front them with a TLS reverse proxy
+#   - restart: unless-stopped, healthchecks, no demo seeding
+#
+#   PUBLIC_API_URL=https://api.your-domain.com \
+#     docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+name: cerebro-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: ./backend/.env.production   # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-cerebro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file: ./backend/.env.production
+    # gunicorn reads the worker count from WEB_CONCURRENCY (set in .env.production).
+    command: >-
+      sh -c "python -m app.prestart &&
+      gunicorn app.main:app -k uvicorn.workers.UvicornWorker
+      --bind 0.0.0.0:8000 --access-logfile - --error-logfile -"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"   # behind your TLS reverse proxy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Public HTTPS URL of the API, inlined into the client bundle at build.
+        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-http://localhost:8000}"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ./apps/admin
+      args:
+        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-http://localhost:8000}"
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
