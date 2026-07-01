@@ -12,6 +12,7 @@ struct CloudSyncView: View {
     @State private var mode: Mode = .signIn
     @State private var googleAuth = GoogleAuth()
     @State private var googleMessage: String?
+    @State private var resetMessage: String?
 
     enum Mode { case signIn, signUp }
 
@@ -117,6 +118,24 @@ struct CloudSyncView: View {
                     } else {
                         await backend.signUp(email: email, password: password, name: name)
                     }
+                }
+            }
+
+            if mode == .signIn {
+                Button {
+                    Task {
+                        await backend.setServer(server)
+                        try? await backend.requestPasswordReset(email: email)
+                        resetMessage = "If that email exists, a reset link is on its way."
+                    }
+                } label: {
+                    Text("Forgot password?").appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                }
+                .buttonStyle(.pressable)
+                .disabled(email.isEmpty)
+                if let resetMessage {
+                    Text(resetMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             #if DEBUG

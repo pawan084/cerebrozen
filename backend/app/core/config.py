@@ -76,6 +76,16 @@ class Settings(BaseSettings):
     apns_bundle_id: str = "com.cerebro.app"
     apns_use_sandbox: bool = True
 
+    # Transactional email (verification, password reset). Empty host = log only.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "CereBro <no-reply@cerebro.app>"
+    smtp_tls: bool = True
+    # Base URL for links embedded in emails (verification / reset).
+    app_base_url: str = "https://cerebro.app"
+
     # Seed
     seed_demo_data: bool = True
     admin_email: str = "admin@cerebro.app"

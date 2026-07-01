@@ -31,6 +31,10 @@ async def get_current_user(
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise _credentials_error
+    # Token revocation: logout / password reset bumps token_version, so any token
+    # minted before that (missing or lower `ver`) is rejected.
+    if payload.get("ver", 0) != user.token_version:
+        raise _credentials_error
     return user
 
 

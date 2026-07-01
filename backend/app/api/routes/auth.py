@@ -1,18 +1,24 @@
 import secrets
 import uuid
+from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.config import settings
+from app.core.database import get_db, utcnow
 from app.core.ratelimit import limiter
 from app.core.deps import get_current_user
 from app.core.security import (
     REFRESH,
+    RESET,
+    VERIFY,
     create_access_token,
     create_refresh_token,
+    create_reset_token,
+    create_verify_token,
     decode_token,
     hash_password,
     verify_password,
@@ -21,21 +27,27 @@ from app.models.consent import Consent
 from app.models.user import User
 from app.schemas.auth import (
     AppleSignInRequest,
+    ForgotPasswordRequest,
     GoogleSignInRequest,
     RefreshRequest,
+    ResetPasswordRequest,
     SignupRequest,
+    TokenBody,
     TokenPair,
 )
 from app.schemas.user import UserOut
-from app.services import apple, google, nudges
+from app.services import apple, email, google, nudges
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_MAX_FAILED_LOGINS = 5
+_LOCKOUT_MINUTES = 15
 
 
 def _tokens(user: User) -> TokenPair:
     return TokenPair(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=create_access_token(str(user.id), user.token_version),
+        refresh_token=create_refresh_token(str(user.id), user.token_version),
     )
 
 
@@ -65,10 +77,32 @@ async def signup(request: Request, payload: SignupRequest, db: AsyncSession = De
 async def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     # OAuth2 form uses `username` for the email.
     user = await db.scalar(select(User).where(User.email == form.username.lower()))
-    if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    _bad = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    if user is None:
+        raise _bad
+
+    # Account lockout after repeated failures blunts online brute force.
+    if user.locked_until is not None and user.locked_until > utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account temporarily locked after repeated failed logins. Try again shortly.",
+        )
+
+    if not verify_password(form.password, user.hashed_password):
+        user.failed_login_count += 1
+        if user.failed_login_count >= _MAX_FAILED_LOGINS:
+            user.locked_until = utcnow() + timedelta(minutes=_LOCKOUT_MINUTES)
+            user.failed_login_count = 0
+        await db.commit()
+        raise _bad
+
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+
+    if user.failed_login_count or user.locked_until:
+        user.failed_login_count = 0
+        user.locked_until = None
+        await db.commit()
     return _tokens(user)
 
 
@@ -147,9 +181,72 @@ async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = 
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     user = await db.get(User, uuid.UUID(data["sub"]))
-    if not user or not user.is_active:
+    # Reject tokens revoked by a later logout / password reset.
+    if not user or not user.is_active or data.get("ver", 0) != user.token_version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     return _tokens(user)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Revoke every outstanding access + refresh token for this user by bumping
+    the token version (server-side revocation, not just client-side discard)."""
+    user.token_version += 1
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/verify/request")
+async def request_verification(user: User = Depends(get_current_user)):
+    """Email the signed-in user a verification link."""
+    token = create_verify_token(str(user.id))
+    link = f"{settings.app_base_url}/verify?token={token}"
+    await email.send_email(user.email, "Verify your CereBro email",
+                           f"Confirm your email address:\n\n{link}\n\nThis link expires in 24 hours.")
+    return {"sent": True}
+
+
+@router.post("/verify")
+async def verify_email(payload: TokenBody, db: AsyncSession = Depends(get_db)):
+    data = decode_token(payload.token, expected_type=VERIFY)
+    if not data or "sub" not in data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    user = await db.get(User, uuid.UUID(data["sub"]))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    user.email_verified = True
+    await db.commit()
+    return {"verified": True}
+
+
+@router.post("/password/forgot")
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Email a reset link. Always returns 200 (no account enumeration)."""
+    user = await db.scalar(select(User).where(User.email == payload.email.lower()))
+    if user is not None:
+        token = create_reset_token(str(user.id))
+        link = f"{settings.app_base_url}/reset?token={token}"
+        await email.send_email(user.email, "Reset your CereBro password",
+                               f"Reset your password:\n\n{link}\n\nThis link expires in 1 hour. "
+                               "If you didn't request this, you can ignore it.")
+    return {"sent": True}
+
+
+@router.post("/password/reset")
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    data = decode_token(payload.token, expected_type=RESET)
+    if not data or "sub" not in data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    user = await db.get(User, uuid.UUID(data["sub"]))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    user.hashed_password = hash_password(payload.new_password)
+    user.token_version += 1        # invalidate all existing sessions
+    user.failed_login_count = 0
+    user.locked_until = None
+    await db.commit()
+    return {"reset": True}
 
 
 @router.get("/me", response_model=UserOut)

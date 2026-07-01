@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,6 +36,13 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Auth hardening.
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    failed_login_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Bumped on logout / password reset to revoke all outstanding tokens.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     # Subscription entitlement ("free" | "premium" | "premium_human"). Set by the
     # StoreKit receipt/entitlement flow; gates server-side usage quotas.

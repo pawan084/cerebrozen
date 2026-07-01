@@ -22,6 +22,20 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class TokenBody(BaseModel):
+    """A link token (email verification)."""
+    token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class AppleSignInRequest(BaseModel):
     """The identity token from Sign in with Apple, plus the display name Apple
     only provides on the very first authorization (optional thereafter)."""

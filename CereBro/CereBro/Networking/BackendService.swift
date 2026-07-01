@@ -182,8 +182,14 @@ final class BackendService: ObservableObject {
         return try? await APIClient.shared.exportData()
     }
 
+    /// Request a password-reset email for the given address (no-op UI feedback
+    /// handled by the caller). Throws only on a transport error.
+    func requestPasswordReset(email: String) async throws {
+        try await APIClient.shared.requestPasswordReset(email: email)
+    }
+
     func signOut() {
-        Task { await APIClient.shared.signOut() }
+        Task { await APIClient.shared.logout() }   // revoke server-side, then clear
         user = nil; plan = nil; insight = nil; chat = []; suggestions = []; starters = []
         oracleAvailable = false; isStreaming = false; streamingText = ""
         streamingWidget = nil; pendingConfirm = nil

@@ -156,6 +156,20 @@ actor APIClient {
 
     func signOut() { storeToken(nil) }
 
+    /// Revoke the session server-side (bumps token_version), then drop the token.
+    func logout() async {
+        struct Empty: Codable {}
+        _ = try? await request("/auth/logout", method: "POST") as Empty?
+        storeToken(nil)
+    }
+
+    /// Request a password-reset email. Always succeeds server-side (no enumeration).
+    func requestPasswordReset(email: String) async throws {
+        struct Ack: Codable { let sent: Bool }
+        let _: Ack = try await request("/auth/password/forgot", method: "POST",
+                                       json: ["email": email], authed: false)
+    }
+
     // MARK: Auth
 
     func signup(email: String, password: String, name: String) async throws -> AuthTokens {
