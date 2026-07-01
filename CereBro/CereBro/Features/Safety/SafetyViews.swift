@@ -92,20 +92,73 @@ struct CallCard: View {
 
 // MARK: - Trusted contact
 struct TrustedContactView: View {
+    @EnvironmentObject var backend: BackendService
     @State private var name = ""
-    @State private var consent = true
+    @State private var email = ""
+    @State private var relationship = ""
+    @State private var consent = false
+    @State private var saved = false
+    @State private var message: String?
+
     var body: some View {
         ScreenScaffold(eyebrow: "Emergency contact setup", title: "Trusted Contact", trailingSystemImage: "person.crop.circle.badge.checkmark") {
             Photo(url: Dummy.Img.privacy, symbol: "person").frame(height: 120).frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+            Text("If CereBro detects a crisis and you've given consent, we'll send this person a gentle check-in message. Nothing is shared otherwise.")
+                .appFont(12.5).foregroundStyle(Theme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
             Card(cornerRadius: 18) {
-                TextField("Contact name & number", text: $name)
-                    .foregroundStyle(Theme.Palette.text)
+                VStack(spacing: 10) {
+                    TextField("Contact name", text: $name).foregroundStyle(Theme.Palette.text)
+                    Divider().overlay(Theme.Palette.line)
+                    TextField("Their email", text: $email)
+                        .foregroundStyle(Theme.Palette.text)
+                        .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Divider().overlay(Theme.Palette.line)
+                    TextField("Relationship (optional)", text: $relationship).foregroundStyle(Theme.Palette.text)
+                }
             }
             SettingsGroup {
-                ToggleRow(title: "Consent to notify", subtitle: "Only with your explicit action", isOn: $consent)
+                ToggleRow(title: "Consent to notify in a crisis", subtitle: "Off by default — required for any alert", isOn: $consent)
             }
-            PrimaryButton(title: "Save trusted contact")
+            PrimaryButton(title: "Save trusted contact", systemImage: "checkmark") { save() }
+            if let message {
+                Text(message).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if !backend.isConnected {
+                Text("Sign in to sync your trusted contact across devices.")
+                    .appFont(11.5).foregroundStyle(Theme.Palette.muted2)
+            }
+        }
+        .celebration(trigger: $saved)
+        .task { await load() }
+    }
+
+    private func load() async {
+        guard backend.isConnected else { return }
+        let fetched = try? await APIClient.shared.trustedContact()   // RemoteTrustedContact??
+        if let c = fetched ?? nil {
+            name = c.name; email = c.value; relationship = c.relationship; consent = c.notify_consent
+        }
+    }
+
+    private func save() {
+        Task {
+            guard backend.isConnected else {
+                message = "Sign in first to save a trusted contact."
+                return
+            }
+            do {
+                _ = try await APIClient.shared.saveTrustedContact(
+                    name: name, method: "email", value: email,
+                    relationship: relationship, notifyConsent: consent)
+                saved.toggle()
+                message = consent ? "Saved. We'll only reach out with your consent."
+                                  : "Saved. Turn on consent to enable crisis alerts."
+            } catch {
+                message = "Couldn't save. Please try again."
+            }
         }
     }
 }

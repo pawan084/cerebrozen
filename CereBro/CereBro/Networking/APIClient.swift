@@ -30,6 +30,15 @@ struct RemoteConsent: Codable {
     let model_training: Bool
 }
 
+/// The person to notify if a crisis is detected (consent-gated).
+struct RemoteTrustedContact: Codable {
+    var name: String = ""
+    var method: String = "email"
+    var value: String = ""
+    var relationship: String = ""
+    var notify_consent: Bool = false
+}
+
 /// One tappable conversation starter generated from the self-reflection.
 struct RemoteTopic: Codable, Identifiable, Equatable { let id: Int; let topic: String }
 struct TopicsResponse: Codable { let topics: [RemoteTopic]; let source: String }
@@ -265,6 +274,20 @@ actor APIClient {
     @discardableResult
     func updateRegion(_ region: String) async throws -> RemoteUser {
         try await request("/users/me", method: "PATCH", json: ["region": region])
+    }
+
+    /// The user's saved trusted contact (nil when none set).
+    func trustedContact() async throws -> RemoteTrustedContact? {
+        try await request("/users/me/trusted-contact", method: "GET")
+    }
+
+    /// Create/update the trusted contact to notify on a detected crisis.
+    @discardableResult
+    func saveTrustedContact(name: String, method: String, value: String,
+                            relationship: String, notifyConsent: Bool) async throws -> RemoteTrustedContact {
+        try await request("/users/me/trusted-contact", method: "PUT",
+                          json: ["name": name, "method": method, "value": value,
+                                 "relationship": relationship, "notify_consent": notifyConsent])
     }
 
     /// Record the onboarding age (18+) + AI-disclosure acknowledgement (compliance).

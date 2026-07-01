@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     smtp_tls: bool = True
     # Base URL for links embedded in emails (verification / reset).
     app_base_url: str = "https://cerebro.app"
+    # Operational alert inbox for crisis safety events (empty = log only).
+    ops_alert_email: str = ""
 
     # Seed
     seed_demo_data: bool = True

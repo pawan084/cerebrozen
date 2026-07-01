@@ -108,21 +108,26 @@ and verified; Tier 3 is landed for everything buildable without external account
   timer + volume + lock-screen transport; daily local-notification reminder; journal
   search + rotating prompts + emotion tags; multi-turn voice capture + interruption
   handling.
-- **Tier 3 — business & compliance (partial):** DONE = server-side free-tier quota
-  on `/chat` + `/oracle` (429), consent enforcement (AI-memory off drops long-term
-  recall), age + AI-disclosure attestation logging, `/auth/refresh` rate limit,
-  StoreKit 2 scaffold (graceful "coming soon" until products exist), and iOS
-  compliance/consent sync on connect.
+- **Tier 3 — business & compliance (done):** server-side free-tier quota on
+  `/chat` + `/oracle` (429), consent enforcement (AI-memory off drops long-term
+  recall), age + AI-disclosure attestation logging, `/auth/refresh` rate limit, and
+  iOS compliance/consent sync on connect — **plus** the three items below that were
+  previously deferred, now implemented with credential seams:
+  - **Revenue:** server-side StoreKit 2 receipt validation (`services/appstore.py`:
+    JWS + x5c chain, ES256, root-pinned when `appstore_root_cert_path` is set).
+    `POST /users/me/subscription/verify` sets the authoritative tier; iOS forwards
+    each verified transaction. Still needs YOUR App Store Connect products +
+    (optionally) Apple's root cert to pin; `Products.storekit` included for sim.
+  - **Auth hardening:** account lockout (5 fails → 15-min lock), server-side token
+    revocation via `token_version` (logout + reset bump it), email verification +
+    password reset with signed link tokens over a pluggable email service (SMTP
+    when configured, else logged). Wire an SMTP provider to deliver real mail.
+  - **Crisis escalation:** `TrustedContact` model + CRUD, consent-gated automatic
+    notification on a detected crisis (`services/escalation.py`), and an ops alert
+    (log + email to `ops_alert_email`). Wire an SMS provider for phone contacts;
+    email contacts work as soon as SMTP is set.
 
-### Tier 3 — remaining, gated on YOUR external setup
-- **StoreKit / revenue:** create the subscription products in App Store Connect
-  (`com.cerebro.premium.monthly`, `com.cerebro.premiumhuman.monthly`) and add
-  **server-side receipt validation** (App Store Server API / Server Notifications)
-  to set `users.subscription_tier` authoritatively — the client currently gates UI
-  only; the server keeps everyone `free` until verified billing is wired.
-- **Auth hardening (needs infra):** email verification + password reset (require an
-  SMTP/email provider), account lockout on repeated failed logins, and refresh-token
-  revocation (JTI blocklist) on sign-out.
-- **Crisis escalation:** persist a consented trusted contact server-side + a real
-  notify path, and operational alerting on the admin safety queue (currently
-  pull-only). Trusted-contact UI is still a stub.
+### Still gated on YOUR external accounts (config only — code is done)
+- App Store Connect subscription products + (optional) Apple Root CA pin.
+- An SMTP/email provider for verification, reset, and trusted-contact emails.
+- An SMS provider if you want phone/SMS trusted-contact delivery (email works now).

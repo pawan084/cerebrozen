@@ -67,14 +67,18 @@ async def scan_and_record(
     """Classify text and, if risky, create a SafetyEvent. Returns risk_level."""
     risk_level, reason = await classify(text)
     if risk_level in {"elevated", "crisis"}:
-        db.add(
-            SafetyEvent(
-                user_id=user_id,
-                source=source,
-                source_id=source_id,
-                risk_level=risk_level,
-                reason=reason,
-                excerpt=(excerpt or text)[:500],
-            )
+        event = SafetyEvent(
+            user_id=user_id,
+            source=source,
+            source_id=source_id,
+            risk_level=risk_level,
+            reason=reason,
+            excerpt=(excerpt or text)[:500],
         )
+        db.add(event)
+        if risk_level == "crisis":
+            # Alert ops + notify a consented trusted contact (duty of care).
+            await db.flush()   # ensure event.id before escalation references it
+            from app.services import escalation
+            await escalation.on_crisis(db, user_id=user_id, event=event)
     return risk_level

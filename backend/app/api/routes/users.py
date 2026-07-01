@@ -20,11 +20,14 @@ from app.schemas.content_data import (
     NudgeOut,
 )
 from app.schemas.plan import PlanOut
+from app.models.trusted_contact import TrustedContact
 from app.schemas.user import (
     ConsentSchema,
     ConsentUpdate,
     PushTokenUpdate,
     SubscriptionVerify,
+    TrustedContactIn,
+    TrustedContactOut,
     UserOut,
     UserUpdate,
 )
@@ -90,6 +93,43 @@ async def verify_subscription(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.get("/me/trusted-contact", response_model=TrustedContactOut | None)
+async def get_trusted_contact(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    return await db.scalar(select(TrustedContact).where(TrustedContact.user_id == user.id))
+
+
+@router.put("/me/trusted-contact", response_model=TrustedContactOut)
+async def upsert_trusted_contact(
+    payload: TrustedContactIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save the person to notify if a crisis is detected (one per user). Automatic
+    escalation only fires when ``notify_consent`` is true."""
+    contact = await db.scalar(select(TrustedContact).where(TrustedContact.user_id == user.id))
+    if contact is None:
+        contact = TrustedContact(user_id=user.id)
+        db.add(contact)
+    for field, value in payload.model_dump().items():
+        setattr(contact, field, value)
+    await db.commit()
+    await db.refresh(contact)
+    return contact
+
+
+@router.delete("/me/trusted-contact", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trusted_contact(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    contact = await db.scalar(select(TrustedContact).where(TrustedContact.user_id == user.id))
+    if contact is not None:
+        await db.delete(contact)
+        await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me/consent", response_model=ConsentSchema)

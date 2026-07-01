@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ConsentSchema(BaseModel):
@@ -57,3 +57,16 @@ class PushTokenUpdate(BaseModel):
 class SubscriptionVerify(BaseModel):
     """A StoreKit 2 signed transaction JWS to verify server-side."""
     signed_transaction: str
+
+
+class TrustedContactIn(BaseModel):
+    name: str = Field(default="", max_length=120)
+    method: str = Field(default="email", max_length=20)  # email | sms | phone
+    value: str = Field(default="", max_length=255)
+    relationship: str = Field(default="", max_length=60)
+    notify_consent: bool = False
+
+
+class TrustedContactOut(TrustedContactIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID

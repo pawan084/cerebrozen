@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -22,3 +23,6 @@ class SafetyEvent(Base):
     reason: Mapped[str] = mapped_column(String(255), default="")
     excerpt: Mapped[str] = mapped_column(Text, default="")
     resolved: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # Set when a crisis event triggered a trusted-contact notification.
+    escalated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
