@@ -126,7 +126,7 @@ final class SoundscapePlayer: ObservableObject {
     @Published private(set) var sleepRemaining: Int?
     /// Master volume (0…1), adjustable live from the player.
     @Published var volume: Float = 0.7 {
-        didSet { if isPlaying { engine.mainMixerNode.outputVolume = volume } }
+        didSet { if isPlaying, audioEnabled { engine.mainMixerNode.outputVolume = volume } }
     }
 
     /// The selected timer duration in minutes (drives the icon + cycling), stable
@@ -141,6 +141,11 @@ final class SoundscapePlayer: ObservableObject {
 
     private let engine = AVAudioEngine()
     private let mixer = Mixer(kinds: SoundscapePlayer.layerKinds)
+    /// UI tests run on the Simulator, whose CoreAudio HAL server can RPC-timeout
+    /// on engine init/teardown (SIGABRT) under host load. Under `-resetState`
+    /// (only ever passed by the UITest launcher) we drive playback *state* without
+    /// touching the real engine, so navigation tests don't depend on audio.
+    private let audioEnabled = !ProcessInfo.processInfo.arguments.contains("-resetState")
     private var source: AVAudioSourceNode?
     private var fadeTimer: Timer?
     private var sleepTimer: Timer?
@@ -189,6 +194,9 @@ final class SoundscapePlayer: ObservableObject {
     func toggle() { isPlaying ? pause() : play() }
 
     func play() {
+        guard audioEnabled else {   // UI test: state only, no real engine
+            isPlaying = true; updateNowPlaying(); Haptics.soft(intensity: 0.4); return
+        }
         activateSession()
         if source == nil { buildSourceNode() }
         engine.mainMixerNode.outputVolume = volume
@@ -203,19 +211,25 @@ final class SoundscapePlayer: ObservableObject {
     }
 
     func pause() {
-        engine.pause()
+        if audioEnabled { engine.pause() }
         isPlaying = false
         updateNowPlaying()
     }
 
-    /// Full teardown — call when leaving the player so audio never leaks.
+    /// Stop playback when leaving the player so audio never leaks.
+    ///
+    /// Deliberately does NOT detach/rebuild the source node: reconfiguring the
+    /// engine's output node on teardown can trip a CoreAudio RPC timeout that
+    /// aborts the process (SIGABRT via AURemoteIO::Cleanup), especially on the
+    /// Simulator. Stopping the engine silences audio; the graph is kept intact
+    /// so a later play() just restarts it (also faster, click-free).
     func stop() {
         cancelSleepTimer()
         fadeTimer?.invalidate(); fadeTimer = nil
-        engine.stop()
-        if let s = source { engine.detach(s); source = nil }
         isPlaying = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        guard audioEnabled else { return }
+        if engine.isRunning { engine.stop() }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -287,7 +301,9 @@ final class SoundscapePlayer: ObservableObject {
             Task { @MainActor in
                 guard let self else { t.invalidate(); return }
                 step += 1
-                self.engine.mainMixerNode.outputVolume = self.volume * Float(steps - step) / Float(steps)
+                if self.audioEnabled {
+                    self.engine.mainMixerNode.outputVolume = self.volume * Float(steps - step) / Float(steps)
+                }
                 if step >= steps { t.invalidate(); self.stop() }
             }
         }
