@@ -8,7 +8,7 @@ iOS is the roadmap below.
 ## Stack
 - Kotlin 2.0 · AGP 8.7 · Gradle 8.11 (Kotlin DSL + version catalog `gradle/libs.versions.toml`)
 - Jetpack Compose (BOM) · Material 3 · Navigation-Compose
-- `minSdk 26` · `targetSdk/compileSdk 35` · package `com.cerebro.app`
+- `minSdk 26` · `targetSdk/compileSdk 35` · package `com.cerebrozen.app`
 
 ## Structure
 ```

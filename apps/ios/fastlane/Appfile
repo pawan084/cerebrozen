@@ -2,7 +2,7 @@
 # Real values come from the environment / App Store Connect API key at run time,
 # so nothing secret is committed. Override the bundle id here if yours differs.
 
-app_identifier(ENV["APP_IDENTIFIER"] || "com.cerebro.app")
+app_identifier(ENV["APP_IDENTIFIER"] || "com.cerebrozen.app")
 
 # Optional: only needed for username/password auth. The lanes below prefer the
 # App Store Connect API key (ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_CONTENT), which

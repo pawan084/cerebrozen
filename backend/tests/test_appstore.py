@@ -62,7 +62,7 @@ def _build_jws(payload: dict):
 
 def test_verify_and_tier_for_active_premium(tmp_path, monkeypatch):
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
-    payload = {"productId": "com.cerebro.premium.monthly", "expiresDate": future}
+    payload = {"productId": "com.cerebrozen.premium.monthly", "expiresDate": future}
     jws, root_pem = _build_jws(payload)
 
     root_file = tmp_path / "root.pem"
@@ -70,7 +70,7 @@ def test_verify_and_tier_for_active_premium(tmp_path, monkeypatch):
     monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
 
     data = appstore.verify_transaction(jws)
-    assert data["productId"] == "com.cerebro.premium.monthly"
+    assert data["productId"] == "com.cerebrozen.premium.monthly"
     tier, expires = appstore.tier_for(data)
     assert tier == "premium"
     assert expires is not None
@@ -78,24 +78,24 @@ def test_verify_and_tier_for_active_premium(tmp_path, monkeypatch):
 
 def test_expired_subscription_is_free():
     past = int((datetime.now(timezone.utc) - timedelta(days=1)).timestamp() * 1000)
-    tier, _ = appstore.tier_for({"productId": "com.cerebro.premium.monthly", "expiresDate": past})
+    tier, _ = appstore.tier_for({"productId": "com.cerebrozen.premium.monthly", "expiresDate": past})
     assert tier == "free"
 
 
 def test_revoked_subscription_is_free():
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
     tier, _ = appstore.tier_for(
-        {"productId": "com.cerebro.premium.monthly", "expiresDate": future, "revocationDate": 123}
+        {"productId": "com.cerebrozen.premium.monthly", "expiresDate": future, "revocationDate": 123}
     )
     assert tier == "free"
 
 
 def test_tampered_signature_rejected(tmp_path, monkeypatch):
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
-    jws, root_pem = _build_jws({"productId": "com.cerebro.premium.monthly", "expiresDate": future})
+    jws, root_pem = _build_jws({"productId": "com.cerebrozen.premium.monthly", "expiresDate": future})
     # Flip the payload but keep the old signature.
     header_b64, _payload_b64, sig_b64 = jws.split(".")
-    forged_payload = _b64url(json.dumps({"productId": "com.cerebro.premiumhuman.monthly"}).encode())
+    forged_payload = _b64url(json.dumps({"productId": "com.cerebrozen.premiumhuman.monthly"}).encode())
     tampered = f"{header_b64}.{forged_payload}.{sig_b64}"
     with pytest.raises(appstore.ReceiptError):
         appstore.verify_transaction(tampered)
@@ -103,7 +103,7 @@ def test_tampered_signature_rejected(tmp_path, monkeypatch):
 
 def test_wrong_root_pin_rejected(tmp_path, monkeypatch):
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
-    jws, _root_pem = _build_jws({"productId": "com.cerebro.premium.monthly", "expiresDate": future})
+    jws, _root_pem = _build_jws({"productId": "com.cerebrozen.premium.monthly", "expiresDate": future})
     # Pin to a DIFFERENT root than the one that signed the chain.
     _other_jws, other_root_pem = _build_jws({"productId": "x"})
     root_file = tmp_path / "other_root.pem"

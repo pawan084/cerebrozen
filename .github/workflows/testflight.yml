@@ -40,6 +40,6 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-          APP_IDENTIFIER: ${{ vars.APP_IDENTIFIER || 'com.cerebro.app' }}
+          APP_IDENTIFIER: ${{ vars.APP_IDENTIFIER || 'com.cerebrozen.app' }}
           CHANGELOG: ${{ github.event.inputs.changelog }}
         run: bundle exec fastlane ios beta

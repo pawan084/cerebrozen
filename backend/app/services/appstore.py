@@ -24,8 +24,8 @@ from app.core.config import settings
 logger = logging.getLogger("cerebro.appstore")
 
 _PRODUCT_TIERS = {
-    "com.cerebro.premium.monthly": "premium",
-    "com.cerebro.premiumhuman.monthly": "premium_human",
+    "com.cerebrozen.premium.monthly": "premium",
+    "com.cerebrozen.premiumhuman.monthly": "premium_human",
 }
 
 

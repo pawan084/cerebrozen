@@ -1,4 +1,4 @@
-package com.cerebro.app.ui.screens
+package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,13 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cerebro.app.ui.theme.CardFill
-import com.cerebro.app.ui.theme.CereBroTheme
-import com.cerebro.app.ui.theme.LineStroke
-import com.cerebro.app.ui.theme.Periwinkle
-import com.cerebro.app.ui.theme.TextMuted
-import com.cerebro.app.ui.theme.TextPrimary
-import com.cerebro.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.CereBroTheme
+import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
 import androidx.compose.material3.MaterialTheme
 
 /** Common page frame: uppercase eyebrow + serif title + scrolling content. */

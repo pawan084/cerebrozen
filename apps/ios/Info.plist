@@ -2,26 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Allow plain-HTTP to localhost/.local for talking to the local CereBro
-	     API in development. Other ATS protections stay on. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- The Talk tab records your voice to transcribe it for the AI companion. -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>CereBro uses your microphone so you can talk with your voice companion.</string>
-	<!-- Optional Face ID lock on the private Journal tab. -->
-	<key>NSFaceIDUsageDescription</key>
-	<string>CereBro uses Face ID to keep your journal private.</string>
-	<!-- Keep sleep soundscapes playing with the screen locked. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 	</array>
-	<!-- Launch screen: a calm navy field (matches the splash) so there's no
-	     white flash before the SwiftUI splash fades in. -->
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

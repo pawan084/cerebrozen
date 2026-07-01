@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # When set, the transaction cert chain is pinned to it; empty = verify the
     # chain internally but skip pinning (dev). Bundle-id the transactions must match.
     appstore_root_cert_path: str = ""
-    appstore_bundle_id: str = "com.cerebro.app"
+    appstore_bundle_id: str = "com.cerebrozen.app"
 
     # Voice (Deepgram = speech-to-text, ElevenLabs = text-to-speech). Leave the
     # keys blank to disable the matching half of the voice loop.
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     apns_key_path: str = ""        # path to the .p8 auth key
     apns_key_id: str = ""
     apns_team_id: str = ""
-    apns_bundle_id: str = "com.cerebro.app"
+    apns_bundle_id: str = "com.cerebrozen.app"
     apns_use_sandbox: bool = True
 
     # Transactional email (verification, password reset). Empty host = log only.

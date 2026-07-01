@@ -64,7 +64,7 @@ async def test_webhook_renew_sets_premium(client, auth_client, tmp_path, monkeyp
     monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
 
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
-    txn = _jws({"productId": "com.cerebro.premium.monthly", "expiresDate": future,
+    txn = _jws({"productId": "com.cerebrozen.premium.monthly", "expiresDate": future,
                 "appAccountToken": me["id"]}, leaf_key, x5c)
     outer = _jws({"notificationType": "DID_RENEW", "data": {"signedTransactionInfo": txn}},
                  leaf_key, x5c)
@@ -82,7 +82,7 @@ async def test_webhook_expire_reverts_to_free(client, auth_client, tmp_path, mon
     monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
 
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
-    txn = _jws({"productId": "com.cerebro.premium.monthly", "expiresDate": future,
+    txn = _jws({"productId": "com.cerebrozen.premium.monthly", "expiresDate": future,
                 "appAccountToken": me["id"]}, leaf_key, x5c)
     outer = _jws({"notificationType": "EXPIRED", "data": {"signedTransactionInfo": txn}},
                  leaf_key, x5c)

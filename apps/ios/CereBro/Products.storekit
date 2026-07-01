@@ -32,7 +32,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.cerebro.premium.monthly",
+          "productID" : "com.cerebrozen.premium.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "CereBro Premium Monthly",
           "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
@@ -52,7 +52,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.cerebro.premiumhuman.monthly",
+          "productID" : "com.cerebrozen.premiumhuman.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "CereBro Premium + Human Monthly",
           "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",

@@ -11,7 +11,7 @@ import SwiftUI
 @MainActor
 final class SubscriptionManager: ObservableObject {
     /// Product identifiers to create in App Store Connect.
-    static let productIDs = ["com.cerebro.premium.monthly", "com.cerebro.premiumhuman.monthly"]
+    static let productIDs = ["com.cerebrozen.premium.monthly", "com.cerebrozen.premiumhuman.monthly"]
 
     @Published private(set) var products: [Product] = []
     /// Local entitlement ("free" | "premium" | "premium_human"). The server holds

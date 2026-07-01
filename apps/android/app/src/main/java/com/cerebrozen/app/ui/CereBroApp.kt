@@ -1,4 +1,4 @@
-package com.cerebro.app.ui
+package com.cerebrozen.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,15 +26,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.cerebro.app.ui.screens.HomeScreen
-import com.cerebro.app.ui.screens.JournalScreen
-import com.cerebro.app.ui.screens.SleepScreen
-import com.cerebro.app.ui.screens.TalkScreen
-import com.cerebro.app.ui.screens.YouScreen
-import com.cerebro.app.ui.theme.NightMid
-import com.cerebro.app.ui.theme.Night
-import com.cerebro.app.ui.theme.Periwinkle
-import com.cerebro.app.ui.theme.TextMuted2
+import com.cerebrozen.app.ui.screens.HomeScreen
+import com.cerebrozen.app.ui.screens.JournalScreen
+import com.cerebrozen.app.ui.screens.SleepScreen
+import com.cerebrozen.app.ui.screens.TalkScreen
+import com.cerebrozen.app.ui.screens.YouScreen
+import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.TextMuted2
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     Home("home", "Home", Icons.Filled.Home),

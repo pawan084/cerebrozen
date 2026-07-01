@@ -52,7 +52,7 @@ cere/
 The code is complete on both ends, but the entitlement can't be enabled from
 source. In Xcode: select the **CereBro** target → **Signing & Capabilities** →
 **+ Capability** → **Sign in with Apple**. Set `APPLE_CLIENT_ID` (your bundle id,
-default `com.cerebro.app`) in `backend/.env`. Until the capability is on, the
+default `com.cerebrozen.app`) in `backend/.env`. Until the capability is on, the
 button renders but Apple authorization fails gracefully and email auth still works.
 
 ## AI & voice providers
