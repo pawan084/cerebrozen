@@ -1,6 +1,29 @@
 import SwiftUI
 import LocalAuthentication
 
+// MARK: - Guided prompts + emotion tags
+enum JournalPrompts {
+    static let all = [
+        "What emotion did you avoid today, and what did it need from you?",
+        "Name one thing that drained you and one that restored you.",
+        "What would you tell a friend who had your exact day?",
+        "What are you carrying that isn't yours to hold?",
+        "Where did you feel most like yourself today?",
+        "What small thing went right that you almost missed?",
+        "If your body could speak right now, what would it say?",
+    ]
+    /// A stable prompt-of-the-day that rotates daily.
+    static var today: String {
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
+        return all[day % all.count]
+    }
+}
+
+/// Context + emotion tags for an entry (broader than the old 4-word set).
+enum JournalTags {
+    static let all = ["Work", "Sleep", "Gratitude", "Calm", "Anxious", "Sad", "Angry", "Hopeful", "Tired"]
+}
+
 // MARK: - Journal home (tab root)
 struct JournalHomeView: View {
     @EnvironmentObject var state: AppState
@@ -21,7 +44,7 @@ struct JournalHomeView: View {
     private var content: some View {
         ScreenScaffold(eyebrow: "Journal hub", title: "Journal", trailingSystemImage: "book", isRoot: true) {
             HeroCard(tag: "Prompt for tonight", title: "Release the day",
-                     subtitle: "What emotion did you avoid today, and what did it need from you?",
+                     subtitle: JournalPrompts.today,
                      cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }
@@ -74,19 +97,27 @@ struct JournalEntryView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
     @Environment(\.dismiss) private var dismiss
-    @State private var text = "Today I felt pressure because of tomorrow's meeting and a fear of being judged…"
-    @State private var tags: Set<String> = ["Work", "Anxiety"]
+    /// A gentle guided prompt (rotates daily); the page starts as a blank page.
+    var prompt: String = JournalPrompts.today
+    @State private var text = ""
+    @State private var tags: Set<String> = []
     @State private var saved = false
     var body: some View {
         ScreenScaffold(eyebrow: "Private writing with consent", title: "Journal Entry", trailingSystemImage: "book") {
             Photo(url: Dummy.Img.write, symbol: "book").frame(height: 120).frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+            // Guided prompt to nudge past the blank page (optional to answer).
+            Label(prompt, systemImage: "quote.opening")
+                .appFont(12.5).foregroundStyle(Theme.Palette.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
             Card(cornerRadius: 18) {
-                TextField("", text: $text, axis: .vertical)
+                TextField("Write freely…", text: $text, axis: .vertical)
                     .appFont(13).foregroundStyle(Theme.Palette.soft)
                     .frame(minHeight: 120, alignment: .topLeading).lineLimit(5...)
+                    .accessibilityIdentifier("Journal editor")
             }
-            ChipRow(options: ["Work", "Anxiety", "Sleep", "Gratitude"], selection: $tags)
+            ChipRow(options: JournalTags.all, selection: $tags)
             NavRow(title: "See AI reflection", subtitle: "AI reflection output", systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) {
                 JournalInsightView(entry: JournalEntry(title: "Draft", tags: Array(tags), date: "Today",
                                                        symbol: "book", imageURL: Dummy.Img.write, body: text))
@@ -209,12 +240,47 @@ struct JournalDetailView: View {
 // MARK: - Journal history
 struct JournalHistoryView: View {
     @EnvironmentObject var state: AppState
+    @State private var query = ""
+
+    private var results: [JournalEntry] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return state.journalEntries }
+        return state.journalEntries.filter {
+            $0.title.localizedCaseInsensitiveContains(q)
+                || $0.body.localizedCaseInsensitiveContains(q)
+                || $0.tags.contains { $0.localizedCaseInsensitiveContains(q) }
+        }
+    }
+
     var body: some View {
         ScreenScaffold(eyebrow: "Past entries and tags", title: "Journal History", trailingSystemImage: "book") {
-            ForEach(state.journalEntries) { e in
-                NavRow(title: e.title,
-                       subtitle: e.tags.isEmpty ? e.date : "\(e.tags.joined(separator: " · ")) · \(e.date)",
-                       systemImage: e.symbol, imageURL: e.imageURL) { JournalDetailView(entry: e) }
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").foregroundStyle(Theme.Palette.muted)
+                TextField("Search entries, tags…", text: $query)
+                    .foregroundStyle(Theme.Palette.text)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("Journal search")
+                if !query.isEmpty {
+                    Button { query = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.Palette.muted)
+                    }
+                    .buttonStyle(.pressable).accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 14).frame(height: 48)
+            .background(Theme.Palette.field)
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Theme.Palette.line))
+
+            if results.isEmpty {
+                InsightCard(label: "No matches", title: "Nothing found for “\(query)”.",
+                            detail: "Try a different word, tag, or feeling.")
+            } else {
+                ForEach(results) { e in
+                    NavRow(title: e.title,
+                           subtitle: e.tags.isEmpty ? e.date : "\(e.tags.joined(separator: " · ")) · \(e.date)",
+                           systemImage: e.symbol, imageURL: e.imageURL) { JournalDetailView(entry: e) }
+                }
             }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
         }

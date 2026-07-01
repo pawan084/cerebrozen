@@ -490,6 +490,12 @@ final class CereBroUITests: XCTestCase {
         // 2) Save a journal entry, then confirm it shows up in History.
         openTab(app, "Journal")
         if tap(app, "New entry") {
+            // The editor starts as an honest blank page — type before saving.
+            let editor = app.textViews["Journal editor"].firstMatch
+            if editor.waitForExistence(timeout: 3) {
+                editor.tap()
+                editor.typeText("Felt anxious about tomorrow's meeting.")
+            }
             tap(app, "Save / Continue")          // inserts entry, auto-dismisses
             _ = app.staticTexts["Journal"].waitForExistence(timeout: 4)
         }

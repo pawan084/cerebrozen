@@ -139,10 +139,12 @@ struct PlayerView: View {
 
                     transport.padding(.top, 2)
 
+                    volumeSlider.padding(.top, 6)
+
                     PlayerVisualizer(playing: audio.isPlaying).padding(.top, 6)
 
                     InsightCard(label: "Auto-stop timer",
-                                title: audio.sleepTimerMinutes.map { "Fades out and stops in \($0) min — tap the timer to change." }
+                                title: audio.sleepRemainingText.map { "Fades out and stops in \($0) — tap the timer to change." }
                                     ?? "Tap the timer icon to fade out after 15–60 min.")
                         .padding(.top, 4)
                 }
@@ -224,8 +226,10 @@ struct PlayerView: View {
                 Label(timeString(elapsed), systemImage: "waveform")
                     .appFont(11, weight: .semibold).foregroundStyle(Theme.Palette.muted)
                 Spacer()
-                Text(audio.sleepTimerMinutes.map { "Fades out · \($0) min" } ?? "Continuous ambient")
+                Text(audio.sleepRemainingText.map { "Fades out in \($0)" } ?? "Continuous ambient")
                     .appFont(11).foregroundStyle(Theme.Palette.muted2)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
             }
         }
         .accessibilityElement(children: .combine)
@@ -268,6 +272,18 @@ struct PlayerView: View {
             .accessibilityLabel(audio.sleepTimerMinutes.map { "Sleep timer, \($0) minutes" } ?? "Set sleep timer")
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // Master volume with speaker icons.
+    private var volumeSlider: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "speaker.fill").appFont(12).foregroundStyle(Theme.Palette.muted2)
+            Slider(value: Binding(get: { Double(audio.volume) },
+                                  set: { audio.volume = Float($0) }), in: 0...1)
+                .tint(Theme.Accent.sleep)
+                .accessibilityLabel("Volume")
+            Image(systemName: "speaker.wave.3.fill").appFont(12).foregroundStyle(Theme.Palette.muted2)
+        }
     }
 
     private func timeString(_ s: Int) -> String {

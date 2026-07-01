@@ -38,9 +38,15 @@ final class VoiceCompanion: NSObject, ObservableObject {
         }
     }
 
+    /// One completed spoken exchange (kept so a whole session can be journaled,
+    /// not just the last turn).
+    struct Turn: Identifiable { let id = UUID(); let you: String; let reply: String }
+
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var transcript: String = ""
     @Published private(set) var reply: String = ""
+    /// The full multi-turn session so far.
+    @Published private(set) var turns: [Turn] = []
     /// Smoothed live audio level (0…1) — mic input while recording, playback
     /// envelope while speaking. Drives the reactive orb + waveform.
     @Published private(set) var level: CGFloat = 0
@@ -51,6 +57,32 @@ final class VoiceCompanion: NSObject, ObservableObject {
     private var meterTimer: Timer?
 
     var isRecording: Bool { phase == .recording }
+
+    private var interruptionObserver: NSObjectProtocol?
+
+    override init() {
+        super.init()
+        // A phone call / Siri / route change shouldn't leave the orb stuck
+        // recording or speaking — reset to idle when an interruption begins.
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+            MainActor.assumeIsolated { self.handleInterruption() }
+        }
+    }
+
+    deinit {
+        if let o = interruptionObserver { NotificationCenter.default.removeObserver(o) }
+    }
+
+    private func handleInterruption() {
+        recorder?.stop(); recorder = nil
+        player?.stop(); player = nil
+        stopMetering()
+        if phase != .idle { phase = .idle }
+    }
 
     // MARK: Permission
 
@@ -142,6 +174,7 @@ final class VoiceCompanion: NSObject, ObservableObject {
             phase = .error("Couldn't reach the companion."); Haptics.warning(); return
         }
         reply = answer
+        turns.append(Turn(you: heard, reply: answer))   // keep the whole session
         Haptics.success()
 
         // 3. Reply → speech (ElevenLabs) → play

@@ -14,11 +14,12 @@ struct TalkView: View {
 
     private var phaseColor: Color {
         switch voice.phase {
-        case .recording: return Theme.Palette.soft
-        case .thinking:  return Theme.Accent.sleep
-        case .speaking:  return Theme.Accent.breathe
-        case .error:     return Theme.Palette.danger
-        default:         return Theme.Palette.muted
+        case .recording:    return Theme.Palette.soft
+        case .transcribing: return Theme.Palette.soft
+        case .thinking:     return Theme.Accent.sleep
+        case .speaking:     return Theme.Accent.breathe
+        case .error:        return Theme.Palette.danger
+        default:            return Theme.Palette.muted
         }
     }
 
@@ -81,7 +82,7 @@ struct TalkView: View {
             HStack(spacing: 8) {
                 Button { saveSessionToJournal() } label: { MiniChip("Save to journal") }
                     .buttonStyle(.pressable)
-                    .disabled(voice.transcript.isEmpty && voice.reply.isEmpty)
+                    .disabled(voice.turns.isEmpty && voice.transcript.isEmpty && voice.reply.isEmpty)
                 NavigationLink { DailyPlanView() } label: { MiniChip("Add to plan") }.buttonStyle(.pressable)
                 NavigationLink { ChatView() } label: { MiniChip("Text mode") }.buttonStyle(.pressable)
             }
@@ -98,17 +99,27 @@ struct TalkView: View {
         .celebration(trigger: $savedToJournal)
     }
 
-    /// Capture a short summary of the spoken exchange into the journal.
+    /// Capture the whole spoken exchange (every turn) into the journal.
     private func saveSessionToJournal() {
-        let you = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        let reply = voice.reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Prefer the full multi-turn session; fall back to the current pair.
         var lines: [String] = []
-        if !you.isEmpty { lines.append("You: \(you)") }
-        if !reply.isEmpty { lines.append("Companion: \(reply)") }
+        if voice.turns.isEmpty {
+            let you = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            let reply = voice.reply.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !you.isEmpty { lines.append("You: \(you)") }
+            if !reply.isEmpty { lines.append("Companion: \(reply)") }
+        } else {
+            for t in voice.turns {
+                lines.append("You: \(t.you)")
+                lines.append("Companion: \(t.reply)")
+            }
+        }
         guard !lines.isEmpty else { return }
-        let stem = you.isEmpty ? "reflection" : you
-        let entry = JournalEntry(title: String("Talk session — \(stem)".prefix(46)),
-                                 tags: ["Talk"], date: "Today", symbol: "mic", imageURL: Dummy.Img.voice)
+        let stem = voice.turns.first?.you ?? voice.transcript
+        let title = stem.isEmpty ? "Talk session — reflection" : "Talk session — \(stem)"
+        let entry = JournalEntry(title: String(title.prefix(46)),
+                                 tags: ["Talk"], date: "Today", symbol: "mic", imageURL: Dummy.Img.voice,
+                                 body: lines.joined(separator: "\n"))
         state.journalEntries.insert(entry, at: 0)
         state.recordActivity()
         backend.mirrorJournal(entry, body: lines.joined(separator: "\n\n"))

@@ -22,6 +22,9 @@ struct ProfileView: View {
             NavRow(title: backend.isConnected ? "Account" : "Sign in",
                    subtitle: backend.isConnected ? "Manage your synced account" : "Apple, Google or email — sync across devices",
                    systemImage: "person.crop.circle", imageURL: Dummy.Img.privacy, emphasis: true) { CloudSyncView() }
+            NavRow(title: "Daily reminder",
+                   subtitle: state.reminderEnabled ? "On · gentle daily check-in" : "Off · tap to set a gentle nudge",
+                   systemImage: "bell", imageURL: Dummy.Img.bell) { RemindersView() }
             NavRow(title: "Weekly insights", subtitle: "Your progress and patterns", systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Premium plan", subtitle: "Subscription and invoices", systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }

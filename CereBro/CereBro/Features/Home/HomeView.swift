@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject var state: AppState
     @State private var showSearch = false
     @State private var route: HomeRoute?
+    @State private var celebrateStreak = false
     @Namespace private var playerZoom
 
     private var part: DayPart { .current() }
@@ -67,6 +68,11 @@ struct HomeView: View {
             case .sleep:   PlayerView(item: Dummy.sleepContent[0])
             }
         }
+        // Celebrate a streak milestone the moment it's reached (fires once).
+        .onChange(of: state.newMilestone) { _, m in
+            if m != nil { celebrateStreak = true; state.newMilestone = nil }
+        }
+        .celebration(trigger: $celebrateStreak)
     }
 }
 
@@ -84,6 +90,7 @@ struct StreakCard: View {
         return ["S", "M", "T", "W", "T", "F", "S"][max(0, min(6, i))]
     }
     private func isToday(_ date: Date) -> Bool { Calendar.current.isDateInToday(date) }
+    private var isMilestone: Bool { AppState.milestones.contains(streak) }
 
     var body: some View {
         Card {
@@ -96,9 +103,10 @@ struct StreakCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(streak == 0 ? "Begin your streak" : "\(streak)-day streak")
                         .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.text)
-                    Text(streak == 0 ? "Show up once today to start"
-                                     : "Best \(best) days · gentle, no pressure")
-                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                    Text(isMilestone ? "🎉 \(streak)-day milestone — beautifully done"
+                         : (streak == 0 ? "Show up once today to start"
+                                        : "Best \(best) days · gentle, no pressure"))
+                        .appFont(11.5).foregroundStyle(isMilestone ? Theme.Palette.lav : Theme.Palette.muted)
                 }
                 Spacer(minLength: 8)
                 HStack(spacing: 6) {

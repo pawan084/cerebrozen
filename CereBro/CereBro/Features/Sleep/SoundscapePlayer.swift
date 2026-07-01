@@ -1,4 +1,5 @@
 import AVFoundation
+import MediaPlayer
 import SwiftUI
 
 // MARK: - Soundscape kinds
@@ -74,27 +75,47 @@ private final class Synth {
 @MainActor
 final class SoundscapePlayer: ObservableObject {
     @Published private(set) var isPlaying = false
-    /// Minutes remaining on the sleep auto-stop timer, or nil when disarmed.
-    @Published private(set) var sleepTimerMinutes: Int?
+    /// Seconds remaining on the sleep auto-stop timer, or nil when disarmed.
+    @Published private(set) var sleepRemaining: Int?
+    /// Master volume (0…1), adjustable live from the player.
+    @Published var volume: Float = 0.7 {
+        didSet { if isPlaying { engine.mainMixerNode.outputVolume = volume } }
+    }
+
+    /// The selected timer duration in minutes (drives the icon + cycling), stable
+    /// while `sleepRemaining` counts down.
+    private(set) var armedMinutes: Int?
+    /// Back-compat name used by the UI for the armed duration.
+    var sleepTimerMinutes: Int? { armedMinutes }
+    /// "mm:ss" of time left before fade-out, for a live countdown label.
+    var sleepRemainingText: String? {
+        sleepRemaining.map { String(format: "%d:%02d", $0 / 60, $0 % 60) }
+    }
 
     private let engine = AVAudioEngine()
     private let synth = Synth()
     private var source: AVAudioSourceNode?
     private var fadeTimer: Timer?
     private var sleepTimer: Timer?
-    private var baseVolume: Float = 0.7
+    private var remoteConfigured = false
+    private var nowPlayingTitle = "Soundscape"
 
-    func configure(for item: ContentItem) { synth.kind = SoundscapeKind.from(item) }
+    func configure(for item: ContentItem) {
+        synth.kind = SoundscapeKind.from(item)
+        nowPlayingTitle = item.title
+        setupRemoteCommands()
+    }
 
     func toggle() { isPlaying ? pause() : play() }
 
     func play() {
         activateSession()
         if source == nil { buildSourceNode() }
-        engine.mainMixerNode.outputVolume = baseVolume
+        engine.mainMixerNode.outputVolume = volume
         do {
             if !engine.isRunning { try engine.start() }
             isPlaying = true
+            updateNowPlaying()
             Haptics.soft(intensity: 0.4)
         } catch {
             isPlaying = false
@@ -104,6 +125,7 @@ final class SoundscapePlayer: ObservableObject {
     func pause() {
         engine.pause()
         isPlaying = false
+        updateNowPlaying()
     }
 
     /// Full teardown — call when leaving the player so audio never leaks.
@@ -113,15 +135,16 @@ final class SoundscapePlayer: ObservableObject {
         engine.stop()
         if let s = source { engine.detach(s); source = nil }
         isPlaying = false
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    // MARK: Sleep auto-stop timer (fades out, then stops)
+    // MARK: Sleep auto-stop timer (live countdown, fades out, then stops)
 
     /// Cycles the sleep timer: off → 15 → 30 → 45 → 60 → off.
     func cycleSleepTimer() {
         let next: Int?
-        switch sleepTimerMinutes {
+        switch armedMinutes {
         case nil:  next = 15
         case 15:   next = 30
         case 30:   next = 45
@@ -131,19 +154,48 @@ final class SoundscapePlayer: ObservableObject {
         if let minutes = next { armSleepTimer(minutes: minutes) } else { cancelSleepTimer() }
     }
 
+    private let fadeLead = 12   // seconds: begin fading this long before the end
+
     private func armSleepTimer(minutes: Int) {
         cancelSleepTimer()
-        sleepTimerMinutes = minutes
-        let fadeLead: TimeInterval = 12                 // begin fading this long before the end
-        let total = TimeInterval(minutes * 60)
-        sleepTimer = Timer.scheduledTimer(withTimeInterval: max(1, total - fadeLead), repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.fadeOutAndStop(over: fadeLead) }
+        armedMinutes = minutes
+        sleepRemaining = minutes * 60
+        Haptics.selection()
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let r = self.sleepRemaining else { return }
+                let left = r - 1
+                self.sleepRemaining = max(0, left)
+                if left == self.fadeLead { self.fadeOutAndStop(over: TimeInterval(self.fadeLead)) }
+                if left <= 0 { self.sleepTimer?.invalidate(); self.sleepTimer = nil }
+            }
         }
     }
 
     private func cancelSleepTimer() {
         sleepTimer?.invalidate(); sleepTimer = nil
-        sleepTimerMinutes = nil
+        sleepRemaining = nil
+        armedMinutes = nil
+    }
+
+    // MARK: Lock-screen / Control Center (Now Playing + remote commands)
+
+    private func setupRemoteCommands() {
+        guard !remoteConfigured else { return }
+        remoteConfigured = true
+        let c = MPRemoteCommandCenter.shared()
+        c.playCommand.addTarget { [weak self] _ in Task { @MainActor in self?.play() }; return .success }
+        c.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.pause() }; return .success }
+        c.togglePlayPauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.toggle() }; return .success }
+        c.stopCommand.addTarget { [weak self] _ in Task { @MainActor in self?.stop() }; return .success }
+    }
+
+    private func updateNowPlaying() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle: nowPlayingTitle,
+            MPMediaItemPropertyArtist: "CereBro · Sleep",
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
+        ]
     }
 
     private func fadeOutAndStop(over seconds: TimeInterval) {
@@ -155,7 +207,7 @@ final class SoundscapePlayer: ObservableObject {
             Task { @MainActor in
                 guard let self else { t.invalidate(); return }
                 step += 1
-                self.engine.mainMixerNode.outputVolume = self.baseVolume * Float(steps - step) / Float(steps)
+                self.engine.mainMixerNode.outputVolume = self.volume * Float(steps - step) / Float(steps)
                 if step >= steps { t.invalidate(); self.stop() }
             }
         }

@@ -46,7 +46,13 @@ final class AppState: ObservableObject {
         static let journalLock = "journalLocked"
         static let favSleep = "favoriteSleep"
         static let crisisRegion = "crisisRegion"
+        static let lastMilestone = "lastStreakMilestone"
+        static let reminderOn = "reminderEnabled"
+        static let reminderHour = "reminderHour"
     }
+
+    /// Streak milestones worth celebrating (days).
+    static let milestones = [3, 7, 14, 30, 60, 100, 150, 365]
 
     /// Persisted so onboarding is shown only once (until reset from Profile).
     @Published var hasOnboarded: Bool {
@@ -77,6 +83,14 @@ final class AppState: ObservableObject {
     @Published private(set) var favoriteSleep: Set<String> { didSet { Self.save(Array(favoriteSleep), Key.favSleep) } }
     /// Crisis-resources region override. "" = automatic (device region).
     @Published var crisisRegion: String    { didSet { UserDefaults.standard.set(crisisRegion, forKey: Key.crisisRegion) } }
+    /// Highest streak milestone already celebrated (so we fire each one once).
+    private var lastMilestone: Int         { didSet { UserDefaults.standard.set(lastMilestone, forKey: Key.lastMilestone) } }
+    /// Transient: a milestone just reached this session (Home fires a celebration).
+    @Published var newMilestone: Int?
+    /// Daily check-in reminder (the habit-loop trigger).
+    @Published var reminderEnabled: Bool { didSet { UserDefaults.standard.set(reminderEnabled, forKey: Key.reminderOn) } }
+    /// Hour of day (0–23) for the daily reminder. Default 21:00 (evening).
+    @Published var reminderHour: Int { didSet { UserDefaults.standard.set(reminderHour, forKey: Key.reminderHour) } }
 
     init() {
         // UI tests pass `-resetState YES` to start each run from seeded defaults,
@@ -88,7 +102,8 @@ final class AppState: ObservableObject {
         if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
-             Key.journalLock, Key.favSleep, Key.crisisRegion,
+             Key.journalLock, Key.favSleep, Key.crisisRegion, Key.lastMilestone,
+             Key.reminderOn, Key.reminderHour,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
@@ -108,6 +123,9 @@ final class AppState: ObservableObject {
         journalLocked  = UserDefaults.standard.bool(forKey: Key.journalLock)
         favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
+        lastMilestone  = UserDefaults.standard.integer(forKey: Key.lastMilestone)
+        reminderEnabled = UserDefaults.standard.bool(forKey: Key.reminderOn)
+        reminderHour   = UserDefaults.standard.object(forKey: Key.reminderHour) as? Int ?? 21
     }
 
     /// Wipe all stored user data (used by "Reset & view onboarding").
@@ -125,6 +143,11 @@ final class AppState: ObservableObject {
         journalLocked = false
         favoriteSleep = []
         crisisRegion = ""
+        lastMilestone = 0
+        newMilestone = nil
+        reminderEnabled = false
+        reminderHour = 21
+        ReminderManager.cancel()
         hasOnboarded = false
     }
 
@@ -161,12 +184,20 @@ final class AppState: ObservableObject {
         let key = Self.dayKey(date)
         guard !activeDays.contains(key) else { return }
         activeDays = Array((activeDays + [key]).suffix(120))   // cap stored history
+        // Celebrate crossing a streak milestone (each fires once, ever).
+        let streak = currentStreak
+        if let reached = Self.milestones.last(where: { $0 <= streak }), reached > lastMilestone {
+            lastMilestone = reached
+            newMilestone = reached
+        }
     }
 
     private var activeDaySet: Set<String> { Set(activeDays) }
 
-    /// Consecutive days up to today (today optional — counts through yesterday so
-    /// it doesn't read 0 before the day's first action).
+    /// Consecutive days up to today, forgiving a single missed day within the run
+    /// (a gentle "grace day" so one slip doesn't erase a long streak). Today is
+    /// optional — counts through yesterday so it doesn't read 0 before the day's
+    /// first action.
     var currentStreak: Int {
         let cal = Calendar.current
         let set = activeDaySet
@@ -175,8 +206,15 @@ final class AppState: ObservableObject {
             day = cal.date(byAdding: .day, value: -1, to: day) ?? day
         }
         var count = 0
-        while set.contains(Self.dayKey(day)) {
-            count += 1
+        var graceUsed = false
+        while true {
+            if set.contains(Self.dayKey(day)) {
+                count += 1
+            } else if !graceUsed && count > 0 {
+                graceUsed = true          // forgive one gap inside the run
+            } else {
+                break                     // a second miss (or empty start) ends it
+            }
             guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
             day = prev
         }
