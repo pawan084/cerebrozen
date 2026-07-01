@@ -1,4 +1,5 @@
 import Waitlist from "@/components/Waitlist";
+import AppStoreBadge from "@/components/AppStoreBadge";
 
 const FEATURES = [
   { icon: "🌙", title: "Layered sleep", body: "Blend rain, ocean, wind and a soft drone — each at its own level. A sleep-safe timer fades you out on its own." },
@@ -72,9 +73,9 @@ export default function Home() {
           </p>
           <div className="hero-cta">
             <a className="btn btn-primary" href="#waitlist">Join the waitlist</a>
-            <a className="btn btn-ghost" href="#spaces">See how it works</a>
+            <AppStoreBadge />
           </div>
-          <div className="appnote">🍎 Coming soon to iOS · Android to follow</div>
+          <div className="appnote">Coming soon to iOS · Android to follow</div>
           <div className="trustbar">
             {["Private by design", "No ads, ever", "Crisis-aware", "Delete anytime"].map((t) => (
               <span className="trust" key={t}>✦ {t}</span>
