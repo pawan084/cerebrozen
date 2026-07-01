@@ -263,6 +263,34 @@ final class BackendService: ObservableObject {
         await consume(req)
     }
 
+    /// Stream just the Oracle's reply-text tokens for the voice loop's
+    /// incremental (sentence-by-sentence) TTS. Does not touch the published chat
+    /// transcript — the voice companion manages its own. Yields nothing (finishes
+    /// immediately) when the Oracle isn't available so the caller can fall back.
+    nonisolated func oracleReplyStream(_ text: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task { @MainActor in
+                guard isConnected, oracleAvailable,
+                      let req = await APIClient.shared.oracleRequest(
+                        path: "/oracle/messages", json: ["text": text, "thread_id": oracleThread]) else {
+                    continuation.finish(); return
+                }
+                do {
+                    for try await event in oracleEventStream(req) {
+                        switch event {
+                        case .token(let t): continuation.yield(t)
+                        case .error(let e): continuation.finish(throwing: APIError.server(0, e)); return
+                        case .done: continuation.finish(); return
+                        default: break
+                        }
+                    }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// Approve or decline a paused write action; resumes the same thread.
     func resolveConfirm(approved: Bool) async {
         guard let confirm = pendingConfirm else { return }

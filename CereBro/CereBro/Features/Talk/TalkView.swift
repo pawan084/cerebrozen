@@ -40,11 +40,12 @@ struct TalkView: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.pressable)
-            // Only block taps while a round-trip is in flight; `.speaking` stays
-            // tappable so the user can interrupt (barge-in).
-            .disabled(!backend.isConnected || voice.phase.blocksInput)
+            // Always tappable when connected: record / stop / cancel a slow
+            // request / barge-in while speaking.
+            .disabled(!backend.isConnected)
             .accessibilityLabel(voice.isRecording ? "Stop recording"
-                                : (voice.phase == .speaking ? "Interrupt and talk" : "Start talking"))
+                                : voice.phase.isBusy ? (voice.phase == .speaking ? "Interrupt and talk" : "Cancel")
+                                : "Start talking")
 
             Text(backend.isConnected ? voice.phase.label : "Sign in to talk live")
                 .appFont(13, weight: .heavy)
@@ -53,8 +54,8 @@ struct TalkView: View {
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: 0.25), value: voice.phase)
 
-            if backend.isConnected && voice.phase == .speaking {
-                Text("Tap the orb to interrupt")
+            if backend.isConnected && voice.phase.isBusy {
+                Text(voice.phase == .speaking ? "Tap the orb to interrupt" : "Tap to cancel")
                     .appFont(11, weight: .semibold)
                     .foregroundStyle(Theme.Palette.muted2)
                     .frame(maxWidth: .infinity)

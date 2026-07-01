@@ -55,6 +55,14 @@ final class VoiceCompanion: NSObject, ObservableObject {
     private var player: AVAudioPlayer?
     private var fileURL: URL?
     private var meterTimer: Timer?
+    /// Plays streamed TTS sentences back-to-back (low-latency speaking).
+    private let queue = SentenceQueuePlayer()
+    /// The in-flight STT→LLM→TTS pipeline, so a tap can cancel it.
+    private var processing: Task<Void, Never>?
+    private weak var currentBackend: BackendService?
+    // Voice-activity endpointing (auto-stop on trailing silence).
+    private var sawSpeech = false
+    private var silenceFrames = 0
 
     var isRecording: Bool { phase == .recording }
 
@@ -80,6 +88,8 @@ final class VoiceCompanion: NSObject, ObservableObject {
     private func handleInterruption() {
         recorder?.stop(); recorder = nil
         player?.stop(); player = nil
+        queue.stop()
+        processing?.cancel(); processing = nil
         stopMetering()
         if phase != .idle { phase = .idle }
     }
@@ -96,29 +106,45 @@ final class VoiceCompanion: NSObject, ObservableObject {
 
     func toggle(backend: BackendService) async {
         Haptics.tap(.medium)
-        if isRecording {
+        switch phase {
+        case .recording:
             await stopAndProcess(backend: backend)
-        } else if phase == .speaking {
+        case .transcribing, .thinking:
+            cancelProcessing()          // tap again to cancel a slow request
+        case .speaking:
             stopPlayback()              // barge-in: cut the reply short…
-            await startRecording()      // …and start listening immediately
-        } else {
-            await startRecording()
+            await startRecording(backend: backend)   // …and start listening immediately
+        default:
+            await startRecording(backend: backend)
         }
     }
 
     /// Stop any in-progress playback (used for tap-to-interrupt / barge-in).
     private func stopPlayback() {
         player?.stop(); player = nil
+        queue.stop()
+        processing?.cancel(); processing = nil
         stopMetering()
         phase = .idle
     }
 
-    private func startRecording() async {
+    /// Cancel an in-flight STT/LLM/TTS round-trip and return to idle.
+    private func cancelProcessing() {
+        processing?.cancel(); processing = nil
+        queue.stop()
+        stopMetering()
+        phase = .idle
+        Haptics.tap(.light)
+    }
+
+    private func startRecording(backend: BackendService) async {
         guard !phase.isBusy else { return }
         guard await requestPermission() else {
             phase = .error("Microphone access is off. Enable it in Settings.")
             return
         }
+        currentBackend = backend
+        sawSpeech = false; silenceFrames = 0
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
@@ -154,39 +180,102 @@ final class VoiceCompanion: NSObject, ObservableObject {
             Haptics.warning()
             return
         }
+        // Run the round-trip as a cancellable task so a tap can abort it.
+        processing = Task { await runPipeline(data: data, backend: backend) }
+    }
 
+    private func runPipeline(data: Data, backend: BackendService) async {
         // 1. Speech → text (Deepgram)
         phase = .transcribing
         let heard: String
         do {
             heard = try await APIClient.shared.transcribe(audio: data, contentType: "audio/m4a")
         } catch {
-            phase = .error(message(error)); Haptics.warning(); return
+            if !Task.isCancelled { phase = .error(message(error)); Haptics.warning() }
+            return
         }
+        if Task.isCancelled { return }
         guard !heard.isEmpty else {
             phase = .error("I didn't catch that. Try again."); Haptics.warning(); return
         }
         transcript = heard
 
-        // 2. Text → LLM reply (appends to the shared chat transcript too)
+        // 2. Reply. Stream through the Oracle (speak sentence-by-sentence, low
+        //    latency) when available; otherwise the deterministic /chat + one TTS.
         phase = .thinking
-        guard let answer = await backend.sendChatGetReply(heard) else {
-            phase = .error("Couldn't reach the companion."); Haptics.warning(); return
+        if backend.oracleAvailable {
+            await speakStreaming(user: heard, backend: backend)
+        } else {
+            guard let answer = await backend.sendChatGetReply(heard) else {
+                if !Task.isCancelled { phase = .error("Couldn't reach the companion."); Haptics.warning() }
+                return
+            }
+            if Task.isCancelled { return }
+            reply = answer
+            turns.append(Turn(you: heard, reply: answer))
+            Haptics.success()
+            phase = .speaking
+            do {
+                let audio = try await APIClient.shared.synthesize(text: answer)
+                if Task.isCancelled { return }
+                try play(audio); startMetering()
+            } catch {
+                phase = .idle   // TTS optional — the text reply already landed
+            }
         }
-        reply = answer
-        turns.append(Turn(you: heard, reply: answer))   // keep the whole session
-        Haptics.success()
+    }
 
-        // 3. Reply → speech (ElevenLabs) → play
-        phase = .speaking
-        do {
-            let audio = try await APIClient.shared.synthesize(text: answer)
-            try play(audio)
-            startMetering()
-        } catch {
-            // TTS is optional — the text reply already landed; just settle.
-            phase = .idle
+    /// Stream the Oracle reply and speak each sentence as soon as it's ready.
+    private func speakStreaming(user: String, backend: BackendService) async {
+        queue.reset()
+        queue.onDrained = { [weak self] in
+            Task { @MainActor in
+                self?.stopMetering()
+                if self?.phase == .speaking { self?.phase = .idle }
+            }
         }
+        var buffer = "", full = ""
+        var started = false
+        do {
+            for try await token in backend.oracleReplyStream(user) {
+                if Task.isCancelled { queue.stop(); return }
+                buffer += token; full += token
+                while let sentence = Self.popSentence(&buffer) {
+                    await synthesizeAndEnqueue(sentence, started: &started)
+                }
+            }
+        } catch {
+            // Stream failed — speak whatever completed.
+        }
+        if Task.isCancelled { queue.stop(); return }
+        let tail = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty { await synthesizeAndEnqueue(tail, started: &started) }
+
+        reply = full
+        if !full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            turns.append(Turn(you: user, reply: full)); Haptics.success()
+        }
+        queue.finish()
+        if !started { phase = .idle }   // nothing was spoken — settle
+    }
+
+    private func synthesizeAndEnqueue(_ text: String, started: inout Bool) async {
+        guard let audio = try? await APIClient.shared.synthesize(text: text), !Task.isCancelled else { return }
+        queue.enqueue(audio)
+        if !started {
+            started = true
+            phase = .speaking
+            startMetering()
+        }
+    }
+
+    /// Pop the first complete sentence (through terminal punctuation) off `buffer`.
+    private static func popSentence(_ buffer: inout String) -> String? {
+        guard let idx = buffer.firstIndex(where: { ".!?".contains($0) }) else { return nil }
+        let next = buffer.index(after: idx)
+        let sentence = String(buffer[..<next]).trimmingCharacters(in: .whitespacesAndNewlines)
+        buffer = String(buffer[next...])
+        return sentence.isEmpty ? nil : sentence
     }
 
     // MARK: Playback
@@ -213,12 +302,28 @@ final class VoiceCompanion: NSObject, ObservableObject {
         var power: Float = -160
         if isRecording, let r = recorder {
             r.updateMeters(); power = r.averagePower(forChannel: 0)
-        } else if phase == .speaking, let p = player {
-            p.updateMeters(); power = p.averagePower(forChannel: 0)
+            endpoint(power)                       // auto-stop on trailing silence
+        } else if phase == .speaking {
+            if let p = player {
+                p.updateMeters(); power = p.averagePower(forChannel: 0)
+            } else if let q = queue.current {     // streaming TTS clip
+                q.updateMeters(); power = q.averagePower(forChannel: 0)
+            }
         }
         // Map dBFS (-50…0) to 0…1 and smooth for fluid motion.
         let norm = max(0, min(1, (CGFloat(power) + 50) / 50))
         level = level * 0.55 + norm * 0.45
+    }
+
+    /// Voice-activity endpointing: once we've heard speech, ~1.5s of trailing
+    /// silence auto-ends the turn — natural turn-taking without a manual stop tap.
+    private func endpoint(_ power: Float) {
+        if power > -35 { sawSpeech = true; silenceFrames = 0 }
+        else if sawSpeech { silenceFrames += 1 }
+        if sawSpeech && silenceFrames > 45 {      // ~45 frames @ 30fps ≈ 1.5s
+            sawSpeech = false; silenceFrames = 0
+            if let backend = currentBackend { Task { await stopAndProcess(backend: backend) } }
+        }
     }
 
     private func stopMetering() {
