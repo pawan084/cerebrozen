@@ -1,12 +1,20 @@
 import Waitlist from "@/components/Waitlist";
 
 const FEATURES = [
-  { icon: "🌙", title: "Sleep that comes easier", body: "Sleep stories, soundscapes, and wind-down breathing that fade out on their own." },
-  { icon: "🫧", title: "Calm in two minutes", body: "Guided breathing, grounding, and SOS resets for the moments that spike." },
-  { icon: "📖", title: "Private journaling", body: "Reflect with consent-first prompts. You choose what the AI can ever read." },
-  { icon: "🎙️", title: "A companion that listens", body: "Talk or text with a warm guide — never a diagnosis, always a next step." },
-  { icon: "📊", title: "Insights you can feel", body: "Weekly patterns from your real check-ins, not vanity streaks." },
-  { icon: "🔒", title: "Privacy by design", body: "Granular memory controls and on-device-first data. Delete anything, anytime." },
+  { icon: "🌙", title: "Layered sleep", body: "Blend rain, ocean, wind and a soft drone — each at its own level. A sleep-safe timer fades you out on its own." },
+  { icon: "🎙️", title: "A companion that listens", body: "Talk or text with a warm guide that reflects, runs real exercises, and always points to a next step — never a diagnosis." },
+  { icon: "📖", title: "A private journal", body: "Guided prompts, emotion tags, and an optional Face ID lock. You choose what the AI can ever read." },
+  { icon: "🫧", title: "Calm in two minutes", body: "Breathing, 5-4-3-2-1 grounding, and SOS resets for the moments that spike." },
+  { icon: "🔥", title: "A streak that forgives", body: "Show up once a day. Miss one? It's forgiven. Milestones celebrate quietly — never a guilt trip." },
+  { icon: "🆘", title: "Help when it matters", body: "Locale-aware crisis lines one tap away, plus an optional trusted contact you choose to notify." },
+];
+
+const SPACES = [
+  { tab: "Home", body: "One clear next step, tuned to the time of day and the goals you set." },
+  { tab: "Sleep", body: "Mixable soundscapes and a sleep-safe fade-out timer for a quiet mind." },
+  { tab: "Talk", body: "A voice and text AI companion that listens, reflects, and acts." },
+  { tab: "Journal", body: "Private reflection with gentle prompts — lock it behind Face ID if you like." },
+  { tab: "You", body: "Insights from your real check-ins, privacy controls, and real support." },
 ];
 
 const PROACTIVE = [
@@ -16,28 +24,25 @@ const PROACTIVE = [
   "Crisis-aware support that surfaces real help",
 ];
 
+const SAFETY = [
+  { title: "Consent-first memory", body: "You decide what CereBro remembers. Turn it off and it forgets. Export or delete everything, anytime." },
+  { title: "Honest about what it is", body: "A supportive AI companion — not a therapist, diagnosis, or crisis service. It says so, clearly and often." },
+  { title: "Crisis-aware by design", body: "Region-correct crisis lines are always a tap away, and you can nominate a trusted contact to notify." },
+  { title: "No ads, ever", body: "Your calm isn't the product. No trackers, no ad SDKs, no selling your data." },
+];
+
 const PLANS = [
-  {
-    tier: "Free",
-    amount: "₹0",
-    note: "Forever",
-    featured: false,
-    items: ["Daily check-ins", "Breathing & grounding", "Basic journal", "Weekly insights"],
-  },
-  {
-    tier: "Premium",
-    amount: "₹499",
-    note: "/month",
-    featured: true,
-    items: ["Everything in Free", "Full sleep library", "Offline downloads", "Unlimited voice companion", "Agentic plans"],
-  },
-  {
-    tier: "Premium + Human",
-    amount: "₹1,499",
-    note: "/month",
-    featured: false,
-    items: ["Everything in Premium", "Coach & therapist booking", "Priority human handoff"],
-  },
+  { tier: "Free", amount: "₹0", note: "Forever", featured: false, items: ["Daily check-ins", "Breathing & grounding", "Basic journal", "Weekly insights"] },
+  { tier: "Premium", amount: "₹499", note: "/month", featured: true, items: ["Everything in Free", "Full sleep library + mixing", "Offline downloads", "Unlimited voice companion", "Agentic plans"] },
+  { tier: "Premium + Human", amount: "₹1,499", note: "/month", featured: false, items: ["Everything in Premium", "Coach & therapist booking", "Priority human handoff"] },
+];
+
+const FAQ = [
+  { q: "Is CereBro a therapist?", a: "No. CereBro is wellness support — it can listen, reflect, and guide gentle exercises, but it never diagnoses, prescribes, or replaces professional care or emergency help." },
+  { q: "Is my data private?", a: "Yes. Memory is consent-first and off-limits unless you allow it. There are no ads or third-party trackers, and you can export or permanently delete everything from inside the app." },
+  { q: "Does it work offline?", a: "Core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The AI companion needs to be online." },
+  { q: "What platforms is it on?", a: "iOS first, with Android to follow. Join the waitlist and we'll send a calm note the moment it's ready." },
+  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a basic journal, and weekly insights. Premium adds the full sleep library, downloads, and unlimited voice." },
 ];
 
 export default function Home() {
@@ -45,13 +50,12 @@ export default function Home() {
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <div className="brand">
-            <span className="dot" /> CereBro
-          </div>
+          <div className="brand"><span className="dot" /> CereBro</div>
           <div className="nav-links">
             <a href="#features">Features</a>
-            <a href="#proactive">Proactive</a>
+            <a href="#spaces">The app</a>
             <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
             <a className="btn btn-ghost" href="#waitlist">Get early access</a>
           </div>
         </div>
@@ -68,7 +72,13 @@ export default function Home() {
           </p>
           <div className="hero-cta">
             <a className="btn btn-primary" href="#waitlist">Join the waitlist</a>
-            <a className="btn btn-ghost" href="#proactive">See how it works</a>
+            <a className="btn btn-ghost" href="#spaces">See how it works</a>
+          </div>
+          <div className="appnote">🍎 Coming soon to iOS · Android to follow</div>
+          <div className="trustbar">
+            {["Private by design", "No ads, ever", "Crisis-aware", "Delete anytime"].map((t) => (
+              <span className="trust" key={t}>✦ {t}</span>
+            ))}
           </div>
         </div>
       </header>
@@ -85,6 +95,26 @@ export default function Home() {
                 <div className="icon">{f.icon}</div>
                 <h3>{f.title}</h3>
                 <p>{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="spaces">
+        <div className="container">
+          <div className="section-head">
+            <h2>Five calm spaces, one home</h2>
+            <p>A tab for each part of a steady day — nothing louder than it needs to be.</p>
+          </div>
+          <div className="spaces">
+            {SPACES.map((s, i) => (
+              <div className="space" key={s.tab}>
+                <span className="space-n">{String(i + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{s.tab}</h3>
+                  <p>{s.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -114,6 +144,23 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="section" id="safety">
+        <div className="container">
+          <div className="section-head">
+            <h2>Care you can trust</h2>
+            <p>Built privacy-first, honest about its limits, and always pointing to real help.</p>
+          </div>
+          <div className="grid grid-2">
+            {SAFETY.map((s) => (
+              <div className="card safety-card" key={s.title}>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="pricing">
         <div className="container">
           <div className="section-head">
@@ -129,11 +176,23 @@ export default function Home() {
                   {p.amount} <span style={{ fontSize: 15, color: "var(--muted)" }}>{p.note}</span>
                 </div>
                 <ul>
-                  {p.items.map((i) => (
-                    <li key={i}>{i}</li>
-                  ))}
+                  {p.items.map((i) => (<li key={i}>{i}</li>))}
                 </ul>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="faq">
+        <div className="container" style={{ maxWidth: 760 }}>
+          <div className="section-head"><h2>Questions, answered</h2></div>
+          <div className="faq">
+            {FAQ.map((f) => (
+              <details className="faq-item" key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
             ))}
           </div>
         </div>
@@ -155,9 +214,7 @@ export default function Home() {
 
       <footer className="footer">
         <div className="container footer-inner">
-          <div className="brand" style={{ fontSize: 17 }}>
-            <span className="dot" /> CereBro
-          </div>
+          <div className="brand" style={{ fontSize: 17 }}><span className="dot" /> CereBro</div>
           <div>
             © {new Date().getFullYear()} CereBro · <a href="/privacy">Privacy</a> ·{" "}
             <a href="/terms">Terms</a>
