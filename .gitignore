@@ -58,13 +58,13 @@ build/
 /CereBro-showcase/
 /CereBro-onboarding-flow.png
 
-# fastlane
-CereBro/fastlane/report.xml
-CereBro/fastlane/Preview.html
-CereBro/fastlane/test_output/
-CereBro/fastlane/README.md
-CereBro/build/
-CereBro/*.ipa
-CereBro/*.app.dSYM.zip
-CereBro/Gemfile.lock
+# fastlane (iOS lives at apps/ios)
+apps/ios/fastlane/report.xml
+apps/ios/fastlane/Preview.html
+apps/ios/fastlane/test_output/
+apps/ios/fastlane/README.md
+apps/ios/build/
+apps/ios/*.ipa
+apps/ios/*.app.dSYM.zip
+apps/ios/Gemfile.lock
 **/.env

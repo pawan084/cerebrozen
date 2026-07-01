@@ -145,11 +145,11 @@ Every backend seam above is documented in `backend/.env.example`.
 
 TestFlight is now one command once credentials exist — no manual Xcode archiving.
 
-- `CereBro/fastlane/Fastfile` lanes: `test` (sim test suite), `build` (signed
+- `apps/ios/fastlane/Fastfile` lanes: `test` (sim test suite), `build` (signed
   archive), `beta` (build + upload to TestFlight), `metadata` (push App Store
   copy without a binary). Auth is via an App Store Connect API key
   (`ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_CONTENT`) — no Apple ID password/2FA.
-- App Store copy is drafted in `CereBro/fastlane/metadata/en-US/` (name, subtitle,
+- App Store copy is drafted in `apps/ios/fastlane/metadata/en-US/` (name, subtitle,
   description, keywords, promo text, release notes, URLs) — edit and `fastlane metadata`.
 - Privacy nutrition labels to enter are mapped in `docs/PRIVACY_LABELS.md`.
 - `.github/workflows/testflight.yml` runs `fastlane beta` on manual dispatch,

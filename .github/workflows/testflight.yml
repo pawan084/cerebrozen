@@ -32,10 +32,10 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-          working-directory: CereBro
+          working-directory: apps/ios
 
       - name: Upload to TestFlight
-        working-directory: CereBro
+        working-directory: apps/ios
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

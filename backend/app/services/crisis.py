@@ -1,6 +1,6 @@
 """Region-aware crisis resources — the server mirror of the iOS CrisisDirectory.
 
-Kept in sync with ``CereBro/Features/Safety/CrisisResources.swift`` so the AI's
+Kept in sync with ``apps/ios/CereBro/Features/Safety/CrisisResources.swift`` so the AI's
 crisis replies (and anything else the server surfaces) point at the hotlines that
 actually work where the user is, instead of a single hardcoded country. The
 region is the user's stored ``region`` (synced from the app's effective crisis

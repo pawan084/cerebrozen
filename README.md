@@ -4,10 +4,10 @@ A calm, proactive mental-wellness product. Monorepo:
 
 ```
 cere/
-  CereBro/        iOS app (SwiftUI) + live backend cloud sync
-  backend/        FastAPI + Postgres backend (auth, data, proactive AI, voice)
+  apps/ios/       iOS app (SwiftUI) + live backend cloud sync
   apps/web/       Next.js marketing site + landing page
   apps/admin/     Next.js admin dashboard
+  backend/        FastAPI + Postgres backend (auth, data, proactive AI, voice)
   e2e/            Playwright end-to-end tests (web + admin)
   screenshots/    iOS walkthrough + web/admin/cloud proofs
   temp/           reference designs + scratch — git-ignored, not part of the build
@@ -115,7 +115,7 @@ Seeded logins: `admin@cerebro.app / admin12345`, `pawan@cerebro.app / demo12345`
 
 ## Tests
 - **Backend:** `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && pytest -q --cov=app"` (85 tests; CI enforces a **≥82% coverage gate** via `--cov-fail-under`, hermetic run sits at ~84%). Covers voice, assessment, account deletion/export, Apple-token verification, admin, and the service layer.
-- **iOS:** `xcodebuild test` in `CereBro/` (12 UITests, incl. 2 live-backend tests, a fresh-signup starters test, and a compliance + games walk-through)
+- **iOS:** `xcodebuild test` in `apps/ios/` (12 UITests, incl. 2 live-backend tests, a fresh-signup starters test, and a compliance + games walk-through)
 - **Web + admin (e2e):** `docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e` (7 Playwright tests) — see [`e2e/README.md`](e2e/README.md)
 
 All three run in **CI** on push/PR via [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
@@ -124,7 +124,7 @@ Simulator). The two live-backend iOS tests self-skip in CI since no API runs on
 the macOS runner.
 
 > iOS note: the app talks to `http://localhost:8000` from the Simulator. A merged
-> `CereBro/Info.plist` adds `NSAllowsLocalNetworking` so ATS permits it in dev.
+> `apps/ios/Info.plist` adds `NSAllowsLocalNetworking` so ATS permits it in dev.
 
 ## Production deployment
 

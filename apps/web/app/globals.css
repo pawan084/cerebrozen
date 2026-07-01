@@ -1,6 +1,6 @@
 :root {
   /* Brand palette — lifted from the orb-lotus logo + night-lake splash, kept in
-     sync with the iOS DesignSystem (CereBro/DesignSystem/Theme.swift). */
+     sync with the iOS DesignSystem (apps/ios/CereBro/DesignSystem/Theme.swift). */
   --night: #080b22;       /* primary background (splash night) */
   --night-top: #161e4a;   /* lifted top of the page gradient */
   --card: rgba(255, 255, 255, 0.05);

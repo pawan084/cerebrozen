@@ -91,7 +91,7 @@ jobs:
         with:
           xcode-version: latest-stable
       - name: Run UITests
-        working-directory: CereBro
+        working-directory: apps/ios
         run: |
           set -o pipefail
           # Pick a concrete, available iPhone simulator on the runner.
@@ -108,5 +108,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-test-results
-          path: CereBro/TestResults.xcresult
+          path: apps/ios/TestResults.xcresult
           if-no-files-found: ignore
