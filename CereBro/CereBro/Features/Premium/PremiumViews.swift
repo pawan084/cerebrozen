@@ -12,7 +12,7 @@ struct PremiumView: View {
                      title: store.isPremium ? "You're Premium" : "Unlock your calmest self",
                      subtitle: "Premium sleep library, downloads, and unlimited voice support.",
                      cta: store.isPremium ? "You're all set" : "Choose a plan",
-                     imageURL: Dummy.Img.premium)
+                     imageURL: Dummy.Img.premium) { chooseFeaturedPlan() }
 
             if store.available {
                 // Real StoreKit products (App Store Connect configured).
@@ -53,6 +53,16 @@ struct PremiumView: View {
     /// authoritative tier (which unlocks the usage quota).
     private func syncEntitlement() async {
         if let jws = store.latestJWS { await backend.verifySubscription(jws) }
+    }
+
+    /// Hero CTA: buy the featured plan if products loaded, else surface why not.
+    private func chooseFeaturedPlan() {
+        guard !store.isPremium else { return }
+        if let product = store.products.first {
+            Task { await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? "")); await syncEntitlement() }
+        } else {
+            store.message = "In-app subscriptions aren't available yet — everything runs free for now."
+        }
     }
 }
 
@@ -98,6 +108,7 @@ struct PriceCard: View {
 
 // MARK: - Free limit state
 struct FreeLimitView: View {
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScreenScaffold(eyebrow: "Usage limit state", title: "Free Limit Reached", trailingSystemImage: "lock") {
             Photo(url: Dummy.Img.premium, symbol: "lock").frame(height: 132).frame(maxWidth: .infinity)
@@ -105,7 +116,7 @@ struct FreeLimitView: View {
             InsightCard(label: "Today's free voice minutes are used", title: "Upgrade for unlimited voice support",
                         detail: "You've reached the free daily limit. Premium removes the cap.")
             NavRow(title: "See premium plans", subtitle: "Premium sleep library, downloads", systemImage: "crown", imageURL: Dummy.Img.premium, emphasis: true) { PremiumView() }
-            SecondaryButton(title: "Continue with free", systemImage: "checkmark")
+            SecondaryButton(title: "Continue with free", systemImage: "checkmark") { dismiss() }
         }
     }
 }

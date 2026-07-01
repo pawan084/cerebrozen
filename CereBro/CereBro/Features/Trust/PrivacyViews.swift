@@ -22,8 +22,10 @@ struct PrivacyView: View {
 
 // MARK: - Export report
 struct ExportReportView: View {
+    @EnvironmentObject var state: AppState
     @State private var sections: Set<String> = ["Mood history", "Journal insights"]
     @State private var dateRange: Set<String> = ["Last 30 days"]
+    @State private var report: String?
     var body: some View {
         ScreenScaffold(eyebrow: "Shareable report flow", title: "Export Report", trailingSystemImage: "square.and.arrow.up") {
             Text("Choose what to include. Export is generated on-device.")
@@ -31,8 +33,32 @@ struct ExportReportView: View {
             ChipRow(options: ["Mood history", "Journal insights", "Patterns", "Sleep data", "Plan"], selection: $sections)
             SectionTitle(title: "Date range", trailing: nil)
             ChipRow(options: ["Last 7 days", "Last 30 days", "All time"], selection: $dateRange, singleSelect: true)
-            PrimaryButton(title: "Generate report", systemImage: "doc.text")
+            PrimaryButton(title: "Generate report", systemImage: "doc.text") { report = buildReport() }
+            if let report {
+                Card(cornerRadius: 18) {
+                    Text(report).appFont(12).foregroundStyle(Theme.Palette.soft)
+                        .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                }
+                ShareLink(item: report, preview: SharePreview("CereBro report")) {
+                    Text("Share report").appFont(14, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                        .frame(maxWidth: .infinity).frame(height: 52)
+                        .background(Theme.Palette.cream, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+            }
         }
+    }
+
+    /// Build a plain-text report on-device from the selected sections.
+    private func buildReport() -> String {
+        let range = dateRange.first ?? "All time"
+        var lines = ["CereBro report · \(range)", ""]
+        if sections.contains("Mood history") { lines.append("Mood check-ins: \(state.moodLogs.count)") }
+        if sections.contains("Journal insights") { lines.append("Journal entries: \(state.journalEntries.count)") }
+        if sections.contains("Plan") { lines.append("Plan steps completed: \(state.completedSteps.count)") }
+        if sections.contains("Patterns") { lines.append("Current streak: \(state.currentStreak) days (best \(state.bestStreak))") }
+        if state.hasBaseline { lines.append("Baseline — stress \(state.baselineStress)/5, sleep \(state.baselineSleep)/5") }
+        Haptics.success()
+        return lines.joined(separator: "\n")
     }
 }
 
@@ -178,20 +204,24 @@ struct AccountDeletionView: View {
 
 // MARK: - Delete data (destructive)
 struct DeleteDataView: View {
+    @EnvironmentObject var state: AppState
+    @Environment(\.dismiss) private var dismiss
     @State private var confirmation = ""
     var body: some View {
         ScreenScaffold(eyebrow: "Destructive action confirmation", title: "Delete Data", trailingSystemImage: "trash") {
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("This permanently deletes your memory.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
-                    Text("Type DELETE to confirm. This can't be undone.").appFont(12).foregroundStyle(Theme.Palette.muted)
+                    Text("This permanently deletes what CereBro remembers.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
+                    Text("Clears your chat history and mood check-ins from this device. Your journal is kept. Type DELETE to confirm — this can't be undone.")
+                        .appFont(12).foregroundStyle(Theme.Palette.muted).fixedSize(horizontal: false, vertical: true)
                 }
             }
             Card(cornerRadius: 18) {
                 TextField("Type DELETE", text: $confirmation)
                     .foregroundStyle(Theme.Palette.text).autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
             }
-            Button {} label: {
+            Button { deleteMemory() } label: {
                 Text("Delete everything")
                     .appFont(14, weight: .heavy)
                     .foregroundStyle(confirmation == "DELETE" ? .white : Theme.Palette.muted2)
@@ -201,6 +231,14 @@ struct DeleteDataView: View {
             }
             .buttonStyle(.pressable)
             .disabled(confirmation != "DELETE")
+            .accessibilityLabel("Delete everything CereBro remembers")
         }
+    }
+
+    private func deleteMemory() {
+        state.chatHistory = []
+        state.moodLogs = []
+        Haptics.success()
+        dismiss()
     }
 }

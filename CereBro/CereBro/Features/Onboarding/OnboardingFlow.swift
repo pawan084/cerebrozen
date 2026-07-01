@@ -362,7 +362,10 @@ private struct FirstPlanScreen: View {
                 Text("First Plan").displayFont(28).foregroundStyle(Theme.Palette.text)
                 HeroCard(tag: "7-day plan", title: planTitle,
                          subtitle: "Breathing, journaling, and sleep support built around your baseline.",
-                         cta: "Start today", imageURL: Dummy.Img.plan)
+                         cta: "Start today", imageURL: Dummy.Img.plan) {
+                    done.toggle()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onFinish() }
+                }
                 ForEach(Dummy.planSteps) { s in
                     ListRow(title: s.title, subtitle: s.detail, systemImage: s.symbol, imageURL: s.imageURL, emphasis: s.done)
                 }

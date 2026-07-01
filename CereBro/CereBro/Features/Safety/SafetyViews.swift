@@ -2,11 +2,12 @@ import SwiftUI
 
 // MARK: - Human support
 struct HumanSupportView: View {
+    @State private var showBooking = false
     var body: some View {
         ScreenScaffold(eyebrow: "Coach/therapist handoff", title: "Human Support", trailingSystemImage: "person.2") {
             HeroCard(tag: "Optional", title: "Book human support",
                      subtitle: "Connect with a vetted coach or licensed therapist partner.",
-                     cta: "Book", imageURL: Dummy.Img.support)
+                     cta: "Book", imageURL: Dummy.Img.support) { showBooking = true }
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Emergency boundary").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
@@ -17,19 +18,29 @@ struct HumanSupportView: View {
             NavRow(title: "Trusted contact", subtitle: "Private consent-first setup", systemImage: "person.crop.circle.badge.checkmark", imageURL: Dummy.Img.privacy) { TrustedContactView() }
             NavRow(title: "Crisis flow", subtitle: "Free safety escalation", systemImage: "phone.fill", imageURL: Dummy.Img.mood) { CrisisView() }
         }
+        .navigationDestination(isPresented: $showBooking) { CoachBookingView() }
     }
 }
 
 // MARK: - Coach booking
 struct CoachBookingView: View {
     @State private var slot: Set<String> = ["Tomorrow 6 PM"]
+    @State private var requested = false
     var body: some View {
         ScreenScaffold(eyebrow: "Human support booking", title: "Coach Booking", trailingSystemImage: "calendar") {
             ListRow(title: "Dr. Aarav Mehta", subtitle: "Therapist · CBT, anxiety", systemImage: "person.fill", imageURL: Dummy.Img.support, emphasis: true)
             ListRow(title: "Sara Khan", subtitle: "Wellness coach · Sleep, stress", systemImage: "person.fill", imageURL: Dummy.Img.meditate)
             SectionTitle(title: "Pick a time", trailing: nil)
             ChipRow(options: ["Today 8 PM", "Tomorrow 6 PM", "Sat 11 AM", "Sun 4 PM"], selection: $slot)
-            PrimaryButton(title: "Request session", systemImage: "calendar.badge.plus")
+            PrimaryButton(title: requested ? "Request sent" : "Request session",
+                          systemImage: requested ? "checkmark.circle.fill" : "calendar.badge.plus") {
+                requested = true; Haptics.success()
+            }
+            if requested {
+                InsightCard(label: "Request sent",
+                            title: "We'll email you to confirm \(slot.first ?? "your slot").",
+                            detail: "A partner coach will reach out to finalize the session.")
+            }
         }
     }
 }

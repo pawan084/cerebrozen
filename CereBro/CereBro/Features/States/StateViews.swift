@@ -58,6 +58,7 @@ struct VoiceLoadingView: View {
 
 // MARK: - Voice error
 struct VoiceErrorView: View {
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScreenScaffold(eyebrow: "Network fallback", title: "Voice Error", trailingSystemImage: "exclamationmark.triangle") {
             DangerPanel {
@@ -67,7 +68,7 @@ struct VoiceErrorView: View {
                         .appFont(12).foregroundStyle(Theme.Palette.muted)
                 }
             }
-            PrimaryButton(title: "Try again", systemImage: "arrow.clockwise")
+            PrimaryButton(title: "Try again", systemImage: "arrow.clockwise") { Haptics.tap(.light); dismiss() }
             NavRow(title: "Switch to chat", subtitle: "Text fallback", systemImage: "bubble.left", imageURL: Dummy.Img.chat) { ChatView() }
         }
     }

@@ -257,15 +257,17 @@ struct PlanStepRow: View {
 
 // MARK: - Programs
 struct ProgramsView: View {
+    @State private var startPlan = false
     var body: some View {
         ScreenScaffold(eyebrow: "Guided multi-day plans", title: "Programs", trailingSystemImage: "sparkles") {
             HeroCard(tag: "Featured", title: "Ease work stress",
                      subtitle: "A 7-day agentic plan built around your baseline.",
-                     cta: "Start", imageURL: Dummy.Img.plan)
+                     cta: "Start", imageURL: Dummy.Img.plan) { startPlan = true }
             ForEach(Dummy.programs) { p in
                 NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
             }
         }
+        .navigationDestination(isPresented: $startPlan) { DailyPlanView() }
     }
 }
 

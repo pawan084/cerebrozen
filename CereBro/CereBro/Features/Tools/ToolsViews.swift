@@ -146,6 +146,7 @@ struct GroundingView: View {
 // MARK: - CBT reframe
 struct CBTReframeView: View {
     @State private var thought = "I will fail in tomorrow's meeting…"
+    @State private var showBalanced = false
     var body: some View {
         ScreenScaffold(eyebrow: "Structured thought reframe", title: "CBT Reframe", trailingSystemImage: "brain") {
             ToolBanner(imageURL: Dummy.Img.journal, symbol: "brain",
@@ -158,8 +159,9 @@ struct CBTReframeView: View {
             StepRow(number: 2, text: "Evidence against this thought")
             StepRow(number: 3, text: "A more balanced thought")
             NavRow(title: "See balanced thought", subtitle: "CBT output", systemImage: "sparkles", imageURL: Dummy.Img.write, emphasis: true) { BalancedThoughtView() }
-            PrimaryButton(title: "Continue")
+            PrimaryButton(title: "Continue") { showBalanced = true }
         }
+        .navigationDestination(isPresented: $showBalanced) { BalancedThoughtView() }
     }
 }
 

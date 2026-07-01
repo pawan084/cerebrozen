@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Weekly insights
 struct InsightsView: View {
     @EnvironmentObject var state: AppState
+    @State private var applyToPlan = false
 
     /// Weekly metrics, with the data-backed rows reflecting real activity.
     private var metrics: [Metric] {
@@ -24,7 +25,7 @@ struct InsightsView: View {
         ScreenScaffold(eyebrow: "Weekly report", title: "Weekly Insights", trailingSystemImage: "chart.line.uptrend.xyaxis") {
             HeroCard(tag: "This week", title: "Calmer evenings",
                      subtitle: "Your stress eased on days you journaled before bed.",
-                     cta: "Apply this insight", imageURL: Dummy.Img.calm)
+                     cta: "Apply this insight", imageURL: Dummy.Img.calm) { applyToPlan = true }
 
             // The real onboarding baseline — a true "before" to measure against.
             if state.hasBaseline {
@@ -54,6 +55,7 @@ struct InsightsView: View {
             }
             NavRow(title: "Pattern dashboard", subtitle: "Transparent AI memory", systemImage: "brain", imageURL: Dummy.Img.write) { PatternsView() }
         }
+        .navigationDestination(isPresented: $applyToPlan) { DailyPlanView() }
     }
 
     private func baselineDateText(_ date: Date) -> String {
@@ -78,7 +80,9 @@ struct PatternsView: View {
 
 struct MemoryDetailView: View {
     let item: ContentItem
+    @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
+    @State private var saved = false
     var body: some View {
         ScreenScaffold(eyebrow: "Editable AI memory", title: "Memory Detail", trailingSystemImage: "brain") {
             Photo(url: item.imageURL, symbol: item.symbol).frame(height: 120).frame(maxWidth: .infinity)
@@ -88,8 +92,10 @@ struct MemoryDetailView: View {
                 TextField("Edit this memory…", text: $text, axis: .vertical)
                     .appFont(13).foregroundStyle(Theme.Palette.soft).frame(minHeight: 70, alignment: .topLeading)
             }
-            PrimaryButton(title: "Save changes")
-            SecondaryButton(title: "Delete this memory", systemImage: "trash")
+            PrimaryButton(title: "Save changes") { saved = true; Haptics.success()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { dismiss() } }
+            SecondaryButton(title: "Delete this memory", systemImage: "trash") { Haptics.warning(); dismiss() }
         }
+        .celebration(trigger: $saved)
     }
 }
