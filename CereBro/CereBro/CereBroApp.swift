@@ -49,6 +49,9 @@ final class AppState: ObservableObject {
         static let lastMilestone = "lastStreakMilestone"
         static let reminderOn = "reminderEnabled"
         static let reminderHour = "reminderHour"
+        static let baselineStress = "baselineStress"
+        static let baselineSleep = "baselineSleep"
+        static let baselineDate = "baselineDate"
     }
 
     /// Streak milestones worth celebrating (days).
@@ -91,6 +94,12 @@ final class AppState: ObservableObject {
     @Published var reminderEnabled: Bool { didSet { UserDefaults.standard.set(reminderEnabled, forKey: Key.reminderOn) } }
     /// Hour of day (0–23) for the daily reminder. Default 21:00 (evening).
     @Published var reminderHour: Int { didSet { UserDefaults.standard.set(reminderHour, forKey: Key.reminderHour) } }
+    /// Onboarding baseline (1–5 scales; 0 = not captured yet) — the real "before"
+    /// measurement so progress is honestly comparable later.
+    @Published private(set) var baselineStress: Int { didSet { UserDefaults.standard.set(baselineStress, forKey: Key.baselineStress) } }
+    @Published private(set) var baselineSleep: Int  { didSet { UserDefaults.standard.set(baselineSleep, forKey: Key.baselineSleep) } }
+    @Published private(set) var baselineDate: Date? { didSet { Self.save(baselineDate, Key.baselineDate) } }
+    var hasBaseline: Bool { baselineStress > 0 && baselineSleep > 0 }
 
     init() {
         // UI tests pass `-resetState YES` to start each run from seeded defaults,
@@ -104,6 +113,7 @@ final class AppState: ObservableObject {
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
              Key.journalLock, Key.favSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
+             Key.baselineStress, Key.baselineSleep, Key.baselineDate,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
@@ -126,6 +136,16 @@ final class AppState: ObservableObject {
         lastMilestone  = UserDefaults.standard.integer(forKey: Key.lastMilestone)
         reminderEnabled = UserDefaults.standard.bool(forKey: Key.reminderOn)
         reminderHour   = UserDefaults.standard.object(forKey: Key.reminderHour) as? Int ?? 21
+        baselineStress = UserDefaults.standard.integer(forKey: Key.baselineStress)
+        baselineSleep  = UserDefaults.standard.integer(forKey: Key.baselineSleep)
+        baselineDate   = Self.load(Date.self, Key.baselineDate)
+    }
+
+    /// Record the onboarding baseline (stamps the date).
+    func setBaseline(stress: Int, sleep: Int) {
+        baselineStress = stress
+        baselineSleep = sleep
+        baselineDate = Date()
     }
 
     /// Wipe all stored user data (used by "Reset & view onboarding").
@@ -147,6 +167,9 @@ final class AppState: ObservableObject {
         newMilestone = nil
         reminderEnabled = false
         reminderHour = 21
+        baselineStress = 0
+        baselineSleep = 0
+        baselineDate = nil
         ReminderManager.cancel()
         hasOnboarded = false
     }

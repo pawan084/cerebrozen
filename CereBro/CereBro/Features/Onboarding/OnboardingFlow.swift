@@ -254,19 +254,56 @@ private struct GoalsScreen: View {
     }
 }
 
-// MARK: 4 — Baseline (paired with the self-reflection moment)
+// MARK: 4 — Baseline (a real, stored starting point)
 private struct BaselineScreen: View {
     var onContinue: () -> Void
+    @EnvironmentObject var state: AppState
+    @State private var stress = 3
+    @State private var sleep = 3
     var body: some View {
         StepScaffold(eyebrow: "Non-clinical starting point", title: "Baseline Check", image: Dummy.Img.calm,
                      caption: "A gentle snapshot of where you're starting — so you can see how far you come.",
-                     progress: 0.50, onContinue: onContinue) {
-            VStack(spacing: 14) {
-                ForEach(Array(Dummy.baselineMetrics.enumerated()), id: \.element.id) { i, m in
-                    MetricBar(label: m.label, value: m.value, progress: m.progress,
-                              color: m.label.contains("Stress") ? Theme.Palette.stress : Theme.Palette.lav,
-                              index: i)
+                     progress: 0.50, onContinue: { state.setBaseline(stress: stress, sleep: sleep); onContinue() }) {
+            VStack(spacing: 20) {
+                BaselineScale(label: "Stress right now", low: "Calm", high: "Overwhelmed", value: $stress)
+                BaselineScale(label: "Sleep lately", low: "Restless", high: "Restful", value: $sleep)
+            }
+        }
+        .onAppear {
+            if state.baselineStress > 0 { stress = state.baselineStress }
+            if state.baselineSleep > 0 { sleep = state.baselineSleep }
+        }
+    }
+}
+
+/// A 1–5 self-rating used to capture the onboarding baseline.
+private struct BaselineScale: View {
+    let label: String
+    let low: String
+    let high: String
+    @Binding var value: Int
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { n in
+                    Button { value = n; Haptics.selection() } label: {
+                        Text("\(n)")
+                            .appFont(15, weight: .bold)
+                            .foregroundStyle(value == n ? Theme.Palette.ink : Theme.Palette.muted)
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(value == n ? Theme.Palette.lav : Theme.Palette.card,
+                                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.Palette.line))
+                    }
+                    .buttonStyle(.pressable)
+                    .accessibilityLabel("\(label) \(n) of 5")
                 }
+            }
+            HStack {
+                Text(low).appFont(10.5).foregroundStyle(Theme.Palette.muted2)
+                Spacer()
+                Text(high).appFont(10.5).foregroundStyle(Theme.Palette.muted2)
             }
         }
     }

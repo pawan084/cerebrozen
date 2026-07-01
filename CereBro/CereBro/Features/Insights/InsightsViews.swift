@@ -25,6 +25,26 @@ struct InsightsView: View {
             HeroCard(tag: "This week", title: "Calmer evenings",
                      subtitle: "Your stress eased on days you journaled before bed.",
                      cta: "Apply this insight", imageURL: Dummy.Img.calm)
+
+            // The real onboarding baseline — a true "before" to measure against.
+            if state.hasBaseline {
+                Card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Your starting point").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.soft)
+                            Spacer()
+                            if let d = state.baselineDate {
+                                Text(baselineDateText(d)).appFont(11).foregroundStyle(Theme.Palette.muted2)
+                            }
+                        }
+                        MetricBar(label: "Stress at start", value: "\(state.baselineStress)/5",
+                                  progress: Double(state.baselineStress) / 5, color: Theme.Palette.stress, index: 0)
+                        MetricBar(label: "Sleep at start", value: "\(state.baselineSleep)/5",
+                                  progress: Double(state.baselineSleep) / 5, color: Theme.Palette.lav, index: 1)
+                    }
+                }
+            }
+
             Card {
                 VStack(spacing: 16) {
                     ForEach(Array(metrics.enumerated()), id: \.element.id) { i, m in
@@ -34,6 +54,11 @@ struct InsightsView: View {
             }
             NavRow(title: "Pattern dashboard", subtitle: "Transparent AI memory", systemImage: "brain", imageURL: Dummy.Img.write) { PatternsView() }
         }
+    }
+
+    private func baselineDateText(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateStyle = .medium
+        return "since \(f.string(from: date))"
     }
 }
 
