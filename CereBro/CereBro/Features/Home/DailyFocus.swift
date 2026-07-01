@@ -109,8 +109,14 @@ extension AppState {
     /// A content rail matched to the time of day (and lightly to the sleep goal).
     func homeRail(_ part: DayPart = .current()) -> [ContentItem] {
         switch part {
-        case .morning, .afternoon:
+        case .morning:
+            // Morning calm, Soft focus, 3-min breath.
             var items = [Dummy.meditations[0], Dummy.meditations[1], Dummy.tonight[1]]
+            if primaryGoal == "Sleep better" { items.append(Dummy.tonight[0]) }
+            return items
+        case .afternoon:
+            // Focus + reset content — no morning-labelled item mid-afternoon.
+            var items = [Dummy.meditations[1], Dummy.meditations[2], Dummy.tonight[1]]
             if primaryGoal == "Sleep better" { items.append(Dummy.tonight[0]) }
             return items
         case .evening, .night:

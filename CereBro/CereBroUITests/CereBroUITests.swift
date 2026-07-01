@@ -689,6 +689,52 @@ final class CereBroUITests: XCTestCase {
         field.typeText(text)
     }
 
+    // MARK: - World-class showcase (screenshots of the upgraded flows)
+
+    func testWorldClassShowcase() {
+        let app = XCUIApplication()
+        launchIntoApp(app)
+
+        // Home — time-of-day greeting, single next-action hero, streak.
+        openTab(app, "Home")
+        snapshot(app, "ws-01-home")
+        if tap(app, "Today's plan") { settle(app, "Daily Plan"); snapshot(app, "ws-02-daily-plan"); back(app) }
+
+        // Sleep — real elapsed player, volume slider, favorite + timer transport.
+        openTab(app, "Sleep")
+        snapshot(app, "ws-03-sleep-home")
+        if tap(app, "Rain over quiet hills") {
+            settle(app, "Now playing"); snapshot(app, "ws-04-sleep-player"); back(app)
+        }
+
+        // Journal — guided prompt + honest blank editor, then history search.
+        openTab(app, "Journal")
+        if tap(app, "New entry") { settle(app, "Journal Entry"); snapshot(app, "ws-05-journal-entry"); back(app) }
+        if tap(app, "History") { settle(app, "Journal History"); snapshot(app, "ws-06-journal-history"); back(app) }
+
+        // You — reminders, premium paywall, sign-in, trusted contact.
+        visitSettled(app, "Daily reminder", "Daily Reminder", "ws-07-reminders")
+        visitSettled(app, "Premium plan", "CereBro Premium", "ws-08-premium")
+        visitSettled(app, "Sign in", "Not connected", "ws-09-signin")
+        rootYou(app)
+        if tap(app, "Urgent support") {
+            settle(app, "You're not alone")
+            if tap(app, "Notify a trusted contact") { settle(app, "Trusted Contact"); snapshot(app, "ws-10-trusted-contact") }
+        }
+    }
+
+    /// Wait for a destination's known text so a screenshot lands on the settled
+    /// screen, not mid-push.
+    private func settle(_ app: XCUIApplication, _ text: String, timeout: TimeInterval = 5) {
+        _ = app.staticTexts[text].waitForExistence(timeout: timeout)
+    }
+
+    /// Like `visit`, but waits for the destination before snapshotting.
+    private func visitSettled(_ app: XCUIApplication, _ row: String, _ settleText: String, _ shot: String) {
+        rootYou(app)
+        if tap(app, row) { settle(app, settleText); snapshot(app, shot) }
+    }
+
     /// Return to the You tab's root (re-tapping the active tab pops its stack).
     private func rootYou(_ app: XCUIApplication) {
         tapTabButton(app, "You")                           // switch to / pop You
