@@ -57,3 +57,14 @@ build/
 /CereBro-showcase.zip
 /CereBro-showcase/
 /CereBro-onboarding-flow.png
+
+# fastlane
+CereBro/fastlane/report.xml
+CereBro/fastlane/Preview.html
+CereBro/fastlane/test_output/
+CereBro/fastlane/README.md
+CereBro/build/
+CereBro/*.ipa
+CereBro/*.app.dSYM.zip
+CereBro/Gemfile.lock
+**/.env

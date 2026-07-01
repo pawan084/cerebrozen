@@ -1,0 +1,80 @@
+# fastlane — CereBro iOS build + TestFlight automation.
+#
+# Auth uses the App Store Connect API key (no Apple ID password / 2FA needed).
+# Set these in the environment (locally or as CI secrets):
+#   ASC_KEY_ID       — the key ID from App Store Connect → Users and Access → Keys
+#   ASC_ISSUER_ID    — the issuer ID on the same page
+#   ASC_KEY_CONTENT  — the .p8 contents (paste the whole file, incl. BEGIN/END)
+#
+# Until those exist, `test` still runs fully; `beta`/`release` fail fast with a
+# clear message rather than doing anything half-way.
+
+default_platform(:ios)
+
+SCHEME = "CereBro"
+PROJECT = "CereBro.xcodeproj"
+
+def asc_api_key
+  unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_KEY_CONTENT"]
+    UI.user_error!("Set ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_CONTENT (App Store Connect API key) first.")
+  end
+  app_store_connect_api_key(
+    key_id: ENV["ASC_KEY_ID"],
+    issuer_id: ENV["ASC_ISSUER_ID"],
+    key_content: ENV["ASC_KEY_CONTENT"],
+    is_key_content_base64: ENV["ASC_KEY_CONTENT"].start_with?("LS0t") == false ? false : true
+  )
+end
+
+platform :ios do
+  desc "Run the unit + UI test suite on a simulator"
+  lane :test do
+    run_tests(
+      project: PROJECT,
+      scheme: SCHEME,
+      devices: [ENV["TEST_DEVICE"] || "iPhone 16 Pro"],
+      result_bundle: true,
+      clean: true
+    )
+  end
+
+  desc "Archive a signed .ipa (App Store distribution)"
+  lane :build do
+    setup_ci if ENV["CI"]
+    api_key = asc_api_key
+    increment_build_number(
+      build_number: ENV["BUILD_NUMBER"] || Time.now.strftime("%Y%m%d%H%M"),
+      xcodeproj: PROJECT
+    )
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      export_method: "app-store",
+      output_directory: "build",
+      output_name: "CereBro.ipa"
+    )
+  end
+
+  desc "Build and upload the latest build to TestFlight"
+  lane :beta do
+    api_key = asc_api_key
+    build
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      changelog: ENV["CHANGELOG"] || "Internal build."
+    )
+  end
+
+  desc "Push App Store metadata (name, description, keywords, …) without a binary"
+  lane :metadata do
+    api_key = asc_api_key
+    deliver(
+      api_key: api_key,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      overwrite_screenshots: false,
+      force: true
+    )
+  end
+end

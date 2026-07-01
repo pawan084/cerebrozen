@@ -1,0 +1,12 @@
+# fastlane Appfile — App Store Connect identity.
+# Real values come from the environment / App Store Connect API key at run time,
+# so nothing secret is committed. Override the bundle id here if yours differs.
+
+app_identifier(ENV["APP_IDENTIFIER"] || "com.cerebro.app")
+
+# Optional: only needed for username/password auth. The lanes below prefer the
+# App Store Connect API key (ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_CONTENT), which
+# needs neither of these.
+apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+itc_team_id(ENV["ASC_TEAM_ID"]) if ENV["ASC_TEAM_ID"]
