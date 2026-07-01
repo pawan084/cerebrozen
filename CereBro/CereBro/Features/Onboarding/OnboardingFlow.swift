@@ -77,7 +77,11 @@ private struct WelcomeScreen: View {
                     .entrance(2)
                 OnboardingProgress(value: 0.14).padding(.top, 8).entrance(3)
                 PrimaryButton(title: "Begin private setup", systemImage: "sparkles", action: onBegin).entrance(4)
+                // Skipping setup would bypass the age gate + AI disclosure, so the
+                // preview shortcut ships only in debug builds (used by UI tests).
+                #if DEBUG
                 SecondaryButton(title: "Preview app", systemImage: "house", action: onPreview).entrance(5)
+                #endif
             }
             .padding(24)
         }
@@ -92,6 +96,8 @@ private struct StepScaffold<Content: View>: View {
     /// One warm, step-specific sentence (no boilerplate).
     let caption: String
     var progress: Double
+    /// When false, the Continue button is disabled (e.g. an unmet age gate).
+    var canContinue: Bool = true
     var onContinue: () -> Void
     @ViewBuilder var content: Content
 
@@ -110,7 +116,10 @@ private struct StepScaffold<Content: View>: View {
                     .entrance(3)
                 content.entrance(4)
                 OnboardingProgress(value: progress).entrance(5)
-                PrimaryButton(title: "Continue", action: onContinue).entrance(6)
+                PrimaryButton(title: "Continue", action: onContinue)
+                    .disabled(!canContinue)
+                    .opacity(canContinue ? 1 : 0.45)
+                    .entrance(6)
             }
             .padding(18).padding(.top, 12)
         }
@@ -134,17 +143,25 @@ private struct SignupScreen: View {
 // MARK: 1 — Age gate (kept early: fast legal gate)
 private struct AgeGateScreen: View {
     var onContinue: () -> Void
+    @State private var confirmed = false
     var body: some View {
         StepScaffold(eyebrow: "Adult-only safety gate", title: "Age Gate", image: Dummy.Img.calm,
                      caption: "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
-                     progress: 0.22, onContinue: onContinue) {
+                     progress: 0.22, canContinue: confirmed, onContinue: onContinue) {
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness support, not emergency care.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
                     Text("If you are in immediate danger, call emergency services now.").appFont(12).foregroundStyle(Theme.Palette.muted)
                 }
             }
-            ListRow(title: "I am 18 or older", subtitle: "Required to continue", systemImage: "checkmark.shield", imageURL: Dummy.Img.privacy, emphasis: true)
+            // A required, affirmative tap — Continue stays disabled until confirmed.
+            ListRow(title: confirmed ? "Confirmed: I am 18 or older" : "I am 18 or older",
+                    subtitle: confirmed ? "Thank you" : "Tap to confirm — required to continue",
+                    systemImage: confirmed ? "checkmark.circle.fill" : "checkmark.shield",
+                    imageURL: Dummy.Img.privacy, emphasis: confirmed) {
+                confirmed.toggle(); Haptics.selection()
+            }
+            .accessibilityAddTraits(confirmed ? .isSelected : [])
         }
     }
 }
@@ -181,7 +198,7 @@ private struct ConsentScreen: View {
             SettingsGroup {
                 ToggleRow(title: "Mood history", subtitle: "Used for insights", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "AI memory", subtitle: "Goals and preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Voice audio storage", subtitle: "Off by default", isOn: $state.consent.voiceStorage)
+                ToggleRow(title: "Voice storage", subtitle: "Off by default", isOn: $state.consent.voiceStorage)
             }
         }
     }
@@ -328,13 +345,33 @@ private struct CompanionScreen: View {
 // MARK: 10 — Notifications (kept last: highest-leverage retention opt-in)
 private struct NotificationsScreen: View {
     var onContinue: () -> Void
-    @State private var selection: Set<String> = ["Morning 9 AM", "Evening 7 PM", "Private previews"]
+    @EnvironmentObject var state: AppState
+    @State private var selection: Set<String> = ["Evening 7 PM"]
     var body: some View {
         StepScaffold(eyebrow: "Gentle reminder setup", title: "Notifications", image: Dummy.Img.bell,
                      caption: "A couple of soft nudges a day — never noisy, always easy to turn off.",
-                     progress: 0.92, onContinue: onContinue) {
+                     progress: 0.92, onContinue: persistAndContinue) {
             ChipRow(options: Dummy.reminderTimes, selection: $selection)
         }
+    }
+
+    /// Persist the chosen reminder time so Profile reflects it (no contradiction).
+    /// The OS permission prompt is skipped under UI tests so the suite doesn't hang.
+    private func persistAndContinue() {
+        if selection.contains("Morning 9 AM") { state.reminderHour = 9 }
+        else if selection.contains("Evening 7 PM") { state.reminderHour = 19 }
+        let wants = !selection.isEmpty && !selection.contains("No reminders")
+        let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
+        if wants && !underTest {
+            Task {
+                let ok = await ReminderManager.requestAuthorization()
+                await MainActor.run {
+                    state.reminderEnabled = ok
+                    if ok { ReminderManager.scheduleDaily(hour: state.reminderHour) }
+                }
+            }
+        }
+        onContinue()
     }
 }
 

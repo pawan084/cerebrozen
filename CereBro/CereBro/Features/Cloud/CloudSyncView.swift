@@ -41,7 +41,9 @@ struct CloudSyncView: View {
                 Circle().fill(statusColor).frame(width: 10, height: 10)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(statusTitle).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                    #if DEBUG
                     Text(backend.baseURL).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                    #endif
                 }
                 Spacer()
             }
@@ -98,6 +100,7 @@ struct CloudSyncView: View {
                 Text("Create account").tag(Mode.signUp)
             }
             .pickerStyle(.segmented)
+            .accessibilityLabel("Sign in or create account")
 
             #if DEBUG
             field("Server URL", text: $server, keyboard: .URL)

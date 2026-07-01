@@ -235,7 +235,7 @@ struct PlayerView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Playing \(timeString(elapsed))")
+        .accessibilityLabel("\(audio.isPlaying ? "Playing" : "Paused") \(timeString(elapsed))")
     }
 
     private var transport: some View {

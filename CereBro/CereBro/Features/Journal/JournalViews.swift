@@ -43,7 +43,7 @@ struct JournalHomeView: View {
 
     private var content: some View {
         ScreenScaffold(eyebrow: "Journal hub", title: "Journal", trailingSystemImage: "book", isRoot: true) {
-            HeroCard(tag: "Prompt for tonight", title: "Release the day",
+            HeroCard(tag: "Today's prompt", title: "Release the day",
                      subtitle: JournalPrompts.today,
                      cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
@@ -272,17 +272,26 @@ struct JournalHistoryView: View {
             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Theme.Palette.line))
 
-            if results.isEmpty {
+            if state.journalEntries.isEmpty {
+                InsightCard(label: "No entries yet", title: "Your journal is a blank page.",
+                            detail: "Write your first reflection — it stays private to you.")
+            } else if results.isEmpty {
                 InsightCard(label: "No matches", title: "Nothing found for “\(query)”.",
                             detail: "Try a different word, tag, or feeling.")
             } else {
                 ForEach(results) { e in
-                    NavRow(title: e.title,
-                           subtitle: e.tags.isEmpty ? e.date : "\(e.tags.joined(separator: " · ")) · \(e.date)",
+                    NavRow(title: e.title, subtitle: subtitle(for: e),
                            systemImage: e.symbol, imageURL: e.imageURL) { JournalDetailView(entry: e) }
                 }
             }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
         }
+    }
+
+    /// Tags + a relative date derived from the real timestamp (not a frozen "Today").
+    private func subtitle(for e: JournalEntry) -> String {
+        let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated
+        let when = f.localizedString(for: e.createdAt, relativeTo: Date())
+        return e.tags.isEmpty ? when : "\(e.tags.joined(separator: " · ")) · \(when)"
     }
 }

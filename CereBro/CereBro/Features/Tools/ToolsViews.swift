@@ -6,7 +6,7 @@ struct SOSView: View {
         ScreenScaffold(eyebrow: "Fast anxiety/stress reset", title: "SOS Reset",
                        trailingSystemImage: "exclamationmark.triangle", accent: Theme.Accent.warm) {
             ToolBanner(imageURL: Dummy.Img.support, symbol: "lifepreserver",
-                       caption: "Feeling overwhelmed? Three fast ways back to steady.",
+                       caption: "Feeling overwhelmed? A few fast ways back to steady.",
                        accent: Theme.Accent.warm)
             NavRow(title: "2-minute breathing", subtitle: "Fast body reset", systemImage: "wind", imageURL: Dummy.Img.breath, emphasis: true) { BreathingView() }
             NavRow(title: "5-4-3-2-1 grounding", subtitle: "Return to present moment", systemImage: "checkmark.shield", imageURL: Dummy.Img.ground) { GroundingView() }
@@ -136,6 +136,8 @@ struct GroundingView: View {
             ListRow(title: "5 things you can see", subtitle: "Look around gently", systemImage: "eye", imageURL: Dummy.Img.ground, emphasis: true)
             ListRow(title: "4 things you can feel", subtitle: "Feet, chair, clothes, air", systemImage: "hand.raised", imageURL: Dummy.Img.breath)
             ListRow(title: "3 things you can hear", subtitle: "Near and far sounds", systemImage: "ear", imageURL: Dummy.Img.ocean)
+            ListRow(title: "2 things you can smell", subtitle: "Take a slow breath in", systemImage: "nose", imageURL: Dummy.Img.calm)
+            ListRow(title: "1 thing you can taste", subtitle: "Notice it without judging", systemImage: "mouth", imageURL: Dummy.Img.meditate)
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             PrimaryButton(title: "Continue") { done.toggle() }
         }
@@ -145,14 +147,14 @@ struct GroundingView: View {
 
 // MARK: - CBT reframe
 struct CBTReframeView: View {
-    @State private var thought = "I will fail in tomorrow's meeting…"
+    @State private var thought = ""
     @State private var showBalanced = false
     var body: some View {
         ScreenScaffold(eyebrow: "Structured thought reframe", title: "CBT Reframe", trailingSystemImage: "brain") {
             ToolBanner(imageURL: Dummy.Img.journal, symbol: "brain",
                        caption: "Untangle a worried thought, one step at a time.")
             Card {
-                TextField("", text: $thought, axis: .vertical)
+                TextField("Write the worried thought…", text: $thought, axis: .vertical)
                     .appFont(13).foregroundStyle(Theme.Palette.soft).lineLimit(3...)
             }
             StepRow(number: 1, text: "Evidence for this thought")
@@ -189,14 +191,14 @@ struct BalancedThoughtView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "CBT output screen", title: "Balanced Thought", trailingSystemImage: "brain") {
             ToolBanner(imageURL: Dummy.Img.write, symbol: "sparkles",
-                       caption: "Here's the calmer, truer version of the thought.")
+                       caption: "An example of the calmer, truer version of a thought.")
             HStack(spacing: 10) {
                 Card { VStack(alignment: .leading, spacing: 4) {
-                    Text("Before").appFont(12).foregroundStyle(Theme.Palette.muted)
+                    Text("Before · example").appFont(12).foregroundStyle(Theme.Palette.muted)
                     Text("I will fail.").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
                 }}
                 Card { VStack(alignment: .leading, spacing: 4) {
-                    Text("After").appFont(12).foregroundStyle(Theme.Palette.muted)
+                    Text("After · example").appFont(12).foregroundStyle(Theme.Palette.muted)
                     Text("I can prepare three clear points.").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
                 }}
             }

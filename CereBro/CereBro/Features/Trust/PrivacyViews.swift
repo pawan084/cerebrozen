@@ -6,6 +6,7 @@ struct PrivacyView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "Data control dashboard", title: "Privacy & Memory", trailingSystemImage: "lock") {
             SettingsGroup {
+                ToggleRow(title: "Mood history", subtitle: "Keep your check-ins", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "AI memory", subtitle: "Goals, patterns, preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Voice storage", subtitle: "Optional audio storage", isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Model training", subtitle: "Separate opt-in only", isOn: $state.consent.modelTraining); Divider().overlay(Theme.Palette.line)
@@ -119,7 +120,7 @@ struct DataExportView: View {
 
             if !backend.isConnected {
                 DangerPanel {
-                    Text("Connect Cloud Sync first — export pulls your data from the server.")
+                    Text("Sign in first — export pulls your data from the server.")
                         .appFont(12).foregroundStyle(Theme.Palette.muted)
                 }
             } else if let text = exportText {

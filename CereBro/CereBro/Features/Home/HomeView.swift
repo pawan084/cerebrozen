@@ -13,11 +13,12 @@ struct HomeView: View {
     private var moodSubtitle: String {
         state.moodLogs.first.map { "Last check-in: \($0.mood)" } ?? "Personalize your next best action"
     }
-    /// Reflect plan progress once any step is completed.
+    /// Reflect plan progress once any step is completed (names from the real steps).
     private var planSubtitle: String {
         let total = Dummy.planSteps.count
         let done = Dummy.planSteps.filter { state.completedSteps.contains($0.title) }.count
-        return done > 0 ? "\(done) of \(total) done · Breathing · Journal" : "Breathing reset · Journal · Wind-down"
+        let names = Dummy.planSteps.map(\.title).joined(separator: " · ")
+        return done > 0 ? "\(done) of \(total) done · \(names)" : names
     }
 
     var body: some View {
@@ -127,6 +128,7 @@ struct StreakCard: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(streak == 0 ? "No active streak yet"
+                            : isMilestone ? "\(streak) day streak — milestone reached, best \(best) days"
                             : "\(streak) day streak, best \(best) days")
     }
 }
@@ -155,6 +157,20 @@ struct MoodCheckinView: View {
     @EnvironmentObject var backend: BackendService
     @State private var selected: MoodOption.ID?
     @State private var saved = false
+
+    /// A next step tuned to the selected mood (not a fixed line).
+    private var nextAction: String {
+        guard let id = selected, let mood = Dummy.moods.first(where: { $0.id == id }) else {
+            return "Pick how you feel and I'll suggest a gentle next step."
+        }
+        switch mood.name {
+        case "Anxious": return "Let's slow the body first — try a two-minute breath."
+        case "Low":     return "Be kind to yourself. A short reflection can lighten it."
+        case "Tired":   return "Rest is valid. A wind-down soundscape could ease you."
+        default:        return "Lovely. Let's keep the momentum with a small check-in."
+        }
+    }
+
     var body: some View {
         ScreenScaffold(eyebrow: "Mood, intensity and trigger", title: "Mood Check-in",
                        trailingSystemImage: "heart", accent: Theme.Accent.warm) {
@@ -180,10 +196,11 @@ struct MoodCheckinView: View {
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selected)
                     }
                     .buttonStyle(.pressable)
+                    .accessibilityAddTraits(selected == mood.id ? .isSelected : [])
                 }
             }
             .sensoryFeedback(.selection, trigger: selected)
-            InsightCard(label: "Next best action", title: "Ground the body first, then reflect.")
+            InsightCard(label: "Next best action", title: nextAction)
             PrimaryButton(title: "Start gentle support", systemImage: "mic.fill") {
                 guard let id = selected, let mood = Dummy.moods.first(where: { $0.id == id }) else { return }
                 let log = MoodLog(mood: mood.name, note: mood.note, symbol: mood.symbol, date: Date())
@@ -204,8 +221,8 @@ struct DailyPlanView: View {
     private var doneCount: Int { Dummy.planSteps.filter { state.completedSteps.contains($0.title) }.count }
     var body: some View {
         ScreenScaffold(eyebrow: "Agentic plan", title: "Daily Plan", trailingSystemImage: "checkmark.circle") {
-            HeroCard(tag: "Agentic plan", title: "Why this plan changed",
-                     subtitle: "Because stress spikes after meetings and sleep is inconsistent.",
+            HeroCard(tag: "Agentic plan", title: "Tuned to you",
+                     subtitle: "Small steps toward \(state.primaryGoal.lowercased()) — updated from your check-ins.",
                      cta: "Update plan", imageURL: Dummy.Img.plan) { recheck = true }
             InsightCard(label: "Today's progress",
                         title: "\(doneCount) of \(Dummy.planSteps.count) steps complete")

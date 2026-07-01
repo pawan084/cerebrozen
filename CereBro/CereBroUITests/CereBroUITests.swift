@@ -121,6 +121,10 @@ final class CereBroUITests: XCTestCase {
 
         tap(app, "Begin private setup")
 
+        // Age gate now requires an affirmative tap before Continue is enabled.
+        _ = app.staticTexts["Age Gate"].waitForExistence(timeout: 6)
+        tap(app, "I am 18 or older")
+
         // Step through each "Continue" screen, shooting as we go. Match the
         // button exactly so we don't accidentally hit a row whose subtitle
         // reads "Required to continue".
@@ -154,8 +158,9 @@ final class CereBroUITests: XCTestCase {
         snapshot(app, "seq-00-welcome")
         tap(app, "Begin private setup")
 
-        // 1 — Age gate (kept early: fast legal gate)
+        // 1 — Age gate (kept early: fast legal gate) — requires affirmative tap.
         expectStep(app, "Age Gate", shot: "seq-01-agegate")
+        tap(app, "I am 18 or older")
         tapExact(app, "Continue")
 
         // 2 — AI disclosure (kept early: transparency before setup)
@@ -234,6 +239,7 @@ final class CereBroUITests: XCTestCase {
                       "Welcome screen did not appear")
         tap(app, "Begin private setup")
         _ = app.staticTexts["Age Gate"].waitForExistence(timeout: 6)        // settle each push
+        tap(app, "I am 18 or older")       // affirmative age confirmation
         tapExact(app, "Continue")          // Age gate → AI disclosure
         _ = app.staticTexts["AI Disclosure"].waitForExistence(timeout: 6)
         tapExact(app, "Continue")          // AI disclosure → self-reflection
@@ -392,8 +398,9 @@ final class CereBroUITests: XCTestCase {
         launchIntoApp(app)
         openTab(app, "Talk")
         // Let the Talk screen settle (orb/waveform animate) before tapping, so
-        // the scroll-to-find doesn't race the entrance transition.
-        _ = app.staticTexts["I'm listening"].waitForExistence(timeout: 6)
+        // the scroll-to-find doesn't race the entrance transition. (Signed-out
+        // title is "Your voice companion".)
+        _ = app.staticTexts["Your voice companion"].waitForExistence(timeout: 6)
         snapshot(app, "talk-00")
 
         if tap(app, "Quick SOS reset") {
@@ -408,7 +415,7 @@ final class CereBroUITests: XCTestCase {
         }
 
         openTab(app, "Talk")
-        _ = app.staticTexts["I'm listening"].waitForExistence(timeout: 6)
+        _ = app.staticTexts["Your voice companion"].waitForExistence(timeout: 6)
         if tap(app, "Switch to chat") {
             snapshot(app, "talk-04-chat")
             back(app)

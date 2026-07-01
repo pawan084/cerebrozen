@@ -24,7 +24,9 @@ struct TalkView: View {
     }
 
     var body: some View {
-        ScreenScaffold(eyebrow: "AI voice companion", title: "I'm listening", trailingSystemImage: "mic", isRoot: true) {
+        ScreenScaffold(eyebrow: "AI voice companion",
+                       title: backend.isConnected ? "I'm listening" : "Your voice companion",
+                       trailingSystemImage: "mic", isRoot: true) {
             AIDisclosureBanner { showDisclosure = true }
 
             Photo(url: Dummy.Img.voice, symbol: "mic").frame(height: 98).frame(maxWidth: .infinity)
@@ -75,7 +77,7 @@ struct TalkView: View {
                     ? "Tap the orb and tell me what's on your mind. I'll listen, then talk it through."
                     : voice.reply, isUser: false))
             } else {
-                ChatBubble(message: .init(text: "It sounds like tomorrow's meeting is creating pressure. Want to calm your body first or unpack the thought?", isUser: false))
+                ChatBubble(message: .init(text: "Sign in and tap the orb to start a real conversation. I'll listen, then talk it through with you.", isUser: false))
             }
 
             if inCrisis { CrisisBanner() }
@@ -84,7 +86,7 @@ struct TalkView: View {
                 Button { saveSessionToJournal() } label: { MiniChip("Save to journal") }
                     .buttonStyle(.pressable)
                     .disabled(voice.turns.isEmpty && voice.transcript.isEmpty && voice.reply.isEmpty)
-                NavigationLink { DailyPlanView() } label: { MiniChip("Add to plan") }.buttonStyle(.pressable)
+                NavigationLink { DailyPlanView() } label: { MiniChip("Open plan") }.buttonStyle(.pressable)
                 NavigationLink { ChatView() } label: { MiniChip("Text mode") }.buttonStyle(.pressable)
             }
 
@@ -204,6 +206,10 @@ struct ChatView: View {
                     }
                 }
             } else {
+                // Signed-out: give a starting prompt when there's no history yet.
+                if state.chatHistory.isEmpty {
+                    ChatBubble(message: .init(text: "I'm here. Tell me what's on your mind and we'll take it one gentle step at a time.", isUser: false))
+                }
                 ForEach(state.chatHistory) { m in
                     ChatBubble(message: .init(text: m.text, isUser: m.isUser))
                 }
