@@ -3,7 +3,10 @@ import SwiftUI
 // MARK: - Sleep home (tab root)
 struct SleepHomeView: View {
     @EnvironmentObject var state: AppState
+    @State private var playFeatured = false
 
+    /// The featured "Tonight" story (first sleep item) — powers the hero CTA.
+    private var featured: ContentItem { Dummy.sleepContent[0] }
     /// Favorited stories/sounds, drawn from the full sleep catalogue.
     private var favoriteItems: [ContentItem] {
         (Dummy.sleepContent + Dummy.meditations).filter { state.isSleepFavorite($0.title) }
@@ -12,9 +15,9 @@ struct SleepHomeView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "Premium sleep hub", title: "Sleep", trailingSystemImage: "moon.stars",
                        accent: Theme.Accent.sleep, isRoot: true) {
-            HeroCard(tag: "Tonight", title: "Rain over quiet hills",
-                     subtitle: "An 18-minute sleep story to slow a racing mind.",
-                     cta: "Play", imageURL: Dummy.Img.sleep)
+            HeroCard(tag: "Tonight", title: featured.title,
+                     subtitle: "A calming sleep story to slow a racing mind.",
+                     cta: "Play", imageURL: Dummy.Img.sleep) { playFeatured = true }
             if !favoriteItems.isEmpty {
                 SectionTitle(title: "Favorites", trailing: nil)
                 ForEach(favoriteItems) { SleepRow(item: $0) }
@@ -22,8 +25,9 @@ struct SleepHomeView: View {
             SectionTitle(title: "Sleep stories & sounds")
             ForEach(Dummy.sleepContent) { SleepRow(item: $0) }
             NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView() }
-            InsightCard(label: "Auto-stop timer", title: "Sleep-safe playback fades out after 30 min.")
+            InsightCard(label: "Auto-stop timer", title: "Sleep-safe playback fades out when you set the timer.")
         }
+        .navigationDestination(isPresented: $playFeatured) { PlayerView(item: featured) }
     }
 }
 
@@ -90,16 +94,17 @@ struct PlayerView: View {
     /// Optional shared namespace for a zoom transition from the source card.
     var zoomNamespace: Namespace.ID? = nil
 
+    @EnvironmentObject private var state: AppState
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var audio = SoundscapePlayer()
-    @State private var elapsed: Double = 0
+    /// Real seconds played (counts up; soundscapes are continuous, not a track
+    /// with a fixed length — so there's no fake "progress toward the end").
+    @State private var elapsed: Int = 0
     @State private var artZoom = false
 
-    private let totalSeconds = 1080   // 18:00
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    /// Real playback position drives the scrubber.
-    private var progress: Double { totalSeconds > 0 ? min(1, elapsed / Double(totalSeconds)) : 0 }
+    private var faved: Bool { state.isSleepFavorite(item.title) }
 
     var body: some View {
         ZStack {
@@ -130,7 +135,7 @@ struct PlayerView: View {
                     Text(item.subtitle)
                         .appFont(13).foregroundStyle(Theme.Palette.muted)
 
-                    scrubber.padding(.top, 4)
+                    elapsedBar.padding(.top, 4)
 
                     transport.padding(.top, 2)
 
@@ -151,8 +156,7 @@ struct PlayerView: View {
         .onAppear { audio.configure(for: item); audio.play() }
         .onDisappear { audio.stop() }
         .onReceive(tick) { _ in
-            guard audio.isPlaying else { return }
-            elapsed = elapsed + 1 >= Double(totalSeconds) ? 0 : elapsed + 1   // loop the position
+            if audio.isPlaying { elapsed += 1 }   // real elapsed, counts up
         }
     }
 
@@ -205,47 +209,43 @@ struct PlayerView: View {
         .onAppear { if !reduceMotion { artZoom = true } }
     }
 
-    // Draggable scrubber with a handle + scrub haptic.
-    private var scrubber: some View {
-        VStack(spacing: 6) {
-            GeometryReader { geo in
-                let w = geo.size.width
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.Palette.cardEmphasis).frame(height: 6)
-                    Capsule()
-                        .fill(LinearGradient(colors: [Theme.Palette.soft, Theme.Accent.sleep],
-                                             startPoint: .leading, endPoint: .trailing))
-                        .frame(width: max(0, w * progress), height: 6)
-                    Circle().fill(.white)
-                        .frame(width: 16, height: 16)
-                        .shadow(color: Theme.Accent.sleep.opacity(0.6), radius: 6)
-                        .offset(x: max(0, min(w - 16, w * progress - 8)))
-                }
-                .frame(height: 16)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { v in
-                            elapsed = Double(min(1, max(0, v.location.x / w))) * Double(totalSeconds)
-                        }
-                )
-            }
-            .frame(height: 16)
-            .sensoryFeedback(.selection, trigger: Int(progress * 20))
+    // Honest "now playing" strip: elapsed counts up, and a soft ambient rail
+    // that gently pulses while playing (continuous audio has no end to scrub to).
+    private var elapsedBar: some View {
+        VStack(spacing: 8) {
+            Capsule()
+                .fill(LinearGradient(colors: [Theme.Palette.soft, Theme.Accent.sleep],
+                                     startPoint: .leading, endPoint: .trailing))
+                .frame(height: 4)
+                .opacity(audio.isPlaying ? (artZoom ? 0.85 : 0.45) : 0.25)
+                .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: artZoom)
 
             HStack {
-                Text(timeString(Int(progress * Double(totalSeconds))))
-                    .appFont(11).foregroundStyle(Theme.Palette.muted2)
+                Label(timeString(elapsed), systemImage: "waveform")
+                    .appFont(11, weight: .semibold).foregroundStyle(Theme.Palette.muted)
                 Spacer()
-                Text(timeString(totalSeconds))
+                Text(audio.sleepTimerMinutes.map { "Fades out · \($0) min" } ?? "Continuous ambient")
                     .appFont(11).foregroundStyle(Theme.Palette.muted2)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Playing \(timeString(elapsed))")
     }
 
     private var transport: some View {
         HStack(spacing: 18) {
-            PlayerControl(symbol: "backward.fill", size: 48)
+            // Favorite this soundscape (a real action, replacing the dead skip).
+            Button {
+                state.toggleSleepFavorite(item.title); Haptics.selection()
+            } label: {
+                Image(systemName: faved ? "heart.fill" : "heart")
+                    .appFont(18, weight: .semibold)
+                    .foregroundStyle(faved ? Theme.Palette.lav : Theme.Palette.soft)
+                    .frame(width: 48, height: 48).background(Theme.Stroke.iconWell, in: Circle())
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel(faved ? "Remove from favorites" : "Add to favorites")
+
             Button { audio.toggle() } label: {
                 Image(systemName: audio.isPlaying ? "pause.fill" : "play.fill")
                     .appFont(24, weight: .bold).foregroundStyle(Theme.Palette.ink)
@@ -256,7 +256,16 @@ struct PlayerView: View {
             .buttonStyle(.pressable)
             .accessibilityLabel(audio.isPlaying ? "Pause" : "Play")
             .sensoryFeedback(.impact(weight: .medium), trigger: audio.isPlaying)
-            PlayerControl(symbol: "forward.fill", size: 48)
+
+            // Cycle the sleep timer (off → 15 → 30 → 45 → 60 → off).
+            Button { audio.cycleSleepTimer() } label: {
+                Image(systemName: audio.sleepTimerMinutes == nil ? "timer" : "timer.circle.fill")
+                    .appFont(18, weight: .semibold)
+                    .foregroundStyle(audio.sleepTimerMinutes == nil ? Theme.Palette.soft : Theme.Palette.lav)
+                    .frame(width: 48, height: 48).background(Theme.Stroke.iconWell, in: Circle())
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel(audio.sleepTimerMinutes.map { "Sleep timer, \($0) minutes" } ?? "Set sleep timer")
         }
         .frame(maxWidth: .infinity)
     }
@@ -305,12 +314,3 @@ struct PlayerVisualizer: View {
     }
 }
 
-struct PlayerControl: View {
-    let symbol: String
-    let size: CGFloat
-    var body: some View {
-        Image(systemName: symbol)
-            .appFont(18, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-            .frame(width: size, height: size).background(Theme.Stroke.iconWell, in: Circle())
-    }
-}

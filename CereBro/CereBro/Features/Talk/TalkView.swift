@@ -157,8 +157,9 @@ struct ChatView: View {
     @State private var sending = false
     @State private var showDisclosure = false
     @State private var savedChat = false
+    @State private var localCrisis = false
 
-    private var inCrisis: Bool { backend.suggestions.contains { $0.action == "crisis" } }
+    private var inCrisis: Bool { localCrisis || backend.suggestions.contains { $0.action == "crisis" } }
 
     var body: some View {
         ScreenScaffold(eyebrow: backend.isConnected ? "Live AI companion" : "Text fallback",
@@ -253,7 +254,13 @@ struct ChatView: View {
                 sending = false
             }
         } else {
+            // Signed-out: give a real on-device reply instead of silence.
             state.chatHistory.append(.init(text: t, isUser: true))
+            if LocalCompanion.isCrisis(t) { localCrisis = true }
+            let reply = LocalCompanion.reply(to: t)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                state.chatHistory.append(.init(text: reply, isUser: false))
+            }
         }
     }
 

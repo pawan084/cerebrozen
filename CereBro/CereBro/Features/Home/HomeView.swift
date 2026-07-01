@@ -3,7 +3,10 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var state: AppState
     @State private var showSearch = false
+    @State private var route: HomeRoute?
     @Namespace private var playerZoom
+
+    private var part: DayPart { .current() }
 
     /// Reflect the most recent mood check-in once one exists.
     private var moodSubtitle: String {
@@ -17,21 +20,23 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ScreenScaffold(eyebrow: "Today · Calm plan", title: "Good evening,\n\(Dummy.userName)",
+        let focus = state.homeFocus(part)
+        ScreenScaffold(eyebrow: "Today · \(state.primaryGoal)",
+                       title: "\(part.greeting),\n\(Dummy.userName)",
                        trailingSystemImage: "magnifyingglass", trailingAction: { showSearch = true },
                        trailingAccessibilityLabel: "Search", isRoot: true) {
-            HeroCard(tag: "Recommended now", title: "Quiet reset before sleep",
-                     subtitle: "Ease work stress with breathing and one reflective prompt.",
-                     cta: "Begin", imageURL: Dummy.Img.calm)
+            // One clear next action, chosen from the time of day + today's progress.
+            HeroCard(tag: focus.tag, title: focus.title, subtitle: focus.subtitle,
+                     cta: focus.cta, imageURL: Dummy.Img.calm) { route = focus.route }
                 .entrance(0, y: 22)
 
             StreakCard(streak: state.currentStreak, best: state.bestStreak, week: state.last7Days())
                 .entrance(1)
 
-            SectionTitle(title: "For tonight").entrance(2)
+            SectionTitle(title: part.railTitle).entrance(2)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 11) {
-                    ForEach(Array(Dummy.tonight.enumerated()), id: \.element.id) { idx, item in
+                    ForEach(Array(state.homeRail(part).enumerated()), id: \.element.id) { idx, item in
                         NavigationLink { PlayerView(item: item, zoomNamespace: playerZoom) } label: { MiniCard(item: item) }
                             .buttonStyle(.pressable)
                             .matchedZoomSource(id: item.id, in: playerZoom)
@@ -54,6 +59,14 @@ struct HomeView: View {
                 .entrance(8)
         }
         .navigationDestination(isPresented: $showSearch) { SearchView() }
+        .navigationDestination(item: $route) { r in
+            switch r {
+            case .mood:    MoodCheckinView()
+            case .plan:    DailyPlanView()
+            case .breathe: BreathingView()
+            case .sleep:   PlayerView(item: Dummy.sleepContent[0])
+            }
+        }
     }
 }
 
@@ -179,18 +192,20 @@ struct MoodCheckinView: View {
 // MARK: - Daily plan
 struct DailyPlanView: View {
     @EnvironmentObject var state: AppState
+    @State private var recheck = false
     private var doneCount: Int { Dummy.planSteps.filter { state.completedSteps.contains($0.title) }.count }
     var body: some View {
         ScreenScaffold(eyebrow: "Agentic plan", title: "Daily Plan", trailingSystemImage: "checkmark.circle") {
             HeroCard(tag: "Agentic plan", title: "Why this plan changed",
                      subtitle: "Because stress spikes after meetings and sleep is inconsistent.",
-                     cta: "Update plan", imageURL: Dummy.Img.plan)
+                     cta: "Update plan", imageURL: Dummy.Img.plan) { recheck = true }
             InsightCard(label: "Today's progress",
                         title: "\(doneCount) of \(Dummy.planSteps.count) steps complete")
             ForEach(Dummy.planSteps) { step in
                 PlanStepRow(step: step)
             }
         }
+        .navigationDestination(isPresented: $recheck) { MoodCheckinView() }
     }
 }
 
@@ -218,7 +233,16 @@ struct PlanStepRow: View {
             .sensoryFeedback(.success, trigger: done)
 
             NavRow(title: step.title, subtitle: step.detail, systemImage: step.symbol,
-                   imageURL: step.imageURL, emphasis: done) { BreathingView() }
+                   imageURL: step.imageURL, emphasis: done) { destination }
+        }
+    }
+
+    /// Each step opens its own tool, not always breathing.
+    @ViewBuilder private var destination: some View {
+        switch step.symbol {
+        case "book": JournalEntryView()
+        case "bell": ProfileView()          // reminder timing lives in settings
+        default:     BreathingView()
         }
     }
 }

@@ -81,7 +81,11 @@ final class AppState: ObservableObject {
     init() {
         // UI tests pass `-resetState YES` to start each run from seeded defaults,
         // so screenshots are deterministic regardless of prior writes.
-        if UserDefaults.standard.bool(forKey: "resetState") {
+        // UI tests / screenshots pass `-resetState YES`: wipe writes AND seed a
+        // small living demo streak so captures are deterministic. Real users get
+        // an honest empty start (no fake streak, no pre-completed step).
+        let seedDemo = UserDefaults.standard.bool(forKey: "resetState")
+        if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
              Key.journalLock, Key.favSleep, Key.crisisRegion,
@@ -93,13 +97,14 @@ final class AppState: ObservableObject {
         journalEntries = Self.load([JournalEntry].self, Key.journal) ?? Dummy.journalEntries
         chatHistory    = Self.load([ChatMessage].self, Key.chat) ?? Dummy.chat
         moodLogs       = Self.load([MoodLog].self, Key.moods) ?? []
-        completedSteps = Set(Self.load([String].self, Key.steps) ?? Dummy.planSteps.filter(\.done).map(\.title))
+        completedSteps = Set(Self.load([String].self, Key.steps)
+                             ?? (seedDemo ? Dummy.planSteps.filter(\.done).map(\.title) : []))
         consent        = Self.load(Consent.self, Key.consent) ?? Consent()
         selectedGoals  = Self.load([String].self, Key.goals) ?? ["Reduce stress", "Sleep better"]
         selectedMotivations = Self.load([String].self, Key.motivations) ?? ["Focus", "Calm"]
         language       = UserDefaults.standard.string(forKey: Key.language) ?? "English"
         companion      = UserDefaults.standard.string(forKey: Key.companion) ?? "Calm Guide"
-        activeDays     = Self.load([String].self, Key.activeDays) ?? Self.seededActiveDays()
+        activeDays     = Self.load([String].self, Key.activeDays) ?? (seedDemo ? Self.seededActiveDays() : [])
         journalLocked  = UserDefaults.standard.bool(forKey: Key.journalLock)
         favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
@@ -110,13 +115,13 @@ final class AppState: ObservableObject {
         journalEntries = Dummy.journalEntries
         chatHistory = Dummy.chat
         moodLogs = []
-        completedSteps = Set(Dummy.planSteps.filter(\.done).map(\.title))
+        completedSteps = []
         consent = Consent()
         selectedGoals = ["Reduce stress", "Sleep better"]
         selectedMotivations = ["Focus", "Calm"]
         language = "English"
         companion = "Calm Guide"
-        activeDays = Self.seededActiveDays()
+        activeDays = []
         journalLocked = false
         favoriteSleep = []
         crisisRegion = ""

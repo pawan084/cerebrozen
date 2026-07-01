@@ -5,6 +5,7 @@ import LocalAuthentication
 struct JournalHomeView: View {
     @EnvironmentObject var state: AppState
     @State private var unlocked = false
+    @State private var writeNew = false
 
     var body: some View {
         Group {
@@ -21,11 +22,12 @@ struct JournalHomeView: View {
         ScreenScaffold(eyebrow: "Journal hub", title: "Journal", trailingSystemImage: "book", isRoot: true) {
             HeroCard(tag: "Prompt for tonight", title: "Release the day",
                      subtitle: "What emotion did you avoid today, and what did it need from you?",
-                     cta: "Write", imageURL: Dummy.Img.journal)
+                     cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
         }
+        .navigationDestination(isPresented: $writeNew) { JournalEntryView() }
     }
 
     /// Face ID / passcode gate. If the device has no biometrics or passcode set
@@ -85,7 +87,10 @@ struct JournalEntryView: View {
                     .frame(minHeight: 120, alignment: .topLeading).lineLimit(5...)
             }
             ChipRow(options: ["Work", "Anxiety", "Sleep", "Gratitude"], selection: $tags)
-            NavRow(title: "See AI reflection", subtitle: "AI reflection output", systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) { JournalInsightView() }
+            NavRow(title: "See AI reflection", subtitle: "AI reflection output", systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) {
+                JournalInsightView(entry: JournalEntry(title: "Draft", tags: Array(tags), date: "Today",
+                                                       symbol: "book", imageURL: Dummy.Img.write, body: text))
+            }
             PrimaryButton(title: "Save / Continue", systemImage: "book.fill") { save() }
         }
         .celebration(trigger: $saved)
@@ -106,17 +111,63 @@ struct JournalEntryView: View {
     }
 }
 
-// MARK: - Journal insight
+// MARK: - Journal insight (reflection derived from the actual entry)
 struct JournalInsightView: View {
+    /// The entry to reflect on. Nil (or an empty body) yields a gentle generic.
+    var entry: JournalEntry? = nil
+    @Environment(\.dismiss) private var dismiss
+
+    private var reflection: JournalReflection.Result {
+        JournalReflection.analyze(entry?.body ?? "", tags: entry?.tags ?? [])
+    }
+
     var body: some View {
         ScreenScaffold(eyebrow: "AI reflection output", title: "Journal Insight", trailingSystemImage: "sparkles") {
             Photo(url: Dummy.Img.privacy, symbol: "sparkles").frame(height: 120).frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
-            InsightCard(label: "Emotional theme", title: "You're carrying performance pressure.",
-                        detail: "There is a fear of being judged connected to upcoming work pressure.")
+            InsightCard(label: "Emotional theme", title: reflection.theme, detail: reflection.detail)
             NavRow(title: "Reframe this thought", subtitle: "Structured CBT", systemImage: "brain", imageURL: Dummy.Img.write) { CBTReframeView() }
-            PrimaryButton(title: "Save / Continue", systemImage: "book.fill")
+            PrimaryButton(title: "Done", systemImage: "checkmark") { dismiss() }
         }
+    }
+}
+
+/// Derives an emotional theme from an entry's own text + tags. A lightweight,
+/// on-device analysis (works offline) so the reflection actually reflects what
+/// was written — not a single hardcoded theme for every entry.
+enum JournalReflection {
+    struct Result { let theme: String; let detail: String }
+
+    static func analyze(_ body: String, tags: [String]) -> Result {
+        let t = (body + " " + tags.joined(separator: " ")).lowercased()
+        func has(_ words: [String]) -> Bool { words.contains { t.contains($0) } }
+
+        if has(["meeting", "deadline", "work", "boss", "judged", "fail", "perform", "presentation"]) {
+            return Result(theme: "You're carrying performance pressure.",
+                          detail: "There's a fear of being judged tied to work. Naming it is the first step to loosening its grip.")
+        }
+        if has(["sleep", "tired", "awake", "insomnia", "night", "rest"]) {
+            return Result(theme: "Your mind is racing at rest.",
+                          detail: "Sleep gets harder when the day hasn't been set down. A short wind-down may help close the loop.")
+        }
+        if has(["lonely", "alone", "isolated", "no one", "nobody"]) {
+            return Result(theme: "You're feeling disconnected.",
+                          detail: "Loneliness is heavy and deeply human. Reaching toward one small connection can ease it.")
+        }
+        if has(["angry", "frustrat", "unfair", "annoyed", "resent"]) {
+            return Result(theme: "There's unspoken frustration here.",
+                          detail: "Anger often guards something that matters to you. What need is sitting underneath it?")
+        }
+        if has(["grateful", "thankful", "win", "proud", "happy", "calm"]) {
+            return Result(theme: "You're noticing what went right.",
+                          detail: "Savoring small wins trains the mind to find them again. Worth holding onto.")
+        }
+        if has(["anx", "worry", "worried", "nervous", "overwhelm", "stress", "panic"]) {
+            return Result(theme: "Anxiety is asking for your attention.",
+                          detail: "Worry is the mind trying to protect you. Grounding the body first can quiet the noise.")
+        }
+        return Result(theme: "You showed up for yourself today.",
+                      detail: "Putting feelings into words is its own kind of care. Notice what stood out as you wrote.")
     }
 }
 
@@ -148,7 +199,7 @@ struct JournalDetailView: View {
                 }
             }
             NavRow(title: "See AI reflection", subtitle: "Emotional themes in this entry",
-                   systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) { JournalInsightView() }
+                   systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) { JournalInsightView(entry: entry) }
             NavRow(title: "Talk this through", subtitle: "Discuss with your companion",
                    systemImage: "mic", imageURL: Dummy.Img.voice) { ChatView() }
         }
