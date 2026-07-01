@@ -5,6 +5,7 @@ A calm, proactive mental-wellness product. Monorepo:
 ```
 cere/
   apps/ios/       iOS app (SwiftUI) + live backend cloud sync
+  apps/android/   Android app (Kotlin + Jetpack Compose) — scaffold
   apps/web/       Next.js marketing site + landing page
   apps/admin/     Next.js admin dashboard
   backend/        FastAPI + Postgres backend (auth, data, proactive AI, voice)
