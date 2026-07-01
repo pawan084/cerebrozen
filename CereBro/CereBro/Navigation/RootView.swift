@@ -61,9 +61,13 @@ struct MainTabView: View {
         .toolbarBackground(.visible, for: .tabBar)
         // Keep the server's crisis region in sync with the app's effective region
         // (explicit override, else device locale) so AI crisis replies are correct.
-        .task { backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion)) }
+        .task {
+            backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion))
+            backend.syncConsent(state.consent)
+        }
         .onChange(of: state.crisisRegion) { _, new in
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))
         }
+        .onChange(of: state.consent) { _, new in backend.syncConsent(new) }
     }
 }

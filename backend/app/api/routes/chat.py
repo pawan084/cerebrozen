@@ -7,7 +7,7 @@ from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
-from app.services import activities, ai, crisis, safety
+from app.services import activities, ai, crisis, safety, usage
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -49,6 +49,7 @@ async def send_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
     risk = await safety.scan_and_record(
         db, user_id=user.id, source="chat", source_id=None, text=payload.text
     )
@@ -56,17 +57,22 @@ async def send_message(
     db.add(user_msg)
     await db.flush()
 
-    # Build short context from recent history.
-    recent = (
-        await db.scalars(
-            select(ChatMessage)
-            .where(ChatMessage.user_id == user.id)
-            .order_by(ChatMessage.created_at.desc())
-            .limit(_HISTORY_LIMIT)
-        )
-    ).all()
-    recent = list(reversed(recent))
-    transcript = "\n".join(f"{m.role}: {m.text}" for m in recent)
+    # Build short context from recent history — but only if the user consents to
+    # AI memory. With memory off we pass just the current turn (no long-term
+    # recall), honoring the "control what CereBro remembers" promise server-side.
+    memory_on = user.consent is None or user.consent.ai_memory
+    if memory_on:
+        recent = (
+            await db.scalars(
+                select(ChatMessage)
+                .where(ChatMessage.user_id == user.id)
+                .order_by(ChatMessage.created_at.desc())
+                .limit(_HISTORY_LIMIT)
+            )
+        ).all()
+        transcript = "\n".join(f"{m.role}: {m.text}" for m in reversed(recent))
+    else:
+        transcript = f"user: {payload.text}"
 
     system = _SCIENTIFIC if user.companion == "Scientific" else _CALM_GUIDE
     reply_text = await ai.complete(system, transcript, max_tokens=200) or _fallback_reply(payload.text)

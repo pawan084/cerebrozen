@@ -30,6 +30,9 @@ class UserOut(BaseModel):
     motivations: list[str] = []
     timezone: str
     region: str = ""
+    subscription_tier: str = "free"
+    age_confirmed_at: datetime | None = None
+    ai_disclosure_ack_at: datetime | None = None
     is_admin: bool
     is_active: bool
     created_at: datetime

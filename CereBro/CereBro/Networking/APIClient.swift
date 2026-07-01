@@ -15,6 +15,19 @@ struct RemoteUser: Codable, Identifiable {
     let motivations: [String]?
     /// Effective crisis region (optional for older responses).
     let region: String?
+    /// Subscription entitlement ("free" | "premium" | "premium_human").
+    let subscription_tier: String?
+    /// Compliance attestation timestamps (ISO8601), nil until recorded.
+    let age_confirmed_at: String?
+    let ai_disclosure_ack_at: String?
+}
+
+/// Consent snapshot returned by the consent endpoints.
+struct RemoteConsent: Codable {
+    let mood_history: Bool
+    let ai_memory: Bool
+    let voice_storage: Bool
+    let model_training: Bool
 }
 
 /// One tappable conversation starter generated from the self-reflection.
@@ -238,6 +251,22 @@ actor APIClient {
     @discardableResult
     func updateRegion(_ region: String) async throws -> RemoteUser {
         try await request("/users/me", method: "PATCH", json: ["region": region])
+    }
+
+    /// Record the onboarding age (18+) + AI-disclosure acknowledgement (compliance).
+    @discardableResult
+    func attest() async throws -> RemoteUser {
+        try await request("/users/me/attest", method: "POST")
+    }
+
+    /// Sync the user's privacy/consent choices to the server (enforced in the
+    /// chat/oracle pipeline — e.g. AI memory off drops long-term recall).
+    @discardableResult
+    func updateConsent(moodHistory: Bool, aiMemory: Bool,
+                       voiceStorage: Bool, modelTraining: Bool) async throws -> RemoteConsent {
+        try await request("/users/me/consent", method: "PATCH",
+                          json: ["mood_history": moodHistory, "ai_memory": aiMemory,
+                                 "voice_storage": voiceStorage, "model_training": modelTraining])
     }
 
     /// Generate personalized, tappable conversation starters. Passing the

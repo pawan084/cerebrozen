@@ -49,6 +49,24 @@ async def update_me(
     return user
 
 
+@router.post("/me/attest", response_model=UserOut)
+async def attest(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record the compliance attestations from onboarding: 18+ age confirmation
+    and acknowledgement of the AI disclosure. Idempotent — stamps the first time
+    each is confirmed and leaves earlier timestamps untouched."""
+    now = utcnow()
+    if user.age_confirmed_at is None:
+        user.age_confirmed_at = now
+    if user.ai_disclosure_ack_at is None:
+        user.ai_disclosure_ack_at = now
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 @router.get("/me/consent", response_model=ConsentSchema)
 async def get_consent(user: User = Depends(get_current_user)):
     return user.consent or Consent()

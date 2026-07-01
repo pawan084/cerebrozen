@@ -35,8 +35,13 @@ final class BackendService: ObservableObject {
     /// (re)applied to the server profile on connect — drives locale-correct
     /// hotlines in server-side crisis replies.
     private var effectiveRegion = ""
+    /// Latest local consent, cached so it can be pushed on connect.
+    private var pendingConsent: Consent?
 
     var isConnected: Bool { if case .connected = status { return true } else { return false } }
+    /// Subscription entitlement from the server profile.
+    var subscriptionTier: String { user?.subscription_tier ?? "free" }
+    var isPremium: Bool { ["premium", "premium_human"].contains(subscriptionTier) }
 
     init() {
         Task { await bootstrap() }
@@ -102,6 +107,10 @@ final class BackendService: ObservableObject {
         if !effectiveRegion.isEmpty {
             _ = try? await APIClient.shared.updateRegion(effectiveRegion)
         }
+        // Compliance: the user passed onboarding's age + AI-disclosure gates
+        // before reaching a connected state, so record the attestation.
+        _ = try? await APIClient.shared.attest()
+        if let c = pendingConsent { await pushConsent(c) }
     }
 
     /// Push the user's effective crisis region to the server profile so crisis
@@ -110,6 +119,20 @@ final class BackendService: ObservableObject {
         effectiveRegion = region
         guard isConnected, !region.isEmpty else { return }
         Task { _ = try? await APIClient.shared.updateRegion(region) }
+    }
+
+    /// Sync privacy/consent choices to the server (enforced in the chat pipeline).
+    /// Cached and re-applied on connect.
+    func syncConsent(_ consent: Consent) {
+        pendingConsent = consent
+        guard isConnected else { return }
+        Task { await pushConsent(consent) }
+    }
+
+    private func pushConsent(_ c: Consent) async {
+        _ = try? await APIClient.shared.updateConsent(
+            moodHistory: c.moodHistory, aiMemory: c.aiMemory,
+            voiceStorage: c.voiceStorage, modelTraining: c.modelTraining)
     }
 
     /// Sign in with Apple — exchange the identity token, then connect.

@@ -141,7 +141,8 @@ async def google_sign_in(
 
 
 @router.post("/refresh", response_model=TokenPair)
-async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
     data = decode_token(payload.refresh_token, expected_type=REFRESH)
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")

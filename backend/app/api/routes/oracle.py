@@ -21,15 +21,16 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.context import current_db, current_user_id, emitted_widgets
 from app.agent.graph import get_graph
 from app.core.config import settings
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.user import User
-from app.services import crisis, safety
+from app.services import crisis, safety, usage
 
 router = APIRouter(prefix="/oracle", tags=["oracle"])
 
@@ -109,9 +110,14 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
 
 
 @router.post("/messages")
-async def messages(payload: OracleSend, user: User = Depends(get_current_user)):
+async def messages(
+    payload: OracleSend,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.oracle_available or get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
+    await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
     thread_id = payload.thread_id or str(user.id)
     gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id,
                persist_user=payload.text, region=user.region)

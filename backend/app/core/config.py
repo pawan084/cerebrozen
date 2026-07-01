@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # Off by default; the deterministic /chat router is the always-on fallback.
     oracle_enabled: bool = False
 
+    # Free-tier server-side quota: messages/day before a paywall (429). Premium
+    # tiers are unlimited. Enforced in /chat and /oracle.
+    free_daily_messages: int = 50
+
     # Voice (Deepgram = speech-to-text, ElevenLabs = text-to-speech). Leave the
     # keys blank to disable the matching half of the voice loop.
     deepgram_api_key: str = ""

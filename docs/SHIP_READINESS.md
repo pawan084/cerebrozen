@@ -89,6 +89,40 @@ credibility**, not engineering.
 - AI interaction (voice + agentic Oracle + inline activities) at/above category leaders.
 - Safety & compliance: persistent AI disclosure, voice+text crisis detection,
   locale-aware crisis resources + region picker, account deletion/export, consent gating.
-- **Verified end-to-end live:** backend (87 pytest, 85% cov) + iOS cloud tests
+- **Verified end-to-end live:** backend (102 pytest) + iOS cloud tests
   (auth, chat, agentic plan, LLM-generated starters) pass against the running stack;
   full iOS UI suite green.
+
+## 7. World-class flow-review implementation (Tiers 0–3)
+
+A 5-reviewer deep flow review drove a 4-tier upgrade. **Tiers 0–2 are complete
+and verified; Tier 3 is landed for everything buildable without external accounts.**
+
+- **Tier 0 — safety & data loss (done):** locale-aware crisis on `/chat` + Oracle
+  stream (no more hardcoded India); crisis surfaces on the primary chat path;
+  journal entries persist their real body + timestamp.
+- **Tier 1 — real & personal (done):** time-of-day + goal-aware Home with one clear
+  next action; honest streak (no fake seed); real sleep player; entry-derived
+  journal reflection; signed-out chat gets on-device replies.
+- **Tier 2 — depth & retention (done):** streak grace-day + milestones; live sleep
+  timer + volume + lock-screen transport; daily local-notification reminder; journal
+  search + rotating prompts + emotion tags; multi-turn voice capture + interruption
+  handling.
+- **Tier 3 — business & compliance (partial):** DONE = server-side free-tier quota
+  on `/chat` + `/oracle` (429), consent enforcement (AI-memory off drops long-term
+  recall), age + AI-disclosure attestation logging, `/auth/refresh` rate limit,
+  StoreKit 2 scaffold (graceful "coming soon" until products exist), and iOS
+  compliance/consent sync on connect.
+
+### Tier 3 — remaining, gated on YOUR external setup
+- **StoreKit / revenue:** create the subscription products in App Store Connect
+  (`com.cerebro.premium.monthly`, `com.cerebro.premiumhuman.monthly`) and add
+  **server-side receipt validation** (App Store Server API / Server Notifications)
+  to set `users.subscription_tier` authoritatively — the client currently gates UI
+  only; the server keeps everyone `free` until verified billing is wired.
+- **Auth hardening (needs infra):** email verification + password reset (require an
+  SMTP/email provider), account lockout on repeated failed logins, and refresh-token
+  revocation (JTI blocklist) on sign-out.
+- **Crisis escalation:** persist a consented trusted contact server-side + a real
+  notify path, and operational alerting on the admin safety queue (currently
+  pull-only). Trusted-contact UI is still a stub.

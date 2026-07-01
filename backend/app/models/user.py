@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +36,14 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Subscription entitlement ("free" | "premium" | "premium_human"). Set by the
+    # StoreKit receipt/entitlement flow; gates server-side usage quotas.
+    subscription_tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free")
+
+    # Compliance: when the user attested 18+ and acknowledged the AI disclosure.
+    age_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_disclosure_ack_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     consent: Mapped["Consent"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan", lazy="selectin"
