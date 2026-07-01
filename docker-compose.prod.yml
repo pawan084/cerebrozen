@@ -33,8 +33,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:8000:8000"   # behind your TLS reverse proxy
+    # No host port: reached only over the internal network by Caddy (api:8000).
+    expose:
+      - "8000"
     restart: unless-stopped
 
   web:
@@ -42,9 +43,9 @@ services:
       context: ./apps/web
       args:
         # Public HTTPS URL of the API, inlined into the client bundle at build.
-        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-http://localhost:8000}"
-    ports:
-      - "127.0.0.1:3000:3000"
+        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-https://api.cerebrozen.in}"
+    expose:
+      - "3000"
     depends_on:
       - api
     restart: unless-stopped
@@ -53,12 +54,31 @@ services:
     build:
       context: ./apps/admin
       args:
-        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-http://localhost:8000}"
-    ports:
-      - "127.0.0.1:3001:3001"
+        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-https://api.cerebrozen.in}"
+    expose:
+      - "3001"
     depends_on:
+      - api
+    restart: unless-stopped
+
+  # TLS-terminating reverse proxy. Auto-provisions Let's Encrypt certs for the
+  # domains in deploy/Caddyfile. The only service that binds public ports.
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - admin
       - api
     restart: unless-stopped
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

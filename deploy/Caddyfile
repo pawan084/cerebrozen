@@ -1,0 +1,28 @@
+# CereBrozen reverse proxy + automatic HTTPS (Let's Encrypt).
+# Caddy provisions and renews TLS certs automatically for every domain below,
+# as long as ports 80/443 are open and DNS points here (194.163.182.1).
+
+{
+	email admin@cerebrozen.in
+}
+
+# Landing site (Next.js)
+cerebrozen.in, www.cerebrozen.in {
+	encode gzip zstd
+	reverse_proxy web:3000
+}
+
+# Admin dashboard (Next.js)
+admin.cerebrozen.in {
+	encode gzip zstd
+	reverse_proxy admin:3001
+}
+
+# API (FastAPI)
+api.cerebrozen.in {
+	encode gzip zstd
+	reverse_proxy api:8000
+}
+
+# mcp.cerebrozen.in is reserved (DNS points here) for a future MCP server.
+# Add a block here once that service exists.

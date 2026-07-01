@@ -136,7 +136,13 @@ actor APIClient {
 
     private static let tokenKey = "cerebro_access_token"
     private static let baseKey = "cerebro_api_url"
+    // Release builds hit production by default; Debug uses the local backend
+    // (override either at runtime via the Server URL field in DEBUG).
+    #if DEBUG
     static let defaultBaseURL = "http://localhost:8000"
+    #else
+    static let defaultBaseURL = "https://api.cerebrozen.in"
+    #endif
 
     init() {
         let defaults = UserDefaults.standard
