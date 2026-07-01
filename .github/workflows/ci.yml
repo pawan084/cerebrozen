@@ -50,9 +50,9 @@ jobs:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         # Enforce a coverage floor so the suite can't silently regress. The
-        # hermetic run sits at ~84%; the gate is set below that with headroom.
-        # (prestart.py / seed.py are excluded via backend/.coveragerc.)
-        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=82
+        # hermetic run sits at ~97%; the gate is set below that with headroom.
+        # (prestart/seed + the LangGraph LLM agent are excluded via .coveragerc.)
+        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=95
 
   # ── Web + Admin: Playwright e2e (isolated docker stack) ───────────────
   e2e:

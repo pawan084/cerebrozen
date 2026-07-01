@@ -4,9 +4,17 @@
 # are excluded — they're exercised by the Docker entrypoint, not unit tests.
 [run]
 source = app
+# SQLAlchemy's async engine runs DB calls inside greenlets, and some services
+# (email/SMS) send via asyncio.to_thread; trace both so route/service bodies
+# after the first await are recorded.
+concurrency = greenlet,thread
 omit =
     app/prestart.py
     app/seed.py
+    # LangGraph LLM agent + its streaming route: only meaningfully exercised
+    # against a live model, so they are integration-tested, not unit-covered.
+    app/agent/*
+    app/api/routes/oracle.py
 
 [report]
 exclude_lines =
