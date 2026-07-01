@@ -22,7 +22,7 @@ from app.core.database import utcnow
 from app.models.safety import SafetyEvent
 from app.models.trusted_contact import TrustedContact
 from app.models.user import User
-from app.services import email
+from app.services import email, sms
 
 logger = logging.getLogger("cerebro.escalation")
 
@@ -53,9 +53,8 @@ async def on_crisis(db: AsyncSession, *, user_id: uuid.UUID, event: SafetyEvent)
     )
     if contact.method == "email":
         await email.send_email(contact.value, "A wellbeing check-in from CereBro", body)
-    else:
-        # SMS/phone delivery would go through an SMS provider; log until configured.
-        logger.info("Would notify trusted contact via %s (%s): %s", contact.method, contact.value, body)
+    else:  # sms | phone
+        await sms.send_sms(contact.value, body)
 
     event.escalated = True
     event.escalated_at = utcnow()

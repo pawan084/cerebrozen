@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.models.safety import SafetyEvent
 from app.services import email as email_service
+from app.services import sms as sms_service
 
 
 async def _crisis_message(client):
@@ -46,6 +47,17 @@ async def test_crisis_escalates_to_consented_contact(auth_client):
     async with SessionLocal() as s:
         events = (await s.scalars(select(SafetyEvent).where(SafetyEvent.risk_level == "crisis"))).all()
     assert any(e.escalated for e in events)
+
+
+async def test_crisis_notifies_sms_contact(auth_client):
+    await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Pat", "method": "sms", "value": "+15550001111",
+        "relationship": "Parent", "notify_consent": True})
+    sms_service.sent_outbox.clear()
+
+    r = await _crisis_message(auth_client)
+    assert r.status_code == 201
+    assert any(m["to"] == "+15550001111" for m in sms_service.sent_outbox)
 
 
 async def test_crisis_without_consent_does_not_notify(auth_client):

@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     # Operational alert inbox for crisis safety events (empty = log only).
     ops_alert_email: str = ""
 
+    # SMS (Twilio) for trusted-contact phone delivery. Empty SID = log only.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from: str = ""
+
     # Seed
     seed_demo_data: bool = True
     admin_email: str = "admin@cerebro.app"
