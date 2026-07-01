@@ -1,0 +1,68 @@
+{
+  "identifier" : "CEREBRO_PRODUCTS",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_developerTeamID" : "",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "CEREBRO_PREMIUM_GROUP",
+      "localizations" : [],
+      "name" : "CereBro Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "CEREBRO_PREMIUM_MONTHLY",
+          "introductoryOffer" : {
+            "internalID" : "CEREBRO_PREMIUM_TRIAL",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Sleep library, downloads, and unlimited voice support.",
+              "displayName" : "CereBro Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.cerebro.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "CereBro Premium Monthly",
+          "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "14.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "CEREBRO_PREMIUMHUMAN_MONTHLY",
+          "localizations" : [
+            {
+              "description" : "Everything in Premium, plus coach & therapist booking.",
+              "displayName" : "CereBro Premium + Human",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.cerebro.premiumhuman.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "CereBro Premium + Human Monthly",
+          "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

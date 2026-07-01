@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # tiers are unlimited. Enforced in /chat and /oracle.
     free_daily_messages: int = 50
 
+    # StoreKit 2 server-side receipt validation. Path to Apple's Root CA (G3) PEM.
+    # When set, the transaction cert chain is pinned to it; empty = verify the
+    # chain internally but skip pinning (dev). Bundle-id the transactions must match.
+    appstore_root_cert_path: str = ""
+    appstore_bundle_id: str = "com.cerebro.app"
+
     # Voice (Deepgram = speech-to-text, ElevenLabs = text-to-speech). Leave the
     # keys blank to disable the matching half of the voice loop.
     deepgram_api_key: str = ""

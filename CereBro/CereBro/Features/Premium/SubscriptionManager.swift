@@ -19,6 +19,9 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var entitledTier = "free"
     @Published private(set) var available = false
     @Published var message: String?
+    /// The most recent verified transaction's JWS — forwarded to the backend for
+    /// authoritative, server-side entitlement.
+    @Published private(set) var latestJWS: String?
 
     var isPremium: Bool { entitledTier != "free" }
 
@@ -38,6 +41,7 @@ final class SubscriptionManager: ObservableObject {
             switch try await product.purchase() {
             case let .success(verification):
                 if case let .verified(transaction) = verification {
+                    latestJWS = verification.jwsRepresentation
                     await transaction.finish()
                     await refreshEntitlements()
                     message = "You're Premium — thank you."
@@ -62,6 +66,7 @@ final class SubscriptionManager: ObservableObject {
         var tier = "free"
         for await result in Transaction.currentEntitlements {
             guard case let .verified(t) = result else { continue }
+            latestJWS = result.jwsRepresentation      // for server-side re-verification
             if t.productID.contains("premiumhuman") { tier = "premium_human" }
             else if t.productID.contains("premium") { tier = "premium" }
         }

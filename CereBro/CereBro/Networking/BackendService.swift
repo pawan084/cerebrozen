@@ -135,6 +135,15 @@ final class BackendService: ObservableObject {
             voiceStorage: c.voiceStorage, modelTraining: c.modelTraining)
     }
 
+    /// Send a StoreKit signed transaction for server-side verification; the
+    /// returned profile carries the authoritative subscription tier.
+    func verifySubscription(_ signedTransaction: String) async {
+        guard isConnected else { return }
+        if let updated = try? await APIClient.shared.verifySubscription(signedTransaction) {
+            user = updated
+        }
+    }
+
     /// Sign in with Apple — exchange the identity token, then connect.
     func signInWithApple(identityToken: String, name: String) async {
         status = .connecting

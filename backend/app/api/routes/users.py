@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,9 +24,11 @@ from app.schemas.user import (
     ConsentSchema,
     ConsentUpdate,
     PushTokenUpdate,
+    SubscriptionVerify,
     UserOut,
     UserUpdate,
 )
+from app.services import appstore
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -62,6 +64,29 @@ async def attest(
         user.age_confirmed_at = now
     if user.ai_disclosure_ack_at is None:
         user.ai_disclosure_ack_at = now
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/me/subscription/verify", response_model=UserOut)
+async def verify_subscription(
+    payload: SubscriptionVerify,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a StoreKit 2 signed transaction and set the authoritative tier.
+
+    The server — not the client — decides entitlement: a bad/expired/revoked
+    receipt resolves to ``free``. This is what unlocks the usage quota.
+    """
+    try:
+        payload_data = appstore.verify_transaction(payload.signed_transaction)
+    except appstore.ReceiptError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid receipt: {exc}")
+    tier, expires = appstore.tier_for(payload_data)
+    user.subscription_tier = tier
+    user.subscription_expires_at = expires
     await db.commit()
     await db.refresh(user)
     return user

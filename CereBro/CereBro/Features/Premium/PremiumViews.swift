@@ -17,14 +17,14 @@ struct PremiumView: View {
             if store.available {
                 // Real StoreKit products (App Store Connect configured).
                 ForEach(store.products, id: \.id) { product in
-                    Button { Task { await store.purchase(product) } } label: {
+                    Button { Task { await store.purchase(product); await syncEntitlement() } } label: {
                         StoreProductCard(product: product)
                     }
                     .buttonStyle(.pressable)
                     .disabled(store.isPremium)
                 }
                 SecondaryButton(title: "Restore purchases", systemImage: "arrow.clockwise") {
-                    Task { await store.restore() }
+                    Task { await store.restore(); await syncEntitlement() }
                 }
             } else {
                 // Graceful fallback until in-app purchases are set up.
@@ -41,7 +41,13 @@ struct PremiumView: View {
 
             NavRow(title: "Human support option", subtitle: "Partner booking flow", systemImage: "person.2", imageURL: Dummy.Img.support) { HumanSupportView() }
         }
-        .task { await store.load() }
+        .task { await store.load(); await syncEntitlement() }
+    }
+
+    /// Forward the verified transaction to the backend so the server sets the
+    /// authoritative tier (which unlocks the usage quota).
+    private func syncEntitlement() async {
+        if let jws = store.latestJWS { await backend.verifySubscription(jws) }
     }
 }
 

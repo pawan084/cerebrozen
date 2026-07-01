@@ -259,6 +259,14 @@ actor APIClient {
         try await request("/users/me/attest", method: "POST")
     }
 
+    /// Verify a StoreKit 2 signed transaction server-side; the server sets the
+    /// authoritative subscription tier and returns the updated profile.
+    @discardableResult
+    func verifySubscription(_ signedTransaction: String) async throws -> RemoteUser {
+        try await request("/users/me/subscription/verify", method: "POST",
+                          json: ["signed_transaction": signedTransaction])
+    }
+
     /// Sync the user's privacy/consent choices to the server (enforced in the
     /// chat/oracle pipeline — e.g. AI memory off drops long-term recall).
     @discardableResult

@@ -40,6 +40,8 @@ class User(Base):
     # Subscription entitlement ("free" | "premium" | "premium_human"). Set by the
     # StoreKit receipt/entitlement flow; gates server-side usage quotas.
     subscription_tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free")
+    # When the current subscription lapses (from the verified transaction).
+    subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Compliance: when the user attested 18+ and acknowledged the AI disclosure.
     age_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

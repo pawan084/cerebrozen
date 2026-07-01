@@ -31,6 +31,7 @@ class UserOut(BaseModel):
     timezone: str
     region: str = ""
     subscription_tier: str = "free"
+    subscription_expires_at: datetime | None = None
     age_confirmed_at: datetime | None = None
     ai_disclosure_ack_at: datetime | None = None
     is_admin: bool
@@ -51,3 +52,8 @@ class UserUpdate(BaseModel):
 
 class PushTokenUpdate(BaseModel):
     push_token: str
+
+
+class SubscriptionVerify(BaseModel):
+    """A StoreKit 2 signed transaction JWS to verify server-side."""
+    signed_transaction: str
