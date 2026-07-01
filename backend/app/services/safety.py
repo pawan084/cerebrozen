@@ -23,13 +23,8 @@ _ELEVATED_TERMS = [
     "unbearable", "can't cope", "cant cope", "panic attack",
 ]
 
-CRISIS_RESOURCES = {
-    "message": "If you're in immediate danger, please reach out now — you deserve support.",
-    "lines": [
-        {"name": "Emergency services (India)", "number": "112"},
-        {"name": "KIRAN mental health helpline", "number": "1800-599-0019"},
-    ],
-}
+# Region-correct crisis hotlines live in ``app.services.crisis`` (a mirror of the
+# iOS CrisisDirectory). Import from there rather than hardcoding a country here.
 
 _SYSTEM = (
     "You are a careful safety classifier for a mental-wellness app. "

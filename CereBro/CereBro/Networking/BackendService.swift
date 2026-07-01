@@ -31,6 +31,10 @@ final class BackendService: ObservableObject {
     @Published private(set) var streamingWidget: RemoteWidget?
     @Published private(set) var pendingConfirm: OracleConfirm?
     private var oracleThread: String { "ios-" + (user?.id ?? "anon") }
+    /// Effective crisis region (override or device locale) cached so it can be
+    /// (re)applied to the server profile on connect — drives locale-correct
+    /// hotlines in server-side crisis replies.
+    private var effectiveRegion = ""
 
     var isConnected: Bool { if case .connected = status { return true } else { return false } }
 
@@ -95,6 +99,17 @@ final class BackendService: ObservableObject {
         status = .connected(email: me.email)
         await refresh()
         oracleAvailable = await APIClient.shared.oracleStatus()
+        if !effectiveRegion.isEmpty {
+            _ = try? await APIClient.shared.updateRegion(effectiveRegion)
+        }
+    }
+
+    /// Push the user's effective crisis region to the server profile so crisis
+    /// replies surface locale-correct hotlines. Cached and re-applied on connect.
+    func syncCrisisRegion(_ region: String) {
+        effectiveRegion = region
+        guard isConnected, !region.isEmpty else { return }
+        Task { _ = try? await APIClient.shared.updateRegion(region) }
     }
 
     /// Sign in with Apple — exchange the identity token, then connect.
@@ -226,6 +241,13 @@ final class BackendService: ObservableObject {
             for try await event in oracleEventStream(request) {
                 switch event {
                 case .token(let t):       streamingText += t
+                case .crisis:
+                    // Backend safety layer flagged crisis mid-stream. Surface a
+                    // crisis suggestion so TalkView/ChatView raise the CrisisBanner
+                    // (inCrisis reads suggestions for action == "crisis").
+                    if !suggestions.contains(where: { $0.action == "crisis" }) {
+                        suggestions.append(RemoteSuggestion(label: "Get crisis support", action: "crisis"))
+                    }
                 case .widget(let w):      streamingWidget = w
                 case .toolConfirm(let c): pendingConfirm = c
                 case .awaitingConfirm:    break

@@ -32,6 +32,7 @@ struct RootView: View {
 
 struct MainTabView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var backend: BackendService
 
     var body: some View {
         TabView(selection: $state.selectedTab) {
@@ -58,5 +59,11 @@ struct MainTabView: View {
         .tint(Theme.Palette.soft)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        // Keep the server's crisis region in sync with the app's effective region
+        // (explicit override, else device locale) so AI crisis replies are correct.
+        .task { backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion)) }
+        .onChange(of: state.crisisRegion) { _, new in
+            backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))
+        }
     }
 }

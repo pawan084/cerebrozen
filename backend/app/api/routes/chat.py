@@ -7,7 +7,7 @@ from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
-from app.services import activities, ai, safety
+from app.services import activities, ai, crisis, safety
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -72,10 +72,8 @@ async def send_message(
     reply_text = await ai.complete(system, transcript, max_tokens=200) or _fallback_reply(payload.text)
 
     if risk == "crisis":
-        reply_text = (
-            f"{reply_text}\n\nI'm really glad you told me. If you're in danger, please contact "
-            "emergency services (112) or the KIRAN helpline (1800-599-0019) right now."
-        )
+        # Locale-correct hotlines for the user's region (never a hardcoded country).
+        reply_text = f"{reply_text}{crisis.reply_suffix(user.region)}"
 
     reply = ChatMessage(user_id=user.id, role="assistant", text=reply_text)
     db.add(reply)

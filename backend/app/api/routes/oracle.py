@@ -2,6 +2,7 @@
 
 SSE frames (each `data:` line is a JSON object with a `type`):
   token          {"type":"token","text":"…"}          incremental assistant text
+  crisis         {"type":"crisis","resources":{…}}     region-aware crisis hotlines
   widget         {"type":"widget","widget":{…}}        inline activity to render
   tool_confirm   {"type":"tool_confirm","tool":…,"summary":…,"thread_id":…}
   awaiting_confirm                                       stream paused for approval
@@ -28,7 +29,7 @@ from app.core.database import SessionLocal
 from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.user import User
-from app.services import safety
+from app.services import crisis, safety
 
 router = APIRouter(prefix="/oracle", tags=["oracle"])
 
@@ -52,7 +53,8 @@ async def status(user: User = Depends(get_current_user)):
     return {"available": settings.oracle_available}
 
 
-async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: str | None):
+async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: str | None,
+               region: str = ""):
     """Stream the graph run as SSE, managing request-scoped context + persistence."""
     graph = get_graph()
     config = {"configurable": {"thread_id": thread_id}}
@@ -67,6 +69,10 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
                     db, user_id=user_id, source="chat", source_id=None, text=persist_user)
                 db.add(ChatMessage(user_id=user_id, role="user", text=persist_user, risk_level=risk))
                 await db.commit()
+                # Surface crisis prominently on the streaming path too, so the client
+                # can raise its CrisisBanner (not a cheerful "suggested activity").
+                if risk == "crisis":
+                    yield _sse({"type": "crisis", "resources": crisis.resources_for(region)})
 
             parts: list[str] = []
             async for mode, chunk in graph.astream(graph_input, config, stream_mode=["messages", "updates"]):
@@ -107,7 +113,8 @@ async def messages(payload: OracleSend, user: User = Depends(get_current_user)):
     if not settings.oracle_available or get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     thread_id = payload.thread_id or str(user.id)
-    gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id, persist_user=payload.text)
+    gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id,
+               persist_user=payload.text, region=user.region)
     return StreamingResponse(gen, media_type="text/event-stream")
 
 

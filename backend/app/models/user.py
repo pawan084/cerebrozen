@@ -26,6 +26,9 @@ class User(Base):
     # Self-reflection assessment: psychological drivers (category-level).
     motivations: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
     timezone: Mapped[str] = mapped_column(String(60), default="Asia/Kolkata")
+    # Effective crisis region (ISO code, e.g. "US"); "" = automatic/unknown.
+    # Drives locale-correct hotlines in AI crisis replies (see services/crisis).
+    region: Mapped[str] = mapped_column(String(8), default="", server_default="")
 
     # Proactive: device push token (APNs/FCM).
     push_token: Mapped[str | None] = mapped_column(String(512), nullable=True)

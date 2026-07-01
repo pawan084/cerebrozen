@@ -3,6 +3,7 @@ import Foundation
 /// One decoded frame from the Oracle SSE stream (`/oracle/messages`, `/oracle/confirm`).
 enum OracleEvent {
     case token(String)            // incremental assistant text
+    case crisis                   // safety layer flagged crisis — raise the banner
     case widget(RemoteWidget)     // inline activity to render
     case toolConfirm(OracleConfirm)
     case awaitingConfirm
@@ -38,6 +39,8 @@ func oracleEventStream(_ request: URLRequest) -> AsyncThrowingStream<OracleEvent
                     switch type {
                     case "token":
                         if let t = obj["text"] as? String { continuation.yield(.token(t)) }
+                    case "crisis":
+                        continuation.yield(.crisis)
                     case "widget":
                         if let w = obj["widget"] as? [String: Any],
                            let kind = w["widget_kind"] as? String,

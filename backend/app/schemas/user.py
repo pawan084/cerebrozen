@@ -29,6 +29,7 @@ class UserOut(BaseModel):
     goals: list[str]
     motivations: list[str] = []
     timezone: str
+    region: str = ""
     is_admin: bool
     is_active: bool
     created_at: datetime
@@ -42,6 +43,7 @@ class UserUpdate(BaseModel):
     goals: list[str] | None = None
     motivations: list[str] | None = None
     timezone: str | None = None
+    region: str | None = None
 
 
 class PushTokenUpdate(BaseModel):

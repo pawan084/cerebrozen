@@ -13,6 +13,8 @@ struct RemoteUser: Codable, Identifiable {
     let goals: [String]
     /// Self-reflection assessment drivers (optional for older responses).
     let motivations: [String]?
+    /// Effective crisis region (optional for older responses).
+    let region: String?
 }
 
 /// One tappable conversation starter generated from the self-reflection.
@@ -229,6 +231,13 @@ actor APIClient {
     func updateProfile(goals: [String], motivations: [String]) async throws -> RemoteUser {
         try await request("/users/me", method: "PATCH",
                           json: ["goals": goals, "motivations": motivations])
+    }
+
+    /// Persist the user's effective crisis region (drives locale-correct hotlines
+    /// in server-side crisis replies).
+    @discardableResult
+    func updateRegion(_ region: String) async throws -> RemoteUser {
+        try await request("/users/me", method: "PATCH", json: ["region": region])
     }
 
     /// Generate personalized, tappable conversation starters. Passing the

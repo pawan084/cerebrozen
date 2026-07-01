@@ -96,7 +96,8 @@ struct JournalEntryView: View {
         guard !trimmed.isEmpty else { return }
         let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
         let title = String(firstLine.prefix(42))
-        let entry = JournalEntry(title: title, tags: Array(tags), date: "Today", symbol: "book", imageURL: Dummy.Img.write)
+        let entry = JournalEntry(title: title, tags: Array(tags), date: "Today", symbol: "book",
+                                 imageURL: Dummy.Img.write, body: trimmed)
         state.journalEntries.insert(entry, at: 0)
         state.recordActivity()
         backend.mirrorJournal(entry, body: trimmed)
@@ -119,6 +120,41 @@ struct JournalInsightView: View {
     }
 }
 
+// MARK: - Journal detail (reopen a real entry)
+/// Shows the actual written text of a saved entry — not a placeholder. Older
+/// entries saved before bodies were persisted fall back to the AI reflection.
+struct JournalDetailView: View {
+    let entry: JournalEntry
+    private var dateLine: String {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .short
+        return f.string(from: entry.createdAt)
+    }
+    var body: some View {
+        ScreenScaffold(eyebrow: dateLine, title: entry.title, trailingSystemImage: "book") {
+            if !entry.tags.isEmpty {
+                Text(entry.tags.map { "#\($0)" }.joined(separator: "  "))
+                    .appFont(12, weight: .heavy).foregroundStyle(Theme.Palette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if entry.body.isEmpty {
+                InsightCard(label: "Reflection", title: "This entry was saved before text was kept on-device.",
+                            detail: "New entries now store your full writing here.")
+            } else {
+                Card(cornerRadius: 18) {
+                    Text(entry.body)
+                        .appFont(14).foregroundStyle(Theme.Palette.soft)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .textSelection(.enabled)
+                }
+            }
+            NavRow(title: "See AI reflection", subtitle: "Emotional themes in this entry",
+                   systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) { JournalInsightView() }
+            NavRow(title: "Talk this through", subtitle: "Discuss with your companion",
+                   systemImage: "mic", imageURL: Dummy.Img.voice) { ChatView() }
+        }
+    }
+}
+
 // MARK: - Journal history
 struct JournalHistoryView: View {
     @EnvironmentObject var state: AppState
@@ -127,7 +163,7 @@ struct JournalHistoryView: View {
             ForEach(state.journalEntries) { e in
                 NavRow(title: e.title,
                        subtitle: e.tags.isEmpty ? e.date : "\(e.tags.joined(separator: " · ")) · \(e.date)",
-                       systemImage: e.symbol, imageURL: e.imageURL) { JournalInsightView() }
+                       systemImage: e.symbol, imageURL: e.imageURL) { JournalDetailView(entry: e) }
             }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
         }
