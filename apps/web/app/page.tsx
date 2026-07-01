@@ -76,7 +76,7 @@ export default function Home() {
           <div className="hero-device">
             <div className="orb-glow" />
             <div className="phone phone-float">
-              <img src="/screens/home.png" alt="CereBro Home screen" width={640} height={1391} />
+              <img src="/screens/home.webp" alt="CereBro Home screen" width={640} height={1391} />
             </div>
           </div>
         </div>
@@ -133,11 +133,11 @@ export default function Home() {
           </div>
           <div className="showcase reveal">
             <figure className="shot">
-              <div className="phone"><img src="/screens/sleep-player.png" alt="CereBro sleep player" loading="lazy" width={640} height={1391} /></div>
+              <div className="phone"><img src="/screens/sleep-player.webp" alt="CereBro sleep player" loading="lazy" width={640} height={1391} /></div>
               <figcaption>Layered soundscapes with a sleep-safe timer</figcaption>
             </figure>
             <figure className="shot shot-raise">
-              <div className="phone"><img src="/screens/journal-entry.png" alt="CereBro journal" loading="lazy" width={640} height={1391} /></div>
+              <div className="phone"><img src="/screens/journal-entry.webp" alt="CereBro journal" loading="lazy" width={640} height={1391} /></div>
               <figcaption>A private journal with gentle daily prompts</figcaption>
             </figure>
           </div>
