@@ -5,7 +5,7 @@ import SwiftUI
 // MARK: - Soundscape kinds
 /// The sleep/meditation catalogue is procedurally synthesized on-device — no
 /// bundled audio files or network needed — so playback is genuinely real.
-enum SoundscapeKind {
+enum SoundscapeKind: Equatable {
     case rain, ocean, wind, meditation, ambient
 
     static func from(_ item: ContentItem) -> SoundscapeKind {
@@ -71,6 +71,53 @@ private final class Synth {
     }
 }
 
+// MARK: - Mixer (sums layered synth voices on the render thread)
+/// A fixed set of ambient layers, each an independent `Synth` at its own volume,
+/// so the user can blend e.g. rain + wind + a soft drone. Target volumes are
+/// written from the main thread; the render thread reads a click-free smoothed
+/// value. Volumes live in a raw buffer (not a Swift array) so there's no
+/// reallocation to race with the audio callback.
+private final class Mixer {
+    let kinds: [SoundscapeKind]
+    private let synths: [Synth]
+    private let target: UnsafeMutablePointer<Float>    // set by main thread
+    private let current: UnsafeMutablePointer<Float>   // smoothed, render thread only
+    var count: Int { kinds.count }
+
+    var sampleRate: Float = 44_100 { didSet { synths.forEach { $0.sampleRate = sampleRate } } }
+
+    init(kinds: [SoundscapeKind]) {
+        self.kinds = kinds
+        self.synths = kinds.map { let s = Synth(); s.kind = $0; return s }
+        target = .allocate(capacity: kinds.count); target.initialize(repeating: 0, count: kinds.count)
+        current = .allocate(capacity: kinds.count); current.initialize(repeating: 0, count: kinds.count)
+    }
+    deinit { target.deallocate(); current.deallocate() }
+
+    func setVolume(_ v: Float, at index: Int) {
+        guard index >= 0 && index < count else { return }
+        target[index] = max(0, min(1, v))
+    }
+    func volume(at index: Int) -> Float { (index >= 0 && index < count) ? target[index] : 0 }
+
+    @inline(__always) func next() -> Float {
+        var sum: Float = 0
+        for i in 0..<count {
+            current[i] += (target[i] - current[i]) * 0.0006   // ~ms ramp, click-free
+            sum += synths[i].next() * current[i]
+        }
+        return sum
+    }
+}
+
+/// One selectable ambient layer surfaced in the mix UI.
+struct SoundLayer: Identifiable {
+    let id: Int
+    let name: String
+    let symbol: String
+    var volume: Float
+}
+
 // MARK: - Player
 @MainActor
 final class SoundscapePlayer: ObservableObject {
@@ -93,17 +140,50 @@ final class SoundscapePlayer: ObservableObject {
     }
 
     private let engine = AVAudioEngine()
-    private let synth = Synth()
+    private let mixer = Mixer(kinds: SoundscapePlayer.layerKinds)
     private var source: AVAudioSourceNode?
     private var fadeTimer: Timer?
     private var sleepTimer: Timer?
     private var remoteConfigured = false
     private var nowPlayingTitle = "Soundscape"
 
+    /// Mixable ambient layers (surfaced in the player's Mix section).
+    static let layerKinds: [SoundscapeKind] = [.rain, .ocean, .wind, .meditation]
+    private static let layerMeta: [(String, String)] = [
+        ("Rain", "cloud.rain"), ("Ocean", "water.waves"), ("Wind", "wind"), ("Drone", "waveform.path"),
+    ]
+    /// Per-layer state for the UI (name, symbol, current volume).
+    @Published private(set) var layers: [SoundLayer] = []
+
     func configure(for item: ContentItem) {
-        synth.kind = SoundscapeKind.from(item)
         nowPlayingTitle = item.title
+        // Start with the layer matching the item at full, the rest silent.
+        let primary = SoundscapeKind.from(item)
+        for i in 0..<mixer.count {
+            mixer.setVolume(mixer.kinds[i] == primary ? 1 : 0, at: i)
+        }
+        if !mixer.kinds.contains(primary) { mixer.setVolume(1, at: 0) }   // fall back to rain
+        syncLayers()
         setupRemoteCommands()
+    }
+
+    // MARK: Mix (layer volumes)
+
+    func setLayerVolume(_ v: Float, at index: Int) {
+        mixer.setVolume(v, at: index)
+        if index >= 0 && index < layers.count { layers[index].volume = max(0, min(1, v)) }
+    }
+
+    func toggleLayer(_ index: Int) {
+        let on = mixer.volume(at: index) > 0.02
+        setLayerVolume(on ? 0 : 0.7, at: index)
+        Haptics.selection()
+    }
+
+    private func syncLayers() {
+        layers = (0..<mixer.count).map { i in
+            SoundLayer(id: i, name: Self.layerMeta[i].0, symbol: Self.layerMeta[i].1, volume: mixer.volume(at: i))
+        }
     }
 
     func toggle() { isPlaying ? pause() : play() }
@@ -218,11 +298,11 @@ final class SoundscapePlayer: ObservableObject {
     private func buildSourceNode() {
         let sr = engine.outputNode.outputFormat(forBus: 0).sampleRate
         let format = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 1)!
-        synth.sampleRate = Float(sr)
-        let node = AVAudioSourceNode { [synth] _, _, frameCount, ablPointer -> OSStatus in
+        mixer.sampleRate = Float(sr)
+        let node = AVAudioSourceNode { [mixer] _, _, frameCount, ablPointer -> OSStatus in
             let abl = UnsafeMutableAudioBufferListPointer(ablPointer)
             for frame in 0..<Int(frameCount) {
-                let sample = synth.next()
+                let sample = mixer.next()
                 for buffer in abl {
                     let ptr = buffer.mData!.assumingMemoryBound(to: Float.self)
                     ptr[frame] = sample

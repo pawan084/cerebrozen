@@ -141,6 +141,8 @@ struct PlayerView: View {
 
                     volumeSlider.padding(.top, 6)
 
+                    mixSection.padding(.top, 10)
+
                     PlayerVisualizer(playing: audio.isPlaying).padding(.top, 6)
 
                     InsightCard(label: "Auto-stop timer",
@@ -272,6 +274,37 @@ struct PlayerView: View {
             .accessibilityLabel(audio.sleepTimerMinutes.map { "Sleep timer, \($0) minutes" } ?? "Set sleep timer")
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // Blend ambient layers (rain + ocean + wind + drone), each with its own level.
+    private var mixSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Mix").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.muted2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(audio.layers) { layer in
+                HStack(spacing: 12) {
+                    Button { audio.toggleLayer(layer.id) } label: {
+                        Image(systemName: layer.symbol)
+                            .appFont(14, weight: .semibold)
+                            .foregroundStyle(layer.volume > 0.02 ? Theme.Palette.lav : Theme.Palette.muted2)
+                            .frame(width: 40, height: 40)
+                            .background(Theme.Stroke.iconWell, in: Circle())
+                    }
+                    .buttonStyle(.pressable)
+                    .accessibilityLabel("\(layer.name), \(layer.volume > 0.02 ? "on" : "off")")
+                    Text(layer.name).appFont(12.5, weight: .semibold)
+                        .foregroundStyle(Theme.Palette.soft).frame(width: 52, alignment: .leading)
+                    Slider(value: Binding(get: { Double(layer.volume) },
+                                          set: { audio.setLayerVolume(Float($0), at: layer.id) }), in: 0...1)
+                        .tint(Theme.Accent.sleep)
+                        .accessibilityLabel("\(layer.name) level")
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.Palette.card)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.Palette.line))
     }
 
     // Master volume with speaker icons.
