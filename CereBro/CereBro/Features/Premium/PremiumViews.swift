@@ -17,7 +17,12 @@ struct PremiumView: View {
             if store.available {
                 // Real StoreKit products (App Store Connect configured).
                 ForEach(store.products, id: \.id) { product in
-                    Button { Task { await store.purchase(product); await syncEntitlement() } } label: {
+                    Button {
+                        Task {
+                            await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? ""))
+                            await syncEntitlement()
+                        }
+                    } label: {
                         StoreProductCard(product: product)
                     }
                     .buttonStyle(.pressable)

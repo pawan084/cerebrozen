@@ -36,9 +36,13 @@ final class SubscriptionManager: ObservableObject {
         await refreshEntitlements()
     }
 
-    func purchase(_ product: Product) async {
+    /// - Parameter appAccountToken: the user's id, stamped on the transaction so
+    ///   App Store Server Notifications can map lifecycle events back to the user.
+    func purchase(_ product: Product, appAccountToken: UUID? = nil) async {
         do {
-            switch try await product.purchase() {
+            var options: Set<Product.PurchaseOption> = []
+            if let token = appAccountToken { options.insert(.appAccountToken(token)) }
+            switch try await product.purchase(options: options) {
             case let .success(verification):
                 if case let .verified(transaction) = verification {
                     latestJWS = verification.jwsRepresentation

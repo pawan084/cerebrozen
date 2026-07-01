@@ -14,6 +14,7 @@ from app.api.routes import (
     users,
     voice,
     waitlist,
+    webhooks,
 )
 
 api_router = APIRouter()
@@ -30,3 +31,4 @@ api_router.include_router(oracle.router)
 api_router.include_router(voice.router)
 api_router.include_router(waitlist.router)
 api_router.include_router(admin.router)
+api_router.include_router(webhooks.router)

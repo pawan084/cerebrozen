@@ -68,10 +68,10 @@ def verify_transaction(jws: str) -> dict:
     """
     try:
         header_b64, payload_b64, sig_b64 = jws.split(".")
-    except ValueError as exc:
+        header = json.loads(_b64url(header_b64))
+    except Exception as exc:
         raise ReceiptError("Malformed JWS") from exc
 
-    header = json.loads(_b64url(header_b64))
     x5c = header.get("x5c") or []
     if len(x5c) < 2:
         raise ReceiptError("Missing certificate chain")
@@ -111,6 +111,37 @@ def verify_transaction(jws: str) -> dict:
         )
 
     return json.loads(_b64url(payload_b64))
+
+
+# Notification types that end entitlement regardless of the dates in the payload.
+_ENDING_TYPES = {"EXPIRED", "REFUND", "REVOKE", "GRACE_PERIOD_EXPIRED"}
+
+
+def verify_notification(signed_payload: str) -> dict:
+    """Verify an App Store Server Notification V2 and return a normalized dict:
+
+    ``{"notification_type", "subtype", "transaction"}`` — where ``transaction`` is
+    the verified ``signedTransactionInfo`` payload (or None). Raises
+    :class:`ReceiptError` on any signature/chain failure.
+    """
+    outer = verify_transaction(signed_payload)          # same JWS format, Apple-signed
+    data = outer.get("data") or {}
+    signed_txn = data.get("signedTransactionInfo")
+    transaction = verify_transaction(signed_txn) if signed_txn else None
+    return {
+        "notification_type": outer.get("notificationType", ""),
+        "subtype": outer.get("subtype", ""),
+        "transaction": transaction,
+    }
+
+
+def tier_from_notification(note: dict) -> tuple[str, datetime | None]:
+    """Resolve (tier, expiry) for a verified notification. Ending events force free."""
+    txn = note.get("transaction") or {}
+    if note.get("notification_type") in _ENDING_TYPES:
+        _tier, expires = tier_for(txn)
+        return "free", expires
+    return tier_for(txn)
 
 
 def tier_for(payload: dict) -> tuple[str, datetime | None]:
