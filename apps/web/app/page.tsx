@@ -1,15 +1,6 @@
 import Waitlist from "@/components/Waitlist";
 import AppStoreBadge from "@/components/AppStoreBadge";
 
-const FEATURES = [
-  { icon: "🌙", title: "Layered sleep", body: "Blend rain, ocean, wind and a soft drone — each at its own level. A sleep-safe timer fades you out on its own." },
-  { icon: "🎙️", title: "A companion that listens", body: "Talk or text with a warm guide that reflects, runs real exercises, and always points to a next step — never a diagnosis." },
-  { icon: "📖", title: "A private journal", body: "Guided prompts, emotion tags, and an optional Face ID lock. You choose what the AI can ever read." },
-  { icon: "🫧", title: "Calm in two minutes", body: "Breathing, 5-4-3-2-1 grounding, and SOS resets for the moments that spike." },
-  { icon: "🔥", title: "A streak that forgives", body: "Show up once a day. Miss one? It's forgiven. Milestones celebrate quietly — never a guilt trip." },
-  { icon: "🆘", title: "Help when it matters", body: "Locale-aware crisis lines one tap away, plus an optional trusted contact you choose to notify." },
-];
-
 const SPACES = [
   { tab: "Home", body: "One clear next step, tuned to the time of day and the goals you set." },
   { tab: "Sleep", body: "Mixable soundscapes and a sleep-safe fade-out timer for a quiet mind." },
@@ -62,53 +53,105 @@ export default function Home() {
         </div>
       </nav>
 
+      {/* Hero — copy + phone mockup */}
       <header className="hero">
-        <div className="container">
-          <div className="orb" />
-          <div className="eyebrow">Daily mental fitness</div>
-          <h1>Your quiet space<br />for a calmer mind</h1>
-          <p className="lead">
-            Better sleep, calmer focus, and a companion that gently adapts to how you
-            actually feel — not another feed to keep up with.
-          </p>
-          <div className="hero-cta">
-            <a className="btn btn-primary" href="#waitlist">Join the waitlist</a>
-            <AppStoreBadge />
+        <div className="container hero-grid">
+          <div className="hero-copy">
+            <div className="eyebrow">Daily mental fitness</div>
+            <h1>Your quiet space<br />for a calmer mind</h1>
+            <p className="lead">
+              Better sleep, calmer focus, and a companion that gently adapts to how you
+              actually feel — not another feed to keep up with.
+            </p>
+            <div className="hero-cta">
+              <a className="btn btn-primary" href="#waitlist">Join the waitlist</a>
+              <AppStoreBadge />
+            </div>
+            <div className="trustbar">
+              {["Private by design", "No ads, ever", "Crisis-aware", "Built for iOS"].map((t) => (
+                <span className="trust" key={t}>✦ {t}</span>
+              ))}
+            </div>
           </div>
-          <div className="appnote">Coming soon to iOS · Android to follow</div>
-          <div className="trustbar">
-            {["Private by design", "No ads, ever", "Crisis-aware", "Delete anytime"].map((t) => (
-              <span className="trust" key={t}>✦ {t}</span>
-            ))}
+          <div className="hero-device">
+            <div className="orb-glow" />
+            <div className="phone phone-float">
+              <img src="/screens/home.png" alt="CereBro Home screen" width={640} height={1391} />
+            </div>
           </div>
         </div>
       </header>
 
+      {/* Features — bento grid */}
       <section className="section" id="features">
         <div className="container">
-          <div className="section-head">
+          <div className="section-head reveal">
             <h2>Everything to steady the day</h2>
             <p>Small, science-informed tools — designed to feel calm, never clinical.</p>
           </div>
-          <div className="grid grid-3">
-            {FEATURES.map((f) => (
-              <div className="card" key={f.title}>
-                <div className="icon">{f.icon}</div>
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
-              </div>
-            ))}
+          <div className="bento reveal">
+            <div className="bento-cell b-lg accent">
+              <div className="icon">🎙️</div>
+              <h3>A companion that listens</h3>
+              <p>Talk or text with a warm guide that reflects, runs real exercises, and always points to a next step — never a diagnosis.</p>
+            </div>
+            <div className="bento-cell b-wide">
+              <div className="icon">🌙</div>
+              <h3>Layered sleep</h3>
+              <p>Blend rain, ocean, wind and a soft drone — each at its own level. A sleep-safe timer fades you out on its own.</p>
+            </div>
+            <div className="bento-cell">
+              <div className="icon">📖</div>
+              <h3>A private journal</h3>
+              <p>Guided prompts, emotion tags, and an optional Face ID lock.</p>
+            </div>
+            <div className="bento-cell">
+              <div className="icon">🫧</div>
+              <h3>Calm in two minutes</h3>
+              <p>Breathing, 5-4-3-2-1 grounding, and SOS resets.</p>
+            </div>
+            <div className="bento-cell b-wide">
+              <div className="icon">🔥</div>
+              <h3>A streak that forgives</h3>
+              <p>Show up once a day. Miss one? It's forgiven. Milestones celebrate quietly — never a guilt trip.</p>
+            </div>
+            <div className="bento-cell b-wide">
+              <div className="icon">🆘</div>
+              <h3>Help when it matters</h3>
+              <p>Locale-aware crisis lines one tap away, plus an optional trusted contact you choose to notify.</p>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* See it in action — device showcase */}
+      <section className="section" id="showcase">
+        <div className="container">
+          <div className="section-head reveal">
+            <h2>Calm you can see</h2>
+            <p>Designed to feel like a quiet room, not a dashboard.</p>
+          </div>
+          <div className="showcase reveal">
+            <figure className="shot">
+              <div className="phone"><img src="/screens/sleep-player.png" alt="CereBro sleep player" loading="lazy" width={640} height={1391} /></div>
+              <figcaption>Layered soundscapes with a sleep-safe timer</figcaption>
+            </figure>
+            <figure className="shot shot-raise">
+              <div className="phone"><img src="/screens/journal-entry.png" alt="CereBro journal" loading="lazy" width={640} height={1391} /></div>
+              <figcaption>A private journal with gentle daily prompts</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      {/* The five spaces */}
       <section className="section" id="spaces">
         <div className="container">
-          <div className="section-head">
+          <div className="section-head reveal">
             <h2>Five calm spaces, one home</h2>
             <p>A tab for each part of a steady day — nothing louder than it needs to be.</p>
           </div>
-          <div className="spaces">
+          <div className="spaces reveal">
             {SPACES.map((s, i) => (
               <div className="space" key={s.tab}>
                 <span className="space-n">{String(i + 1).padStart(2, "0")}</span>
@@ -122,9 +165,10 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Proactive band */}
       <section className="section" id="proactive">
         <div className="container">
-          <div className="band">
+          <div className="band reveal">
             <div className="grid grid-2" style={{ alignItems: "center", gap: 36 }}>
               <div>
                 <div className="eyebrow">The app becomes agentic</div>
@@ -145,13 +189,14 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Safety */}
       <section className="section" id="safety">
         <div className="container">
-          <div className="section-head">
+          <div className="section-head reveal">
             <h2>Care you can trust</h2>
             <p>Built privacy-first, honest about its limits, and always pointing to real help.</p>
           </div>
-          <div className="grid grid-2">
+          <div className="grid grid-2 reveal">
             {SAFETY.map((s) => (
               <div className="card safety-card" key={s.title}>
                 <h3>{s.title}</h3>
@@ -162,13 +207,14 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing */}
       <section className="section" id="pricing">
         <div className="container">
-          <div className="section-head">
+          <div className="section-head reveal">
             <h2>Start free. Upgrade when it helps.</h2>
             <p>No ads, ever. Your calm isn&apos;t the product.</p>
           </div>
-          <div className="grid grid-3">
+          <div className="grid grid-3 reveal">
             {PLANS.map((p) => (
               <div className={`card price-card ${p.featured ? "featured" : ""}`} key={p.tier}>
                 {p.featured && <span className="badge">Most popular</span>}
@@ -185,10 +231,11 @@ export default function Home() {
         </div>
       </section>
 
+      {/* FAQ */}
       <section className="section" id="faq">
         <div className="container" style={{ maxWidth: 760 }}>
-          <div className="section-head"><h2>Questions, answered</h2></div>
-          <div className="faq">
+          <div className="section-head reveal"><h2>Questions, answered</h2></div>
+          <div className="faq reveal">
             {FAQ.map((f) => (
               <details className="faq-item" key={f.q}>
                 <summary>{f.q}</summary>
@@ -199,9 +246,10 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Final CTA / waitlist */}
       <section className="section waitlist" id="waitlist">
         <div className="container">
-          <div className="section-head" style={{ marginBottom: 8 }}>
+          <div className="section-head reveal" style={{ marginBottom: 8 }}>
             <h2>Be first to feel the calm</h2>
             <p>Join the waitlist for early access on iOS.</p>
           </div>
