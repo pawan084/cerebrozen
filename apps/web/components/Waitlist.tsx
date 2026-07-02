@@ -7,10 +7,18 @@ export default function Waitlist() {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  // Honeypot: hidden from humans; bots that auto-fill it get a fake success.
+  const [company, setCompany] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
+    if (company) {
+      // Bot filled the honeypot — pretend it worked, skip the API.
+      setMsg("You're in. We'll send a calm note when it's ready.");
+      setEmail("");
+      return;
+    }
     setBusy(true);
     setMsg("");
     try {
@@ -36,6 +44,23 @@ export default function Waitlist() {
   return (
     <div>
       <form className="wl-form" onSubmit={submit}>
+        <input
+          type="text"
+          name="company"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+          }}
+        />
         <input
           type="email"
           required

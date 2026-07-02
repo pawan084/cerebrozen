@@ -73,9 +73,13 @@ export default function AdminPage() {
   );
 }
 
+// Dev-only convenience: prefill + hint for the locally seeded admin account.
+// NODE_ENV is inlined at build time, so none of this ships in production.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 function Login({ onAuthed }: { onAuthed: () => void }) {
-  const [email, setEmail] = useState("admin@cerebro.app");
-  const [password, setPassword] = useState("admin12345");
+  const [email, setEmail] = useState(IS_DEV ? "admin@cerebro.app" : "");
+  const [password, setPassword] = useState(IS_DEV ? "admin12345" : "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -112,7 +116,7 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <div className="err">{err}</div>
-        <div className="hint">Seeded admin: admin@cerebro.app / admin12345</div>
+        {IS_DEV && <div className="hint">Seeded admin: admin@cerebro.app / admin12345</div>}
       </form>
     </div>
   );
@@ -135,6 +139,8 @@ function useData<T>(loader: () => Promise<T>, deps: any[] = []) {
 
 function Overview() {
   const { data, err } = useData<Record<string, number>>(() => api("/admin/stats"));
+  const [nudgeMsg, setNudgeMsg] = useState("");
+  const [nudgeBusy, setNudgeBusy] = useState(false);
   const cards = [
     { l: "Users", k: "users" },
     { l: "Mood logs", k: "mood_logs" },
@@ -142,6 +148,20 @@ function Overview() {
     { l: "Content items", k: "content_items" },
     { l: "Open safety", k: "open_safety_events" },
   ];
+
+  async function dispatchNudges() {
+    setNudgeBusy(true);
+    setNudgeMsg("");
+    try {
+      const res = await api<{ sent: number }>("/admin/nudges/dispatch", { method: "POST" });
+      setNudgeMsg(`${res.sent} dispatched`);
+    } catch (e: any) {
+      setNudgeMsg(e.message === "unauthorized" ? "Session expired — reload to sign in." : e.message);
+    } finally {
+      setNudgeBusy(false);
+    }
+  }
+
   return (
     <>
       <h1 className="page-title serif">Overview</h1>
@@ -154,6 +174,12 @@ function Overview() {
             <div className="l">{c.l}</div>
           </div>
         ))}
+      </div>
+      <div className="toolbar" style={{ marginTop: 20, alignItems: "center", gap: 12, display: "flex" }}>
+        <button className="btn btn-primary" onClick={dispatchNudges} disabled={nudgeBusy}>
+          {nudgeBusy ? "Dispatching…" : "Dispatch due nudges"}
+        </button>
+        {nudgeMsg && <span className="page-sub" style={{ marginBottom: 0 }}>{nudgeMsg}</span>}
       </div>
     </>
   );

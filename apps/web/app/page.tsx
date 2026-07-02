@@ -266,7 +266,7 @@ export default function Home() {
           <div className="brand" style={{ fontSize: 17 }}><span className="dot" /> CereBro</div>
           <div>
             © {new Date().getFullYear()} CereBro · <a href="/privacy">Privacy</a> ·{" "}
-            <a href="/terms">Terms</a>
+            <a href="/terms">Terms</a> · <a href="/support">Support</a>
           </div>
         </div>
       </footer>

@@ -4,7 +4,9 @@ const ADMIN = process.env.ADMIN_URL || "http://admin:3001";
 
 async function login(page: Page) {
   await page.goto(ADMIN, { waitUntil: "networkidle" });
-  // Login form is pre-filled with the seeded admin credentials.
+  // Type the seeded creds explicitly — production builds no longer pre-fill them.
+  await page.locator('input[type="email"]').fill("admin@cerebro.app");
+  await page.locator('input[type="password"]').fill("admin12345");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({ timeout: 20_000 });
 }

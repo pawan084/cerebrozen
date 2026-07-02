@@ -78,6 +78,31 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.e2e.yml down -v
 
+  # ── Web + Admin: TypeScript typecheck (no services needed) ────────────
+  # No `next lint` here: neither app ships an ESLint config yet.
+  web:
+    name: Web + Admin (typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/admin/package-lock.json
+      - name: Typecheck web
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: Typecheck admin
+        working-directory: apps/admin
+        run: |
+          npm ci
+          npx tsc --noEmit
+
   # ── iOS: SwiftUI UITests (Simulator) ──────────────────────────────────
   # The two live-backend tests (testCloudSync / testCloudChatAndPlan) self-skip
   # here because no API is running on the macOS runner; the other 8 run fully.
