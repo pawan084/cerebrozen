@@ -223,6 +223,29 @@ final class CereBroUITests: XCTestCase {
         snapshot(app, "seq-11-entered")
     }
 
+    /// A returning user must be able to sign in from the Welcome screen and skip
+    /// onboarding entirely (their original onboarding recorded the attestation).
+    /// Live-backend: self-skips when no API is reachable.
+    func testWelcomeSignInSkipsOnboarding() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Begin private setup"].waitForExistence(timeout: 10),
+                      "Welcome screen did not appear")
+        tap(app, "I already have an account")
+        // The full auth sheet appears; DEBUG prefills the seeded demo login.
+        guard app.buttons["Continue with email"].waitForExistence(timeout: 8) else {
+            throw XCTSkip("auth sheet did not present")
+        }
+        snapshot(app, "welcome-signin-sheet")
+        tap(app, "Continue with email")
+        guard app.tabBars.firstMatch.waitForExistence(timeout: 20) else {
+            throw XCTSkip("Backend not reachable")
+        }
+        XCTAssertTrue(app.tabBars.buttons["Home"].exists, "Home tab missing after returning sign-in")
+        snapshot(app, "welcome-signin-entered")
+    }
+
     /// The Welcome screen's "Preview app" escape hatch should skip straight into
     /// the app (value-first: let people look around before committing to setup).
     func testOnboardingPreviewSkips() {

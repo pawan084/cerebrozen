@@ -15,7 +15,12 @@ struct OnboardingFlow: View {
                 // Account + consent + locale come once the user is invested, with
                 // the reminder opt-in deliberately last (highest-leverage retention).
                 switch step {
-                case 0: WelcomeScreen(onBegin: next, onPreview: { state.hasOnboarded = true })
+                case 0: WelcomeScreen(onBegin: next,
+                                      onPreview: { state.hasOnboarded = true },
+                                      // Returning account: originally gated at its own
+                                      // onboarding (attestation is on the server), so
+                                      // sign-in skips straight into the app.
+                                      onSignedIn: { state.hasOnboarded = true })
                 case 1: AgeGateScreen(onContinue: next)
                 case 2: DisclosureScreen(onContinue: next)
                 case 3: GoalsScreen(onContinue: next)
@@ -57,6 +62,10 @@ private struct OnboardingProgress: View {
 private struct WelcomeScreen: View {
     var onBegin: () -> Void
     var onPreview: () -> Void
+    /// Returning user signed in from the auth sheet — skip onboarding.
+    var onSignedIn: () -> Void
+    @EnvironmentObject var backend: BackendService
+    @State private var showAuth = false
     var body: some View {
         ZStack(alignment: .bottom) {
             Photo(url: Dummy.Img.welcome, symbol: "sparkles")
@@ -77,13 +86,25 @@ private struct WelcomeScreen: View {
                     .entrance(2)
                 OnboardingProgress(value: 0.14).padding(.top, 8).entrance(3)
                 PrimaryButton(title: "Begin private setup", systemImage: "sparkles", action: onBegin).entrance(4)
+                // Returning users shouldn't have to walk the setup to reach login.
+                Button { showAuth = true } label: {
+                    Text("I already have an account")
+                        .appFont(13, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                        .frame(minHeight: 34)
+                }
+                .buttonStyle(.pressable)
+                .entrance(5)
                 // Skipping setup would bypass the age gate + AI disclosure, so the
                 // preview shortcut ships only in debug builds (used by UI tests).
                 #if DEBUG
-                SecondaryButton(title: "Preview app", systemImage: "house", action: onPreview).entrance(5)
+                SecondaryButton(title: "Preview app", systemImage: "house", action: onPreview).entrance(6)
                 #endif
             }
             .padding(24)
+        }
+        .sheet(isPresented: $showAuth) { NavigationStack { CloudSyncView() } }
+        .onChange(of: backend.isConnected) { _, connected in
+            if connected { showAuth = false; onSignedIn() }
         }
     }
 }
@@ -307,6 +328,7 @@ private struct GoalsScreen: View {
     private func persistAndContinue() {
         state.selectedMotivations = Dummy.motivations.filter(motivations.contains)
         state.selectedGoals = allGoalItems.filter(goals.contains)
+        state.hasAssessment = true   // a real answer — safe to sync from now on
         // Cached in BackendService — pushed now if connected, else at the next
         // connect, so the server plan/insights personalize either way.
         backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)

@@ -65,8 +65,23 @@ struct MainTabView: View {
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion))
             backend.syncConsent(state.consent)
             // Seed the assessment cache from persisted state each launch, so a
-            // sign-in on a later launch still syncs the onboarding choices.
-            backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
+            // sign-in on a later launch still syncs the onboarding choices —
+            // but only a REAL answered reflection: pushing the app defaults
+            // would overwrite a returning user's server-side selection.
+            if state.hasAssessment {
+                backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
+            }
+        }
+        // Returning user on a fresh install (signed in without re-answering the
+        // reflection): adopt the server's selection so Home/plan personalize.
+        .onChange(of: backend.isConnected) { _, connected in
+            guard connected, !state.hasAssessment, let u = backend.user else { return }
+            let motivations = u.motivations ?? []
+            if !u.goals.isEmpty || !motivations.isEmpty {
+                state.selectedMotivations = motivations
+                state.selectedGoals = u.goals
+                state.hasAssessment = true
+            }
         }
         .onChange(of: state.crisisRegion) { _, new in
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))
