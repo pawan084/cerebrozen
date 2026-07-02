@@ -6,7 +6,7 @@ const description =
   "A calm, proactive wellness companion: better sleep, calmer focus, layered soundscapes, a private journal, and an AI plan that adapts to how you actually feel.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://cerebro.app"),
+  metadataBase: new URL("https://cerebrozen.in"),
   title,
   description,
   keywords: [
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    url: "https://cerebro.app",
+    url: "https://cerebrozen.in",
     siteName: "CereBro",
     type: "website",
   },

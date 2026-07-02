@@ -76,7 +76,7 @@ export default function Terms() {
 
           <h2>9. Contact</h2>
           <p>
-            Questions: <a href="mailto:support@cerebro.app">support@cerebro.app</a>.
+            Questions: <a href="mailto:support@cerebrozen.in">support@cerebrozen.in</a>.
           </p>
 
           <p className="disclaimer">

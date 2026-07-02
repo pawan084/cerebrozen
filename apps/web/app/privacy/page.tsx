@@ -100,7 +100,7 @@ export default function Privacy() {
 
           <h2>9. Contact</h2>
           <p>
-            Questions or requests: <a href="mailto:privacy@cerebro.app">privacy@cerebro.app</a>.
+            Questions or requests: <a href="mailto:privacy@cerebrozen.in">privacy@cerebrozen.in</a>.
           </p>
 
           <p className="disclaimer">
