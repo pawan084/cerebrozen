@@ -6,20 +6,35 @@
 	email admin@cerebrozen.in
 }
 
+# Shared security headers for every site. No CSP on purpose — Next.js relies on
+# inline scripts and a strict policy would break hydration.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+}
+
 # Landing site (Next.js)
 cerebrozen.in, www.cerebrozen.in {
+	import security_headers
 	encode gzip zstd
 	reverse_proxy web:3000
 }
 
 # Admin dashboard (Next.js)
 admin.cerebrozen.in {
+	import security_headers
 	encode gzip zstd
 	reverse_proxy admin:3001
 }
 
 # API (FastAPI)
 api.cerebrozen.in {
+	import security_headers
 	encode gzip zstd
 	reverse_proxy api:8000
 }
