@@ -139,6 +139,48 @@ UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK 
 - **Tests** — XCUITest only (no unit target); ~18 screenshot walk-through tests; live-backend
   tests `XCTSkip` when the API is unreachable.
 
+### Entry, onboarding & auth flow
+
+Value-first ordering: legal gates fast, the personalization "aha" before any account ask,
+reminders last. Returning users never re-walk the tutorial — Welcome offers direct sign-in.
+
+```mermaid
+flowchart TD
+    L["App launch"] --> S["Splash ~2.2s<br>(skipped under -resetState)"]
+    S --> H{"hasOnboarded?"}
+    H -- yes --> MAIN["Main app<br>Home · Sleep · Talk · Journal · You"]
+    H -- no --> W["0 · Welcome"]
+
+    W -- "Begin private setup" --> AG["1 · Age gate<br>Continue locked until 18+ tap"]
+    W -- "I already have an account" --> AUTH1["Auth sheet<br>Apple · Google · email"]
+    W -- "Preview app (DEBUG only)" --> MAIN
+    AUTH1 -- "signed in" --> ADOPT["Adopt server reflection<br>into AppState"] --> MAIN
+
+    AG --> DIS["2 · AI disclosure"]
+    DIS --> REF["3 · Self-reflection — starts EMPTY,<br>Continue gated on ≥1 motivation + ≥1 goal;<br>persists + hasAssessment=true"]
+    REF --> BASE["4 · Baseline (stress/sleep 1–5)"]
+    BASE --> COMP["5 · Companion persona"]
+    COMP --> SIGN["6 · Save your space"]
+    SIGN -- "Create my space" --> AUTH2["Auth sheet"]
+    AUTH2 -- "signed in (auto-advance)" --> CONS
+    SIGN -- "Maybe later" --> CONS["7 · Consent toggles"]
+    CONS --> LANG["8 · Language"]
+    LANG --> NOTIF["9 · Notifications opt-in<br>(OS prompt; skipped under UITest)"]
+    NOTIF --> PLAN["10 · First plan"]
+    PLAN -- "Enter CereBro" --> MAIN
+
+    MAIN -. "You → Sign in<br>Talk → Sign in to talk live" .-> AUTH3["Auth sheet"]
+    AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region"]
+    SYNC -.-> MAIN
+```
+
+Connect-time sync rules (any sign-in path): `finishConnect` records the age/AI-disclosure
+attestation, pushes the local self-reflection **only when actually answered**
+(`AppState.hasAssessment` — app defaults must never overwrite a returning user's server
+selection), then fetches plan/insights and re-applies consent + crisis region. If the local
+reflection was never answered but the server has one, it's adopted into `AppState` instead
+(returning-user restore).
+
 ### Cross-stack contracts (keep manually in sync)
 
 | Contract | Backend | iOS |
