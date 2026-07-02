@@ -17,7 +17,7 @@ credibility**, not engineering.
   out by voice, reflect privately, sleep deeper — with an AI companion that adapts
   to you, never judges, and always points to real help when it matters.
 - **Keywords:** wellness,mental health,calm,sleep,meditation,journal,anxiety,stress,mindfulness,AI companion,breathing,mood
-- **Support URL:** https://your-domain.com/support   ·   **Marketing URL:** /  ·   **Privacy Policy:** /privacy
+- **Support URL:** https://cerebrozen.in/support   ·   **Marketing URL:** https://cerebrozen.in  ·   **Privacy Policy:** /privacy
 
 **Description (outline):**
 1. One calm space for daily mental fitness, better sleep, and calmer focus.
@@ -33,15 +33,22 @@ credibility**, not engineering.
 
 ## 2. Privacy "nutrition" labels (App Privacy)
 
+See `PRIVACY_LABELS.md` for the authoritative, questionnaire-ready version.
+
 | Data type | Collected | Linked to user | Used for |
 |---|---|---|---|
-| Contact (name, email) | Yes (account) | Yes | App functionality |
+| Contact (name, email) | Yes (account; name optional) | Yes | App functionality |
 | Health & Fitness (mood, journal) | Yes | Yes (consent-gated) | App functionality, personalization |
+| User Content (journal text, chat/voice transcripts) | Yes | Yes | App functionality |
 | Audio (voice) | Optional (off by default) | Only if user enables storage | Speech-to-text for the companion |
-| Usage data | Yes | Yes | Analytics / product improvement |
-| Diagnostics | Optional | No | Crash/perf |
+| Sensitive Info (mental-health themes) | Yes | Yes | App functionality |
+| Coarse region (country, for crisis resources) | Yes | Yes | App functionality |
+| Purchases (subscription tier) | Yes | Yes | App functionality |
+| Usage data / analytics | No | — | No analytics or tracking SDKs |
+| Diagnostics (crash/perf) | No | — | Not collected |
 
-- No data sold. No third-party ad tracking. Voice audio storage is **off by default**.
+- No data used to track you; no advertising or third-party analytics SDKs.
+- No data sold. Voice audio storage is **off by default**.
 - Conversations may be scanned for crisis signals to surface support (state in the policy).
 
 ## 3. Capabilities / entitlements checklist

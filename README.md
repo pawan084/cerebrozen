@@ -20,6 +20,16 @@ cere/
 > `temp/` (which holds the original HTML reference designs under `temp/ref/`) is
 > git-ignored on purpose — it's scratch, not shipped code.
 
+## Docs
+
+Start with [`CLAUDE.md`](CLAUDE.md) (project context: rules, commands, gotchas — also loaded
+automatically by Claude Code sessions), then:
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system map, layers, data flows, cross-stack contracts
+- [`docs/TECHNICAL.md`](docs/TECHNICAL.md) — setup, env vars, testing, CI/CD, deploy, conventions
+- [`docs/TODO.md`](docs/TODO.md) — prioritized known debt + open work
+- [`docs/RELEASE_PLAN.md`](docs/RELEASE_PLAN.md) · [`docs/SHIP_READINESS.md`](docs/SHIP_READINESS.md) · [`docs/PRIVACY_LABELS.md`](docs/PRIVACY_LABELS.md) — launch runbooks
+
 ## Status
 - ✅ **iOS app** — 47-screen SwiftUI app with local persistence, a11y + perf pass,
   and live cloud sync to the backend (Cloud Sync screen under the **You** tab).
@@ -115,8 +125,8 @@ docker compose up --build
 Seeded logins: `admin@cerebro.app / admin12345`, `pawan@cerebro.app / demo12345`.
 
 ## Tests
-- **Backend:** `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && pytest -q --cov=app"` (85 tests; CI enforces a **≥82% coverage gate** via `--cov-fail-under`, hermetic run sits at ~84%). Covers voice, assessment, account deletion/export, Apple-token verification, admin, and the service layer.
-- **iOS:** `xcodebuild test` in `apps/ios/` (12 UITests, incl. 2 live-backend tests, a fresh-signup starters test, and a compliance + games walk-through)
+- **Backend:** `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"` (~138 tests; CI enforces a **≥95% coverage gate** via `--cov-fail-under`, hermetic run sits at ~97%). Covers voice, assessment, account deletion/export, Apple-token verification, admin, and the service layer.
+- **iOS:** `xcodebuild test` in `apps/ios/` (~18 UITests, incl. live-backend tests that self-skip without an API, a fresh-signup starters test, and a compliance + games walk-through)
 - **Web + admin (e2e):** `docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e` (7 Playwright tests) — see [`e2e/README.md`](e2e/README.md)
 
 All three run in **CI** on push/PR via [`.github/workflows/ci.yml`](.github/workflows/ci.yml)

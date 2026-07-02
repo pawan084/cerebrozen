@@ -1,0 +1,175 @@
+# CereBro — Architecture
+
+> System map for developers. Companions: [TECHNICAL.md](TECHNICAL.md) (setup, env, testing, deploy),
+> [TODO.md](TODO.md) (known debt + open work), root [CLAUDE.md](../CLAUDE.md) (session context).
+
+## System overview
+
+```
+┌─────────────┐     ┌──────────────┐     ┌────────────────────────────┐
+│  iOS app    │     │  Web landing │     │  Admin dashboard           │
+│  (SwiftUI)  │     │  (Next.js)   │     │  (Next.js)                 │
+└──────┬──────┘     └──────┬───────┘     └──────────┬─────────────────┘
+       │  REST + SSE       │ POST /waitlist         │ /auth/login + /admin/*
+       └───────────────────┴────────────┬───────────┘
+                                        ▼
+                          ┌─────────────────────────┐      ┌ OpenAI / Anthropic (LLM)
+                          │  FastAPI backend        │──────┤ Deepgram (STT)
+                          │  (async SQLAlchemy)     │      ├ ElevenLabs (TTS)
+                          └───────────┬─────────────┘      ├ Apple / Google (sign-in JWKS)
+                                      ▼                    ├ APNs, SMTP, Twilio
+                          ┌─────────────────────────┐      └ App Store Server API (JWS)
+                          │  Postgres 16            │
+                          └─────────────────────────┘
+
+Prod: Caddy (auto-HTTPS) is the only public service →
+  cerebrozen.in / www → web:3000 · admin.cerebrozen.in → admin:3001 · api.cerebrozen.in → api:8000
+```
+
+Every external provider is optional: the backend picks providers at runtime by key
+presence and degrades to deterministic local fallbacks, so the whole stack runs
+offline with blank keys.
+
+## Monorepo layout
+
+```
+cere/
+  apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
+  apps/android/   Kotlin + Jetpack Compose scaffold (placeholder tabs only)
+  apps/web/       Next.js 14 marketing site (port 3000)
+  apps/admin/     Next.js 14 admin dashboard (port 3001)
+  backend/        FastAPI + Postgres (auth, data, proactive AI, voice, Oracle agent)
+  e2e/            Playwright tests (web + admin) in an isolated Docker stack
+  deploy/         Caddyfile + bootstrap.sh (one-shot VPS setup)
+  docs/           This doc set + release/privacy/ship checklists
+  docker-compose.yml / .e2e.yml / .prod.yml
+  .github/workflows/  ci.yml · deploy.yml · testflight.yml
+```
+
+## Backend (`backend/app`)
+
+### Layers
+
+- `main.py` — app factory: CORS, slowapi rate-limit middleware, security headers, `/health`.
+- `core/` — `config.py` (pydantic-settings, `_guard_production` boot guard), `database.py`
+  (async engine/session), `security.py` (JWT HS256 + bcrypt; token types access/refresh/verify/reset),
+  `deps.py` (`get_current_user` checks `token_version` for revocation; `get_current_admin`),
+  `ratelimit.py`.
+- `api/routes/` — thin endpoint modules; `api/router.py` aggregates.
+- `services/` — all business logic + provider adapters (19 modules).
+- `models/` — SQLAlchemy ORM; `schemas/` — Pydantic I/O.
+- `agent/` — LangGraph "Oracle" (graph.py, tools.py, context.py).
+- `prestart.py` — wait-for-db → `alembic upgrade head` (falls back to `create_all`) → seed.
+
+### Routes (summary)
+
+| Prefix | Highlights |
+| --- | --- |
+| `/auth` | signup, login (lockout 5 fails/15 min), apple, google, refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
+| `/users/me` | profile, attest (18+/AI disclosure), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade), push-token |
+| `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
+| `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
+| `/plans` | active (lazily generated), generate, step patch |
+| `/insights` `/nudges` `/content` | weekly aggregation (on demand), scheduled nudges, public catalogue |
+| `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
+| `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
+| `/admin` | stats, users, content CRUD, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
+
+### Key services
+
+- `ai.py` — runtime LLM switch: OpenAI if `OPENAI_API_KEY` → Anthropic if `ANTHROPIC_API_KEY` → none.
+  Returns `None` on any failure so every caller has a deterministic fallback.
+- `safety.py` — crisis classifier (LLM JSON primary, keyword fallback) → `SafetyEvent` →
+  `escalation.py` (ops email + consent-gated trusted-contact email/SMS). Never blocks the user.
+- `crisis.py` — region → hotline map; server mirror of iOS `CrisisResources.swift` (keep in sync).
+- `agentic.py` — daily plan from goals + recent mood (LLM or `_STEP_LIBRARY`).
+- `activities.py` — deterministic chat → inline widget routing (`widget_kind` mirrors iOS `ActivityDestination`).
+- `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
+- `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
+  `APPSTORE_ROOT_CERT_PATH` is set) + notification → tier mapping.
+- `nudges.py`/`notifications.py` — scheduling + APNs push. Delivery runs in-process: a
+  lifespan task in `app.main` calls `dispatch_due` every `NUDGE_DISPATCH_INTERVAL_MINUTES`
+  (rows claimed with `FOR UPDATE SKIP LOCKED`, so multiple workers are safe); outcomes are
+  `sent`/`skipped`/`failed`, and `POST /admin/nudges/dispatch` remains as a manual pass.
+
+### Oracle (LangGraph agent)
+
+Tool-calling chat agent (suggest_activity, log_mood, save_journal, get_weekly_insights) with
+confirm-before-write: write tools call `interrupt()` → SSE emits `tool_confirm` → client approves via
+`/oracle/confirm` → `Command(resume=...)`. Request-scoped DB/user passed via contextvars.
+Enabled by `ORACLE_ENABLED=true` + an LLM key; otherwise clients fall back to `/chat`.
+State checkpoints to Postgres (`AsyncPostgresSaver` on the app DB), so paused confirmations
+survive restarts and resume on any gunicorn worker; MemorySaver is only a logged dev fallback.
+
+### Data model
+
+`users` (auth-hardening, subscription, compliance, region, push_token fields) with 1:1 `consents`,
+`trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
+`nudges`, `insights`, `safety_events`. Global: `content_items`, `waitlist_entries`.
+UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (7 revisions).
+
+## iOS app (`apps/ios/CereBro`)
+
+100% SwiftUI, zero external dependencies, iOS 17+, dark-only. ~9.2k LOC across feature folders.
+
+- **State** — `ObservableObject` + `@Published`; two root env objects: `AppState` (all local data,
+  write-through to UserDefaults via `didSet`) and `BackendService` (cloud session).
+- **Persistence** — UserDefaults only (JSON-encoded Codable blobs). No CoreData/SwiftData.
+  `-resetState YES` launch arg wipes + seeds demo state for deterministic UI tests.
+- **Networking** — `APIClient` actor (URLSession, 15 s timeout); base URL `http://localhost:8000`
+  in DEBUG, `https://api.cerebrozen.in` in Release (runtime-overridable, persisted). Bearer JWT in
+  UserDefaults; 401/403 → `unauthorized`. Cloud sync is **strictly additive**: offline the app is a
+  full local product; when connected, writes best-effort mirror and plan/insights are server-driven.
+- **Voice loop** (`VoiceCompanion`) — mic (AAC 16 kHz) → `/voice/stt` → Oracle SSE (sentence-by-sentence
+  TTS via `SentenceQueuePlayer`) or `/chat` + single TTS → playback. VAD endpointing (~1.5 s silence),
+  barge-in (tap to interrupt), audio-interruption handling. Signed-out → `LocalCompanion` canned replies.
+- **Chat** (`ChatActivities`) — Oracle SSE frames (token/crisis/widget/tool_confirm/done) render
+  streaming bubbles, inline `ActivityWidgetCard` → native activity screens, `ToolConfirmCard`,
+  starters + suggestion chip rails, `CrisisBanner`.
+- **Sleep audio** (`SoundscapePlayer`) — bundled seamless loops (`Resources/Sounds/*.m4a`) via
+  AVAudioEngine, procedural synth fallback, lock-free mixer, MPNowPlayingInfo/remote commands,
+  fade-out sleep timer. Engine disabled under `-resetState` (Simulator CoreAudio stability).
+- **Design system** (`DesignSystem/Theme.swift`) — one-directional token hierarchy
+  `Brand` (raw hex, never used by screens) → `Palette` (semantic) → `Accent`/`Radius`/`Stroke`/`Gradient`.
+  Screens read tokens only; no raw hex outside Theme.swift + SplashView scenery.
+- **Safety** — `CrisisResources.swift` region directory (US/CA/GB/IE/AU/NZ/IN + intl default) with
+  a user override picker; persistent AI-disclosure banner + 3-hourly re-disclosure sheet on Talk/Chat.
+- **Tests** — XCUITest only (no unit target); ~18 screenshot walk-through tests; live-backend
+  tests `XCTSkip` when the API is unreachable.
+
+### Cross-stack contracts (keep manually in sync)
+
+| Contract | Backend | iOS |
+| --- | --- | --- |
+| Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
+| Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` |
+| Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
+| Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
+| Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.monthly`, `.premiumhuman.monthly`) |
+
+## Web + Admin (`apps/web`, `apps/admin`)
+
+Next.js 14 App Router, React 18, TS. Both consume `NEXT_PUBLIC_API_URL` (baked at build).
+
+- **Web** — single-page landing (`app/page.tsx`, hardcoded content arrays) + `/privacy` + `/terms`
+  + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
+- **Admin** — one client component (`app/page.tsx`) with tabs overview/users/content/safety/waitlist.
+  JWT via `/auth/login` stored in localStorage (`cerebro_admin_token`); all data from `/admin/*`.
+- Shared brand tokens live as CSS vars in each app's `globals.css` (mirrors iOS Theme).
+
+## Infra
+
+- **docker-compose.yml** (dev) — db (5432), api (8000, live-reload bind mount), web (3000), admin (3001).
+- **docker-compose.e2e.yml** — isolated network, no host ports; Playwright container waits on
+  health then runs 7 tests.
+- **docker-compose.prod.yml** — Caddy is the only public service (80/443, auto-TLS via
+  `deploy/Caddyfile`); api runs migrations then gunicorn+uvicorn workers as non-root; db and app
+  ports internal-only; `restart: unless-stopped`. Boot guard refuses insecure prod config.
+- **deploy/bootstrap.sh** — idempotent first-time VPS setup (deploy user, ufw, fail2ban, Docker,
+  generated secrets → `.env.production`, compose up).
+- **CI** (`ci.yml`) — jobs: `backend` (pytest + coverage gate `--cov-fail-under=95` on Postgres),
+  `e2e` (full Docker stack), `ios` (macOS-15 simulator XCUITests; cloud tests self-skip),
+  `android` (non-blocking). **deploy.yml** — manual SSH deploy + health check.
+  **testflight.yml** — manual fastlane beta (needs `ASC_*` secrets).
