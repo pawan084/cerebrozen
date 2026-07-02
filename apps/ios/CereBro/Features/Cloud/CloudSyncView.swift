@@ -152,6 +152,7 @@ struct CloudSyncView: View {
             if server.isEmpty { server = backend.baseURL }
             #if DEBUG
             // Dev convenience only: pre-fill the seeded demo login.
+            // Must match the account created in backend/app/seed.py.
             if email.isEmpty { email = "pawan@cerebro.app" }
             if password.isEmpty { password = "demo12345" }
             if name.isEmpty { name = "Pawan" }

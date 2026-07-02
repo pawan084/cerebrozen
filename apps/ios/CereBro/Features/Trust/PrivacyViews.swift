@@ -79,9 +79,9 @@ struct PrivacyPolicyView: View {
                    "To generate replies and process voice we send the minimum necessary text to trusted processors (OpenAI/Anthropic, Deepgram, ElevenLabs). Core features still work with AI disabled.")
             policy("Your controls",
                    "Change what the AI remembers anytime in Privacy & Memory. Export a full copy of your data, or permanently delete your account and all associated data — both from inside the app.")
-            policy("Contact", "Questions or requests: privacy@cerebro.app")
+            policy("Contact", "Questions or requests: privacy@cerebrozen.in")
 
-            Link(destination: URL(string: "https://cerebro.app/privacy")!) {
+            Link(destination: URL(string: "https://cerebrozen.in/privacy")!) {
                 HStack(spacing: 6) {
                     Text("Read the full policy online").appFont(13, weight: .heavy)
                     Image(systemName: "arrow.up.right.square")

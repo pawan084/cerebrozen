@@ -116,6 +116,7 @@ struct JournalEntryView: View {
                     .appFont(13).foregroundStyle(Theme.Palette.soft)
                     .frame(minHeight: 120, alignment: .topLeading).lineLimit(5...)
                     .accessibilityIdentifier("Journal editor")
+                    .accessibilityLabel("Journal entry")
             }
             ChipRow(options: JournalTags.all, selection: $tags)
             NavRow(title: "See AI reflection", subtitle: "AI reflection output", systemImage: "sparkles", imageURL: Dummy.Img.privacy, emphasis: true) {
@@ -260,6 +261,7 @@ struct JournalHistoryView: View {
                     .foregroundStyle(Theme.Palette.text)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("Journal search")
+                    .accessibilityLabel("Search entries")
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.Palette.muted)

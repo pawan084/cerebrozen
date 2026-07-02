@@ -133,6 +133,8 @@ private struct BubbleView: View {
                 withAnimation(.easeOut(duration: 0.18)) { gone = true }
                 onPop()
             }
+            .accessibilityLabel("Bubble")
+            .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -202,6 +204,8 @@ struct MemoryMatchGame: View {
             LazyVGrid(columns: cols, spacing: 12) {
                 ForEach(Array(cards.enumerated()), id: \.element.id) { i, c in
                     cardView(c).onTapGesture { flip(i) }
+                        .accessibilityLabel(c.matched ? "Matched card" : (c.faceUp ? "Face-up card" : "Hidden card"))
+                        .accessibilityAddTraits(.isButton)
                 }
             }
             if won {
@@ -291,6 +295,8 @@ struct BubbleWrapGame: View {
                             withAnimation(.easeOut(duration: 0.15)) { _ = popped.insert(i) }
                             Haptics.soft(intensity: 0.5)
                         }
+                        .accessibilityLabel(isPopped ? "Popped bubble" : "Bubble")
+                        .accessibilityAddTraits(.isButton)
                 }
             }
             if popped.count == count {
@@ -325,6 +331,8 @@ struct ZenRipplesGame: View {
                     ripples.append(.init(pos: v.location, tint: palette.randomElement()!))
                     Haptics.soft(intensity: 0.4)
                 })
+                .accessibilityLabel("Ripple pool")
+                .accessibilityAddTraits(.isButton)
             }
             .frame(height: 480)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -381,6 +389,8 @@ struct PatternGlowGame: View {
                         .animation(.easeOut(duration: 0.12), value: litPad)
                         .contentShape(RoundedRectangle(cornerRadius: 20))
                         .onTapGesture { tap(i) }
+                        .accessibilityLabel("Pad \(i + 1)")
+                        .accessibilityAddTraits(.isButton)
                 }
             }
             PrimaryButton(title: mode == .idle ? "Start" : "Play again",
@@ -479,6 +489,8 @@ struct SlidingPuzzleGame: View {
             .frame(height: 88)
             .contentShape(Rectangle())
             .onTapGesture { move(i) }
+            .accessibilityLabel(v == 0 ? "Empty space" : "Tile \(v)")
+            .accessibilityAddTraits(.isButton)
     }
 
     private func adjacent(_ a: Int, _ b: Int) -> Bool {
@@ -526,6 +538,7 @@ struct GratitudeGardenGame: View {
                         Image(systemName: s.symbol).appFont(22, weight: .semibold).foregroundStyle(s.tint)
                             .position(x: s.x * geo.size.width, y: s.y * geo.size.height)
                             .transition(.scale.combined(with: .opacity))
+                            .accessibilityLabel("Sprout")
                     }
                 }
                 .contentShape(Rectangle())
@@ -536,6 +549,8 @@ struct GratitudeGardenGame: View {
                     }
                     Haptics.soft(intensity: 0.4)
                 }
+                .accessibilityLabel("Garden soil, tap to plant")
+                .accessibilityAddTraits(.isButton)
             }
             .frame(height: 420)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))

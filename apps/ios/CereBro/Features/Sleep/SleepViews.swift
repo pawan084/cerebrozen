@@ -271,7 +271,8 @@ struct PlayerView: View {
                     .frame(width: 48, height: 48).background(Theme.Stroke.iconWell, in: Circle())
             }
             .buttonStyle(.pressable)
-            .accessibilityLabel(audio.sleepTimerMinutes.map { "Sleep timer, \($0) minutes" } ?? "Set sleep timer")
+            .accessibilityLabel("Sleep timer")
+            .accessibilityValue(audio.sleepTimerMinutes.map { "\($0) minutes" } ?? "Off")
         }
         .frame(maxWidth: .infinity)
     }
@@ -298,6 +299,7 @@ struct PlayerView: View {
                                           set: { audio.setLayerVolume(Float($0), at: layer.id) }), in: 0...1)
                         .tint(Theme.Accent.sleep)
                         .accessibilityLabel("\(layer.name) level")
+                        .accessibilityValue("\(Int(layer.volume * 100)) percent")
                 }
             }
         }
@@ -315,6 +317,7 @@ struct PlayerView: View {
                                   set: { audio.volume = Float($0) }), in: 0...1)
                 .tint(Theme.Accent.sleep)
                 .accessibilityLabel("Volume")
+                .accessibilityValue("\(Int(audio.volume * 100)) percent")
             Image(systemName: "speaker.wave.3.fill").appFont(12).foregroundStyle(Theme.Palette.muted2)
         }
     }

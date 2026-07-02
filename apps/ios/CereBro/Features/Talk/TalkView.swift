@@ -87,7 +87,6 @@ struct TalkView: View {
                     .buttonStyle(.pressable)
                     .disabled(voice.turns.isEmpty && voice.transcript.isEmpty && voice.reply.isEmpty)
                 NavigationLink { DailyPlanView() } label: { MiniChip("Open plan") }.buttonStyle(.pressable)
-                NavigationLink { ChatView() } label: { MiniChip("Text mode") }.buttonStyle(.pressable)
             }
 
             VStack(spacing: 10) {
@@ -177,7 +176,8 @@ struct ChatView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: backend.isConnected ? "Live AI companion" : "Text fallback",
-                       title: "AI Chat", trailingSystemImage: "mic") {
+                       title: "AI Chat", trailingSystemImage: "mic",
+                       anchorBottom: true) {
             AIDisclosureBanner { showDisclosure = true }
 
             Photo(url: Dummy.Img.chat, symbol: "bubble.left").frame(height: 98).frame(maxWidth: .infinity)
@@ -229,6 +229,8 @@ struct ChatView: View {
                 TextField("Type a message…", text: $draft)
                     .foregroundStyle(Theme.Palette.text)
                     .autocorrectionDisabled()
+                    .submitLabel(.send)
+                    .onSubmit(send)
                     .padding(.horizontal, 14).frame(height: 46)
                     .background(Theme.Palette.field)
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -254,13 +256,15 @@ struct ChatView: View {
     }
 
     private func send() {
-        sendText(draft)
-        draft = ""
+        // Only clear the draft if the message was actually dispatched — a send
+        // blocked mid-stream must not eat what the user typed.
+        if sendText(draft) { draft = "" }
     }
 
-    private func sendText(_ raw: String) {
+    @discardableResult
+    private func sendText(_ raw: String) -> Bool {
         let t = raw.trimmingCharacters(in: .whitespaces)
-        guard !t.isEmpty, !sending, !backend.isStreaming, backend.pendingConfirm == nil else { return }
+        guard !t.isEmpty, !sending, !backend.isStreaming, backend.pendingConfirm == nil else { return false }
         if backend.isConnected {
             sending = true
             Task {
@@ -280,6 +284,7 @@ struct ChatView: View {
                 state.chatHistory.append(.init(text: reply, isUser: false))
             }
         }
+        return true
     }
 
     /// Summarize the current chat into a journal entry.
@@ -290,8 +295,11 @@ struct ChatView: View {
         let lines = msgs.suffix(8).map { ($0.role == "user" ? "You: " : "Companion: ") + $0.text }
         guard !lines.isEmpty else { return }
         let firstUser = msgs.first(where: { $0.role == "user" })?.text ?? "reflection"
+        // Keep the transcript in the LOCAL entry too, not just the backend
+        // mirror — JournalDetailView must reopen real text offline.
         let entry = JournalEntry(title: String("Talk session — \(firstUser)".prefix(46)),
-                                 tags: ["Talk"], date: "Today", symbol: "mic", imageURL: Dummy.Img.chat)
+                                 tags: ["Talk"], date: "Today", symbol: "mic", imageURL: Dummy.Img.chat,
+                                 body: lines.joined(separator: "\n"))
         state.journalEntries.insert(entry, at: 0)
         state.recordActivity()
         backend.mirrorJournal(entry, body: lines.joined(separator: "\n\n"))

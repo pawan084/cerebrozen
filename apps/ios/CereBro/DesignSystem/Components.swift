@@ -59,6 +59,9 @@ struct ScreenScaffold<Content: View>: View {
     var accent: Color = Theme.Palette.lav
     /// Tab-root screens hide the back button.
     var isRoot: Bool = false
+    /// Bottom-anchored scrolling (chat transcripts): opens at the newest
+    /// content and stays pinned to it as the conversation grows.
+    var anchorBottom: Bool = false
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
@@ -96,6 +99,7 @@ struct ScreenScaffold<Content: View>: View {
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 18)
             }
+            .defaultScrollAnchor(anchorBottom ? .bottom : .top)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {

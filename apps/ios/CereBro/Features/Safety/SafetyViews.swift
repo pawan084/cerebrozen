@@ -121,12 +121,15 @@ struct TrustedContactView: View {
             Card(cornerRadius: 18) {
                 VStack(spacing: 10) {
                     TextField("Contact name", text: $name).foregroundStyle(Theme.Palette.text)
+                        .accessibilityLabel("Contact name")
                     Divider().overlay(Theme.Palette.line)
                     TextField("Their email", text: $email)
                         .foregroundStyle(Theme.Palette.text)
                         .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .accessibilityLabel("Contact email")
                     Divider().overlay(Theme.Palette.line)
                     TextField("Relationship (optional)", text: $relationship).foregroundStyle(Theme.Palette.text)
+                        .accessibilityLabel("Relationship")
                 }
             }
             SettingsGroup {

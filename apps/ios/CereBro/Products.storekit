@@ -5,7 +5,8 @@
   "settings" : {
     "_applicationInternalID" : "0",
     "_developerTeamID" : "",
-    "_lastSynchronizedDate" : 0
+    "_lastSynchronizedDate" : 0,
+    "_storefront" : "IND"
   },
   "subscriptionGroups" : [
     {
@@ -16,7 +17,7 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "4.99",
+          "displayPrice" : "499.00",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "CEREBRO_PREMIUM_MONTHLY",
@@ -41,7 +42,7 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "14.99",
+          "displayPrice" : "1499.00",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "CEREBRO_PREMIUMHUMAN_MONTHLY",
