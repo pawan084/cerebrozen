@@ -125,13 +125,20 @@ final class CereBroUITests: XCTestCase {
         _ = app.staticTexts["Age Gate"].waitForExistence(timeout: 6)
         tap(app, "I am 18 or older")
 
-        // Step through each "Continue" screen, shooting as we go. Match the
-        // button exactly so we don't accidentally hit a row whose subtitle
-        // reads "Required to continue".
+        // Step through each screen, shooting as we go. Match buttons exactly
+        // so we don't accidentally hit a row whose subtitle reads "Required to
+        // continue". The self-reflection starts empty (Continue gated on one
+        // pick of each); the signup step defers via "Maybe later".
         for i in 1...9 {
             _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
             snapshot(app, String(format: "onb-%02d", i))
-            if !tapExact(app, "Continue", timeout: 4) { break }
+            if app.staticTexts["What matters now"].exists {
+                selectChip(app, "Calm")
+                selectChip(app, "Reduce stress")
+            }
+            if tapExact(app, "Continue", timeout: 4) { continue }
+            if tapExact(app, "Maybe later", timeout: 2) { continue }
+            break
         }
 
         _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
@@ -167,10 +174,13 @@ final class CereBroUITests: XCTestCase {
         expectStep(app, "AI Disclosure", shot: "seq-02-disclosure")
         tapExact(app, "Continue")
 
-        // 3 — Self-reflection (the value moment — now before account/consent)
+        // 3 — Self-reflection (the value moment — now before account/consent).
+        // Starts empty: Continue must be gated until one of each is picked.
         expectStep(app, "What matters now", shot: "seq-03-selfreflection")
-        selectChip(app, "Discipline")        // add a motivation
-        selectChip(app, "Build confidence")  // add a goal
+        let gatedContinue = app.buttons["Continue"].firstMatch
+        XCTAssertFalse(gatedContinue.isEnabled, "Continue should be gated until a selection is made")
+        selectChip(app, "Discipline")        // pick a motivation
+        selectChip(app, "Build confidence")  // pick a goal
         tapExact(app, "Continue")
 
         // 4 — Baseline
@@ -182,9 +192,12 @@ final class CereBroUITests: XCTestCase {
         tap(app, "Scientific")
         tapExact(app, "Continue")
 
-        // 6 — Signup (now that there's something to save)
+        // 6 — Signup (now that there's something to save) — a REAL account CTA
+        // plus an honest deferral; the walkthrough defers.
         expectStep(app, "Save your space", shot: "seq-06-signup")
-        tapExact(app, "Continue")
+        XCTAssertTrue(app.buttons["Create my space"].waitForExistence(timeout: 4),
+                      "real signup CTA missing on the account step")
+        tapExact(app, "Maybe later")
 
         // 7 — Consent (after signup) — flip a privacy switch
         expectStep(app, "Consent", shot: "seq-07-consent")
@@ -245,22 +258,21 @@ final class CereBroUITests: XCTestCase {
         tapExact(app, "Continue")          // AI disclosure → self-reflection
         XCTAssertTrue(app.staticTexts["What matters now"].waitForExistence(timeout: 6),
                       "self-reflection step did not appear")
-        // The step arrives pre-filled with the app defaults — deselect them so
-        // the request carries ONLY the distinctive pick (the backend anchors
-        // the first selection's seed, making the assertion below deterministic
-        // even when a live LLM words the other topics freely).
-        selectChip(app, "Focus")             // deselect default motivation
-        selectChip(app, "Calm")              // deselect default motivation
-        selectChip(app, "Reduce stress")     // deselect default goal
-        selectChip(app, "Sleep better")      // deselect default goal
+        // The step starts empty, so these are the ONLY selections — the backend
+        // anchors the first selection's seed, making the assertion below
+        // deterministic even when a live LLM words the other topics freely.
         selectChip(app, "Confidence")        // motivation
         selectChip(app, "Build confidence")  // goal
         tapExact(app, "Continue")          // → Baseline
 
-        // Finish the remaining steps (Baseline → … → Notifications) and enter.
+        // Finish the remaining steps (Baseline → … → Notifications) and enter;
+        // the signup step defers via "Maybe later" (this test signs up later
+        // through Cloud Sync to prove the selection still reaches the server).
         for _ in 0..<6 {
             _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
-            if !tapExact(app, "Continue", timeout: 5) { break }
+            if tapExact(app, "Continue", timeout: 5) { continue }
+            if tapExact(app, "Maybe later", timeout: 2) { continue }
+            break
         }
         _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
         tapExact(app, "Enter CereBro")

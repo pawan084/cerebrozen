@@ -64,6 +64,9 @@ struct MainTabView: View {
         .task {
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion))
             backend.syncConsent(state.consent)
+            // Seed the assessment cache from persisted state each launch, so a
+            // sign-in on a later launch still syncs the onboarding choices.
+            backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
         }
         .onChange(of: state.crisisRegion) { _, new in
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))

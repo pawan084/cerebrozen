@@ -37,6 +37,10 @@ final class BackendService: ObservableObject {
     private var effectiveRegion = ""
     /// Latest local consent, cached so it can be pushed on connect.
     private var pendingConsent: Consent?
+    /// Latest local self-reflection (motivations + goals), cached so choices
+    /// made while signed out (the normal onboarding order) reach the profile
+    /// at the next connect — the server plan/insights personalize off it.
+    private var pendingAssessment: (motivations: [String], goals: [String])?
 
     var isConnected: Bool { if case .connected = status { return true } else { return false } }
     /// Subscription entitlement from the server profile.
@@ -102,6 +106,12 @@ final class BackendService: ObservableObject {
         let me = try await APIClient.shared.me()
         user = me
         status = .connected(email: me.email)
+        // Push the local self-reflection BEFORE the first refresh, so the very
+        // first plan/insights fetch personalizes off the user's onboarding
+        // choices instead of profile defaults.
+        if let a = pendingAssessment {
+            _ = try? await APIClient.shared.updateProfile(goals: a.goals, motivations: a.motivations)
+        }
         await refresh()
         oracleAvailable = await APIClient.shared.oracleStatus()
         if !effectiveRegion.isEmpty {
@@ -206,7 +216,10 @@ final class BackendService: ObservableObject {
     // MARK: Assessment (self-reflection → conversation starters)
 
     /// Persist the onboarding self-reflection to the profile (best-effort).
+    /// Cached and re-applied on connect, like consent/region, so a selection
+    /// made before sign-in still reaches the server.
     func saveAssessment(motivations: [String], goals: [String]) {
+        pendingAssessment = (motivations, goals)
         guard isConnected else { return }
         Task { _ = try? await APIClient.shared.updateProfile(goals: goals, motivations: motivations) }
     }

@@ -127,15 +127,57 @@ private struct StepScaffold<Content: View>: View {
 }
 
 // MARK: 7 — Signup (after the value moment, so there's something to save)
+/// A REAL account step, not a pitch: "Create my space" opens the full auth
+/// sheet (email / Apple / Google via CloudSyncView), and signing in advances
+/// automatically. "Maybe later" defers honestly — the account remains one tap
+/// away under the You tab.
 private struct SignupScreen: View {
     var onContinue: () -> Void
+    @EnvironmentObject var backend: BackendService
+    @State private var showAuth = false
+
     var body: some View {
-        StepScaffold(eyebrow: "Account creation", title: "Save your space", image: Dummy.Img.chat,
-                     caption: "You've shaped your plan — create your private space to keep it. No social feed, no sharing, just you.",
-                     progress: 0.68, onContinue: onContinue) {
-            ListRow(title: "Private by design", subtitle: "Email, Apple, or Google", systemImage: "lock", imageURL: Dummy.Img.privacy, emphasis: true)
-            ListRow(title: "Personalized next step", subtitle: "CereBro adapts your plan", systemImage: "heart", imageURL: Dummy.Img.meditate)
-            ListRow(title: "You stay in control", subtitle: "Data choices editable anytime", systemImage: "lock", imageURL: Dummy.Img.privacy)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Account creation").eyebrow().entrance(0)
+                Text("Save your space").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
+                Photo(url: Dummy.Img.chat, symbol: "sparkles")
+                    .frame(height: 132).frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+                    .entrance(2)
+                Text(backend.isConnected
+                     ? "Your space is saved — plan, journal and check-ins now sync privately."
+                     : "You've shaped your plan — create your private space to keep it. No social feed, no sharing, just you.")
+                    .appFont(13).foregroundStyle(Theme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .entrance(3)
+                Group {
+                    ListRow(title: "Private by design", subtitle: "Email, Apple, or Google", systemImage: "lock", imageURL: Dummy.Img.privacy, emphasis: true)
+                    ListRow(title: "Personalized next step", subtitle: "CereBro adapts your plan", systemImage: "heart", imageURL: Dummy.Img.meditate)
+                    ListRow(title: "You stay in control", subtitle: "Data choices editable anytime", systemImage: "lock", imageURL: Dummy.Img.privacy)
+                }
+                .entrance(4)
+                OnboardingProgress(value: 0.68).entrance(5)
+                if backend.isConnected {
+                    PrimaryButton(title: "Continue", action: onContinue).entrance(6)
+                } else {
+                    PrimaryButton(title: "Create my space", systemImage: "person.crop.circle.badge.plus") {
+                        showAuth = true
+                    }
+                    .entrance(6)
+                    SecondaryButton(title: "Maybe later", systemImage: "arrow.right", action: onContinue)
+                        .entrance(7)
+                }
+            }
+            .padding(18).padding(.top, 12)
+        }
+        .sheet(isPresented: $showAuth) { NavigationStack { CloudSyncView() } }
+        .onChange(of: backend.isConnected) { _, connected in
+            // Signed in from the sheet → close it and move on.
+            if connected {
+                showAuth = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onContinue() }
+            }
         }
     }
 }
@@ -234,16 +276,19 @@ private struct GoalsScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
-    @State private var motivations: Set<String> = ["Focus", "Calm"]
-    @State private var goals: Set<String> = ["Reduce stress", "Sleep better"]
+    // Starts EMPTY on purpose: a pre-answered reflection biases the input and
+    // dilutes personalization. Continue is gated on one pick of each instead.
+    @State private var motivations: Set<String> = []
+    @State private var goals: Set<String> = []
 
     /// Flat, order-stable list of every goal item across categories.
     private var allGoalItems: [String] { Dummy.goalCategories.flatMap(\.items) }
 
     var body: some View {
         StepScaffold(eyebrow: "Self-reflection", title: "What matters now", image: Dummy.Img.meditate,
-                     caption: "A quick self-reflection: what drives you, and what you'd like to practice. CereBro shapes your plan and conversation starters around it.",
-                     progress: 0.40, onContinue: persistAndContinue) {
+                     caption: "A quick self-reflection: what drives you, and what you'd like to practice. Pick at least one of each — CereBro shapes your plan and conversation starters around it.",
+                     progress: 0.40, canContinue: !motivations.isEmpty && !goals.isEmpty,
+                     onContinue: persistAndContinue) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("What drives you").eyebrow()
                 ChipRow(options: Dummy.motivations, selection: $motivations)
@@ -254,19 +299,17 @@ private struct GoalsScreen: View {
                 }
             }
         }
-        .onAppear {
-            if !state.selectedMotivations.isEmpty { motivations = Set(state.selectedMotivations) }
-            if !state.selectedGoals.isEmpty { goals = Set(state.selectedGoals) }
-        }
+        // No restore-from-state here: AppState ships non-empty defaults, and
+        // refilling them would re-answer the reflection (there is no back
+        // navigation, so this screen is only ever seen fresh).
     }
 
     private func persistAndContinue() {
         state.selectedMotivations = Dummy.motivations.filter(motivations.contains)
         state.selectedGoals = allGoalItems.filter(goals.contains)
-        // Mirror to the profile if already signed in (best-effort).
-        if backend.isConnected {
-            backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
-        }
+        // Cached in BackendService — pushed now if connected, else at the next
+        // connect, so the server plan/insights personalize either way.
+        backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
         onContinue()
     }
 }
