@@ -413,6 +413,14 @@ final class CereBroUITests: XCTestCase {
 
         if tap(app, "Quick SOS reset") {
             snapshot(app, "talk-01-sos")
+            // Tool ambience: every tool floats a mute toggle (audio itself is
+            // engine-gated under -resetState, so only the state is asserted).
+            let sound = app.buttons["Background sound"].firstMatch
+            XCTAssertTrue(sound.waitForExistence(timeout: 5), "ambience toggle missing on SOS")
+            XCTAssertEqual(sound.value as? String, "On", "tool sound should default on")
+            sound.tap()
+            XCTAssertEqual(sound.value as? String, "Off", "mute toggle did not flip")
+            sound.tap()   // restore the default for the rest of the suite
             if tap(app, "2-minute breathing") {
                 snapshot(app, "talk-02-breathing")
                 tap(app, "Continue")               // fires the completion celebration

@@ -29,6 +29,7 @@ struct OneGoodThingView: View {
             }
             .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
         }
+        .toolAmbience(.rain)
         .celebration(trigger: $done)
     }
 }
@@ -61,6 +62,7 @@ struct IntentionSetView: View {
             }
             .disabled(intention.trimmingCharacters(in: .whitespaces).isEmpty)
         }
+        .toolAmbience(.drone)
         .celebration(trigger: $done)
     }
 }
@@ -102,6 +104,7 @@ struct DBTSkillView: View {
             }
             NavRow(title: "Get urgent support", subtitle: "Crisis resources", systemImage: "lifepreserver", imageURL: Dummy.Img.support, emphasis: true) { CrisisView() }
         }
+        .toolAmbience(.ocean)
     }
 }
 

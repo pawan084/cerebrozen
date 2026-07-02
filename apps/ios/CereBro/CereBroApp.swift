@@ -44,6 +44,7 @@ final class AppState: ObservableObject {
         static let companion = "companion"
         static let activeDays = "activeDays"
         static let journalLock = "journalLocked"
+        static let toolSound = "toolSoundOn"
         static let favSleep = "favoriteSleep"
         static let crisisRegion = "crisisRegion"
         static let lastMilestone = "lastStreakMilestone"
@@ -82,6 +83,9 @@ final class AppState: ObservableObject {
     @Published var companion: String       { didSet { UserDefaults.standard.set(companion, forKey: Key.companion) } }
     /// Gate the Journal tab behind Face ID / passcode (off by default).
     @Published var journalLocked: Bool     { didSet { UserDefaults.standard.set(journalLocked, forKey: Key.journalLock) } }
+    /// Quiet looping ambience on tool screens (breathing/grounding/CBT/…). On by
+    /// default; the `.ambient` session still respects the silent switch.
+    @Published var toolSoundOn: Bool       { didSet { UserDefaults.standard.set(toolSoundOn, forKey: Key.toolSound) } }
     /// Favorited sleep stories/sounds, keyed by their stable title.
     @Published private(set) var favoriteSleep: Set<String> { didSet { Self.save(Array(favoriteSleep), Key.favSleep) } }
     /// Crisis-resources region override. "" = automatic (device region).
@@ -111,7 +115,7 @@ final class AppState: ObservableObject {
         if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
-             Key.journalLock, Key.favSleep, Key.crisisRegion, Key.lastMilestone,
+             Key.journalLock, Key.toolSound, Key.favSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate,
              "cerebro_access_token"].forEach {   // also drop any cloud session
@@ -131,6 +135,7 @@ final class AppState: ObservableObject {
         companion      = UserDefaults.standard.string(forKey: Key.companion) ?? "Calm Guide"
         activeDays     = Self.load([String].self, Key.activeDays) ?? (seedDemo ? Self.seededActiveDays() : [])
         journalLocked  = UserDefaults.standard.bool(forKey: Key.journalLock)
+        toolSoundOn    = UserDefaults.standard.object(forKey: Key.toolSound) as? Bool ?? true
         favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
         lastMilestone  = UserDefaults.standard.integer(forKey: Key.lastMilestone)
@@ -161,6 +166,7 @@ final class AppState: ObservableObject {
         companion = "Calm Guide"
         activeDays = []
         journalLocked = false
+        toolSoundOn = true
         favoriteSleep = []
         crisisRegion = ""
         lastMilestone = 0

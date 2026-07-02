@@ -13,6 +13,7 @@ struct SOSView: View {
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             NavRow(title: "Talk to someone now", subtitle: "Crisis & human support", systemImage: "phone", imageURL: Dummy.Img.support) { CrisisView() }
         }
+        .toolAmbience(.ocean)
     }
 }
 
@@ -32,6 +33,7 @@ struct BreathingView: View {
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             PrimaryButton(title: "Continue") { done.toggle() }
         }
+        .toolAmbience(.wind)
         .celebration(trigger: $done, accent: Theme.Accent.breathe)
     }
 }
@@ -141,6 +143,7 @@ struct GroundingView: View {
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             PrimaryButton(title: "Continue") { done.toggle() }
         }
+        .toolAmbience(.rain)
         .celebration(trigger: $done, accent: Theme.Accent.breathe)
     }
 }
@@ -163,6 +166,7 @@ struct CBTReframeView: View {
             NavRow(title: "See balanced thought", subtitle: "CBT output", systemImage: "sparkles", imageURL: Dummy.Img.write, emphasis: true) { BalancedThoughtView() }
             PrimaryButton(title: "Continue") { showBalanced = true }
         }
+        .toolAmbience(.drone)
         .navigationDestination(isPresented: $showBalanced) { BalancedThoughtView() }
     }
 }
@@ -205,6 +209,7 @@ struct BalancedThoughtView: View {
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             PrimaryButton(title: "Continue") { done.toggle() }
         }
+        .toolAmbience(.drone)
         .celebration(trigger: $done)
     }
 }
