@@ -21,6 +21,22 @@
 
 ## Open — code/product work
 
+### Onboarding flow review (2026-07-02) — smaller findings not yet fixed
+- [ ] No back navigation between onboarding steps (a mis-tapped Continue is
+  unrecoverable mid-flow); add a back chevron to `StepScaffold` for steps > 0.
+- [ ] Notifications step is multi-select for a single reminder slot: both times
+  → morning silently wins; "No reminders" + a time is contradictory-but-allowed;
+  "Private previews" maps to nothing. Make it single-select.
+- [ ] Age gate: no under-18 exit path, and the confirmation isn't persisted
+  client-side (attestation inferred from flow completion, stamped at first
+  connect). Persist a local confirmed-at and send it with `attest()`.
+- [ ] Consent toggles pre-checked on (mood history, AI memory) — revisit before
+  any EU launch (pre-ticked consent friction).
+- [ ] `FirstPlanScreen.planTitle` maps only 4 goal labels; others fall through
+  to "Ease work stress".
+- [ ] `OnboardingProgress` has no accessibility value (VoiceOver users get no
+  sense of progress); re-running onboarding re-stamps the baseline date.
+
 - [ ] iOS imagery is 17 hardcoded Unsplash URLs (`DummyData.swift`) — bundle real assets
   (offline correctness, privacy, App Review safety). Needs actual art/photo assets.
 - [ ] Most iOS catalogue content (sleep/meditations/programs rails) is `Dummy` static
