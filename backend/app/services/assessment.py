@@ -192,9 +192,11 @@ async def generate_topics(
     else:
         # Product guarantee: the user's primary selection is always visibly
         # reflected — anchor one curated seed for the first selected
-        # motivation/goal even when the LLM chose different wording.
+        # motivation/goal even when the LLM chose different wording. First
+        # position, because the starters rail scrolls horizontally and only
+        # the leading chips are visible without scrolling.
         anchors = [s for label in (*mots, *gls) for s in _TOPIC_SEEDS.get(label, [])[:1]]
         if anchors and anchors[0].lower() not in {t.lower() for t in topics}:
-            topics = topics[: count - 1] + [anchors[0]]
+            topics = [anchors[0]] + topics[: count - 1]
 
     return [{"id": i + 1, "topic": t} for i, t in enumerate(topics[:count])], source

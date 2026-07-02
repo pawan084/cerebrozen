@@ -245,6 +245,14 @@ final class CereBroUITests: XCTestCase {
         tapExact(app, "Continue")          // AI disclosure → self-reflection
         XCTAssertTrue(app.staticTexts["What matters now"].waitForExistence(timeout: 6),
                       "self-reflection step did not appear")
+        // The step arrives pre-filled with the app defaults — deselect them so
+        // the request carries ONLY the distinctive pick (the backend anchors
+        // the first selection's seed, making the assertion below deterministic
+        // even when a live LLM words the other topics freely).
+        selectChip(app, "Focus")             // deselect default motivation
+        selectChip(app, "Calm")              // deselect default motivation
+        selectChip(app, "Reduce stress")     // deselect default goal
+        selectChip(app, "Sleep better")      // deselect default goal
         selectChip(app, "Confidence")        // motivation
         selectChip(app, "Build confidence")  // goal
         tapExact(app, "Continue")          // → Baseline
