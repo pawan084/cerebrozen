@@ -147,6 +147,14 @@ final class SoundscapePlayer: ObservableObject {
     /// touching the real engine, so navigation tests don't depend on audio.
     private let audioEnabled = !ProcessInfo.processInfo.arguments.contains("-resetState")
     private var source: AVAudioSourceNode?
+    /// File-based layer voices (bundled studio-rendered seamless loops in
+    /// Resources/Sounds). When all four load, these replace the procedural
+    /// synth; the synth remains as an automatic fallback.
+    private var voices: [AVAudioPlayerNode] = []
+    private var graphBuilt = false
+    private var usingFiles = false
+    /// Bundle file per layer, parallel to `layerKinds`.
+    private static let layerFiles = ["rain", "ocean", "wind", "drone"]
     private var fadeTimer: Timer?
     private var sleepTimer: Timer?
     private var remoteConfigured = false
@@ -175,7 +183,8 @@ final class SoundscapePlayer: ObservableObject {
     // MARK: Mix (layer volumes)
 
     func setLayerVolume(_ v: Float, at index: Int) {
-        mixer.setVolume(v, at: index)
+        mixer.setVolume(v, at: index)   // target store + synth fallback
+        if usingFiles, index >= 0 && index < voices.count { voices[index].volume = max(0, min(1, v)) }
         if index >= 0 && index < layers.count { layers[index].volume = max(0, min(1, v)) }
     }
 
@@ -198,10 +207,20 @@ final class SoundscapePlayer: ObservableObject {
             isPlaying = true; updateNowPlaying(); Haptics.soft(intensity: 0.4); return
         }
         activateSession()
-        if source == nil { buildSourceNode() }
+        if !graphBuilt {
+            graphBuilt = true
+            usingFiles = buildFileGraph()          // bundled loops preferred…
+            if !usingFiles { buildSourceNode() }   // …procedural synth as fallback
+        }
         engine.mainMixerNode.outputVolume = volume
         do {
             if !engine.isRunning { try engine.start() }
+            if usingFiles {
+                for (i, v) in voices.enumerated() {
+                    v.volume = mixer.volume(at: i)
+                    if !v.isPlaying { v.play() }
+                }
+            }
             isPlaying = true
             updateNowPlaying()
             Haptics.soft(intensity: 0.4)
@@ -211,7 +230,10 @@ final class SoundscapePlayer: ObservableObject {
     }
 
     func pause() {
-        if audioEnabled { engine.pause() }
+        if audioEnabled {
+            if usingFiles { voices.forEach { $0.pause() } }
+            engine.pause()
+        }
         isPlaying = false
         updateNowPlaying()
     }
@@ -229,6 +251,8 @@ final class SoundscapePlayer: ObservableObject {
         isPlaying = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         guard audioEnabled else { return }
+        // pause (not .stop()) keeps each voice's looped buffer scheduled.
+        if usingFiles { voices.forEach { $0.pause() } }
         if engine.isRunning { engine.stop() }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -310,6 +334,30 @@ final class SoundscapePlayer: ObservableObject {
     }
 
     // MARK: Engine setup
+
+    /// Load the four bundled seamless loops and wire one looping player node per
+    /// layer. Returns false (→ synth fallback) if any file is missing/unreadable.
+    private func buildFileGraph() -> Bool {
+        var buffers: [AVAudioPCMBuffer] = []
+        for name in Self.layerFiles {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
+                  let file = try? AVAudioFile(forReading: url),
+                  let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                             frameCapacity: AVAudioFrameCount(file.length))
+            else { return false }
+            do { try file.read(into: buf) } catch { return false }
+            buffers.append(buf)
+        }
+        for (i, buf) in buffers.enumerated() {
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: engine.mainMixerNode, format: buf.format)
+            node.scheduleBuffer(buf, at: nil, options: .loops)
+            node.volume = mixer.volume(at: i)
+            voices.append(node)
+        }
+        return true
+    }
 
     private func buildSourceNode() {
         let sr = engine.outputNode.outputFormat(forBus: 0).sampleRate
