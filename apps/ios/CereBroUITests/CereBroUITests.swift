@@ -192,11 +192,13 @@ final class CereBroUITests: XCTestCase {
         tap(app, "Scientific")
         tapExact(app, "Continue")
 
-        // 6 — Signup (now that there's something to save) — a REAL account CTA
-        // plus an honest deferral; the walkthrough defers.
+        // 6 — Signup (now that there's something to save) — the full auth form
+        // is embedded on the page (create-account tab first); the walkthrough
+        // defers via "Maybe later".
         expectStep(app, "Save your space", shot: "seq-06-signup")
-        XCTAssertTrue(app.buttons["Create my space"].waitForExistence(timeout: 4),
-                      "real signup CTA missing on the account step")
+        XCTAssertTrue(app.buttons["Create my account"].waitForExistence(timeout: 4),
+                      "embedded account form missing on the signup step")
+        XCTAssertTrue(app.buttons["Sign in with Apple"].exists, "Apple button missing on the signup step")
         tapExact(app, "Maybe later")
 
         // 7 — Consent (after signup) — flip a privacy switch

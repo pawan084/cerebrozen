@@ -1,0 +1,202 @@
+import AuthenticationServices
+import SwiftUI
+
+/// The shared sign-in / create-account form: Apple → Google → email, with the
+/// dev server plumbing behind a collapsed disclosure (DEBUG only). Used by the
+/// Cloud Sync screen and embedded directly in onboarding's account step.
+struct AuthForm: View {
+    enum Mode { case signIn, signUp }
+
+    @EnvironmentObject var backend: BackendService
+    // Empty by default — production users start with a clean form. Demo
+    // credentials + the local server are pre-filled only in DEBUG (onAppear),
+    // and only for the sign-in tab (never into a create-account form).
+    @State private var email = ""
+    @State private var password = ""
+    @State private var name = ""
+    @State private var server = ""
+    @State private var mode: Mode
+    @State private var googleAuth = GoogleAuth()
+    @State private var googleMessage: String?
+    @State private var resetMessage: String?
+    @State private var showDevOptions = false
+
+    private let initialMode: Mode
+
+    /// `initialMode` picks the segmented tab the form opens on — onboarding's
+    /// account step embeds with `.signUp`; Cloud Sync defaults to `.signIn`.
+    init(initialMode: Mode = .signIn) {
+        self.initialMode = initialMode
+        _mode = State(initialValue: initialMode)
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Social sign-in first — the modern pattern. (Apple is required by the
+            // App Store wherever a third-party sign-in like Google is offered.)
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                handleApple(result)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 50)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityIdentifier("Sign in with Apple")
+
+            googleButton
+            if let googleMessage {
+                Text(googleMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 8) {
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+                Text("or use email").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.muted2)
+                Rectangle().fill(Theme.Palette.line).frame(height: 1)
+            }
+
+            Picker("", selection: $mode) {
+                Text("Sign in").tag(Mode.signIn)
+                Text("Create account").tag(Mode.signUp)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Sign in or create account")
+
+            if mode == .signUp {
+                field("Name", text: $name)
+            }
+            field("Email", text: $email, keyboard: .emailAddress)
+            field("Password", text: $password, secure: true)
+
+            PrimaryButton(title: mode == .signIn ? "Continue with email" : "Create my account",
+                          systemImage: "envelope.fill") {
+                Task {
+                    await backend.setServer(server)   // point at this server first
+                    if mode == .signIn {
+                        await backend.signIn(email: email, password: password)
+                    } else {
+                        await backend.signUp(email: email, password: password, name: name)
+                    }
+                }
+            }
+
+            if mode == .signIn {
+                Button {
+                    Task {
+                        await backend.setServer(server)
+                        try? await backend.requestPasswordReset(email: email)
+                        resetMessage = "If that email exists, a reset link is on its way."
+                    }
+                } label: {
+                    Text("Forgot password?").appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                }
+                .buttonStyle(.pressable)
+                .disabled(email.isEmpty)
+                if let resetMessage {
+                    Text(resetMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            #if DEBUG
+            // Dev plumbing lives behind a collapsed disclosure so the page
+            // reads like a traditional login; Release has no server field.
+            DisclosureGroup(isExpanded: $showDevOptions) {
+                VStack(alignment: .leading, spacing: 8) {
+                    field("Server URL", text: $server, keyboard: .URL)
+                    Text("On device, use your Mac's LAN address — e.g. http://192.168.x.x:8000 or http://<mac-name>.local:8000. The Simulator can keep localhost.")
+                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Demo: pawan@cerebro.app · demo12345")
+                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                }
+                .padding(.top, 8)
+            } label: {
+                Text("Developer options")
+                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
+            }
+            .tint(Theme.Palette.muted2)
+            #endif
+        }
+        .onAppear {
+            if server.isEmpty { server = backend.baseURL }
+            #if DEBUG
+            // Dev convenience only: pre-fill the seeded demo login (sign-in tab
+            // only). Must match the account created in backend/app/seed.py.
+            if initialMode == .signIn {
+                if email.isEmpty { email = "pawan@cerebro.app" }
+                if password.isEmpty { password = "demo12345" }
+                if name.isEmpty { name = "Pawan" }
+            }
+            #endif
+        }
+    }
+
+    // Modern "Continue with Google" button (white, matching the Apple button).
+    private var googleButton: some View {
+        Button { signInWithGoogle() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "g.circle.fill").appFont(18, weight: .bold)
+                Text("Continue with Google").appFont(15, weight: .semibold)
+            }
+            .foregroundStyle(Theme.Palette.ink)
+            .frame(maxWidth: .infinity).frame(height: 50)
+            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.pressable)
+        .accessibilityIdentifier("Continue with Google")
+    }
+
+    /// Run Google's OAuth, then exchange the ID token with the backend.
+    private func signInWithGoogle() {
+        googleMessage = nil
+        Task {
+            do {
+                await backend.setServer(server)
+                let token = try await googleAuth.signIn()
+                await backend.signInWithGoogle(idToken: token, name: "")
+            } catch GoogleAuthError.cancelled {
+                // user backed out — no message
+            } catch {
+                googleMessage = (error as? LocalizedError)?.errorDescription ?? "Google sign-in failed."
+            }
+        }
+    }
+
+    /// Extract Apple's identity token and exchange it with the backend.
+    private func handleApple(_ result: Result<ASAuthorization, Error>) {
+        guard case let .success(auth) = result,
+              let cred = auth.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = cred.identityToken,
+              let token = String(data: tokenData, encoding: .utf8) else { return }
+        let fullName = [cred.fullName?.givenName, cred.fullName?.familyName]
+            .compactMap { $0 }.joined(separator: " ")
+        Task {
+            await backend.setServer(server)
+            await backend.signInWithApple(identityToken: token, name: fullName)
+        }
+    }
+
+    private func field(_ label: String, text: Binding<String>,
+                       secure: Bool = false, keyboard: UIKeyboardType = .default) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            Group {
+                if secure {
+                    SecureField(label, text: text).accessibilityIdentifier(label)
+                } else {
+                    TextField(label, text: text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier(label)
+                }
+            }
+            .foregroundStyle(Theme.Palette.text)
+            .padding(.horizontal, 14).frame(height: 48)
+            .background(Theme.Palette.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.Palette.line))
+        }
+    }
+}

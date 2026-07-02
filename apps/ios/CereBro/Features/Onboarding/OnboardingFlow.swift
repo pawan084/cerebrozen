@@ -148,55 +148,40 @@ private struct StepScaffold<Content: View>: View {
 }
 
 // MARK: 7 — Signup (after the value moment, so there's something to save)
-/// A REAL account step, not a pitch: "Create my space" opens the full auth
-/// sheet (email / Apple / Google via CloudSyncView), and signing in advances
-/// automatically. "Maybe later" defers honestly — the account remains one tap
-/// away under the You tab.
+/// A REAL account step with the full auth form (Apple / Google / email)
+/// embedded right on the page — no sheet. Signing in advances automatically;
+/// "Maybe later" defers honestly (the account stays one tap away in You).
 private struct SignupScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var backend: BackendService
-    @State private var showAuth = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Account creation").eyebrow().entrance(0)
                 Text("Save your space").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
-                Photo(url: Dummy.Img.chat, symbol: "sparkles")
-                    .frame(height: 132).frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
-                    .entrance(2)
                 Text(backend.isConnected
                      ? "Your space is saved — plan, journal and check-ins now sync privately."
                      : "You've shaped your plan — create your private space to keep it. No social feed, no sharing, just you.")
                     .appFont(13).foregroundStyle(Theme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                    .entrance(3)
-                Group {
-                    ListRow(title: "Private by design", subtitle: "Email, Apple, or Google", systemImage: "lock", imageURL: Dummy.Img.privacy, emphasis: true)
-                    ListRow(title: "Personalized next step", subtitle: "CereBro adapts your plan", systemImage: "heart", imageURL: Dummy.Img.meditate)
-                    ListRow(title: "You stay in control", subtitle: "Data choices editable anytime", systemImage: "lock", imageURL: Dummy.Img.privacy)
-                }
-                .entrance(4)
-                OnboardingProgress(value: 0.68).entrance(5)
+                    .entrance(2)
                 if backend.isConnected {
-                    PrimaryButton(title: "Continue", action: onContinue).entrance(6)
+                    PrimaryButton(title: "Continue", action: onContinue).entrance(3)
                 } else {
-                    PrimaryButton(title: "Create my space", systemImage: "person.crop.circle.badge.plus") {
-                        showAuth = true
-                    }
-                    .entrance(6)
+                    AuthForm(initialMode: .signUp).entrance(3)
+                }
+                OnboardingProgress(value: 0.68).entrance(4)
+                if !backend.isConnected {
                     SecondaryButton(title: "Maybe later", systemImage: "arrow.right", action: onContinue)
-                        .entrance(7)
+                        .entrance(5)
                 }
             }
             .padding(18).padding(.top, 12)
         }
-        .sheet(isPresented: $showAuth) { NavigationStack { CloudSyncView() } }
         .onChange(of: backend.isConnected) { _, connected in
-            // Signed in from the sheet → close it and move on.
+            // Signed in / account created inline → move on.
             if connected {
-                showAuth = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onContinue() }
             }
         }
