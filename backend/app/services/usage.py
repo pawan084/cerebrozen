@@ -8,7 +8,6 @@ is capped per account.
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -24,7 +23,7 @@ _UNLIMITED_TIERS = {"premium", "premium_human"}
 
 async def messages_today(db: AsyncSession, user_id: uuid.UUID) -> int:
     """Count the user's own (role='user') messages since midnight UTC."""
-    since = utcnow() - timedelta(days=1)
+    since = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     count = await db.scalar(
         select(func.count())
         .select_from(ChatMessage)

@@ -112,23 +112,33 @@ async def apple_sign_in(
     request: Request, payload: AppleSignInRequest, db: AsyncSession = Depends(get_db)
 ):
     """Sign in with Apple: verify the identity token, then find-or-create the
-    user by their verified Apple email and issue our own token pair."""
+    user — by the stable Apple id (`sub`) first, falling back to the verified
+    email — and issue our own token pair."""
     claims = await apple.verify_identity_token(payload.identity_token)
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Apple token")
+    sub = claims.get("sub") or ""
     email = (claims.get("email") or "").lower()
-    if not email:
-        # A relayed/private Apple address is still returned as `email`; absence
-        # means the token didn't carry one (rare) — we can't key an account.
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Apple did not provide an email")
+    if not sub and not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Apple token carried no user identity")
 
-    user = await db.scalar(select(User).where(User.email == email))
+    user = None
+    if sub:
+        user = await db.scalar(select(User).where(User.apple_sub == sub))
+    if user is None and email:
+        user = await db.scalar(select(User).where(User.email == email))
+
     if user is None:
         # New Apple user — no password, so store an unusable random hash.
+        # Apple only sends `email` on the FIRST authorization (and some tokens
+        # carry none at all); the stable `sub` still keys the account, with a
+        # synthesized address standing in when Apple withheld the real one.
         user = User(
-            email=email,
+            email=email or f"apple_{sub}@siwa.cerebrozen.in",
             hashed_password=hash_password(secrets.token_urlsafe(32)),
             name=payload.name,
+            apple_sub=sub or None,
         )
         user.consent = Consent()
         db.add(user)
@@ -136,8 +146,13 @@ async def apple_sign_in(
         await nudges.schedule_default_nudges(db, user)
         await db.commit()
         await db.refresh(user)
-    elif not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    else:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+        if sub and not user.apple_sub:
+            # Legacy email-keyed Apple account — adopt the stable id.
+            user.apple_sub = sub
+            await db.commit()
     return _tokens(user)
 
 

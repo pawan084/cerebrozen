@@ -2,11 +2,13 @@
 
 agent → (tools_condition) → tools → agent, looping until the model answers with
 no tool calls. Write tools pause via ``interrupt()`` for confirmation. State is
-checkpointed (MemorySaver) so a conversation — and a paused confirmation — can be
-resumed by ``thread_id``.
+checkpointed so a conversation — and a paused confirmation — can be resumed by
+``thread_id``.
 
-Note: MemorySaver is in-process. For multi-worker production, swap in
-``langgraph.checkpoint.postgres.aio.AsyncPostgresSaver`` (same interface).
+Checkpointing is durable: ``AsyncPostgresSaver`` on the app database, so a
+paused confirmation can be resumed by ANY gunicorn worker (prod runs several).
+If Postgres checkpointing can't initialize, we fall back to the in-process
+``MemorySaver`` (single-worker dev) with a loud warning.
 """
 from __future__ import annotations
 
@@ -39,6 +41,7 @@ SYSTEM_PROMPT = (
 )
 
 _graph = None
+_checkpointer = None
 
 
 def _chat_model():
@@ -52,9 +55,38 @@ def _chat_model():
     return None
 
 
-def get_graph():
+async def _make_checkpointer():
+    """Durable Postgres checkpointer (multi-worker safe), MemorySaver fallback."""
+    try:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        from psycopg.rows import dict_row
+        from psycopg_pool import AsyncConnectionPool
+
+        # psycopg wants a plain postgresql:// DSN, not SQLAlchemy's +asyncpg URL.
+        conninfo = settings.database_url.replace("+asyncpg", "")
+        pool = AsyncConnectionPool(
+            conninfo,
+            min_size=1,
+            max_size=4,
+            open=False,
+            kwargs={"autocommit": True, "row_factory": dict_row},
+        )
+        await pool.open()
+        saver = AsyncPostgresSaver(pool)
+        await saver.setup()   # idempotent: creates the checkpoint tables
+        logger.info("Oracle checkpointer: Postgres (durable, multi-worker safe)")
+        return saver
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Postgres checkpointer unavailable (%s) — using in-process MemorySaver; "
+            "paused confirmations won't survive a restart or cross workers.", exc
+        )
+        return MemorySaver()
+
+
+async def get_graph():
     """Build (once) and return the compiled Oracle graph, or None if no LLM."""
-    global _graph
+    global _graph, _checkpointer
     if _graph is not None:
         return _graph
     model = _chat_model()
@@ -73,5 +105,7 @@ def get_graph():
     builder.add_conditional_edges("agent", tools_condition)
     builder.add_edge("tools", "agent")
 
-    _graph = builder.compile(checkpointer=MemorySaver())
+    if _checkpointer is None:
+        _checkpointer = await _make_checkpointer()
+    _graph = builder.compile(checkpointer=_checkpointer)
     return _graph

@@ -101,6 +101,30 @@ def test_tampered_signature_rejected(tmp_path, monkeypatch):
         appstore.verify_transaction(tampered)
 
 
+def test_wrong_bundle_id_rejected(tmp_path, monkeypatch):
+    """A validly signed transaction for ANOTHER app must not grant tier here."""
+    future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
+    payload = {"productId": "com.cerebrozen.premium.monthly", "expiresDate": future,
+               "bundleId": "com.somebody.else"}
+    jws, root_pem = _build_jws(payload)
+    root_file = tmp_path / "root.pem"
+    root_file.write_bytes(root_pem)
+    monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
+    with pytest.raises(appstore.ReceiptError):
+        appstore.verify_transaction(jws)
+
+
+def test_matching_bundle_id_accepted(tmp_path, monkeypatch):
+    future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
+    payload = {"productId": "com.cerebrozen.premium.monthly", "expiresDate": future,
+               "bundleId": appstore.settings.appstore_bundle_id}
+    jws, root_pem = _build_jws(payload)
+    root_file = tmp_path / "root.pem"
+    root_file.write_bytes(root_pem)
+    monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
+    assert appstore.verify_transaction(jws)["bundleId"] == appstore.settings.appstore_bundle_id
+
+
 def test_wrong_root_pin_rejected(tmp_path, monkeypatch):
     future = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
     jws, _root_pem = _build_jws({"productId": "com.cerebrozen.premium.monthly", "expiresDate": future})

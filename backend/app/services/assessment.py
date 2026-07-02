@@ -189,5 +189,12 @@ async def generate_topics(
 
     if not topics:
         topics = _fallback_topics(mots, gls, count)
+    else:
+        # Product guarantee: the user's primary selection is always visibly
+        # reflected — anchor one curated seed for the first selected
+        # motivation/goal even when the LLM chose different wording.
+        anchors = [s for label in (*mots, *gls) for s in _TOPIC_SEEDS.get(label, [])[:1]]
+        if anchors and anchors[0].lower() not in {t.lower() for t in topics}:
+            topics = topics[: count - 1] + [anchors[0]]
 
     return [{"id": i + 1, "topic": t} for i, t in enumerate(topics[:count])], source

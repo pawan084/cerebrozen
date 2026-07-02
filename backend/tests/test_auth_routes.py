@@ -37,9 +37,18 @@ async def test_apple_invalid_token(client, monkeypatch):
     assert (await client.post("/auth/apple", json={"identity_token": "bad"})).status_code == 401
 
 
-async def test_apple_no_email(client, monkeypatch):
+async def test_apple_no_email_still_signs_in_by_sub(client, monkeypatch):
+    # Private-relay edge: no email claim — the stable `sub` keys the account.
     async def fake(_):
-        return {"sub": "123"}
+        return {"sub": f"no-email-{uuid.uuid4().hex}"}
+    monkeypatch.setattr(apple, "verify_identity_token", fake)
+    assert (await client.post("/auth/apple", json={"identity_token": "x"})).status_code == 200
+
+
+async def test_apple_no_identity_rejected(client, monkeypatch):
+    async def fake(_):
+        # Verified claims but neither sub nor email — nothing to key an account on.
+        return {"iss": "https://appleid.apple.com"}
     monkeypatch.setattr(apple, "verify_identity_token", fake)
     assert (await client.post("/auth/apple", json={"identity_token": "x"})).status_code == 400
 

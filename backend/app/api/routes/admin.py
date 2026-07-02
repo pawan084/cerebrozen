@@ -122,7 +122,8 @@ async def resolve_safety_event(event_id: uuid.UUID, db: AsyncSession = Depends(g
     return event
 
 
-# ── Ops: dispatch due nudges (would be a cron in production) ─────────────
+# ── Ops: manual dispatch pass (the in-process scheduler in app.main runs
+# this automatically every NUDGE_DISPATCH_INTERVAL_MINUTES) ───────────────
 @router.post("/nudges/dispatch")
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
     sent = await nudges.dispatch_due(db)

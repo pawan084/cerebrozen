@@ -161,3 +161,18 @@ async def test_topics_endpoint_falls_back_to_saved_selection(auth_client):
     r = await auth_client.post("/assessment/topics", json={})
     assert r.status_code == 200
     assert len(r.json()["topics"]) >= 4
+
+
+async def test_ai_topics_anchor_primary_selection(monkeypatch):
+    """Even with LLM topics, one topic must be the curated anchor for the
+    user's first selection (their explicit choice is always visible)."""
+    from app.services import ai, assessment
+
+    async def fake_json(*a, **k):
+        return {"topics": [{"id": i, "topic": f"Something the model wrote {i}"} for i in range(1, 9)]}
+
+    monkeypatch.setattr(ai, "complete_json", fake_json)
+    items, source = await assessment.generate_topics(["Confidence"], ["Build confidence"])
+    assert source == "ai"
+    texts = [t["topic"] for t in items]
+    assert assessment._TOPIC_SEEDS["Confidence"][0] in texts

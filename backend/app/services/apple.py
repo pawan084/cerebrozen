@@ -11,6 +11,7 @@ No new dependency: ``python-jose[cryptography]`` verifies RS256 from a JWK, and
 from __future__ import annotations
 
 import logging
+import time
 
 import httpx
 from jose import jwt
@@ -24,16 +25,19 @@ _APPLE_ISSUER = "https://appleid.apple.com"
 _APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
 
 _keys_cache: list[dict] | None = None
+_keys_fetched_at: float = 0.0
+_KEYS_TTL_SECONDS = 6 * 3600   # refetch periodically so key rotation propagates
 
 
 async def _apple_keys() -> list[dict]:
-    """Fetch (and cache) Apple's public signing keys."""
-    global _keys_cache
-    if _keys_cache is None:
+    """Fetch (and cache, with a TTL) Apple's public signing keys."""
+    global _keys_cache, _keys_fetched_at
+    if _keys_cache is None or time.monotonic() - _keys_fetched_at > _KEYS_TTL_SECONDS:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(_APPLE_KEYS_URL)
             resp.raise_for_status()
             _keys_cache = resp.json().get("keys", [])
+            _keys_fetched_at = time.monotonic()
     return _keys_cache
 
 

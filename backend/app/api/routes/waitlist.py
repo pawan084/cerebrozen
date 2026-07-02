@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_admin
+from app.core.ratelimit import limiter
 from app.models.waitlist import WaitlistEntry
 
 router = APIRouter(tags=["waitlist"])
@@ -22,7 +23,8 @@ class WaitlistOut(BaseModel):
 
 
 @router.post("/waitlist", status_code=201)
-async def join_waitlist(payload: WaitlistJoin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")   # public unauthenticated endpoint — blunt spam floods
+async def join_waitlist(request: Request, payload: WaitlistJoin, db: AsyncSession = Depends(get_db)):
     email = payload.email.lower()
     existing = await db.scalar(select(WaitlistEntry).where(WaitlistEntry.email == email))
     if existing:

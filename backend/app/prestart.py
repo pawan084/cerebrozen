@@ -8,6 +8,7 @@ import subprocess
 
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.core.database import SessionLocal, engine, init_db
 from app.seed import seed
 
@@ -42,6 +43,10 @@ async def main() -> None:
     try:
         _migrate()
     except Exception:
+        if settings.is_production:
+            # A broken migration must stop the deploy, not get papered over
+            # with create_all (which would silently skip schema changes).
+            raise
         await init_db()   # dev fallback so the app still boots
     async with SessionLocal() as db:
         await seed(db)

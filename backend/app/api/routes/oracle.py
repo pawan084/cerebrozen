@@ -14,9 +14,10 @@ same thread. Falls back with 503 when the agent is disabled; clients then use th
 deterministic /chat route.
 """
 import json
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
@@ -28,9 +29,12 @@ from app.agent.graph import get_graph
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.deps import get_current_user
+from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.services import crisis, safety, usage
+
+logger = logging.getLogger("cerebro.oracle")
 
 router = APIRouter(prefix="/oracle", tags=["oracle"])
 
@@ -57,7 +61,7 @@ async def status(user: User = Depends(get_current_user)):
 async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: str | None,
                region: str = ""):
     """Stream the graph run as SSE, managing request-scoped context + persistence."""
-    graph = get_graph()
+    graph = await get_graph()
     config = {"configurable": {"thread_id": thread_id}}
 
     async with SessionLocal() as db:
@@ -101,8 +105,11 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
                     db.add(ChatMessage(user_id=user_id, role="assistant", text=final))
                     await db.commit()
                 yield _sse({"type": "done", "text": final})
-        except Exception as exc:  # pragma: no cover - surfaced to the client
-            yield _sse({"type": "error", "detail": str(exc)})
+        except Exception:  # pragma: no cover - surfaced to the client
+            # Log the real error; never stream internals (paths, SQL, provider
+            # messages) to the client.
+            logger.exception("Oracle stream failed (thread %s)", thread_id)
+            yield _sse({"type": "error", "detail": "Something went wrong — please try again."})
         finally:
             current_db.reset(t_db)
             current_user_id.reset(t_uid)
@@ -110,12 +117,14 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
 
 
 @router.post("/messages")
+@limiter.limit("30/minute")
 async def messages(
+    request: Request,
     payload: OracleSend,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not settings.oracle_available or get_graph() is None:
+    if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
     thread_id = payload.thread_id or str(user.id)
@@ -125,8 +134,9 @@ async def messages(
 
 
 @router.post("/confirm")
-async def confirm(payload: OracleConfirm, user: User = Depends(get_current_user)):
-    if not settings.oracle_available or get_graph() is None:
+@limiter.limit("30/minute")
+async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user)):
+    if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id, persist_user=None)
     return StreamingResponse(gen, media_type="text/event-stream")

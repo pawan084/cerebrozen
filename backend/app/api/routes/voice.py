@@ -7,12 +7,13 @@ The iOS Talk companion orchestrates a full turn client-side:
 Keeping STT and TTS as separate steps means the transcript flows through the
 existing /chat pipeline (safety scan, history, persona) unchanged.
 """
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.deps import get_current_user
+from app.core.ratelimit import limiter
 from app.models.user import User
 from app.services import voice
 
@@ -36,7 +37,9 @@ async def status(user: User = Depends(get_current_user)):
 
 
 @router.post("/stt", response_model=STTOut)
+@limiter.limit("20/minute")   # provider-cost guard (one STT call per voice turn)
 async def speech_to_text(
+    request: Request,
     audio: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
@@ -58,7 +61,8 @@ async def speech_to_text(
     responses={200: {"content": {"audio/mpeg": {}}}},
     response_class=Response,
 )
-async def text_to_speech(payload: TTSIn, user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")   # sentence-by-sentence TTS makes several calls per reply
+async def text_to_speech(request: Request, payload: TTSIn, user: User = Depends(get_current_user)):
     if not settings.tts_enabled:
         raise HTTPException(status_code=503, detail="Text-to-speech is not configured")
     audio = await voice.synthesize(payload.text)

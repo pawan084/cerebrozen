@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     # *audience*). Leave empty to skip audience checks (dev); set it in production.
     google_client_id: str = ""
 
+    # In-process nudge delivery loop (minutes between dispatch passes; 0 = off,
+    # e.g. when an external cron calls POST /admin/nudges/dispatch instead).
+    nudge_dispatch_interval_minutes: int = 5
+
     # APNs (token-based push). Leave key path empty to log instead of send.
     apns_key_path: str = ""        # path to the .p8 auth key
     apns_key_id: str = ""

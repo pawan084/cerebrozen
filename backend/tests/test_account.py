@@ -32,9 +32,12 @@ async def test_delete_account_then_unauthorized(auth_client):
 
 async def test_apple_sign_in_creates_then_reuses(client, monkeypatch):
     email = f"apple-{uuid.uuid4().hex[:8]}@privaterelay.appleid.com"
+    # Unique per run: the Apple `sub` now keys the account, and the dev test DB
+    # persists across runs — a fixed sub would collide with older rows.
+    sub = f"apple-sub-{uuid.uuid4().hex}"
 
     async def fake_verify(_token):
-        return {"sub": "apple-sub-123", "email": email}
+        return {"sub": sub, "email": email}
 
     monkeypatch.setattr(apple, "verify_identity_token", fake_verify)
 

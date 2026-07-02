@@ -19,6 +19,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(120), default="")
+    # Stable Apple user id (SIWA `sub`) — lets private-relay / no-email Apple
+    # tokens key the same account across sign-ins.
+    apple_sub: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
 
     # Onboarding choices (mirror the iOS app).
     language: Mapped[str] = mapped_column(String(120), default="English")

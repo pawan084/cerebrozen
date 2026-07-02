@@ -84,18 +84,28 @@ async def dispatch_due(db: AsyncSession) -> int:
     now = utcnow()
     due = (
         await db.scalars(
-            select(Nudge).where(Nudge.status == "scheduled", Nudge.scheduled_for <= now)
+            select(Nudge)
+            .where(Nudge.status == "scheduled", Nudge.scheduled_for <= now)
+            # Claim rows so concurrent workers/cron passes never double-send.
+            .with_for_update(skip_locked=True)
         )
     ).all()
     sent = 0
     for nudge in due:
         user = await db.get(User, nudge.user_id)
-        if user and await notifications.send_push(user, nudge):
+        if user is None:
+            nudge.status = "failed"
+            continue
+        if not user.push_token:
+            # Nothing to deliver to — record honestly instead of faking "sent";
+            # the admin safety/ops views can query these.
+            nudge.status = "skipped"
+            continue
+        if await notifications.send_push(user, nudge):
             nudge.status = "sent"
             nudge.sent_at = now
             sent += 1
         else:
-            nudge.status = "sent"  # mark processed even if no token (avoid re-loop)
-            nudge.sent_at = now
+            nudge.status = "failed"
     await db.commit()
     return sent

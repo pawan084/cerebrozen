@@ -30,13 +30,13 @@ async def test_safety_uses_llm_result(monkeypatch):
 
 
 # ── Oracle graph build (no model call — just construction) ───────────────
-def test_graph_build_matches_llm_availability():
+async def test_graph_build_matches_llm_availability():
     from app.agent.graph import get_graph
     from app.core.config import settings
 
     # With a key the graph compiles (covers _chat_model + StateGraph wiring,
     # without calling the model); hermetically it returns None (the guard path).
-    graph = get_graph()
+    graph = await get_graph()
     if settings.ai_enabled:
         assert graph is not None
     else:

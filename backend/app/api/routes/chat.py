@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
@@ -44,7 +45,9 @@ async def history(user: User = Depends(get_current_user), db: AsyncSession = Dep
 
 
 @router.post("/messages", response_model=ChatReply, status_code=201)
+@limiter.limit("30/minute")   # IP-level cap on top of the per-account daily quota
 async def send_message(
+    request: Request,
     payload: ChatSend,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

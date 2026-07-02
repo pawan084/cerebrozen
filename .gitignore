@@ -15,6 +15,8 @@ venv/
 !*.env.example
 *.pem
 *.p8
+# …except Apple's PUBLIC root cert, which pins App Store receipt chains
+!backend/app/certs/AppleRootCA-G3.pem
 
 # Node / Next.js
 node_modules/

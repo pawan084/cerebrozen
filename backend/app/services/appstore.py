@@ -110,7 +110,16 @@ def verify_transaction(jws: str) -> dict:
             "appstore_root_cert_path not set — chain verified but NOT pinned to Apple's root"
         )
 
-    return json.loads(_b64url(payload_b64))
+    payload = json.loads(_b64url(payload_b64))
+
+    # 4) A valid Apple signature isn't enough — the transaction must be for OUR
+    #    app, not any app's receipt replayed at us. (Notification outer payloads
+    #    carry no top-level bundleId; their inner transaction does.)
+    bundle = payload.get("bundleId")
+    if bundle and settings.appstore_bundle_id and bundle != settings.appstore_bundle_id:
+        raise ReceiptError(f"Transaction is for a different app ({bundle})")
+
+    return payload
 
 
 # Notification types that end entitlement regardless of the dates in the payload.

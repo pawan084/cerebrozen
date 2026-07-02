@@ -1,5 +1,7 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+import os
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +11,9 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.core.ratelimit import limiter
+from app.services import nudges as nudges_service
 
 __version__ = "0.1.0"
 
@@ -17,11 +21,34 @@ logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+logger = logging.getLogger("cerebro.main")
+
+
+async def _nudge_dispatcher() -> None:
+    """Periodic nudge delivery. Safe with multiple workers: dispatch_due claims
+    due rows with FOR UPDATE SKIP LOCKED, so each nudge is sent exactly once."""
+    interval = settings.nudge_dispatch_interval_minutes * 60
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            async with SessionLocal() as db:
+                sent = await nudges_service.dispatch_due(db)
+            if sent:
+                logger.info("Nudge dispatcher: %d sent", sent)
+        except Exception:  # noqa: BLE001 - keep the loop alive
+            logger.exception("Nudge dispatch pass failed")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    dispatcher = None
+    if settings.nudge_dispatch_interval_minutes > 0 and os.getenv("TESTING") != "1":
+        dispatcher = asyncio.create_task(_nudge_dispatcher())
     yield
+    if dispatcher is not None:
+        dispatcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await dispatcher
 
 
 app = FastAPI(
