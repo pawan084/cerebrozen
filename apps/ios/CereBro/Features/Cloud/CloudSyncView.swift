@@ -13,6 +13,7 @@ struct CloudSyncView: View {
     @State private var googleAuth = GoogleAuth()
     @State private var googleMessage: String?
     @State private var resetMessage: String?
+    @State private var showDevOptions = false
 
     enum Mode { case signIn, signUp }
 
@@ -102,10 +103,6 @@ struct CloudSyncView: View {
             .pickerStyle(.segmented)
             .accessibilityLabel("Sign in or create account")
 
-            #if DEBUG
-            field("Server URL", text: $server, keyboard: .URL)
-            #endif
-
             if mode == .signUp {
                 field("Name", text: $name)
             }
@@ -142,10 +139,23 @@ struct CloudSyncView: View {
                 }
             }
             #if DEBUG
-            Text("On device, use your Mac's LAN address, e.g. http://192.168.x.x:8000")
-                .appFont(11.5).foregroundStyle(Theme.Palette.muted)
-            Text("Demo: pawan@cerebro.app · demo12345")
-                .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            // Dev plumbing lives behind a collapsed disclosure so the page
+            // reads like a traditional login; Release has no server field.
+            DisclosureGroup(isExpanded: $showDevOptions) {
+                VStack(alignment: .leading, spacing: 8) {
+                    field("Server URL", text: $server, keyboard: .URL)
+                    Text("On device, use your Mac's LAN address — e.g. http://192.168.x.x:8000 or http://<mac-name>.local:8000. The Simulator can keep localhost.")
+                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Demo: pawan@cerebro.app · demo12345")
+                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                }
+                .padding(.top, 8)
+            } label: {
+                Text("Developer options")
+                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
+            }
+            .tint(Theme.Palette.muted2)
             #endif
         }
         .onAppear {
