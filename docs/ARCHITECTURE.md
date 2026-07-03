@@ -221,8 +221,10 @@ of what exists:
   rails read `/content` with a `Dummy` offline fallback via `BackendService.catalogue`),
   real server sleep insights (+ data-gated sleep×mood note), bedtime-anchored
   `wind_down` nudges, sleep-aware plan generation, and the `log_sleep` Oracle tool +
-  `sleep_checkin` widget kind. Still planned: honest-local iOS insights, opt-in
-  HealthKit read in v1.5. Non-diagnostic framing is a hard product rule.
+  `sleep_checkin` widget kind, and the v1.5 opt-in HealthKit read
+  (`HealthKitSleep`, check-in pre-fill only — never writes; portal App ID
+  capability pending for devices). Still planned: honest-local iOS insights.
+  Non-diagnostic framing is a hard product rule.
 - **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
   :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is
   already browser-ready: Bearer JWT + CORS; add the new origin). Session = in-memory

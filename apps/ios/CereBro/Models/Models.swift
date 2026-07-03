@@ -78,6 +78,29 @@ struct SleepEntry: Identifiable, Hashable, Codable {
     /// 1–5 felt restfulness.
     var quality: Int
     var awakenings: Int = 0
+    /// "manual" | "healthkit" — whether Apple Health pre-filled the times
+    /// (the user still confirmed). Mirrors the server enum.
+    var source: String = "manual"
+
+    init(id: UUID = UUID(), day: String, bedMinutes: Int, wakeMinutes: Int,
+         quality: Int, awakenings: Int = 0, source: String = "manual") {
+        self.id = id; self.day = day; self.bedMinutes = bedMinutes
+        self.wakeMinutes = wakeMinutes; self.quality = quality
+        self.awakenings = awakenings; self.source = source
+    }
+
+    // Tolerant decoding: entries persisted before `source` existed default it
+    // instead of failing to decode (same pattern as JournalEntry).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
+        day = try c.decode(String.self, forKey: .day)
+        bedMinutes = try c.decode(Int.self, forKey: .bedMinutes)
+        wakeMinutes = try c.decode(Int.self, forKey: .wakeMinutes)
+        quality = try c.decode(Int.self, forKey: .quality)
+        awakenings = (try? c.decode(Int.self, forKey: .awakenings)) ?? 0
+        source = (try? c.decode(String.self, forKey: .source)) ?? "manual"
+    }
 
     /// Night length; a bedtime after midnight is same-day, else previous evening.
     var durationMin: Int {

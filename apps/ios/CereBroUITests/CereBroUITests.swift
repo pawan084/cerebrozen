@@ -485,9 +485,16 @@ final class CereBroUITests: XCTestCase {
         // reflects it back on the Sleep root (today flips CTA → editable row).
         openTab(app, "Sleep")
         if tap(app, "How did you sleep?") {
+            // Apple Health pre-fill offer renders (opt-in, untoggled — toggling
+            // would raise the OS permission sheet and hang the suite).
+            XCTAssertTrue(app.staticTexts["Pre-fill from Apple Health"].waitForExistence(timeout: 4),
+                          "Apple Health pre-fill card missing from the check-in")
             tap(app, "Sleep quality 4 of 5")
             snapshot(app, "sleep-03-checkin")
             tap(app, "Save check-in")
+            // Reaching Save scrolls the header (and its Back button) out of
+            // hittable range on the now-taller screen — return to the top first.
+            app.swipeDown(); app.swipeDown()
             back(app)
             let edited = app.buttons.containing(
                 NSPredicate(format: "label CONTAINS[c] %@", "Edit this morning's check-in")).firstMatch

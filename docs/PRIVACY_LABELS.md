@@ -17,7 +17,7 @@ Google / email); a fully anonymous local user has **no** data collection.
 |---|---|---|---|---|
 | Email address | Yes | Yes | No | App Functionality (account) |
 | Name | Optional | Yes | No | App Functionality (personalization) |
-| Health & Fitness (mood check-ins, wellness journal) | Yes | Yes | No | App Functionality |
+| Health & Fitness (mood check-ins, wellness journal, sleep diary; optional opt-in Apple Health sleep read — pre-fill only, never written back, never shared) | Yes | Yes | No | App Functionality |
 | User Content (journal text, chat/voice transcripts) | Yes | Yes | No | App Functionality |
 | Audio Data (voice recording) | Optional | Yes | No | App Functionality (speech-to-text; not stored unless voice storage consent is on) |
 | Sensitive Info (mental-health themes in content) | Yes | Yes | No | App Functionality |

@@ -11,6 +11,10 @@
 - [ ] **Apple Developer portal:** enable the Sign in with Apple capability for
   `com.cerebrozen.app` (the app now ships the entitlement + `CereBro.entitlements`;
   set `APPLE_CLIENT_ID` in prod env).
+- [ ] **Apple Developer portal:** add the HealthKit capability to
+  `com.cerebrozen.app` (entitlement + `NSHealthShareUsageDescription` shipped
+  2026-07-03; simulator works without it, physical-device builds need the App ID
+  capability).
 - [ ] **Google Sign-In:** create the OAuth client; add `GIDClientID` + reversed URL scheme
   to Info.plist and `GOOGLE_CLIENT_ID` server-side.
 - [ ] **App Store Connect:** create `com.cerebrozen.premium.monthly` +
@@ -48,9 +52,11 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   ~45 min before the user's own average bedtime (timezone-aware, upserts in place);
   `log_sleep` Oracle tool + `sleep_checkin` widget kind wired backend + iOS in the
   same commit. 2026-07-03: 190 passed / 95.72 %.
-- [ ] v1.5: HealthKit sleep read (opt-in, off by default) — entitlement, purpose
-  strings, PRIVACY_LABELS.md Health & Fitness category; pre-fills diary, user confirms.
-  Never write inferred sleep to HealthKit; no PHI in iCloud.
+- [x] v1.5: HealthKit sleep read (opt-in, off by default) — entitlement +
+  `NSHealthShareUsageDescription`, `HealthKitSleep` read-only manager, check-in
+  toggle + pre-fill (user still confirms; `source: healthkit` flows to the server),
+  PRIVACY_LABELS row updated. Never writes to HealthKit; no PHI in iCloud.
+  2026-07-03. Portal App ID capability = owner item above.
 - [ ] Check instrument licensing before using ISI/PSQI verbatim (both copyrighted;
   commercial use needs permission) — until then, the plain-language 1–5 baseline returns
   contextually and feeds `sleep_logs`.

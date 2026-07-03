@@ -61,7 +61,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Sleep diary + morning check-in (manual, quality/bed/wake) | ✅ | Shipped 2026-07-03: iOS check-in (Home + Sleep tab), 7-night trend strip, diary history — local-first, mirrored to `/sleep` (`sleep_logs`); UITest-covered. Plan: [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
 | Wind-down program (CBT-I-informed, non-diagnostic) | ✅ | Shipped 2026-07-03: "Wind down tonight" guide (`wind_down` catalogue kind, admin-authorable, offline fallback; breathing tip opens the pacer). Evidence base: dCBT-I ISI SMD −0.85, depression −0.47 |
 | Real sleep insights (duration trends, sleep × mood) | 🟡 | Server metric real since 2026-07-03 (avg duration + data-gated sleep×mood note); iOS local-fallback insights still illustrative (labeled) |
-| HealthKit sleep read (Apple Watch stages, opt-in) | ⚪ | v1.5 enhancer only — phone-only staging rejected by evidence; never a headline accuracy claim |
+| HealthKit sleep read (Apple Watch data, opt-in) | 🟡 | Shipped 2026-07-03: off-by-default check-in pre-fill, read-only, user confirms; needs the portal App ID capability for device builds. Never a headline accuracy claim |
 
 ### Talk (voice + chat)
 | Feature | Status | Notes |

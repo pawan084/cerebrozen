@@ -403,7 +403,7 @@ final class BackendService: ObservableObject {
                 date: entry.day,
                 bedtime: SleepEntry.apiTime(entry.bedMinutes),
                 wakeTime: SleepEntry.apiTime(entry.wakeMinutes),
-                quality: entry.quality, awakenings: entry.awakenings)
+                quality: entry.quality, awakenings: entry.awakenings, source: entry.source)
         }
     }
 

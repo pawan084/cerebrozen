@@ -282,10 +282,10 @@ actor APIClient {
     /// Upsert the sleep-diary entry for a date (server keeps one row per night).
     @discardableResult
     func upsertSleep(date: String, bedtime: String, wakeTime: String,
-                     quality: Int, awakenings: Int) async throws -> RemoteSleep {
+                     quality: Int, awakenings: Int, source: String = "manual") async throws -> RemoteSleep {
         try await request("/sleep", method: "POST",
                           json: ["date": date, "bedtime": bedtime, "wake_time": wakeTime,
-                                 "quality": quality, "awakenings": awakenings])
+                                 "quality": quality, "awakenings": awakenings, "source": source])
     }
 
     func createJournal(title: String, body: String, tags: [String]) async throws -> RemoteJournal {

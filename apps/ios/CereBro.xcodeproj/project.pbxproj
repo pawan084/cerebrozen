@@ -240,6 +240,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "CereBro uses Face ID to keep your journal private.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "CereBro can read your sleep data from Apple Health to pre-fill your morning check-in. You confirm every entry before it saves.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CereBro uses your microphone so you can talk with your voice companion.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -273,6 +274,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "CereBro uses Face ID to keep your journal private.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "CereBro can read your sleep data from Apple Health to pre-fill your morning check-in. You confirm every entry before it saves.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CereBro uses your microphone so you can talk with your voice companion.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

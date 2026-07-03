@@ -8,11 +8,13 @@ struct SleepCheckInView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
 
+    @StateObject private var health = HealthKitSleep()
     @State private var quality = 0                 // 0 = not chosen yet
     @State private var bedMinutes = 23 * 60
     @State private var wakeMinutes = 7 * 60
     @State private var awakenings = 0
     @State private var prefilled = false
+    @State private var prefilledFromHealth = false
     @State private var saved = false
 
     private static let qualityWords = ["Rough", "Poor", "Okay", "Good", "Rested"]
@@ -76,13 +78,32 @@ struct SleepCheckInView: View {
                 }
             }
 
+            if HealthKitSleep.isSupported {
+                Card {
+                    Toggle(isOn: healthToggle) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Pre-fill from Apple Health")
+                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                            Text("Reads last night's times to save you the taps — you still confirm before anything saves. Off by default; never written back.")
+                                .appFont(11).foregroundStyle(Theme.Palette.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .tint(Theme.Accent.sleep)
+                    .accessibilityHint("Optional. Reads sleep data from Apple Health to pre-fill the form.")
+                }
+            }
+
             InsightCard(label: "About \(durationText) in bed",
-                        title: "Roughly is perfect — this is awareness, not tracking accuracy.")
+                        title: prefilledFromHealth
+                            ? "Times from Apple Health — adjust if they look off, then confirm."
+                            : "Roughly is perfect — this is awareness, not tracking accuracy.")
 
             PrimaryButton(title: "Save check-in", systemImage: "sunrise.fill") {
                 guard quality > 0 else { return }
                 let entry = SleepEntry(day: AppState.dayString(), bedMinutes: bedMinutes,
-                                       wakeMinutes: wakeMinutes, quality: quality, awakenings: awakenings)
+                                       wakeMinutes: wakeMinutes, quality: quality, awakenings: awakenings,
+                                       source: prefilledFromHealth ? "healthkit" : "manual")
                 state.upsertSleep(entry)
                 backend.mirrorSleep(entry)
                 saved.toggle()
@@ -94,7 +115,8 @@ struct SleepCheckInView: View {
         .onAppear(perform: prefill)
     }
 
-    /// Pre-fill from today's entry (editing) or the previous morning's times.
+    /// Pre-fill from today's entry (editing), Apple Health (opt-in), or the
+    /// previous morning's times — in that trust order.
     private func prefill() {
         guard !prefilled else { return }
         prefilled = true
@@ -104,6 +126,30 @@ struct SleepCheckInView: View {
         } else if let last = state.sleepEntries.first {
             bedMinutes = last.bedMinutes; wakeMinutes = last.wakeMinutes
         }
+        if state.healthKitSleepEnabled, state.sleepEntry() == nil {
+            Task { await applyHealthPrefill() }
+        }
+    }
+
+    /// Opt-in toggle: enabling asks for read access once, then pre-fills.
+    private var healthToggle: Binding<Bool> {
+        Binding(
+            get: { state.healthKitSleepEnabled },
+            set: { on in
+                state.healthKitSleepEnabled = on
+                guard on else { prefilledFromHealth = false; return }
+                Task {
+                    if await health.requestAccess() { await applyHealthPrefill() }
+                }
+            }
+        )
+    }
+
+    private func applyHealthPrefill() async {
+        guard let night = await health.lastNight() else { return }
+        bedMinutes = night.bedMinutes
+        wakeMinutes = night.wakeMinutes
+        prefilledFromHealth = true
     }
 
     private func timeRow(label: String, systemImage: String, minutes: Binding<Int>) -> some View {

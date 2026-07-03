@@ -55,6 +55,7 @@ final class AppState: ObservableObject {
         static let baselineSleep = "baselineSleep"
         static let baselineDate = "baselineDate"
         static let sleep = "sleepEntries"
+        static let hkSleep = "healthKitSleepPrefill"
     }
 
     /// Streak milestones worth celebrating (days).
@@ -97,6 +98,9 @@ final class AppState: ObservableObject {
     /// Sleep diary — one entry per wake-up morning, newest first (local-first;
     /// mirrored to `/sleep` when connected).
     @Published private(set) var sleepEntries: [SleepEntry] { didSet { Self.save(sleepEntries, Key.sleep) } }
+    /// Apple Health pre-fill for the morning check-in (opt-in, off by default;
+    /// read-only — the user confirms every entry).
+    @Published var healthKitSleepEnabled: Bool { didSet { UserDefaults.standard.set(healthKitSleepEnabled, forKey: Key.hkSleep) } }
     /// Crisis-resources region override. "" = automatic (device region).
     @Published var crisisRegion: String    { didSet { UserDefaults.standard.set(crisisRegion, forKey: Key.crisisRegion) } }
     /// Highest streak milestone already celebrated (so we fire each one once).
@@ -124,7 +128,7 @@ final class AppState: ObservableObject {
         if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
-             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.crisisRegion, Key.lastMilestone,
+             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.hkSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate,
              "cerebro_access_token"].forEach {   // also drop any cloud session
@@ -148,6 +152,7 @@ final class AppState: ObservableObject {
         hasAssessment  = UserDefaults.standard.bool(forKey: Key.hasAssessment)
         favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
         sleepEntries   = Self.load([SleepEntry].self, Key.sleep) ?? (seedDemo ? Self.seededSleep() : [])
+        healthKitSleepEnabled = UserDefaults.standard.bool(forKey: Key.hkSleep)
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
         lastMilestone  = UserDefaults.standard.integer(forKey: Key.lastMilestone)
         reminderEnabled = UserDefaults.standard.bool(forKey: Key.reminderOn)
@@ -181,6 +186,7 @@ final class AppState: ObservableObject {
         hasAssessment = false
         favoriteSleep = []
         sleepEntries = []
+        healthKitSleepEnabled = false
         crisisRegion = ""
         lastMilestone = 0
         newMilestone = nil

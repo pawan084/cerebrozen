@@ -121,5 +121,8 @@ enum, `wind_down` nudge kind, `log_sleep` widget kind — backend + iOS in one c
 4. ✅ 2026-07-03 — Insights (real Sleep metric + gated sleep×mood note), sleep-aware
    plans, bedtime-anchored `wind_down` nudges, `log_sleep` Oracle tool +
    `sleep_checkin` widget.
-5. v1.5 HealthKit read (entitlement, labels, purpose strings).
+5. ✅ 2026-07-03 — v1.5 HealthKit read: opt-in, off-by-default check-in pre-fill
+   (read-only; user confirms; `source: healthkit`); entitlement + purpose string +
+   privacy-label row shipped. Remaining owner step: HealthKit capability on the
+   App ID (device builds).
 6. Web parity (sleep diary + trends are web-friendly; see [WEB_APP_PLAN.md](WEB_APP_PLAN.md)).
