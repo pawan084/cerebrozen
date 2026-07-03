@@ -37,8 +37,11 @@
 - [ ] `OnboardingProgress` has no accessibility value (VoiceOver users get no
   sense of progress); re-running onboarding re-stamps the baseline date.
 
-- [ ] iOS imagery is 17 hardcoded Unsplash URLs (`DummyData.swift`) — bundle real assets
-  (offline correctness, privacy, App Review safety). Needs actual art/photo assets.
+- [ ] iOS imagery: bundle real assets for the remaining content heroes/rails
+  (offline correctness, privacy, App Review safety). 2026-07-03: photo usage cut
+  hard — rows/onboarding/talk no longer render photos (symbol wells only); the
+  worst URLs (office, laptop-hands, portrait-near-crisis, desert road) retargeted
+  to calm nature. What's left is ~13 Unsplash URLs on heroes + rail cards.
 - [ ] Most iOS catalogue content (sleep/meditations/programs rails) is `Dummy` static
   data; only plan/insights/chat are server-driven. Migrate catalogue to `/content`.
 - [ ] Backend tests require a live Postgres (autouse `init_db()`); consider transactional

@@ -29,8 +29,7 @@ struct TalkView: View {
                        trailingSystemImage: "mic", isRoot: true) {
             AIDisclosureBanner { showDisclosure = true }
 
-            Photo(url: Dummy.Img.voice, symbol: "mic").frame(height: 98).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+            // No photo strip — the tap-to-talk orb below is the hero.
 
             // Tap-to-talk orb — reacts to your live voice level + conversation phase.
             Button {
@@ -180,8 +179,7 @@ struct ChatView: View {
                        anchorBottom: true) {
             AIDisclosureBanner { showDisclosure = true }
 
-            Photo(url: Dummy.Img.chat, symbol: "bubble.left").frame(height: 98).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
+            // No photo strip — the transcript is the content.
             if backend.isConnected {
                 // Empty state: personalized starters from the self-reflection.
                 if backend.chat.isEmpty && !backend.isStreaming {

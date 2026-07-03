@@ -37,7 +37,7 @@ GOALS: dict[str, list[str]] = {
         "Stop overthinking",
         "Build confidence",
         "Feel less alone",
-        "Strengthen will power",
+        "Strengthen willpower",
     ],
 }
 
@@ -64,7 +64,7 @@ _TOPIC_SEEDS: dict[str, list[str]] = {
     "Stop overthinking": ["A thought stuck on loop", "Replaying the same scenario"],
     "Build confidence": ["Trusting my own decision", "Owning a recent win"],
     "Feel less alone": ["Carrying this on my own", "Wanting to feel understood"],
-    "Strengthen will power": ["A habit I keep skipping", "Staying with hard things"],
+    "Strengthen willpower": ["A habit I keep skipping", "Staying with hard things"],
 }
 
 _GENERAL_TOPICS = [

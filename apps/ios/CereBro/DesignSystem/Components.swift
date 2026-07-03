@@ -205,16 +205,16 @@ struct RowLabel: View {
     let title: String
     let subtitle: String
     var systemImage: String = "sparkles"
+    /// Accepted for call-site compatibility but no longer rendered: photo
+    /// thumbnails duplicated the symbol well, and 17 stock photos stretched
+    /// over ~100 rows meant constant wrong pairings (a portrait on "Urgent
+    /// support", laptop hands on "Privacy"). Photos belong to content heroes
+    /// and rails, not utility rows.
     var imageURL: String? = nil
     var emphasis: Bool = false
 
     var body: some View {
         HStack(spacing: 9) {
-            if let imageURL {
-                Photo(url: imageURL, symbol: systemImage)
-                    .frame(width: 46, height: 46)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
             Image(systemName: systemImage)
                 .appFont(16, weight: .semibold)
                 .foregroundStyle(Theme.Palette.soft)
