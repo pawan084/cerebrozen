@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, clearToken, getToken, login, setToken } from "@/lib/api";
 
-type Tab = "overview" | "analytics" | "users" | "content" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "nudges" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "Overview", icon: "▣" },
   { key: "analytics", label: "Analytics", icon: "∿" },
   { key: "users", label: "Users", icon: "☺" },
   { key: "content", label: "Content", icon: "♪" },
+  { key: "nudges", label: "Nudges", icon: "✧" },
   { key: "safety", label: "Safety", icon: "♥" },
   { key: "waitlist", label: "Waitlist", icon: "✉" },
 ];
@@ -68,6 +69,7 @@ export default function AdminPage() {
         {tab === "analytics" && <Analytics />}
         {tab === "users" && <Users />}
         {tab === "content" && <Content />}
+        {tab === "nudges" && <NudgesTab />}
         {tab === "safety" && <Safety />}
         {tab === "waitlist" && <WaitlistTab />}
       </main>
@@ -489,6 +491,80 @@ function Content() {
           </tbody>
         </table>
         {data && data.length === 0 && <div className="empty">No content yet.</div>}
+      </div>
+    </>
+  );
+}
+
+function NudgesTab() {
+  const { data, err, reload } = useData<any[]>(() => api("/admin/nudges"));
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await api<{ created: number }>("/admin/nudges", {
+        method: "POST",
+        body: JSON.stringify({ title, body }),
+      });
+      setMsg(`Queued for ${res.created} user${res.created === 1 ? "" : "s"} — the scheduler delivers it.`);
+      setTitle("");
+      setBody("");
+      reload();
+    } catch (e: any) {
+      setMsg(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h1 className="page-title serif">Nudges</h1>
+      <div className="page-sub">
+        Author a one-off announcement for every active user; delivery runs through the
+        existing scheduler (honest sent/skipped/failed outcomes).
+      </div>
+      <form className="card cform" onSubmit={send}>
+        <div className="full">
+          <label>Title</label>
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} />
+        </div>
+        <div className="full">
+          <label>Body</label>
+          <input type="text" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
+        </div>
+        <div className="full" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button className="btn btn-primary" disabled={busy || !title.trim() || !body.trim()}>
+            {busy ? "Queuing…" : "Queue for all active users"}
+          </button>
+          {msg && <span className="page-sub" style={{ marginBottom: 0 }}>{msg}</span>}
+        </div>
+      </form>
+      {err && <div className="empty">{err}</div>}
+      <div className="card">
+        <table>
+          <thead>
+            <tr><th>Title</th><th>User</th><th>Kind</th><th>Status</th><th>Scheduled</th></tr>
+          </thead>
+          <tbody>
+            {(data || []).map((n) => (
+              <tr key={n.id}>
+                <td>{n.title}</td>
+                <td className="mono">{n.email}</td>
+                <td><span className="tag muted">{n.kind}</span></td>
+                <td><span className={`tag ${n.status === "sent" ? "ok" : n.status === "failed" ? "crisis" : "muted"}`}>{n.status}</span></td>
+                <td>{fmtDate(n.scheduled_for)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data && data.length === 0 && <div className="empty">No nudges yet.</div>}
       </div>
     </>
   );

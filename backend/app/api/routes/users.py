@@ -31,9 +31,18 @@ from app.schemas.user import (
     UserOut,
     UserUpdate,
 )
-from app.services import appstore
+from app.services import appstore, metrics
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/me/streak")
+async def my_streak(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Server-computed "mindful days" streak (same rules as the iOS local one —
+    cross-stack contract; see services/metrics.user_streak)."""
+    return await metrics.user_streak(db, user.id)
 
 
 @router.get("/me", response_model=UserOut)

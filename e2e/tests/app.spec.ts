@@ -26,6 +26,8 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Check in", exact: true }).click();
     await expect(page.getByText("Checked in — noted gently.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent check-ins" })).toBeVisible();
+    // The server-computed streak starts with the first check-in.
+    await expect(page.getByRole("heading", { name: "1-day streak" })).toBeVisible({ timeout: 15_000 });
 
     // Journal entry lands in History.
     await tab(page, "Journal").click();
@@ -62,6 +64,11 @@ test.describe("Web app (authenticated client)", () => {
     await tab(page, "Insights").click();
     await expect(page.locator('[aria-label="Weekly metrics"] .entry')).toHaveCount(5, { timeout: 20_000 });
     await expect(page.getByLabel("Weekly metrics").getByText("Sleep", { exact: true })).toBeVisible();
+
+    // Library renders the served catalogue (incl. the wind-down guide).
+    await tab(page, "Library").click();
+    await expect(page.getByRole("heading", { name: "Wind down tonight" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Keep a steady wake time")).toBeVisible();
 
     // Account: consent toggles render and flip (enforced server-side).
     await tab(page, "Account").click();

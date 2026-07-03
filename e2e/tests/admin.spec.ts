@@ -60,6 +60,16 @@ test.describe("Admin dashboard", () => {
     await expect(page.locator("tr", { hasText: title })).toHaveCount(0);
   });
 
+  test("nudges can be authored for all active users", async ({ page }) => {
+    await nav(page, "Nudges").click();
+    const title = `E2E announcement ${Date.now()}`;
+    await page.locator(".cform input").first().fill(title);
+    await page.locator(".cform input").nth(1).fill("Something gentle is new.");
+    await page.getByRole("button", { name: /queue for all active users/i }).click();
+    await expect(page.getByText(/Queued for \d+ user/)).toBeVisible();
+    await expect(page.locator("tr", { hasText: title }).first()).toBeVisible();
+  });
+
   test("safety review queue renders flagged events", async ({ page }) => {
     await nav(page, "Safety").click();
     await expect(page.getByRole("heading", { name: "Safety review" })).toBeVisible();

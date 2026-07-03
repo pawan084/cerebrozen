@@ -127,8 +127,10 @@ a 30-minute localStorage session. Planned, in order:
    (view/generate/optimistic step toggle), insights (real metrics + upcoming
    nudges), account (consent, crisis region, trusted contact, export download,
    typed DELETE). Google sign-in still open (needs the owner's OAuth client id).
-4. ✅ 2026-07-03 — Sleep diary page (check-in, honest summary, history). Content
-   catalogue pages still open.
-5. ✅ 2026-07-03 — Admin v2 items 1–3: session refresh, first-party Analytics tab
-   (`/admin/metrics/overview`), metadata-only user-support view. Nudge authoring open.
+4. ✅ 2026-07-03 — Sleep diary page (check-in, honest summary, history) + Library
+   page (served `/content` catalogue) + server streak on Today
+   (`GET /users/me/streak`, iOS-rule mirror).
+5. ✅ 2026-07-03 — Admin v2 complete: session refresh, first-party Analytics tab
+   (`/admin/metrics/overview`), metadata-only user-support view, nudge authoring
+   (broadcast/targeted + kind-filterable list).
 6. Stripe billing + employer/B2B reporting exploration.

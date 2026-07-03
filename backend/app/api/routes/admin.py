@@ -1,10 +1,12 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import get_db, utcnow
 from app.core.deps import get_current_admin
 from app.models.chat import ChatMessage
 from app.models.consent import Consent
@@ -194,6 +196,70 @@ async def resolve_safety_event(event_id: uuid.UUID, db: AsyncSession = Depends(g
     await db.commit()
     await db.refresh(event)
     return event
+
+
+# ── Nudge authoring + ops ────────────────────────────────────────────────
+class NudgeAuthor(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    body: str = Field(min_length=1, max_length=500)
+    deeplink: str | None = Field(default=None, max_length=255)
+    scheduled_for: datetime | None = None  # None = next dispatch pass
+    user_id: uuid.UUID | None = None       # None = every active user
+
+
+@router.post("/nudges", status_code=201)
+async def author_nudge(payload: NudgeAuthor, db: AsyncSession = Depends(get_db)):
+    """Create a one-off nudge for one user or (user_id omitted) every active
+    user. Delivery stays with the existing scheduler/dispatch pass."""
+    when = payload.scheduled_for or utcnow()
+    if payload.user_id is not None:
+        target = await db.get(User, payload.user_id)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        targets = [target]
+    else:
+        targets = (await db.scalars(select(User).where(User.is_active.is_(True)))).all()
+
+    for user in targets:
+        db.add(
+            Nudge(
+                user_id=user.id,
+                kind="announcement",
+                title=payload.title,
+                body=payload.body,
+                deeplink=payload.deeplink,
+                scheduled_for=when,
+            )
+        )
+    await db.commit()
+    return {"created": len(targets)}
+
+
+@router.get("/nudges")
+async def list_nudges(
+    limit: int = 100, kind: str | None = None, db: AsyncSession = Depends(get_db)
+):
+    stmt = (
+        select(Nudge, User.email)
+        .join(User, User.id == Nudge.user_id)
+        .order_by(Nudge.scheduled_for.desc())
+        .limit(min(limit, 500))
+    )
+    if kind:
+        stmt = stmt.where(Nudge.kind == kind)
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "id": str(n.id),
+            "email": email,
+            "kind": n.kind,
+            "title": n.title,
+            "body": n.body,
+            "status": n.status,
+            "scheduled_for": n.scheduled_for,
+        }
+        for n, email in rows
+    ]
 
 
 # ── Ops: manual dispatch pass (the in-process scheduler in app.main runs

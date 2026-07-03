@@ -44,6 +44,56 @@ async def _activity_days(db: AsyncSession) -> dict[uuid.UUID, set[date]]:
     return days
 
 
+async def user_streak(db: AsyncSession, user_id: uuid.UUID) -> dict:
+    """Server mirror of the iOS "mindful days" streak (AppState.currentStreak):
+    consecutive active days up to today, forgiving ONE missed day inside the
+    run; today itself is optional. Window-capped like the iOS 120-day store.
+    Keep the rules in sync with apps/ios CereBroApp.swift (cross-stack contract)."""
+    since = utcnow() - timedelta(days=120)
+    selects = [
+        select(func.date(m.created_at)).where(m.user_id == user_id, m.created_at >= since)
+        for m in (MoodLog, JournalEntry, SleepLog)
+    ]
+    selects.append(
+        select(func.date(ChatMessage.created_at)).where(
+            ChatMessage.user_id == user_id,
+            ChatMessage.created_at >= since,
+            ChatMessage.role == "user",
+        )
+    )
+    days = {row[0] for row in (await db.execute(union_all(*selects))).all()}
+
+    today = utcnow().date()
+    day = today if today in days else today - timedelta(days=1)
+    current, grace_used = 0, False
+    while True:
+        if day in days:
+            current += 1
+        elif not grace_used and current > 0:
+            grace_used = True
+        else:
+            break
+        day -= timedelta(days=1)
+
+    best = 0
+    for d in days:
+        if d - timedelta(days=1) in days:
+            continue  # not a run start
+        length, cursor = 0, d
+        while cursor in days:
+            length += 1
+            cursor += timedelta(days=1)
+        best = max(best, length)
+    best = max(best, current)
+
+    week = [
+        {"date": (today - timedelta(days=offset)).isoformat(),
+         "active": (today - timedelta(days=offset)) in days}
+        for offset in range(6, -1, -1)
+    ]
+    return {"current": current, "best": best, "week": week}
+
+
 async def overview(db: AsyncSession) -> dict:
     now = utcnow()
     today = now.date()

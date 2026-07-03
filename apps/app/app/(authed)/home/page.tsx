@@ -14,11 +14,13 @@ const MOODS = [
 ];
 
 type Mood = { id: string; mood: string; note: string; created_at: string };
+type Streak = { current: number; best: number; week: { date: string; active: boolean }[] };
 
 export default function Home() {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [moods, setMoods] = useState<Mood[]>([]);
+  const [streak, setStreak] = useState<Streak | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -30,6 +32,7 @@ export default function Home() {
   async function reload() {
     try {
       setMoods(await api<Mood[]>("/moods?limit=5"));
+      setStreak(await api<Streak>("/users/me/streak"));
     } catch {}
   }
 
@@ -79,6 +82,33 @@ export default function Home() {
           {busy ? "Saving…" : "Check in"}
         </button>
       </section>
+
+      {streak && (
+        <section className="card" aria-label="Streak">
+          <div className="row">
+            <div className="grow">
+              <h2>{streak.current === 0 ? "Begin your streak" : `${streak.current}-day streak`}</h2>
+              <p className="sub">
+                {streak.current === 0
+                  ? "Show up once today to start — gentle, no pressure."
+                  : `Best ${streak.best} days · one missed day is always forgiven.`}
+              </p>
+            </div>
+            <div className="row" aria-hidden="true" style={{ gap: 6 }}>
+              {streak.week.map((d) => (
+                <span
+                  key={d.date}
+                  style={{
+                    width: 9, height: 9, borderRadius: "50%",
+                    background: d.active ? "var(--lav)" : "var(--card-strong)",
+                    border: d.active ? "none" : "1px solid var(--line)",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {moods.length > 0 && (
         <section className="card" aria-label="Recent check-ins">

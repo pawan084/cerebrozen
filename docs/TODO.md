@@ -96,19 +96,25 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   langgraph's `setup()` runs `CREATE INDEX CONCURRENTLY`, blocked by any
   idle-in-transaction pool connection; the graph now warms in the app lifespan
   pre-traffic, with a 30 s setup timeout falling back to MemorySaver.
-- [ ] Web v1 remaining: Google sign-in (needs owner OAuth client id), content
-  catalogue pages.
+- [x] Library page (2026-07-03): served `/content` catalogue grouped by kind on the
+  web app; honest "playback lives in iOS" footnote.
+- [ ] Web v1 remaining: Google sign-in (needs owner OAuth client id).
 - [ ] Extract shared design tokens (palette now copy-pasted into web + admin + app
   `globals.css`) — needs per-app Docker build contexts widened or a prebuild copy step.
-- [ ] Streaks on web: compute from `/moods` client-side with iOS rules; longer-term
-  add `GET /users/me/streak` so clients stop duplicating the logic.
+- [x] Streaks on web (2026-07-03): `GET /users/me/streak` computes the "mindful days"
+  streak server-side (same one-grace-day rules as iOS — now a cross-stack contract);
+  Today page shows the streak card + week dots. iOS still computes locally
+  (offline-first) — keep the rules in sync.
 - [x] Playwright spec for the web app in the existing `e2e/` stack (signup → check-in →
   journal → sleep → reload survives via refresh rotation). 2026-07-03.
 - [x] Admin v2 (2026-07-03): first-party Analytics tab (`GET /admin/metrics/overview` —
   DAU/WAU/MAU, signup-cohort D1/D7/D30 retention, activation funnel, 7-day engagement;
   aggregates only, no per-user browsing) + per-user support view (`GET /admin/users/{id}`
   — counts/consent/last-active; journal/chat/sleep contents never cross the endpoint,
-  test-pinned). Remaining: nudge authoring endpoints.
+  test-pinned).
+- [x] Nudge authoring (2026-07-03): `POST /admin/nudges` (one user or all active,
+  kind `announcement`, delivery via the existing scheduler) + `GET /admin/nudges`
+  (kind-filterable) + admin Nudges tab. Admin v2 complete.
 - [ ] Post-v1: Stripe web billing (`stripe.py` + webhook → same `subscription_tier`
   contract as App Store), Web Push (VAPID) or email nudges for web-only users,
   `/auth/apple` Services-ID audience for web Apple sign-in.

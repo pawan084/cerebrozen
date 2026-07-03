@@ -68,7 +68,7 @@ cere/
 | Prefix | Highlights |
 | --- | --- |
 | `/auth` | signup, login (lockout 5 fails/15 min), apple, google, refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
-| `/users/me` | profile, attest (18+/AI disclosure), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade), push-token |
+| `/users/me` | profile, attest (18+/AI disclosure), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade), push-token, streak (server mirror of the iOS rules) |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
@@ -76,7 +76,7 @@ cere/
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only), content CRUD, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only), content CRUD, nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 
 ### Key services
@@ -203,6 +203,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
+| Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
 | Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.monthly`, `.premiumhuman.monthly`) |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
