@@ -7,6 +7,7 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 
 ## Read these first
 
+- [docs/PRD.md](docs/PRD.md) — product definition, feature inventory with honest shipped/partial/concept status, roadmap
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system map, backend/iOS/web layers, data flows, cross-stack contracts
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) — setup, env vars, testing, CI/CD, deploy, conventions
 - [docs/TODO.md](docs/TODO.md) — prioritized known debt + open work (update it when you fix or find something)

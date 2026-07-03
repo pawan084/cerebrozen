@@ -25,6 +25,7 @@ cere/
 Start with [`CLAUDE.md`](CLAUDE.md) (project context: rules, commands, gotchas — also loaded
 automatically by Claude Code sessions), then:
 
+- [`docs/PRD.md`](docs/PRD.md) — product definition, feature status inventory, phased roadmap
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system map, layers, data flows, cross-stack contracts
 - [`docs/TECHNICAL.md`](docs/TECHNICAL.md) — setup, env vars, testing, CI/CD, deploy, conventions
 - [`docs/TODO.md`](docs/TODO.md) — prioritized known debt + open work
