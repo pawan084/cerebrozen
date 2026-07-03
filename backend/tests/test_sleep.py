@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 
 
 def _iso(days_ago: int) -> str:
@@ -86,6 +86,89 @@ async def test_sleep_summary_aggregates(auth_client):
 async def test_sleep_requires_auth(client):
     assert (await client.get("/sleep")).status_code == 401
     assert (await client.get("/sleep/summary")).status_code == 401
+
+
+async def test_sleep_metric_in_weekly_insights(auth_client):
+    r = await auth_client.get("/insights/weekly")
+    by_label = {m["label"]: m for m in r.json()["metrics"]}
+    assert by_label["Sleep"]["value"] == "No diary yet"
+
+    for days_ago in (0, 1):
+        await auth_client.post(
+            "/sleep", json={"date": _iso(days_ago), "bedtime": "23:00:00", "wake_time": "06:30:00", "quality": 3}
+        )
+    r = await auth_client.get("/insights/weekly")
+    by_label = {m["label"]: m for m in r.json()["metrics"]}
+    assert by_label["Sleep"]["value"] == "7h 30m avg"
+
+
+async def test_sleep_mood_link_appears_when_supported(auth_client):
+    # Two short (5h) and two rested (8.5h) nights this week…
+    for days_ago, wake in ((1, "04:00:00"), (2, "04:00:00"), (3, "07:30:00"), (4, "07:30:00")):
+        await auth_client.post(
+            "/sleep", json={"date": _iso(days_ago), "bedtime": "23:00:00", "wake_time": wake, "quality": 3}
+        )
+    # …with rougher moods on the short mornings (created_at backdated directly —
+    # the API stamps server time, so this pairs moods with their wake dates).
+    import uuid
+
+    from app.core.database import SessionLocal
+    from app.models.mood import MoodLog
+
+    uid = uuid.UUID((await auth_client.get("/auth/me")).json()["id"])
+    async with SessionLocal() as s:
+        for days_ago, intensity in ((1, 5), (2, 4), (3, 2), (4, 2)):
+            d = date.today() - timedelta(days=days_ago)
+            s.add(MoodLog(user_id=uid, mood="Anxious", intensity=intensity,
+                          created_at=datetime.combine(d, time(10, 0), tzinfo=timezone.utc)))
+        await s.commit()
+
+    r = await auth_client.get("/insights/weekly")
+    assert "7+ hours" in r.json()["summary"]
+
+
+async def test_wind_down_nudge_follows_diary(auth_client):
+    # One night isn't a pattern — no wind_down nudge yet.
+    await auth_client.post(
+        "/sleep", json={"date": _iso(1), "bedtime": "23:15:00", "wake_time": "07:00:00"}
+    )
+    kinds = [n["kind"] for n in (await auth_client.get("/nudges")).json()]
+    assert "wind_down" not in kinds
+
+    # A second morning creates it; a third exercises the update-in-place path.
+    for days_ago in (0, 2):
+        await auth_client.post(
+            "/sleep", json={"date": _iso(days_ago), "bedtime": "23:45:00", "wake_time": "07:00:00"}
+        )
+    nudges = (await auth_client.get("/nudges")).json()
+    wind_downs = [n for n in nudges if n["kind"] == "wind_down"]
+    assert len(wind_downs) == 1
+    assert "23:" in wind_downs[0]["body"]
+
+
+async def test_plan_leans_wind_down_after_short_sleep(auth_client, monkeypatch):
+    # Force the deterministic fallback planner (dev containers may carry live keys).
+    async def _no_ai(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.ai.complete_json", _no_ai)
+    for days_ago in (0, 1):
+        await auth_client.post(
+            "/sleep", json={"date": _iso(days_ago), "bedtime": "01:30:00", "wake_time": "06:00:00", "quality": 2}
+        )
+    r = await auth_client.post("/plans/generate")
+    plan = r.json()
+    assert plan["steps"][0]["title"] == "Tonight's wind-down"
+    assert "wind-down" in plan["rationale"]
+
+
+async def test_chat_routes_sleep_checkin_widget(auth_client):
+    r = await auth_client.post(
+        "/chat/messages", json={"text": "I couldn't sleep last night, up all night tossing."}
+    )
+    assert r.status_code == 201
+    widget = r.json()["widget"]
+    assert widget and widget["widget_kind"] == "sleep_checkin"
 
 
 async def test_wind_down_content_kind(admin_client):

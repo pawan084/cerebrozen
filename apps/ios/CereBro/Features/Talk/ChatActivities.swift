@@ -14,6 +14,7 @@ struct ActivityDestination: View {
         case "one_good_thing":       OneGoodThingView()
         case "intention_set":        IntentionSetView()
         case "dbt_skill":            DBTSkillView()
+        case "sleep_checkin":        SleepCheckInView()
         case "crisis":               CrisisView()
         default:                     BreathingView()
         }
@@ -28,6 +29,7 @@ struct ActivityDestination: View {
         case "one_good_thing": return "sparkles"
         case "intention_set": return "target"
         case "dbt_skill": return "bolt.heart"
+        case "sleep_checkin": return "moon.zzz"
         case "crisis": return "phone"
         default: return "sparkles"
         }

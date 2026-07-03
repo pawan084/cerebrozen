@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
+from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import ai
 
@@ -63,7 +64,7 @@ _SYSTEM = (
 )
 
 
-async def _recent_signals(db: AsyncSession, user: User) -> tuple[list[str], list[str]]:
+async def _recent_signals(db: AsyncSession, user: User) -> tuple[list[str], list[str], list[SleepLog]]:
     moods = (
         await db.scalars(
             select(MoodLog.mood).where(MoodLog.user_id == user.id).order_by(MoodLog.created_at.desc()).limit(7)
@@ -77,18 +78,47 @@ async def _recent_signals(db: AsyncSession, user: User) -> tuple[list[str], list
             .limit(5)
         )
     ).all()
-    return list(moods), list(journals)
+    sleep_rows = (
+        await db.scalars(
+            select(SleepLog).where(SleepLog.user_id == user.id).order_by(SleepLog.date.desc()).limit(7)
+        )
+    ).all()
+    return list(moods), list(journals), list(sleep_rows)
 
 
-def _fallback_plan(user: User, moods: list[str]) -> dict:
+def _sleep_note(sleep_rows: list[SleepLog]) -> str | None:
+    if not sleep_rows:
+        return None
+    avg_dur = sum(r.duration_min for r in sleep_rows) // len(sleep_rows)
+    avg_q = sum(r.quality for r in sleep_rows) / len(sleep_rows)
+    return (
+        f"avg {avg_dur // 60}h {avg_dur % 60:02d}m in bed, felt quality {avg_q:.1f}/5 "
+        f"over {len(sleep_rows)} night(s)"
+    )
+
+
+def _short_sleep(sleep_rows: list[SleepLog]) -> bool:
+    """Two-plus recent nights averaging under 6.5 h or feeling rough."""
+    if len(sleep_rows) < 2:
+        return False
+    avg_dur = sum(r.duration_min for r in sleep_rows) / len(sleep_rows)
+    avg_q = sum(r.quality for r in sleep_rows) / len(sleep_rows)
+    return avg_dur < 390 or avg_q <= 2.5
+
+
+def _fallback_plan(user: User, moods: list[str], sleep_rows: list[SleepLog]) -> dict:
     goal = (user.goals or [_DEFAULT_GOAL])[0]
-    steps = _STEP_LIBRARY.get(goal, _STEP_LIBRARY[_DEFAULT_GOAL])
+    steps = list(_STEP_LIBRARY.get(goal, _STEP_LIBRARY[_DEFAULT_GOAL]))
     stressed = any(m.lower() in {"anxious", "low", "tired"} for m in moods)
     rationale = (
         "Because recent check-ins show some strain, today leans on a calmer reset first."
         if stressed
         else "Built around your goal and a steady recent baseline."
     )
+    if _short_sleep(sleep_rows):
+        # The diary says nights have been short or rough — protect tonight first.
+        steps = [("Tonight's wind-down", "Lights low + slow breathing, 45 min before bed", "moon.zzz")] + steps[:2]
+        rationale = "Your diary shows short or rough nights lately, so today protects the wind-down first."
     return {
         "title": _TITLE_BY_GOAL.get(goal, "Your calm plan"),
         "focus": goal,
@@ -99,7 +129,7 @@ def _fallback_plan(user: User, moods: list[str]) -> dict:
 
 async def generate_plan(db: AsyncSession, user: User) -> Plan:
     """Generate, persist, and return a fresh active plan (deactivating prior)."""
-    moods, journals = await _recent_signals(db, user)
+    moods, journals, sleep_rows = await _recent_signals(db, user)
 
     spec = None
     source = "rule"
@@ -107,6 +137,7 @@ async def generate_plan(db: AsyncSession, user: User) -> Plan:
         f"Goals: {user.goals or [_DEFAULT_GOAL]}\n"
         f"Recent moods (newest first): {moods or 'none yet'}\n"
         f"Recent journal titles: {journals or 'none yet'}\n"
+        f"Sleep diary (self-reported): {_sleep_note(sleep_rows) or 'none yet'}\n"
         f"Companion style: {user.companion}"
     )
     ai_spec = await ai.complete_json(_SYSTEM, prompt, max_tokens=900)
@@ -114,7 +145,7 @@ async def generate_plan(db: AsyncSession, user: User) -> Plan:
         spec = ai_spec
         source = "ai"
     if spec is None:
-        spec = _fallback_plan(user, moods)
+        spec = _fallback_plan(user, moods, sleep_rows)
 
     # Deactivate any existing active plans.
     existing = (await db.scalars(select(Plan).where(Plan.user_id == user.id, Plan.active.is_(True)))).all()

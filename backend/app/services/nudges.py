@@ -8,6 +8,7 @@ manually or by a cron.
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import utcnow
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
+from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import notifications
 
@@ -73,6 +75,63 @@ async def schedule_contextual(db: AsyncSession, user: User) -> Nudge | None:
         body="Noticed today felt heavy. Want a 2-minute breathing reset?",
         deeplink="cerebro://breathe",
         scheduled_for=utcnow() + timedelta(hours=2),
+    )
+    db.add(nudge)
+    await db.flush()
+    return nudge
+
+
+async def schedule_wind_down(db: AsyncSession, user: User) -> Nudge | None:
+    """Anchor tonight's wind-down reminder ~45 min before the user's own typical
+    bedtime (recent diary entries; needs at least two nights for a pattern).
+    Times in the diary are wall-clock, so the target converts through the
+    user's timezone before landing in the UTC scheduler."""
+    bedtimes = (
+        await db.scalars(
+            select(SleepLog.bedtime)
+            .where(SleepLog.user_id == user.id)
+            .order_by(SleepLog.date.desc())
+            .limit(7)
+        )
+    ).all()
+    if len(bedtimes) < 2:
+        return None
+
+    # Noon-anchored average so 23:30 and 00:30 don't average to midday.
+    anchored = [((t.hour * 60 + t.minute) - 720) % 1440 for t in bedtimes]
+    avg_bed = (round(sum(anchored) / len(anchored)) + 720) % 1440
+    target = (avg_bed - 45) % 1440
+
+    try:
+        tz = ZoneInfo(user.timezone or "UTC")
+    except Exception:
+        tz = timezone.utc
+    now_local = datetime.now(tz)
+    candidate = now_local.replace(hour=target // 60, minute=target % 60, second=0, microsecond=0)
+    if candidate <= now_local:
+        candidate += timedelta(days=1)
+    scheduled_for = candidate.astimezone(timezone.utc)
+
+    body = (
+        f"Bed's been around {avg_bed // 60:02d}:{avg_bed % 60:02d} for you lately — "
+        "a soft wind-down now sets the night up gently."
+    )
+    pending = await db.scalar(
+        select(Nudge).where(Nudge.user_id == user.id, Nudge.kind == "wind_down", Nudge.status == "scheduled")
+    )
+    if pending:
+        pending.scheduled_for = scheduled_for
+        pending.body = body
+        await db.flush()
+        return pending
+
+    nudge = Nudge(
+        user_id=user.id,
+        kind="wind_down",
+        title="Wind down tonight",
+        body=body,
+        deeplink="cerebro://sleep",
+        scheduled_for=scheduled_for,
     )
     db.add(nudge)
     await db.flush()

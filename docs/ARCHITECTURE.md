@@ -69,7 +69,7 @@ cere/
 | `/users/me` | profile, attest (18+/AI disclosure), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade), push-token |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
-| `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated) |
+| `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
 | `/plans` | active (lazily generated), generate, step patch |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
@@ -84,7 +84,8 @@ cere/
 - `safety.py` — crisis classifier (LLM JSON primary, keyword fallback) → `SafetyEvent` →
   `escalation.py` (ops email + consent-gated trusted-contact email/SMS). Never blocks the user.
 - `crisis.py` — region → hotline map; server mirror of iOS `CrisisResources.swift` (keep in sync).
-- `agentic.py` — daily plan from goals + recent mood (LLM or `_STEP_LIBRARY`).
+- `agentic.py` — daily plan from goals + recent mood + sleep diary (LLM or `_STEP_LIBRARY`;
+  short/rough nights put a wind-down step first).
 - `activities.py` — deterministic chat → inline widget routing (`widget_kind` mirrors iOS `ActivityDestination`).
 - `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
 - `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
@@ -96,7 +97,7 @@ cere/
 
 ### Oracle (LangGraph agent)
 
-Tool-calling chat agent (suggest_activity, log_mood, save_journal, get_weekly_insights) with
+Tool-calling chat agent (suggest_activity, log_mood, save_journal, log_sleep, get_weekly_insights) with
 confirm-before-write: write tools call `interrupt()` → SSE emits `tool_confirm` → client approves via
 `/oracle/confirm` → `Command(resume=...)`. Request-scoped DB/user passed via contextvars.
 Enabled by `ORACLE_ENABLED=true` + an LLM key; otherwise clients fall back to `/chat`.
@@ -214,12 +215,13 @@ Next.js 14 App Router, React 18, TS. Both consume `NEXT_PUBLIC_API_URL` (baked a
 Two designed-but-unbuilt tracks, kept out of the sections above so this doc stays a map
 of what exists:
 
-- **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — shipped
+- **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — v1 shipped
   2026-07-03: backend `sleep_logs` + `/sleep`, the iOS diary (check-in/trend/history
-  + sync), and the CBT-I-informed wind-down guide (`wind_down` content kind; Sleep-tab
-  rails now read `/content` with a `Dummy` offline fallback via
-  `BackendService.catalogue`). Still planned: sleep-aware insights/plans, `wind_down`
-  nudge kind, `log_sleep` Oracle tool/widget (future cross-stack contracts), opt-in
+  + sync), the CBT-I-informed wind-down guide (`wind_down` content kind; Sleep-tab
+  rails read `/content` with a `Dummy` offline fallback via `BackendService.catalogue`),
+  real server sleep insights (+ data-gated sleep×mood note), bedtime-anchored
+  `wind_down` nudges, sleep-aware plan generation, and the `log_sleep` Oracle tool +
+  `sleep_checkin` widget kind. Still planned: honest-local iOS insights, opt-in
   HealthKit read in v1.5. Non-diagnostic framing is a hard product rule.
 - **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
   :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is

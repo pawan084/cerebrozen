@@ -9,6 +9,7 @@ from app.core.deps import get_current_user
 from app.models.sleep import SleepLog
 from app.models.user import User
 from app.schemas.content_data import SleepLogCreate, SleepLogOut, SleepSummaryOut
+from app.services import nudges
 from app.services import sleep as sleep_service
 
 router = APIRouter(prefix="/sleep", tags=["sleep"])
@@ -50,6 +51,8 @@ async def upsert_sleep(
         log = SleepLog(user_id=user.id, **payload.model_dump())
         db.add(log)
     await db.flush()
+    # Proactive: the diary's own bedtimes anchor tonight's wind-down reminder.
+    await nudges.schedule_wind_down(db, user)
     await db.commit()
     await db.refresh(log)
     return log

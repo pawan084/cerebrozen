@@ -10,6 +10,7 @@ from app.core.database import utcnow
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
+from app.models.sleep import SleepLog
 from app.models.user import User
 
 
@@ -44,9 +45,23 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
 
     sessions = mood_count + steps_done
 
+    # Sleep: real diary aggregates (replaces the old illustrative strings).
+    sleep_rows = (
+        await db.scalars(
+            select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=6)).date())
+        )
+    ).all()
+    if sleep_rows:
+        avg_sleep = sum(r.duration_min for r in sleep_rows) // len(sleep_rows)
+        sleep_value = f"{avg_sleep // 60}h {avg_sleep % 60:02d}m avg"
+        sleep_progress = min(1.0, avg_sleep / 480)
+    else:
+        sleep_value, sleep_progress = "No diary yet", 0.0
+
     metrics = [
         {"label": "Calm sessions", "value": str(sessions), "progress": min(1.0, sessions / 12)},
         {"label": "Journal entries", "value": str(journal_count), "progress": min(1.0, journal_count / 8)},
+        {"label": "Sleep", "value": sleep_value, "progress": sleep_progress},
         {"label": "Mood stability", "value": "Steady" if stability >= 0.6 else "Variable", "progress": stability},
         {
             "label": "Plan follow-through",
@@ -64,5 +79,25 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     else:
         headline = "A fresh start"
         summary = "No activity logged yet this week. One small check-in is a good first step."
+
+    # Sleep × mood: only claim a link when this week's own data supports it
+    # (both buckets populated and a real gap). UTC-date matching is a stated
+    # approximation — mood "today" pairs with the wake-morning diary entry.
+    if len(sleep_rows) >= 3:
+        mood_rows = (
+            await db.scalars(
+                select(MoodLog).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
+            )
+        ).all()
+        by_date = {r.date: r.duration_min for r in sleep_rows}
+        rested = [m.intensity for m in mood_rows if by_date.get(m.created_at.date(), 0) >= 420]
+        short = [m.intensity for m in mood_rows if 0 < by_date.get(m.created_at.date(), 0) < 420]
+        if len(rested) >= 2 and len(short) >= 2:
+            gap = sum(short) / len(short) - sum(rested) / len(rested)
+            if gap >= 0.5:
+                summary += (
+                    " Mood also ran steadier on mornings after 7+ hours in bed — "
+                    "worth protecting the wind-down."
+                )
 
     return {"period": "weekly", "headline": headline, "summary": summary, "metrics": metrics}

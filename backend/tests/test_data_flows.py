@@ -43,4 +43,4 @@ async def test_chat_reply(auth_client):
 async def test_weekly_insights(auth_client):
     r = await auth_client.get("/insights/weekly")
     assert r.status_code == 200
-    assert len(r.json()["metrics"]) == 4
+    assert len(r.json()["metrics"]) == 5

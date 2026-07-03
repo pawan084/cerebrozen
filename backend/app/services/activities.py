@@ -55,6 +55,12 @@ _DBT_SKILL = WidgetSpec(
     description="A quick TIPP / opposite-action reset for intense moments.",
     params={},
 )
+_SLEEP_CHECKIN = WidgetSpec(
+    widget_kind="sleep_checkin",
+    title="Morning sleep check-in",
+    description="Log last night in 20 seconds — it shapes today's plan.",
+    params={},
+)
 
 #: kind → widget, for the Oracle agent's suggest_activity tool.
 WIDGETS: dict[str, WidgetSpec] = {
@@ -65,6 +71,7 @@ WIDGETS: dict[str, WidgetSpec] = {
     "one_good_thing": _ONE_GOOD_THING,
     "intention_set": _INTENTION,
     "dbt_skill": _DBT_SKILL,
+    "sleep_checkin": _SLEEP_CHECKIN,
 }
 
 
@@ -78,6 +85,8 @@ _RULES: list[tuple[WidgetSpec, tuple[str, ...]]] = [
                   "nervous", "racing", "can't breathe", "cant breathe", "freaking out")),
     (_GROUNDING, ("overthink", "spiral", "can't focus", "cant focus", "distracted",
                   "racing thoughts", "dissociat", "not present", "ground")),
+    (_SLEEP_CHECKIN, ("slept", "can't sleep", "cant sleep", "couldn't sleep", "couldnt sleep",
+                      "insomnia", "restless night", "up all night", "woke up a lot", "tossing")),
     (_JOURNAL, ("vent", "journal", "write", "get it out", "process", "off my chest")),
     (_DBT_SKILL, ("angry", "furious", "rage", "urge", "craving", "self harm", "self-harm",
                   "impulse", "want to scream", "overwhelmed by emotion")),
@@ -112,6 +121,7 @@ def route(text: str, risk: str) -> tuple[WidgetSpec | None, list[Suggestion]]:
         "one_good_thing": [("Set an intention", "intention_set"), ("Check in", "mood_check")],
         "intention_set": [("One good thing", "one_good_thing"), ("Breathe with me", "breathing")],
         "dbt_skill": [("Breathe with me", "breathing"), ("Try grounding", "grounding")],
+        "sleep_checkin": [("Breathe with me", "breathing"), ("Write it down", "journal")],
         None: [("Breathe with me", "breathing"), ("Check in", "mood_check")],
     }
     for label, action in alternates.get(kind, alternates[None]):

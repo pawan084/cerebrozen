@@ -32,7 +32,7 @@ async def test_insights_fresh_user_branch():
         user = await _make_user(s)
         data = await insights.compute_weekly(s, user)
         assert data["headline"] == "A fresh start"
-        assert len(data["metrics"]) == 4
+        assert len(data["metrics"]) == 5
 
 
 async def test_insights_with_activity_branches():

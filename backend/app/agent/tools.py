@@ -6,12 +6,17 @@ the request-scoped DB session from ``context``.
 """
 from __future__ import annotations
 
+import datetime as dt
+from zoneinfo import ZoneInfo
+
 from langchain_core.tools import tool
 from langgraph.types import interrupt
+from sqlalchemy import select
 
 from app.agent.context import current_db, current_user_id, emitted_widgets
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
+from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import activities, insights, safety
 
@@ -21,15 +26,15 @@ async def suggest_activity(kind: str) -> str:
     """Offer the user a calming activity inline in the chat.
 
     kind must be one of: 'breathing', 'grounding', 'mood_check', 'mini_journal',
-    'one_good_thing', 'intention_set', 'dbt_skill'. Use when the user seems
-    anxious, overwhelmed, ruminating, low, grateful, or hit by an intense urge
-    (dbt_skill).
+    'one_good_thing', 'intention_set', 'dbt_skill', 'sleep_checkin'. Use when the
+    user seems anxious, overwhelmed, ruminating, low, grateful, hit by an intense
+    urge (dbt_skill), or describing a rough night (sleep_checkin).
     """
     spec = activities.widget_for(kind)
     if spec is None:
         return (
             f"Unknown activity '{kind}'. Valid: breathing, grounding, mood_check, "
-            "mini_journal, one_good_thing, intention_set, dbt_skill."
+            "mini_journal, one_good_thing, intention_set, dbt_skill, sleep_checkin."
         )
     try:
         emitted_widgets.get().append(spec.model_dump())
@@ -84,4 +89,47 @@ async def save_journal(title: str, body: str = "") -> str:
     return f"Saved the journal entry '{title}'."
 
 
-TOOLS = [suggest_activity, get_weekly_insights, log_mood, save_journal]
+@tool
+async def log_sleep(quality: int, bedtime: str = "23:00", wake_time: str = "07:00", awakenings: int = 0) -> str:
+    """Record last night's sleep diary for the user (felt quality 1–5, times as
+    HH:MM). Use when the user describes how they slept. Confirms with the user
+    first. One entry per morning — logging again edits today's entry."""
+    decision = interrupt({
+        "tool": "log_sleep",
+        "summary": f"Log last night's sleep as {quality}/5?",
+        "args": {"quality": quality, "bedtime": bedtime, "wake_time": wake_time, "awakenings": awakenings},
+    })
+    if not (isinstance(decision, dict) and decision.get("approved")):
+        return "The user declined to log their sleep."
+
+    def _parse(value: str, fallback: dt.time) -> dt.time:
+        try:
+            h, m = value.strip().split(":")[:2]
+            return dt.time(int(h) % 24, int(m) % 60)
+        except Exception:
+            return fallback
+
+    db = current_db.get()
+    uid = current_user_id.get()
+    user = await db.get(User, uid)
+    try:
+        tz = ZoneInfo((user.timezone if user else "") or "UTC")
+    except Exception:
+        tz = dt.timezone.utc
+    today = dt.datetime.now(tz).date()
+    q = max(1, min(5, int(quality)))
+    bed = _parse(bedtime, dt.time(23, 0))
+    wake = _parse(wake_time, dt.time(7, 0))
+    woke = max(0, int(awakenings))
+
+    existing = await db.scalar(select(SleepLog).where(SleepLog.user_id == uid, SleepLog.date == today))
+    if existing:
+        existing.quality, existing.bedtime, existing.wake_time, existing.awakenings = q, bed, wake, woke
+    else:
+        db.add(SleepLog(user_id=uid, date=today, bedtime=bed, wake_time=wake,
+                        quality=q, awakenings=woke, source="manual"))
+    await db.commit()
+    return f"Logged last night's sleep ({q}/5)."
+
+
+TOOLS = [suggest_activity, get_weekly_insights, log_mood, save_journal, log_sleep]

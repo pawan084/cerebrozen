@@ -39,11 +39,15 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   seed is additive-by-title so new items reach existing dev DBs. 2026-07-03:
   backend 185 passed / 95.68 %, live `/content?kind=wind_down` verified, admin
   tsc clean. Home rails + search migration still open (item below).
-- [ ] Insights: compute real sleep trends + sleep × mood correlation in `insights.py`
-  (honest "not enough data yet" empty state); retire illustrative strings.
-- [ ] Plans/nudges: plan generation reads sleep summary; new `wind_down` nudge kind off
-  the user's target bedtime (existing scheduler). Cross-stack contracts (sleep schema,
-  nudge kind, `log_sleep` Oracle tool/widget) — backend + iOS same commit.
+- [x] Insights: server weekly insights now compute a real Sleep metric (avg duration,
+  "No diary yet" empty state) + a sleep × mood note only when the week's own data
+  supports it (both buckets ≥2, gap ≥0.5). 2026-07-03. iOS *local* fallback insights
+  still show illustrative strings (labeled) — honest-local computation is follow-up.
+- [x] Plans/nudges/Oracle: fallback planner protects the wind-down after short/rough
+  nights (LLM prompt also carries the diary summary); `wind_down` nudge anchors
+  ~45 min before the user's own average bedtime (timezone-aware, upserts in place);
+  `log_sleep` Oracle tool + `sleep_checkin` widget kind wired backend + iOS in the
+  same commit. 2026-07-03: 190 passed / 95.72 %.
 - [ ] v1.5: HealthKit sleep read (opt-in, off by default) — entitlement, purpose
   strings, PRIVACY_LABELS.md Health & Fitness category; pre-fills diary, user confirms.
   Never write inferred sleep to HealthKit; no PHI in iCloud.
