@@ -6,7 +6,10 @@
 > stated gaps) · ⚪ concept (screen/copy exists, feature does not).
 >
 > Companions: [ARCHITECTURE.md](ARCHITECTURE.md) (how it's built), [TODO.md](TODO.md)
-> (debt), [SHIP_READINESS.md](SHIP_READINESS.md) (App Store runbook).
+> (debt), [SHIP_READINESS.md](SHIP_READINESS.md) (App Store runbook),
+> [SLEEP_TRACKING.md](SLEEP_TRACKING.md) (validated sleep-module plan),
+> [WEB_APP_PLAN.md](WEB_APP_PLAN.md) (browser client + admin v2),
+> [INVESTOR_READINESS.md](INVESTOR_READINESS.md) (benchmarks + gap list).
 
 ## 1. Product definition
 
@@ -55,6 +58,10 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Favorites | ✅ | Persisted by title |
 | Stories/meditation catalogue | 🟡 | Static `Dummy` items; audio maps to 4 bundled loops by keyword |
 | Downloads | ⚪ | Paywall copy only — no download feature exists |
+| Sleep diary + morning check-in (manual, quality/bed/wake) | ⚪ | **Validated GO** — research-backed plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md); `sleep_logs` + `/sleep` API + iOS check-in |
+| Wind-down program (CBT-I-informed, non-diagnostic) | ⚪ | The evidence engine (dCBT-I: ISI SMD −0.85, depression −0.47); ships as `/content` items, finally retiring the `Dummy` sleep rails |
+| Real sleep insights (duration/consistency trends, sleep × mood) | ⚪ | Replaces today's illustrative Insights strings with computed diary data |
+| HealthKit sleep read (Apple Watch stages, opt-in) | ⚪ | v1.5 enhancer only — phone-only staging rejected by evidence; never a headline accuracy claim |
 
 ### Talk (voice + chat)
 | Feature | Status | Notes |
@@ -147,11 +154,22 @@ push commits + CI green · TestFlight via existing fastlane workflow.
 **Phase 1 — App Store v1 (1–2 weeks):** checklist #2–#5 · content depth (real
 meditation scripts/audio beyond 4 loops) · privacy labels into ASC · beta feedback loop.
 
-**Phase 2 — Post-launch growth (1–2 months):** real insights/patterns (#6) · adaptive
-reminders · downloads if premium promises them · deeper voice polish · Android start.
+**Phase 2 — Post-launch growth (1–2 months):** **sleep tracking module v1** (diary +
+CBT-I-informed wind-down program + real sleep insights — validated plan in
+[SLEEP_TRACKING.md](SLEEP_TRACKING.md)) · real insights/patterns (#6) · **first-party
+privacy-preserving analytics + annual plan/trial design** (investor gaps #1/#3 in
+[INVESTOR_READINESS.md](INVESTOR_READINESS.md)) · adaptive reminders · downloads if
+premium promises them · deeper voice polish · Android start.
 
-**Phase 3 — Expansion:** B2B/enterprise offering · human-support marketplace ·
-HealthKit integration · full localization (Hindi/Tamil first).
+**Phase 2.5 — Web app v1 (parallel track):** slim authenticated browser client at
+`app.cerebrozen.in` (auth, check-ins, journal, chat, plans, insights, account) + admin
+v2 (session refresh, analytics tab, user support) — scope in
+[WEB_APP_PLAN.md](WEB_APP_PLAN.md). Deliberately a subset, not parity (the verified
+market-leader pattern).
+
+**Phase 3 — Expansion:** B2B/enterprise offering (employer reporting on the web app) ·
+Stripe web billing · human-support marketplace · HealthKit sleep read (module v1.5) ·
+full localization (Hindi/Tamil first).
 
 ## 5. Verification snapshot (2026-07-03)
 

@@ -12,6 +12,7 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) — setup, env vars, testing, CI/CD, deploy, conventions
 - [docs/TODO.md](docs/TODO.md) — prioritized known debt + open work (update it when you fix or find something)
 - [docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md) / [docs/SHIP_READINESS.md](docs/SHIP_READINESS.md) / [docs/PRIVACY_LABELS.md](docs/PRIVACY_LABELS.md) — launch runbooks
+- [docs/SLEEP_TRACKING.md](docs/SLEEP_TRACKING.md) / [docs/WEB_APP_PLAN.md](docs/WEB_APP_PLAN.md) / [docs/INVESTOR_READINESS.md](docs/INVESTOR_READINESS.md) / [docs/DPDP_COMPLIANCE.md](docs/DPDP_COMPLIANCE.md) — research-validated plans (sleep module, web client + admin v2, investor benchmarks/gaps, India data-protection checklist)
 
 ## Layout
 

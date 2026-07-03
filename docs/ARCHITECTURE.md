@@ -198,7 +198,24 @@ Next.js 14 App Router, React 18, TS. Both consume `NEXT_PUBLIC_API_URL` (baked a
   + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
 - **Admin** — one client component (`app/page.tsx`) with tabs overview/users/content/safety/waitlist.
   JWT via `/auth/login` stored in localStorage (`cerebro_admin_token`); all data from `/admin/*`.
+  Known gap: no `/auth/refresh` usage → sessions end at access-token expiry (30 min).
 - Shared brand tokens live as CSS vars in each app's `globals.css` (mirrors iOS Theme).
+
+## Planned (not built) — see plan docs before extending
+
+Two designed-but-unbuilt tracks, kept out of the sections above so this doc stays a map
+of what exists:
+
+- **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — `sleep_logs`
+  table + `/sleep` router, sleep-aware insights/plans, `wind_down` nudge kind,
+  `log_sleep` Oracle tool/widget (all future cross-stack contracts), opt-in HealthKit
+  read in v1.5. Non-diagnostic framing is a hard product rule.
+- **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
+  :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is
+  already browser-ready: Bearer JWT + CORS; add the new origin). Session = in-memory
+  access token + refresh rotation. Admin gains user-support view, first-party
+  analytics (`/admin/metrics/*`), nudge authoring. Stripe web billing post-v1 maps to
+  the same `subscription_tier` contract as `appstore.py`.
 
 ## Infra
 

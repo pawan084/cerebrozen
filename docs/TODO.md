@@ -21,6 +21,27 @@
 
 ## Open — code/product work
 
+### Sleep tracking module — validated GO (2026-07-03), plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md)
+Ordered for delivery; framing rule everywhere: non-diagnostic "sleep awareness", no
+accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
+- [ ] Backend: `sleep_logs` table (Alembic revision) + `/sleep` router (upsert-by-date,
+  range list, weekly summary: avg duration, bedtime consistency, quality trend) + tests.
+- [ ] iOS: morning sleep check-in (Home card + Sleep tab), 7-day trend strip, diary
+  history — local-first in `AppState`, additive sync, `-resetState` deterministic.
+- [ ] Content: CBT-I-informed wind-down program as `/content` items (kind `sleep`) —
+  also closes the long-standing "Sleep rails are static `Dummy`" item below.
+- [ ] Insights: compute real sleep trends + sleep × mood correlation in `insights.py`
+  (honest "not enough data yet" empty state); retire illustrative strings.
+- [ ] Plans/nudges: plan generation reads sleep summary; new `wind_down` nudge kind off
+  the user's target bedtime (existing scheduler). Cross-stack contracts (sleep schema,
+  nudge kind, `log_sleep` Oracle tool/widget) — backend + iOS same commit.
+- [ ] v1.5: HealthKit sleep read (opt-in, off by default) — entitlement, purpose
+  strings, PRIVACY_LABELS.md Health & Fitness category; pre-fills diary, user confirms.
+  Never write inferred sleep to HealthKit; no PHI in iCloud.
+- [ ] Check instrument licensing before using ISI/PSQI verbatim (both copyrighted;
+  commercial use needs permission) — until then, the plain-language 1–5 baseline returns
+  contextually and feeds `sleep_logs`.
+
 ### Strategy-doc adoptions (2026-07-03) — remaining decisions/work
 - [ ] **Analytics vs "no trackers" promise** — the funnel KPIs / A/B slate from the
   redesign strategy require product analytics, but privacy labels + landing copy say
@@ -36,6 +57,54 @@
 - [x] 90-second onboarding (one-tap state → breathing reset → mini-plan → account)
 - [x] Consent private-by-default (no pre-ticked toggles + recommended card)
 - [x] Language moved before the value moment
+
+### Web app v1 + admin v2 — plan in [WEB_APP_PLAN.md](WEB_APP_PLAN.md)
+- [ ] Infra prep: add `https://app.cerebrozen.in` to `CORS_ORIGINS`, Caddy site block,
+  `apps/app` Next.js scaffold (port 3002), extract shared design tokens (palette is
+  currently copy-pasted into web + admin `globals.css`; don't make a third copy).
+- [ ] Auth client with `POST /auth/refresh` rotation (in-memory access token); reuse the
+  same client in admin — admin sessions currently die at 30 min with no refresh.
+- [ ] Web v1 features (API exists for all): sign-in (email + Google), mood check-in +
+  history, journal, chat (Oracle SSE via fetch-streaming, `/chat` fallback + crisis
+  banner), plan view/generate/toggle, weekly insights, content pages, account
+  (consent, region, trusted contact, export, delete).
+- [ ] Streaks on web: v1 compute from `/moods` client-side with iOS rules; longer-term
+  add `GET /users/me/streak` so clients stop duplicating the logic.
+- [ ] Playwright specs for the web app in the existing `e2e/` stack.
+- [ ] Admin v2: per-user support view (`GET /admin/users/{id}` — metadata only, journal/
+  chat bodies stay unreadable), first-party analytics tab (`/admin/metrics/*` SQL
+  aggregates: D1/D7/D30 actives, funnel, plan completion), nudge authoring endpoints.
+- [ ] Post-v1: Stripe web billing (`stripe.py` + webhook → same `subscription_tier`
+  contract as App Store), Web Push (VAPID) or email nudges for web-only users,
+  `/auth/apple` Services-ID audience for web Apple sign-in.
+
+### Investor-readiness actions — benchmarks + full list in [INVESTOR_READINESS.md](INVESTOR_READINESS.md)
+- [ ] **Decide analytics** (supersedes the strategy-doc item above): recommendation is
+  first-party, privacy-preserving aggregates on our own backend, disclosed in the
+  privacy hub — investors need D1/D30/conversion/churn and we currently can't report
+  any metric; keep zero third-party SDKs.
+- [ ] Annual subscription SKUs + 7-day-trial design; treat the first-session paywall as
+  the primary experiment surface (89.4 % of trial starts happen Day 0).
+- [ ] Financial model anchored to IN/SEA benchmarks ($14 Y1 LTV/payer, 15.2 %
+  trial-to-paid) with US distribution + ₹1,499 tier as blend-up levers.
+- [ ] Clinical-credibility package: named clinical advisor, cite conservative dCBT-I
+  meta-analytic effects, write up the crisis-safety design as a diligence artifact.
+
+### DPDP Act readiness — checklist + deadlines in [DPDP_COMPLIANCE.md](DPDP_COMPLIANCE.md)
+Substantive obligations bite **13 May 2027**; SPDI Rules 2011 (mental-health data =
+sensitive) apply **today** and are already satisfied. Ordered by lead time:
+- [ ] Consent screen: itemise data categories per purpose (mood, journal, chat, sleep) —
+  a blanket toggle likely fails DPDP's "specific and informed" bar.
+- [ ] Design the Rule 8(3) sealed 12-month log store vs `DELETE /users/me` hard-cascade
+  (content deletes now; minimal identity + processing logs quarantined 1 yr).
+- [ ] Publish grievance contact (web + app privacy hub) + 90-day rights-response SLA;
+  include the contact in every rights response.
+- [ ] Breach-notification runbook: every breach → affected users "without delay" + Board
+  initial report then ≤ 72 h detail. No materiality threshold.
+- [ ] Processor security clauses with LLM/voice/email/SMS vendors (Rule 6(1)(f)).
+- [ ] DPIIT startup recognition (eligibility for the s. 17(3) exemption if an SDF class
+  notification ever covers wellness apps).
+- [ ] Localize consent/notice screens first (Eighth-Schedule language option).
 
 ### Onboarding flow review (2026-07-02) — smaller findings not yet fixed
 - [ ] No back navigation between onboarding steps (a mis-tapped Continue is
