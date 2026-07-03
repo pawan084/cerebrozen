@@ -162,10 +162,11 @@ privacy-preserving analytics + annual plan/trial design** (investor gaps #1/#3 i
 premium promises them · deeper voice polish · Android start.
 
 **Phase 2.5 — Web app v1 (parallel track):** slim authenticated browser client at
-`app.cerebrozen.in` (auth, check-ins, journal, chat, plans, insights, account) + admin
-v2 (session refresh, analytics tab, user support) — scope in
-[WEB_APP_PLAN.md](WEB_APP_PLAN.md). Deliberately a subset, not parity (the verified
-market-leader pattern).
+`app.cerebrozen.in` — scope in [WEB_APP_PLAN.md](WEB_APP_PLAN.md); deliberately a
+subset, not parity (the verified market-leader pattern). First slice shipped
+2026-07-03 (`apps/app`: auth + refresh sessions, mood check-in, journal with crisis
+banner, sleep diary; admin session-refresh fix). Remaining: chat, plans, insights,
+content, account pages + admin analytics/user-support.
 
 **Phase 3 — Expansion:** B2B/enterprise offering (employer reporting on the web app) ·
 Stripe web billing · human-support marketplace · HealthKit sleep read (module v1.5) ·

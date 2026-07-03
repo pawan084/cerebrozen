@@ -116,10 +116,14 @@ a 30-minute localStorage session. Planned, in order:
 
 ## 7. Rollout order
 
-1. Backend session/infra prep: web origin in CORS, refresh-rotation client pattern,
-   Caddy block, `apps/app` scaffold + tokens extraction.
-2. Auth + shell + mood check-in + journal (first usable build; Playwright specs).
-3. Chat (SSE) + plans + insights + account/consent/export/delete.
-4. Sleep diary + trends (with the sleep module), content catalogue pages.
-5. Admin v2 items 1–3 (session, analytics, user support).
+1. ✅ 2026-07-03 — Infra prep: CORS origin (dev default + env examples), Caddy
+   `app.cerebrozen.in` block, dev/e2e/prod compose services, CI typecheck,
+   `apps/app` scaffold. Tokens NOT extracted (per-app Docker contexts) — third
+   CSS copy for now, extraction tracked in TODO.
+2. ✅ 2026-07-03 — Auth (signup/signin, in-memory access + refresh rotation) +
+   shell + mood check-in + journal (with crisis-support banner) + Playwright spec.
+3. Chat (SSE) + plans + insights + account/consent/export/delete + Google sign-in.
+4. ✅ 2026-07-03 — Sleep diary page (check-in, honest summary, history). Content
+   catalogue pages still open.
+5. Admin v2: ✅ item 1 (session refresh, 2026-07-03); analytics + user support open.
 6. Stripe billing + employer/B2B reporting exploration.

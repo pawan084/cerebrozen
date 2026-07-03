@@ -61,6 +61,17 @@ services:
       - api
     restart: unless-stopped
 
+  app:
+    build:
+      context: ./apps/app
+      args:
+        NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-https://api.cerebrozen.in}"
+    expose:
+      - "3002"
+    depends_on:
+      - api
+    restart: unless-stopped
+
   # TLS-terminating reverse proxy. Auto-provisions Let's Encrypt certs for the
   # domains in deploy/Caddyfile. The only service that binds public ports.
   caddy:

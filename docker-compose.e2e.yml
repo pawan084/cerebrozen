@@ -22,7 +22,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@db:5432/cerebro
       # Browsers in the e2e network load pages from these origins.
-      CORS_ORIGINS: http://web:3000,http://admin:3001
+      CORS_ORIGINS: http://web:3000,http://admin:3001,http://app:3002
     depends_on:
       db:
         condition: service_healthy
@@ -44,12 +44,22 @@ services:
     depends_on:
       - api
 
+  app:
+    build:
+      context: ./apps/app
+      args:
+        NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      - api
+
   e2e:
     build: ./e2e
     environment:
       API_URL: http://api:8000
       WEB_URL: http://web:3000
       ADMIN_URL: http://admin:3001
+      APP_URL: http://app:3002
     depends_on:
       - web
       - admin
+      - app

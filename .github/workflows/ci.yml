@@ -81,7 +81,7 @@ jobs:
   # ── Web + Admin: TypeScript typecheck (no services needed) ────────────
   # No `next lint` here: neither app ships an ESLint config yet.
   web:
-    name: Web + Admin (typecheck)
+    name: Web + Admin + App (typecheck)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +92,7 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             apps/admin/package-lock.json
+            apps/app/package-lock.json
       - name: Typecheck web
         working-directory: apps/web
         run: |
@@ -99,6 +100,11 @@ jobs:
           npx tsc --noEmit
       - name: Typecheck admin
         working-directory: apps/admin
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: Typecheck app
+        working-directory: apps/app
         run: |
           npm ci
           npx tsc --noEmit

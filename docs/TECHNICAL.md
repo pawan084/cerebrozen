@@ -11,13 +11,13 @@
 | Android | Kotlin 2.0 + Jetpack Compose (Material 3) — scaffold only, non-blocking in CI |
 | Backend | Python 3.12, FastAPI, async SQLAlchemy, Alembic, Postgres 16, pytest (asyncio auto) |
 | Agent | LangGraph (Oracle), SSE streaming |
-| Web/Admin | Next.js 14 App Router, React 18, TypeScript, Playwright e2e |
+| Web/App/Admin | Next.js 14 App Router, React 18, TypeScript, Playwright e2e (landing :3000 · web app :3002 · admin :3001) |
 | Infra | Docker Compose, Caddy (auto-HTTPS), GitHub Actions, Contabo VPS (Ubuntu 24.04) |
 
 ## Local development
 
 ```bash
-docker compose up --build       # db + api :8000 (/docs) + web :3000 + admin :3001
+docker compose up --build       # db + api :8000 (/docs) + web :3000 + admin :3001 + app :3002
 ```
 
 Seeded dev logins: `admin@cerebro.app / admin12345`, `pawan@cerebro.app / demo12345`
@@ -67,8 +67,8 @@ patch `ai.complete`/`ai.complete_json`, toggle `settings` key properties, assert
 ## CI/CD
 
 - **ci.yml** (push/PR): `backend` (Ubuntu + Postgres service, coverage gate), `web`
-  (`tsc --noEmit` for apps/web + apps/admin), `e2e` (Docker stack, live keys optional via
-  repo secrets), `ios` (macos-15, picks a simulator via `simctl`), `android`
+  (`tsc --noEmit` for apps/web + apps/admin + apps/app), `e2e` (Docker stack, live keys
+  optional via repo secrets), `ios` (macos-15, picks a simulator via `simctl`), `android`
   (`continue-on-error`). Concurrency cancels in-progress runs.
 - **deploy.yml** (manual): SSH → `git reset --hard origin/main` → prod compose up → health-check
   loop on `https://api.cerebrozen.in/health`. Secrets: `DEPLOY_HOST/USER/SSH_KEY`; var `DEPLOY_PATH`.

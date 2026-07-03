@@ -20,14 +20,15 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 apps/ios/      SwiftUI app (Xcode 27 project, synchronized file groups — new .swift auto-included)
 apps/android/  Compose scaffold only
 apps/web/      Next.js landing :3000        apps/admin/  Next.js dashboard :3001
-backend/       FastAPI + Postgres :8000     e2e/         Playwright (web+admin)
+apps/app/      Next.js web app :3002 (authenticated client — app.cerebrozen.in)
+backend/       FastAPI + Postgres :8000     e2e/         Playwright (web+admin+app)
 deploy/        Caddyfile + bootstrap.sh     docs/        this doc set
 ```
 
 ## Commands
 
 ```bash
-docker compose up --build                      # full dev stack (api/web/admin/db)
+docker compose up --build                      # full dev stack (api/web/admin/app/db)
 docker compose run --rm api sh -c \
   "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"   # backend tests
 docker compose -f docker-compose.e2e.yml up --build \

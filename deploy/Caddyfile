@@ -32,6 +32,13 @@ admin.cerebrozen.in {
 	reverse_proxy admin:3001
 }
 
+# Web app (Next.js — authenticated client)
+app.cerebrozen.in {
+	import security_headers
+	encode gzip zstd
+	reverse_proxy app:3002
+}
+
 # API (FastAPI)
 api.cerebrozen.in {
 	import security_headers

@@ -54,5 +54,15 @@ services:
     depends_on:
       - api
 
+  app:
+    build:
+      context: ./apps/app
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+
 volumes:
   pgdata:

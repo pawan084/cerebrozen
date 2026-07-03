@@ -23,7 +23,8 @@
                           └─────────────────────────┘
 
 Prod: Caddy (auto-HTTPS) is the only public service →
-  cerebrozen.in / www → web:3000 · admin.cerebrozen.in → admin:3001 · api.cerebrozen.in → api:8000
+  cerebrozen.in / www → web:3000 · admin.cerebrozen.in → admin:3001 ·
+  app.cerebrozen.in → app:3002 · api.cerebrozen.in → api:8000
 ```
 
 Every external provider is optional: the backend picks providers at runtime by key
@@ -38,6 +39,7 @@ cere/
   apps/android/   Kotlin + Jetpack Compose scaffold (placeholder tabs only)
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
+  apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
   backend/        FastAPI + Postgres (auth, data, proactive AI, voice, Oracle agent)
   e2e/            Playwright tests (web + admin) in an isolated Docker stack
   deploy/         Caddyfile + bootstrap.sh (one-shot VPS setup)
@@ -199,16 +201,23 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.monthly`, `.premiumhuman.monthly`) |
 
-## Web + Admin (`apps/web`, `apps/admin`)
+## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 
-Next.js 14 App Router, React 18, TS. Both consume `NEXT_PUBLIC_API_URL` (baked at build).
+Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at build).
 
 - **Web** — single-page landing (`app/page.tsx`, hardcoded content arrays) + `/privacy` + `/terms`
   + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
+- **App** — the authenticated browser client (`app.cerebrozen.in`, deliberately a subset of
+  iOS — see WEB_APP_PLAN.md). Session model: access token **in memory only**, refresh token
+  in localStorage, one `/auth/refresh` rotation retry per 401 (`lib/api.ts`). v1 pages:
+  signin/signup, Today (mood check-in + recent), Journal (composer + history + crisis
+  banner on elevated risk — never blocks), Sleep diary (morning check-in, honest weekly
+  summary, history). `noindex`.
 - **Admin** — one client component (`app/page.tsx`) with tabs overview/users/content/safety/waitlist.
-  JWT via `/auth/login` stored in localStorage (`cerebro_admin_token`); all data from `/admin/*`.
-  Known gap: no `/auth/refresh` usage → sessions end at access-token expiry (30 min).
-- Shared brand tokens live as CSS vars in each app's `globals.css` (mirrors iOS Theme).
+  JWT via `/auth/login` in localStorage; now also stores the refresh token and rotates on
+  401 (same pattern as App), so sessions outlive the 30-minute access token.
+- Shared brand tokens live as CSS vars in each app's `globals.css` (mirrors iOS Theme;
+  extraction to a shared package is tracked in TODO — Docker build contexts are per-app).
 
 ## Planned (not built) — see plan docs before extending
 
@@ -225,12 +234,14 @@ of what exists:
   (`HealthKitSleep`, check-in pre-fill only — never writes; portal App ID
   capability pending for devices). Still planned: honest-local iOS insights.
   Non-diagnostic framing is a hard product rule.
-- **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
-  :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is
-  already browser-ready: Bearer JWT + CORS; add the new origin). Session = in-memory
-  access token + refresh rotation. Admin gains user-support view, first-party
-  analytics (`/admin/metrics/*`), nudge authoring. Stripe web billing post-v1 maps to
-  the same `subscription_tier` contract as `appstore.py`.
+- **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — first slice shipped
+  2026-07-03: `apps/app` scaffold + auth/refresh session, Today/Journal/Sleep pages,
+  infra (CORS origin, Caddy block, compose services, CI typecheck, Playwright spec),
+  and the admin refresh fix (admin-v2 item 1). Still planned: chat (Oracle SSE via
+  fetch-streaming), plans, insights, content pages, account/consent/export/delete,
+  streaks endpoint, admin analytics/user-support/nudge authoring, Stripe web billing
+  (maps to the same `subscription_tier` contract as `appstore.py`), Web Push/email
+  nudges, Apple sign-in Services ID.
 
 ## Infra
 

@@ -125,4 +125,5 @@ enum, `wind_down` nudge kind, `log_sleep` widget kind — backend + iOS in one c
    (read-only; user confirms; `source: healthkit`); entitlement + purpose string +
    privacy-label row shipped. Remaining owner step: HealthKit capability on the
    App ID (device builds).
-6. Web parity (sleep diary + trends are web-friendly; see [WEB_APP_PLAN.md](WEB_APP_PLAN.md)).
+6. ✅ 2026-07-03 — Web parity: sleep diary page in `apps/app` (morning check-in,
+   `enough_data`-honest weekly summary, history) — see [WEB_APP_PLAN.md](WEB_APP_PLAN.md).

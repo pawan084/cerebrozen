@@ -78,21 +78,28 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 - [x] Language moved before the value moment
 
 ### Web app v1 + admin v2 — plan in [WEB_APP_PLAN.md](WEB_APP_PLAN.md)
-- [ ] Infra prep: add `https://app.cerebrozen.in` to `CORS_ORIGINS`, Caddy site block,
-  `apps/app` Next.js scaffold (port 3002), extract shared design tokens (palette is
-  currently copy-pasted into web + admin `globals.css`; don't make a third copy).
-- [ ] Auth client with `POST /auth/refresh` rotation (in-memory access token); reuse the
-  same client in admin — admin sessions currently die at 30 min with no refresh.
-- [ ] Web v1 features (API exists for all): sign-in (email + Google), mood check-in +
-  history, journal, chat (Oracle SSE via fetch-streaming, `/chat` fallback + crisis
-  banner), plan view/generate/toggle, weekly insights, content pages, account
-  (consent, region, trusted contact, export, delete).
-- [ ] Streaks on web: v1 compute from `/moods` client-side with iOS rules; longer-term
+- [x] Infra prep (2026-07-03): `apps/app` Next.js scaffold (:3002), CORS origin added
+  (dev default + env examples), Caddy `app.cerebrozen.in` block, dev/e2e/prod compose
+  services, CI typecheck job. Design tokens: third CSS copy for now (per-app Docker
+  contexts) — extraction still open below.
+- [x] Auth client with `POST /auth/refresh` rotation (2026-07-03): app keeps the access
+  token in memory + refresh in localStorage with one rotation retry per 401; admin
+  upgraded to the same pattern (sessions no longer die at 30 min).
+- [x] Web v1 first slice (2026-07-03): signup/signin, Today (mood check-in + recent),
+  Journal (composer/history + crisis-support banner on elevated risk — never blocks),
+  Sleep diary (check-in, honest weekly summary, history — closes SLEEP_TRACKING #6).
+- [ ] Web v1 remaining features (API exists): Google sign-in, chat (Oracle SSE via
+  fetch-streaming, `/chat` fallback), plan view/generate/toggle, weekly insights,
+  content pages, account (consent, region, trusted contact, export, delete).
+- [ ] Extract shared design tokens (palette now copy-pasted into web + admin + app
+  `globals.css`) — needs per-app Docker build contexts widened or a prebuild copy step.
+- [ ] Streaks on web: compute from `/moods` client-side with iOS rules; longer-term
   add `GET /users/me/streak` so clients stop duplicating the logic.
-- [ ] Playwright specs for the web app in the existing `e2e/` stack.
-- [ ] Admin v2: per-user support view (`GET /admin/users/{id}` — metadata only, journal/
-  chat bodies stay unreadable), first-party analytics tab (`/admin/metrics/*` SQL
-  aggregates: D1/D7/D30 actives, funnel, plan completion), nudge authoring endpoints.
+- [x] Playwright spec for the web app in the existing `e2e/` stack (signup → check-in →
+  journal → sleep → reload survives via refresh rotation). 2026-07-03.
+- [ ] Admin v2 remaining: per-user support view (`GET /admin/users/{id}` — metadata only,
+  journal/chat bodies stay unreadable), first-party analytics tab (`/admin/metrics/*`
+  SQL aggregates: D1/D7/D30 actives, funnel, plan completion), nudge authoring endpoints.
 - [ ] Post-v1: Stripe web billing (`stripe.py` + webhook → same `subscription_tier`
   contract as App Store), Web Push (VAPID) or email nudges for web-only users,
   `/auth/apple` Services-ID audience for web Apple sign-in.
