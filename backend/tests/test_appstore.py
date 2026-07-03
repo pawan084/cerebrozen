@@ -135,3 +135,15 @@ def test_wrong_root_pin_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(appstore.settings, "appstore_root_cert_path", str(root_file))
     with pytest.raises(appstore.ReceiptError):
         appstore.verify_transaction(jws)
+
+
+def test_annual_products_map_to_the_same_tiers():
+    future = int((datetime.now(timezone.utc) + timedelta(days=365)).timestamp() * 1000)
+    tier, expires = appstore.tier_for(
+        {"productId": "com.cerebrozen.premium.annual", "expiresDate": future}
+    )
+    assert tier == "premium" and expires is not None
+    tier, _ = appstore.tier_for(
+        {"productId": "com.cerebrozen.premiumhuman.annual", "expiresDate": future}
+    )
+    assert tier == "premium_human"

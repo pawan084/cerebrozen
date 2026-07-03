@@ -28,7 +28,7 @@
           },
           "localizations" : [
             {
-              "description" : "Sleep library, downloads, and unlimited voice support.",
+              "description" : "Full sleep library, richer voice sessions, and deeper insights.",
               "displayName" : "CereBro Premium",
               "locale" : "en_US"
             }
@@ -42,13 +42,38 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
+          "displayPrice" : "3999.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "CEREBRO_PREMIUM_ANNUAL",
+          "introductoryOffer" : {
+            "internalID" : "CEREBRO_PREMIUM_ANNUAL_TRIAL",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Full sleep library, richer voice sessions, and deeper insights — two months free.",
+              "displayName" : "CereBro Premium (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.cerebrozen.premium.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "CereBro Premium Annual",
+          "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
           "displayPrice" : "1499.00",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "CEREBRO_PREMIUMHUMAN_MONTHLY",
           "localizations" : [
             {
-              "description" : "Everything in Premium, plus coach & therapist booking.",
+              "description" : "Everything in Premium, plus priority human support as it rolls out.",
               "displayName" : "CereBro Premium + Human",
               "locale" : "en_US"
             }
@@ -56,6 +81,26 @@
           "productID" : "com.cerebrozen.premiumhuman.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "CereBro Premium + Human Monthly",
+          "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "11999.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "CEREBRO_PREMIUMHUMAN_ANNUAL",
+          "localizations" : [
+            {
+              "description" : "Everything in Premium, plus priority human support as it rolls out — two months free.",
+              "displayName" : "CereBro Premium + Human (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.cerebrozen.premiumhuman.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "CereBro Premium + Human Annual",
           "subscriptionGroupID" : "CEREBRO_PREMIUM_GROUP",
           "type" : "RecurringSubscription"
         }

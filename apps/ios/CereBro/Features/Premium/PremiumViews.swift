@@ -66,14 +66,19 @@ struct PremiumView: View {
     }
 }
 
-/// A price card backed by a real StoreKit `Product`.
+/// A price card backed by a real StoreKit `Product`. Annual plans get a
+/// "Best value" tag — the honest kind: the saving is priced in, not implied.
 struct StoreProductCard: View {
     let product: Product
+    private var isAnnual: Bool {
+        product.subscription?.subscriptionPeriod.unit == .year
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack {
                 Text(product.displayName).eyebrow()
                 Spacer()
+                if isAnnual { Tag("Best value") }
                 Text(product.displayPrice).displayFont(20).foregroundStyle(Theme.Palette.text)
             }
             Text(product.description).appFont(12).foregroundStyle(Theme.Palette.muted)

@@ -25,7 +25,9 @@ logger = logging.getLogger("cerebro.appstore")
 
 _PRODUCT_TIERS = {
     "com.cerebrozen.premium.monthly": "premium",
+    "com.cerebrozen.premium.annual": "premium",
     "com.cerebrozen.premiumhuman.monthly": "premium_human",
+    "com.cerebrozen.premiumhuman.annual": "premium_human",
 }
 
 

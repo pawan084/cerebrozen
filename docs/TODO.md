@@ -18,8 +18,10 @@
 - [ ] **Google Sign-In:** create the OAuth client; add `GIDClientID` + reversed URL scheme
   to Info.plist and `GOOGLE_CLIENT_ID` server-side.
 - [ ] **App Store Connect:** create `com.cerebrozen.premium.monthly` +
-  `com.cerebrozen.premiumhuman.monthly`, point Server Notifications V2 at
-  `POST /webhooks/appstore`.
+  `com.cerebrozen.premium.annual` (₹3,999) + `com.cerebrozen.premiumhuman.monthly` +
+  `com.cerebrozen.premiumhuman.annual` (₹11,999), point Server Notifications V2 at
+  `POST /webhooks/appstore`. (Annual SKUs are code-complete client+server side
+  2026-07-03 — investor gap #3.)
 - [ ] **Ops config:** `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APNS_*`, and `ASC_*`
   GitHub secrets (TestFlight workflow).
 

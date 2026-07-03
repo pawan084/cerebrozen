@@ -204,7 +204,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
-| Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.monthly`, `.premiumhuman.monthly`) |
+| Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.{monthly,annual}`, `.premiumhuman.{monthly,annual}`) |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 

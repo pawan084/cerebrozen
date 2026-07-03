@@ -58,10 +58,12 @@ bar for evidence of traction is set by the winners.
    numbers accumulate post-launch.
 2. **Not live.** Benchmarks attach to a shipped product. Phase 0/1 of the PRD roadmap
    (TestFlight → App Store v1) precedes everything in this document.
-3. **No annual plan.** Pricing is monthly-only; the category earns 57–59 % of revenue on
-   annual plans. Action: add annual SKUs (intro price), design a 7-day trial, and treat
-   the first-session paywall as the primary experiment surface (89.4 % of trial starts
-   are Day 0).
+3. **No annual plan.** ~~Pricing is monthly-only.~~ **Code-complete 2026-07-03**: annual
+   SKUs (₹3,999 / ₹11,999 ≈ two months free) exist in `Products.storekit`, the paywall
+   ("Best value" tag), and the server tier map, with a 7-day free trial on Premium.
+   Remaining: create the products in App Store Connect (owner item), then treat the
+   first-session paywall as the primary experiment surface (89.4 % of trial starts are
+   Day 0).
 4. **Model the raise on India numbers, not US decks.** $14 Y1 LTV/payer, 15.2 %
    trial-to-paid, 1.37 % D35 install-to-paid — then show the two levers that blend it
    upward: global (US) App Store distribution and the ₹1,499 premium tier.

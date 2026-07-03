@@ -115,11 +115,11 @@ enum Dummy {
         .init(title: "Preference: calm guide voice", subtitle: "Soft, reflective tone", symbol: "waveform", imageURL: Img.voice)
     ]
 
-    // Pricing
+    // Pricing (fallback cards — StoreKit displayPrice is authoritative once live)
     static let plans: [PricePlan] = [
         .init(tier: "Free", price: "₹0", detail: "Daily check-ins, breathing & basic journal", featured: false),
-        .init(tier: "Premium", price: "₹499/mo", detail: "Full sleep library & richer voice sessions", featured: true),
-        .init(tier: "Premium + Human", price: "₹1,499/mo", detail: "Everything, plus priority human handoff", featured: false)
+        .init(tier: "Premium", price: "₹499/mo", detail: "Full sleep library & richer voice sessions · ₹3,999/yr (two months free)", featured: true),
+        .init(tier: "Premium + Human", price: "₹1,499/mo", detail: "Everything, plus priority human handoff · ₹11,999/yr", featured: false)
     ]
 
     // Offline available items

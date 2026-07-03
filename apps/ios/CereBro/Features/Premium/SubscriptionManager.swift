@@ -10,8 +10,13 @@ import SwiftUI
 /// state instead of crashing — so the app ships and runs with no store config.
 @MainActor
 final class SubscriptionManager: ObservableObject {
-    /// Product identifiers to create in App Store Connect.
-    static let productIDs = ["com.cerebrozen.premium.monthly", "com.cerebrozen.premiumhuman.monthly"]
+    /// Product identifiers to create in App Store Connect. Annual plans carry
+    /// ~2 months free vs monthly — the category earns most of its revenue on
+    /// annual (docs/INVESTOR_READINESS.md §1).
+    static let productIDs = [
+        "com.cerebrozen.premium.monthly", "com.cerebrozen.premium.annual",
+        "com.cerebrozen.premiumhuman.monthly", "com.cerebrozen.premiumhuman.annual",
+    ]
 
     @Published private(set) var products: [Product] = []
     /// Local entitlement ("free" | "premium" | "premium_human"). The server holds
