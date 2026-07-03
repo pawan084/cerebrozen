@@ -58,7 +58,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Favorites | ✅ | Persisted by title |
 | Stories/meditation catalogue | 🟡 | Static `Dummy` items; audio maps to 4 bundled loops by keyword |
 | Downloads | ⚪ | Paywall copy only — no download feature exists |
-| Sleep diary + morning check-in (manual, quality/bed/wake) | ⚪ | **Validated GO** — research-backed plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md); `sleep_logs` + `/sleep` API + iOS check-in |
+| Sleep diary + morning check-in (manual, quality/bed/wake) | ⚪ | **Backend shipped 2026-07-03** (`sleep_logs` + `/sleep` upsert/list/summary, tested); still concept for users until the iOS check-in UI lands — plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
 | Wind-down program (CBT-I-informed, non-diagnostic) | ⚪ | The evidence engine (dCBT-I: ISI SMD −0.85, depression −0.47); ships as `/content` items, finally retiring the `Dummy` sleep rails |
 | Real sleep insights (duration/consistency trends, sleep × mood) | ⚪ | Replaces today's illustrative Insights strings with computed diary data |
 | HealthKit sleep read (Apple Watch stages, opt-in) | ⚪ | v1.5 enhancer only — phone-only staging rejected by evidence; never a headline accuracy claim |

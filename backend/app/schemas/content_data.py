@@ -1,6 +1,6 @@
-"""Mood / journal / chat / content / insight / nudge / safety schemas."""
+"""Mood / journal / chat / content / insight / nudge / safety / sleep schemas."""
 import uuid
-from datetime import datetime
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -138,6 +138,41 @@ class NudgeOut(BaseModel):
     deeplink: str | None
     scheduled_for: datetime
     status: str
+
+
+# ── Sleep ───────────────────────────────────────────────────────────────
+class SleepLogCreate(BaseModel):
+    date: date
+    bedtime: time
+    wake_time: time
+    quality: int = Field(default=3, ge=1, le=5)
+    awakenings: int = Field(default=0, ge=0, le=50)
+    source: str = Field(default="manual", pattern="^(manual|healthkit)$")
+    note: str = Field(default="", max_length=255)
+
+
+class SleepLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    date: date
+    bedtime: time
+    wake_time: time
+    quality: int
+    awakenings: int
+    source: str
+    note: str
+    duration_min: int
+    created_at: datetime
+
+
+class SleepSummaryOut(BaseModel):
+    """Weekly aggregates; `enough_data` gates every derived number honestly."""
+    nights: int
+    enough_data: bool
+    avg_duration_min: int
+    avg_quality: float
+    bedtime_consistency_min: int
+    trend: str  # improving | steady | declining | not_enough_data
 
 
 # ── Safety ──────────────────────────────────────────────────────────────

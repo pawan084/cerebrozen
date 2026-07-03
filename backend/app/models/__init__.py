@@ -9,6 +9,7 @@ from app.models.content import ContentItem
 from app.models.nudge import Nudge
 from app.models.insight import Insight
 from app.models.safety import SafetyEvent
+from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.waitlist import WaitlistEntry
 
@@ -24,6 +25,7 @@ __all__ = [
     "Nudge",
     "Insight",
     "SafetyEvent",
+    "SleepLog",
     "TrustedContact",
     "WaitlistEntry",
 ]

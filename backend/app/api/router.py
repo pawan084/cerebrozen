@@ -11,6 +11,7 @@ from app.api.routes import (
     moods,
     oracle,
     plans,
+    sleep,
     users,
     voice,
     waitlist,
@@ -22,6 +23,7 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(assessment.router)
 api_router.include_router(moods.router)
+api_router.include_router(sleep.router)
 api_router.include_router(journal.router)
 api_router.include_router(chat.router)
 api_router.include_router(plans.router)

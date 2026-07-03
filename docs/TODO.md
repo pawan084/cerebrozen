@@ -24,8 +24,10 @@
 ### Sleep tracking module — validated GO (2026-07-03), plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md)
 Ordered for delivery; framing rule everywhere: non-diagnostic "sleep awareness", no
 accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
-- [ ] Backend: `sleep_logs` table (Alembic revision) + `/sleep` router (upsert-by-date,
-  range list, weekly summary: avg duration, bedtime consistency, quality trend) + tests.
+- [x] Backend: `sleep_logs` table (Alembic `9e8d4f7c2b65`) + `/sleep` router
+  (upsert-by-date, range list, weekly summary: avg duration, bedtime consistency,
+  quality trend, `enough_data` gate) + 7 tests — 2026-07-03, suite 184 passed /
+  95.68 % coverage; migration verified on a fresh DB; live-API smoke-tested.
 - [ ] iOS: morning sleep check-in (Home card + Sleep tab), 7-day trend strip, diary
   history — local-first in `AppState`, additive sync, `-resetState` deterministic.
 - [ ] Content: CBT-I-informed wind-down program as `/content` items (kind `sleep`) —
