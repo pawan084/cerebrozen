@@ -84,8 +84,12 @@ private struct WelcomeScreen: View {
                     .appFont(14).foregroundStyle(Theme.Palette.muted)
                     .padding(.horizontal, 20)
                     .entrance(2)
+                Text("Private by design — nothing is ever shared.")
+                    .multilineTextAlignment(.center)
+                    .appFont(11.5, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
+                    .entrance(2)
                 OnboardingProgress(value: 0.14).padding(.top, 8).entrance(3)
-                PrimaryButton(title: "Begin private setup", systemImage: "sparkles", action: onBegin).entrance(4)
+                PrimaryButton(title: "Get started", systemImage: "sparkles", action: onBegin).entrance(4)
                 // Returning users shouldn't have to walk the setup to reach login.
                 Button { showAuth = true } label: {
                     Text("I already have an account")
@@ -158,7 +162,7 @@ private struct SignupScreen: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Account creation").eyebrow().entrance(0)
+                Text("Yours to keep").eyebrow().entrance(0)
                 Text("Save your space").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
                 Text(backend.isConnected
                      ? "Your space is saved — plan, journal and check-ins now sync privately."
@@ -193,7 +197,7 @@ private struct AgeGateScreen: View {
     var onContinue: () -> Void
     @State private var confirmed = false
     var body: some View {
-        StepScaffold(eyebrow: "Adult-only safety gate", title: "Age Gate", image: Dummy.Img.calm,
+        StepScaffold(eyebrow: "For adults only", title: "A quick check", image: Dummy.Img.calm,
                      caption: "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
                      progress: 0.22, canContinue: confirmed, onContinue: onContinue) {
             DangerPanel {
@@ -218,8 +222,8 @@ private struct AgeGateScreen: View {
 private struct DisclosureScreen: View {
     var onContinue: () -> Void
     var body: some View {
-        StepScaffold(eyebrow: "AI boundary screen", title: "AI Disclosure", image: Dummy.Img.support,
-                     caption: "Honesty first. Here's exactly what your AI companion can and can't do for you.",
+        StepScaffold(eyebrow: "Honesty first", title: "What CereBro is — and isn't", image: Dummy.Img.support,
+                     caption: "Here's exactly what your AI companion can and can't do for you.",
                      progress: 0.30, onContinue: onContinue) {
             HStack(spacing: 10) {
                 Card { VStack(alignment: .leading, spacing: 4) {
@@ -227,7 +231,7 @@ private struct DisclosureScreen: View {
                     Text("Listen, reflect, guide tools, suggest a plan.").appFont(12).foregroundStyle(Theme.Palette.muted)
                 }}
                 Card { VStack(alignment: .leading, spacing: 4) {
-                    Text("Cannot do").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                    Text("Can't do").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
                     Text("Diagnose, prescribe, replace therapy, or handle emergencies.").appFont(12).foregroundStyle(Theme.Palette.muted)
                 }}
             }
@@ -240,7 +244,7 @@ private struct ConsentScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
     var body: some View {
-        StepScaffold(eyebrow: "Privacy choices", title: "Consent", image: Dummy.Img.privacy,
+        StepScaffold(eyebrow: "Privacy choices", title: "What CereBro remembers", image: Dummy.Img.privacy,
                      caption: "You decide what CereBro remembers. Change any of these later in Settings.",
                      progress: 0.76, onContinue: onContinue) {
             SettingsGroup {
@@ -258,7 +262,7 @@ private struct LanguageScreen: View {
     @EnvironmentObject var state: AppState
     @State private var selection: Set<String> = ["English", "Hinglish"]
     var body: some View {
-        StepScaffold(eyebrow: "Localization setup", title: "Language", image: Dummy.Img.premium,
+        StepScaffold(eyebrow: "Speak your language", title: "Language", image: Dummy.Img.premium,
                      caption: "Talk and reflect in the language you think in. Mix more than one if that's you.",
                      progress: 0.84, onContinue: persistAndContinue) {
             ChipRow(options: Dummy.languages, selection: $selection)
@@ -328,8 +332,8 @@ private struct BaselineScreen: View {
     @State private var stress = 3
     @State private var sleep = 3
     var body: some View {
-        StepScaffold(eyebrow: "Non-clinical starting point", title: "Baseline Check", image: Dummy.Img.calm,
-                     caption: "A gentle snapshot of where you're starting — so you can see how far you come.",
+        StepScaffold(eyebrow: "Your starting point", title: "Where you're starting", image: Dummy.Img.calm,
+                     caption: "A gentle snapshot of today — so later, you can see how far you've come.",
                      progress: 0.50, onContinue: { state.setBaseline(stress: stress, sleep: sleep); onContinue() }) {
             VStack(spacing: 20) {
                 BaselineScale(label: "Stress right now", low: "Calm", high: "Overwhelmed", value: $stress)
@@ -381,7 +385,7 @@ private struct CompanionScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
     var body: some View {
-        StepScaffold(eyebrow: "Support style setup", title: "AI Companion", image: Dummy.Img.support,
+        StepScaffold(eyebrow: "Choose your companion", title: "AI Companion", image: Dummy.Img.support,
                      caption: "Choose the voice that feels right. Soft and reflective, or clear and structured.",
                      progress: 0.58, onContinue: onContinue) {
             ListRow(title: "Calm Guide", subtitle: "Soft, gentle and reflective", systemImage: "moon",
@@ -398,7 +402,7 @@ private struct NotificationsScreen: View {
     @EnvironmentObject var state: AppState
     @State private var selection: Set<String> = ["Evening 7 PM"]
     var body: some View {
-        StepScaffold(eyebrow: "Gentle reminder setup", title: "Notifications", image: Dummy.Img.bell,
+        StepScaffold(eyebrow: "Gentle reminders", title: "Notifications", image: Dummy.Img.bell,
                      caption: "A couple of soft nudges a day — never noisy, always easy to turn off.",
                      progress: 0.92, onContinue: persistAndContinue) {
             ChipRow(options: Dummy.reminderTimes, selection: $selection)
@@ -445,7 +449,7 @@ private struct FirstPlanScreen: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("The app becomes agentic").eyebrow()
+                Text("Made around you").eyebrow()
                 Text("First Plan").displayFont(28).foregroundStyle(Theme.Palette.text)
                 HeroCard(tag: "7-day plan", title: planTitle,
                          subtitle: "Breathing, journaling, and sleep support built around your baseline.",

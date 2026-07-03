@@ -12,6 +12,21 @@ final class CereBroUITests: XCTestCase {
 
     // MARK: - Helpers
 
+    /// App under test. When `TEST_RUNNER_CEREBRO_TEST_SERVER` is exported to
+    /// `xcodebuild test`, the runner forwards it here and we inject it as the
+    /// app's API base URL (argument-domain UserDefaults override) — this is how
+    /// the live-backend tests run on a physical device, where the app's default
+    /// `localhost:8000` would point at the phone itself. Simulator runs need
+    /// nothing and keep localhost.
+    private func makeApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        if let server = ProcessInfo.processInfo.environment["CEREBRO_TEST_SERVER"],
+           !server.isEmpty {
+            app.launchArguments += ["-cerebro_api_url", server]
+        }
+        return app
+    }
+
     private func snapshot(_ app: XCUIApplication, _ name: String) {
         let att = XCTAttachment(screenshot: app.screenshot())
         att.name = name
@@ -111,18 +126,18 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Onboarding (Welcome → all steps → First plan)
 
     func testOnboardingWalkthrough() {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["Begin private setup"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         snapshot(app, "onb-00-welcome")
 
-        tap(app, "Begin private setup")
+        tap(app, "Get started")
 
         // Age gate now requires an affirmative tap before Continue is enabled.
-        _ = app.staticTexts["Age Gate"].waitForExistence(timeout: 6)
+        _ = app.staticTexts["A quick check"].waitForExistence(timeout: 6)
         tap(app, "I am 18 or older")
 
         // Step through each screen, shooting as we go. Match buttons exactly
@@ -155,23 +170,23 @@ final class CereBroUITests: XCTestCase {
     /// companion → signup → consent → language → reminders → first plan) and
     /// exercises the interactive selections along the way.
     func testOnboardingSequencedFlow() {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
         // 0 — Welcome (value shown before friction)
-        XCTAssertTrue(app.buttons["Begin private setup"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         snapshot(app, "seq-00-welcome")
-        tap(app, "Begin private setup")
+        tap(app, "Get started")
 
         // 1 — Age gate (kept early: fast legal gate) — requires affirmative tap.
-        expectStep(app, "Age Gate", shot: "seq-01-agegate")
+        expectStep(app, "A quick check", shot: "seq-01-agegate")
         tap(app, "I am 18 or older")
         tapExact(app, "Continue")
 
         // 2 — AI disclosure (kept early: transparency before setup)
-        expectStep(app, "AI Disclosure", shot: "seq-02-disclosure")
+        expectStep(app, "What CereBro is — and isn't", shot: "seq-02-disclosure")
         tapExact(app, "Continue")
 
         // 3 — Self-reflection (the value moment — now before account/consent).
@@ -184,7 +199,7 @@ final class CereBroUITests: XCTestCase {
         tapExact(app, "Continue")
 
         // 4 — Baseline
-        expectStep(app, "Baseline Check", shot: "seq-04-baseline")
+        expectStep(app, "Where you're starting", shot: "seq-04-baseline")
         tapExact(app, "Continue")
 
         // 5 — Companion (choose the non-default persona)
@@ -202,7 +217,7 @@ final class CereBroUITests: XCTestCase {
         tapExact(app, "Maybe later")
 
         // 7 — Consent (after signup) — flip a privacy switch
-        expectStep(app, "Consent", shot: "seq-07-consent")
+        expectStep(app, "What CereBro remembers", shot: "seq-07-consent")
         let sw = app.switches.element(boundBy: 0)
         if sw.waitForExistence(timeout: 3) && sw.isHittable { sw.tap() }
         tapExact(app, "Continue")
@@ -229,10 +244,10 @@ final class CereBroUITests: XCTestCase {
     /// onboarding entirely (their original onboarding recorded the attestation).
     /// Live-backend: self-skips when no API is reachable.
     func testWelcomeSignInSkipsOnboarding() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
-        XCTAssertTrue(app.buttons["Begin private setup"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "I already have an account")
         // The full auth sheet appears; DEBUG prefills the seeded demo login.
@@ -251,7 +266,7 @@ final class CereBroUITests: XCTestCase {
     /// The Welcome screen's "Preview app" escape hatch should skip straight into
     /// the app (value-first: let people look around before committing to setup).
     func testOnboardingPreviewSkips() {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
         XCTAssertTrue(app.buttons["Preview app"].waitForExistence(timeout: 10),
@@ -268,18 +283,18 @@ final class CereBroUITests: XCTestCase {
     /// other cloud tests); the hermetic backend's deterministic topic generator
     /// makes the grounding assertable.
     func testStartersReflectOnboardingMotivation() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
         // Walk to the self-reflection step and pick a DISTINCTIVE selection.
-        XCTAssertTrue(app.buttons["Begin private setup"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
-        tap(app, "Begin private setup")
-        _ = app.staticTexts["Age Gate"].waitForExistence(timeout: 6)        // settle each push
+        tap(app, "Get started")
+        _ = app.staticTexts["A quick check"].waitForExistence(timeout: 6)        // settle each push
         tap(app, "I am 18 or older")       // affirmative age confirmation
         tapExact(app, "Continue")          // Age gate → AI disclosure
-        _ = app.staticTexts["AI Disclosure"].waitForExistence(timeout: 6)
+        _ = app.staticTexts["What CereBro is — and isn't"].waitForExistence(timeout: 6)
         tapExact(app, "Continue")          // AI disclosure → self-reflection
         XCTAssertTrue(app.staticTexts["What matters now"].waitForExistence(timeout: 6),
                       "self-reflection step did not appear")
@@ -338,7 +353,7 @@ final class CereBroUITests: XCTestCase {
     /// Crisis resources adapt to the device region. Forcing a US locale must
     /// surface the US lines (988) rather than the India default.
     func testCrisisResourcesLocalized() {
-        let app = XCUIApplication()
+        let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "YES", "-resetState", "YES",
                                 "-AppleLocale", "en_US", "-AppleLanguages", "(en)"]
         app.launch()
@@ -356,7 +371,7 @@ final class CereBroUITests: XCTestCase {
 
     /// The settings region picker overrides which crisis lines are shown.
     func testCrisisRegionOverride() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)                       // default region (no override)
         rootYou(app)
         guard tap(app, "Urgent support") else { return XCTFail("Urgent support row missing") }
@@ -383,7 +398,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Tab overview
 
     func testTabsOverview() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         snapshot(app, "tab-Home")
         for tab in ["Sleep", "Talk", "Journal", "You"] {
@@ -395,7 +410,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Home flow
 
     func testHomeFlow() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         openTab(app, "Home")
         snapshot(app, "home-00")
@@ -415,7 +430,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Sleep flow
 
     func testSleepFlow() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         openTab(app, "Sleep")
         snapshot(app, "sleep-00")
@@ -439,7 +454,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Talk flow (→ SOS → Breathing, and Chat)
 
     func testTalkFlow() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         openTab(app, "Talk")
         // Let the Talk screen settle (orb/waveform animate) before tapping, so
@@ -478,7 +493,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Journal flow
 
     func testJournalFlow() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         openTab(app, "Journal")
         snapshot(app, "journal-00")
@@ -499,7 +514,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - Profile flow + app-state screens
 
     func testProfileAndStates() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         rootYou(app)
         snapshot(app, "you-00")
@@ -533,7 +548,7 @@ final class CereBroUITests: XCTestCase {
     /// data flows back into the UI: a mood check-in surfaces on Home, a saved
     /// journal entry appears in History, and a toggled plan step updates progress.
     func testPhase2DataLayer() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
 
         // 1) Record a mood, then confirm Home reflects it.
@@ -579,7 +594,7 @@ final class CereBroUITests: XCTestCase {
     /// and confirms the agentic plan loads. Skips gracefully if the API isn't up,
     /// so the screenshot suite never hard-depends on the backend.
     func testCloudSync() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         rootYou(app)
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
@@ -605,7 +620,7 @@ final class CereBroUITests: XCTestCase {
 
     /// Live chat + server plan-step toggle (skips if backend unreachable).
     func testCloudChatAndPlan() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         rootYou(app)
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
@@ -659,7 +674,7 @@ final class CereBroUITests: XCTestCase {
     /// the conversation when tapped. A fresh account guarantees the empty state,
     /// which the demo-user chat test can't (its history hides the rail).
     func testCloudStartersFreshUser() throws {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
         rootYou(app)
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
@@ -697,7 +712,7 @@ final class CereBroUITests: XCTestCase {
 
     /// Apple-compliance surfaces + the games hub (no backend needed).
     func testComplianceAndGames() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
 
         // Games hub from Home → play a game.
@@ -752,7 +767,7 @@ final class CereBroUITests: XCTestCase {
     // MARK: - World-class showcase (screenshots of the upgraded flows)
 
     func testWorldClassShowcase() {
-        let app = XCUIApplication()
+        let app = makeApp()
         launchIntoApp(app)
 
         // Home — time-of-day greeting, single next-action hero, streak.

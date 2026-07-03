@@ -21,7 +21,7 @@ struct SOSView: View {
 struct BreathingView: View {
     @State private var done = false
     var body: some View {
-        ScreenScaffold(eyebrow: "Guided breathing interaction", title: "Breathing",
+        ScreenScaffold(eyebrow: "A minute to breathe", title: "Breathing",
                        trailingSystemImage: "wind", accent: Theme.Accent.breathe) {
             ToolBanner(imageURL: Dummy.Img.breath, symbol: "wind",
                        caption: "Follow the orb — in for four, hold, out for four.",
@@ -153,7 +153,7 @@ struct CBTReframeView: View {
     @State private var thought = ""
     @State private var showBalanced = false
     var body: some View {
-        ScreenScaffold(eyebrow: "Structured thought reframe", title: "CBT Reframe", trailingSystemImage: "brain") {
+        ScreenScaffold(eyebrow: "A kinder look at a thought", title: "CBT Reframe", trailingSystemImage: "brain") {
             ToolBanner(imageURL: Dummy.Img.journal, symbol: "brain",
                        caption: "Untangle a worried thought, one step at a time.")
             Card {
@@ -193,7 +193,7 @@ struct StepRow: View {
 struct BalancedThoughtView: View {
     @State private var done = false
     var body: some View {
-        ScreenScaffold(eyebrow: "CBT output screen", title: "Balanced Thought", trailingSystemImage: "brain") {
+        ScreenScaffold(eyebrow: "From worry to balance", title: "Balanced Thought", trailingSystemImage: "brain") {
             ToolBanner(imageURL: Dummy.Img.write, symbol: "sparkles",
                        caption: "An example of the calmer, truer version of a thought.")
             HStack(spacing: 10) {
