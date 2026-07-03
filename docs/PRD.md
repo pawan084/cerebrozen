@@ -27,12 +27,14 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Welcome (Get started / returning sign-in / DEBUG preview) | ✅ | Returning users skip the flow entirely |
 | Age gate (affirmative 18+, gated Continue) | 🟡 | Works; no under-18 exit path, attestation stamped at first connect (TODO) |
 | AI limitation disclosure | ✅ | Can/can't cards; re-disclosed every 3 h in Talk/Chat |
-| Self-reflection (5 motivations, 8 goals) | ✅ | Empty-start, ≥1 of each required; syncs to server on connect |
-| Baseline (stress/sleep 1–5) | ✅ | Shown later as "Your starting point" in Insights |
-| Companion persona (Calm Guide / Scientific) | ✅ | Feeds chat persona |
+| One-tap state check (6 feelings → taxonomy) | ✅ | Replaced the chip questionnaire (2026-07-03, "90-second" flow); syncs on connect |
+| First reset (guided breathing before any account ask) | ✅ | Skippable; completing it starts the streak |
+| Mini-plan before signup | ✅ | Gives the account ask its reason ("save this") |
+| Baseline (stress/sleep 1–5) | ⚪ | Removed from onboarding; reintroduce contextually (TODO) |
+| Companion persona | 🟡 | Defaults to Calm Guide; picker removed from onboarding, needs a settings home |
 | Account step (Apple/Google/email embedded form, Maybe later) | 🟡 | Email ✅ · Apple needs portal capability · Google needs OAuth client id |
-| Consent (mood history / AI memory / voice storage) | ✅ | Enforced server-side (AI-memory off drops long-term history) |
-| Language (5 options) | 🟡 | Persisted; only starters generation honors it; UI not localized |
+| Consent — private by default, no pre-ticks, recommended card | ✅ | Enforced server-side (AI-memory off drops long-term history) |
+| Language (5 options, now before the value moment) | 🟡 | Persisted; only starters generation honors it; UI not localized |
 | Notifications opt-in | 🟡 | Works; multi-select UI for a single slot, "Private previews" option is inert |
 | First plan | ✅ | Title keys off first goal (4 mapped, rest fall through) |
 

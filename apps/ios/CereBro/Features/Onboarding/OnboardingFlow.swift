@@ -9,11 +9,12 @@ struct OnboardingFlow: View {
         ZStack {
             Theme.background
             Group {
-                // Value-first ordering: a quick legal/transparency gate (age + AI
-                // disclosure), then the personalization "aha" (self-reflection →
-                // baseline → companion) BEFORE we ask anyone to create an account.
-                // Account + consent + locale come once the user is invested, with
-                // the reminder opt-in deliberately last (highest-leverage retention).
+                // "90-second to calm" ordering: the legal/transparency gates stay
+                // first (fast taps), language comes early (feeling understood is
+                // part of the product), then ONE feeling tap → a real 2-minute
+                // breathing reset → the first mini-plan — all BEFORE any account
+                // ask. Account, consent (private by default) and the reminder
+                // opt-in come only after the user has felt something work.
                 switch step {
                 case 0: WelcomeScreen(onBegin: next,
                                       onPreview: { state.hasOnboarded = true },
@@ -23,14 +24,13 @@ struct OnboardingFlow: View {
                                       onSignedIn: { state.hasOnboarded = true })
                 case 1: AgeGateScreen(onContinue: next)
                 case 2: DisclosureScreen(onContinue: next)
-                case 3: GoalsScreen(onContinue: next)
-                case 4: BaselineScreen(onContinue: next)
-                case 5: CompanionScreen(onContinue: next)
-                case 6: SignupScreen(onContinue: next)
-                case 7: ConsentScreen(onContinue: next)
-                case 8: LanguageScreen(onContinue: next)
-                case 9: NotificationsScreen(onContinue: next)
-                default: FirstPlanScreen(onFinish: { state.hasOnboarded = true })
+                case 3: LanguageScreen(onContinue: next)
+                case 4: StateCheckScreen(onContinue: next)
+                case 5: FirstResetScreen(onContinue: next)
+                case 6: FirstPlanScreen(onContinue: next)
+                case 7: SignupScreen(onContinue: next)
+                case 8: ConsentScreen(onContinue: next)
+                default: NotificationsScreen(onContinue: { state.hasOnboarded = true })
                 }
             }
             .id(step)   // each step is its own view, so the push transition plays
@@ -85,8 +85,10 @@ private struct WelcomeScreen: View {
                     .multilineTextAlignment(.center)
                     .appFont(11.5, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
                     .entrance(2)
-                OnboardingProgress(value: 0.14).padding(.top, 8).entrance(3)
-                PrimaryButton(title: "Get started", systemImage: "sparkles", action: onBegin).entrance(4)
+                OnboardingProgress(value: 0.08).padding(.top, 8).entrance(3)
+                // The promise is immediate value, not a setup marathon (the reset
+                // arrives ~4 fast taps in, after the legal gates).
+                PrimaryButton(title: "Try a 2-minute reset", systemImage: "wind", action: onBegin).entrance(4)
                 // Returning users shouldn't have to walk the setup to reach login.
                 Button { showAuth = true } label: {
                     Text("I already have an account")
@@ -119,6 +121,8 @@ private struct StepScaffold<Content: View>: View {
     var progress: Double
     /// When false, the Continue button is disabled (e.g. an unmet age gate).
     var canContinue: Bool = true
+    /// Label for the advance button (the final step says "Enter CereBro").
+    var continueTitle: String = "Continue"
     var onContinue: () -> Void
     @ViewBuilder var content: Content
 
@@ -135,7 +139,7 @@ private struct StepScaffold<Content: View>: View {
                     .entrance(3)
                 content.entrance(4)
                 OnboardingProgress(value: progress).entrance(5)
-                PrimaryButton(title: "Continue", action: onContinue)
+                PrimaryButton(title: continueTitle, action: onContinue)
                     .disabled(!canContinue)
                     .opacity(canContinue ? 1 : 0.45)
                     .entrance(6)
@@ -169,7 +173,7 @@ private struct SignupScreen: View {
                 } else {
                     AuthForm(initialMode: .signUp).entrance(3)
                 }
-                OnboardingProgress(value: 0.68).entrance(4)
+                OnboardingProgress(value: 0.80).entrance(4)
                 if !backend.isConnected {
                     SecondaryButton(title: "Maybe later", systemImage: "arrow.right", action: onContinue)
                         .entrance(5)
@@ -193,7 +197,7 @@ private struct AgeGateScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "For adults only", title: "A quick check",
                      caption: "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
-                     progress: 0.22, canContinue: confirmed, onContinue: onContinue) {
+                     progress: 0.15, canContinue: confirmed, onContinue: onContinue) {
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness support, not emergency care.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
@@ -218,7 +222,7 @@ private struct DisclosureScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "Honesty first", title: "What CereBro is — and isn't",
                      caption: "Here's exactly what your AI companion can and can't do for you.",
-                     progress: 0.30, onContinue: onContinue) {
+                     progress: 0.25, onContinue: onContinue) {
             HStack(spacing: 10) {
                 Card { VStack(alignment: .leading, spacing: 4) {
                     Text("Can help").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
@@ -234,18 +238,39 @@ private struct DisclosureScreen: View {
 }
 
 // MARK: 8 — Consent (after signup: choices for the data you're about to create)
+/// Private by default: nothing is pre-ticked (EDPB/ICO — silence isn't consent).
+/// One recommended card opts into personalization with a single explicit tap.
 private struct ConsentScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
+
+    private var remembering: Bool { state.consent.moodHistory && state.consent.aiMemory }
+
     var body: some View {
         StepScaffold(eyebrow: "Privacy choices", title: "What CereBro remembers",
-                     caption: "You decide what CereBro remembers. Change any of these later in Settings.",
-                     progress: 0.76, onContinue: onContinue) {
+                     caption: "Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings.",
+                     progress: 0.88, onContinue: onContinue) {
+            ListRow(title: remembering ? "Remembering your patterns" : "Remember my patterns",
+                    subtitle: remembering ? "Thank you — plans and reflections will tune to you"
+                                          : "Recommended — better plans and reflections over time",
+                    systemImage: remembering ? "checkmark.circle.fill" : "sparkles",
+                    emphasis: remembering) {
+                let on = !remembering
+                state.consent.moodHistory = on
+                state.consent.aiMemory = on
+                Haptics.selection()
+            }
+            .accessibilityAddTraits(remembering ? .isSelected : [])
             SettingsGroup {
                 ToggleRow(title: "Mood history", subtitle: "Used for insights", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "AI memory", subtitle: "Goals and preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Voice storage", subtitle: "Off by default", isOn: $state.consent.voiceStorage)
             }
+        }
+        .onAppear {
+            // First-run default is everything OFF — consent must be an action.
+            state.consent = Consent(moodHistory: false, aiMemory: false,
+                                    voiceStorage: false, modelTraining: false)
         }
     }
 }
@@ -258,7 +283,7 @@ private struct LanguageScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "Speak your language", title: "Language",
                      caption: "Talk and reflect in the language you think in. Mix more than one if that's you.",
-                     progress: 0.84, onContinue: persistAndContinue) {
+                     progress: 0.35, onContinue: persistAndContinue) {
             ChipRow(options: Dummy.languages, selection: $selection)
         }
         .onAppear {
@@ -275,118 +300,86 @@ private struct LanguageScreen: View {
     }
 }
 
-// MARK: 3 — Self-reflection (the value moment — moved up, before account/consent)
-private struct GoalsScreen: View {
+// MARK: 4 — One-tap state check (the whole "assessment" is a single feeling tap;
+// richer context accrues later through actual behaviour, not a questionnaire)
+private struct StateCheckScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
-    // Starts EMPTY on purpose: a pre-answered reflection biases the input and
-    // dilutes personalization. Continue is gated on one pick of each instead.
-    @State private var motivations: Set<String> = []
-    @State private var goals: Set<String> = []
+    @State private var picked: String?
 
-    /// Flat, order-stable list of every goal item across categories.
-    private var allGoalItems: [String] { Dummy.goalCategories.flatMap(\.items) }
+    /// Each feeling maps into the existing cross-stack taxonomy, so the plan,
+    /// starters and server personalization all keep working unchanged.
+    private static let states: [(label: String, symbol: String, motivation: String, goal: String)] = [
+        ("Stressed and tense",        "wind",              "Calm",       "Reduce stress"),
+        ("Can't switch off at night", "moon.zzz",          "Calm",       "Sleep better"),
+        ("Overthinking everything",   "arrow.2.squarepath", "Focus",      "Stop overthinking"),
+        ("Doubting myself",           "person.crop.circle.badge.questionmark", "Confidence", "Build confidence"),
+        ("Feeling distant from people", "person.2",        "Connection", "Feel less alone"),
+        ("Can't stay consistent",     "flag.checkered",    "Discipline", "Strengthen willpower"),
+    ]
 
     var body: some View {
-        StepScaffold(eyebrow: "Self-reflection", title: "What matters now",
-                     caption: "A quick self-reflection: what drives you, and what you'd like to practice. Pick at least one of each — CereBro shapes your plan and conversation starters around it.",
-                     progress: 0.40, canContinue: !motivations.isEmpty && !goals.isEmpty,
-                     onContinue: persistAndContinue) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("What drives you").eyebrow()
-                ChipRow(options: Dummy.motivations, selection: $motivations)
-
-                ForEach(Dummy.goalCategories, id: \.category) { group in
-                    Text(group.category).eyebrow()
-                    ChipRow(options: group.items, selection: $goals)
+        StepScaffold(eyebrow: "One tap is enough", title: "What feels most true right now?",
+                     caption: "No questionnaire — just pick the one that fits today. CereBro shapes your first reset and plan around it.",
+                     progress: 0.45, canContinue: picked != nil, onContinue: onContinue) {
+            VStack(spacing: 10) {
+                ForEach(Self.states, id: \.label) { s in
+                    ListRow(title: s.label,
+                            subtitle: picked == s.label ? "That's what we'll start with" : "",
+                            systemImage: s.symbol,
+                            emphasis: picked == s.label) {
+                        pick(s)
+                    }
+                    .accessibilityAddTraits(picked == s.label ? .isSelected : [])
                 }
             }
         }
-        // No restore-from-state here: AppState ships non-empty defaults, and
-        // refilling them would re-answer the reflection (there is no back
-        // navigation, so this screen is only ever seen fresh).
     }
 
-    private func persistAndContinue() {
-        state.selectedMotivations = Dummy.motivations.filter(motivations.contains)
-        state.selectedGoals = allGoalItems.filter(goals.contains)
+    private func pick(_ s: (label: String, symbol: String, motivation: String, goal: String)) {
+        picked = s.label
+        state.selectedMotivations = [s.motivation]
+        state.selectedGoals = [s.goal]
         state.hasAssessment = true   // a real answer — safe to sync from now on
         // Cached in BackendService — pushed now if connected, else at the next
         // connect, so the server plan/insights personalize either way.
         backend.saveAssessment(motivations: state.selectedMotivations, goals: state.selectedGoals)
-        onContinue()
+        Haptics.selection()
+        // One tap is the answer — advance without demanding a second tap.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { onContinue() }
     }
 }
 
-// MARK: 4 — Baseline (a real, stored starting point)
-private struct BaselineScreen: View {
+// MARK: 5 — First reset (the first felt benefit, BEFORE any account ask)
+private struct FirstResetScreen: View {
     var onContinue: () -> Void
     @EnvironmentObject var state: AppState
-    @State private var stress = 3
-    @State private var sleep = 3
-    var body: some View {
-        StepScaffold(eyebrow: "Your starting point", title: "Where you're starting",
-                     caption: "A gentle snapshot of today — so later, you can see how far you've come.",
-                     progress: 0.50, onContinue: { state.setBaseline(stress: stress, sleep: sleep); onContinue() }) {
-            VStack(spacing: 20) {
-                BaselineScale(label: "Stress right now", low: "Calm", high: "Overwhelmed", value: $stress)
-                BaselineScale(label: "Sleep lately", low: "Restless", high: "Restful", value: $sleep)
-            }
-        }
-        .onAppear {
-            if state.baselineStress > 0 { stress = state.baselineStress }
-            if state.baselineSleep > 0 { sleep = state.baselineSleep }
-        }
-    }
-}
 
-/// A 1–5 self-rating used to capture the onboarding baseline.
-private struct BaselineScale: View {
-    let label: String
-    let low: String
-    let high: String
-    @Binding var value: Int
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-            HStack(spacing: 8) {
-                ForEach(1...5, id: \.self) { n in
-                    Button { value = n; Haptics.selection() } label: {
-                        Text("\(n)")
-                            .appFont(15, weight: .bold)
-                            .foregroundStyle(value == n ? Theme.Palette.ink : Theme.Palette.muted)
-                            .frame(maxWidth: .infinity, minHeight: 46)
-                            .background(value == n ? Theme.Palette.lav : Theme.Palette.card,
-                                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.Palette.line))
-                    }
-                    .buttonStyle(.pressable)
-                    .accessibilityLabel("\(label) \(n) of 5")
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your first reset").eyebrow().entrance(0)
+                Text("Let's steady your body").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
+                Text("Two minutes of guided breathing — follow the orb for a few cycles, or skip ahead if now isn't the moment.")
+                    .appFont(13).foregroundStyle(Theme.Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .entrance(2)
+                BreathingPacer(accent: Theme.Accent.breathe)
+                    .frame(maxWidth: .infinity)
+                    .entrance(3)
+                OnboardingProgress(value: 0.58).entrance(4)
+                PrimaryButton(title: "I feel steadier") {
+                    state.recordActivity()   // the first win starts the streak
+                    onContinue()
                 }
+                .entrance(5)
+                SecondaryButton(title: "Skip for now", systemImage: "arrow.right", action: onContinue)
+                    .entrance(6)
             }
-            HStack {
-                Text(low).appFont(10.5).foregroundStyle(Theme.Palette.muted2)
-                Spacer()
-                Text(high).appFont(10.5).foregroundStyle(Theme.Palette.muted2)
-            }
+            .padding(18).padding(.top, 12)
         }
-    }
-}
-
-// MARK: 5 — Companion
-private struct CompanionScreen: View {
-    var onContinue: () -> Void
-    @EnvironmentObject var state: AppState
-    var body: some View {
-        StepScaffold(eyebrow: "Choose your companion", title: "AI Companion",
-                     caption: "Choose the voice that feels right. Soft and reflective, or clear and structured.",
-                     progress: 0.58, onContinue: onContinue) {
-            ListRow(title: "Calm Guide", subtitle: "Soft, gentle and reflective", systemImage: "moon",
-                    imageURL: Dummy.Img.support, emphasis: state.companion == "Calm Guide") { state.companion = "Calm Guide" }
-            ListRow(title: "Scientific", subtitle: "Structured and evidence-informed", systemImage: "brain",
-                    imageURL: Dummy.Img.write, emphasis: state.companion == "Scientific") { state.companion = "Scientific" }
-        }
+        .toolAmbience(.wind)
     }
 }
 
@@ -397,8 +390,8 @@ private struct NotificationsScreen: View {
     @State private var selection: Set<String> = ["Evening 7 PM"]
     var body: some View {
         StepScaffold(eyebrow: "Gentle reminders", title: "Notifications",
-                     caption: "A couple of soft nudges a day — never noisy, always easy to turn off.",
-                     progress: 0.92, onContinue: persistAndContinue) {
+                     caption: "You've had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.",
+                     progress: 0.96, continueTitle: "Enter CereBro", onContinue: persistAndContinue) {
             ChipRow(options: Dummy.reminderTimes, selection: $selection)
         }
     }
@@ -423,9 +416,10 @@ private struct NotificationsScreen: View {
     }
 }
 
-// MARK: 11 — First plan
+// MARK: 6 — First plan (the mini-plan lands right after the first win, and
+// gives the account step that follows its reason to exist: "save this")
 private struct FirstPlanScreen: View {
-    var onFinish: () -> Void
+    var onContinue: () -> Void
     @EnvironmentObject var state: AppState
     @State private var done = false
 
@@ -433,10 +427,12 @@ private struct FirstPlanScreen: View {
     private var planTitle: String {
         switch state.selectedGoals.first {
         case "Sleep better":      return "Sleep deeper"
+        case "Reduce stress":     return "Ease today's stress"
         case "Stop overthinking": return "Quiet the noise"
         case "Build confidence":  return "Steady confidence"
         case "Feel less alone":   return "Feel more connected"
-        default:                  return "Ease work stress"
+        case "Strengthen willpower": return "Small promises, kept"
+        default:                  return "A calmer day"
         }
     }
 
@@ -445,18 +441,19 @@ private struct FirstPlanScreen: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Made around you").eyebrow()
                 Text("First Plan").displayFont(28).foregroundStyle(Theme.Palette.text)
-                HeroCard(tag: "7-day plan", title: planTitle,
-                         subtitle: "Breathing, journaling, and sleep support built around your baseline.",
-                         cta: "Start today", imageURL: Dummy.Img.plan) {
+                HeroCard(tag: "Today", title: planTitle,
+                         subtitle: "A light plan: one thing now, one tonight, one tomorrow — tuned to what you picked.",
+                         cta: "Looks right", imageURL: Dummy.Img.plan) {
                     done.toggle()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onFinish() }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onContinue() }
                 }
                 ForEach(Dummy.planSteps) { s in
                     ListRow(title: s.title, subtitle: s.detail, systemImage: s.symbol, imageURL: s.imageURL, emphasis: s.done)
                 }
-                PrimaryButton(title: "Enter CereBro", systemImage: "arrow.right.circle.fill") {
+                OnboardingProgress(value: 0.70)
+                PrimaryButton(title: "Keep going", systemImage: "arrow.right.circle.fill") {
                     done.toggle()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onFinish() }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onContinue() }
                 }
             }
             .padding(18).padding(.top, 12)

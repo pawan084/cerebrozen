@@ -21,6 +21,22 @@
 
 ## Open — code/product work
 
+### Strategy-doc adoptions (2026-07-03) — remaining decisions/work
+- [ ] **Analytics vs "no trackers" promise** — the funnel KPIs / A/B slate from the
+  redesign strategy require product analytics, but privacy labels + landing copy say
+  none. Decide: first-party anonymized counts disclosed in the privacy hub, or stay
+  measurement-free. Blocks any experimentation work.
+- [ ] Email one-time-code (passwordless) sign-in — email service exists; add OTP
+  issue/verify endpoints + iOS field. Passkeys deferred to v2.
+- [ ] Contextual baseline capture — the stress/sleep 1–5 scales were removed from
+  onboarding (90-second flow); reintroduce as a gentle ask after the first few
+  check-ins so Insights' "starting point" returns.
+- [ ] Companion persona picker — removed from onboarding; add a "Companion style"
+  row in You/settings (default stays Calm Guide).
+- [x] 90-second onboarding (one-tap state → breathing reset → mini-plan → account)
+- [x] Consent private-by-default (no pre-ticked toggles + recommended card)
+- [x] Language moved before the value moment
+
 ### Onboarding flow review (2026-07-02) — smaller findings not yet fixed
 - [ ] No back navigation between onboarding steps (a mis-tapped Continue is
   unrecoverable mid-flow); add a back chevron to `StepScaffold` for steps > 0.
@@ -30,10 +46,8 @@
 - [ ] Age gate: no under-18 exit path, and the confirmation isn't persisted
   client-side (attestation inferred from flow completion, stamped at first
   connect). Persist a local confirmed-at and send it with `attest()`.
-- [ ] Consent toggles pre-checked on (mood history, AI memory) — revisit before
-  any EU launch (pre-ticked consent friction).
-- [ ] `FirstPlanScreen.planTitle` maps only 4 goal labels; others fall through
-  to "Ease work stress".
+- [x] Consent toggles pre-checked on — fixed 2026-07-03 (private-by-default).
+- [x] `FirstPlanScreen.planTitle` sparse mapping — now covers 6 goals + calm default.
 - [ ] `OnboardingProgress` has no accessibility value (VoiceOver users get no
   sense of progress); re-running onboarding re-stamps the baseline date.
 

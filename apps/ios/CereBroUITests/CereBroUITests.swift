@@ -130,39 +130,39 @@ final class CereBroUITests: XCTestCase {
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         snapshot(app, "onb-00-welcome")
 
-        tap(app, "Get started")
+        tap(app, "Try a 2-minute reset")
 
         // Age gate now requires an affirmative tap before Continue is enabled.
         _ = app.staticTexts["A quick check"].waitForExistence(timeout: 6)
         tap(app, "I am 18 or older")
 
-        // Step through each screen, shooting as we go. Match buttons exactly
-        // so we don't accidentally hit a row whose subtitle reads "Required to
-        // continue". The self-reflection starts empty (Continue gated on one
-        // pick of each); the signup step defers via "Maybe later".
+        // Step through each screen, shooting as we go. Branches: the one-tap
+        // state check auto-advances, the breathing reset is skipped, the plan
+        // continues via "Keep going", signup defers via "Maybe later", and the
+        // final Notifications step's button reads "Enter CereBro".
         for i in 1...9 {
             _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
             snapshot(app, String(format: "onb-%02d", i))
-            if app.staticTexts["What matters now"].exists {
-                selectChip(app, "Calm")
-                selectChip(app, "Reduce stress")
+            if app.staticTexts["What feels most true right now?"].exists {
+                tap(app, "Stressed and tense")   // one tap — auto-advances
+                _ = app.staticTexts["Let's steady your body"].waitForExistence(timeout: 4)
+                continue
             }
             if tapExact(app, "Continue", timeout: 4) { continue }
+            if tapExact(app, "Skip for now", timeout: 2) { continue }
+            if tapExact(app, "Keep going", timeout: 2) { continue }
             if tapExact(app, "Maybe later", timeout: 2) { continue }
+            if tapExact(app, "Enter CereBro", timeout: 2) { continue }
             break
         }
 
-        _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
-        snapshot(app, "onb-10-firstplan")
-        tapExact(app, "Enter CereBro")
-
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 8),
                       "Did not reach the main app after onboarding")
-        snapshot(app, "onb-11-entered")
+        snapshot(app, "onb-10-entered")
     }
 
     /// Thorough walk of the *re-sequenced* onboarding: asserts every step's title
@@ -174,11 +174,11 @@ final class CereBroUITests: XCTestCase {
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
-        // 0 — Welcome (value shown before friction)
-        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
+        // 0 — Welcome (the promise is an immediate reset, not a setup marathon)
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         snapshot(app, "seq-00-welcome")
-        tap(app, "Get started")
+        tap(app, "Try a 2-minute reset")
 
         // 1 — Age gate (kept early: fast legal gate) — requires affirmative tap.
         expectStep(app, "A quick check", shot: "seq-01-agegate")
@@ -189,49 +189,50 @@ final class CereBroUITests: XCTestCase {
         expectStep(app, "What CereBro is — and isn't", shot: "seq-02-disclosure")
         tapExact(app, "Continue")
 
-        // 3 — Self-reflection (the value moment — now before account/consent).
-        // Starts empty: Continue must be gated until one of each is picked.
-        expectStep(app, "What matters now", shot: "seq-03-selfreflection")
+        // 3 — Language (early: feeling understood is part of the product)
+        expectStep(app, "Language", shot: "seq-03-language")
+        tapExact(app, "Continue")
+
+        // 4 — One-tap state check: Continue is gated until a state is picked,
+        // and picking one auto-advances.
+        expectStep(app, "What feels most true right now?", shot: "seq-04-statecheck")
         let gatedContinue = app.buttons["Continue"].firstMatch
-        XCTAssertFalse(gatedContinue.isEnabled, "Continue should be gated until a selection is made")
-        selectChip(app, "Discipline")        // pick a motivation
-        selectChip(app, "Build confidence")  // pick a goal
-        tapExact(app, "Continue")
+        XCTAssertFalse(gatedContinue.isEnabled, "Continue should be gated until a state is picked")
+        tap(app, "Doubting myself")
 
-        // 4 — Baseline
-        expectStep(app, "Where you're starting", shot: "seq-04-baseline")
-        tapExact(app, "Continue")
+        // 5 — First reset (the felt benefit BEFORE any account ask)
+        expectStep(app, "Let's steady your body", shot: "seq-05-firstreset")
+        tapExact(app, "Skip for now")
 
-        // 5 — Companion (choose the non-default persona)
-        expectStep(app, "AI Companion", shot: "seq-05-companion")
-        tap(app, "Scientific")
-        tapExact(app, "Continue")
+        // 6 — Mini-plan (personalized by the one tap: Confidence → Steady confidence)
+        expectStep(app, "First Plan", shot: "seq-06-firstplan")
+        XCTAssertTrue(app.staticTexts["Steady confidence"].waitForExistence(timeout: 4),
+                      "plan headline should reflect the picked state")
+        tapExact(app, "Keep going")
 
-        // 6 — Signup (now that there's something to save) — the full auth form
-        // is embedded on the page (create-account tab first); the walkthrough
-        // defers via "Maybe later".
-        expectStep(app, "Save your space", shot: "seq-06-signup")
+        // 7 — Signup (now that there's something to save) — full embedded auth
+        // form (create-account tab first); this walk defers via "Maybe later".
+        expectStep(app, "Save your space", shot: "seq-07-signup")
         XCTAssertTrue(app.buttons["Create my account"].waitForExistence(timeout: 4),
                       "embedded account form missing on the signup step")
         XCTAssertTrue(app.buttons["Sign in with Apple"].exists, "Apple button missing on the signup step")
         tapExact(app, "Maybe later")
 
-        // 7 — Consent (after signup) — flip a privacy switch
-        expectStep(app, "What CereBro remembers", shot: "seq-07-consent")
+        // 8 — Consent: private by default — every switch must start OFF; the
+        // recommended card flips mood history + AI memory on with one tap.
+        expectStep(app, "What CereBro remembers", shot: "seq-08-consent")
         let sw = app.switches.element(boundBy: 0)
-        if sw.waitForExistence(timeout: 3) && sw.isHittable { sw.tap() }
+        if sw.waitForExistence(timeout: 3) {
+            XCTAssertEqual(sw.value as? String, "0", "consent toggles must not be pre-ticked")
+        }
+        tap(app, "Remember my patterns")
+        if sw.exists {
+            XCTAssertEqual(sw.value as? String, "1", "recommended card should enable mood history")
+        }
         tapExact(app, "Continue")
 
-        // 8 — Language
-        expectStep(app, "Language", shot: "seq-08-language")
-        tapExact(app, "Continue")
-
-        // 9 — Notifications (kept last: highest-leverage retention opt-in)
+        // 9 — Notifications (post-first-win re-entry ask) → into the app
         expectStep(app, "Notifications", shot: "seq-09-notifications")
-        tapExact(app, "Continue")
-
-        // 10 — First plan → into the app
-        expectStep(app, "First Plan", shot: "seq-10-firstplan")
         tapExact(app, "Enter CereBro")
 
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 8),
@@ -247,7 +248,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
-        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "I already have an account")
         // The full auth sheet appears; DEBUG prefills the seeded demo login.
@@ -287,34 +288,33 @@ final class CereBroUITests: XCTestCase {
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
 
-        // Walk to the self-reflection step and pick a DISTINCTIVE selection.
-        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10),
+        // Walk the 90-second flow, picking the DISTINCTIVE confidence state.
+        // "Doubting myself" maps to Confidence / Build confidence, and the
+        // backend anchors that selection's seed first — making the starter
+        // assertion below deterministic even when a live LLM words the other
+        // topics freely.
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
-        tap(app, "Get started")
+        tap(app, "Try a 2-minute reset")
         _ = app.staticTexts["A quick check"].waitForExistence(timeout: 6)        // settle each push
         tap(app, "I am 18 or older")       // affirmative age confirmation
         tapExact(app, "Continue")          // Age gate → AI disclosure
         _ = app.staticTexts["What CereBro is — and isn't"].waitForExistence(timeout: 6)
-        tapExact(app, "Continue")          // AI disclosure → self-reflection
-        XCTAssertTrue(app.staticTexts["What matters now"].waitForExistence(timeout: 6),
-                      "self-reflection step did not appear")
-        // The step starts empty, so these are the ONLY selections — the backend
-        // anchors the first selection's seed, making the assertion below
-        // deterministic even when a live LLM words the other topics freely.
-        selectChip(app, "Confidence")        // motivation
-        selectChip(app, "Build confidence")  // goal
-        tapExact(app, "Continue")          // → Baseline
-
-        // Finish the remaining steps (Baseline → … → Notifications) and enter;
-        // the signup step defers via "Maybe later" (this test signs up later
-        // through Cloud Sync to prove the selection still reaches the server).
-        for _ in 0..<6 {
-            _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
-            if tapExact(app, "Continue", timeout: 5) { continue }
-            if tapExact(app, "Maybe later", timeout: 2) { continue }
-            break
-        }
-        _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
+        tapExact(app, "Continue")          // AI disclosure → language
+        _ = app.staticTexts["Language"].waitForExistence(timeout: 6)
+        tapExact(app, "Continue")          // Language → one-tap state check
+        XCTAssertTrue(app.staticTexts["What feels most true right now?"].waitForExistence(timeout: 6),
+                      "state-check step did not appear")
+        tap(app, "Doubting myself")        // one tap — auto-advances
+        _ = app.staticTexts["Let's steady your body"].waitForExistence(timeout: 6)
+        tapExact(app, "Skip for now")      // reset → mini-plan
+        _ = app.staticTexts["First Plan"].waitForExistence(timeout: 6)
+        tapExact(app, "Keep going")        // plan → signup
+        _ = app.staticTexts["Save your space"].waitForExistence(timeout: 6)
+        tapExact(app, "Maybe later")       // defer — this test signs up later
+        _ = app.staticTexts["What CereBro remembers"].waitForExistence(timeout: 6)
+        tapExact(app, "Continue")          // consent (private by default) → reminders
+        _ = app.staticTexts["Notifications"].waitForExistence(timeout: 6)
         tapExact(app, "Enter CereBro")
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 8),
                       "Did not reach the main app after onboarding")

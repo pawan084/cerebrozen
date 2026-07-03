@@ -141,8 +141,9 @@ UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK 
 
 ### Entry, onboarding & auth flow
 
-Value-first ordering: legal gates fast, the personalization "aha" before any account ask,
-reminders last. Returning users never re-walk the tutorial — Welcome offers direct sign-in.
+"90-second to calm" ordering: legal gates fast, one feeling tap, a real breathing reset and
+the first mini-plan BEFORE any account ask; consent is private-by-default; the reminder ask
+comes after the first win. Returning users never re-walk the tutorial — Welcome signs in directly.
 
 ```mermaid
 flowchart TD
@@ -151,23 +152,21 @@ flowchart TD
     H -- yes --> MAIN["Main app<br>Home · Sleep · Talk · Journal · You"]
     H -- no --> W["0 · Welcome"]
 
-    W -- "Begin private setup" --> AG["1 · Age gate<br>Continue locked until 18+ tap"]
+    W -- "Try a 2-minute reset" --> AG["1 · Age gate<br>Continue locked until 18+ tap"]
     W -- "I already have an account" --> AUTH1["Auth sheet<br>Apple · Google · email"]
     W -- "Preview app (DEBUG only)" --> MAIN
     AUTH1 -- "signed in" --> ADOPT["Adopt server reflection<br>into AppState"] --> MAIN
 
     AG --> DIS["2 · AI disclosure"]
-    DIS --> REF["3 · Self-reflection — starts EMPTY,<br>Continue gated on ≥1 motivation + ≥1 goal;<br>persists + hasAssessment=true"]
-    REF --> BASE["4 · Baseline (stress/sleep 1–5)"]
-    BASE --> COMP["5 · Companion persona"]
-    COMP --> SIGN["6 · Save your space"]
-    SIGN -- "Create my space" --> AUTH2["Auth sheet"]
-    AUTH2 -- "signed in (auto-advance)" --> CONS
-    SIGN -- "Maybe later" --> CONS["7 · Consent toggles"]
-    CONS --> LANG["8 · Language"]
-    LANG --> NOTIF["9 · Notifications opt-in<br>(OS prompt; skipped under UITest)"]
-    NOTIF --> PLAN["10 · First plan"]
-    PLAN -- "Enter CereBro" --> MAIN
+    DIS --> LANG["3 · Language<br>(early: feeling understood)"]
+    LANG --> STATE["4 · One-tap state check<br>6 feelings → motivation+goal,<br>hasAssessment=true, auto-advance"]
+    STATE --> RESET["5 · First reset — guided breathing<br>(skippable; completion starts the streak)"]
+    RESET --> PLAN["6 · First mini-plan"]
+    PLAN -- "Keep going" --> SIGN["7 · Save your space<br>(embedded Apple/Google/email form)"]
+    SIGN -- "signed in (auto-advance)" --> CONS
+    SIGN -- "Maybe later" --> CONS["8 · Consent — private by default,<br>no pre-ticks + recommended card"]
+    CONS --> NOTIF["9 · Notifications opt-in after the win<br>(OS prompt; skipped under UITest)"]
+    NOTIF -- "Enter CereBro" --> MAIN
 
     MAIN -. "You → Sign in<br>Talk → Sign in to talk live" .-> AUTH3["Auth sheet"]
     AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region"]
