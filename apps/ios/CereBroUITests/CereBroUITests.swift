@@ -473,6 +473,21 @@ final class CereBroUITests: XCTestCase {
             snapshot(app, "sleep-02-player")
             back(app)
         }
+
+        // Morning check-in: pick a felt quality, save, and confirm the diary
+        // reflects it back on the Sleep root (today flips CTA → editable row).
+        openTab(app, "Sleep")
+        if tap(app, "How did you sleep?") {
+            tap(app, "Sleep quality 4 of 5")
+            snapshot(app, "sleep-03-checkin")
+            tap(app, "Save check-in")
+            back(app)
+            let edited = app.buttons.containing(
+                NSPredicate(format: "label CONTAINS[c] %@", "Edit this morning's check-in")).firstMatch
+            XCTAssertTrue(edited.waitForExistence(timeout: 4),
+                          "Saved check-in should surface as editable on the Sleep root")
+            snapshot(app, "sleep-04-diary-updated")
+        }
     }
 
     // MARK: - Talk flow (→ SOS → Breathing, and Chat)

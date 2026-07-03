@@ -54,6 +54,7 @@ final class AppState: ObservableObject {
         static let baselineStress = "baselineStress"
         static let baselineSleep = "baselineSleep"
         static let baselineDate = "baselineDate"
+        static let sleep = "sleepEntries"
     }
 
     /// Streak milestones worth celebrating (days).
@@ -93,6 +94,9 @@ final class AppState: ObservableObject {
     @Published var hasAssessment: Bool     { didSet { UserDefaults.standard.set(hasAssessment, forKey: Key.hasAssessment) } }
     /// Favorited sleep stories/sounds, keyed by their stable title.
     @Published private(set) var favoriteSleep: Set<String> { didSet { Self.save(Array(favoriteSleep), Key.favSleep) } }
+    /// Sleep diary — one entry per wake-up morning, newest first (local-first;
+    /// mirrored to `/sleep` when connected).
+    @Published private(set) var sleepEntries: [SleepEntry] { didSet { Self.save(sleepEntries, Key.sleep) } }
     /// Crisis-resources region override. "" = automatic (device region).
     @Published var crisisRegion: String    { didSet { UserDefaults.standard.set(crisisRegion, forKey: Key.crisisRegion) } }
     /// Highest streak milestone already celebrated (so we fire each one once).
@@ -120,7 +124,7 @@ final class AppState: ObservableObject {
         if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
-             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.crisisRegion, Key.lastMilestone,
+             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate,
              "cerebro_access_token"].forEach {   // also drop any cloud session
@@ -143,6 +147,7 @@ final class AppState: ObservableObject {
         toolSoundOn    = UserDefaults.standard.object(forKey: Key.toolSound) as? Bool ?? true
         hasAssessment  = UserDefaults.standard.bool(forKey: Key.hasAssessment)
         favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
+        sleepEntries   = Self.load([SleepEntry].self, Key.sleep) ?? (seedDemo ? Self.seededSleep() : [])
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
         lastMilestone  = UserDefaults.standard.integer(forKey: Key.lastMilestone)
         reminderEnabled = UserDefaults.standard.bool(forKey: Key.reminderOn)
@@ -175,6 +180,7 @@ final class AppState: ObservableObject {
         toolSoundOn = true
         hasAssessment = false
         favoriteSleep = []
+        sleepEntries = []
         crisisRegion = ""
         lastMilestone = 0
         newMilestone = nil
@@ -193,6 +199,48 @@ final class AppState: ObservableObject {
     func toggleSleepFavorite(_ title: String) {
         if favoriteSleep.contains(title) { favoriteSleep.remove(title) }
         else { favoriteSleep.insert(title) }
+    }
+
+    // MARK: - Sleep diary
+
+    /// Canonical yyyy-MM-dd key for a date (same formatter the streak uses).
+    static func dayString(_ date: Date = Date()) -> String { dayKey(date) }
+
+    /// The entry logged for a given morning (default today), if any.
+    func sleepEntry(on date: Date = Date()) -> SleepEntry? {
+        sleepEntries.first { $0.day == Self.dayKey(date) }
+    }
+
+    /// Insert or replace the entry for its day (one per morning), newest first.
+    /// A morning check-in counts as showing up, so it extends the streak.
+    func upsertSleep(_ entry: SleepEntry) {
+        var list = sleepEntries.filter { $0.day != entry.day }
+        list.append(entry)
+        sleepEntries = list.sorted { $0.day > $1.day }
+        recordActivity()
+    }
+
+    /// The last 7 calendar days (oldest → today) with the logged entry, if any —
+    /// powers the Sleep trend strip. Real data only; gaps stay gaps.
+    func last7Sleep() -> [(date: Date, entry: SleepEntry?)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return (0..<7).reversed().compactMap { offset in
+            guard let d = cal.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            return (d, sleepEntries.first { $0.day == Self.dayKey(d) })
+        }
+    }
+
+    /// Demo seed (UITests/screenshots only): three recent mornings so the trend
+    /// strip renders deterministically — today stays unlogged so the check-in CTA
+    /// is always visible in captures. Real users start honestly empty.
+    private static func seededSleep() -> [SleepEntry] {
+        (1...3).compactMap { offset in
+            Calendar.current.date(byAdding: .day, value: -offset, to: Date()).map {
+                SleepEntry(day: dayKey($0), bedMinutes: 23 * 60, wakeMinutes: 6 * 60 + 45,
+                           quality: [4, 3, 4][offset - 1], awakenings: offset == 2 ? 1 : 0)
+            }
+        }
     }
 
     // MARK: - Streak ("mindful days")

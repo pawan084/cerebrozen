@@ -28,8 +28,11 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   (upsert-by-date, range list, weekly summary: avg duration, bedtime consistency,
   quality trend, `enough_data` gate) + 7 tests — 2026-07-03, suite 184 passed /
   95.68 % coverage; migration verified on a fresh DB; live-API smoke-tested.
-- [ ] iOS: morning sleep check-in (Home card + Sleep tab), 7-day trend strip, diary
-  history — local-first in `AppState`, additive sync, `-resetState` deterministic.
+- [x] iOS: morning sleep check-in (Home row + Sleep tab CTA→edit row), 7-day trend
+  strip (real data only, 3-night honesty gate), diary history — local-first
+  `SleepEntry` in `AppState`, mirrored to `/sleep`, demo-seeded under `-resetState`
+  (today left unlogged so the CTA stays deterministic). 2026-07-03: build green,
+  Sleep+Home UITests pass incl. new save→diary assertion.
 - [ ] Content: CBT-I-informed wind-down program as `/content` items (kind `sleep`) —
   also closes the long-standing "Sleep rails are static `Dummy`" item below.
 - [ ] Insights: compute real sleep trends + sleep × mood correlation in `insights.py`

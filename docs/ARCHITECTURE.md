@@ -133,6 +133,11 @@ UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK 
 - **Sleep audio** (`SoundscapePlayer`) — bundled seamless loops (`Resources/Sounds/*.m4a`) via
   AVAudioEngine, procedural synth fallback, lock-free mixer, MPNowPlayingInfo/remote commands,
   fade-out sleep timer. Engine disabled under `-resetState` (Simulator CoreAudio stability).
+- **Sleep diary** (`SleepEntry` + `Features/Sleep/SleepCheckIn.swift`) — morning check-in
+  (felt quality, bed/wake wall-clock minutes, awakenings), 7-night trend strip (real data
+  only; averages gated behind 3 logged nights), history. Local-first in `AppState`,
+  best-effort mirrored to `/sleep` (upsert by date). `-resetState` seeds 3 past nights,
+  today deliberately unlogged.
 - **Design system** (`DesignSystem/Theme.swift`) — one-directional token hierarchy
   `Brand` (raw hex, never used by screens) → `Palette` (semantic) → `Accent`/`Radius`/`Stroke`/`Gradient`.
   Screens read tokens only; no raw hex outside Theme.swift + SplashView scenery.
@@ -190,6 +195,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` |
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
+| Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.monthly`, `.premiumhuman.monthly`) |
 
 ## Web + Admin (`apps/web`, `apps/admin`)
@@ -209,10 +215,11 @@ Two designed-but-unbuilt tracks, kept out of the sections above so this doc stay
 of what exists:
 
 - **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — backend
-  `sleep_logs` + `/sleep` shipped 2026-07-03 (see Routes/Data model above). Still
-  planned: iOS diary UI + sync, sleep-aware insights/plans, `wind_down` nudge kind,
-  `log_sleep` Oracle tool/widget (future cross-stack contracts), opt-in HealthKit read
-  in v1.5. Non-diagnostic framing is a hard product rule.
+  `sleep_logs` + `/sleep` and the iOS diary (check-in/trend/history + sync) shipped
+  2026-07-03. Still planned: CBT-I wind-down content via `/content`, sleep-aware
+  insights/plans, `wind_down` nudge kind, `log_sleep` Oracle tool/widget (future
+  cross-stack contracts), opt-in HealthKit read in v1.5. Non-diagnostic framing is a
+  hard product rule.
 - **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
   :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is
   already browser-ready: Bearer JWT + CORS; add the new origin). Session = in-memory

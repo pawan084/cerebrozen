@@ -18,6 +18,24 @@ struct SleepHomeView: View {
             HeroCard(tag: "Tonight", title: featured.title,
                      subtitle: "A calming sleep story to slow a racing mind.",
                      cta: "Play", imageURL: Dummy.Img.sleep) { playFeatured = true }
+
+            // Sleep diary — the awareness loop (write → trend → history).
+            SectionTitle(title: "Your mornings")
+            if let today = state.sleepEntry() {
+                NavRow(title: "Edit this morning's check-in",
+                       subtitle: "\(today.durationText) in bed · feeling \(today.quality)/5",
+                       systemImage: "checkmark.circle") { SleepCheckInView() }
+            } else {
+                NavRow(title: "How did you sleep?", subtitle: "A 20-second morning check-in",
+                       systemImage: "sunrise", emphasis: true) { SleepCheckInView() }
+            }
+            SleepTrendCard()
+            if !state.sleepEntries.isEmpty {
+                NavRow(title: "Sleep diary",
+                       subtitle: "\(state.sleepEntries.count) morning\(state.sleepEntries.count == 1 ? "" : "s") logged",
+                       systemImage: "book.closed") { SleepDiaryView() }
+            }
+
             if !favoriteItems.isEmpty {
                 SectionTitle(title: "Favorites", trailing: nil)
                 ForEach(favoriteItems) { SleepRow(item: $0) }

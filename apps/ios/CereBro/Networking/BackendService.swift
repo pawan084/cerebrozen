@@ -375,6 +375,17 @@ final class BackendService: ObservableObject {
         }
     }
 
+    func mirrorSleep(_ entry: SleepEntry) {
+        guard isConnected else { return }
+        Task {
+            _ = try? await APIClient.shared.upsertSleep(
+                date: entry.day,
+                bedtime: SleepEntry.apiTime(entry.bedMinutes),
+                wakeTime: SleepEntry.apiTime(entry.wakeMinutes),
+                quality: entry.quality, awakenings: entry.awakenings)
+        }
+    }
+
     func mirrorJournal(_ entry: JournalEntry, body: String) {
         guard isConnected else { return }
         Task { _ = try? await APIClient.shared.createJournal(title: entry.title, body: body, tags: entry.tags) }

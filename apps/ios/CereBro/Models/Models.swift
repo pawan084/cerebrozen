@@ -66,6 +66,36 @@ struct MoodLog: Identifiable, Hashable, Codable {
     let date: Date
 }
 
+/// A logged night of sleep (morning check-in; persisted; feeds Sleep + Insights).
+/// Times are wall-clock minutes since midnight — the diary describes the user's
+/// night, not instants, so no timezone math applies (mirrors the server model).
+struct SleepEntry: Identifiable, Hashable, Codable {
+    var id = UUID()
+    /// yyyy-MM-dd of the wake-up morning — one entry per day, upserted.
+    let day: String
+    var bedMinutes: Int
+    var wakeMinutes: Int
+    /// 1–5 felt restfulness.
+    var quality: Int
+    var awakenings: Int = 0
+
+    /// Night length; a bedtime after midnight is same-day, else previous evening.
+    var durationMin: Int {
+        wakeMinutes > bedMinutes ? wakeMinutes - bedMinutes : 24 * 60 - bedMinutes + wakeMinutes
+    }
+    var durationText: String { "\(durationMin / 60)h \(String(format: "%02d", durationMin % 60))m" }
+    /// "HH:mm:ss" for the backend `/sleep` payload.
+    static func apiTime(_ minutes: Int) -> String {
+        String(format: "%02d:%02d:00", (minutes / 60) % 24, minutes % 60)
+    }
+    /// "10:45 pm"-style label for rows.
+    static func clockLabel(_ minutes: Int) -> String {
+        let h24 = (minutes / 60) % 24, m = minutes % 60
+        let h12 = h24 % 12 == 0 ? 12 : h24 % 12
+        return String(format: "%d:%02d %@", h12, m, h24 < 12 ? "am" : "pm")
+    }
+}
+
 /// Persisted privacy/consent choices, shared by onboarding + the Privacy dashboard.
 struct Consent: Hashable, Codable {
     var moodHistory = true

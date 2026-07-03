@@ -13,6 +13,11 @@ struct HomeView: View {
     private var moodSubtitle: String {
         state.moodLogs.first.map { "Last check-in: \($0.mood)" } ?? "Personalize your next best action"
     }
+    /// Reflect this morning's sleep entry once logged.
+    private var sleepSubtitle: String {
+        state.sleepEntry().map { "Logged · \($0.durationText) · feeling \($0.quality)/5" }
+            ?? "A 20-second morning check-in"
+    }
     /// Reflect plan progress once any step is completed (names from the real steps).
     private var planSubtitle: String {
         let total = Dummy.planSteps.count
@@ -50,6 +55,9 @@ struct HomeView: View {
             NavRow(title: "Check how you feel", subtitle: moodSubtitle,
                    systemImage: "heart", imageURL: Dummy.Img.mood, emphasis: true) { MoodCheckinView() }
                 .entrance(5)
+            NavRow(title: "How did you sleep?", subtitle: sleepSubtitle,
+                   systemImage: "moon.zzz", imageURL: Dummy.Img.sleep) { SleepCheckInView() }
+                .entrance(6)
             NavRow(title: "Today's plan", subtitle: planSubtitle,
                    systemImage: "checkmark.circle", imageURL: Dummy.Img.plan) { DailyPlanView() }
                 .entrance(6)

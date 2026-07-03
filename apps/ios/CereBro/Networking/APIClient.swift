@@ -52,6 +52,18 @@ struct RemoteMood: Codable, Identifiable {
     let created_at: String
 }
 
+struct RemoteSleep: Codable, Identifiable {
+    let id: String
+    let date: String
+    let bedtime: String
+    let wake_time: String
+    let quality: Int
+    let awakenings: Int
+    let source: String
+    let duration_min: Int
+    let created_at: String
+}
+
 struct RemoteJournal: Codable, Identifiable {
     let id: String
     let title: String
@@ -248,6 +260,15 @@ actor APIClient {
     func createMood(mood: String, note: String, symbol: String, intensity: Int) async throws -> RemoteMood {
         try await request("/moods", method: "POST",
                           json: ["mood": mood, "note": note, "symbol": symbol, "intensity": intensity])
+    }
+
+    /// Upsert the sleep-diary entry for a date (server keeps one row per night).
+    @discardableResult
+    func upsertSleep(date: String, bedtime: String, wakeTime: String,
+                     quality: Int, awakenings: Int) async throws -> RemoteSleep {
+        try await request("/sleep", method: "POST",
+                          json: ["date": date, "bedtime": bedtime, "wake_time": wakeTime,
+                                 "quality": quality, "awakenings": awakenings])
     }
 
     func createJournal(title: String, body: String, tags: [String]) async throws -> RemoteJournal {
