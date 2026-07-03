@@ -89,8 +89,8 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 |---|---|---|
 | 3 tiers (Free / ₹499 / ₹1,499), paywall, StoreKit 2 | ✅ | Server-side receipt verification, renewal webhook; needs ASC products |
 | Free-tier quota (midnight-UTC daily cap, 429) | ✅ | Chat + Oracle |
-| "Downloads" and "unlimited voice" claims | ⚪ | Copy promises features that don't exist yet — fix copy or build |
-| Coach/therapist booking (Premium+Human) | ⚪ | Screens only; no provider integration |
+| Paywall copy honesty | ✅ | Fixed 2026-07-03 — claims now match shipped features (app + web) |
+| Coach/therapist booking (Premium+Human) | ⚪ | Screens are now honestly labeled "rolling out"; provider integration still absent |
 
 ### Safety & crisis
 | Feature | Status | Notes |
@@ -121,8 +121,11 @@ products + Server-Notifications URL · `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, 
 `ASC_*` secrets.
 
 **Code, ordered by impact:**
-1. Honest paywall copy (remove "downloads", reword "unlimited voice" → "unlimited chat")
-   — App Review risk as-is.
+1. ~~Honest paywall copy~~ — DONE 2026-07-03: "downloads"/"unlimited voice"/"coach &
+   therapist booking" claims scrubbed from the app paywall, free-limit screen,
+   fallback price cards, and the web landing pricing + FAQ. Also de-faked: coach
+   booking (no invented clinicians, honest "rolling out" capture), insights hero
+   (example labeled as example), "See all" affordances, static rows' chevrons.
 2. Server-driven content catalogue (`/content` route exists; migrate Home/Sleep rails).
 3. Bundle imagery for remaining ~13 hero/rail Unsplash URLs (offline + App Review).
 4. Onboarding polish: back navigation, single-select reminders, under-18 exit,

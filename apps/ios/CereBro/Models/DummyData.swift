@@ -108,8 +108,8 @@ enum Dummy {
     // Pricing
     static let plans: [PricePlan] = [
         .init(tier: "Free", price: "₹0", detail: "Daily check-ins, breathing & basic journal", featured: false),
-        .init(tier: "Premium", price: "₹499/mo", detail: "Sleep library, downloads, unlimited voice", featured: true),
-        .init(tier: "Premium + Human", price: "₹1,499/mo", detail: "Everything, plus coach & therapist booking", featured: false)
+        .init(tier: "Premium", price: "₹499/mo", detail: "Full sleep library & richer voice sessions", featured: true),
+        .init(tier: "Premium + Human", price: "₹1,499/mo", detail: "Everything, plus priority human handoff", featured: false)
     ]
 
     // Offline available items

@@ -174,7 +174,7 @@ struct MoodCheckinView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "Mood, intensity and trigger", title: "Mood Check-in",
                        trailingSystemImage: "heart", accent: Theme.Accent.warm) {
-            ToolBanner(imageURL: Dummy.Img.mood, symbol: "heart",
+            ToolBanner(imageURL: Dummy.Img.ocean, symbol: "heart",
                        caption: "Name how you feel — we'll shape your next step.",
                        accent: Theme.Accent.warm)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {

@@ -45,17 +45,6 @@ struct ProfileView: View {
             NavRow(title: "Export my data", subtitle: "Download a full copy", systemImage: "square.and.arrow.up", imageURL: Dummy.Img.plan) { DataExportView() }
             NavRow(title: "Delete account", subtitle: "Permanently erase everything", systemImage: "trash", imageURL: Dummy.Img.support) { AccountDeletionView() }
 
-            // Internal demo/state screens — shipped only in debug builds, not to
-            // end users. UI tests run in debug, so they still exercise them.
-            #if DEBUG
-            SectionTitle(title: "App states (demo)", trailing: nil)
-            NavRow(title: "Offline mode", subtitle: "Offline support state", systemImage: "wifi.slash", imageURL: Dummy.Img.breath) { OfflineView() }
-            NavRow(title: "Empty journal", subtitle: "First-time empty state", systemImage: "book", imageURL: Dummy.Img.journal) { EmptyJournalView() }
-            NavRow(title: "Voice loading", subtitle: "Loading state", systemImage: "hourglass", imageURL: Dummy.Img.voice) { VoiceLoadingView() }
-            NavRow(title: "Voice error", subtitle: "Network fallback", systemImage: "exclamationmark.triangle", imageURL: Dummy.Img.chat) { VoiceErrorView() }
-            NavRow(title: "Free limit", subtitle: "Usage limit state", systemImage: "lock", imageURL: Dummy.Img.premium) { FreeLimitView() }
-            #endif
-
             Button { showReset = true } label: {
                 Text("Reset & view onboarding")
                     .appFont(13, weight: .semibold).foregroundStyle(Theme.Palette.muted)

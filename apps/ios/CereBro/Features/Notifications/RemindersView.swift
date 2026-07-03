@@ -16,7 +16,7 @@ struct RemindersView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "Gentle nudges", title: "Daily Reminder",
                        trailingSystemImage: "bell", accent: Theme.Accent.warm) {
-            ToolBanner(imageURL: Dummy.Img.bell, symbol: "bell",
+            ToolBanner(imageURL: Dummy.Img.calm, symbol: "bell",
                        caption: "One quiet nudge a day to check in. No streaks lost, no pressure — turn it off anytime.",
                        accent: Theme.Accent.warm)
 

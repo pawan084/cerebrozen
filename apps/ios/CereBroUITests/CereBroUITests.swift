@@ -27,6 +27,22 @@ final class CereBroUITests: XCTestCase {
         return app
     }
 
+    /// Dismiss iOS's system "Save Password?" sheet if it appears after
+    /// submitting credentials. It belongs to springboard (not the app) and
+    /// swallows every subsequent tap — the production-clean auth form now
+    /// triggers AutoFill's save heuristic, which is right for real users.
+    private func dismissSavePassword(wait: TimeInterval = 4) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let notNow = springboard.buttons["Not Now"].firstMatch
+        guard notNow.waitForExistence(timeout: wait) else { return }
+        // The sheet animates in; tapping mid-animation fails silently.
+        let deadline = Date().addingTimeInterval(3)
+        while !notNow.isHittable && Date() < deadline { usleep(100_000) }
+        if notNow.isHittable { notNow.tap() }
+        else { notNow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+        _ = notNow.waitForNonExistence(timeout: 3)
+    }
+
     private func snapshot(_ app: XCUIApplication, _ name: String) {
         let att = XCTAttachment(screenshot: app.screenshot())
         att.name = name
@@ -59,7 +75,14 @@ final class CereBroUITests: XCTestCase {
     }
 
     private func openTab(_ app: XCUIApplication, _ name: String) {
-        tapTabButton(app, name)
+        // A lingering system sheet (e.g. Save Password) can swallow the first
+        // tap; verify the switch landed and retry instead of trusting one tap.
+        for _ in 0..<3 {
+            dismissSavePassword(wait: 0.3)
+            tapTabButton(app, name)
+            if app.tabBars.buttons[name].isSelected { break }
+            usleep(400_000)
+        }
         _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
     }
 
@@ -251,31 +274,21 @@ final class CereBroUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "I already have an account")
-        // The full auth sheet appears; DEBUG prefills the seeded demo login.
+        // The full auth sheet appears; sign in with the seeded demo account
+        // (no dev prefill exists anymore — production-clean form).
         guard app.buttons["Continue with email"].waitForExistence(timeout: 8) else {
             throw XCTSkip("auth sheet did not present")
         }
+        clearAndType(app.textFields["Email"], "pawan@cerebro.app")
+        clearAndType(app.secureTextFields["Password"], "demo12345")
         snapshot(app, "welcome-signin-sheet")
         tap(app, "Continue with email")
+        dismissSavePassword()
         guard app.tabBars.firstMatch.waitForExistence(timeout: 20) else {
             throw XCTSkip("Backend not reachable")
         }
         XCTAssertTrue(app.tabBars.buttons["Home"].exists, "Home tab missing after returning sign-in")
         snapshot(app, "welcome-signin-entered")
-    }
-
-    /// The Welcome screen's "Preview app" escape hatch should skip straight into
-    /// the app (value-first: let people look around before committing to setup).
-    func testOnboardingPreviewSkips() {
-        let app = makeApp()
-        app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
-        app.launch()
-        XCTAssertTrue(app.buttons["Preview app"].waitForExistence(timeout: 10),
-                      "Welcome screen did not appear")
-        tap(app, "Preview app")
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 8),
-                      "Preview app did not enter the main app")
-        snapshot(app, "onb-preview-entered")
     }
 
     /// End-to-end persistence: a motivation chosen during onboarding's
@@ -322,20 +335,31 @@ final class CereBroUITests: XCTestCase {
         // Connect cloud sync with a fresh signup so starters generate live.
         rootYou(app)
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
-        app.buttons["Create account"].tap()
+        // Segmented mode switch: wait + scroll (a raw .tap() here fails
+        // silently under continueAfterFailure when the control sits below
+        // the fold, leaving the form in sign-in mode).
+        XCTAssertTrue(tapExact(app, "Create account", timeout: 5), "Create-account mode switch not reachable")
+        XCTAssertTrue(app.buttons["Create my account"].waitForExistence(timeout: 4), "signup form did not appear")
         let unique = "ui-mot-\(Int(Date().timeIntervalSince1970))@test.app"
         guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
         clearAndType(app.textFields["Name"], "UI Tester")
         clearAndType(app.textFields["Email"], unique)
         clearAndType(app.secureTextFields["Password"], "password123")
         _ = tap(app, "Create my account")
+        dismissSavePassword()
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
-        guard connected.waitForExistence(timeout: 20) else { throw XCTSkip("Backend not reachable") }
+        guard connected.waitForExistence(timeout: 20) else {
+            snapshot(app, "connect-timeout-\(#line)")
+            throw XCTSkip("Backend not reachable")
+        }
 
         // Talk → text chat → starters built from the SELECTED motivation/goal.
         openTab(app, "Talk")
-        guard tap(app, "Switch to chat") else { throw XCTSkip("chat unavailable") }
+        guard tap(app, "Switch to chat") else {
+            snapshot(app, "talk-connected-no-chat-row")
+            throw XCTSkip("chat unavailable")
+        }
         let starter = app.buttons
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Talk about:")).firstMatch
         XCTAssertTrue(starter.waitForExistence(timeout: 30),
@@ -534,12 +558,6 @@ final class CereBroUITests: XCTestCase {
         visit(app, "Urgent support",   "you-05-crisis")
         visit(app, "Human support",    "you-06-human")
 
-        // App-state demo screens (lower on the page → tap() scrolls to them).
-        visit(app, "Offline mode",   "you-07-offline")
-        visit(app, "Empty journal",  "you-08-empty")
-        visit(app, "Voice loading",  "you-09-voiceloading")
-        visit(app, "Voice error",    "you-10-voiceerror")
-        visit(app, "Free limit",     "you-11-freelimit")
     }
 
     // MARK: - Phase 2: data layer (record → persist → surface)
@@ -601,8 +619,13 @@ final class CereBroUITests: XCTestCase {
         _ = app.staticTexts["Sign in"].waitForExistence(timeout: 4)
         snapshot(app, "signin-form")   // modern layout: Apple · Google · email
 
-        // Default mode is Sign in with the seeded demo credentials pre-filled.
+        // Sign in as the seeded demo user — typed explicitly (the dev-only
+        // prefill no longer exists; the form is production-clean).
+        guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
+        clearAndType(app.textFields["Email"], "pawan@cerebro.app")
+        clearAndType(app.secureTextFields["Password"], "demo12345")
         _ = tap(app, "Continue with email")
+        dismissSavePassword()
 
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
@@ -614,6 +637,7 @@ final class CereBroUITests: XCTestCase {
             XCTAssertTrue(planLoaded, "Connected but the agentic plan did not load from the server")
         } else {
             // Backend not running — don't fail the offline-capable suite.
+            snapshot(app, "connect-timeout-cloudsync")
             throw XCTSkip("Backend not reachable from simulator")
         }
     }
@@ -624,10 +648,18 @@ final class CereBroUITests: XCTestCase {
         launchIntoApp(app)
         rootYou(app)
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        // Typed explicitly — the dev-only credential prefill no longer exists.
+        guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
+        clearAndType(app.textFields["Email"], "pawan@cerebro.app")
+        clearAndType(app.secureTextFields["Password"], "demo12345")
         _ = tap(app, "Continue with email")
+        dismissSavePassword()
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
-        guard connected.waitForExistence(timeout: 20) else { throw XCTSkip("Backend not reachable") }
+        guard connected.waitForExistence(timeout: 20) else {
+            snapshot(app, "connect-timeout-\(#line)")
+            throw XCTSkip("Backend not reachable")
+        }
 
         // Toggle the first server plan step → backend PATCH /plans/steps.
         XCTAssertTrue(app.staticTexts["Your agentic plan"].waitForExistence(timeout: 25),
@@ -645,7 +677,10 @@ final class CereBroUITests: XCTestCase {
         snapshot(app, "talk-05-voice-connected")
 
         // Live chat → backend AI companion.
-        guard tap(app, "Switch to chat") else { throw XCTSkip("chat unavailable") }
+        guard tap(app, "Switch to chat") else {
+            snapshot(app, "talk-connected-no-chat-row")
+            throw XCTSkip("chat unavailable")
+        }
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5), "chat field missing")
 
@@ -680,21 +715,32 @@ final class CereBroUITests: XCTestCase {
         guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
 
         // Switch to "Create account" and fill a unique signup.
-        app.buttons["Create account"].tap()
+        // Segmented mode switch: wait + scroll (a raw .tap() here fails
+        // silently under continueAfterFailure when the control sits below
+        // the fold, leaving the form in sign-in mode).
+        XCTAssertTrue(tapExact(app, "Create account", timeout: 5), "Create-account mode switch not reachable")
+        XCTAssertTrue(app.buttons["Create my account"].waitForExistence(timeout: 4), "signup form did not appear")
         let unique = "ui-\(Int(Date().timeIntervalSince1970))@test.app"
         guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
         clearAndType(app.textFields["Name"], "UI Tester")
         clearAndType(app.textFields["Email"], unique)
         clearAndType(app.secureTextFields["Password"], "password123")
         _ = tap(app, "Create my account")
+        dismissSavePassword()
 
         let connected = app.staticTexts
             .containing(NSPredicate(format: "label CONTAINS[c] %@", "Connected as")).firstMatch
-        guard connected.waitForExistence(timeout: 20) else { throw XCTSkip("Backend not reachable") }
+        guard connected.waitForExistence(timeout: 20) else {
+            snapshot(app, "connect-timeout-\(#line)")
+            throw XCTSkip("Backend not reachable")
+        }
 
         // Fresh user → empty chat → starters are guaranteed to show.
         openTab(app, "Talk")
-        guard tap(app, "Switch to chat") else { throw XCTSkip("chat unavailable") }
+        guard tap(app, "Switch to chat") else {
+            snapshot(app, "talk-connected-no-chat-row")
+            throw XCTSkip("chat unavailable")
+        }
 
         // Topic generation may hit the LLM, so wait generously.
         let starter = app.buttons.containing(

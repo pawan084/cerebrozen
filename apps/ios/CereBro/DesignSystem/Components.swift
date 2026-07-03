@@ -212,6 +212,8 @@ struct RowLabel: View {
     /// and rails, not utility rows.
     var imageURL: String? = nil
     var emphasis: Bool = false
+    /// Pass false for static, non-navigating rows — a chevron promises a push.
+    var chevron: Bool = true
 
     var body: some View {
         HStack(spacing: 9) {
@@ -222,10 +224,14 @@ struct RowLabel: View {
                 .background(Theme.Stroke.iconWell, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-                Text(subtitle).appFont(12).foregroundStyle(Theme.Palette.muted).lineLimit(1)
+                if !subtitle.isEmpty {
+                    Text(subtitle).appFont(12).foregroundStyle(Theme.Palette.muted).lineLimit(1)
+                }
             }
             Spacer()
-            Image(systemName: "chevron.right").appFont(13, weight: .semibold).foregroundStyle(Theme.Stroke.chevron)
+            if chevron {
+                Image(systemName: "chevron.right").appFont(13, weight: .semibold).foregroundStyle(Theme.Stroke.chevron)
+            }
         }
         .padding(9)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(.ultraThinMaterial).opacity(0.5))
@@ -279,7 +285,8 @@ struct NavRow<Destination: View>: View {
 // MARK: - Section header
 struct SectionTitle: View {
     let title: String
-    var trailing: String? = "See all"
+    // nil by default: a "See all" affordance must come with a real destination.
+    var trailing: String? = nil
     var body: some View {
         HStack {
             Text(title).displayFont(18).foregroundStyle(Theme.Palette.text)

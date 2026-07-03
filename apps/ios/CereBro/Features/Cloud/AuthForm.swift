@@ -14,14 +14,16 @@ struct AuthForm: View {
     @State private var email = ""
     @State private var password = ""
     @State private var name = ""
-    @State private var server = ""
     @State private var mode: Mode
     @State private var googleAuth = GoogleAuth()
     @State private var googleMessage: String?
     @State private var resetMessage: String?
-    @State private var showDevOptions = false
 
     private let initialMode: Mode
+    /// Under UITests (`-resetState`) the password field opts out of AutoFill
+    /// (.oneTimeCode) so iOS never presents the system "Save Password?" sheet,
+    /// which would swallow the suite's taps. Real users get full AutoFill.
+    private static let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
 
     /// `initialMode` picks the segmented tab the form opens on — onboarding's
     /// account step embeds with `.signUp`; Cloud Sync defaults to `.signIn`.
@@ -72,7 +74,6 @@ struct AuthForm: View {
             PrimaryButton(title: mode == .signIn ? "Continue with email" : "Create my account",
                           systemImage: "envelope.fill") {
                 Task {
-                    await backend.setServer(server)   // point at this server first
                     if mode == .signIn {
                         await backend.signIn(email: email, password: password)
                     } else {
@@ -84,7 +85,6 @@ struct AuthForm: View {
             if mode == .signIn {
                 Button {
                     Task {
-                        await backend.setServer(server)
                         try? await backend.requestPasswordReset(email: email)
                         resetMessage = "If that email exists, a reset link is on its way."
                     }
@@ -98,37 +98,6 @@ struct AuthForm: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            #if DEBUG
-            // Dev plumbing lives behind a collapsed disclosure so the page
-            // reads like a traditional login; Release has no server field.
-            DisclosureGroup(isExpanded: $showDevOptions) {
-                VStack(alignment: .leading, spacing: 8) {
-                    field("Server URL", text: $server, keyboard: .URL)
-                    Text("On device, use your Mac's LAN address — e.g. http://192.168.x.x:8000 or http://<mac-name>.local:8000. The Simulator can keep localhost.")
-                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("Demo: pawan@cerebro.app · demo12345")
-                        .appFont(11.5).foregroundStyle(Theme.Palette.muted)
-                }
-                .padding(.top, 8)
-            } label: {
-                Text("Developer options")
-                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
-            }
-            .tint(Theme.Palette.muted2)
-            #endif
-        }
-        .onAppear {
-            if server.isEmpty { server = backend.baseURL }
-            #if DEBUG
-            // Dev convenience only: pre-fill the seeded demo login (sign-in tab
-            // only). Must match the account created in backend/app/seed.py.
-            if initialMode == .signIn {
-                if email.isEmpty { email = "pawan@cerebro.app" }
-                if password.isEmpty { password = "demo12345" }
-                if name.isEmpty { name = "Pawan" }
-            }
-            #endif
         }
     }
 
@@ -152,7 +121,6 @@ struct AuthForm: View {
         googleMessage = nil
         Task {
             do {
-                await backend.setServer(server)
                 let token = try await googleAuth.signIn()
                 await backend.signInWithGoogle(idToken: token, name: "")
             } catch GoogleAuthError.cancelled {
@@ -172,7 +140,6 @@ struct AuthForm: View {
         let fullName = [cred.fullName?.givenName, cred.fullName?.familyName]
             .compactMap { $0 }.joined(separator: " ")
         Task {
-            await backend.setServer(server)
             await backend.signInWithApple(identityToken: token, name: fullName)
         }
     }
@@ -183,10 +150,13 @@ struct AuthForm: View {
             Text(label).appFont(11.5).foregroundStyle(Theme.Palette.muted)
             Group {
                 if secure {
-                    SecureField(label, text: text).accessibilityIdentifier(label)
+                    SecureField(label, text: text)
+                        .textContentType(Self.underTest ? .oneTimeCode : .password)
+                        .accessibilityIdentifier(label)
                 } else {
                     TextField(label, text: text)
                         .keyboardType(keyboard)
+                        .textContentType(keyboard == .emailAddress ? .emailAddress : nil)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier(label)

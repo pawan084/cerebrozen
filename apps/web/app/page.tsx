@@ -25,8 +25,8 @@ const SAFETY = [
 
 const PLANS = [
   { tier: "Free", amount: "₹0", note: "Forever", featured: false, items: ["Daily check-ins", "Breathing & grounding", "Basic journal", "Weekly insights"] },
-  { tier: "Premium", amount: "₹499", note: "/month", featured: true, items: ["Everything in Free", "Full sleep library + mixing", "Offline downloads", "Unlimited voice companion", "Agentic plans"] },
-  { tier: "Premium + Human", amount: "₹1,499", note: "/month", featured: false, items: ["Everything in Premium", "Coach & therapist booking", "Priority human handoff"] },
+  { tier: "Premium", amount: "₹499", note: "/month", featured: true, items: ["Everything in Free", "Full sleep library + mixing", "Richer voice sessions", "Agentic plans"] },
+  { tier: "Premium + Human", amount: "₹1,499", note: "/month", featured: false, items: ["Everything in Premium", "Priority human handoff", "Human sessions (rolling out)"] },
 ];
 
 const FAQ = [
@@ -34,7 +34,7 @@ const FAQ = [
   { q: "Is my data private?", a: "Yes. Memory is consent-first and off-limits unless you allow it. There are no ads or third-party trackers, and you can export or permanently delete everything from inside the app." },
   { q: "Does it work offline?", a: "Core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The AI companion needs to be online." },
   { q: "What platforms is it on?", a: "iOS first, with Android to follow. Join the waitlist and we'll send a calm note the moment it's ready." },
-  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a basic journal, and weekly insights. Premium adds the full sleep library, downloads, and unlimited voice." },
+  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a basic journal, and weekly insights. Premium adds the full sleep library and richer voice sessions." },
 ];
 
 export default function Home() {

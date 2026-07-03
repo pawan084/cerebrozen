@@ -26,12 +26,7 @@ struct CloudSyncView: View {
         Card {
             HStack(spacing: 12) {
                 Circle().fill(statusColor).frame(width: 10, height: 10)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(statusTitle).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-                    #if DEBUG
-                    Text(backend.baseURL).appFont(11.5).foregroundStyle(Theme.Palette.muted)
-                    #endif
-                }
+                Text(statusTitle).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
                 Spacer()
             }
         }

@@ -136,10 +136,15 @@ actor APIClient {
 
     private static let tokenKey = "cerebro_access_token"
     private static let baseKey = "cerebro_api_url"
-    // Release builds hit production by default; Debug uses the local backend
-    // (override either at runtime via the Server URL field in DEBUG).
+    // Release builds hit production; Debug uses the dev backend. There is no
+    // in-app server field — tests override via the -cerebro_api_url launch arg.
     #if DEBUG
+    #if targetEnvironment(simulator)
     static let defaultBaseURL = "http://localhost:8000"
+    #else
+    // Dev builds on a physical device reach the dev Mac's backend over Bonjour.
+    static let defaultBaseURL = "http://Pawans-MacBook-Pro.local:8000"
+    #endif
     #else
     static let defaultBaseURL = "https://api.cerebrozen.in"
     #endif

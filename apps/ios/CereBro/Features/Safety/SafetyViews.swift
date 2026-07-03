@@ -5,7 +5,7 @@ struct HumanSupportView: View {
     @State private var showBooking = false
     var body: some View {
         ScreenScaffold(eyebrow: "Coach/therapist handoff", title: "Human Support", trailingSystemImage: "person.2") {
-            HeroCard(tag: "Optional", title: "Book human support",
+            HeroCard(tag: "Optional", title: "Human support",
                      subtitle: "Connect with a vetted coach or licensed therapist partner.",
                      cta: "Book", imageURL: Dummy.Img.support) { showBooking = true }
             DangerPanel {
@@ -28,18 +28,19 @@ struct CoachBookingView: View {
     @State private var requested = false
     var body: some View {
         ScreenScaffold(eyebrow: "Human support booking", title: "Coach Booking", trailingSystemImage: "calendar") {
-            ListRow(title: "Dr. Aarav Mehta", subtitle: "Therapist · CBT, anxiety", systemImage: "person.fill", imageURL: Dummy.Img.support, emphasis: true)
-            ListRow(title: "Sara Khan", subtitle: "Wellness coach · Sleep, stress", systemImage: "person.fill", imageURL: Dummy.Img.meditate)
+            // Generic partner categories — never invented clinician names.
+            RowLabel(title: "Licensed therapists", subtitle: "CBT, anxiety, low mood", systemImage: "person.badge.shield.checkmark", emphasis: true, chevron: false)
+            RowLabel(title: "Wellness coaches", subtitle: "Sleep, stress, habits", systemImage: "person.2", chevron: false)
             SectionTitle(title: "Pick a time", trailing: nil)
             ChipRow(options: ["Today 8 PM", "Tomorrow 6 PM", "Sat 11 AM", "Sun 4 PM"], selection: $slot)
-            PrimaryButton(title: requested ? "Request sent" : "Request session",
-                          systemImage: requested ? "checkmark.circle.fill" : "calendar.badge.plus") {
+            PrimaryButton(title: requested ? "Noted" : "Notify me when booking opens",
+                          systemImage: requested ? "checkmark.circle.fill" : "bell.badge") {
                 requested = true; Haptics.success()
             }
             if requested {
-                InsightCard(label: "Request sent",
-                            title: "We'll email you to confirm \(slot.first ?? "your slot").",
-                            detail: "A partner coach will reach out to finalize the session.")
+                InsightCard(label: "Noted",
+                            title: "Human-session booking is rolling out.",
+                            detail: "You'll see it here first — nothing is scheduled yet.")
             }
         }
     }
@@ -113,8 +114,6 @@ struct TrustedContactView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "Emergency contact setup", title: "Trusted Contact", trailingSystemImage: "person.crop.circle.badge.checkmark") {
-            Photo(url: Dummy.Img.privacy, symbol: "person").frame(height: 120).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
             Text("If CereBro detects a crisis and you've given consent, we'll send this person a gentle check-in message. Nothing is shared otherwise.")
                 .appFont(12.5).foregroundStyle(Theme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)

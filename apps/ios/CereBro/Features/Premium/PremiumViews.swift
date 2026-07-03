@@ -10,9 +10,9 @@ struct PremiumView: View {
         ScreenScaffold(eyebrow: "Subscription funnel", title: "CereBro Premium", trailingSystemImage: "crown") {
             HeroCard(tag: store.isPremium ? "Active" : "Upgrade",
                      title: store.isPremium ? "You're Premium" : "Unlock your calmest self",
-                     subtitle: "Premium sleep library, downloads, and unlimited voice support.",
+                     subtitle: "The full sleep library, richer voice sessions, and deeper personalization.",
                      cta: store.isPremium ? "You're all set" : "Choose a plan",
-                     imageURL: Dummy.Img.premium) { chooseFeaturedPlan() }
+                     imageURL: Dummy.Img.sleep) { chooseFeaturedPlan() }
 
             if store.available {
                 // Real StoreKit products (App Store Connect configured).
@@ -111,11 +111,9 @@ struct FreeLimitView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScreenScaffold(eyebrow: "Usage limit state", title: "Free Limit Reached", trailingSystemImage: "lock") {
-            Photo(url: Dummy.Img.premium, symbol: "lock").frame(height: 132).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
-            InsightCard(label: "Today's free voice minutes are used", title: "Upgrade for unlimited voice support",
-                        detail: "You've reached the free daily limit. Premium removes the cap.")
-            NavRow(title: "See premium plans", subtitle: "Premium sleep library, downloads", systemImage: "crown", imageURL: Dummy.Img.premium, emphasis: true) { PremiumView() }
+            InsightCard(label: "Today's free messages are used", title: "Upgrade for more time together",
+                        detail: "You've reached the free daily limit — it resets at midnight. Premium raises the cap.")
+            NavRow(title: "See premium plans", subtitle: "Full sleep library, richer voice", systemImage: "crown", imageURL: Dummy.Img.sleep, emphasis: true) { PremiumView() }
             SecondaryButton(title: "Continue with free", systemImage: "checkmark") { dismiss() }
         }
     }

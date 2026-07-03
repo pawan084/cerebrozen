@@ -23,9 +23,9 @@ struct InsightsView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "Weekly report", title: "Weekly Insights", trailingSystemImage: "chart.line.uptrend.xyaxis") {
-            HeroCard(tag: "This week", title: "Calmer evenings",
-                     subtitle: "Your stress eased on days you journaled before bed.",
-                     cta: "Apply this insight", imageURL: Dummy.Img.calm) { applyToPlan = true }
+            HeroCard(tag: "A pattern to look for", title: "Calmer evenings",
+                     subtitle: "Many people find stress eases on days they journal before bed — see if that's true for you.",
+                     cta: "Open your plan", imageURL: Dummy.Img.calm) { applyToPlan = true }
 
             // The real onboarding baseline — a true "before" to measure against.
             if state.hasBaseline {
@@ -73,7 +73,7 @@ struct PatternsView: View {
             ForEach(Dummy.memoryItems) { m in
                 NavRow(title: m.title, subtitle: m.subtitle, systemImage: m.symbol, imageURL: m.imageURL) { MemoryDetailView(item: m) }
             }
-            NavRow(title: "Update next week's plan", subtitle: "Apply these patterns", systemImage: "arrow.triangle.2.circlepath", imageURL: Dummy.Img.plan, emphasis: true) { DailyPlanView() }
+            NavRow(title: "Open your plan", subtitle: "Review it with these patterns in mind", systemImage: "arrow.triangle.2.circlepath", imageURL: Dummy.Img.plan, emphasis: true) { DailyPlanView() }
         }
     }
 }

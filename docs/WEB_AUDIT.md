@@ -32,7 +32,7 @@ missing keyboard focus treatment, and the absence of any social-proof/credibilit
 | # | Issue | Location | Root cause | Fix |
 |---|---|---|---|---|
 | C1 | Whole page can render white-on-white | `globals.css` body background | `background-attachment: fixed` paints one viewport only; unsupported/mishandled contexts (iOS Safari history, print, headless captures, some in-app browsers) fall back to white with `--text:#f4f6ff` | Move gradient to `body::before { position: fixed; inset: 0; z-index: -1 }`, add `background-color: var(--night)` to `html, body` |
-| C2 | Unbuilt features sold on pricing | `page.tsx` PLANS | Copy drift from aspiration | "Offline downloads"→drop; "Unlimited voice companion"→"Extended voice sessions" (or drop); "Coach & therapist booking"→"Priority human handoff (rolling out)" or drop tier until real |
+| C2 | ~~Unbuilt features sold on pricing~~ **FIXED 2026-07-03** (PLANS + FAQ scrubbed, app paywall too) | `page.tsx` PLANS | Copy drift from aspiration | done |
 | C3 | Stale product mockups | `public/screens/*.webp` | Captured before the app redesign | Regenerate from the current UITest screenshot pack (same source that produced them) |
 | C4 | No mobile navigation | `globals.css` @640px hides `.nav-links a:not(.btn)` | Overflow fix chose deletion over a menu | Small disclosure menu (native `<details>` styled, no JS needed) |
 | C5 | No visible keyboard focus | `.wl-form input { outline: none }`, no `:focus-visible` rules | Reset without replacement | Global `:focus-visible { outline: 2px solid var(--lav); outline-offset: 2px }` + input focus ring |

@@ -135,11 +135,11 @@ struct GroundingView: View {
             ToolBanner(imageURL: Dummy.Img.ground, symbol: "leaf",
                        caption: "Anchor to your senses, one at a time.",
                        accent: Theme.Accent.breathe)
-            ListRow(title: "5 things you can see", subtitle: "Look around gently", systemImage: "eye", imageURL: Dummy.Img.ground, emphasis: true)
-            ListRow(title: "4 things you can feel", subtitle: "Feet, chair, clothes, air", systemImage: "hand.raised", imageURL: Dummy.Img.breath)
-            ListRow(title: "3 things you can hear", subtitle: "Near and far sounds", systemImage: "ear", imageURL: Dummy.Img.ocean)
-            ListRow(title: "2 things you can smell", subtitle: "Take a slow breath in", systemImage: "nose", imageURL: Dummy.Img.calm)
-            ListRow(title: "1 thing you can taste", subtitle: "Notice it without judging", systemImage: "mouth", imageURL: Dummy.Img.meditate)
+            RowLabel(title: "5 things you can see", subtitle: "Look around gently", systemImage: "eye", chevron: false)
+            RowLabel(title: "4 things you can feel", subtitle: "Feet, chair, clothes, air", systemImage: "hand.raised", chevron: false)
+            RowLabel(title: "3 things you can hear", subtitle: "Near and far sounds", systemImage: "ear", chevron: false)
+            RowLabel(title: "2 things you can smell", subtitle: "Take a slow breath in", systemImage: "nose", chevron: false)
+            RowLabel(title: "1 thing you can taste", subtitle: "Notice it without judging", systemImage: "mouth", chevron: false)
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
             PrimaryButton(title: "Continue") { done.toggle() }
         }

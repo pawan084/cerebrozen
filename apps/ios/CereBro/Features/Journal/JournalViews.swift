@@ -104,8 +104,6 @@ struct JournalEntryView: View {
     @State private var saved = false
     var body: some View {
         ScreenScaffold(eyebrow: "Private writing with consent", title: "Journal Entry", trailingSystemImage: "book") {
-            Photo(url: Dummy.Img.write, symbol: "book").frame(height: 120).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
             // Guided prompt to nudge past the blank page (optional to answer).
             Label(prompt, systemImage: "quote.opening")
                 .appFont(12.5).foregroundStyle(Theme.Palette.muted)
@@ -155,8 +153,6 @@ struct JournalInsightView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "AI reflection output", title: "Journal Insight", trailingSystemImage: "sparkles") {
-            Photo(url: Dummy.Img.privacy, symbol: "sparkles").frame(height: 120).frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
             InsightCard(label: "Emotional theme", title: reflection.theme, detail: reflection.detail)
             NavRow(title: "Reframe this thought", subtitle: "Structured CBT", systemImage: "brain", imageURL: Dummy.Img.write) { CBTReframeView() }
             PrimaryButton(title: "Done", systemImage: "checkmark") { dismiss() }

@@ -17,7 +17,6 @@ struct OnboardingFlow: View {
                 // opt-in come only after the user has felt something work.
                 switch step {
                 case 0: WelcomeScreen(onBegin: next,
-                                      onPreview: { state.hasOnboarded = true },
                                       // Returning account: originally gated at its own
                                       // onboarding (attestation is on the server), so
                                       // sign-in skips straight into the app.
@@ -61,7 +60,6 @@ private struct OnboardingProgress: View {
 // MARK: 1 — Welcome
 private struct WelcomeScreen: View {
     var onBegin: () -> Void
-    var onPreview: () -> Void
     /// Returning user signed in from the auth sheet — skip onboarding.
     var onSignedIn: () -> Void
     @EnvironmentObject var backend: BackendService
@@ -69,7 +67,7 @@ private struct WelcomeScreen: View {
     var body: some View {
         // No stock hero photo: the brand night gradient + orb carry the welcome
         // (the old photo clashed with the theme and seamed against the background).
-        ZStack(alignment: .bottom) {
+        ZStack {   // centered — bottom-anchoring left a large dead zone up top
             VStack(spacing: 16) {
                 GlowOrb(size: 96).entrance(0, y: 28)
                 Text("Welcome to\nCereBro")
@@ -97,11 +95,6 @@ private struct WelcomeScreen: View {
                 }
                 .buttonStyle(.pressable)
                 .entrance(5)
-                // Skipping setup would bypass the age gate + AI disclosure, so the
-                // preview shortcut ships only in debug builds (used by UI tests).
-                #if DEBUG
-                SecondaryButton(title: "Preview app", systemImage: "house", action: onPreview).entrance(6)
-                #endif
             }
             .padding(24)
         }
@@ -448,7 +441,8 @@ private struct FirstPlanScreen: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onContinue() }
                 }
                 ForEach(Dummy.planSteps) { s in
-                    ListRow(title: s.title, subtitle: s.detail, systemImage: s.symbol, imageURL: s.imageURL, emphasis: s.done)
+                    // Static preview rows — no chevron, no fake tap affordance.
+                    RowLabel(title: s.title, subtitle: s.detail, systemImage: s.symbol, emphasis: s.done, chevron: false)
                 }
                 OnboardingProgress(value: 0.70)
                 PrimaryButton(title: "Keep going", systemImage: "arrow.right.circle.fill") {
