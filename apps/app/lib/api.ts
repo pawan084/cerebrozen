@@ -49,11 +49,14 @@ async function refreshSession(): Promise<boolean> {
   return true;
 }
 
-export async function api<T = any>(
+/** Authenticated fetch returning the raw Response — the base for JSON calls,
+ * SSE streams (Oracle), and blob downloads (export). Handles the fresh-load
+ * refresh and one rotation retry per 401. */
+export async function authedFetch(
   path: string,
   init: RequestInit = {},
   allowRetry = true,
-): Promise<T> {
+): Promise<Response> {
   // Fresh page load: no in-memory access token yet, but a refresh token exists.
   if (!accessToken && hasSession()) await refreshSession();
 
@@ -66,10 +69,15 @@ export async function api<T = any>(
     },
   });
   if (res.status === 401 || res.status === 403) {
-    if (allowRetry && (await refreshSession())) return api<T>(path, init, false);
+    if (allowRetry && (await refreshSession())) return authedFetch(path, init, false);
     clearSession();
     throw new Error("unauthorized");
   }
+  return res;
+}
+
+export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await authedFetch(path, init);
   if (!res.ok) {
     let detail = `Request failed: ${res.status}`;
     try {
@@ -110,7 +118,7 @@ export async function signUp(email: string, password: string, name: string): Pro
 
 export async function signOut(): Promise<void> {
   try {
-    await api("/auth/logout", { method: "POST" }, false);
+    await authedFetch("/auth/logout", { method: "POST" }, false);
   } catch {
     // Best-effort server-side revocation; the local session clears regardless.
   }

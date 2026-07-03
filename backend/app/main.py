@@ -41,6 +41,18 @@ async def _nudge_dispatcher() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Warm the Oracle graph (and its Postgres checkpointer) BEFORE serving
+    # traffic: langgraph's setup() issues CREATE INDEX CONCURRENTLY, which
+    # waits on every open transaction — at startup none exist, but at
+    # first-request time an idle-in-transaction pool connection can block it
+    # indefinitely (found via a hung first /oracle/messages on a fresh DB).
+    if settings.oracle_available and os.getenv("TESTING") != "1":
+        try:
+            from app.agent.graph import get_graph
+
+            await get_graph()
+        except Exception:  # noqa: BLE001 — degraded is fine; never fatal at boot
+            logger.exception("Oracle graph warmup failed; it will retry lazily")
     dispatcher = None
     if settings.nudge_dispatch_interval_minutes > 0 and os.getenv("TESTING") != "1":
         dispatcher = asyncio.create_task(_nudge_dispatcher())

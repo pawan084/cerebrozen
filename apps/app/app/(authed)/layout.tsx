@@ -7,8 +7,12 @@ import { hasSession, signOut } from "@/lib/api";
 
 const TABS = [
   { href: "/home", label: "Today" },
+  { href: "/chat", label: "Chat" },
   { href: "/journal", label: "Journal" },
   { href: "/sleep", label: "Sleep" },
+  { href: "/plan", label: "Plan" },
+  { href: "/insights", label: "Insights" },
+  { href: "/account", label: "Account" },
 ];
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {

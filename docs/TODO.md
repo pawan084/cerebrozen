@@ -88,9 +88,16 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 - [x] Web v1 first slice (2026-07-03): signup/signin, Today (mood check-in + recent),
   Journal (composer/history + crisis-support banner on elevated risk — never blocks),
   Sleep diary (check-in, honest weekly summary, history — closes SLEEP_TRACKING #6).
-- [ ] Web v1 remaining features (API exists): Google sign-in, chat (Oracle SSE via
-  fetch-streaming, `/chat` fallback), plan view/generate/toggle, weekly insights,
-  content pages, account (consent, region, trusted contact, export, delete).
+- [x] Web v1 features (2026-07-03): chat (Oracle SSE fetch-streaming w/ tool-confirm
+  + crisis banner, `/chat` fallback + chips), plan (optimistic step toggle,
+  regenerate), insights (5 real metrics + upcoming nudges), account (consent,
+  region, trusted contact, export download, typed DELETE). Found + fixed a real
+  backend bug on the way: first `/oracle/messages` on a fresh DB hung forever —
+  langgraph's `setup()` runs `CREATE INDEX CONCURRENTLY`, blocked by any
+  idle-in-transaction pool connection; the graph now warms in the app lifespan
+  pre-traffic, with a 30 s setup timeout falling back to MemorySaver.
+- [ ] Web v1 remaining: Google sign-in (needs owner OAuth client id), content
+  catalogue pages.
 - [ ] Extract shared design tokens (palette now copy-pasted into web + admin + app
   `globals.css`) — needs per-app Docker build contexts widened or a prebuild copy step.
 - [ ] Streaks on web: compute from `/moods` client-side with iOS rules; longer-term

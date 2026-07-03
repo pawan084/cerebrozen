@@ -122,7 +122,11 @@ a 30-minute localStorage session. Planned, in order:
    CSS copy for now, extraction tracked in TODO.
 2. ✅ 2026-07-03 — Auth (signup/signin, in-memory access + refresh rotation) +
    shell + mood check-in + journal (with crisis-support banner) + Playwright spec.
-3. Chat (SSE) + plans + insights + account/consent/export/delete + Google sign-in.
+3. ✅ 2026-07-03 — Chat (Oracle SSE via fetch-streaming with tool-confirm cards +
+   crisis banner; deterministic `/chat` fallback with suggestion chips), plan
+   (view/generate/optimistic step toggle), insights (real metrics + upcoming
+   nudges), account (consent, crisis region, trusted contact, export download,
+   typed DELETE). Google sign-in still open (needs the owner's OAuth client id).
 4. ✅ 2026-07-03 — Sleep diary page (check-in, honest summary, history). Content
    catalogue pages still open.
 5. Admin v2: ✅ item 1 (session refresh, 2026-07-03); analytics + user support open.

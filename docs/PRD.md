@@ -163,10 +163,11 @@ premium promises them · deeper voice polish · Android start.
 
 **Phase 2.5 — Web app v1 (parallel track):** slim authenticated browser client at
 `app.cerebrozen.in` — scope in [WEB_APP_PLAN.md](WEB_APP_PLAN.md); deliberately a
-subset, not parity (the verified market-leader pattern). First slice shipped
-2026-07-03 (`apps/app`: auth + refresh sessions, mood check-in, journal with crisis
-banner, sleep diary; admin session-refresh fix). Remaining: chat, plans, insights,
-content, account pages + admin analytics/user-support.
+subset, not parity (the verified market-leader pattern). Shipped 2026-07-03
+(`apps/app`: auth + refresh sessions, mood check-in, Oracle-streaming chat with crisis
+banner + tool confirms, journal, sleep diary, plan, insights, account with
+consent/region/contact/export/delete; admin session-refresh fix). Remaining: Google
+sign-in (owner OAuth id), content pages, admin analytics/user-support, Stripe.
 
 **Phase 3 — Expansion:** B2B/enterprise offering (employer reporting on the web app) ·
 Stripe web billing · human-support marketplace · HealthKit sleep read (module v1.5) ·

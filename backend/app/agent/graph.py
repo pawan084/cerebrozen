@@ -12,6 +12,7 @@ If Postgres checkpointing can't initialize, we fall back to the in-process
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from langchain_core.messages import SystemMessage
@@ -74,7 +75,12 @@ async def _make_checkpointer():
         )
         await pool.open()
         saver = AsyncPostgresSaver(pool)
-        await saver.setup()   # idempotent: creates the checkpoint tables
+        # Idempotent table/index creation. Bounded because setup() uses
+        # CREATE INDEX CONCURRENTLY, which waits on ALL open transactions —
+        # an idle-in-transaction app connection would otherwise hang this
+        # (and every /oracle request behind it) forever. The lifespan warms
+        # this pre-traffic; the timeout is the belt-and-braces fallback.
+        await asyncio.wait_for(saver.setup(), timeout=30)
         logger.info("Oracle checkpointer: Postgres (durable, multi-worker safe)")
         return saver
     except Exception as exc:  # noqa: BLE001

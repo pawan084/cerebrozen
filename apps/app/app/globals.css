@@ -119,3 +119,36 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 .crisis strong { color: var(--danger); }
 
 .footnote { color: var(--muted-2); font-size: 12px; margin-top: 10px; }
+
+/* Chat */
+.chatbox { min-height: 320px; }
+.msg { margin: 10px 0; display: flex; }
+.msg p { max-width: 82%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; }
+.msg.user { justify-content: flex-end; }
+.msg.user p { background: linear-gradient(135deg, var(--lav), var(--lav-2)); color: var(--cream); border-bottom-right-radius: 6px; }
+.msg.ai p { background: var(--card-strong); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.cursor { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.widgetcard {
+  border: 1px solid var(--line); background: var(--card);
+  border-radius: 14px; padding: 12px 14px; margin: 8px 0 4px; max-width: 82%;
+}
+.widgetcard strong { display: block; margin: 4px 0 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--soft); font-size: 13px;
+}
+.composer { display: flex; gap: 10px; }
+.composer input { flex: 1; }
+
+/* Progress bars (insights) */
+.bar { height: 6px; border-radius: 999px; background: var(--card-strong); margin-top: 8px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--lav), var(--lav-2)); }
+
+select {
+  width: 100%; padding: 11px 13px; border-radius: 12px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05);
+  color: var(--text); font: inherit;
+}
+select option { color: var(--ink); }

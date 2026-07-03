@@ -105,6 +105,10 @@ confirm-before-write: write tools call `interrupt()` → SSE emits `tool_confirm
 Enabled by `ORACLE_ENABLED=true` + an LLM key; otherwise clients fall back to `/chat`.
 State checkpoints to Postgres (`AsyncPostgresSaver` on the app DB), so paused confirmations
 survive restarts and resume on any gunicorn worker; MemorySaver is only a logged dev fallback.
+The graph warms in the app lifespan **before traffic**: checkpointer `setup()` issues
+`CREATE INDEX CONCURRENTLY`, which any idle-in-transaction pool connection blocks
+indefinitely — first-request init on a fresh DB hung forever until this (plus a 30 s
+setup timeout as the fallback).
 
 ### Data model
 
@@ -209,10 +213,15 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
 - **App** — the authenticated browser client (`app.cerebrozen.in`, deliberately a subset of
   iOS — see WEB_APP_PLAN.md). Session model: access token **in memory only**, refresh token
-  in localStorage, one `/auth/refresh` rotation retry per 401 (`lib/api.ts`). v1 pages:
-  signin/signup, Today (mood check-in + recent), Journal (composer + history + crisis
-  banner on elevated risk — never blocks), Sleep diary (morning check-in, honest weekly
-  summary, history). `noindex`.
+  in localStorage, one `/auth/refresh` rotation retry per 401 (`lib/api.ts`;
+  `authedFetch` is the shared base for JSON, SSE, and blob downloads). v1 pages:
+  signin/signup, Today (mood check-in + recent), Chat (Oracle SSE-over-POST via fetch
+  streaming — tokens/widgets/tool-confirm/crisis frames — with the deterministic `/chat`
+  fallback + suggestion chips), Journal (composer + history + crisis banner on elevated
+  risk — never blocks), Sleep diary (morning check-in, honest weekly summary, history),
+  Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
+  Account (consent, crisis region, trusted contact, export download, typed DELETE).
+  `noindex`.
 - **Admin** — one client component (`app/page.tsx`) with tabs overview/users/content/safety/waitlist.
   JWT via `/auth/login` in localStorage; now also stores the refresh token and rotates on
   401 (same pattern as App), so sessions outlive the 30-minute access token.
