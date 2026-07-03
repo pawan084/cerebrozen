@@ -33,8 +33,12 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   `SleepEntry` in `AppState`, mirrored to `/sleep`, demo-seeded under `-resetState`
   (today left unlogged so the CTA stays deterministic). 2026-07-03: build green,
   Sleep+Home UITests pass incl. new save→diary assertion.
-- [ ] Content: CBT-I-informed wind-down program as `/content` items (kind `sleep`) —
-  also closes the long-standing "Sleep rails are static `Dummy`" item below.
+- [x] Content: CBT-I-informed wind-down guide as `/content` items (new `wind_down`
+  kind: model docstring + admin CMS + iOS renderer + local fallback) and Sleep-tab
+  rails (stories/soundscapes/meditations) now server-driven with `Dummy` fallback;
+  seed is additive-by-title so new items reach existing dev DBs. 2026-07-03:
+  backend 185 passed / 95.68 %, live `/content?kind=wind_down` verified, admin
+  tsc clean. Home rails + search migration still open (item below).
 - [ ] Insights: compute real sleep trends + sleep × mood correlation in `insights.py`
   (honest "not enough data yet" empty state); retire illustrative strings.
 - [ ] Plans/nudges: plan generation reads sleep summary; new `wind_down` nudge kind off
@@ -130,8 +134,8 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   hard — rows/onboarding/talk no longer render photos (symbol wells only); the
   worst URLs (office, laptop-hands, portrait-near-crisis, desert road) retargeted
   to calm nature. What's left is ~13 Unsplash URLs on heroes + rail cards.
-- [ ] Most iOS catalogue content (sleep/meditations/programs rails) is `Dummy` static
-  data; only plan/insights/chat are server-driven. Migrate catalogue to `/content`.
+- [ ] Remaining `Dummy` catalogue: Home rails, Programs, Search (Sleep tab migrated
+  to `/content` 2026-07-03 — reuse `BackendService.catalogue` + fallback pattern).
 - [ ] Backend tests require a live Postgres (autouse `init_db()`); consider transactional
   isolation or a dedicated per-run test DB.
 - [ ] VoiceOver announcements for streaming chat text (labels/traits pass is done; live

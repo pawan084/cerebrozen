@@ -86,3 +86,18 @@ async def test_sleep_summary_aggregates(auth_client):
 async def test_sleep_requires_auth(client):
     assert (await client.get("/sleep")).status_code == 401
     assert (await client.get("/sleep/summary")).status_code == 401
+
+
+async def test_wind_down_content_kind(admin_client):
+    # The wind-down guide ships as ordinary catalogue items (kind wind_down) so
+    # the admin CMS can author it and iOS serves it with a local fallback.
+    r = await admin_client.post(
+        "/admin/content",
+        json={"title": "Slow the body first (test)", "subtitle": "Two minutes of soft breathing",
+              "kind": "wind_down", "symbol": "wind"},
+    )
+    assert r.status_code == 201
+
+    r = await admin_client.get("/content", params={"kind": "wind_down"})
+    assert r.status_code == 200
+    assert any(c["title"] == "Slow the body first (test)" for c in r.json())

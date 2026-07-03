@@ -227,7 +227,7 @@ function Users() {
   );
 }
 
-const KINDS = ["sleep", "meditation", "breath", "soundscape", "program"];
+const KINDS = ["sleep", "meditation", "breath", "soundscape", "program", "wind_down"];
 const EMPTY_CONTENT = {
   title: "", subtitle: "", kind: "meditation", symbol: "sparkles",
   image_url: "", duration_min: 0, premium: false, published: true,

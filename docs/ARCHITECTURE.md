@@ -214,12 +214,13 @@ Next.js 14 App Router, React 18, TS. Both consume `NEXT_PUBLIC_API_URL` (baked a
 Two designed-but-unbuilt tracks, kept out of the sections above so this doc stays a map
 of what exists:
 
-- **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — backend
-  `sleep_logs` + `/sleep` and the iOS diary (check-in/trend/history + sync) shipped
-  2026-07-03. Still planned: CBT-I wind-down content via `/content`, sleep-aware
-  insights/plans, `wind_down` nudge kind, `log_sleep` Oracle tool/widget (future
-  cross-stack contracts), opt-in HealthKit read in v1.5. Non-diagnostic framing is a
-  hard product rule.
+- **Sleep tracking module** ([SLEEP_TRACKING.md](SLEEP_TRACKING.md)) — shipped
+  2026-07-03: backend `sleep_logs` + `/sleep`, the iOS diary (check-in/trend/history
+  + sync), and the CBT-I-informed wind-down guide (`wind_down` content kind; Sleep-tab
+  rails now read `/content` with a `Dummy` offline fallback via
+  `BackendService.catalogue`). Still planned: sleep-aware insights/plans, `wind_down`
+  nudge kind, `log_sleep` Oracle tool/widget (future cross-stack contracts), opt-in
+  HealthKit read in v1.5. Non-diagnostic framing is a hard product rule.
 - **Web app v1 + admin v2** ([WEB_APP_PLAN.md](WEB_APP_PLAN.md)) — `apps/app` (Next.js,
   :3002, `app.cerebrozen.in`): slim authenticated client over the existing API (it is
   already browser-ready: Bearer JWT + CORS; add the new origin). Session = in-memory

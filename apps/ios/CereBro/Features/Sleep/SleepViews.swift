@@ -3,13 +3,28 @@ import SwiftUI
 // MARK: - Sleep home (tab root)
 struct SleepHomeView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var backend: BackendService
     @State private var playFeatured = false
 
+    /// Server catalogue when reachable, local `Dummy` rails otherwise — the
+    /// long-promised `/content` migration for the Sleep tab.
+    private var sleepItems: [ContentItem] {
+        let served = (backend.catalogue["sleep"] ?? []) + (backend.catalogue["soundscape"] ?? [])
+        return served.isEmpty ? Dummy.sleepContent : served
+    }
+    private var meditationItems: [ContentItem] {
+        let served = backend.catalogue["meditation"] ?? []
+        return served.isEmpty ? Dummy.meditations : served
+    }
+    private var windDownItems: [ContentItem] {
+        let served = backend.catalogue["wind_down"] ?? []
+        return served.isEmpty ? Dummy.windDown : served
+    }
     /// The featured "Tonight" story (first sleep item) — powers the hero CTA.
-    private var featured: ContentItem { Dummy.sleepContent[0] }
+    private var featured: ContentItem { sleepItems[0] }
     /// Favorited stories/sounds, drawn from the full sleep catalogue.
     private var favoriteItems: [ContentItem] {
-        (Dummy.sleepContent + Dummy.meditations).filter { state.isSleepFavorite($0.title) }
+        (sleepItems + meditationItems).filter { state.isSleepFavorite($0.title) }
     }
 
     var body: some View {
@@ -36,16 +51,53 @@ struct SleepHomeView: View {
                        systemImage: "book.closed") { SleepDiaryView() }
             }
 
+            SectionTitle(title: "Wind down tonight")
+            ForEach(windDownItems) { WindDownTipRow(tip: $0) }
+            Text("A gentle routine drawn from sleep-therapy practice — guidance, not treatment.")
+                .appFont(11).foregroundStyle(Theme.Palette.muted2)
+
             if !favoriteItems.isEmpty {
                 SectionTitle(title: "Favorites", trailing: nil)
                 ForEach(favoriteItems) { SleepRow(item: $0) }
             }
             SectionTitle(title: "Sleep stories & sounds")
-            ForEach(Dummy.sleepContent) { SleepRow(item: $0) }
-            NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView() }
+            ForEach(sleepItems) { SleepRow(item: $0) }
+            NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView(items: meditationItems) }
             InsightCard(label: "Auto-stop timer", title: "Sleep-safe playback fades out when you set the timer.")
         }
         .navigationDestination(isPresented: $playFeatured) { PlayerView(item: featured) }
+        .task { await backend.loadCatalogue() }
+    }
+}
+
+/// One wind-down tip: symbol well + copy. The breathing tip opens the pacer;
+/// the rest are guidance cards.
+struct WindDownTipRow: View {
+    let tip: ContentItem
+    private var opensBreathing: Bool { tip.symbol == "wind" }
+
+    var body: some View {
+        if opensBreathing {
+            NavRow(title: tip.title, subtitle: tip.subtitle, systemImage: tip.symbol) { BreathingView() }
+        } else {
+            Card {
+                HStack(spacing: 12) {
+                    Image(systemName: tip.symbol)
+                        .appFont(15, weight: .semibold)
+                        .foregroundStyle(Theme.Palette.lav)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.Stroke.iconWell, in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tip.title).appFont(14, weight: .bold).foregroundStyle(Theme.Palette.text)
+                        Text(tip.subtitle).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(tip.title). \(tip.subtitle)")
+        }
     }
 }
 
@@ -77,11 +129,13 @@ struct SleepRow: View {
 
 // MARK: - Meditation library
 struct MeditationLibraryView: View {
+    /// Server-driven when the caller has the catalogue; `Dummy` otherwise.
+    var items: [ContentItem] = Dummy.meditations
     var body: some View {
         ScreenScaffold(eyebrow: "Mindfulness content", title: "Meditation Library",
                        trailingSystemImage: "figure.mind.and.body", accent: Theme.Accent.sleep) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(Dummy.meditations) { m in
+                ForEach(items) { m in
                     NavigationLink { PlayerView(item: m) } label: { MeditationCard(item: m) }.buttonStyle(.pressable)
                 }
             }

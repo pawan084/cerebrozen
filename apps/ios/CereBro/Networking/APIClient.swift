@@ -52,6 +52,18 @@ struct RemoteMood: Codable, Identifiable {
     let created_at: String
 }
 
+/// One published catalogue item from the public `/content` route.
+struct RemoteContent: Codable, Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let kind: String
+    let symbol: String
+    let image_url: String
+    let duration_min: Int
+    let premium: Bool
+}
+
 struct RemoteSleep: Codable, Identifiable {
     let id: String
     let date: String
@@ -260,6 +272,11 @@ actor APIClient {
     func createMood(mood: String, note: String, symbol: String, intensity: Int) async throws -> RemoteMood {
         try await request("/moods", method: "POST",
                           json: ["mood": mood, "note": note, "symbol": symbol, "intensity": intensity])
+    }
+
+    /// The published content catalogue (public route — works signed out).
+    func contentList() async throws -> [RemoteContent] {
+        try await request("/content", method: "GET", authed: false)
     }
 
     /// Upsert the sleep-diary entry for a date (server keeps one row per night).

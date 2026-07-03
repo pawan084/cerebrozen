@@ -77,6 +77,16 @@ enum Dummy {
         .init(title: "Deep night drift", subtitle: "Soundscape · 45 min", symbol: "moon.zzz", imageURL: Img.sleep)
     ]
 
+    // Wind-down guide (CBT-I-informed; offline fallback — the server's
+    // `wind_down` catalogue kind overrides it when reachable). Awareness copy
+    // only, mirroring backend/app/seed.py.
+    static let windDown: [ContentItem] = [
+        .init(title: "Keep a steady wake time", subtitle: "Anchors your body clock — even after a rough night", symbol: "alarm", imageURL: ""),
+        .init(title: "Dim the inputs", subtitle: "Screens down and lights low, 30 minutes before bed", symbol: "moon.haze", imageURL: ""),
+        .init(title: "Bed is for sleep", subtitle: "Awake 20+ minutes? Get up, reset gently, return sleepy", symbol: "bed.double", imageURL: ""),
+        .init(title: "Slow the body first", subtitle: "Two minutes of soft breathing before lights out", symbol: "wind", imageURL: "")
+    ]
+
     // Meditation library
     static let meditations: [ContentItem] = [
         .init(title: "Morning calm", subtitle: "Start your day · 6 min", symbol: "sun.max", imageURL: Img.calm),

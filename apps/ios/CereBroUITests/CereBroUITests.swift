@@ -459,6 +459,13 @@ final class CereBroUITests: XCTestCase {
         openTab(app, "Sleep")
         snapshot(app, "sleep-00")
 
+        // Wind-down guide renders from the local fallback under -resetState
+        // (the catalogue fetch is deliberately skipped for determinism).
+        XCTAssertTrue(app.staticTexts["Wind down tonight"].waitForExistence(timeout: 4),
+                      "Wind-down guide section missing from the Sleep root")
+        XCTAssertTrue(app.staticTexts["Keep a steady wake time"].exists,
+                      "Wind-down fallback tips missing")
+
         tap(app, "Meditation library")
         snapshot(app, "sleep-01-library")
         back(app)

@@ -22,6 +22,10 @@ final class BackendService: ObservableObject {
     @Published private(set) var suggestions: [RemoteSuggestion] = []
     /// Personalized, tappable conversation starters from the self-reflection.
     @Published private(set) var starters: [RemoteTopic] = []
+    /// Server content catalogue grouped by kind (public route; empty offline —
+    /// screens fall back to their local `Dummy` rails).
+    @Published private(set) var catalogue: [String: [ContentItem]] = [:]
+    private var catalogueLoaded = false
     @Published var baseURL: String = APIClient.defaultBaseURL
 
     // Oracle (streaming agent) state.
@@ -211,6 +215,23 @@ final class BackendService: ObservableObject {
         guard isConnected else { return }
         plan = try? await APIClient.shared.activePlan()
         insight = try? await APIClient.shared.weeklyInsights()
+    }
+
+    // MARK: Content catalogue (public — no sign-in required)
+
+    /// Fetch the published catalogue once per launch. Skipped under `-resetState`
+    /// so UITest rails stay deterministic on the local `Dummy` fallback.
+    func loadCatalogue() async {
+        guard !catalogueLoaded, !UserDefaults.standard.bool(forKey: "resetState") else { return }
+        guard let items = try? await APIClient.shared.contentList(), !items.isEmpty else { return }
+        catalogueLoaded = true
+        var grouped: [String: [ContentItem]] = [:]
+        for item in items {
+            grouped[item.kind, default: []].append(
+                ContentItem(title: item.title, subtitle: item.subtitle,
+                            symbol: item.symbol, imageURL: item.image_url))
+        }
+        catalogue = grouped
     }
 
     // MARK: Assessment (self-reflection → conversation starters)

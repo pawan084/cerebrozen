@@ -13,7 +13,7 @@ class ContentItem(Base):
 
     title: Mapped[str] = mapped_column(String(160), index=True)
     subtitle: Mapped[str] = mapped_column(String(255), default="")
-    # sleep | meditation | breath | soundscape | program
+    # sleep | meditation | breath | soundscape | program | wind_down
     kind: Mapped[str] = mapped_column(String(40), index=True)
     symbol: Mapped[str] = mapped_column(String(60), default="sparkles")
     image_url: Mapped[str] = mapped_column(String(1024), default="")

@@ -56,10 +56,10 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 |---|---|---|
 | Player: real audio, mix layers, volume, auto-stop fade timer | ✅ | Bundled studio loops + synth fallback; lock-screen controls |
 | Favorites | ✅ | Persisted by title |
-| Stories/meditation catalogue | 🟡 | Static `Dummy` items; audio maps to 4 bundled loops by keyword |
+| Stories/meditation catalogue | 🟡 | Sleep-tab rails server-driven via `/content` with local fallback (2026-07-03); audio still maps to 4 bundled loops by keyword; Home rails + search remain static |
 | Downloads | ⚪ | Paywall copy only — no download feature exists |
 | Sleep diary + morning check-in (manual, quality/bed/wake) | ✅ | Shipped 2026-07-03: iOS check-in (Home + Sleep tab), 7-night trend strip, diary history — local-first, mirrored to `/sleep` (`sleep_logs`); UITest-covered. Plan: [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
-| Wind-down program (CBT-I-informed, non-diagnostic) | ⚪ | The evidence engine (dCBT-I: ISI SMD −0.85, depression −0.47); ships as `/content` items, finally retiring the `Dummy` sleep rails |
+| Wind-down program (CBT-I-informed, non-diagnostic) | ✅ | Shipped 2026-07-03: "Wind down tonight" guide (`wind_down` catalogue kind, admin-authorable, offline fallback; breathing tip opens the pacer). Evidence base: dCBT-I ISI SMD −0.85, depression −0.47 |
 | Real sleep insights (duration/consistency trends, sleep × mood) | ⚪ | Replaces today's illustrative Insights strings with computed diary data |
 | HealthKit sleep read (Apple Watch stages, opt-in) | ⚪ | v1.5 enhancer only — phone-only staging rejected by evidence; never a headline accuracy claim |
 
