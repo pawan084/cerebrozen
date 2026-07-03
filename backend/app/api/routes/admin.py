@@ -6,10 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_admin
+from app.models.chat import ChatMessage
+from app.models.consent import Consent
 from app.models.content import ContentItem
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
+from app.models.nudge import Nudge
 from app.models.safety import SafetyEvent
+from app.models.sleep import SleepLog
+from app.models.trusted_contact import TrustedContact
 from app.models.user import User
 from app.schemas.content_data import (
     ContentCreate,
@@ -18,7 +23,7 @@ from app.schemas.content_data import (
     SafetyEventOut,
 )
 from app.schemas.user import UserOut
-from app.services import nudges
+from app.services import metrics, nudges
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -43,11 +48,80 @@ async def stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+# ── First-party analytics (aggregates only — see services/metrics.py) ───
+@router.get("/metrics/overview")
+async def metrics_overview(db: AsyncSession = Depends(get_db)):
+    return await metrics.overview(db)
+
+
 # ── Users ───────────────────────────────────────────────────────────────
 @router.get("/users", response_model=list[UserOut])
 async def list_users(limit: int = 100, offset: int = 0, db: AsyncSession = Depends(get_db)):
     rows = await db.scalars(select(User).order_by(User.created_at.desc()).limit(limit).offset(offset))
     return rows.all()
+
+
+@router.get("/users/{user_id}")
+async def user_detail(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Support view: account state + activity COUNTS only. Journal, chat, and
+    sleep contents deliberately never cross this endpoint — support can act on
+    an account without reading a private life."""
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    async def count(model, *extra) -> int:
+        return (
+            await db.scalar(
+                select(func.count()).select_from(model).where(model.user_id == user_id, *extra)
+            )
+        ) or 0
+
+    last_active = None
+    for model in (MoodLog, JournalEntry, ChatMessage, SleepLog):
+        latest = await db.scalar(
+            select(func.max(model.created_at)).where(model.user_id == user_id)
+        )
+        if latest and (last_active is None or latest > last_active):
+            last_active = latest
+
+    consent = await db.scalar(select(Consent).where(Consent.user_id == user_id))
+    has_contact = (
+        await db.scalar(select(func.count()).select_from(TrustedContact).where(TrustedContact.user_id == user_id))
+    ) or 0
+
+    return {
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "language": user.language,
+            "companion": user.companion,
+            "region": user.region,
+            "subscription_tier": user.subscription_tier,
+            "is_active": user.is_active,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at,
+        },
+        "counts": {
+            "moods": await count(MoodLog),
+            "journals": await count(JournalEntry),
+            "chat_messages": await count(ChatMessage, ChatMessage.role == "user"),
+            "sleep_logs": await count(SleepLog),
+            "open_safety_events": await count(SafetyEvent, SafetyEvent.resolved.is_(False)),
+            "pending_nudges": await count(Nudge, Nudge.status == "scheduled"),
+        },
+        "consent": None
+        if consent is None
+        else {
+            "mood_history": consent.mood_history,
+            "ai_memory": consent.ai_memory,
+            "voice_storage": consent.voice_storage,
+            "model_training": consent.model_training,
+        },
+        "trusted_contact": bool(has_contact),
+        "last_active": last_active,
+    }
 
 
 @router.patch("/users/{user_id}/active", response_model=UserOut)

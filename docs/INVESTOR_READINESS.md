@@ -49,12 +49,13 @@ bar for evidence of traction is set by the winners.
 
 ## 3. Top gaps to close (ordered)
 
-1. **We can't report a single metric.** The "no trackers" promise currently means no
-   D1/D30 retention, no conversion funnel, no churn — the exact numbers in §1. Action:
-   first-party, privacy-preserving aggregate analytics on our own backend (event counts,
-   cohort aggregates; no third-party SDKs, no device IDs), disclosed in the privacy hub.
-   This resolves the open "analytics vs no-trackers" decision in TODO.md — the answer is
-   first-party-and-disclosed, because the alternative is unfundable *and* unmeasurable.
+1. **We can't report a single metric.** ~~The "no trackers" promise currently means no
+   D1/D30 retention, no conversion funnel, no churn.~~ **Instrument shipped 2026-07-03**:
+   `GET /admin/metrics/overview` + the admin Analytics tab compute DAU/WAU/MAU,
+   signup-cohort D1/D7/D30 retention, the activation funnel, and 7-day engagement as
+   first-party SQL aggregates (no third-party SDKs, no device IDs, no content read).
+   Remaining: disclose the first-party measurement in the privacy hub copy, and let the
+   numbers accumulate post-launch.
 2. **Not live.** Benchmarks attach to a shipped product. Phase 0/1 of the PRD roadmap
    (TestFlight → App Store v1) precedes everything in this document.
 3. **No annual plan.** Pricing is monthly-only; the category earns 57–59 % of revenue on

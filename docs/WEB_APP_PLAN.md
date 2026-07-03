@@ -129,5 +129,6 @@ a 30-minute localStorage session. Planned, in order:
    typed DELETE). Google sign-in still open (needs the owner's OAuth client id).
 4. ✅ 2026-07-03 — Sleep diary page (check-in, honest summary, history). Content
    catalogue pages still open.
-5. Admin v2: ✅ item 1 (session refresh, 2026-07-03); analytics + user support open.
+5. ✅ 2026-07-03 — Admin v2 items 1–3: session refresh, first-party Analytics tab
+   (`/admin/metrics/overview`), metadata-only user-support view. Nudge authoring open.
 6. Stripe billing + employer/B2B reporting exploration.

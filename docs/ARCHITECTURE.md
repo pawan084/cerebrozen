@@ -76,7 +76,7 @@ cere/
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
-| `/admin` | stats, users, content CRUD, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only), content CRUD, safety review queue, nudges/dispatch (manual cron), waitlist |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 
 ### Key services
@@ -222,7 +222,9 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
   Account (consent, crisis region, trusted contact, export download, typed DELETE).
   `noindex`.
-- **Admin** — one client component (`app/page.tsx`) with tabs overview/users/content/safety/waitlist.
+- **Admin** — one client component (`app/page.tsx`) with tabs
+  overview/analytics/users/content/safety/waitlist. Analytics renders the first-party
+  aggregates (`services/metrics.py`); Users offers a metadata-only detail drill-down.
   JWT via `/auth/login` in localStorage; now also stores the refresh token and rotates on
   401 (same pattern as App), so sessions outlive the 30-minute access token.
 - Shared brand tokens live as CSS vars in each app's `globals.css` (mirrors iOS Theme;

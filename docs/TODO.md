@@ -104,9 +104,11 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   add `GET /users/me/streak` so clients stop duplicating the logic.
 - [x] Playwright spec for the web app in the existing `e2e/` stack (signup → check-in →
   journal → sleep → reload survives via refresh rotation). 2026-07-03.
-- [ ] Admin v2 remaining: per-user support view (`GET /admin/users/{id}` — metadata only,
-  journal/chat bodies stay unreadable), first-party analytics tab (`/admin/metrics/*`
-  SQL aggregates: D1/D7/D30 actives, funnel, plan completion), nudge authoring endpoints.
+- [x] Admin v2 (2026-07-03): first-party Analytics tab (`GET /admin/metrics/overview` —
+  DAU/WAU/MAU, signup-cohort D1/D7/D30 retention, activation funnel, 7-day engagement;
+  aggregates only, no per-user browsing) + per-user support view (`GET /admin/users/{id}`
+  — counts/consent/last-active; journal/chat/sleep contents never cross the endpoint,
+  test-pinned). Remaining: nudge authoring endpoints.
 - [ ] Post-v1: Stripe web billing (`stripe.py` + webhook → same `subscription_tier`
   contract as App Store), Web Push (VAPID) or email nudges for web-only users,
   `/auth/apple` Services-ID audience for web Apple sign-in.

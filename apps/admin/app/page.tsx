@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, clearToken, getToken, login, setToken } from "@/lib/api";
 
-type Tab = "overview" | "users" | "content" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "Overview", icon: "▣" },
+  { key: "analytics", label: "Analytics", icon: "∿" },
   { key: "users", label: "Users", icon: "☺" },
   { key: "content", label: "Content", icon: "♪" },
   { key: "safety", label: "Safety", icon: "♥" },
@@ -64,6 +65,7 @@ export default function AdminPage() {
 
       <main className="main">
         {tab === "overview" && <Overview />}
+        {tab === "analytics" && <Analytics />}
         {tab === "users" && <Users />}
         {tab === "content" && <Content />}
         {tab === "safety" && <Safety />}
@@ -185,8 +187,145 @@ function Overview() {
   );
 }
 
+function Analytics() {
+  const { data, err } = useData<any>(() => api("/admin/metrics/overview"));
+  const pct = (r: number | null) => (r === null || r === undefined ? "n/a" : `${Math.round(r * 100)}%`);
+  const funnelSteps = data
+    ? [
+        { l: "Signed up", n: data.funnel.signups },
+        { l: "First mood check-in", n: data.funnel.mood },
+        { l: "First journal entry", n: data.funnel.journal },
+        { l: "First sleep log", n: data.funnel.sleep },
+        { l: "Premium", n: data.funnel.premium },
+      ]
+    : [];
+  const funnelMax = Math.max(1, ...funnelSteps.map((s) => s.n));
+
+  return (
+    <>
+      <h1 className="page-title serif">Analytics</h1>
+      <div className="page-sub">
+        First-party aggregates computed on our own Postgres — no third-party SDKs,
+        no per-user browsing, no content read.
+      </div>
+      {err && <div className="empty">{err}</div>}
+      {data && (
+        <>
+          <div className="stats">
+            <div className="stat"><div className="n">{data.actives.dau}</div><div className="l">Active today</div></div>
+            <div className="stat"><div className="n">{data.actives.wau}</div><div className="l">Active 7d</div></div>
+            <div className="stat"><div className="n">{data.actives.mau}</div><div className="l">Active 30d</div></div>
+            <div className="stat"><div className="n">{data.signups.d7}</div><div className="l">Signups 7d</div></div>
+            <div className="stat"><div className="n">{data.signups.total}</div><div className="l">Accounts</div></div>
+          </div>
+
+          <div className="card" style={{ marginTop: 16, padding: 18 }}>
+            <h3 className="serif" style={{ marginBottom: 10 }}>Retention (signup cohorts, last 35 days)</h3>
+            <table>
+              <thead><tr><th>Window</th><th>Cohort</th><th>Retained</th><th>Rate</th></tr></thead>
+              <tbody>
+                {(["d1", "d7", "d30"] as const).map((k) => (
+                  <tr key={k}>
+                    <td>{k.toUpperCase()}</td>
+                    <td>{data.retention[k].cohort}</td>
+                    <td>{data.retention[k].retained}</td>
+                    <td>{pct(data.retention[k].rate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card" style={{ marginTop: 16, padding: 18 }}>
+            <h3 className="serif" style={{ marginBottom: 10 }}>Activation funnel (lifetime)</h3>
+            {funnelSteps.map((s) => (
+              <div key={s.l} style={{ margin: "8px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span>{s.l}</span><span className="mono">{s.n}</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,0.08)", marginTop: 4 }}>
+                  <div style={{
+                    height: "100%", borderRadius: 99, width: `${(s.n / funnelMax) * 100}%`,
+                    background: "linear-gradient(90deg, var(--lav), var(--lav-2))",
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{ marginTop: 16, padding: 18 }}>
+            <h3 className="serif" style={{ marginBottom: 10 }}>Engagement, trailing 7 days</h3>
+            <table>
+              <tbody>
+                {Object.entries(data.engagement_7d).map(([k, v]) => (
+                  <tr key={k}><td>{k.replace(/_/g, " ")}</td><td className="mono">{String(v)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data, err } = useData<any>(() => api(`/admin/users/${id}`), [id]);
+  return (
+    <div className="card" style={{ marginTop: 16, padding: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h3 className="serif">Account details</h3>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+      </div>
+      <div className="page-sub" style={{ marginTop: 4 }}>
+        Counts and account state only — journal, chat, and sleep contents never leave the user's space.
+      </div>
+      {err && <div className="empty">{err}</div>}
+      {data && (
+        <table style={{ marginTop: 8 }}>
+          <tbody>
+            <tr><td>Email</td><td className="mono">{data.user.email}</td></tr>
+            <tr><td>Tier</td><td>{data.user.subscription_tier || "free"}</td></tr>
+            <tr><td>Region / language</td><td>{data.user.region || "auto"} · {data.user.language}</td></tr>
+            <tr><td>Joined</td><td>{fmtDate(data.user.created_at)}</td></tr>
+            <tr><td>Last active</td><td>{data.last_active ? fmtDate(data.last_active) : "—"}</td></tr>
+            <tr>
+              <td>Activity</td>
+              <td>
+                {data.counts.moods} moods · {data.counts.journals} journals ·{" "}
+                {data.counts.chat_messages} chats · {data.counts.sleep_logs} sleep logs
+              </td>
+            </tr>
+            <tr>
+              <td>Safety</td>
+              <td>
+                {data.counts.open_safety_events} open events ·{" "}
+                {data.trusted_contact ? "trusted contact set" : "no trusted contact"}
+              </td>
+            </tr>
+            <tr>
+              <td>Consent</td>
+              <td>
+                {data.consent
+                  ? Object.entries(data.consent).map(([k, v]) => (
+                      <span key={k} className={`tag ${v ? "ok" : "muted"}`} style={{ marginRight: 6 }}>
+                        {k.replace(/_/g, " ")}
+                      </span>
+                    ))
+                  : "—"}
+              </td>
+            </tr>
+            <tr><td>Pending nudges</td><td>{data.counts.pending_nudges}</td></tr>
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function Users() {
   const { data, err, reload } = useData<any[]>(() => api("/admin/users"));
+  const [selected, setSelected] = useState<string | null>(null);
   async function toggle(u: any) {
     await api(`/admin/users/${u.id}/active?active=${!u.is_active}`, { method: "PATCH" });
     reload();
@@ -213,9 +352,14 @@ function Users() {
                 <td>{u.is_active ? <span className="tag ok">active</span> : <span className="tag crisis">disabled</span>}</td>
                 <td>{fmtDate(u.created_at)}</td>
                 <td>
-                  <button className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>
-                    {u.is_active ? "Disable" : "Enable"}
-                  </button>
+                  <div className="row-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => setSelected(u.id === selected ? null : u.id)}>
+                      Details
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>
+                      {u.is_active ? "Disable" : "Enable"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -223,6 +367,7 @@ function Users() {
         </table>
         {data && data.length === 0 && <div className="empty">No users yet.</div>}
       </div>
+      {selected && <UserDetail id={selected} onClose={() => setSelected(null)} />}
     </>
   );
 }

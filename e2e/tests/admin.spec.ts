@@ -28,6 +28,24 @@ test.describe("Admin dashboard", () => {
     await expect(page.getByText("admin@cerebro.app")).toBeVisible();
   });
 
+  test("analytics tab shows first-party aggregates", async ({ page }) => {
+    await nav(page, "Analytics").click();
+    await expect(page.getByText("Active today")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Activation funnel/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Retention/ })).toBeVisible();
+  });
+
+  test("user details show counts, never content", async ({ page }) => {
+    await nav(page, "Users").click();
+    await page
+      .locator("tr", { hasText: "admin@cerebro.app" })
+      .getByRole("button", { name: "Details" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Account details" })).toBeVisible();
+    await expect(page.getByText(/moods ·/)).toBeVisible();
+    await expect(page.getByText(/contents never leave/)).toBeVisible();
+  });
+
   test("content can be created and deleted", async ({ page }) => {
     await nav(page, "Content").click();
     await page.getByRole("button", { name: /new item/i }).click();
