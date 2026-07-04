@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     region: str = ""
     subscription_tier: str = "free"
     subscription_expires_at: datetime | None = None
+    email_nudges: bool = False
     age_confirmed_at: datetime | None = None
     ai_disclosure_ack_at: datetime | None = None
     is_admin: bool
@@ -52,6 +53,7 @@ class UserUpdate(BaseModel):
     motivations: list[str] | None = None
     timezone: str | None = None
     region: str | None = None
+    email_nudges: bool | None = None
 
 
 class PushTokenUpdate(BaseModel):

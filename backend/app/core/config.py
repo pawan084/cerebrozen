@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     # bundle ID (or Services ID for web). Defaults to the APNs bundle id below.
     # Verification is always attempted; a bad/foreign token simply fails to 401.
     apple_client_id: str = ""
+    # Web Sign in with Apple (apps/app) uses a separate Services ID audience.
+    apple_services_client_id: str = ""
 
     # Sign in with Google. `google_client_id` is the OAuth client ID (the token
     # *audience*). Leave empty to skip audience checks (dev); set it in production.

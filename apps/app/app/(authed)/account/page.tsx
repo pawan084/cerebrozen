@@ -98,6 +98,17 @@ export default function Account() {
     setStatus("Export downloaded.");
   }
 
+  async function toggleEmailNudges() {
+    if (!me) return;
+    const next = !me.email_nudges;
+    setMe({ ...me, email_nudges: next });
+    try {
+      setMe(await api("/users/me", { method: "PATCH", body: JSON.stringify({ email_nudges: next }) }));
+    } catch {
+      setMe(me);
+    }
+  }
+
   async function upgrade() {
     setBillingMsg("");
     try {
@@ -131,6 +142,17 @@ export default function Account() {
         <section className="card">
           <h2>{me.name}</h2>
           <p className="sub">{me.email} · {me.subscription_tier ?? "free"} tier</p>
+          <label className="row" style={{ marginTop: 10, gap: 10 }}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={!!me.email_nudges}
+              onChange={toggleEmailNudges}
+              aria-label="Email nudges"
+              style={{ width: "auto" }}
+            />
+            <span className="sub">Email me my nudges — the browser has no push, so gentle reminders arrive by email instead.</span>
+          </label>
           {(me.subscription_tier ?? "free") === "free" && (
             <div style={{ marginTop: 12 }}>
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>

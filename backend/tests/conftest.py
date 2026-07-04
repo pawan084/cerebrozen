@@ -2,18 +2,49 @@ import os
 
 os.environ["TESTING"] = "1"  # must be set before importing the app/engine
 
+# Tests run in their OWN database (`<name>_test`, created on demand) so
+# create_all never races the dev database's Alembic state or pollutes dev
+# data. Active whenever DATABASE_URL is set in the environment (the container
+# and CI paths); a bare local run keeps the legacy shared-DB behavior.
+_BASE_DB_URL = os.environ.get("DATABASE_URL", "")
+if _BASE_DB_URL and not _BASE_DB_URL.rsplit("/", 1)[-1].endswith("_test"):
+    os.environ["DATABASE_URL"] = _BASE_DB_URL + "_test"
+
 import uuid  # noqa: E402
 
+import asyncpg  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 from app.core.database import init_db  # noqa: E402
 from app.main import app  # noqa: E402
 
+_test_db_ready = False
+
+
+async def _ensure_test_db():
+    """Recreate the dedicated test database once per run — a fresh schema every
+    time, so model changes never leave a stale-column database behind (needs
+    CREATEDB on the base connection — true for the compose superuser and CI's
+    service user)."""
+    global _test_db_ready
+    if _test_db_ready or not _BASE_DB_URL:
+        _test_db_ready = True
+        return
+    name = os.environ["DATABASE_URL"].rsplit("/", 1)[-1]
+    conn = await asyncpg.connect(dsn=_BASE_DB_URL.replace("postgresql+asyncpg://", "postgresql://"))
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        await conn.execute(f'CREATE DATABASE "{name}"')
+    finally:
+        await conn.close()
+    _test_db_ready = True
+
 
 @pytest_asyncio.fixture(autouse=True)
 async def _schema():
     """Ensure tables exist (idempotent; requires Postgres to be reachable)."""
+    await _ensure_test_db()
     await init_db()
 
 

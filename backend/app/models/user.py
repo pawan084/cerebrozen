@@ -36,6 +36,9 @@ class User(Base):
 
     # Proactive: device push token (APNs/FCM).
     push_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Web-only users have no push token; opting in delivers due nudges by
+    # email instead (account-page toggle; off by default).
+    email_nudges: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)

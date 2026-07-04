@@ -72,14 +72,22 @@ async def verify_identity_token(identity_token: str) -> dict | None:
         if key is None:
             return None
 
-    try:
-        return jwt.decode(
-            identity_token,
-            key,
-            algorithms=["RS256"],
-            audience=settings.apple_audience,
-            issuer=_APPLE_ISSUER,
-        )
-    except JWTError as exc:
-        logger.info("Apple token rejected: %s", exc)
-        return None
+    # Native tokens carry the app bundle id as `aud`; web Sign in with Apple
+    # (apps/app) uses a separate Services ID — accept either when configured.
+    audiences = [settings.apple_audience]
+    if settings.apple_services_client_id:
+        audiences.append(settings.apple_services_client_id)
+    last_error: JWTError | None = None
+    for audience in audiences:
+        try:
+            return jwt.decode(
+                identity_token,
+                key,
+                algorithms=["RS256"],
+                audience=audience,
+                issuer=_APPLE_ISSUER,
+            )
+        except JWTError as exc:
+            last_error = exc
+    logger.info("Apple token rejected: %s", last_error)
+    return None

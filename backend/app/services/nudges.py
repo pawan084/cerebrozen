@@ -18,7 +18,7 @@ from app.models.mood import MoodLog
 from app.models.nudge import Nudge
 from app.models.sleep import SleepLog
 from app.models.user import User
-from app.services import notifications
+from app.services import email, notifications
 
 
 def _next_at(hour: int, minute: int = 0) -> datetime:
@@ -156,9 +156,16 @@ async def dispatch_due(db: AsyncSession) -> int:
             nudge.status = "failed"
             continue
         if not user.push_token:
-            # Nothing to deliver to — record honestly instead of faking "sent";
-            # the admin safety/ops views can query these.
-            nudge.status = "skipped"
+            # Web-only users can opt into email delivery (users.email_nudges,
+            # account-page toggle); otherwise record honestly instead of
+            # faking "sent" — the admin safety/ops views can query these.
+            if user.email_nudges:
+                await email.send_email(user.email, nudge.title, nudge.body)
+                nudge.status = "sent"
+                nudge.sent_at = now
+                sent += 1
+            else:
+                nudge.status = "skipped"
             continue
         if await notifications.send_push(user, nudge):
             nudge.status = "sent"
