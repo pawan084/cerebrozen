@@ -18,6 +18,7 @@ from app.models.chat import ChatMessage
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
+from app.models.product_event import ProductEvent
 from app.models.sleep import SleepLog
 from app.models.user import User
 
@@ -179,4 +180,37 @@ async def overview(db: AsyncSession) -> dict:
             "sleep": await ever(SleepLog),
             "premium": premium,
         },
+    }
+
+
+#: Canonical onboarding step order (mirrors iOS OnboardingFlow's switch).
+ONBOARDING_STEPS = [
+    "welcome", "age_gate", "disclosure", "language", "state_check",
+    "first_reset", "first_plan", "signup", "consent", "notifications",
+]
+
+
+async def onboarding_funnel(db: AsyncSession, days: int = 30) -> dict:
+    """Pre-account onboarding funnel from the anonymous event stream: unique
+    installs reaching each step, completions, and paywall interest. Aggregates
+    only — the anon ids never leave this function."""
+    since = utcnow() - timedelta(days=days)
+
+    async def uniques(name: str, step: str | None = None) -> int:
+        q = select(func.count(func.distinct(ProductEvent.anon_id))).where(
+            ProductEvent.name == name, ProductEvent.created_at >= since
+        )
+        if step is not None:
+            q = q.where(ProductEvent.step == step)
+        return (await db.scalar(q)) or 0
+
+    return {
+        "days": days,
+        "steps": [
+            {"step": s, "installs": await uniques("onboarding_step", s)}
+            for s in ONBOARDING_STEPS
+        ],
+        "completed": await uniques("onboarding_done"),
+        "paywall_views": await uniques("paywall_view"),
+        "paywall_taps": await uniques("paywall_cta"),
     }

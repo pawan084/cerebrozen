@@ -76,7 +76,8 @@ cere/
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only), content CRUD, nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD, nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 
 ### Key services
@@ -205,6 +206,8 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
 | Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.{monthly,annual}`, `.premiumhuman.{monthly,annual}`) |
+| Onboarding funnel step names | `services/metrics.ONBOARDING_STEPS` | `OnboardingFlow.stepNames` |
+| Analytics event vocabulary | `routes/events.ALLOWED_EVENTS` | `Analytics.track` call sites |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 

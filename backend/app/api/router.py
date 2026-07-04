@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     chat,
     content,
+    events,
     insights,
     journal,
     moods,
@@ -32,5 +33,6 @@ api_router.include_router(insights.router)
 api_router.include_router(oracle.router)
 api_router.include_router(voice.router)
 api_router.include_router(waitlist.router)
+api_router.include_router(events.router)
 api_router.include_router(admin.router)
 api_router.include_router(webhooks.router)

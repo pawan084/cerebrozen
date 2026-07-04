@@ -10,8 +10,12 @@ struct PrivacyView: View {
                 ToggleRow(title: "AI memory", subtitle: "Goals, patterns, preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Voice storage", subtitle: "Optional audio storage", isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Model training", subtitle: "Separate opt-in only", isOn: $state.consent.modelTraining); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Anonymous usage stats", subtitle: "Counts only — never your content or account", isOn: $state.usageStatsOn); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Lock journal", subtitle: "Require Face ID / passcode", isOn: $state.journalLocked)
             }
+            Text("Usage stats are allowlisted counts (like which onboarding step was reached) tied to a random install id on our own servers — no third-party SDKs, never linked to you or your content.")
+                .appFont(11.5).foregroundStyle(Theme.Palette.muted2)
+                .fixedSize(horizontal: false, vertical: true)
             NavRow(title: "Memory detail", subtitle: "Editable AI memory", systemImage: "brain", imageURL: Dummy.Img.write) {
                 MemoryDetailView(item: Dummy.memoryItems[0])
             }

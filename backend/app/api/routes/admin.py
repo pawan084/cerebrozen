@@ -56,6 +56,12 @@ async def metrics_overview(db: AsyncSession = Depends(get_db)):
     return await metrics.overview(db)
 
 
+@router.get("/metrics/funnel")
+async def metrics_funnel(days: int = 30, db: AsyncSession = Depends(get_db)):
+    """Onboarding funnel from anonymous product events (unique installs)."""
+    return await metrics.onboarding_funnel(db, days=max(1, min(days, 365)))
+
+
 # ── Users ───────────────────────────────────────────────────────────────
 @router.get("/users", response_model=list[UserOut])
 async def list_users(limit: int = 100, offset: int = 0, db: AsyncSession = Depends(get_db)):

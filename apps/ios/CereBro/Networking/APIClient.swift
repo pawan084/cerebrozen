@@ -214,6 +214,17 @@ actor APIClient {
                                        json: ["email": email], authed: false)
     }
 
+    /// Anonymous product event (see Analytics.swift). Sent WITHOUT auth so it
+    /// can never be joined to the account; errors are swallowed by the caller.
+    func sendEvent(name: String, step: String, anonId: String) async {
+        struct Ack: Codable { let accepted: Int }
+        let _: Ack? = try? await request(
+            "/events", method: "POST",
+            json: ["anon_id": anonId, "source": "ios",
+                   "events": [["name": name, "step": step]]],
+            authed: false)
+    }
+
     /// Request an email one-time sign-in code (passwordless). Always succeeds
     /// server-side — the account is only created at verify, so nothing enumerates.
     func requestOtp(email: String) async throws {

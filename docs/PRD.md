@@ -47,16 +47,16 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Greeting + goal-aware daily focus | ✅ | Time-of-day + first goal |
 | 20-second mood check-in → next best action | ✅ | Updates Home; records streak |
 | Streak (grace day, milestones, week dots) | ✅ | Deliberately gentle |
-| Morning/afternoon recommendation rails | 🟡 | Static `Dummy` catalogue (TODO: server `/content`) |
+| Morning/afternoon recommendation rails | ✅ | Server `/content` (time-matched kinds), curated local fallback offline (2026-07-04) |
 | Agentic daily plan (generate, update, step completion) | ✅ | Server-driven when connected (real LLM), local fallback |
-| Search | 🟡 | Searches the local static catalogue only |
+| Search | ✅ | Searches the whole served `/content` catalogue; local fallback offline (2026-07-04) |
 
 ### Sleep
 | Feature | Status | Notes |
 |---|---|---|
 | Player: real audio, mix layers, volume, auto-stop fade timer | ✅ | Bundled studio loops + synth fallback; lock-screen controls |
 | Favorites | ✅ | Persisted by title |
-| Stories/meditation catalogue | 🟡 | Sleep-tab rails server-driven via `/content` with local fallback (2026-07-03); audio still maps to 4 bundled loops by keyword; Home rails + search remain static |
+| Stories/meditation catalogue | 🟡 | All rails (Sleep, Home, Programs, Search) server-driven via `/content` with local fallback (2026-07-04); audio still maps to 4 bundled loops by keyword |
 | Downloads | ⚪ | Paywall copy only — no download feature exists |
 | Sleep diary + morning check-in (manual, quality/bed/wake) | ✅ | Shipped 2026-07-03: iOS check-in (Home + Sleep tab), 7-night trend strip, diary history — local-first, mirrored to `/sleep` (`sleep_logs`); UITest-covered. Plan: [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
 | Wind-down program (CBT-I-informed, non-diagnostic) | ✅ | Shipped 2026-07-03: "Wind down tonight" guide (`wind_down` catalogue kind, admin-authorable, offline fallback; breathing tip opens the pacer). Evidence base: dCBT-I ISI SMD −0.85, depression −0.47 |
@@ -112,6 +112,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 |---|---|---|
 | Auth: email (+ lockout, revocation, verify/reset emails) | ✅ | Hardened |
 | Auth: emailed one-time code (passwordless) | ✅ | iOS + web sign-in; creates the account at verify |
+| First-party anonymous analytics (onboarding funnel, paywall) | ✅ | 2026-07-04: allowlisted events, random install id (never account-linked), zero third-party SDKs, opt-out toggle, admin funnel chart |
 | Sign in with Apple / Google | 🟡 | Code + entitlement done; portal/OAuth config pending |
 | Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline |
 | Offline mode | 🟡 | Genuinely local-first; the "offline" showcase screen itself is static |

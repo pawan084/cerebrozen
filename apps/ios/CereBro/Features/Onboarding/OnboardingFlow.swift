@@ -5,6 +5,13 @@ struct OnboardingFlow: View {
     @State private var step = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Anonymous funnel step names — a cross-stack contract with
+    /// `backend/app/services/metrics.py: ONBOARDING_STEPS` (change both together).
+    private static let stepNames = [
+        "welcome", "age_gate", "disclosure", "language", "state_check",
+        "first_reset", "first_plan", "signup", "consent", "notifications",
+    ]
+
     var body: some View {
         ZStack {
             Theme.background
@@ -29,7 +36,10 @@ struct OnboardingFlow: View {
                 case 6: FirstPlanScreen(onContinue: next, onBack: back)
                 case 7: SignupScreen(onContinue: next, onBack: back)
                 case 8: ConsentScreen(onContinue: next, onBack: back)
-                default: NotificationsScreen(onContinue: { state.hasOnboarded = true }, onBack: back)
+                default: NotificationsScreen(onContinue: {
+                    Analytics.track("onboarding_done")
+                    state.hasOnboarded = true
+                }, onBack: back)
                 }
             }
             .id(step)   // each step is its own view, so the push transition plays
@@ -38,6 +48,12 @@ struct OnboardingFlow: View {
                 removal: .move(edge: .leading).combined(with: .opacity)))
         }
         .animation(reduceMotion ? .easeInOut : .spring(response: 0.5, dampingFraction: 0.9), value: step)
+        // Anonymous funnel: which step each install reached (name only — never
+        // any answer or content). Counted by distinct install server-side.
+        .onAppear { Analytics.track("onboarding_step", step: Self.stepNames[0]) }
+        .onChange(of: step) { _, s in
+            Analytics.track("onboarding_step", step: Self.stepNames[min(max(s, 0), Self.stepNames.count - 1)])
+        }
     }
 
     private func next() { Haptics.selection(); step += 1 }

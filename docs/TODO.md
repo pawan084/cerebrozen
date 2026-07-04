@@ -64,10 +64,15 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   contextually and feeds `sleep_logs`.
 
 ### Strategy-doc adoptions (2026-07-03) — remaining decisions/work
-- [ ] **Analytics vs "no trackers" promise** — the funnel KPIs / A/B slate from the
-  redesign strategy require product analytics, but privacy labels + landing copy say
-  none. Decide: first-party anonymized counts disclosed in the privacy hub, or stay
-  measurement-free. Blocks any experimentation work.
+- [x] **Analytics vs "no trackers" promise** — DECIDED + shipped 2026-07-04:
+  first-party anonymous counts on our own Postgres, zero third-party SDKs.
+  `product_events` table (Alembic `b17c4e8f2a93`) + `POST /events` (allowlisted
+  names, random install id, endpoint takes NO auth so rows can't join accounts)
+  + `GET /admin/metrics/funnel` + admin funnel chart; iOS `Analytics.track`
+  (onboarding steps, paywall view/CTA; no-ops under `-resetState` and when the
+  new "Anonymous usage stats" toggle in Privacy & Memory is off); privacy
+  policy/labels/landing copy reconciled (PRIVACY_LABELS now declares Product
+  Interaction, not-linked). Unblocks experimentation.
 - [x] Email one-time-code (passwordless) sign-in — 2026-07-04: `login_codes` table
   (Alembic `af3e6b9c1d57`) + `POST /auth/otp/request` / `/auth/otp/verify`
   (find-or-create like Apple/Google, marks email verified, clears password
@@ -128,10 +133,9 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   `/auth/apple` Services-ID audience for web Apple sign-in.
 
 ### Investor-readiness actions — benchmarks + full list in [INVESTOR_READINESS.md](INVESTOR_READINESS.md)
-- [ ] **Decide analytics** (supersedes the strategy-doc item above): recommendation is
-  first-party, privacy-preserving aggregates on our own backend, disclosed in the
-  privacy hub — investors need D1/D30/conversion/churn and we currently can't report
-  any metric; keep zero third-party SDKs.
+- [x] **Decide analytics** — done 2026-07-04 (see the strategy-doc item above):
+  first-party anonymous events + admin funnel shipped; D1/D7/D30 + activation
+  already came from `metrics/overview`; the funnel adds pre-account steps.
 - [ ] Annual subscription SKUs + 7-day-trial design; treat the first-session paywall as
   the primary experiment surface (89.4 % of trial starts happen Day 0).
 - [ ] Financial model anchored to IN/SEA benchmarks ($14 Y1 LTV/payer, 15.2 %
@@ -173,8 +177,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   hard — rows/onboarding/talk no longer render photos (symbol wells only); the
   worst URLs (office, laptop-hands, portrait-near-crisis, desert road) retargeted
   to calm nature. What's left is ~13 Unsplash URLs on heroes + rail cards.
-- [ ] Remaining `Dummy` catalogue: Home rails, Programs, Search (Sleep tab migrated
-  to `/content` 2026-07-03 — reuse `BackendService.catalogue` + fallback pattern).
+- [x] Remaining `Dummy` catalogue — 2026-07-04: Home rails (time-matched kinds
+  from `backend.catalogue`, sleep-goal bias preserved), Programs (`kind=program`
+  + new "Stop overthinking" seed item), Search (whole served catalogue as the
+  pool) all server-first with the curated local fallback offline; UI tests
+  stay deterministic (`loadCatalogue` no-ops under `-resetState`).
 - [ ] Backend tests require a live Postgres (autouse `init_db()`); consider transactional
   isolation or a dedicated per-run test DB.
 - [ ] VoiceOver announcements for streaming chat text (labels/traits pass is done; live

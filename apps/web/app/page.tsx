@@ -20,7 +20,7 @@ const SAFETY = [
   { title: "Consent-first memory", body: "You decide what CereBro remembers. Turn it off and it forgets. Export or delete everything, anytime." },
   { title: "Honest about what it is", body: "A supportive AI companion — not a therapist, diagnosis, or crisis service. It says so, clearly and often." },
   { title: "Crisis-aware by design", body: "Region-correct crisis lines are always a tap away, and you can nominate a trusted contact to notify." },
-  { title: "No ads, ever", body: "Your calm isn't the product. No trackers, no ad SDKs, no selling your data." },
+  { title: "No ads, ever", body: "Your calm isn't the product. No third-party trackers, no ad SDKs, no selling your data." },
 ];
 
 const PLANS = [

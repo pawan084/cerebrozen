@@ -191,7 +191,9 @@ function Overview() {
 
 function Analytics() {
   const { data, err } = useData<any>(() => api("/admin/metrics/overview"));
+  const { data: onb } = useData<any>(() => api("/admin/metrics/funnel?days=30"));
   const pct = (r: number | null) => (r === null || r === undefined ? "n/a" : `${Math.round(r * 100)}%`);
+  const onbMax = Math.max(1, ...(onb?.steps ?? []).map((s: any) => s.installs));
   const funnelSteps = data
     ? [
         { l: "Signed up", n: data.funnel.signups },
@@ -254,6 +256,31 @@ function Analytics() {
               </div>
             ))}
           </div>
+
+          {onb && (
+            <div className="card" style={{ marginTop: 16, padding: 18 }}>
+              <h3 className="serif" style={{ marginBottom: 4 }}>Onboarding funnel (30 days)</h3>
+              <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 10 }}>
+                Unique installs per step — anonymous events, never linked to accounts.
+                Completed: <span className="mono">{onb.completed}</span> · Paywall views:{" "}
+                <span className="mono">{onb.paywall_views}</span> · Paywall taps:{" "}
+                <span className="mono">{onb.paywall_taps}</span>
+              </div>
+              {onb.steps.map((s: any) => (
+                <div key={s.step} style={{ margin: "8px 0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                    <span>{s.step.replace(/_/g, " ")}</span><span className="mono">{s.installs}</span>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,0.08)", marginTop: 4 }}>
+                    <div style={{
+                      height: "100%", borderRadius: 99, width: `${(s.installs / onbMax) * 100}%`,
+                      background: "linear-gradient(90deg, var(--lav), var(--lav-2))",
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="card" style={{ marginTop: 16, padding: 18 }}>
             <h3 className="serif" style={{ marginBottom: 10 }}>Engagement, trailing 7 days</h3>

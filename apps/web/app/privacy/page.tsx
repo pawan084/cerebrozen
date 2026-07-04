@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "How CereBro collects, uses, and protects your data. Privacy by design.",
 };
 
-const UPDATED = "29 June 2026";
+const UPDATED = "4 July 2026";
 
 export default function Privacy() {
   return (
@@ -54,6 +54,7 @@ export default function Privacy() {
             <li><strong>Voice</strong> — when you use the voice companion, audio is transcribed to text. Audio storage is <strong>off by default</strong> and only retained if you explicitly enable it.</li>
             <li><strong>Consent flags</strong> — your choices for what the AI may remember (mood history, AI memory, voice storage, model training).</li>
             <li><strong>Operational data</strong> — minimal logs needed to run the service securely (e.g. rate-limiting, error diagnostics). We do not sell data or use third-party advertising trackers.</li>
+            <li><strong>Anonymous usage counts</strong> — a short, fixed list of product events (for example, which onboarding step was reached or that the upgrade screen was viewed), tied to a random install identifier that is never connected to your account, content, or device identity. Stored only on our own servers, used only as aggregate counts, with no third-party analytics SDKs. You can switch this off any time in the app under Privacy &amp; Memory.</li>
           </ul>
 
           <h2>3. How we use your data</h2>

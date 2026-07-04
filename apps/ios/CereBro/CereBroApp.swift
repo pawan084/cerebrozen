@@ -55,6 +55,7 @@ final class AppState: ObservableObject {
         static let baselineSleep = "baselineSleep"
         static let baselineDate = "baselineDate"
         static let ageConfirmed = "ageConfirmedAt"
+        static let usageStats = "usageStatsOn"   // read by Analytics too
         static let sleep = "sleepEntries"
         static let hkSleep = "healthKitSleepPrefill"
     }
@@ -121,6 +122,9 @@ final class AppState: ObservableObject {
     /// When the user tapped the onboarding 18+ confirmation on this device
     /// (compliance record; sent with attest() so the server keeps the true time).
     @Published private(set) var ageConfirmedAt: Date? { didSet { Self.save(ageConfirmedAt, Key.ageConfirmed) } }
+    /// Anonymous usage counts (first-party funnel events — see Analytics.swift).
+    /// On by default, disclosed and switchable in Privacy & Memory.
+    @Published var usageStatsOn: Bool { didSet { UserDefaults.standard.set(usageStatsOn, forKey: Key.usageStats) } }
 
     init() {
         // UI tests pass `-resetState YES` to start each run from seeded defaults,
@@ -135,6 +139,7 @@ final class AppState: ObservableObject {
              Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.hkSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate, Key.ageConfirmed,
+             Key.usageStats,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
@@ -165,6 +170,7 @@ final class AppState: ObservableObject {
         baselineSleep  = UserDefaults.standard.integer(forKey: Key.baselineSleep)
         baselineDate   = Self.load(Date.self, Key.baselineDate)
         ageConfirmedAt = Self.load(Date.self, Key.ageConfirmed)
+        usageStatsOn   = UserDefaults.standard.object(forKey: Key.usageStats) as? Bool ?? true
     }
 
     /// Record the onboarding baseline. Stamps the date once — the "before"
@@ -207,6 +213,7 @@ final class AppState: ObservableObject {
         baselineSleep = 0
         baselineDate = nil
         ageConfirmedAt = nil
+        usageStatsOn = true
         ReminderManager.cancel()
         hasOnboarded = false
     }

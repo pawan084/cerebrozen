@@ -8,6 +8,8 @@ Google / email); a fully anonymous local user has **no** data collection.
 - **Data used to track you:** None. CereBro has no advertising or third-party
   analytics SDKs and does not track users across apps/sites.
 - **Data linked to you:** only when signed in, for app functionality (below).
+- **Data NOT linked to you:** anonymous first-party usage counts (Product
+  Interaction — see row below). Random install id, never joined to the account.
 - **Data not collected:** location, contacts, browsing history, search history,
   identifiers for advertising, purchases history beyond subscription status.
 
@@ -23,6 +25,7 @@ Google / email); a fully anonymous local user has **no** data collection.
 | Sensitive Info (mental-health themes in content) | Yes | Yes | No | App Functionality |
 | Coarse region (country, for crisis resources) | Yes | Yes | No | App Functionality |
 | Purchases (subscription tier) | Yes | Yes | No | App Functionality |
+| Product Interaction (anonymous usage counts: onboarding step reached, paywall viewed/tapped; random install id, first-party only, switchable off in Privacy & Memory) | Yes | **No** | No | Analytics (first-party) |
 | Crash / performance data | No | — | — | — |
 
 Notes for the questionnaire:

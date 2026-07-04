@@ -18,6 +18,7 @@ struct PremiumView: View {
                 // Real StoreKit products (App Store Connect configured).
                 ForEach(store.products, id: \.id) { product in
                     Button {
+                        Analytics.track("paywall_cta", step: product.id)
                         Task {
                             await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? ""))
                             await syncEntitlement()
@@ -46,7 +47,12 @@ struct PremiumView: View {
 
             NavRow(title: "Human support option", subtitle: "Partner booking flow", systemImage: "person.2", imageURL: Dummy.Img.support) { HumanSupportView() }
         }
-        .task { await store.load(); await syncEntitlement() }
+        .task {
+            // Anonymous funnel: the paywall was seen (no products, no account).
+            Analytics.track("paywall_view")
+            await store.load()
+            await syncEntitlement()
+        }
     }
 
     /// Forward the verified transaction to the backend so the server sets the
@@ -59,6 +65,7 @@ struct PremiumView: View {
     private func chooseFeaturedPlan() {
         guard !store.isPremium else { return }
         if let product = store.products.first {
+            Analytics.track("paywall_cta", step: product.id)
             Task { await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? "")); await syncEntitlement() }
         } else {
             store.message = "In-app subscriptions aren't available yet — everything runs free for now."

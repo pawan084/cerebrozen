@@ -44,10 +44,10 @@ See `PRIVACY_LABELS.md` for the authoritative, questionnaire-ready version.
 | Sensitive Info (mental-health themes) | Yes | Yes | App functionality |
 | Coarse region (country, for crisis resources) | Yes | Yes | App functionality |
 | Purchases (subscription tier) | Yes | Yes | App functionality |
-| Usage data / analytics | No | — | No analytics or tracking SDKs |
+| Usage data / analytics | Yes | **No** | First-party anonymous counts only (Product Interaction; random install id, never account-linked, opt-out in Privacy & Memory); zero third-party SDKs |
 | Diagnostics (crash/perf) | No | — | Not collected |
 
-- No data used to track you; no advertising or third-party analytics SDKs.
+- No data used to track you; no advertising or third-party analytics SDKs. First-party anonymous usage counts live on our own Postgres and are disclosed in the privacy policy + hub.
 - No data sold. Voice audio storage is **off by default**.
 - Conversations may be scanned for crisis signals to surface support (state in the policy).
 
