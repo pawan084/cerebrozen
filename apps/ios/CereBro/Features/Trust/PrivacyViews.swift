@@ -6,8 +6,10 @@ struct PrivacyView: View {
     var body: some View {
         ScreenScaffold(eyebrow: "Data control dashboard", title: "Privacy & Memory", trailingSystemImage: "lock") {
             SettingsGroup {
-                ToggleRow(title: "Mood history", subtitle: "Keep your check-ins", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "AI memory", subtitle: "Goals, patterns, preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Mood history", subtitle: "Check-ins in insights & plans", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "AI memory", subtitle: "Conversation context between chats", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Journal memory", subtitle: "Journal titles in plans & insights", isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Sleep history", subtitle: "Diary in plans & insights", isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Voice storage", subtitle: "Optional audio storage", isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Model training", subtitle: "Separate opt-in only", isOn: $state.consent.modelTraining); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Anonymous usage stats", subtitle: "Counts only — never your content or account", isOn: $state.usageStatsOn); Divider().overlay(Theme.Palette.line)
@@ -69,7 +71,7 @@ struct ExportReportView: View {
 
 // MARK: - Privacy policy (in-app, App Store requirement)
 struct PrivacyPolicyView: View {
-    private let updated = "29 June 2026"
+    private let updated = "4 July 2026"
     var body: some View {
         ScreenScaffold(eyebrow: "How we handle your data", title: "Privacy Policy", trailingSystemImage: "lock.shield") {
             Text("Last updated \(updated)").appFont(12).foregroundStyle(Theme.Palette.muted2)
@@ -83,7 +85,8 @@ struct PrivacyPolicyView: View {
                    "To generate replies and process voice we send the minimum necessary text to trusted processors (OpenAI/Anthropic, Deepgram, ElevenLabs). Core features still work with AI disabled.")
             policy("Your controls",
                    "Change what the AI remembers anytime in Privacy & Memory. Export a full copy of your data, or permanently delete your account and all associated data — both from inside the app.")
-            policy("Contact", "Questions or requests: privacy@cerebrozen.in")
+            policy("Contact & grievances",
+                   "Questions, requests, or complaints: grievance@cerebrozen.in — we respond within 90 days and include this contact in every reply. India: after using this channel you may approach the Data Protection Board.")
 
             Link(destination: URL(string: "https://cerebrozen.in/privacy")!) {
                 HStack(spacing: 6) {

@@ -1,6 +1,7 @@
 """Importing this package registers every model on Base.metadata."""
 from app.models.user import User
 from app.models.consent import Consent
+from app.models.deletion_ledger import DeletionLedger
 from app.models.mood import MoodLog
 from app.models.journal import JournalEntry
 from app.models.chat import ChatMessage
@@ -18,6 +19,7 @@ from app.models.waitlist import WaitlistEntry
 __all__ = [
     "User",
     "Consent",
+    "DeletionLedger",
     "MoodLog",
     "JournalEntry",
     "ChatMessage",

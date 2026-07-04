@@ -10,6 +10,8 @@ class ConsentSchema(BaseModel):
     ai_memory: bool = True
     voice_storage: bool = False
     model_training: bool = False
+    journal_memory: bool = True
+    sleep_history: bool = True
 
 
 class ConsentUpdate(BaseModel):
@@ -17,6 +19,8 @@ class ConsentUpdate(BaseModel):
     ai_memory: bool | None = None
     voice_storage: bool | None = None
     model_training: bool | None = None
+    journal_memory: bool | None = None
+    sleep_history: bool | None = None
 
 
 class UserOut(BaseModel):

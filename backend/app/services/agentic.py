@@ -9,6 +9,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.consent import consent_allows
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
@@ -65,25 +66,33 @@ _SYSTEM = (
 
 
 async def _recent_signals(db: AsyncSession, user: User) -> tuple[list[str], list[str], list[SleepLog]]:
-    moods = (
-        await db.scalars(
-            select(MoodLog.mood).where(MoodLog.user_id == user.id).order_by(MoodLog.created_at.desc()).limit(7)
-        )
-    ).all()
-    journals = (
-        await db.scalars(
-            select(JournalEntry.title)
-            .where(JournalEntry.user_id == user.id)
-            .order_by(JournalEntry.created_at.desc())
-            .limit(5)
-        )
-    ).all()
-    sleep_rows = (
-        await db.scalars(
-            select(SleepLog).where(SleepLog.user_id == user.id).order_by(SleepLog.date.desc()).limit(7)
-        )
-    ).all()
-    return list(moods), list(journals), list(sleep_rows)
+    """Recent personalization signals, each gated by its own consent category
+    (DPDP itemization) — a switched-off category simply contributes nothing."""
+    moods: list[str] = []
+    journals: list[str] = []
+    sleep_rows: list[SleepLog] = []
+    if consent_allows(user, "mood_history"):
+        moods = list((
+            await db.scalars(
+                select(MoodLog.mood).where(MoodLog.user_id == user.id).order_by(MoodLog.created_at.desc()).limit(7)
+            )
+        ).all())
+    if consent_allows(user, "journal_memory"):
+        journals = list((
+            await db.scalars(
+                select(JournalEntry.title)
+                .where(JournalEntry.user_id == user.id)
+                .order_by(JournalEntry.created_at.desc())
+                .limit(5)
+            )
+        ).all())
+    if consent_allows(user, "sleep_history"):
+        sleep_rows = list((
+            await db.scalars(
+                select(SleepLog).where(SleepLog.user_id == user.id).order_by(SleepLog.date.desc()).limit(7)
+            )
+        ).all())
+    return moods, journals, sleep_rows
 
 
 def _sleep_note(sleep_rows: list[SleepLog]) -> str | None:

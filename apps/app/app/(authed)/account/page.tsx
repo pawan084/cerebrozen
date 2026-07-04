@@ -4,12 +4,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, authedFetch, clearSession } from "@/lib/api";
 
-type Consent = { mood_history: boolean; ai_memory: boolean; voice_storage: boolean; model_training: boolean };
+type Consent = {
+  mood_history: boolean; ai_memory: boolean; voice_storage: boolean;
+  model_training: boolean; journal_memory: boolean; sleep_history: boolean;
+};
 type Contact = { name: string; method: string; value: string; relationship: string; notify_consent: boolean };
 
 const CONSENT_LABELS: [keyof Consent, string, string][] = [
   ["mood_history", "Mood history", "Let insights use your check-in history."],
   ["ai_memory", "AI memory", "Let the companion remember context between conversations."],
+  ["journal_memory", "Journal memory", "Let journal titles tune your plan and insights."],
+  ["sleep_history", "Sleep history", "Let your sleep diary tune plans and insights."],
   ["voice_storage", "Voice storage", "Keep voice transcripts after a session ends."],
   ["model_training", "Model training", "Allow anonymized snippets to improve responses."],
 ];
@@ -37,6 +42,7 @@ export default function Account() {
   const [contactSaved, setContactSaved] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [status, setStatus] = useState("");
+  const [billingMsg, setBillingMsg] = useState("");
 
   useEffect(() => {
     api("/auth/me").then((u) => {
@@ -92,6 +98,20 @@ export default function Account() {
     setStatus("Export downloaded.");
   }
 
+  async function upgrade() {
+    setBillingMsg("");
+    try {
+      const { url } = await api<{ url: string }>("/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ tier: "premium" }),
+      });
+      window.location.href = url;
+    } catch (err: any) {
+      // 503 until Stripe is configured — show the honest server message.
+      setBillingMsg(err.message || "Web billing isn't available yet.");
+    }
+  }
+
   async function deleteAccount() {
     if (confirmText !== "DELETE") return;
     try {
@@ -111,6 +131,12 @@ export default function Account() {
         <section className="card">
           <h2>{me.name}</h2>
           <p className="sub">{me.email} · {me.subscription_tier ?? "free"} tier</p>
+          {(me.subscription_tier ?? "free") === "free" && (
+            <div style={{ marginTop: 12 }}>
+              <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
+              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+            </div>
+          )}
         </section>
       )}
 

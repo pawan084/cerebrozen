@@ -126,6 +126,8 @@ async def user_detail(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
             "ai_memory": consent.ai_memory,
             "voice_storage": consent.voice_storage,
             "model_training": consent.model_training,
+            "journal_memory": consent.journal_memory,
+            "sleep_history": consent.sleep_history,
         },
         "trusted_contact": bool(has_contact),
         "last_active": last_active,

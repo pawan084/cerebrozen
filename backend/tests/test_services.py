@@ -7,6 +7,7 @@ import pytest
 
 from app.core.database import SessionLocal, utcnow
 from app.core.security import hash_password
+from app.models.consent import Consent
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
@@ -21,6 +22,9 @@ async def _make_user(session, *, push_token=None):
         name="Svc",
         push_token=push_token,
     )
+    # Mirror signup: every real account has a Consent row, and the itemized
+    # gates (consent_allows) read it via the loaded relationship.
+    user.consent = Consent()
     session.add(user)
     await session.flush()
     return user

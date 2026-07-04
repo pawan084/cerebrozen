@@ -1,3 +1,4 @@
+import hashlib
 from datetime import timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -8,11 +9,13 @@ from app.core.database import get_db, utcnow
 from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.consent import Consent
+from app.models.deletion_ledger import DeletionLedger
 from app.models.insight import Insight
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
 from app.models.plan import Plan
+from app.models.sleep import SleepLog
 from app.models.user import User
 from app.schemas.content_data import (
     ChatOut,
@@ -20,6 +23,7 @@ from app.schemas.content_data import (
     JournalOut,
     MoodOut,
     NudgeOut,
+    SleepLogOut,
 )
 from app.schemas.plan import PlanOut
 from app.models.trusted_contact import TrustedContact
@@ -196,6 +200,7 @@ async def export_my_data(
         "plans": await rows(Plan, PlanOut, Plan.created_at),
         "nudges": await rows(Nudge, NudgeOut, Nudge.scheduled_for),
         "insights": await rows(Insight, InsightOut),
+        "sleep": await rows(SleepLog, SleepLogOut, SleepLog.date),
     }
 
 
@@ -209,7 +214,15 @@ async def delete_my_account(
     Every user-scoped table declares ``ondelete="CASCADE"``, so a single delete
     on the user row cascades in Postgres to moods, journal, chat, plans (+steps),
     consent, safety events, nudges, and insights. Required by App Store 5.1.1(v).
+
+    DPDP Rule 8(3): a minimal DeletionLedger row (hashed email, account age —
+    no content) survives in the same transaction for the 12-month log-retention
+    obligation, then gets purged by ops.
     """
+    db.add(DeletionLedger(
+        email_hash=hashlib.sha256(user.email.lower().encode()).hexdigest(),
+        account_created_at=user.created_at,
+    ))
     await db.execute(delete(User).where(User.id == user.id))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

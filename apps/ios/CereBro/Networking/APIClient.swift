@@ -28,6 +28,8 @@ struct RemoteConsent: Codable {
     let ai_memory: Bool
     let voice_storage: Bool
     let model_training: Bool
+    let journal_memory: Bool?
+    let sleep_history: Bool?
 }
 
 /// The person to notify if a crisis is detected (consent-gated).
@@ -395,14 +397,17 @@ actor APIClient {
                           json: ["signed_transaction": signedTransaction])
     }
 
-    /// Sync the user's privacy/consent choices to the server (enforced in the
-    /// chat/oracle pipeline — e.g. AI memory off drops long-term recall).
+    /// Sync the user's privacy/consent choices to the server, where each
+    /// category is enforced at its read site (chat recall, plan signals,
+    /// weekly insights).
     @discardableResult
     func updateConsent(moodHistory: Bool, aiMemory: Bool,
-                       voiceStorage: Bool, modelTraining: Bool) async throws -> RemoteConsent {
+                       voiceStorage: Bool, modelTraining: Bool,
+                       journalMemory: Bool, sleepHistory: Bool) async throws -> RemoteConsent {
         try await request("/users/me/consent", method: "PATCH",
                           json: ["mood_history": moodHistory, "ai_memory": aiMemory,
-                                 "voice_storage": voiceStorage, "model_training": modelTraining])
+                                 "voice_storage": voiceStorage, "model_training": modelTraining,
+                                 "journal_memory": journalMemory, "sleep_history": sleepHistory])
     }
 
     /// Generate personalized, tappable conversation starters. Passing the

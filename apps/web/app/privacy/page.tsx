@@ -52,7 +52,7 @@ export default function Privacy() {
             <li><strong>Onboarding choices</strong> — language, companion style, and your self-reflection (motivations and goals) used to personalize your plan and conversation starters.</li>
             <li><strong>Wellness data you create</strong> — mood check-ins, journal entries, chat messages, and plan progress.</li>
             <li><strong>Voice</strong> — when you use the voice companion, audio is transcribed to text. Audio storage is <strong>off by default</strong> and only retained if you explicitly enable it.</li>
-            <li><strong>Consent flags</strong> — your choices for what the AI may remember (mood history, AI memory, voice storage, model training).</li>
+            <li><strong>Consent flags</strong> — your per-category choices for what the AI may remember (mood history, AI memory, journal memory, sleep history, voice storage, model training) — each enforced server-side where that data is read.</li>
             <li><strong>Operational data</strong> — minimal logs needed to run the service securely (e.g. rate-limiting, error diagnostics). We do not sell data or use third-party advertising trackers.</li>
             <li><strong>Anonymous usage counts</strong> — a short, fixed list of product events (for example, which onboarding step was reached or that the upgrade screen was viewed), tied to a random install identifier that is never connected to your account, content, or device identity. Stored only on our own servers, used only as aggregate counts, with no third-party analytics SDKs. You can switch this off any time in the app under Privacy &amp; Memory.</li>
           </ul>
@@ -99,9 +99,17 @@ export default function Privacy() {
             changes will be highlighted in the app.
           </p>
 
-          <h2>9. Contact</h2>
+          <h2>9. Contact &amp; grievances</h2>
           <p>
             Questions or requests: <a href="mailto:privacy@cerebrozen.in">privacy@cerebrozen.in</a>.
+          </p>
+          <p>
+            <strong>Grievance contact:</strong>{" "}
+            <a href="mailto:grievance@cerebrozen.in">grievance@cerebrozen.in</a> can answer any
+            question about how your personal data is processed. We respond to rights requests and
+            complaints within <strong>90 days</strong> and include this contact in every response.
+            If you are in India and remain unsatisfied after using this channel, you may approach
+            the Data Protection Board of India.
           </p>
 
           <p className="disclaimer">

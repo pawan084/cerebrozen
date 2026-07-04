@@ -304,7 +304,13 @@ private struct ConsentScreen: View {
     var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
 
-    private var remembering: Bool { state.consent.moodHistory && state.consent.aiMemory }
+    /// The recommended one-tap opt-in covers every "remember my patterns"
+    /// category (mood, chat, journal, sleep) — each stays individually
+    /// switchable below and in Privacy & Memory (DPDP itemization).
+    private var remembering: Bool {
+        state.consent.moodHistory && state.consent.aiMemory
+            && state.consent.journalMemory && state.consent.sleepHistory
+    }
 
     var body: some View {
         StepScaffold(eyebrow: "Privacy choices", title: "What CereBro remembers",
@@ -318,19 +324,24 @@ private struct ConsentScreen: View {
                 let on = !remembering
                 state.consent.moodHistory = on
                 state.consent.aiMemory = on
+                state.consent.journalMemory = on
+                state.consent.sleepHistory = on
                 Haptics.selection()
             }
             .accessibilityAddTraits(remembering ? .isSelected : [])
             SettingsGroup {
-                ToggleRow(title: "Mood history", subtitle: "Used for insights", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "AI memory", subtitle: "Goals and preferences", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Mood history", subtitle: "Check-ins shape insights", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "AI memory", subtitle: "Context between chats", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Journal memory", subtitle: "Titles tune your plan", isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: "Sleep history", subtitle: "Diary tunes your plan", isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Voice storage", subtitle: "Off by default", isOn: $state.consent.voiceStorage)
             }
         }
         .onAppear {
             // First-run default is everything OFF — consent must be an action.
             state.consent = Consent(moodHistory: false, aiMemory: false,
-                                    voiceStorage: false, modelTraining: false)
+                                    voiceStorage: false, modelTraining: false,
+                                    journalMemory: false, sleepHistory: false)
         }
     }
 }

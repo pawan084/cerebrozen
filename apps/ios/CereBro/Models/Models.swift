@@ -119,12 +119,30 @@ struct SleepEntry: Identifiable, Hashable, Codable {
     }
 }
 
-/// Persisted privacy/consent choices, shared by onboarding + the Privacy dashboard.
+/// Persisted privacy/consent choices, shared by onboarding + the Privacy
+/// dashboard. One flag per data category (DPDP itemization) — the server
+/// enforces each at its read sites.
 struct Consent: Hashable, Codable {
     var moodHistory = true
     var aiMemory = true
     var voiceStorage = false
     var modelTraining = false
+    var journalMemory = true
+    var sleepHistory = true
+}
+
+extension Consent {
+    /// Tolerant decoding so pre-itemization stored consent keeps the user's
+    /// choices: the journal category inherits the old AI-memory umbrella.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        moodHistory = try c.decodeIfPresent(Bool.self, forKey: .moodHistory) ?? true
+        aiMemory = try c.decodeIfPresent(Bool.self, forKey: .aiMemory) ?? true
+        voiceStorage = try c.decodeIfPresent(Bool.self, forKey: .voiceStorage) ?? false
+        modelTraining = try c.decodeIfPresent(Bool.self, forKey: .modelTraining) ?? false
+        journalMemory = try c.decodeIfPresent(Bool.self, forKey: .journalMemory) ?? aiMemory
+        sleepHistory = try c.decodeIfPresent(Bool.self, forKey: .sleepHistory) ?? true
+    }
 }
 
 struct PlanStep: Identifiable, Hashable {

@@ -9,6 +9,7 @@ from app.agent import tools
 from app.agent.context import current_db, current_user_id, emitted_widgets
 from app.core.database import SessionLocal
 from app.core.security import hash_password
+from app.models.consent import Consent
 from app.models.user import User
 
 
@@ -31,6 +32,7 @@ async def test_get_weekly_insights_tool():
     async with SessionLocal() as s:
         user = User(email=f"tool-{uuid.uuid4().hex[:8]}@test.app",
                     hashed_password=hash_password("x"), name="T")
+        user.consent = Consent()   # mirror signup; consent gates read it
         s.add(user)
         await s.flush()
         current_db.set(s)

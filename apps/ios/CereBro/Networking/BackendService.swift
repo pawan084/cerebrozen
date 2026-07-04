@@ -168,7 +168,8 @@ final class BackendService: ObservableObject {
     private func pushConsent(_ c: Consent) async {
         _ = try? await APIClient.shared.updateConsent(
             moodHistory: c.moodHistory, aiMemory: c.aiMemory,
-            voiceStorage: c.voiceStorage, modelTraining: c.modelTraining)
+            voiceStorage: c.voiceStorage, modelTraining: c.modelTraining,
+            journalMemory: c.journalMemory, sleepHistory: c.sleepHistory)
     }
 
     /// Send a StoreKit signed transaction for server-side verification; the

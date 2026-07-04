@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import utcnow
+from app.models.consent import consent_allows
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
@@ -25,8 +26,14 @@ async def _count(db: AsyncSession, model, user_id, since) -> int:
 async def compute_weekly(db: AsyncSession, user: User) -> dict:
     since = utcnow() - timedelta(days=7)
 
-    mood_count = await _count(db, MoodLog, user.id, since)
-    journal_count = await _count(db, JournalEntry, user.id, since)
+    # DPDP itemization: each data category only feeds insights while its own
+    # consent flag is on — switched off, the category reads as "no data".
+    use_moods = consent_allows(user, "mood_history")
+    use_journal = consent_allows(user, "journal_memory")
+    use_sleep = consent_allows(user, "sleep_history")
+
+    mood_count = await _count(db, MoodLog, user.id, since) if use_moods else 0
+    journal_count = await _count(db, JournalEntry, user.id, since) if use_journal else 0
 
     steps_done = (
         await db.scalar(
@@ -38,19 +45,23 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     ) or 0
 
     # Average intensity → mood stability (lower intensity of difficult moods = steadier).
-    avg_intensity = await db.scalar(
-        select(func.avg(MoodLog.intensity)).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
-    )
+    avg_intensity = None
+    if use_moods:
+        avg_intensity = await db.scalar(
+            select(func.avg(MoodLog.intensity)).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
+        )
     stability = 0.7 if avg_intensity is None else max(0.2, min(1.0, 1.2 - float(avg_intensity) / 5))
 
     sessions = mood_count + steps_done
 
     # Sleep: real diary aggregates (replaces the old illustrative strings).
-    sleep_rows = (
-        await db.scalars(
-            select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=6)).date())
-        )
-    ).all()
+    sleep_rows = []
+    if use_sleep:
+        sleep_rows = (
+            await db.scalars(
+                select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=6)).date())
+            )
+        ).all()
     if sleep_rows:
         avg_sleep = sum(r.duration_min for r in sleep_rows) // len(sleep_rows)
         sleep_value = f"{avg_sleep // 60}h {avg_sleep % 60:02d}m avg"
@@ -83,7 +94,7 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     # Sleep × mood: only claim a link when this week's own data supports it
     # (both buckets populated and a real gap). UTC-date matching is a stated
     # approximation — mood "today" pairs with the wake-morning diary entry.
-    if len(sleep_rows) >= 3:
+    if len(sleep_rows) >= 3 and use_moods:
         mood_rows = (
             await db.scalars(
                 select(MoodLog).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
