@@ -195,6 +195,10 @@ struct ChatView: View {
                 // Streaming Oracle reply (token-by-token) + any inline activity.
                 if backend.isStreaming {
                     ChatBubble(message: .init(text: backend.streamingText.isEmpty ? "…" : backend.streamingText, isUser: false))
+                        // VoiceOver: don't spell out every token — the finished
+                        // reply is announced once by finishStreaming.
+                        .accessibilityAddTraits(.updatesFrequently)
+                        .accessibilityLabel(backend.streamingText.isEmpty ? "CereBro is thinking" : "CereBro is replying")
                     if let w = backend.streamingWidget { ActivityWidgetCard(widget: w) }
                 }
                 // Approve/decline a paused write action.

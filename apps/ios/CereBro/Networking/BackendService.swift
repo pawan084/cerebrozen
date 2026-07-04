@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Observable wrapper around `APIClient` that the UI binds to. Keeps cloud sync
 /// strictly additive: when not connected, the app behaves exactly as the local
@@ -413,6 +414,11 @@ final class BackendService: ObservableObject {
             chat.append(msg)
         }
         streamingText = ""; streamingWidget = nil; isStreaming = false
+        // VoiceOver hears the completed reply once, instead of token noise
+        // (the live bubble is marked .updatesFrequently while it streams).
+        if UIAccessibility.isVoiceOverRunning, !t.isEmpty {
+            UIAccessibility.post(notification: .announcement, argument: t)
+        }
     }
 
     // MARK: Plan step completion (server-driven plan)

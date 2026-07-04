@@ -18,7 +18,10 @@ from app.services import nudges
 
 logger = logging.getLogger("cerebro.seed")
 
-_IMG = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1000&q=80"
+# Imagery honesty pass (2026-07-04): no stock photo URLs — clients render
+# their branded symbol wells for empty image_url; admins can attach real
+# licensed art per item via the CMS when it exists.
+_IMG = ""
 
 _CONTENT = [
     ("Rain over quiet hills", "Sleep story · 18 min", "sleep", "moon.stars", 18, False),

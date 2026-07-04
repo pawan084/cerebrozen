@@ -5,25 +5,28 @@ enum Dummy {
 
     static let userName = "Pawan"
 
-    // Reusable Unsplash imagery (same set the reference design uses).
+    // Imagery honesty pass (2026-07-04): remote Unsplash URLs removed —
+    // every surface renders the branded gradient + SF-Symbol well that
+    // `Photo` already draws for empty URLs. Offline-correct, private, and
+    // App-Review-safe; bundle real licensed assets here if art ever lands.
     enum Img {
-        static let welcome   = "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1000&q=80"
-        static let calm      = "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1000&q=80"
-        static let breath    = "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=1000&q=80"
-        static let mood      = "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1000&q=80"
-        static let plan      = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1000&q=80"
-        static let journal   = "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1000&q=80"
-        static let write     = "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1000&q=80"
-        static let ground    = "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1000&q=80"
-        static let voice     = "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1000&q=80"
-        static let chat      = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1000&q=80"
-        static let sleep     = "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1000&q=80"
-        static let ocean     = "https://images.unsplash.com/photo-1505142468610-359e7d316be0?auto=format&fit=crop&w=1000&q=80"
-        static let meditate  = "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=1000&q=80"
-        static let privacy   = "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1000&q=80"
-        static let premium   = "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1000&q=80"
-        static let support   = "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1000&q=80"
-        static let bell      = "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=80"
+        static let welcome   = ""
+        static let calm      = ""
+        static let breath    = ""
+        static let mood      = ""
+        static let plan      = ""
+        static let journal   = ""
+        static let write     = ""
+        static let ground    = ""
+        static let voice     = ""
+        static let chat      = ""
+        static let sleep     = ""
+        static let ocean     = ""
+        static let meditate  = ""
+        static let privacy   = ""
+        static let premium   = ""
+        static let support   = ""
+        static let bell      = ""
     }
 
     // Home

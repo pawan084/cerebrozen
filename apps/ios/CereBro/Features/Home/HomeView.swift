@@ -247,6 +247,13 @@ struct MoodCheckinView: View {
                 backend.mirrorMood(log)
                 saved.toggle()
             }
+            // Light reward loop: the check-in ritual ends with an optional
+            // one-minute playful reset — offered, never forced.
+            if saved {
+                NavRow(title: "A tiny reward", subtitle: "Seal it with a 1-minute calm game",
+                       systemImage: "gamecontroller") { GamesHubView() }
+                    .entrance(0)
+            }
         }
         .celebration(trigger: $saved, accent: Theme.Accent.warm)
     }
