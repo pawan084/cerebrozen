@@ -26,10 +26,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.cerebrozen.app.ui.screens.HomeScreen
+import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.screens.AuthScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
+import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Night
@@ -46,6 +48,17 @@ private enum class Tab(val route: String, val label: String, val icon: ImageVect
 
 @Composable
 fun CereBroApp() {
+    // Signed-out: the whole app is the auth screen (live backend session,
+    // same account as iOS/web). Session.signedIn is Compose-observable.
+    if (!Session.signedIn) {
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(NightMid, Night))),
+        ) { AuthScreen() }
+        return
+    }
+
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
@@ -86,7 +99,7 @@ fun CereBroApp() {
                 .background(Brush.verticalGradient(listOf(NightMid, Night)))
                 .padding(padding),
         ) {
-            composable(Tab.Home.route) { HomeScreen() }
+            composable(Tab.Home.route) { TodayScreen() }
             composable(Tab.Sleep.route) { SleepScreen() }
             composable(Tab.Talk.route) { TalkScreen() }
             composable(Tab.Journal.route) { JournalScreen() }

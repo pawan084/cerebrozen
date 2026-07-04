@@ -89,9 +89,11 @@ fun JournalScreen() = ScreenScaffold("Journal hub", "Journal") {
 
 @Composable
 fun YouScreen() = ScreenScaffold("Settings and support", "You") {
-    GlassCard("Sign in", "Sync your plan, journal and check-ins across devices.")
     GlassCard("Privacy & memory", "Control what CereBro remembers. Export or delete anytime.")
     GlassCard("Urgent support", "Locale-aware crisis resources, always a tap away.")
+    androidx.compose.material3.TextButton(onClick = { com.cerebrozen.app.net.Session.signOut() }) {
+        Text("Sign out", color = TextMuted)
+    }
     Text(
         "Wellness support, not emergency care.",
         style = MaterialTheme.typography.bodyMedium,

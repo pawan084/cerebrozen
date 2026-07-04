@@ -15,12 +15,16 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        // Same backend as iOS/web. 10.0.2.2 is the emulator's host loopback;
-        // override for a device / production via a build type or env.
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+        // Same backend as iOS/web. Debug talks to the dev machine via the
+        // emulator's host loopback (cleartext allowed only in the debug
+        // manifest overlay); release is pinned to production HTTPS.
+        buildConfigField("String", "API_BASE_URL", "\"https://api.cerebrozen.in\"")
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

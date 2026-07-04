@@ -2,8 +2,10 @@
 
 Native Android scaffold in **Kotlin + Jetpack Compose (Material 3)**, brand-matched
 to the iOS app and the same five-tab structure (Home · Sleep · Talk · Journal · You).
-This is a starting point — the tabs render branded placeholders; feature parity with
-iOS is the roadmap below.
+First real slice shipped 2026-07-04: live auth (sign in / create account with
+refresh-token rotation, same accounts as iOS/web) and a live **Today** tab
+(mood check-in → `/moods`, server streak, recent check-ins). The other tabs
+render branded placeholders; full parity is the roadmap below.
 
 ## Stack
 - Kotlin 2.0 · AGP 8.7 · Gradle 8.11 (Kotlin DSL + version catalog `gradle/libs.versions.toml`)
@@ -22,10 +24,12 @@ apps/android/
         ├── res/values/                  strings, colors, theme
         └── java/com/cerebro/app/
             ├── MainActivity.kt
+            ├── net/Session.kt           zero-SDK API client (HttpURLConnection +
+            │                            org.json): auth + refresh rotation + endpoints
             └── ui/
-                ├── CereBroApp.kt        Scaffold + bottom-nav + NavHost
+                ├── CereBroApp.kt        auth gate + Scaffold + bottom-nav + NavHost
                 ├── theme/               Color · Type · Theme (brand palette)
-                └── screens/             Home/Sleep/Talk/Journal/You
+                └── screens/             Auth/Today (live) · Sleep/Talk/Journal/You
 ```
 
 ## Run
@@ -44,14 +48,17 @@ first sync), then Run. Or from the CLI once the wrapper exists:
 
 ## Backend
 
-`BuildConfig.API_BASE_URL` defaults to `http://10.0.2.2:8000` — the Android
-emulator's alias for the host machine's `localhost`, so it reaches the same
-FastAPI backend the iOS app and web use. Point it elsewhere for a device or prod.
+`BuildConfig.API_BASE_URL` is per build type: **debug** → `http://10.0.2.2:8000`
+(the emulator's alias for the host's `localhost`; cleartext is allowed only via
+the debug manifest overlay) and **release** → `https://api.cerebrozen.in`.
+The refresh token lives in plain SharedPreferences for now (parity with the web
+app's localStorage) — move to EncryptedSharedPreferences with security-crypto.
 
 ## Roadmap to iOS parity
-1. Networking layer (Retrofit/Ktor) → the existing FastAPI (`/auth`, `/chat`,
-   `/oracle`, `/users`, …), reusing the same JWT + Apple/Google sign-in.
-2. Real screens per tab (sleep soundscapes via `AudioTrack`/ExoPlayer, journal
-   with Room, the voice loop, streak, crisis resources + trusted contact).
+1. ~~Networking layer~~ ✅ minimal zero-SDK client (`net/Session.kt`) with JWT +
+   refresh rotation; Apple/Google sign-in still to add.
+2. Real screens per tab — Today ✅ (check-in, streak, recent); next: journal
+   with Room, sleep soundscapes via `AudioTrack`/ExoPlayer, the voice loop,
+   crisis resources + trusted contact.
 3. StoreKit's counterpart: Google Play Billing for subscriptions.
 4. Notifications (FCM) for the daily reminder.
