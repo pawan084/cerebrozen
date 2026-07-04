@@ -218,8 +218,12 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   end-to-end on an API-35 emulator against the dev backend (sign-in as the
   seeded demo user, check-in advanced the server streak 3→4, journal + sleep
   writes landed, /chat returned a live LLM reply with suggestion chips).
-  Remaining for parity: plans/insights/You tabs, offline-first store,
-  Apple/Google sign-in, Play Billing, FCM, soundscape audio, CI wrapper.
+  Gradle wrapper now committed (./gradlew just works). Remaining for parity,
+  in the recommended order: (1) privacy screens — consent toggles + export +
+  delete (compliance surface), (2) minimal onboarding gate (18+ attestation +
+  AI disclosure + consent), (3) Plans + Insights tabs, (4) crisis resources +
+  trusted contact, (5) offline-first store (Room), soundscape audio,
+  Apple/Google sign-in, Play Billing, FCM, You/settings parity.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
