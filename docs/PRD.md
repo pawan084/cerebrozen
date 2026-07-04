@@ -114,7 +114,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Auth: emailed one-time code (passwordless) | ✅ | iOS + web sign-in; creates the account at verify |
 | First-party anonymous analytics (onboarding funnel, paywall) | ✅ | 2026-07-04: allowlisted events, random install id (never account-linked), zero third-party SDKs, opt-out toggle, admin funnel chart |
 | Sign in with Apple / Google | 🟡 | Code + entitlement done; portal/OAuth config pending |
-| Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline |
+| Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline (zero remote images since 2026-07-04) |
 | Offline mode | 🟡 | Genuinely local-first; the "offline" showcase screen itself is static |
 | Account deletion (typed DELETE, full cascade) | ✅ | |
 | Privacy policy + labels | ✅ | In-app + web + PRIVACY_LABELS.md |

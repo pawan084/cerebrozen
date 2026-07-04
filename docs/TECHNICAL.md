@@ -43,6 +43,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | Nudges | `NUDGE_DISPATCH_INTERVAL_MINUTES` | default 5; 0 = external cron via `POST /admin/nudges/dispatch` |
 | Push/Email/SMS | `APNS_*`, `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APP_BASE_URL` | logged instead of sent |
 | Web billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, `STRIPE_RETURN_URL` | checkout 503s; webhook rejects |
+| Web Apple sign-in | `APPLE_SERVICES_CLIENT_ID` (second token audience) | native audience only |
 | Quota | `FREE_DAILY_MESSAGES` | default free-tier cap |
 | Seed | `SEED_DEMO_DATA`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | prod guard forbids demo values |
 

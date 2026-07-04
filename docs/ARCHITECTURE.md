@@ -36,7 +36,7 @@ offline with blank keys.
 ```
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
-  apps/android/   Kotlin + Jetpack Compose scaffold (placeholder tabs only)
+  apps/android/   Kotlin + Compose: live auth + Today slice; other tabs placeholder
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
@@ -67,7 +67,7 @@ cere/
 
 | Prefix | Highlights |
 | --- | --- |
-| `/auth` | signup, login (lockout 5 fails/15 min), apple, google, otp/request + otp/verify (emailed 6-digit passwordless sign-in: find-or-create, single-use, 10 min TTL, burns after 5 wrong tries, hashed at rest), refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
+| `/auth` | signup, login (lockout 5 fails/15 min), apple (bundle-id or Services-ID audience), google, otp/request + otp/verify (emailed 6-digit passwordless sign-in: find-or-create, single-use, 10 min TTL, burns after 5 wrong tries, hashed at rest), refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
 | `/users/me` | profile, attest (18+/AI disclosure; optional client tap-time, honored only when past), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade + minimal Rule 8(3) `deletion_ledger` row: hashed email only, 12-month ops purge), push-token, streak (server mirror of the iOS rules) |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
@@ -98,7 +98,8 @@ cere/
 - `nudges.py`/`notifications.py` — scheduling + APNs push. Delivery runs in-process: a
   lifespan task in `app.main` calls `dispatch_due` every `NUDGE_DISPATCH_INTERVAL_MINUTES`
   (rows claimed with `FOR UPDATE SKIP LOCKED`, so multiple workers are safe); outcomes are
-  `sent`/`skipped`/`failed`, and `POST /admin/nudges/dispatch` remains as a manual pass.
+  `sent`/`skipped`/`failed`; users without a push token get email delivery when they've
+  opted in (`users.email_nudges`), and `POST /admin/nudges/dispatch` remains as a manual pass.
 
 ### Oracle (LangGraph agent)
 

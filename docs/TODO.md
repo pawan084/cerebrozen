@@ -135,10 +135,17 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   `STRIPE_*` set) + `POST /webhooks/stripe` → same `subscription_tier` contract;
   account-page "Upgrade" button degrades honestly. Owner: create Stripe products +
   webhook endpoint + keys.
-- [ ] Post-v1 (remaining): Web Push (VAPID) or email nudges for web-only users,
-  `/auth/apple` Services-ID audience for web Apple sign-in.
-- [ ] Oracle agent context: gate journal/sleep tool reads on the new consent flags
-  (chat pipeline + plans + insights are enforced; the Oracle graph isn't yet).
+- [x] Email nudges for web-only users — 2026-07-04: `users.email_nudges` opt-in
+  (Alembic `d41f6a8c2e95`, account-page toggle); `dispatch_due` falls back to
+  email when there's no push token and the user opted in.
+- [x] `/auth/apple` Services-ID audience — 2026-07-04: `APPLE_SERVICES_CLIENT_ID`
+  accepted as a second token audience (web button itself still needs the owner's
+  Services ID + Apple JS wiring).
+- [ ] Post-v1 (remaining): Web Push (VAPID) as a richer alternative to email nudges.
+- [x] Oracle agent consent — verified 2026-07-04: the graph's system prompt embeds
+  NO user data; its only data read (`get_weekly_insights`) delegates to the already
+  consent-gated `insights.compute_weekly`, and every write tool is individually
+  user-confirmed via `interrupt()`. Nothing left to gate.
 
 ### Investor-readiness actions — benchmarks + full list in [INVESTOR_READINESS.md](INVESTOR_READINESS.md)
 - [x] **Decide analytics** — done 2026-07-04 (see the strategy-doc item above):
@@ -185,30 +192,45 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [x] `OnboardingProgress` accessibility value — 2026-07-04: label + percent value;
   baseline date now stamps once (`setBaseline` keeps the original date).
 
-- [ ] iOS imagery: bundle real assets for the remaining content heroes/rails
-  (offline correctness, privacy, App Review safety). 2026-07-03: photo usage cut
-  hard — rows/onboarding/talk no longer render photos (symbol wells only); the
-  worst URLs (office, laptop-hands, portrait-near-crisis, desert road) retargeted
-  to calm nature. What's left is ~13 Unsplash URLs on heroes + rail cards.
+- [x] iOS imagery — 2026-07-04: ALL remaining remote Unsplash URLs removed
+  (`Dummy.Img.*` and the server seed's `image_url` are now empty); every hero/
+  rail renders the branded gradient + symbol well `Photo` already draws. Zero
+  network images: offline-correct, private, App-Review-safe. Bundle real
+  licensed art via the CMS/asset catalog if it ever lands.
 - [x] Remaining `Dummy` catalogue — 2026-07-04: Home rails (time-matched kinds
   from `backend.catalogue`, sleep-goal bias preserved), Programs (`kind=program`
   + new "Stop overthinking" seed item), Search (whole served catalogue as the
   pool) all server-first with the curated local fallback offline; UI tests
   stay deterministic (`loadCatalogue` no-ops under `-resetState`).
-- [ ] Backend tests require a live Postgres (autouse `init_db()`); consider transactional
-  isolation or a dedicated per-run test DB.
-- [ ] VoiceOver announcements for streaming chat text (labels/traits pass is done; live
-  token announcements are not).
-- [ ] Opt-in live-LLM integration suite (`RUN_LLM_TESTS`) to cover the Oracle stream paths
-  excluded from coverage.
-- [ ] **Android app** — `apps/android` is a Compose scaffold (placeholder tabs). Roadmap:
-  networking, feature parity with iOS, Play Billing, FCM.
-- [ ] Surface the daily mood check-in as an explicit proactive ritual; light reward tie-in
-  to games (competitor benchmark follow-ups).
+- [x] Backend test isolation — 2026-07-04: conftest now runs the suite in a
+  dedicated `<db>_test` database, dropped + recreated fresh per run (active
+  whenever DATABASE_URL is set, i.e. container + CI); dev data stays untouched
+  and create_all can never race the dev DB's Alembic state again.
+- [x] VoiceOver for streaming chat — 2026-07-04: the live bubble is marked
+  `.updatesFrequently` ("CereBro is replying") and the completed reply is
+  announced once via `UIAccessibility.post` — deliberate: per-token speech is
+  noise, one announcement is the accessible pattern.
+- [x] Opt-in live-LLM suite — 2026-07-04: `tests/test_live_llm.py`
+  (`RUN_LLM_TESTS=1` + a key: real /chat reply + Oracle SSE liveness; skipped
+  hermetically otherwise). Verified live: 2 passed against real keys.
+- [ ] **Android app** — first real slice 2026-07-04: zero-SDK API client
+  (`net/Session.kt`: auth + refresh rotation), AuthScreen, live Today tab
+  (mood check-in → /moods, server streak, recent), auth gate + sign-out,
+  per-buildType API URL (debug cleartext only). assembleDebug verified locally.
+  Remaining for parity: journal/sleep/talk tabs, Apple/Google sign-in,
+  Play Billing, FCM, on-device/emulator test pass (no AVD on this machine).
+- [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
+  "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
+  never forced). The proactive ritual itself was already the Home hero + daily
+  reminder.
 - [ ] Content depth + clinical credibility (SHIP_READINESS.md "honest gaps").
-- [ ] `mcp.cerebrozen.in` reserved in DNS/Caddyfile with no service behind it — build or drop.
-- [ ] Consider a CSP for web/admin (deliberately omitted from the Caddy header block —
-  Next.js inline scripts need nonces/hashes first).
+- [x] `mcp.cerebrozen.in` — dropped 2026-07-04 (dangling subdomain removed from
+  the Caddyfile comment; owner: delete the DNS record).
+- [x] CSP — 2026-07-04: pragmatic policy in the shared Caddy snippet (blocks
+  remote scripts/objects/frames/images, pins connect-src to our origins;
+  'unsafe-inline' script/style stays for Next hydration). Upgrade path: per-app
+  nonce middleware, still open below.
+- [ ] CSP nonce upgrade: Next middleware per app to drop 'unsafe-inline' scripts.
 
 ## Done — implementation pass 2026-07-02
 
