@@ -97,6 +97,17 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from: str = ""
 
+    # Stripe web billing (apps/app). Empty secret = /billing/checkout 503s and
+    # the webhook rejects; the App Store flow is unaffected. Price ids map to
+    # the same subscription_tier contract as services/appstore.py.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_premium_monthly: str = ""
+    stripe_price_premium_annual: str = ""
+    stripe_price_premium_human_monthly: str = ""
+    stripe_price_premium_human_annual: str = ""
+    stripe_return_url: str = "https://app.cerebrozen.in/account"
+
     # Seed
     seed_demo_data: bool = True
     admin_email: str = "admin@cerebro.app"
@@ -161,6 +172,10 @@ class Settings(BaseSettings):
     @property
     def apns_enabled(self) -> bool:
         return bool(self.apns_key_path and self.apns_key_id and self.apns_team_id)
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_secret_key)
 
     @property
     def apple_audience(self) -> str:
