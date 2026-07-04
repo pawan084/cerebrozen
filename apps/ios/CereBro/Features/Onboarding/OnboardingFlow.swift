@@ -21,15 +21,15 @@ struct OnboardingFlow: View {
                                       // onboarding (attestation is on the server), so
                                       // sign-in skips straight into the app.
                                       onSignedIn: { state.hasOnboarded = true })
-                case 1: AgeGateScreen(onContinue: next)
-                case 2: DisclosureScreen(onContinue: next)
-                case 3: LanguageScreen(onContinue: next)
-                case 4: StateCheckScreen(onContinue: next)
-                case 5: FirstResetScreen(onContinue: next)
-                case 6: FirstPlanScreen(onContinue: next)
-                case 7: SignupScreen(onContinue: next)
-                case 8: ConsentScreen(onContinue: next)
-                default: NotificationsScreen(onContinue: { state.hasOnboarded = true })
+                case 1: AgeGateScreen(onContinue: next, onBack: back)
+                case 2: DisclosureScreen(onContinue: next, onBack: back)
+                case 3: LanguageScreen(onContinue: next, onBack: back)
+                case 4: StateCheckScreen(onContinue: next, onBack: back)
+                case 5: FirstResetScreen(onContinue: next, onBack: back)
+                case 6: FirstPlanScreen(onContinue: next, onBack: back)
+                case 7: SignupScreen(onContinue: next, onBack: back)
+                case 8: ConsentScreen(onContinue: next, onBack: back)
+                default: NotificationsScreen(onContinue: { state.hasOnboarded = true }, onBack: back)
                 }
             }
             .id(step)   // each step is its own view, so the push transition plays
@@ -41,6 +41,8 @@ struct OnboardingFlow: View {
     }
 
     private func next() { Haptics.selection(); step += 1 }
+    /// A mis-tapped Continue is recoverable — every step > 0 offers a way back.
+    private func back() { Haptics.selection(); step = max(0, step - 1) }
 }
 
 // Shared progress bar
@@ -54,6 +56,26 @@ private struct OnboardingProgress: View {
             }
         }
         .frame(height: 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Setup progress")
+        .accessibilityValue("\(Int((value * 100).rounded())) percent")
+    }
+}
+
+/// Small circular back chevron shared by every onboarding step after the first.
+private struct OnboardingBackButton: View {
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .appFont(14, weight: .semibold)
+                .foregroundStyle(Theme.Palette.muted)
+                .frame(width: 34, height: 34)
+                .background(Theme.Palette.card, in: Circle())
+                .overlay(Circle().stroke(Theme.Palette.line))
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel("Back")
     }
 }
 
@@ -117,11 +139,14 @@ private struct StepScaffold<Content: View>: View {
     /// Label for the advance button (the final step says "Enter CereBro").
     var continueTitle: String = "Continue"
     var onContinue: () -> Void
+    /// Present on every step after the first — a mis-tap must be recoverable.
+    var onBack: (() -> Void)? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                if let onBack { OnboardingBackButton(action: onBack).entrance(0) }
                 Text(eyebrow).eyebrow().entrance(0)
                 Text(title).displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
                 // No per-step stock photo: 17 images over 10 steps meant repeats
@@ -148,11 +173,13 @@ private struct StepScaffold<Content: View>: View {
 /// "Maybe later" defers honestly (the account stays one tap away in You).
 private struct SignupScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var backend: BackendService
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                if let onBack { OnboardingBackButton(action: onBack).entrance(0) }
                 Text("Yours to keep").eyebrow().entrance(0)
                 Text("Save your space").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
                 Text(backend.isConnected
@@ -186,11 +213,21 @@ private struct SignupScreen: View {
 // MARK: 1 — Age gate (kept early: fast legal gate)
 private struct AgeGateScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
+    @EnvironmentObject var state: AppState
+    @EnvironmentObject var backend: BackendService
     @State private var confirmed = false
+    @State private var showUnderage = false
     var body: some View {
         StepScaffold(eyebrow: "For adults only", title: "A quick check",
                      caption: "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
-                     progress: 0.15, canContinue: confirmed, onContinue: onContinue) {
+                     progress: 0.15, canContinue: confirmed, onContinue: {
+                         // Persist the tap time locally; attest() carries it to
+                         // the server at the first connect (which may be later).
+                         state.confirmAge()
+                         backend.syncAgeConfirmation(state.ageConfirmedAt)
+                         onContinue()
+                     }, onBack: onBack) {
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness support, not emergency care.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
@@ -205,6 +242,18 @@ private struct AgeGateScreen: View {
                 confirmed.toggle(); Haptics.selection()
             }
             .accessibilityAddTraits(confirmed ? .isSelected : [])
+            // An honest exit for younger visitors instead of a silent dead end.
+            Button { showUnderage = true } label: {
+                Text("I'm not 18 yet")
+                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                    .frame(minHeight: 30)
+            }
+            .buttonStyle(.pressable)
+        }
+        .alert("Thanks for being honest", isPresented: $showUnderage) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("CereBro is built for adults, so we can't offer it to you yet. If things feel heavy, please talk to a trusted adult — or reach a free helpline like Childline (1098 in India).")
         }
     }
 }
@@ -212,10 +261,11 @@ private struct AgeGateScreen: View {
 // MARK: 2 — AI disclosure (kept early: transparency builds trust before setup)
 private struct DisclosureScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     var body: some View {
         StepScaffold(eyebrow: "Honesty first", title: "What CereBro is — and isn't",
                      caption: "Here's exactly what your AI companion can and can't do for you.",
-                     progress: 0.25, onContinue: onContinue) {
+                     progress: 0.25, onContinue: onContinue, onBack: onBack) {
             HStack(spacing: 10) {
                 Card { VStack(alignment: .leading, spacing: 4) {
                     Text("Can help").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
@@ -235,6 +285,7 @@ private struct DisclosureScreen: View {
 /// One recommended card opts into personalization with a single explicit tap.
 private struct ConsentScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
 
     private var remembering: Bool { state.consent.moodHistory && state.consent.aiMemory }
@@ -242,7 +293,7 @@ private struct ConsentScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "Privacy choices", title: "What CereBro remembers",
                      caption: "Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings.",
-                     progress: 0.88, onContinue: onContinue) {
+                     progress: 0.88, onContinue: onContinue, onBack: onBack) {
             ListRow(title: remembering ? "Remembering your patterns" : "Remember my patterns",
                     subtitle: remembering ? "Thank you — plans and reflections will tune to you"
                                           : "Recommended — better plans and reflections over time",
@@ -271,12 +322,13 @@ private struct ConsentScreen: View {
 // MARK: 9 — Language
 private struct LanguageScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
     @State private var selection: Set<String> = ["English", "Hinglish"]
     var body: some View {
         StepScaffold(eyebrow: "Speak your language", title: "Language",
                      caption: "Talk and reflect in the language you think in. Mix more than one if that's you.",
-                     progress: 0.35, onContinue: persistAndContinue) {
+                     progress: 0.35, onContinue: persistAndContinue, onBack: onBack) {
             ChipRow(options: Dummy.languages, selection: $selection)
         }
         .onAppear {
@@ -297,6 +349,7 @@ private struct LanguageScreen: View {
 // richer context accrues later through actual behaviour, not a questionnaire)
 private struct StateCheckScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
     @State private var picked: String?
@@ -315,7 +368,7 @@ private struct StateCheckScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "One tap is enough", title: "What feels most true right now?",
                      caption: "No questionnaire — just pick the one that fits today. CereBro shapes your first reset and plan around it.",
-                     progress: 0.45, canContinue: picked != nil, onContinue: onContinue) {
+                     progress: 0.45, canContinue: picked != nil, onContinue: onContinue, onBack: onBack) {
             VStack(spacing: 10) {
                 ForEach(Self.states, id: \.label) { s in
                     ListRow(title: s.label,
@@ -347,11 +400,13 @@ private struct StateCheckScreen: View {
 // MARK: 5 — First reset (the first felt benefit, BEFORE any account ask)
 private struct FirstResetScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                if let onBack { OnboardingBackButton(action: onBack).entrance(0) }
                 Text("Your first reset").eyebrow().entrance(0)
                 Text("Let's steady your body").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
                 Text("Two minutes of guided breathing — follow the orb for a few cycles, or skip ahead if now isn't the moment.")
@@ -379,13 +434,16 @@ private struct FirstResetScreen: View {
 // MARK: 10 — Notifications (kept last: highest-leverage retention opt-in)
 private struct NotificationsScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
     @State private var selection: Set<String> = ["Evening 7 PM"]
     var body: some View {
         StepScaffold(eyebrow: "Gentle reminders", title: "Notifications",
                      caption: "You've had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.",
-                     progress: 0.96, continueTitle: "Enter CereBro", onContinue: persistAndContinue) {
-            ChipRow(options: Dummy.reminderTimes, selection: $selection)
+                     progress: 0.96, continueTitle: "Enter CereBro", onContinue: persistAndContinue, onBack: onBack) {
+            // One reminder slot → one choice (multi-select allowed contradictory
+            // picks like a time AND "No reminders", with morning silently winning).
+            ChipRow(options: Dummy.reminderTimes, selection: $selection, singleSelect: true)
         }
     }
 
@@ -413,6 +471,7 @@ private struct NotificationsScreen: View {
 // gives the account step that follows its reason to exist: "save this")
 private struct FirstPlanScreen: View {
     var onContinue: () -> Void
+    var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
     @State private var done = false
 
@@ -432,6 +491,7 @@ private struct FirstPlanScreen: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                if let onBack { OnboardingBackButton(action: onBack) }
                 Text("Made around you").eyebrow()
                 Text("First Plan").displayFont(28).foregroundStyle(Theme.Palette.text)
                 HeroCard(tag: "Today", title: planTitle,

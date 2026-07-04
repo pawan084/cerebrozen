@@ -28,17 +28,17 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Feature | Status | Notes |
 |---|---|---|
 | Welcome (Get started / returning sign-in / DEBUG preview) | ✅ | Returning users skip the flow entirely |
-| Age gate (affirmative 18+, gated Continue) | 🟡 | Works; no under-18 exit path, attestation stamped at first connect (TODO) |
+| Age gate (affirmative 18+, gated Continue) | ✅ | Under-18 exit message; tap time persisted on-device and carried by attest() |
 | AI limitation disclosure | ✅ | Can/can't cards; re-disclosed every 3 h in Talk/Chat |
 | One-tap state check (6 feelings → taxonomy) | ✅ | Replaced the chip questionnaire (2026-07-03, "90-second" flow); syncs on connect |
 | First reset (guided breathing before any account ask) | ✅ | Skippable; completing it starts the streak |
 | Mini-plan before signup | ✅ | Gives the account ask its reason ("save this") |
-| Baseline (stress/sleep 1–5) | ⚪ | Removed from onboarding; reintroduce contextually (TODO) |
-| Companion persona | 🟡 | Defaults to Calm Guide; picker removed from onboarding, needs a settings home |
+| Baseline (stress/sleep 1–5) | ✅ | Contextual Home ask after 3 check-ins; feeds Insights "Your starting point" |
+| Companion persona | ✅ | "Companion style" picker in You (4 styles); synced to the server profile |
 | Account step (Apple/Google/email embedded form, Maybe later) | 🟡 | Email ✅ · Apple needs portal capability · Google needs OAuth client id |
 | Consent — private by default, no pre-ticks, recommended card | ✅ | Enforced server-side (AI-memory off drops long-term history) |
 | Language (5 options, now before the value moment) | 🟡 | Persisted; only starters generation honors it; UI not localized |
-| Notifications opt-in | 🟡 | Works; multi-select UI for a single slot, "Private previews" option is inert |
+| Notifications opt-in | ✅ | Single-select (one slot, one choice); inert "Private previews" removed |
 | First plan | ✅ | Title keys off first goal (4 mapped, rest fall through) |
 
 ### Home / daily loop

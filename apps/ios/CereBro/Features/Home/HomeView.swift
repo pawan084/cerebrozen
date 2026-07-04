@@ -55,6 +55,14 @@ struct HomeView: View {
             NavRow(title: "Check how you feel", subtitle: moodSubtitle,
                    systemImage: "heart", imageURL: Dummy.Img.mood, emphasis: true) { MoodCheckinView() }
                 .entrance(5)
+            // Gentle, contextual baseline ask: only after a few real check-ins
+            // (the habit exists) and only until answered — never in onboarding.
+            if !state.hasBaseline && state.moodLogs.count >= 3 {
+                NavRow(title: "Set your starting point",
+                       subtitle: "Two quick scales — so Insights can show real change",
+                       systemImage: "flag", imageURL: Dummy.Img.calm) { BaselineCheckView() }
+                    .entrance(5)
+            }
             NavRow(title: "How did you sleep?", subtitle: sleepSubtitle,
                    systemImage: "moon.zzz", imageURL: Dummy.Img.sleep) { SleepCheckInView() }
                 .entrance(6)

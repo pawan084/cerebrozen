@@ -132,7 +132,9 @@ enum Dummy {
     // Onboarding language / goals options
     static let languages = ["English", "Hindi", "Hinglish", "Punjabi", "Tamil"]
     static let goals = ["Reduce stress", "Sleep better", "Stop overthinking", "Build confidence", "Feel less alone"]
-    static let reminderTimes = ["Morning 9 AM", "Evening 7 PM", "Private previews", "No reminders"]
+    // Single-select reminder slot ("Private previews" was removed — it mapped
+    // to nothing and made the choice read as a settings grid).
+    static let reminderTimes = ["Morning 9 AM", "Evening 7 PM", "No reminders"]
 
     // MARK: Self-reflection assessment (mirrors backend app/services/assessment.py)
     /// Psychological drivers, selected at the category level.

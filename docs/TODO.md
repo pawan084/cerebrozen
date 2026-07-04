@@ -74,11 +74,13 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   lockout; single-use, 10 min TTL, burns after 5 wrong tries; hashed at rest);
   iOS AuthForm "Sign in without a password" flow (`.oneTimeCode` AutoFill) +
   web-app signin code mode. Passkeys deferred to v2.
-- [ ] Contextual baseline capture — the stress/sleep 1–5 scales were removed from
-  onboarding (90-second flow); reintroduce as a gentle ask after the first few
-  check-ins so Insights' "starting point" returns.
-- [ ] Companion persona picker — removed from onboarding; add a "Companion style"
-  row in You/settings (default stays Calm Guide).
+- [x] Contextual baseline capture — 2026-07-04: `BaselineCheckView` (two 1–5
+  scales) offered as a Home row once ≥3 mood check-ins exist and no baseline yet;
+  `setBaseline` stamps the date once; Insights "Your starting point" renders again.
+- [x] Companion persona picker — 2026-07-04: "Companion style" row in You →
+  `CompanionStyleView` (4 styles, default Calm Guide), persisted locally and
+  synced to the server profile (`PATCH /users/me companion`; re-applied on
+  connect; server value adopted on a fresh install still at the default).
 - [x] 90-second onboarding (one-tap state → breathing reset → mini-plan → account)
 - [x] Consent private-by-default (no pre-ticked toggles + recommended card)
 - [x] Language moved before the value moment
@@ -153,19 +155,18 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   notification ever covers wellness apps).
 - [ ] Localize consent/notice screens first (Eighth-Schedule language option).
 
-### Onboarding flow review (2026-07-02) — smaller findings not yet fixed
-- [ ] No back navigation between onboarding steps (a mis-tapped Continue is
-  unrecoverable mid-flow); add a back chevron to `StepScaffold` for steps > 0.
-- [ ] Notifications step is multi-select for a single reminder slot: both times
-  → morning silently wins; "No reminders" + a time is contradictory-but-allowed;
-  "Private previews" maps to nothing. Make it single-select.
-- [ ] Age gate: no under-18 exit path, and the confirmation isn't persisted
-  client-side (attestation inferred from flow completion, stamped at first
-  connect). Persist a local confirmed-at and send it with `attest()`.
+### Onboarding flow review (2026-07-02) — smaller findings
+- [x] Back navigation — 2026-07-04: back chevron on every step > 0 (`StepScaffold`
+  `onBack` + `OnboardingBackButton` on the custom screens); UI test covers it.
+- [x] Notifications step single-select — 2026-07-04: `ChipRow(singleSelect:)`,
+  inert "Private previews" option removed.
+- [x] Age gate — 2026-07-04: under-18 exit ("I'm not 18 yet" → honest message +
+  Childline pointer); confirmed-at persisted (`AppState.ageConfirmedAt`) and sent
+  with `attest()` (server honors past client times, caps future clocks).
 - [x] Consent toggles pre-checked on — fixed 2026-07-03 (private-by-default).
 - [x] `FirstPlanScreen.planTitle` sparse mapping — now covers 6 goals + calm default.
-- [ ] `OnboardingProgress` has no accessibility value (VoiceOver users get no
-  sense of progress); re-running onboarding re-stamps the baseline date.
+- [x] `OnboardingProgress` accessibility value — 2026-07-04: label + percent value;
+  baseline date now stamps once (`setBaseline` keeps the original date).
 
 - [ ] iOS imagery: bundle real assets for the remaining content heroes/rails
   (offline correctness, privacy, App Review safety). 2026-07-03: photo usage cut

@@ -64,6 +64,9 @@ struct MainTabView: View {
         .task {
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion))
             backend.syncConsent(state.consent)
+            // The 18+ tap time from onboarding rides along with attest() at the
+            // next connect (a sign-in can happen many launches later).
+            backend.syncAgeConfirmation(state.ageConfirmedAt)
             // Seed the assessment cache from persisted state each launch, so a
             // sign-in on a later launch still syncs the onboarding choices —
             // but only a REAL answered reflection: pushing the app defaults
@@ -81,6 +84,15 @@ struct MainTabView: View {
                 state.selectedMotivations = motivations
                 state.selectedGoals = u.goals
                 state.hasAssessment = true
+            }
+        }
+        // Returning user on a fresh install: adopt the server's companion style
+        // unless this device has already been switched off the default (the
+        // picker pushes local changes itself, so local intent still wins).
+        .onChange(of: backend.isConnected) { _, connected in
+            guard connected, let u = backend.user, !u.companion.isEmpty else { return }
+            if state.companion == "Calm Guide", u.companion != state.companion {
+                state.companion = u.companion
             }
         }
         .onChange(of: state.crisisRegion) { _, new in

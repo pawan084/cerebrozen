@@ -54,6 +54,12 @@ class PushTokenUpdate(BaseModel):
     push_token: str
 
 
+class AttestBody(BaseModel):
+    """Optional client-recorded age-confirmation time — the tap happened
+    on-device during onboarding, possibly before the first connect."""
+    age_confirmed_at: datetime | None = None
+
+
 class SubscriptionVerify(BaseModel):
     """A StoreKit 2 signed transaction JWS to verify server-side."""
     signed_transaction: str

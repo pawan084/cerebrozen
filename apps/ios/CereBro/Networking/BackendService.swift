@@ -45,6 +45,10 @@ final class BackendService: ObservableObject {
     /// made while signed out (the normal onboarding order) reach the profile
     /// at the next connect — the server plan/insights personalize off it.
     private var pendingAssessment: (motivations: [String], goals: [String])?
+    /// On-device 18+ confirmation time, carried by attest() at connect.
+    private var pendingAgeConfirmedAt: Date?
+    /// Companion style chosen locally, pushed to the profile on connect.
+    private var pendingCompanion: String?
 
     var isConnected: Bool { if case .connected = status { return true } else { return false } }
     /// Subscription entitlement from the server profile.
@@ -122,9 +126,27 @@ final class BackendService: ObservableObject {
             _ = try? await APIClient.shared.updateRegion(effectiveRegion)
         }
         // Compliance: the user passed onboarding's age + AI-disclosure gates
-        // before reaching a connected state, so record the attestation.
-        _ = try? await APIClient.shared.attest()
+        // before reaching a connected state, so record the attestation (with
+        // the on-device confirmation time when the tap happened offline).
+        _ = try? await APIClient.shared.attest(ageConfirmedAt: pendingAgeConfirmedAt)
         if let c = pendingConsent { await pushConsent(c) }
+        if let style = pendingCompanion {
+            _ = try? await APIClient.shared.updateCompanion(style)
+        }
+    }
+
+    /// Cache the on-device 18+ confirmation time so attest() can carry it on
+    /// the next connect (the tap usually happens before any account exists).
+    func syncAgeConfirmation(_ date: Date?) {
+        pendingAgeConfirmedAt = date
+    }
+
+    /// Sync the chosen companion style to the server profile (drives the AI
+    /// voice). Cached and re-applied on connect, like consent/region.
+    func syncCompanion(_ companion: String) {
+        pendingCompanion = companion
+        guard isConnected else { return }
+        Task { _ = try? await APIClient.shared.updateCompanion(companion) }
     }
 
     /// Push the user's effective crisis region to the server profile so crisis

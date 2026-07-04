@@ -48,6 +48,30 @@ async def test_attest_stamps_compliance(auth_client):
     assert again["age_confirmed_at"] == first
 
 
+async def test_attest_honors_past_client_time_and_caps_future(client):
+    import datetime as dt
+
+    async def fresh():
+        e = f"attest-{uuid.uuid4().hex[:10]}@test.app"
+        r = await client.post("/auth/signup", json={"email": e, "password": "password123", "name": "T"})
+        return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    # The on-device confirmation predates the first connect → trusted verbatim.
+    headers = await fresh()
+    past = "2026-01-02T03:04:05Z"
+    body = (await client.post("/users/me/attest",
+                              json={"age_confirmed_at": past}, headers=headers)).json()
+    assert body["age_confirmed_at"].startswith("2026-01-02T03:04:05")
+
+    # A future client clock never becomes the record — the server caps it at now.
+    headers = await fresh()
+    future_dt = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=7)
+    body = (await client.post("/users/me/attest",
+                              json={"age_confirmed_at": future_dt.isoformat()}, headers=headers)).json()
+    recorded = dt.datetime.fromisoformat(body["age_confirmed_at"].replace("Z", "+00:00"))
+    assert recorded < future_dt
+
+
 async def test_chat_works_with_memory_off(auth_client):
     r = await auth_client.patch("/users/me/consent", json={"ai_memory": False})
     assert r.status_code == 200

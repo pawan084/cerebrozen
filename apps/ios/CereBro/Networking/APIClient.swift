@@ -357,10 +357,23 @@ actor APIClient {
                                  "relationship": relationship, "notify_consent": notifyConsent])
     }
 
-    /// Record the onboarding age (18+) + AI-disclosure acknowledgement (compliance).
+    /// Record the onboarding age (18+) + AI-disclosure acknowledgement
+    /// (compliance). Carries the on-device confirmation time when known — the
+    /// tap can predate the first connect; the server caps future clocks.
     @discardableResult
-    func attest() async throws -> RemoteUser {
-        try await request("/users/me/attest", method: "POST")
+    func attest(ageConfirmedAt: Date? = nil) async throws -> RemoteUser {
+        if let date = ageConfirmedAt {
+            let iso = ISO8601DateFormatter().string(from: date)
+            return try await request("/users/me/attest", method: "POST",
+                                     json: ["age_confirmed_at": iso])
+        }
+        return try await request("/users/me/attest", method: "POST")
+    }
+
+    /// Update the companion style ("Calm Guide" etc.) on the server profile.
+    @discardableResult
+    func updateCompanion(_ companion: String) async throws -> RemoteUser {
+        try await request("/users/me", method: "PATCH", json: ["companion": companion])
     }
 
     /// Verify a StoreKit 2 signed transaction server-side; the server sets the

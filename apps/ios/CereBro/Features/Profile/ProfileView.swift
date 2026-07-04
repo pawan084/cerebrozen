@@ -30,6 +30,8 @@ struct ProfileView: View {
             NavRow(title: backend.isConnected ? "Account" : "Sign in",
                    subtitle: backend.isConnected ? "Manage your synced account" : "Apple, Google or email — sync across devices",
                    systemImage: "person.crop.circle", imageURL: Dummy.Img.privacy, emphasis: true) { CloudSyncView() }
+            NavRow(title: "Companion style", subtitle: "\(state.companion) · how CereBro talks with you",
+                   systemImage: "bubble.left.and.text.bubble.right", imageURL: Dummy.Img.chat) { CompanionStyleView() }
             NavRow(title: "Daily reminder",
                    subtitle: state.reminderEnabled ? "On · gentle daily check-in" : "Off · tap to set a gentle nudge",
                    systemImage: "bell", imageURL: Dummy.Img.bell) { RemindersView() }

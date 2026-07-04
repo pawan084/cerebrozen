@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +24,7 @@ from app.schemas.content_data import (
 from app.schemas.plan import PlanOut
 from app.models.trusted_contact import TrustedContact
 from app.schemas.user import (
+    AttestBody,
     ConsentSchema,
     ConsentUpdate,
     PushTokenUpdate,
@@ -65,15 +68,21 @@ async def update_me(
 
 @router.post("/me/attest", response_model=UserOut)
 async def attest(
+    payload: AttestBody | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Record the compliance attestations from onboarding: 18+ age confirmation
     and acknowledgement of the AI disclosure. Idempotent — stamps the first time
-    each is confirmed and leaves earlier timestamps untouched."""
+    each is confirmed and leaves earlier timestamps untouched. An optional
+    client-recorded confirmation time is honored only when it's in the past
+    (the tap can predate the first connect; the server clock caps it)."""
     now = utcnow()
     if user.age_confirmed_at is None:
-        user.age_confirmed_at = now
+        client = payload.age_confirmed_at if payload else None
+        if client is not None and client.tzinfo is None:
+            client = client.replace(tzinfo=timezone.utc)
+        user.age_confirmed_at = min(client, now) if client else now
     if user.ai_disclosure_ack_at is None:
         user.ai_disclosure_ack_at = now
     await db.commit()

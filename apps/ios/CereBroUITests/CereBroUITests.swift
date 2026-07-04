@@ -314,6 +314,32 @@ final class CereBroUITests: XCTestCase {
                       "Password mode did not restore")
     }
 
+    /// Onboarding must be recoverable: the age gate offers a way back to
+    /// Welcome, and an honest under-18 exit message. Pure UI — no backend.
+    func testOnboardingBackNavigationAndUnderageExit() throws {
+        let app = makeApp()
+        app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
+                      "Welcome screen did not appear")
+        tap(app, "Try a 2-minute reset")
+        XCTAssertTrue(app.staticTexts["A quick check"].waitForExistence(timeout: 6),
+                      "Age gate did not appear")
+
+        // The honest under-18 exit: a kind message, not a silent dead end.
+        tap(app, "I'm not 18 yet")
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 4),
+                      "Under-18 message did not appear")
+        app.alerts.buttons["OK"].tap()
+
+        // A mis-tapped Continue is recoverable — Back returns to Welcome.
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 4),
+                      "Back button missing on the age gate")
+        app.buttons["Back"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 6),
+                      "Back did not return to the Welcome screen")
+    }
+
     /// End-to-end persistence: a motivation chosen during onboarding's
     /// self-reflection must flow all the way into the Talk tab's conversation
     /// starters. Live-backend test (self-skips when no API is reachable, like the

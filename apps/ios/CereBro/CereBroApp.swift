@@ -54,6 +54,7 @@ final class AppState: ObservableObject {
         static let baselineStress = "baselineStress"
         static let baselineSleep = "baselineSleep"
         static let baselineDate = "baselineDate"
+        static let ageConfirmed = "ageConfirmedAt"
         static let sleep = "sleepEntries"
         static let hkSleep = "healthKitSleepPrefill"
     }
@@ -117,6 +118,9 @@ final class AppState: ObservableObject {
     @Published private(set) var baselineSleep: Int  { didSet { UserDefaults.standard.set(baselineSleep, forKey: Key.baselineSleep) } }
     @Published private(set) var baselineDate: Date? { didSet { Self.save(baselineDate, Key.baselineDate) } }
     var hasBaseline: Bool { baselineStress > 0 && baselineSleep > 0 }
+    /// When the user tapped the onboarding 18+ confirmation on this device
+    /// (compliance record; sent with attest() so the server keeps the true time).
+    @Published private(set) var ageConfirmedAt: Date? { didSet { Self.save(ageConfirmedAt, Key.ageConfirmed) } }
 
     init() {
         // UI tests pass `-resetState YES` to start each run from seeded defaults,
@@ -130,7 +134,7 @@ final class AppState: ObservableObject {
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
              Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.hkSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
-             Key.baselineStress, Key.baselineSleep, Key.baselineDate,
+             Key.baselineStress, Key.baselineSleep, Key.baselineDate, Key.ageConfirmed,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
@@ -160,13 +164,20 @@ final class AppState: ObservableObject {
         baselineStress = UserDefaults.standard.integer(forKey: Key.baselineStress)
         baselineSleep  = UserDefaults.standard.integer(forKey: Key.baselineSleep)
         baselineDate   = Self.load(Date.self, Key.baselineDate)
+        ageConfirmedAt = Self.load(Date.self, Key.ageConfirmed)
     }
 
-    /// Record the onboarding baseline (stamps the date).
+    /// Record the onboarding baseline. Stamps the date once — the "before"
+    /// measurement keeps its original date even if the scales are re-answered.
     func setBaseline(stress: Int, sleep: Int) {
         baselineStress = stress
         baselineSleep = sleep
-        baselineDate = Date()
+        if baselineDate == nil { baselineDate = Date() }
+    }
+
+    /// Persist the 18+ confirmation the first time it's tapped (stamp-once).
+    func confirmAge() {
+        if ageConfirmedAt == nil { ageConfirmedAt = Date() }
     }
 
     /// Wipe all stored user data (used by "Reset & view onboarding").
@@ -195,6 +206,7 @@ final class AppState: ObservableObject {
         baselineStress = 0
         baselineSleep = 0
         baselineDate = nil
+        ageConfirmedAt = nil
         ReminderManager.cancel()
         hasOnboarded = false
     }
