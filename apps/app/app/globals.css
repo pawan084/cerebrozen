@@ -1,7 +1,6 @@
+/* @cerebro-tokens:start */
+/* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  /* Brand palette — in sync with the iOS DesignSystem (Theme.swift) + apps/web
-     + apps/admin. Third copy by convention; extraction to a shared package is
-     tracked in docs/TODO.md. */
   --night: #080b22;
   --night-top: #161e4a;
   --card: rgba(255, 255, 255, 0.045);
@@ -18,6 +17,7 @@
   --danger: #e0a0ad;
   --ok: #9ad6b4;
 }
+/* @cerebro-tokens:end */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background: linear-gradient(180deg, var(--night-top), var(--night));

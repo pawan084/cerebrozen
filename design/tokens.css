@@ -1,0 +1,22 @@
+/* CereBro shared design tokens — single source of truth for the web-side
+   palette (mirrors iOS DesignSystem/Theme.swift; change both together).
+   Edit HERE, then run `node scripts/sync-tokens.mjs` to propagate into
+   apps/{web,admin,app}/app/globals.css. CI runs --check and fails on drift.
+   App-specific vars (e.g. web's --maxw) live outside the synced block. */
+:root {
+  --night: #080b22;
+  --night-top: #161e4a;
+  --card: rgba(255, 255, 255, 0.045);
+  --card-strong: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f4f6ff;
+  --soft: #dfe5ff;
+  --muted: #aeb6e0;
+  --muted-2: #8890bd;
+  --lav: #6f7bf7;
+  --lav-2: #9b6bff;
+  --cream: #eceefb;
+  --ink: #171d43;
+  --danger: #e0a0ad;
+  --ok: #9ad6b4;
+}

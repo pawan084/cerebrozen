@@ -112,8 +112,10 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 - [x] Library page (2026-07-03): served `/content` catalogue grouped by kind on the
   web app; honest "playback lives in iOS" footnote.
 - [ ] Web v1 remaining: Google sign-in (needs owner OAuth client id).
-- [ ] Extract shared design tokens (palette now copy-pasted into web + admin + app
-  `globals.css`) — needs per-app Docker build contexts widened or a prebuild copy step.
+- [x] Shared design tokens — 2026-07-04: canonical `design/tokens.css` +
+  `scripts/sync-tokens.mjs` rewriting marker-delimited blocks in all three
+  `globals.css` (checked-in copies stay Docker-friendly); CI drift gate
+  (`--check`). Union palette reconciled (web `--card` 0.05 → 0.045).
 - [x] Streaks on web (2026-07-03): `GET /users/me/streak` computes the "mindful days"
   streak server-side (same one-grace-day rules as iOS — now a cross-stack contract);
   Today page shows the streak card + week dots. iOS still computes locally
@@ -128,9 +130,15 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 - [x] Nudge authoring (2026-07-03): `POST /admin/nudges` (one user or all active,
   kind `announcement`, delivery via the existing scheduler) + `GET /admin/nudges`
   (kind-filterable) + admin Nudges tab. Admin v2 complete.
-- [ ] Post-v1: Stripe web billing (`stripe.py` + webhook → same `subscription_tier`
-  contract as App Store), Web Push (VAPID) or email nudges for web-only users,
+- [x] Stripe web billing — 2026-07-04: `services/stripe_billing.py` (httpx REST +
+  manual HMAC webhook verification, no SDK), `POST /billing/checkout` (503 until
+  `STRIPE_*` set) + `POST /webhooks/stripe` → same `subscription_tier` contract;
+  account-page "Upgrade" button degrades honestly. Owner: create Stripe products +
+  webhook endpoint + keys.
+- [ ] Post-v1 (remaining): Web Push (VAPID) or email nudges for web-only users,
   `/auth/apple` Services-ID audience for web Apple sign-in.
+- [ ] Oracle agent context: gate journal/sleep tool reads on the new consent flags
+  (chat pipeline + plans + insights are enforced; the Oracle graph isn't yet).
 
 ### Investor-readiness actions — benchmarks + full list in [INVESTOR_READINESS.md](INVESTOR_READINESS.md)
 - [x] **Decide analytics** — done 2026-07-04 (see the strategy-doc item above):
@@ -146,14 +154,19 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 ### DPDP Act readiness — checklist + deadlines in [DPDP_COMPLIANCE.md](DPDP_COMPLIANCE.md)
 Substantive obligations bite **13 May 2027**; SPDI Rules 2011 (mental-health data =
 sensitive) apply **today** and are already satisfied. Ordered by lead time:
-- [ ] Consent screen: itemise data categories per purpose (mood, journal, chat, sleep) —
-  a blanket toggle likely fails DPDP's "specific and informed" bar.
-- [ ] Design the Rule 8(3) sealed 12-month log store vs `DELETE /users/me` hard-cascade
-  (content deletes now; minimal identity + processing logs quarantined 1 yr).
-- [ ] Publish grievance contact (web + app privacy hub) + 90-day rights-response SLA;
-  include the contact in every rights response.
-- [ ] Breach-notification runbook: every breach → affected users "without delay" + Board
-  initial report then ≤ 72 h detail. No materiality threshold.
+- [x] Consent screen itemised — 2026-07-04: `journal_memory` + `sleep_history` flags
+  (Alembic `c29d5f7e4b18`) across backend model/schemas + iOS Consent/Privacy screens +
+  web account page; every category now ENFORCED at its read site (chat recall, plan
+  signals `agentic._recent_signals`, weekly insights) — previously only `ai_memory` did
+  anything. Oracle context gating is still open (below).
+- [x] Rule 8(3) deletion ledger — 2026-07-04: `deletion_ledger` (hashed email +
+  account age only, written in the same transaction as the cascade delete; ops purge
+  after 12 months). Content still hard-deletes instantly.
+- [x] Grievance contact published — 2026-07-04: grievance@cerebrozen.in + 90-day SLA +
+  Board-escalation note on the web privacy policy and the in-app policy screen.
+  (Owner: create the mailbox.)
+- [x] Breach-notification runbook — 2026-07-04: [BREACH_RUNBOOK.md](BREACH_RUNBOOK.md)
+  (roles, statutory clock incl. CERT-In 6 h today, templates, preparedness checklist).
 - [ ] Processor security clauses with LLM/voice/email/SMS vendors (Rule 6(1)(f)).
 - [ ] DPIIT startup recognition (eligibility for the s. 17(3) exemption if an SDF class
   notification ever covers wellness apps).

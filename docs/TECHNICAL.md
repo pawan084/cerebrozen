@@ -42,6 +42,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | Subscriptions | `APPSTORE_BUNDLE_ID`, `APPSTORE_ROOT_CERT_PATH` | unpinned chain when blank (dev); prod template pins to the bundled `app/certs/AppleRootCA-G3.pem` |
 | Nudges | `NUDGE_DISPATCH_INTERVAL_MINUTES` | default 5; 0 = external cron via `POST /admin/nudges/dispatch` |
 | Push/Email/SMS | `APNS_*`, `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APP_BASE_URL` | logged instead of sent |
+| Web billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, `STRIPE_RETURN_URL` | checkout 503s; webhook rejects |
 | Quota | `FREE_DAILY_MESSAGES` | default free-tier cap |
 | Seed | `SEED_DEMO_DATA`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | prod guard forbids demo values |
 

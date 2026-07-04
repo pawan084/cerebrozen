@@ -1,19 +1,26 @@
+/* @cerebro-tokens:start */
+/* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  /* Brand palette — lifted from the orb-lotus logo + night-lake splash, kept in
-     sync with the iOS DesignSystem (apps/ios/CereBro/DesignSystem/Theme.swift). */
-  --night: #080b22;       /* primary background (splash night) */
-  --night-top: #161e4a;   /* lifted top of the page gradient */
-  --card: rgba(255, 255, 255, 0.05);
+  --night: #080b22;
+  --night-top: #161e4a;
+  --card: rgba(255, 255, 255, 0.045);
+  --card-strong: rgba(255, 255, 255, 0.08);
   --line: rgba(255, 255, 255, 0.12);
-  --text: #f4f6ff;        /* primary text */
-  --soft: #dfe5ff;        /* secondary text */
-  --muted: #aeb6e0;       /* tertiary text */
-  --lav: #6f7bf7;         /* periwinkle — the orb ring, primary accent */
-  --lav-2: #9b6bff;       /* aurora violet — gradient partner */
-  --cream: #eceefb;       /* cool cream — light button fill */
-  --ink: #171d43;         /* deep ink (text on light fills) */
-  --maxw: 1080px;
+  --text: #f4f6ff;
+  --soft: #dfe5ff;
+  --muted: #aeb6e0;
+  --muted-2: #8890bd;
+  --lav: #6f7bf7;
+  --lav-2: #9b6bff;
+  --cream: #eceefb;
+  --ink: #171d43;
+  --danger: #e0a0ad;
+  --ok: #9ad6b4;
 }
+/* @cerebro-tokens:end */
+
+/* Web-only layout token (not part of the shared palette). */
+:root { --maxw: 1080px; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

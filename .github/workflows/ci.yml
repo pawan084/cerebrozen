@@ -93,6 +93,8 @@ jobs:
             apps/web/package-lock.json
             apps/admin/package-lock.json
             apps/app/package-lock.json
+      - name: Design-token drift check
+        run: node scripts/sync-tokens.mjs --check
       - name: Typecheck web
         working-directory: apps/web
         run: |
