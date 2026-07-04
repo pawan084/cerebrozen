@@ -6,8 +6,12 @@
 	email admin@cerebrozen.in
 }
 
-# Shared security headers for every site. No CSP on purpose — Next.js relies on
-# inline scripts and a strict policy would break hydration.
+# Shared security headers for every site. The CSP is deliberately pragmatic:
+# 'unsafe-inline' script/style stays because Next.js hydration relies on inline
+# bootstrap scripts (a nonce-based upgrade needs per-app middleware — tracked
+# in docs/TODO.md). Even so it blocks remote scripts/objects/frames, remote
+# images (all assets are self-hosted since the 2026-07-04 imagery pass), and
+# pins connections to our own origins.
 (security_headers) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -15,6 +19,7 @@
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.cerebrozen.in; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
 	}
 }
 
@@ -46,5 +51,6 @@ api.cerebrozen.in {
 	reverse_proxy api:8000
 }
 
-# mcp.cerebrozen.in is reserved (DNS points here) for a future MCP server.
-# Add a block here once that service exists.
+# mcp.cerebrozen.in: dropped 2026-07-04 (was reserved with nothing behind it —
+# a dangling subdomain invites takeover-style confusion). Remove the DNS record
+# too; re-add a block here only when an MCP service actually ships.
