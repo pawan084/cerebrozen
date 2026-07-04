@@ -138,4 +138,29 @@ object Api {
                     .put("symbol", symbol).put("intensity", intensity),
             ),
         )
+
+    suspend fun journal(): JSONArray = JSONArray(Session.api("/journal"))
+    suspend fun createJournal(title: String, body: String): JSONObject =
+        JSONObject(
+            Session.api(
+                "/journal", "POST",
+                JSONObject().put("title", title).put("body", body)
+                    .put("tags", JSONArray()).put("symbol", "book"),
+            ),
+        )
+
+    suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/sleep"))
+    suspend fun sleepSummary(): JSONObject = JSONObject(Session.api("/sleep/summary"))
+    suspend fun logSleep(date: String, bedtime: String, wakeTime: String, quality: Int): JSONObject =
+        JSONObject(
+            Session.api(
+                "/sleep", "POST",
+                JSONObject().put("date", date).put("bedtime", bedtime)
+                    .put("wake_time", wakeTime).put("quality", quality).put("awakenings", 0),
+            ),
+        )
+
+    suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
+    suspend fun sendChat(text: String): JSONObject =
+        JSONObject(Session.api("/chat/messages", "POST", JSONObject().put("text", text)))
 }

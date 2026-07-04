@@ -2,10 +2,12 @@
 
 Native Android scaffold in **Kotlin + Jetpack Compose (Material 3)**, brand-matched
 to the iOS app and the same five-tab structure (Home · Sleep · Talk · Journal · You).
-First real slice shipped 2026-07-04: live auth (sign in / create account with
-refresh-token rotation, same accounts as iOS/web) and a live **Today** tab
-(mood check-in → `/moods`, server streak, recent check-ins). The other tabs
-render branded placeholders; full parity is the roadmap below.
+Live slices shipped 2026-07-04 (all verified end-to-end on an API-35 emulator
+against the shared backend): auth (refresh-token rotation, same accounts as
+iOS/web), **Today** (mood check-in, server streak, recent), **Journal**
+(composer + history + never-blocking support card), **Sleep** (diary check-in,
+honest `enough_data` summary, history), **Talk** (live /chat with suggestion
+chips). Remaining tabs/features: see the roadmap below.
 
 ## Stack
 - Kotlin 2.0 · AGP 8.7 · Gradle 8.11 (Kotlin DSL + version catalog `gradle/libs.versions.toml`)
@@ -57,8 +59,9 @@ app's localStorage) — move to EncryptedSharedPreferences with security-crypto.
 ## Roadmap to iOS parity
 1. ~~Networking layer~~ ✅ minimal zero-SDK client (`net/Session.kt`) with JWT +
    refresh rotation; Apple/Google sign-in still to add.
-2. Real screens per tab — Today ✅ (check-in, streak, recent); next: journal
-   with Room, sleep soundscapes via `AudioTrack`/ExoPlayer, the voice loop,
-   crisis resources + trusted contact.
+2. Real screens per tab — Today/Journal/Sleep/Talk ✅ (live against the
+   backend); next: offline-first local store (Room), sleep soundscapes via
+   `AudioTrack`/ExoPlayer, the voice loop, plans/insights, crisis resources +
+   trusted contact, You/settings parity.
 3. StoreKit's counterpart: Google Play Billing for subscriptions.
 4. Notifications (FCM) for the daily reminder.

@@ -36,7 +36,7 @@ offline with blank keys.
 ```
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
-  apps/android/   Kotlin + Compose: live auth + Today slice; other tabs placeholder
+  apps/android/   Kotlin + Compose: live auth + Today/Journal/Sleep/Talk (emulator-verified)
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)

@@ -3,35 +3,27 @@ package com.cerebrozen.app.ui.screens
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.theme.CardFill
-import com.cerebrozen.app.ui.theme.CereBroTheme
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
-import com.cerebrozen.app.ui.theme.TextSoft
-import androidx.compose.material3.MaterialTheme
 
-/** Common page frame: uppercase eyebrow + serif title + scrolling content. */
+/** Shared page frame for the live tabs: eyebrow + serif title + scroll column. */
 @Composable
-private fun ScreenScaffold(
-    eyebrow: String,
-    title: String,
-    content: @Composable () -> Unit,
-) {
+internal fun Page(eyebrow: String, title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -45,9 +37,9 @@ private fun ScreenScaffold(
     }
 }
 
-/** A glass card matching the iOS design system. */
+/** Glass card container matching the design system. */
 @Composable
-private fun GlassCard(title: String, body: String) {
+internal fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         color = CardFill,
         shape = RoundedCornerShape(20.dp),
@@ -55,26 +47,6 @@ private fun GlassCard(title: String, body: String) {
             .fillMaxWidth()
             .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(body, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        }
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
     }
 }
-
-@Composable
-fun YouScreen() = ScreenScaffold("Settings and support", "You") {
-    GlassCard("Privacy & memory", "Control what CereBro remembers. Export or delete anytime.")
-    GlassCard("Urgent support", "Locale-aware crisis resources, always a tap away.")
-    androidx.compose.material3.TextButton(onClick = { com.cerebrozen.app.net.Session.signOut() }) {
-        Text("Sign out", color = TextMuted)
-    }
-    Text(
-        "Wellness support, not emergency care.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = TextMuted,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-    )
-}
-

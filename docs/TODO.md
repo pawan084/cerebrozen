@@ -213,12 +213,13 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [x] Opt-in live-LLM suite — 2026-07-04: `tests/test_live_llm.py`
   (`RUN_LLM_TESTS=1` + a key: real /chat reply + Oracle SSE liveness; skipped
   hermetically otherwise). Verified live: 2 passed against real keys.
-- [ ] **Android app** — first real slice 2026-07-04: zero-SDK API client
-  (`net/Session.kt`: auth + refresh rotation), AuthScreen, live Today tab
-  (mood check-in → /moods, server streak, recent), auth gate + sign-out,
-  per-buildType API URL (debug cleartext only). assembleDebug verified locally.
-  Remaining for parity: journal/sleep/talk tabs, Apple/Google sign-in,
-  Play Billing, FCM, on-device/emulator test pass (no AVD on this machine).
+- [ ] **Android app** — slices 1+2 shipped 2026-07-04: zero-SDK API client
+  (auth + refresh rotation), live Today/Journal/Sleep/Talk tabs — ALL verified
+  end-to-end on an API-35 emulator against the dev backend (sign-in as the
+  seeded demo user, check-in advanced the server streak 3→4, journal + sleep
+  writes landed, /chat returned a live LLM reply with suggestion chips).
+  Remaining for parity: plans/insights/You tabs, offline-first store,
+  Apple/Google sign-in, Play Billing, FCM, soundscape audio, CI wrapper.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
