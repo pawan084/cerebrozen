@@ -202,6 +202,22 @@ final class BackendService: ObservableObject {
         try await APIClient.shared.requestPasswordReset(email: email)
     }
 
+    /// Email the user a one-time sign-in code (passwordless auth).
+    func requestEmailCode(email: String) async throws {
+        try await APIClient.shared.requestOtp(email: email)
+    }
+
+    /// Sign in with an emailed one-time code, then connect.
+    func signInWithCode(email: String, code: String) async {
+        status = .connecting
+        do {
+            _ = try await APIClient.shared.verifyOtp(email: email, code: code)
+            try await finishConnect()
+        } catch {
+            status = .error(message(error))
+        }
+    }
+
     func signOut() {
         Task { await APIClient.shared.logout() }   // revoke server-side, then clear
         user = nil; plan = nil; insight = nil; chat = []; suggestions = []; starters = []

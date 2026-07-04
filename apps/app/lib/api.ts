@@ -116,6 +116,28 @@ export async function signUp(email: string, password: string, name: string): Pro
   storeSession(await res.json());
 }
 
+/** Email a one-time sign-in code. Always resolves — the account is only
+ * created at verify, so there is nothing to enumerate. */
+export async function requestOtp(email: string): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/otp/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error("Couldn't send a code. Try again in a minute.");
+}
+
+/** Exchange an emailed one-time code for a session (signs up new addresses). */
+export async function verifyOtp(email: string, code: string): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/otp/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  if (!res.ok) throw new Error("Invalid or expired code.");
+  storeSession(await res.json());
+}
+
 export async function signOut(): Promise<void> {
   try {
     await authedFetch("/auth/logout", { method: "POST" }, false);

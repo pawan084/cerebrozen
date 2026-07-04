@@ -214,6 +214,24 @@ actor APIClient {
                                        json: ["email": email], authed: false)
     }
 
+    /// Request an email one-time sign-in code (passwordless). Always succeeds
+    /// server-side — the account is only created at verify, so nothing enumerates.
+    func requestOtp(email: String) async throws {
+        struct Ack: Codable { let sent: Bool }
+        let _: Ack = try await request("/auth/otp/request", method: "POST",
+                                       json: ["email": email], authed: false)
+    }
+
+    /// Exchange an emailed one-time code for our tokens (new addresses get an
+    /// account created server-side, like Apple/Google sign-in).
+    func verifyOtp(email: String, code: String) async throws -> AuthTokens {
+        let tokens: AuthTokens = try await request(
+            "/auth/otp/verify", method: "POST",
+            json: ["email": email, "code": code], authed: false)
+        storeToken(tokens.access_token)
+        return tokens
+    }
+
     // MARK: Auth
 
     func signup(email: String, password: String, name: String) async throws -> AuthTokens {

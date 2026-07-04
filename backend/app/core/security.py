@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from datetime import timedelta
 from typing import Any
 
@@ -22,6 +24,16 @@ def verify_password(password: str, hashed: str) -> bool:
         return bcrypt.checkpw(password.encode(), hashed.encode())
     except ValueError:
         return False
+
+
+def hash_otp(email: str, code: str) -> str:
+    """HMAC a one-time sign-in code for at-rest storage. Binding the email in
+    keeps a code minted for one address from ever validating another."""
+    return hmac.new(settings.secret_key.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+def verify_otp(email: str, code: str, hashed: str) -> bool:
+    return hmac.compare_digest(hash_otp(email, code), hashed)
 
 
 def _create_token(subject: str, token_type: str, expires_delta: timedelta,

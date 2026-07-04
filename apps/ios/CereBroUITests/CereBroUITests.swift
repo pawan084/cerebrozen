@@ -291,6 +291,29 @@ final class CereBroUITests: XCTestCase {
         snapshot(app, "welcome-signin-entered")
     }
 
+    /// The sign-in sheet's passwordless mode: toggling swaps the password field
+    /// for the emailed-code flow and back. Pure UI — no backend needed.
+    func testPasswordlessToggleOnSignInSheet() throws {
+        let app = makeApp()
+        app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
+                      "Welcome screen did not appear")
+        tap(app, "I already have an account")
+        guard app.buttons["Continue with email"].waitForExistence(timeout: 8) else {
+            throw XCTSkip("auth sheet did not present")
+        }
+        tap(app, "Sign in without a password")
+        XCTAssertTrue(app.buttons["Email me a code"].waitForExistence(timeout: 4),
+                      "Passwordless mode did not surface the code CTA")
+        XCTAssertFalse(app.secureTextFields["Password"].exists,
+                       "Password field should hide in passwordless mode")
+        snapshot(app, "welcome-signin-passwordless")
+        tap(app, "Use a password instead")
+        XCTAssertTrue(app.buttons["Continue with email"].waitForExistence(timeout: 4),
+                      "Password mode did not restore")
+    }
+
     /// End-to-end persistence: a motivation chosen during onboarding's
     /// self-reflection must flow all the way into the Talk tab's conversation
     /// starters. Live-backend test (self-skips when no API is reachable, like the

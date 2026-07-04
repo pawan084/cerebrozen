@@ -11,6 +11,7 @@ from app.models.insight import Insight
 from app.models.safety import SafetyEvent
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
+from app.models.login_code import LoginCode
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "SafetyEvent",
     "SleepLog",
     "TrustedContact",
+    "LoginCode",
     "WaitlistEntry",
 ]

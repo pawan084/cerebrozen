@@ -18,6 +18,11 @@ struct AuthForm: View {
     @State private var googleAuth = GoogleAuth()
     @State private var googleMessage: String?
     @State private var resetMessage: String?
+    // Passwordless: sign in with an emailed one-time code instead of a password.
+    @State private var useCode = false
+    @State private var codeSent = false
+    @State private var code = ""
+    @State private var codeMessage: String?
 
     private let initialMode: Mode
     /// Under UITests (`-resetState`) the password field opts out of AutoFill
@@ -69,35 +74,84 @@ struct AuthForm: View {
                 field("Name", text: $name)
             }
             field("Email", text: $email, keyboard: .emailAddress)
-            field("Password", text: $password, secure: true)
-
-            PrimaryButton(title: mode == .signIn ? "Continue with email" : "Create my account",
-                          systemImage: "envelope.fill") {
-                Task {
-                    if mode == .signIn {
-                        await backend.signIn(email: email, password: password)
-                    } else {
-                        await backend.signUp(email: email, password: password, name: name)
-                    }
+            if mode == .signIn && useCode {
+                if codeSent {
+                    field("Code", text: $code, keyboard: .numberPad, contentType: .oneTimeCode)
                 }
+                if let codeMessage {
+                    Text(codeMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                field("Password", text: $password, secure: true)
+            }
+
+            PrimaryButton(title: primaryTitle, systemImage: "envelope.fill") {
+                Task { await primaryAction() }
             }
 
             if mode == .signIn {
-                Button {
-                    Task {
-                        try? await backend.requestPasswordReset(email: email)
-                        resetMessage = "If that email exists, a reset link is on its way."
+                HStack(spacing: 16) {
+                    Button {
+                        withAnimation {
+                            useCode.toggle()
+                            codeSent = false
+                            code = ""
+                            codeMessage = nil
+                            resetMessage = nil
+                        }
+                    } label: {
+                        Text(useCode ? "Use a password instead" : "Sign in without a password")
+                            .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
                     }
-                } label: {
-                    Text("Forgot password?").appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                    .buttonStyle(.pressable)
+                    .accessibilityIdentifier("Sign in without a password")
+
+                    if !useCode {
+                        Button {
+                            Task {
+                                try? await backend.requestPasswordReset(email: email)
+                                resetMessage = "If that email exists, a reset link is on its way."
+                            }
+                        } label: {
+                            Text("Forgot password?").appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                        }
+                        .buttonStyle(.pressable)
+                        .disabled(email.isEmpty)
+                    }
                 }
-                .buttonStyle(.pressable)
-                .disabled(email.isEmpty)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 if let resetMessage {
                     Text(resetMessage).appFont(11.5).foregroundStyle(Theme.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+        }
+    }
+
+    private var primaryTitle: String {
+        if mode == .signUp { return "Create my account" }
+        if useCode { return codeSent ? "Sign in with code" : "Email me a code" }
+        return "Continue with email"
+    }
+
+    private func primaryAction() async {
+        if mode == .signUp {
+            await backend.signUp(email: email, password: password, name: name)
+        } else if useCode {
+            if codeSent {
+                await backend.signInWithCode(email: email, code: code)
+            } else {
+                do {
+                    try await backend.requestEmailCode(email: email)
+                    codeSent = true
+                    codeMessage = "Code sent — enter the 6 digits from your email."
+                } catch {
+                    codeMessage = "Couldn't send a code. Check the address and try again."
+                }
+            }
+        } else {
+            await backend.signIn(email: email, password: password)
         }
     }
 
@@ -145,7 +199,8 @@ struct AuthForm: View {
     }
 
     private func field(_ label: String, text: Binding<String>,
-                       secure: Bool = false, keyboard: UIKeyboardType = .default) -> some View {
+                       secure: Bool = false, keyboard: UIKeyboardType = .default,
+                       contentType: UITextContentType? = nil) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).appFont(11.5).foregroundStyle(Theme.Palette.muted)
             Group {
@@ -156,7 +211,7 @@ struct AuthForm: View {
                 } else {
                     TextField(label, text: text)
                         .keyboardType(keyboard)
-                        .textContentType(keyboard == .emailAddress ? .emailAddress : nil)
+                        .textContentType(contentType ?? (keyboard == .emailAddress ? .emailAddress : nil))
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier(label)

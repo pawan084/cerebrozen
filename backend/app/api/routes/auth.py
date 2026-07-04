@@ -20,15 +20,20 @@ from app.core.security import (
     create_reset_token,
     create_verify_token,
     decode_token,
+    hash_otp,
     hash_password,
+    verify_otp,
     verify_password,
 )
 from app.models.consent import Consent
+from app.models.login_code import LoginCode
 from app.models.user import User
 from app.schemas.auth import (
     AppleSignInRequest,
     ForgotPasswordRequest,
     GoogleSignInRequest,
+    OtpRequestBody,
+    OtpVerifyBody,
     RefreshRequest,
     ResetPasswordRequest,
     SignupRequest,
@@ -42,6 +47,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 _MAX_FAILED_LOGINS = 5
 _LOCKOUT_MINUTES = 15
+_OTP_TTL_MINUTES = 10
+_OTP_MAX_ATTEMPTS = 5
 
 
 def _tokens(user: User) -> TokenPair:
@@ -186,6 +193,79 @@ async def google_sign_in(
         await db.refresh(user)
     elif not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    return _tokens(user)
+
+
+@router.post("/otp/request")
+@limiter.limit("5/minute")
+async def otp_request(request: Request, payload: OtpRequestBody, db: AsyncSession = Depends(get_db)):
+    """Email a 6-digit one-time sign-in code (passwordless auth). New and
+    existing addresses are treated identically — the account is only created
+    at verify — so there is nothing to enumerate. A re-request replaces any
+    earlier code for the address."""
+    addr = payload.email.lower()
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    row = await db.scalar(select(LoginCode).where(LoginCode.email == addr))
+    if row is None:
+        row = LoginCode(email=addr)
+        db.add(row)
+    row.code_hash = hash_otp(addr, code)
+    row.expires_at = utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)
+    row.attempts = 0
+    await db.commit()
+    await email.send_email(addr, "Your CereBro sign-in code",
+                           f"Your sign-in code is {code}. It expires in {_OTP_TTL_MINUTES} minutes.\n\n"
+                           "If you didn't request it, you can ignore this email.")
+    return {"sent": True}
+
+
+@router.post("/otp/verify", response_model=TokenPair)
+@limiter.limit("10/minute")
+async def otp_verify(request: Request, payload: OtpVerifyBody, db: AsyncSession = Depends(get_db)):
+    """Exchange an emailed one-time code for a token pair. Possession of the
+    inbox is the credential, so the user is found-or-created (like Apple /
+    Google sign-in) and the address marked verified. Codes are single-use and
+    burn after ``_OTP_MAX_ATTEMPTS`` wrong tries."""
+    addr = payload.email.lower()
+    _bad = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired code")
+    row = await db.scalar(select(LoginCode).where(LoginCode.email == addr))
+    if row is None:
+        raise _bad
+    if row.expires_at <= utcnow():
+        await db.delete(row)
+        await db.commit()
+        raise _bad
+    if not verify_otp(addr, payload.code, row.code_hash):
+        row.attempts += 1
+        if row.attempts >= _OTP_MAX_ATTEMPTS:
+            await db.delete(row)
+        await db.commit()
+        raise _bad
+    await db.delete(row)   # single-use
+
+    user = await db.scalar(select(User).where(User.email == addr))
+    if user is None:
+        # New address — passwordless account; store an unusable random hash
+        # ("forgot password" mints one later if they ever want a password).
+        user = User(
+            email=addr,
+            hashed_password=hash_password(secrets.token_urlsafe(32)),
+            email_verified=True,
+        )
+        user.consent = Consent()
+        db.add(user)
+        await db.flush()
+        await nudges.schedule_default_nudges(db, user)
+    else:
+        if not user.is_active:
+            await db.commit()   # still burn the code
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+        # The inbox just proved itself; also clear any password-lockout state.
+        user.email_verified = True
+        user.failed_login_count = 0
+        user.locked_until = None
+    await db.commit()
+    await db.refresh(user)
     return _tokens(user)
 
 

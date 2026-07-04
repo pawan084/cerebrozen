@@ -68,8 +68,12 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   redesign strategy require product analytics, but privacy labels + landing copy say
   none. Decide: first-party anonymized counts disclosed in the privacy hub, or stay
   measurement-free. Blocks any experimentation work.
-- [ ] Email one-time-code (passwordless) sign-in — email service exists; add OTP
-  issue/verify endpoints + iOS field. Passkeys deferred to v2.
+- [x] Email one-time-code (passwordless) sign-in — 2026-07-04: `login_codes` table
+  (Alembic `af3e6b9c1d57`) + `POST /auth/otp/request` / `/auth/otp/verify`
+  (find-or-create like Apple/Google, marks email verified, clears password
+  lockout; single-use, 10 min TTL, burns after 5 wrong tries; hashed at rest);
+  iOS AuthForm "Sign in without a password" flow (`.oneTimeCode` AutoFill) +
+  web-app signin code mode. Passkeys deferred to v2.
 - [ ] Contextual baseline capture — the stress/sleep 1–5 scales were removed from
   onboarding (90-second flow); reintroduce as a gentle ask after the first few
   check-ins so Insights' "starting point" returns.

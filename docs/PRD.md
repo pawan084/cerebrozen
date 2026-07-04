@@ -111,6 +111,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Feature | Status | Notes |
 |---|---|---|
 | Auth: email (+ lockout, revocation, verify/reset emails) | ✅ | Hardened |
+| Auth: emailed one-time code (passwordless) | ✅ | iOS + web sign-in; creates the account at verify |
 | Sign in with Apple / Google | 🟡 | Code + entitlement done; portal/OAuth config pending |
 | Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline |
 | Offline mode | 🟡 | Genuinely local-first; the "offline" showcase screen itself is static |
