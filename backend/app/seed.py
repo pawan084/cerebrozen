@@ -29,6 +29,7 @@ _CONTENT = [
     ("Body scan", "Release tension · 10 min", "meditation", "figure.mind.and.body", 10, True),
     ("Ease work stress", "7-day plan · Breathing + journaling", "program", "leaf", 0, False),
     ("Sleep deeper", "10-day wind-down program", "program", "moon.stars", 0, True),
+    ("Stop overthinking", "5-day CBT focus", "program", "brain", 0, False),
     # CBT-I-informed wind-down guide (docs/SLEEP_TRACKING.md) — awareness copy,
     # never diagnosis/treatment claims. Mirrored as the iOS offline fallback.
     ("Keep a steady wake time", "Anchors your body clock — even after a rough night", "wind_down", "alarm", 0, False),

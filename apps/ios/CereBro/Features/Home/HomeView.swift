@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var backend: BackendService
     @State private var showSearch = false
     @State private var route: HomeRoute?
     @State private var celebrateStreak = false
@@ -18,6 +19,26 @@ struct HomeView: View {
         state.sleepEntry().map { "Logged · \($0.durationText) · feeling \($0.quality)/5" }
             ?? "A 20-second morning check-in"
     }
+    /// Server-first rail: time-matched kinds from the served `/content`
+    /// catalogue; the curated local list only when offline (same fallback
+    /// pattern as the Sleep tab).
+    private func rail(_ part: DayPart) -> [ContentItem] {
+        let c = backend.catalogue
+        guard !c.isEmpty else { return state.homeRail(part) }
+        let calm = (c["meditation"] ?? []) + (c["breath"] ?? [])
+        let night = (c["sleep"] ?? []) + (c["soundscape"] ?? [])
+        switch part {
+        case .evening, .night:
+            return Array(night.prefix(4))
+        default:
+            var items = Array(calm.prefix(3))
+            if state.primaryGoal == "Sleep better", let windDown = night.first {
+                items.append(windDown)
+            }
+            return items
+        }
+    }
+
     /// Reflect plan progress once any step is completed (names from the real steps).
     private var planSubtitle: String {
         let total = Dummy.planSteps.count
@@ -43,7 +64,7 @@ struct HomeView: View {
             SectionTitle(title: part.railTitle).entrance(2)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 11) {
-                    ForEach(Array(state.homeRail(part).enumerated()), id: \.element.id) { idx, item in
+                    ForEach(Array(rail(part).enumerated()), id: \.element.id) { idx, item in
                         NavigationLink { PlayerView(item: item, zoomNamespace: playerZoom) } label: { MiniCard(item: item) }
                             .buttonStyle(.pressable)
                             .matchedZoomSource(id: item.id, in: playerZoom)
@@ -85,6 +106,7 @@ struct HomeView: View {
             case .sleep:   PlayerView(item: Dummy.sleepContent[0])
             }
         }
+        .task { await backend.loadCatalogue() }
         // Celebrate a streak milestone the moment it's reached (fires once).
         .onChange(of: state.newMilestone) { _, m in
             if m != nil { celebrateStreak = true; state.newMilestone = nil }
@@ -290,29 +312,46 @@ struct PlanStepRow: View {
 
 // MARK: - Programs
 struct ProgramsView: View {
+    @EnvironmentObject var backend: BackendService
     @State private var startPlan = false
+
+    /// Served program catalogue, curated local list only when offline.
+    private var programs: [ContentItem] {
+        backend.catalogue["program"] ?? Dummy.programs
+    }
+
     var body: some View {
         ScreenScaffold(eyebrow: "Guided multi-day plans", title: "Programs", trailingSystemImage: "sparkles") {
-            HeroCard(tag: "Featured", title: "Ease work stress",
+            HeroCard(tag: "Featured", title: programs.first?.title ?? "Ease work stress",
                      subtitle: "A 7-day agentic plan built around your baseline.",
                      cta: "Start", imageURL: Dummy.Img.plan) { startPlan = true }
-            ForEach(Dummy.programs) { p in
+            ForEach(programs) { p in
                 NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
             }
         }
+        .task { await backend.loadCatalogue() }
         .navigationDestination(isPresented: $startPlan) { DailyPlanView() }
     }
 }
 
 // MARK: - Search
 struct SearchView: View {
+    @EnvironmentObject var backend: BackendService
     @State private var query = ""
 
-    /// Searchable catalogue across meditations + sleep content.
-    private var catalogue: [ContentItem] { Dummy.meditations + Dummy.sleepContent }
+    /// Searchable pool: the whole served `/content` catalogue, with the local
+    /// curated list only when offline.
+    private var catalogue: [ContentItem] {
+        let c = backend.catalogue
+        guard !c.isEmpty else { return Dummy.meditations + Dummy.sleepContent }
+        return c.values.flatMap { $0 }
+    }
+    private var suggested: [ContentItem] {
+        backend.catalogue["meditation"] ?? Dummy.meditations
+    }
     private var results: [ContentItem] {
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return Dummy.meditations }
+        guard !q.isEmpty else { return suggested }
         return catalogue.filter {
             $0.title.localizedCaseInsensitiveContains(q) || $0.subtitle.localizedCaseInsensitiveContains(q)
         }
@@ -347,5 +386,6 @@ struct SearchView: View {
                 }
             }
         }
+        .task { await backend.loadCatalogue() }
     }
 }
