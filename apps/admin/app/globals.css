@@ -110,3 +110,10 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 .cform .check { display: flex; align-items: center; gap: 8px; color: var(--soft); font-size: 13px; padding-top: 22px; }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .btn-danger { background: rgba(224, 138, 154,0.16); color: var(--danger); border: 1px solid rgba(224, 138, 154,0.3); }
+
+/* Search box (users tab) */
+.search { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); color: var(--muted); max-width: 360px; width: 100%; }
+.search input { border: none; background: none; color: var(--text); outline: none; width: 100%; font: inherit; padding: 0; }
+.search input::placeholder { color: var(--muted-2); }
+.search svg { flex: 0 0 auto; }
+.sidebar .navitem svg { flex: 0 0 auto; }

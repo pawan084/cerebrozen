@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, clearToken, getToken, login, setToken } from "@/lib/api";
+import { BrandMark, Icon } from "@/components/icons";
 
 type Tab = "overview" | "analytics" | "users" | "content" | "nudges" | "safety" | "waitlist";
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "overview", label: "Overview", icon: "▣" },
-  { key: "analytics", label: "Analytics", icon: "∿" },
-  { key: "users", label: "Users", icon: "☺" },
-  { key: "content", label: "Content", icon: "♪" },
-  { key: "nudges", label: "Nudges", icon: "✧" },
-  { key: "safety", label: "Safety", icon: "♥" },
-  { key: "waitlist", label: "Waitlist", icon: "✉" },
+const TABS: { key: Tab; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "analytics", label: "Analytics" },
+  { key: "users", label: "Users" },
+  { key: "content", label: "Content" },
+  { key: "nudges", label: "Nudges" },
+  { key: "safety", label: "Safety" },
+  { key: "waitlist", label: "Waitlist" },
 ];
 
 function fmtDate(s: string) {
@@ -40,18 +41,20 @@ export default function AdminPage() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="dot" /> CereBro
+          <BrandMark size={26} /> CereBro
         </div>
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            className={`navitem ${tab === t.key ? "active" : ""}`}
-            onClick={() => setTab(t.key)}
-          >
-            <em style={{ width: 18, display: "inline-block" }}>{t.icon}</em>
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const I = Icon[t.key];
+          return (
+            <button
+              key={t.key}
+              className={`navitem ${tab === t.key ? "active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              <I /> {t.label}
+            </button>
+          );
+        })}
         <button
           className="navitem logout"
           onClick={() => {
@@ -59,8 +62,7 @@ export default function AdminPage() {
             setAuthed(false);
           }}
         >
-          <em style={{ width: 18, display: "inline-block" }}>⎋</em>
-          Sign out
+          <Icon.signout /> Sign out
         </button>
       </aside>
 
@@ -129,16 +131,18 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
 function useData<T>(loader: () => Promise<T>, deps: any[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [err, setErr] = useState("");
-  const run = useCallback(() => {
-    loader()
-      .then(setData)
-      .catch((e) => setErr(e.message === "unauthorized" ? "Session expired — reload to sign in." : e.message));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    run();
-  }, [run]);
-  return { data, err, reload: run };
+    // Ignore a stale in-flight response when deps change (e.g. a slow unfiltered
+    // fetch resolving after a search) so the newest request always wins.
+    let ignore = false;
+    loader()
+      .then((d) => { if (!ignore) { setData(d); setErr(""); } })
+      .catch((e) => { if (!ignore) setErr(e.message === "unauthorized" ? "Session expired — reload to sign in." : e.message); });
+    return () => { ignore = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, tick]);
+  return { data, err, reload: () => setTick((t) => t + 1) };
 }
 
 function Overview() {
@@ -353,16 +357,34 @@ function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 function Users() {
-  const { data, err, reload } = useData<any[]>(() => api("/admin/users"));
+  const [q, setQ] = useState("");
+  const [limit, setLimit] = useState(50);
+  const { data, err, reload } = useData<any[]>(
+    () => api(`/admin/users?q=${encodeURIComponent(q)}&limit=${limit}`),
+    [q, limit]
+  );
   const [selected, setSelected] = useState<string | null>(null);
+  const [nudgeUser, setNudgeUser] = useState<any | null>(null);
+
   async function toggle(u: any) {
     await api(`/admin/users/${u.id}/active?active=${!u.is_active}`, { method: "PATCH" });
     reload();
   }
+
   return (
     <>
       <h1 className="page-title serif">Users</h1>
-      <div className="page-sub">{data?.length ?? 0} accounts</div>
+      <div className="page-sub">{data?.length ?? 0} shown{q ? ` · matching "${q}"` : ""}</div>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="search">
+          <Icon.search />
+          <input
+            placeholder="Search by email or name…"
+            value={q}
+            onChange={(e) => { setLimit(50); setQ(e.target.value); }}
+          />
+        </div>
+      </div>
       {err && <div className="empty">{err}</div>}
       <div className="card">
         <table>
@@ -382,22 +404,57 @@ function Users() {
                 <td>{fmtDate(u.created_at)}</td>
                 <td>
                   <div className="row-actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => setSelected(u.id === selected ? null : u.id)}>
-                      Details
-                    </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>
-                      {u.is_active ? "Disable" : "Enable"}
-                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setSelected(u.id === selected ? null : u.id)}>Details</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setNudgeUser(u)}>Nudge</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>{u.is_active ? "Disable" : "Enable"}</button>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">No users yet.</div>}
+        {data && data.length === 0 && <div className="empty">No matching users.</div>}
+        {data && data.length >= limit && (
+          <div style={{ padding: 12, textAlign: "center" }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setLimit((l) => l + 50)}>Load more</button>
+          </div>
+        )}
       </div>
       {selected && <UserDetail id={selected} onClose={() => setSelected(null)} />}
+      {nudgeUser && <NudgeUserModal user={nudgeUser} onClose={() => setNudgeUser(null)} />}
     </>
+  );
+}
+
+function NudgeUserModal({ user, onClose }: { user: any; onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setMsg("");
+    try {
+      await api("/admin/nudges", { method: "POST", body: JSON.stringify({ title, body, user_id: user.id }) });
+      setMsg("Queued ✓ — the scheduler delivers it.");
+      setTitle(""); setBody("");
+    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+  }
+  return (
+    <div className="card" style={{ marginTop: 16, padding: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h3 className="serif">Nudge <span className="mono">{user.email}</span></h3>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+      </div>
+      <form className="cform" onSubmit={send} style={{ marginTop: 8 }}>
+        <div className="full"><label>Title</label><input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} /></div>
+        <div className="full"><label>Body</label><input value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} /></div>
+        <div className="full" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button className="btn btn-primary" disabled={busy || !title.trim() || !body.trim()}>{busy ? "Queuing…" : "Queue nudge"}</button>
+          {msg && <span className="page-sub" style={{ marginBottom: 0 }}>{msg}</span>}
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -411,21 +468,30 @@ function Content() {
   const { data, err, reload } = useData<any[]>(() => api("/admin/content"));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>(EMPTY_CONTENT);
+  const [editId, setEditId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   function set(k: string, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
+  function closeForm() { setForm(EMPTY_CONTENT); setEditId(null); setShowForm(false); }
+  function startEdit(item: any) {
+    setForm({
+      title: item.title, subtitle: item.subtitle || "", kind: item.kind,
+      symbol: item.symbol || "sparkles", image_url: item.image_url || "",
+      duration_min: item.duration_min || 0, premium: item.premium, published: item.published,
+    });
+    setEditId(item.id);
+    setShowForm(true);
+  }
 
-  async function create(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
     setBusy(true);
     try {
-      await api("/admin/content", {
-        method: "POST",
-        body: JSON.stringify({ ...form, duration_min: Number(form.duration_min) || 0 }),
-      });
-      setForm(EMPTY_CONTENT);
-      setShowForm(false);
+      const body = JSON.stringify({ ...form, duration_min: Number(form.duration_min) || 0 });
+      if (editId) await api(`/admin/content/${editId}`, { method: "PATCH", body });
+      else await api("/admin/content", { method: "POST", body });
+      closeForm();
       reload();
     } finally {
       setBusy(false);
@@ -447,13 +513,16 @@ function Content() {
           <h1 className="page-title serif">Content library</h1>
           <div className="page-sub" style={{ marginBottom: 0 }}>{data?.length ?? 0} items</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>
+        <button className="btn btn-primary" onClick={() => (showForm ? closeForm() : setShowForm(true))}>
           {showForm ? "Close" : "+ New item"}
         </button>
       </div>
 
       {showForm && (
-        <form className="card cform" onSubmit={create}>
+        <form className="card cform" onSubmit={save}>
+          <div className="full" style={{ marginBottom: -2 }}>
+            <strong className="serif" style={{ fontSize: 16 }}>{editId ? "Edit item" : "New item"}</strong>
+          </div>
           <div className="full">
             <label>Title</label>
             <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required />
@@ -483,7 +552,7 @@ function Content() {
             <input type="checkbox" checked={form.published} onChange={(e) => set("published", e.target.checked)} /> Published
           </label>
           <div className="full">
-            <button className="btn btn-primary" disabled={busy}>{busy ? "Creating…" : "Create item"}</button>
+            <button className="btn btn-primary" disabled={busy}>{busy ? (editId ? "Saving…" : "Creating…") : (editId ? "Save changes" : "Create item")}</button>
           </div>
         </form>
       )}
@@ -504,6 +573,7 @@ function Content() {
                 <td>{c.published ? "Published" : "Draft"}</td>
                 <td>
                   <div className="row-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => startEdit(c)}>Edit</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => patch(c.id, { published: !c.published })}>
                       {c.published ? "Unpublish" : "Publish"}
                     </button>

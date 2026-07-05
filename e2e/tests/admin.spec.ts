@@ -23,9 +23,10 @@ test.describe("Admin dashboard", () => {
     await expect(page.locator(".stat .n").first()).toBeVisible();
   });
 
-  test("users tab lists the seeded admin account", async ({ page }) => {
+  test("users tab finds the seeded admin via search", async ({ page }) => {
     await nav(page, "Users").click();
-    await expect(page.getByText("admin@cerebro.app")).toBeVisible();
+    await page.getByPlaceholder("Search by email or name…").fill("admin@cerebro.app");
+    await expect(page.locator("tr", { hasText: "admin@cerebro.app" })).toBeVisible({ timeout: 10_000 });
   });
 
   test("analytics tab shows first-party aggregates", async ({ page }) => {
@@ -37,6 +38,7 @@ test.describe("Admin dashboard", () => {
 
   test("user details show counts, never content", async ({ page }) => {
     await nav(page, "Users").click();
+    await page.getByPlaceholder("Search by email or name…").fill("admin@cerebro.app");
     await page
       .locator("tr", { hasText: "admin@cerebro.app" })
       .getByRole("button", { name: "Details" })
@@ -46,7 +48,7 @@ test.describe("Admin dashboard", () => {
     await expect(page.getByText(/contents never leave/)).toBeVisible();
   });
 
-  test("content can be created and deleted", async ({ page }) => {
+  test("content can be created, edited and deleted", async ({ page }) => {
     await nav(page, "Content").click();
     await page.getByRole("button", { name: /new item/i }).click();
     const title = `E2E item ${Date.now()}`;
@@ -56,8 +58,16 @@ test.describe("Admin dashboard", () => {
     const row = page.locator("tr", { hasText: title });
     await expect(row).toBeVisible();
 
-    await row.getByRole("button", { name: "Delete" }).click();
-    await expect(page.locator("tr", { hasText: title })).toHaveCount(0);
+    // Full edit: open the pre-filled form, rename, save, see the new title.
+    await row.getByRole("button", { name: "Edit" }).click();
+    const edited = `${title} edited`;
+    await page.locator(".cform input[type=text]").first().fill(edited);
+    await page.getByRole("button", { name: /save changes/i }).click();
+    const editedRow = page.locator("tr", { hasText: edited });
+    await expect(editedRow).toBeVisible();
+
+    await editedRow.getByRole("button", { name: "Delete" }).click();
+    await expect(page.locator("tr", { hasText: edited })).toHaveCount(0);
   });
 
   test("nudges can be authored for all active users", async ({ page }) => {

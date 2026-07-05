@@ -64,8 +64,19 @@ async def metrics_funnel(days: int = 30, db: AsyncSession = Depends(get_db)):
 
 # ── Users ───────────────────────────────────────────────────────────────
 @router.get("/users", response_model=list[UserOut])
-async def list_users(limit: int = 100, offset: int = 0, db: AsyncSession = Depends(get_db)):
-    rows = await db.scalars(select(User).order_by(User.created_at.desc()).limit(limit).offset(offset))
+async def list_users(
+    q: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    """Newest-first accounts. ``q`` filters by email or name (case-insensitive)
+    so support can find one account among many without paging through them all."""
+    stmt = select(User).order_by(User.created_at.desc())
+    if q and (term := q.strip()):
+        like = f"%{term}%"
+        stmt = stmt.where(User.email.ilike(like) | User.name.ilike(like))
+    rows = await db.scalars(stmt.limit(limit).offset(offset))
     return rows.all()
 
 
