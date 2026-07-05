@@ -90,6 +90,77 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
 - [x] Consent private-by-default (no pre-ticked toggles + recommended card)
 - [x] Language moved before the value moment
 
+### Design refresh — "Newsreader warm" system (ref/ mockups, 2026-07-05)
+Implementing the Claude-designed refresh in `ref/` across iOS + web (Android later).
+The `ref/` HTML mockups are the target; `uploads/ios-screens/*.jpg` are current-iOS
+renders used as design input. Decisions locked with owner: full token evolution,
+responsive sidebar + mobile-tab web shell, full web auth parity (Apple+Google+email+OTP),
+sequence tokens → web onboarding/auth → web shell/screens → iOS polish → landing.
+- [x] **Phase 1 — token + type foundation (2026-07-05):** warmed the shared palette
+  (`design/tokens.css` → synced to all `globals.css`; iOS `Theme.swift` Brand mirror):
+  night `#080b22`→`#0e0c22`, periwinkle `#6f7bf7`→`#8a7bf0`, ink→`#1c1740`, amber→coral
+  `#f0a48c`, rose→`#e08a9a`, mint→`#7ee0a8`, added `--warm`/`--cyan`. Web headings
+  Georgia→**Newsreader** via `next/font/google` (self-hosted at build — CSP-safe;
+  `--font-serif` with Georgia fallback) in `apps/{app,web}`. Warmed the hardcoded rgba
+  glows/backdrops + OG/favicon generators. `apps/app` build green (Newsreader woff2
+  self-hosted, 10 routes). iOS keeps its native New York serif (platform Newsreader-alike).
+- [x] **Phase 2 — web onboarding + auth (2026-07-05):** ported the iOS 10-step funnel
+  to `apps/app/app/onboarding/page.tsx` (value-first: age gate → AI disclosure →
+  language → one-tap state → CSS breathing reset → goal-derived first plan → signup →
+  private-by-default consent → reminders → Enter). Draft collected locally
+  (`lib/onboarding.ts`) and applied to the server after the account exists
+  (attest + consent + profile/motivations/goals + email-nudge opt-in). Shared
+  `components/AuthPanel.tsx` (web port of iOS AuthForm): **Sign in with Apple +
+  Continue with Google** (via `lib/social.ts`, SDKs loaded only when
+  `NEXT_PUBLIC_{GOOGLE_CLIENT_ID,APPLE_SERVICES_ID}` set — inert-but-honest
+  otherwise, CSP-clean by default) + email/password + passwordless OTP. Gating
+  mirrors iOS (`hasOnboarded` in localStorage; `/` gate → onboarding|signin|home;
+  `/signup` redirects into the funnel; returning sign-in marks onboarded). Build
+  green; Playwright walkthrough screenshots verified all 10 steps render on-brand
+  (warm palette + Newsreader, one-tap consent flips the 4 pattern toggles). Closes
+  the standing "Google sign-in" web item. Owner still needs the OAuth client ids to
+  make the social buttons live.
+- [x] **Phase 3 — web app shell + screens (2026-07-05):** rebuilt `apps/app`
+  `(authed)/layout.tsx` as a responsive shell — left **sidebar** on desktop (Menu:
+  Home/Talk/Sleep/Journal/You + Explore: Insights/Plan/Library + Sign out) and a
+  floating **bottom pill tab bar** on mobile (< 900px), per `CereBro Web.dc.html`.
+  Extracted a reusable component library: `components/icons.tsx` (inline SVGs, CSP-
+  clean), `components/ui.tsx` (PageHeader, HeroCard, Panel, SectionTitle, Row, Chip,
+  WeekDots). Rebuilt **Home** to the hero-card design (gradient mood check-in card,
+  streak week-dots, "Keep going" rows); the other authed screens inherit the new
+  shell + warm palette + Newsreader. Verified end-to-end: brought up db+api, created
+  a real account through the funnel, screenshotted the authed shell at desktop
+  (sidebar) + mobile (bottom tabs) with live streak/name data. Build green (15 routes).
+  Follow-up (optional): per-screen hero rebuilds for Talk/Sleep/Journal/Insights.
+- [x] **Phase 4 — iOS refresh + polish (2026-07-05):** the warm palette propagates
+  through tokens — audit found **zero hardcoded hexes** outside `Theme.swift` +
+  `SplashView`, so every screen moved with the palette. `xcodebuild` green (iPhone 17
+  Pro sim, iOS 27); launched + screenshotted Home — warm indigo/purple gradient, New
+  York serif headings, hero card + streak orb + floating tab bar all render on-brand.
+  (The funnel + auth already matched the ref pre-refresh.)
+- [x] **Phase 5 — landing refresh (`apps/web`, 2026-07-05):** landing already carried
+  the warm palette + Newsreader from Phase 1; the phone hero screenshot was the last
+  stale (cool) asset — regenerated `public/screens/home.webp` from a fresh warm iOS
+  Home capture (640×1391 webp), so the hero now matches the warm page. Warmed the
+  OG/favicon generators earlier (Phase 1). Follow-up: `journal-entry.webp` +
+  `sleep-player.webp` showcase thumbnails still show the old palette — regenerating
+  them authentically needs an XCUITest nav pass (simctl can't tap; Simulator ran
+  headless), deferred as low-priority (below the fold).
+
+### Design refresh — open follow-ups
+- [ ] Logo/banner kit (`ref/cerebro_world_class_logo_banner_kit`): reviewed 2026-07-05.
+  Verdict — the **C-ring + orb logo lockup** (real editable SVG + light/dark/transparent
+  + wordmark) is better than what we have (we lack a designed lockup) and worth adopting;
+  the **app icon** is a modest upgrade in distinctiveness but needs a warm recolor + the
+  center "eye" dot softened; the **banners** are good but their device shots show the old
+  UI (re-render post-refresh); **keep** the code-built iOS splash over the kit's static PNG.
+  Awaiting owner decision on adopting the new mark (brand-identity change).
+- [x] Per-screen web hero rebuilds (2026-07-05): Talk (AI-disclosure note + serif header),
+  Sleep (violet "This morning" hero), Journal ("Release the day" prompt hero), Insights
+  (weekly-headline hero + metric bars) all rebuilt with PageHeader + HeroCard + SectionTitle,
+  data logic untouched. Build green; screenshotted signed-in against live backend.
+- [ ] Optional: refresh the two landing showcase thumbnails via an XCUITest capture.
+
 ### Web app v1 + admin v2 — plan in [WEB_APP_PLAN.md](WEB_APP_PLAN.md)
 - [x] Infra prep (2026-07-03): `apps/app` Next.js scaffold (:3002), CORS origin added
   (dev default + env examples), Caddy `app.cerebrozen.in` block, dev/e2e/prod compose
@@ -111,7 +182,9 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   pre-traffic, with a 30 s setup timeout falling back to MemorySaver.
 - [x] Library page (2026-07-03): served `/content` catalogue grouped by kind on the
   web app; honest "playback lives in iOS" footnote.
-- [ ] Web v1 remaining: Google sign-in (needs owner OAuth client id).
+- [x] Web v1 remaining: Google (+ Apple) sign-in — done in the Design-refresh Phase 2
+  (2026-07-05) via `components/AuthPanel` + `lib/social`; buttons are live once the owner
+  sets `NEXT_PUBLIC_GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_APPLE_SERVICES_ID`.
 - [x] Shared design tokens — 2026-07-04: canonical `design/tokens.css` +
   `scripts/sync-tokens.mjs` rewriting marker-delimited blocks in all three
   `globals.css` (checked-in copies stay Docker-friendly); CI drift gate

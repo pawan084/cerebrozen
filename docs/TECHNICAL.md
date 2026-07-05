@@ -44,6 +44,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | Push/Email/SMS | `APNS_*`, `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APP_BASE_URL` | logged instead of sent |
 | Web billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, `STRIPE_RETURN_URL` | checkout 503s; webhook rejects |
 | Web Apple sign-in | `APPLE_SERVICES_CLIENT_ID` (second token audience) | native audience only |
+| Web app social (client) | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_APPLE_SERVICES_ID`, `NEXT_PUBLIC_APPLE_REDIRECT_URI` (`apps/app`) | Apple/Google buttons stay inert (no SDK loaded, honest notice) — email/OTP works; add the provider hosts to the Caddy CSP when enabling |
 | Quota | `FREE_DAILY_MESSAGES` | default free-tier cap |
 | Seed | `SEED_DEMO_DATA`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | prod guard forbids demo values |
 

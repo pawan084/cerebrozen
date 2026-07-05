@@ -70,3 +70,6 @@ apps/ios/*.ipa
 apps/ios/*.app.dSYM.zip
 apps/ios/Gemfile.lock
 **/.env
+
+# Local design reference / mockups (large, not source)
+ref/
