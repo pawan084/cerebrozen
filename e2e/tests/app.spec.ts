@@ -2,8 +2,10 @@ import { test, expect, Page } from "@playwright/test";
 
 const APP = process.env.APP_URL || "http://app:3002";
 
+// The authed shell is a sidebar (desktop) / bottom bar (mobile); nav items are
+// links. exact match so "Journal" hits the nav, not a Home "Journal …" row.
 function tab(page: Page, label: string) {
-  return page.locator(".tabs a", { hasText: label });
+  return page.getByRole("link", { name: label, exact: true });
 }
 
 test.describe("Web app (authenticated client)", () => {
@@ -11,13 +13,16 @@ test.describe("Web app (authenticated client)", () => {
   // (chat may wait on a live LLM when the stack runs with real keys).
   test("signup → mood check-in → journal → sleep diary → session survives reload", async ({ page }) => {
     test.setTimeout(150_000);
-    // Fresh account per run (the e2e stack seeds no app users).
+    // Fresh account per run (the e2e stack seeds no app users). /signup now
+    // funnels into onboarding; create the account via the AuthPanel's
+    // "Create account" segment on /signin, which lands straight on Home.
     const email = `e2e-app-${Date.now()}@test.app`;
-    await page.goto(`${APP}/signup`, { waitUntil: "networkidle" });
+    await page.goto(`${APP}/signin`, { waitUntil: "networkidle" });
+    await page.getByRole("tab", { name: "Create account" }).click();
     await page.locator('input[autocomplete="name"]').fill("E2E");
     await page.locator('input[type="email"]').fill(email);
     await page.locator('input[type="password"]').fill("password123");
-    await page.getByRole("button", { name: "Create account" }).click();
+    await page.getByRole("button", { name: "Create my account" }).click();
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });
 
@@ -45,7 +50,7 @@ test.describe("Web app (authenticated client)", () => {
 
     // Chat replies (Oracle stream when a key is present, deterministic /chat
     // fallback otherwise — either way an assistant bubble must land).
-    await tab(page, "Chat").click();
+    await tab(page, "Talk").click();
     await page.getByLabel("Message").fill("I keep overthinking tomorrow's meeting.");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator(".msg.user").first()).toBeVisible();
@@ -70,8 +75,8 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: "Wind down tonight" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Keep a steady wake time")).toBeVisible();
 
-    // Account: consent toggles render and flip (enforced server-side).
-    await tab(page, "Account").click();
+    // Account (the "You" tab): consent toggles render and flip (enforced server-side).
+    await tab(page, "You").click();
     const aiMemory = page.getByRole("switch", { name: "AI memory" });
     await expect(aiMemory).toBeVisible({ timeout: 20_000 });
     const before = await aiMemory.isChecked();
