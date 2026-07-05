@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { HeroCard, PageHeader, SectionTitle } from "@/components/ui";
 
 type Entry = {
   id: string;
@@ -58,8 +59,12 @@ export default function Journal() {
 
   return (
     <>
-      <p className="eyebrow">Private by default</p>
-      <h1>Journal</h1>
+      <PageHeader eyebrow="Journal hub" title="Journal" />
+      <HeroCard
+        tag="Today's prompt"
+        title="Release the day"
+        subtitle="What would you tell a friend who had your exact day? Write it below — private by default."
+      />
 
       {showSupport && (
         <div className="crisis" role="alert">
@@ -91,8 +96,8 @@ export default function Journal() {
         </button>
       </form>
 
+      <SectionTitle title="History" />
       <section className="card" aria-label="History">
-        <h2>History</h2>
         {entries.length === 0 && <p className="sub">Nothing here yet — your entries collect below.</p>}
         {entries.map((e) => (
           <div className="entry" key={e.id}>

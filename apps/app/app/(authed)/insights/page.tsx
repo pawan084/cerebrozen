@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { HeroCard, PageHeader, SectionTitle } from "@/components/ui";
 
 type Metric = { label: string; value: string; progress: number };
 type Insight = { period: string; headline: string; summary: string; metrics: Metric[] };
@@ -19,16 +20,13 @@ export default function Insights() {
 
   return (
     <>
-      <p className="eyebrow">Computed from your week — never invented</p>
-      <h1>Insights</h1>
+      <PageHeader eyebrow="Computed from your week — never invented" title="Insights" />
       {error && <p className="error">{error}</p>}
 
       {insight && (
         <>
-          <section className="card">
-            <h2>{insight.headline}</h2>
-            <p className="sub">{insight.summary}</p>
-          </section>
+          <HeroCard tag={insight.period || "This week"} title={insight.headline} subtitle={insight.summary} />
+          <SectionTitle title="How your week moved" />
           <section className="card" aria-label="Weekly metrics">
             {insight.metrics.map((m) => (
               <div className="entry" key={m.label}>
@@ -46,8 +44,9 @@ export default function Insights() {
       )}
 
       {nudges.length > 0 && (
-        <section className="card" aria-label="Upcoming nudges">
-          <h2>Coming up</h2>
+        <>
+          <SectionTitle title="Coming up" />
+          <section className="card" aria-label="Upcoming nudges">
           {nudges.map((n) => (
             <div className="entry" key={n.id}>
               <strong>{n.title}</strong> <span className="tag">{n.kind}</span>
@@ -55,7 +54,8 @@ export default function Insights() {
               <div className="meta">{new Date(n.scheduled_for).toLocaleString()}</div>
             </div>
           ))}
-        </section>
+          </section>
+        </>
       )}
     </>
   );

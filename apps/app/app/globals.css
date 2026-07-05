@@ -1,21 +1,23 @@
 /* @cerebro-tokens:start */
 /* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  --night: #080b22;
-  --night-top: #161e4a;
-  --card: rgba(255, 255, 255, 0.045);
-  --card-strong: rgba(255, 255, 255, 0.08);
+  --night: #0e0c22;
+  --night-top: #1a1440;
+  --card: rgba(255, 255, 255, 0.05);
+  --card-strong: rgba(255, 255, 255, 0.085);
   --line: rgba(255, 255, 255, 0.12);
-  --text: #f4f6ff;
-  --soft: #dfe5ff;
-  --muted: #aeb6e0;
-  --muted-2: #8890bd;
-  --lav: #6f7bf7;
-  --lav-2: #9b6bff;
+  --text: #f5f4ff;
+  --soft: #dfe0ff;
+  --muted: #b0a9e0;
+  --muted-2: #8f88c0;
+  --lav: #8a7bf0;
+  --lav-2: #a68bff;
   --cream: #eceefb;
-  --ink: #171d43;
-  --danger: #e0a0ad;
-  --ok: #9ad6b4;
+  --ink: #1c1740;
+  --danger: #e08a9a;
+  --ok: #7ee0a8;
+  --warm: #f0a48c;
+  --cyan: #8fe6ee;
 }
 /* @cerebro-tokens:end */
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,7 +27,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh; font-size: 15px; line-height: 1.5;
 }
-h1, h2, h3, .serif { font-family: Georgia, serif; font-weight: 600; }
+h1, h2, h3, .serif { font-family: var(--font-serif), Georgia, serif; font-weight: 600; }
 a { color: var(--soft); }
 button { font: inherit; cursor: pointer; }
 
@@ -34,9 +36,9 @@ button { font: inherit; cursor: pointer; }
   display: flex; align-items: center; gap: 20px;
   padding: 14px 22px; border-bottom: 1px solid var(--line);
   position: sticky; top: 0; backdrop-filter: blur(14px);
-  background: rgba(8, 11, 34, 0.72); z-index: 10;
+  background: rgba(14, 12, 34, 0.72); z-index: 10;
 }
-.brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; font-size: 19px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-serif), Georgia, serif; font-size: 19px; }
 .brand .dot {
   width: 20px; height: 20px; border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, var(--lav-2), var(--lav));
@@ -48,7 +50,7 @@ button { font: inherit; cursor: pointer; }
 }
 .tabs a.active { background: var(--card-strong); color: var(--text); }
 .topbar .spacer { flex: 1; }
-main.page { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+main.page { max-width: 900px; margin: 0 auto; padding: 34px 30px 72px; }
 .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: var(--muted-2); font-weight: 700; }
 .page h1 { font-size: 28px; margin: 6px 0 22px; }
 
@@ -118,7 +120,7 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 
 /* Crisis support banner — surfaced, never blocking (safety contract). */
 .crisis {
-  border: 1px solid rgba(224, 160, 173, 0.5); background: rgba(224, 160, 173, 0.09);
+  border: 1px solid rgba(224, 138, 154, 0.5); background: rgba(224, 138, 154, 0.09);
   border-radius: 16px; padding: 14px 16px; margin: 14px 0; font-size: 13.5px;
 }
 .crisis strong { color: var(--danger); }
@@ -157,3 +159,312 @@ select {
   color: var(--text); font: inherit;
 }
 select option { color: var(--ink); }
+
+/* ============================================================
+   Onboarding funnel + auth panel (web port of iOS OnboardingFlow)
+   ============================================================ */
+
+.onb-root {
+  min-height: 100dvh;
+  display: flex; justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+}
+.onb-stage { width: 100%; max-width: 440px; display: flex; }
+.onb-step {
+  flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 100%;
+  animation: onbIn 0.4s ease both;
+}
+.onb-center { justify-content: center; align-items: center; text-align: center; }
+@keyframes onbIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .onb-step { animation: none; } }
+
+.onb-eyebrow {
+  text-transform: uppercase; letter-spacing: 0.18em; font-size: 11px;
+  font-weight: 700; color: var(--muted-2);
+}
+.onb-title {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 600;
+  font-size: 28px; line-height: 1.12; color: var(--text); letter-spacing: -0.01em;
+}
+.onb-display { font-size: 34px; }
+.onb-caption { color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 34ch; }
+.onb-center .onb-caption { max-width: 30ch; }
+.onb-fine { color: var(--muted-2); font-size: 12px; font-weight: 600; line-height: 1.45; }
+
+.onb-content { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.onb-footer { margin-top: auto; padding-top: 22px; display: flex; flex-direction: column; gap: 14px; }
+.onb-center .onb-footer { margin-top: 26px; width: 100%; }
+
+/* Thin progress track with a cream fill. */
+.onb-progress { height: 7px; border-radius: 999px; background: var(--card-strong); overflow: hidden; }
+.onb-progress span { display: block; height: 100%; border-radius: 999px; background: var(--cream); transition: width 0.5s ease; }
+
+/* Glowing white pill — the signature primary CTA. */
+.btn.pill-cta {
+  width: 100%; justify-content: center; padding: 15px 22px; border-radius: 999px;
+  background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink);
+  font-weight: 700; font-size: 15px;
+  box-shadow: 0 0 42px rgba(255, 255, 255, 0.22), 0 10px 32px rgba(0, 0, 0, 0.32);
+}
+.btn.pill-cta:disabled { opacity: 0.45; box-shadow: none; cursor: default; transform: none; }
+.onb-secondary { width: 100%; justify-content: center; border-radius: 999px; padding: 14px; }
+
+.onb-back {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  align-self: flex-start;
+}
+.onb-link {
+  color: var(--muted); font-size: 13px; font-weight: 600; text-align: center;
+  padding: 6px; text-decoration: none;
+}
+.onb-quiet { background: none; border: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px; align-self: flex-start; }
+
+/* Welcome orb. */
+.onb-orb {
+  width: 104px; height: 104px; border-radius: 50%; margin-bottom: 6px;
+  background: radial-gradient(circle at 38% 34%, #fff, var(--lav) 58%, var(--lav-2) 100%);
+  box-shadow: 0 0 60px rgba(138, 123, 240, 0.6), 0 0 120px rgba(166, 139, 255, 0.35);
+  animation: onbBreathe 6s ease-in-out infinite;
+}
+@keyframes onbBreathe { 0%, 100% { transform: scale(0.94); } 50% { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .onb-orb { animation: none; } }
+
+/* Safety panel (age gate). */
+.onb-danger {
+  border: 1px solid rgba(224, 138, 154, 0.4); background: rgba(224, 138, 154, 0.09);
+  border-radius: 18px; padding: 15px 17px; display: flex; flex-direction: column; gap: 4px;
+}
+.onb-danger strong { color: var(--danger); font-size: 14px; }
+.onb-danger span { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+
+/* Tappable rows (age gate, state check, consent, plan). */
+.onb-list { display: flex; flex-direction: column; gap: 10px; }
+.onb-row {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 15px 16px; border-radius: 18px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); transition: border-color 0.15s, background 0.15s;
+}
+.onb-row.selected { border-color: var(--lav); background: var(--card-strong); }
+.onb-row.static { cursor: default; }
+.onb-row-icon {
+  flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; display: grid;
+  place-items: center; font-size: 18px; background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.onb-row-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.onb-row-body strong { font-size: 15.5px; font-weight: 600; }
+.onb-row-body small { color: var(--muted); font-size: 12.5px; }
+.onb-chevron { color: var(--muted-2); font-size: 20px; }
+
+/* Two-up disclosure cards. */
+.onb-twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.onb-mini { padding: 15px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.onb-mini strong { display: block; font-size: 14px; margin-bottom: 4px; color: var(--soft); }
+.onb-mini p { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+
+/* Chips (language, reminders). */
+.onb-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.onb-chip {
+  padding: 11px 18px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--card); color: var(--soft); font-weight: 600; font-size: 14px;
+}
+.onb-chip.active { background: var(--cream); color: var(--ink); border-color: transparent; }
+
+/* Breathing orb (first reset). */
+.onb-breathe { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 20px 0; }
+.onb-breathe-label { font-family: var(--font-serif), Georgia, serif; font-size: 22px; color: var(--soft); }
+.onb-breathe-orb {
+  width: 150px; height: 150px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #fff, var(--cyan) 55%, var(--lav) 100%);
+  box-shadow: 0 0 60px rgba(143, 230, 238, 0.4);
+  transition: transform 3.8s ease-in-out;
+}
+.onb-breathe-orb.in, .onb-breathe-orb.hold { transform: scale(1.24); }
+.onb-breathe-orb.out { transform: scale(0.78); }
+@media (prefers-reduced-motion: reduce) { .onb-breathe-orb { transition: none; transform: none; } }
+
+/* First-plan hero card. */
+.onb-hero {
+  border-radius: 24px; padding: 22px; color: #fff;
+  background:
+    linear-gradient(150deg, rgba(166, 139, 255, 0.34), rgba(240, 164, 140, 0.16)),
+    linear-gradient(180deg, var(--night-top), var(--night));
+  border: 1px solid var(--line);
+}
+.onb-hero-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 5px 11px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14); margin-bottom: 12px;
+}
+.onb-hero h2 { font-family: var(--font-serif), Georgia, serif; font-size: 26px; margin-bottom: 6px; }
+.onb-hero p { color: var(--soft); font-size: 13.5px; line-height: 1.5; }
+
+/* Consent toggles. */
+.onb-toggles { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 19px; overflow: hidden; }
+.onb-toggle { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line); }
+.onb-toggle:first-child { border-top: none; }
+.onb-toggle-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.onb-toggle-body strong { font-size: 14.5px; font-weight: 600; }
+.onb-toggle-body small { color: var(--muted); font-size: 12px; }
+.onb-toggle input {
+  appearance: none; width: 46px; height: 28px; border-radius: 999px; flex: 0 0 46px;
+  background: rgba(255, 255, 255, 0.12); position: relative; cursor: pointer; transition: background 0.18s;
+}
+.onb-toggle input::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+  border-radius: 50%; background: #fff; transition: transform 0.18s;
+}
+.onb-toggle input:checked { background: var(--lav); }
+.onb-toggle input:checked::after { transform: translateX(18px); }
+
+/* ---------- Auth panel (Apple / Google / email) ---------- */
+.authpanel { display: flex; flex-direction: column; gap: 12px; }
+.social-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+  padding: 14px; border-radius: 14px; border: none; font-weight: 700; font-size: 15px;
+  background: #fff; color: #1a1440;
+}
+.social-btn:disabled { opacity: 0.6; cursor: default; }
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted-2); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin: 2px 0; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.segment { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; }
+.seg { flex: 1; padding: 9px; border-radius: 10px; border: none; background: none; color: var(--muted); font-weight: 600; font-size: 14px; }
+.seg.active { background: var(--card-strong); color: var(--text); }
+.auth-links { text-align: center; }
+
+/* ============================================================
+   App shell — responsive sidebar (desktop) + bottom tabs (mobile)
+   ============================================================ */
+.app-shell { display: flex; min-height: 100dvh; }
+.app-main { flex: 1; min-width: 0; }
+
+.sidebar {
+  flex: 0 0 248px; width: 248px; position: sticky; top: 0; align-self: flex-start;
+  height: 100dvh; display: flex; flex-direction: column; padding: 24px 16px;
+  background: linear-gradient(180deg, var(--night-top), var(--night));
+  border-right: 1px solid var(--line); overflow-y: auto;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 11px; padding: 6px 10px; margin-bottom: 26px;
+  font-family: var(--font-serif), Georgia, serif; font-size: 23px; font-weight: 600; color: var(--text);
+}
+.nav-group-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2); padding: 0 12px; margin: 14px 0 8px;
+}
+.nav-group { display: flex; flex-direction: column; gap: 3px; }
+.nav-item {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 11px 13px; border-radius: 13px; border: none; background: none;
+  font-size: 15px; font-weight: 600; color: var(--muted); transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--soft); }
+.nav-item.active { background: var(--card-strong); color: var(--text); }
+.sidebar-foot { margin-top: auto; padding-top: 12px; }
+
+/* Mobile bottom bar — a floating pill, mirroring the iOS tab bar. */
+.mobile-tabs { display: none; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  main.page { padding: 24px 18px 108px; }
+  .mobile-tabs {
+    display: flex; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 50; justify-content: space-around; gap: 2px; padding: 8px 6px;
+    border-radius: 26px; border: 1px solid var(--line);
+    background: rgba(20, 16, 44, 0.86); backdrop-filter: blur(18px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+  .mtab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 2px; border-radius: 18px; color: var(--muted-2); font-size: 10.5px; font-weight: 600;
+  }
+  .mtab.active { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+}
+
+/* ============================================================
+   Screen building blocks (PageHeader / HeroCard / Panel / Row / Chip)
+   ============================================================ */
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
+.page-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: clamp(28px, 5vw, 36px); line-height: 1.08; letter-spacing: -0.01em; margin-top: 4px; }
+.page-head-trailing { display: flex; gap: 10px; flex: 0 0 auto; padding-top: 6px; }
+
+/* Hero card — gradient panel, tag pill, serif headline, pill CTA. */
+.hero-card {
+  position: relative; overflow: hidden; border-radius: 26px; padding: 26px;
+  border: 1px solid var(--line); margin-bottom: 22px; color: #fff;
+  background:
+    linear-gradient(150deg, rgba(138, 123, 240, 0.34), rgba(166, 139, 255, 0.12)),
+    linear-gradient(180deg, var(--night-top), var(--night));
+}
+.hero-card.accent-sleep { background: linear-gradient(150deg, rgba(166, 139, 255, 0.4), rgba(90, 82, 201, 0.16)), linear-gradient(180deg, var(--night-top), var(--night)); }
+.hero-card.accent-warm { background: linear-gradient(150deg, rgba(240, 164, 140, 0.32), rgba(143, 230, 238, 0.12)), linear-gradient(180deg, var(--night-top), var(--night)); }
+.hero-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 5px 12px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16); margin-bottom: 14px;
+}
+.hero-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: clamp(26px, 4.5vw, 34px); line-height: 1.1; margin-bottom: 8px; }
+.hero-sub { color: rgba(255, 255, 255, 0.82); font-size: 14.5px; line-height: 1.5; max-width: 46ch; }
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 18px;
+  padding: 12px 20px; border-radius: 999px; border: none; font-weight: 700; font-size: 14px;
+  background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink);
+}
+.hero-cta-play { font-size: 11px; }
+
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 20px; margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+.section-title h3 { font-family: var(--font-serif), Georgia, serif; font-size: 22px; font-weight: 600; }
+.section-trailing { color: var(--muted-2); font-size: 13px; }
+
+.ui-row {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 15px 16px; border-radius: 16px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); text-decoration: none;
+  transition: border-color 0.15s, background 0.15s; margin-bottom: 10px;
+}
+.ui-row:hover:not(.static) { background: var(--card-strong); }
+.ui-row.emphasis { border-color: var(--lav); background: var(--card-strong); }
+.ui-row-icon {
+  flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.05); color: var(--soft); font-size: 18px;
+}
+.ui-row-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-row-body strong { font-size: 15px; font-weight: 600; }
+.ui-row-body small { color: var(--muted); font-size: 12.5px; }
+.ui-row-chevron { color: var(--muted-2); font-size: 20px; }
+
+.ui-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.ui-chip { padding: 10px 16px; border-radius: 13px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-weight: 600; font-size: 14px; }
+.ui-chip.active { background: var(--cream); color: var(--ink); border-color: transparent; }
+
+.week-dots { display: flex; gap: 10px; }
+.week-dot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.week-dot .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--card-strong); border: 1px solid var(--line); }
+.week-dot .dot.on { background: var(--lav); border-color: transparent; }
+.week-dot em { font-style: normal; font-size: 10.5px; color: var(--muted-2); font-weight: 600; }
+
+/* Home hero mood check-in */
+.mood-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 4px; }
+.mood-btn {
+  flex: 1 1 0; min-width: 66px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 8px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06); color: #fff; transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.mood-btn:hover { transform: translateY(-2px); }
+.mood-btn.selected { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
+.mood-emoji { font-size: 24px; line-height: 1; }
+.mood-name { font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, 0.86); }
+.hero-cta:disabled { opacity: 0.5; cursor: default; }
+
+/* Talk — persistent AI disclosure note (mirrors iOS AIDisclosureBanner) */
+.ai-note {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px;
+  padding: 12px 15px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); font-size: 13px; line-height: 1.45;
+}
+.ai-note-dot { color: var(--lav); font-size: 14px; line-height: 1.3; flex: 0 0 auto; }

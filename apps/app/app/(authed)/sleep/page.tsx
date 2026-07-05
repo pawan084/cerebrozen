@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { HeroCard, PageHeader, SectionTitle } from "@/components/ui";
 
 // Mirrors the iOS morning check-in (docs/SLEEP_TRACKING.md): felt quality +
 // wall-clock times, one entry per morning (server upserts by date). Awareness
@@ -95,8 +96,13 @@ export default function Sleep() {
 
   return (
     <>
-      <p className="eyebrow">How you slept, not a measurement</p>
-      <h1>Sleep diary</h1>
+      <PageHeader eyebrow="Premium sleep hub" title="Sleep diary" />
+      <HeroCard
+        accent="sleep"
+        tag="This morning"
+        title="How did you sleep?"
+        subtitle="A 20-second morning check-in — how you slept, not a measurement. The full sleep hub (soundscapes, stories, playback) lives in the iOS app."
+      />
 
       <form className="card" onSubmit={save} aria-label="Morning check-in">
         <h2>Morning check-in</h2>
@@ -142,8 +148,8 @@ export default function Sleep() {
         <p className="footnote">Roughly is perfect — this is awareness, not tracking accuracy.</p>
       </form>
 
+      <SectionTitle title="Last 7 nights" trailing={summary && summary.enough_data ? `avg ${fmt(summary.avg_duration_min)}` : undefined} />
       <section className="card" aria-label="Weekly summary">
-        <h2>Last 7 nights</h2>
         {summary && summary.enough_data ? (
           <p className="sub">
             {summary.nights} nights logged · avg {fmt(summary.avg_duration_min)} in bed · felt{" "}
@@ -159,8 +165,8 @@ export default function Sleep() {
       </section>
 
       {logs.length > 0 && (
+        <><SectionTitle title="History" />
         <section className="card" aria-label="Diary history">
-          <h2>History</h2>
           {logs.map((l) => (
             <div className="entry" key={l.id}>
               <strong>{l.date}</strong>{" "}
@@ -171,6 +177,7 @@ export default function Sleep() {
             </div>
           ))}
         </section>
+        </>
       )}
     </>
   );

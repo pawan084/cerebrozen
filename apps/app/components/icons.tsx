@@ -1,0 +1,45 @@
+// Small inline SVG icon set for the web app shell + screens. Inline (not an
+// icon font / remote sprite) keeps everything CSP-clean and same-origin.
+
+type P = { size?: number; className?: string };
+const svg = (size: number, className: string | undefined, d: React.ReactNode) => (
+  <svg
+    width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"
+    className={className} aria-hidden="true"
+  >
+    {d}
+  </svg>
+);
+
+export const Icon = {
+  home: ({ size = 20, className }: P) => svg(size, className, <path d="M4 11l8-6 8 6v8a1 1 0 01-1 1h-4v-6h-6v6H5a1 1 0 01-1-1z" />),
+  talk: ({ size = 20, className }: P) => svg(size, className, <path d="M4 5h16v11H8l-4 3z" />),
+  sleep: ({ size = 20, className }: P) => svg(size, className, <path d="M20 14a8 8 0 01-10-10 8 8 0 1010 10z" />),
+  journal: ({ size = 20, className }: P) => svg(size, className, <><path d="M6 4h9l3 3v13H6z" /><path d="M9 10h6M9 14h4" /></>),
+  insights: ({ size = 20, className }: P) => svg(size, className, <path d="M5 19V9M12 19V5M19 19v-7" />),
+  plan: ({ size = 20, className }: P) => svg(size, className, <><path d="M4 6h16M4 12h16M4 18h10" /><circle cx="19" cy="18" r="2.4" /></>),
+  library: ({ size = 20, className }: P) => svg(size, className, <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 4v16M14 9l3 3-3 3" /></>),
+  account: ({ size = 20, className }: P) => svg(size, className, <><circle cx="12" cy="8" r="3.4" /><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5" /></>),
+  signout: ({ size = 20, className }: P) => svg(size, className, <><path d="M14 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4" /><path d="M10 12H3m0 0l3-3m-3 3l3 3" /></>),
+  search: ({ size = 20, className }: P) => svg(size, className, <><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></>),
+  bell: ({ size = 20, className }: P) => svg(size, className, <path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 004 0" />),
+  wind: ({ size = 20, className }: P) => svg(size, className, <path d="M3 8h11a2.5 2.5 0 10-2.5-2.5M3 16h15a2.5 2.5 0 11-2.5 2.5M3 12h9" />),
+  book: ({ size = 20, className }: P) => svg(size, className, <path d="M4 5a2 2 0 012-2h11v16H6a2 2 0 00-2 2z" />),
+  play: ({ size = 20, className }: P) => svg(size, className, <path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none" />),
+  chevron: ({ size = 20, className }: P) => svg(size, className, <path d="M9 6l6 6-6 6" />),
+  spark: ({ size = 20, className }: P) => svg(size, className, <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />),
+};
+
+/** The brand orb-lotus mark as a gradient dot. */
+export function BrandDot({ size = 26 }: { size?: number }) {
+  return (
+    <span
+      style={{
+        width: size, height: size, borderRadius: "50%", flex: `0 0 ${size}px`,
+        background: "radial-gradient(circle at 38% 34%, #fff, var(--lav) 58%, var(--lav-2) 100%)",
+        boxShadow: "0 0 16px rgba(138,123,240,.55)",
+      }}
+    />
+  );
+}

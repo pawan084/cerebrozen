@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { PageHeader, Panel, Row, SectionTitle, WeekDots } from "@/components/ui";
+import { Icon } from "@/components/icons";
 
-// Mirrors the iOS one-tap moods (Dummy.moods) so check-ins read the same
-// across clients; `symbol` carries the SF Symbol name the iOS app renders.
+// Mirrors the iOS one-tap moods (Dummy.moods) so check-ins read the same across
+// clients; `symbol` carries the SF Symbol name the iOS app renders.
 const MOODS = [
-  { name: "Good", note: "Clear", symbol: "sparkles" },
-  { name: "Anxious", note: "Loud thoughts", symbol: "exclamationmark.triangle" },
-  { name: "Low", note: "Heavy", symbol: "moon" },
-  { name: "Tired", note: "Need rest", symbol: "drop" },
+  { name: "Good", note: "Clear", symbol: "sparkles", emoji: "😊" },
+  { name: "Anxious", note: "Loud thoughts", symbol: "exclamationmark.triangle", emoji: "😰" },
+  { name: "Low", note: "Heavy", symbol: "moon", emoji: "😔" },
+  { name: "Tired", note: "Need rest", symbol: "drop", emoji: "😴" },
 ];
 
 type Mood = { id: string; mood: string; note: string; created_at: string };
@@ -58,33 +59,35 @@ export default function Home() {
 
   return (
     <>
-      <p className="eyebrow">Today</p>
-      <h1>{greeting}{name ? `, ${name}` : ""}</h1>
+      <PageHeader eyebrow="Today" title={`${greeting}${name ? `, ${name}` : ""}`} />
 
-      <section className="card" aria-label="Mood check-in">
-        <h2>How are you arriving?</h2>
-        <p className="sub">A 20-second check-in shapes your next best step.</p>
-        <div className="pick-grid">
+      {/* Hero mood check-in */}
+      <section className="hero-card" aria-label="Mood check-in">
+        <span className="hero-tag">Daily check-in</span>
+        <h2 className="hero-title">How are you arriving?</h2>
+        <p className="hero-sub">A 20-second check-in shapes your next best step.</p>
+        <div className="mood-row">
           {MOODS.map((m) => (
             <button
               key={m.name}
-              className={`pick${selected === m.name ? " selected" : ""}`}
+              className={`mood-btn${selected === m.name ? " selected" : ""}`}
               aria-pressed={selected === m.name}
+              aria-label={`${m.name} — ${m.note}`}
               onClick={() => setSelected(m.name)}
             >
-              {m.name}
-              <span className="note">{m.note}</span>
+              <span className="mood-emoji">{m.emoji}</span>
+              <span className="mood-name">{m.name}</span>
             </button>
           ))}
         </div>
         {saved && <p className="success" role="status">Checked in — noted gently.</p>}
-        <button className="btn" onClick={checkIn} disabled={!selected || busy}>
+        <button className="hero-cta" onClick={checkIn} disabled={!selected || busy}>
           {busy ? "Saving…" : "Check in"}
         </button>
       </section>
 
       {streak && (
-        <section className="card" aria-label="Streak">
+        <Panel aria-label="Streak">
           <div className="row">
             <div className="grow">
               <h2>{streak.current === 0 ? "Begin your streak" : `${streak.current}-day streak`}</h2>
@@ -94,52 +97,45 @@ export default function Home() {
                   : `Best ${streak.best} days · one missed day is always forgiven.`}
               </p>
             </div>
-            <div className="row" aria-hidden="true" style={{ gap: 6 }}>
-              {streak.week.map((d) => (
-                <span
-                  key={d.date}
-                  style={{
-                    width: 9, height: 9, borderRadius: "50%",
-                    background: d.active ? "var(--lav)" : "var(--card-strong)",
-                    border: d.active ? "none" : "1px solid var(--line)",
-                  }}
-                />
-              ))}
-            </div>
+            <WeekDots week={streak.week} />
           </div>
-        </section>
+        </Panel>
       )}
+
+      <SectionTitle title="Keep going" />
+      <Row
+        icon={<Icon.journal size={18} />}
+        title="Journal"
+        subtitle="Get it out of your head — private by default."
+        href="/journal"
+      />
+      <Row
+        icon={<Icon.sleep size={18} />}
+        title="Sleep diary"
+        subtitle="Log last night in 20 seconds; watch your week take shape."
+        href="/sleep"
+      />
+      <Row
+        icon={<Icon.talk size={18} />}
+        title="Talk it through"
+        subtitle="Reflect with your AI companion, any hour."
+        href="/chat"
+      />
 
       {moods.length > 0 && (
-        <section className="card" aria-label="Recent check-ins">
-          <h2>Recent check-ins</h2>
-          {moods.map((m) => (
-            <div className="entry" key={m.id}>
-              <strong>{m.mood}</strong> <span className="meta">· {m.note}</span>
-              <div className="meta">{new Date(m.created_at).toLocaleString()}</div>
-            </div>
-          ))}
-        </section>
+        <>
+          <SectionTitle title="Recent check-ins" />
+          <Panel aria-label="Recent check-ins">
+            {moods.map((m) => (
+              <div className="entry" key={m.id}>
+                <strong>{m.mood}</strong> <span className="meta">· {m.note}</span>
+                <div className="meta">{new Date(m.created_at).toLocaleString()}</div>
+              </div>
+            ))}
+          </Panel>
+        </>
       )}
 
-      <section className="card">
-        <div className="row">
-          <div className="grow">
-            <h2>Journal</h2>
-            <p className="sub">Get it out of your head and onto the page — private by default.</p>
-          </div>
-          <Link className="btn ghost" href="/journal">Open</Link>
-        </div>
-      </section>
-      <section className="card">
-        <div className="row">
-          <div className="grow">
-            <h2>Sleep diary</h2>
-            <p className="sub">Log last night in 20 seconds; watch your week take shape.</p>
-          </div>
-          <Link className="btn ghost" href="/sleep">Open</Link>
-        </div>
-      </section>
       <p className="footnote">
         CereBro is not a therapist or crisis service. The full experience — voice companion,
         soundscapes, daily plans — lives in the iOS app.

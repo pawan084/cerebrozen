@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
+import { PageHeader } from "@/components/ui";
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
@@ -122,8 +123,12 @@ export default function Chat() {
 
   return (
     <>
-      <p className="eyebrow">AI companion — not a therapist or crisis service</p>
-      <h1>Chat</h1>
+      <PageHeader eyebrow="AI voice companion" title="Talk" />
+      <div className="ai-note" role="note">
+        <span className="ai-note-dot" aria-hidden="true">ⓘ</span>
+        AI companion — not a therapist or crisis service. It listens and guides; it can't
+        diagnose, prescribe, or handle emergencies.
+      </div>
 
       {crisis && (
         <div className="crisis" role="alert">
