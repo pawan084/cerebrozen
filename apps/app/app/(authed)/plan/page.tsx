@@ -45,6 +45,7 @@ export default function PlanPage() {
 
   return (
     <>
+      <div className="page-body">
       <p className="eyebrow">Agentic plan{plan ? ` · ${plan.source === "ai" ? "personalized by AI" : "curated"}` : ""}</p>
       <h1>{plan?.title ?? "Daily plan"}</h1>
       {error && <p className="error">{error}</p>}
@@ -85,6 +86,7 @@ export default function PlanPage() {
           </button>
         </>
       )}
+      </div>
     </>
   );
 }

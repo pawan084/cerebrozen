@@ -37,6 +37,7 @@ export default function Library() {
 
   return (
     <>
+      <div className="page-body">
       <p className="eyebrow">The living catalogue — served, not hardcoded</p>
       <h1>Library</h1>
       {error && <p className="error">{error}</p>}
@@ -60,6 +61,7 @@ export default function Library() {
       <p className="footnote">
         Audio playback (soundscapes, stories, the mixer) lives in the iOS app for now.
       </p>
+      </div>
     </>
   );
 }

@@ -2,183 +2,89 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { HeroCard, PageHeader, SectionTitle } from "@/components/ui";
+import { AppHeader } from "@/components/AppHeader";
 
-// Mirrors the iOS morning check-in (docs/SLEEP_TRACKING.md): felt quality +
-// wall-clock times, one entry per morning (server upserts by date). Awareness
-// framing only — never a measurement claim.
-const QUALITY_WORDS = ["Rough", "Poor", "Okay", "Good", "Rested"];
-
-type SleepLog = {
-  id: string;
-  date: string;
-  bedtime: string;
-  wake_time: string;
-  quality: number;
-  awakenings: number;
-  duration_min: number;
-};
-
-type Summary = {
-  nights: number;
-  enough_data: boolean;
-  avg_duration_min: number;
-  avg_quality: number;
-  bedtime_consistency_min: number;
-  trend: string;
-};
-
-function todayLocalISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function fmt(min: number): string {
-  return `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`;
-}
+const SOUNDSCAPES = [
+  { name: "Forest rain", len: "45 min", bg: "linear-gradient(160deg,#2f5a3a,#12241a)" },
+  { name: "Warm rain", len: "60 min", bg: "linear-gradient(160deg,#8a5a2f,#3a2416)" },
+  { name: "Deep space", len: "8 hr", bg: "linear-gradient(160deg,#3a3a7a,#161240)" },
+  { name: "Ocean tide", len: "90 min", bg: "linear-gradient(160deg,#2f6a6a,#12302f)" },
+];
+const STORIES = [
+  { title: "The lighthouse keeper", sub: "A slow tale of tides and quiet · 24 min", bg: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
+  { title: "Night train to nowhere", sub: "Rhythmic and drowsy · 31 min", bg: "linear-gradient(135deg,#e08a9a,#8a5a6a)" },
+];
+const QUALITY = ["Rough", "Poor", "Okay", "Good", "Rested"];
 
 export default function Sleep() {
   const [quality, setQuality] = useState(0);
   const [bedtime, setBedtime] = useState("23:00");
-  const [wakeTime, setWakeTime] = useState("07:00");
-  const [awakenings, setAwakenings] = useState(0);
-  const [logs, setLogs] = useState<SleepLog[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const [wake, setWake] = useState("07:00");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void reload();
+    api<any[]>("/sleep?limit=1").then((l) => { if (l[0]) { setBedtime(l[0].bedtime.slice(0, 5)); setWake(l[0].wake_time.slice(0, 5)); } }).catch(() => {});
   }, []);
 
-  async function reload() {
-    try {
-      const [list, sum] = await Promise.all([
-        api<SleepLog[]>("/sleep?limit=14"),
-        api<Summary>("/sleep/summary"),
-      ]);
-      setLogs(list);
-      setSummary(sum);
-      const today = list.find((l) => l.date === todayLocalISO());
-      if (today) {
-        setQuality(today.quality);
-        setBedtime(today.bedtime.slice(0, 5));
-        setWakeTime(today.wake_time.slice(0, 5));
-        setAwakenings(today.awakenings);
-      } else if (list[0]) {
-        setBedtime(list[0].bedtime.slice(0, 5));
-        setWakeTime(list[0].wake_time.slice(0, 5));
-      }
-    } catch {}
-  }
-
+  function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (quality === 0 || busy) return;
-    setBusy(true);
+    if (!quality || busy) return; setBusy(true);
     try {
-      await api("/sleep", {
-        method: "POST",
-        body: JSON.stringify({
-          date: todayLocalISO(),
-          bedtime: `${bedtime}:00`,
-          wake_time: `${wakeTime}:00`,
-          quality,
-          awakenings,
-        }),
-      });
+      await api("/sleep", { method: "POST", body: JSON.stringify({ date: todayISO(), bedtime: `${bedtime}:00`, wake_time: `${wake}:00`, quality, awakenings: 0 }) });
       setSaved(true);
-      await reload();
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   return (
     <>
-      <PageHeader eyebrow="Premium sleep hub" title="Sleep diary" />
-      <HeroCard
-        accent="sleep"
-        tag="This morning"
-        title="How did you sleep?"
-        subtitle="A 20-second morning check-in — how you slept, not a measurement. The full sleep hub (soundscapes, stories, playback) lives in the iOS app."
-      />
+      <AppHeader eyebrow="Sleep" title="Ease toward rest" />
+      <div className="page-body">
+        <section className="media-hero" style={{ background: "linear-gradient(120deg,rgba(90,40,80,0.6),rgba(20,16,44,0.4)), radial-gradient(circle at 82% 20%, rgba(143,230,238,0.25), transparent 40%), var(--night)" }}>
+          <div className="hero-orb" aria-hidden="true" />
+          <p className="eyebrow">Tonight's wind-down</p>
+          <h2>Drift off to a quieter mind</h2>
+          <p>Sleep stories, soundscapes, and slow breathing to ease you into rest.</p>
+        </section>
 
-      <form className="card" onSubmit={save} aria-label="Morning check-in">
-        <h2>Morning check-in</h2>
-        <p className="sub">How rested do you feel?</p>
-        <div className="quality-row" role="radiogroup" aria-label="Sleep quality">
-          {QUALITY_WORDS.map((word, i) => (
-            <button
-              key={word}
-              type="button"
-              className={`pick${quality === i + 1 ? " selected" : ""}`}
-              role="radio"
-              aria-checked={quality === i + 1}
-              onClick={() => setQuality(i + 1)}
-            >
-              {word}
-            </button>
-          ))}
-        </div>
-        <div className="row">
-          <label className="field grow">
-            <span>In bed around</span>
-            <input type="time" value={bedtime} onChange={(e) => setBedtime(e.target.value)} required />
-          </label>
-          <label className="field grow">
-            <span>Woke up around</span>
-            <input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} required />
-          </label>
-          <label className="field grow">
-            <span>Woke during night</span>
-            <input
-              type="number"
-              min={0}
-              max={20}
-              value={awakenings}
-              onChange={(e) => setAwakenings(Number(e.target.value))}
-            />
-          </label>
-        </div>
-        {saved && <p className="success" role="status">Saved — one entry per morning, edits welcome.</p>}
-        <button className="btn" disabled={quality === 0 || busy}>
-          {busy ? "Saving…" : "Save check-in"}
-        </button>
-        <p className="footnote">Roughly is perfect — this is awareness, not tracking accuracy.</p>
-      </form>
-
-      <SectionTitle title="Last 7 nights" trailing={summary && summary.enough_data ? `avg ${fmt(summary.avg_duration_min)}` : undefined} />
-      <section className="card" aria-label="Weekly summary">
-        {summary && summary.enough_data ? (
-          <p className="sub">
-            {summary.nights} nights logged · avg {fmt(summary.avg_duration_min)} in bed · felt{" "}
-            {summary.avg_quality}/5 · trend {summary.trend.replace("_", " ")}
-          </p>
-        ) : (
-          <p className="sub">
-            {summary && summary.nights > 0
-              ? `Log ${3 - summary.nights} more morning${summary.nights === 2 ? "" : "s"} to unlock your weekly view.`
-              : "Log your first morning to start seeing your nights here."}
-          </p>
-        )}
-      </section>
-
-      {logs.length > 0 && (
-        <><SectionTitle title="History" />
-        <section className="card" aria-label="Diary history">
-          {logs.map((l) => (
-            <div className="entry" key={l.id}>
-              <strong>{l.date}</strong>{" "}
-              <span className="meta">
-                · {l.bedtime.slice(0, 5)} → {l.wake_time.slice(0, 5)} · {fmt(l.duration_min)} · felt {l.quality}/5
-                {l.awakenings > 0 ? ` · woke ${l.awakenings}×` : ""}
-              </span>
+        <div className="sec-head"><h2 className="serif-h">Soundscapes</h2></div>
+        <div className="media-grid">
+          {SOUNDSCAPES.map((s) => (
+            <div key={s.name} className="media-card" style={{ background: s.bg }}>
+              <span />
+              <span className="cap"><strong>{s.name}</strong><small>{s.len}</small></span>
             </div>
           ))}
-        </section>
-        </>
-      )}
+        </div>
+
+        <div className="sec-head"><h2 className="serif-h">Sleep stories</h2></div>
+        {STORIES.map((s) => (
+          <div key={s.title} className="story-row">
+            <span className="story-thumb" style={{ background: s.bg }} />
+            <span className="body"><strong>{s.title}</strong><small>{s.sub}</small></span>
+            <button className="play">PLAY</button>
+          </div>
+        ))}
+        <p className="footnote">Audio playback lives in the iOS app — here you can plan your wind-down and log your mornings.</p>
+
+        <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
+        <form className="card-dark" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">
+          <p className="sub" style={{ color: "var(--muted)", marginBottom: 12 }}>How rested do you feel?</p>
+          <div className="quality-row" role="radiogroup" aria-label="Sleep quality">
+            {QUALITY.map((w, i) => (
+              <button key={w} type="button" role="radio" aria-checked={quality === i + 1}
+                className={`pick${quality === i + 1 ? " selected" : ""}`} onClick={() => setQuality(i + 1)}>{w}</button>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 12, marginTop: 4 }}>
+            <label className="field grow"><span>In bed around</span><input type="time" value={bedtime} onChange={(e) => setBedtime(e.target.value)} /></label>
+            <label className="field grow"><span>Woke up around</span><input type="time" value={wake} onChange={(e) => setWake(e.target.value)} /></label>
+          </div>
+          {saved && <p className="success" role="status">Saved — one entry per morning, edits welcome.</p>}
+          <button className="btn" disabled={!quality || busy}>{busy ? "Saving…" : "Save check-in"}</button>
+        </form>
+      </div>
     </>
   );
 }

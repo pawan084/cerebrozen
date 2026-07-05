@@ -29,6 +29,9 @@ export const Icon = {
   play: ({ size = 20, className }: P) => svg(size, className, <path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none" />),
   chevron: ({ size = 20, className }: P) => svg(size, className, <path d="M9 6l6 6-6 6" />),
   spark: ({ size = 20, className }: P) => svg(size, className, <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />),
+  games: ({ size = 20, className }: P) => svg(size, className, <><rect x="3" y="8" width="18" height="9" rx="4.5" /><path d="M8 12.5h2.4M9.2 11.3v2.4" /><circle cx="15.4" cy="12" r=".5" fill="currentColor" /><circle cx="17" cy="13.4" r=".5" fill="currentColor" /></>),
+  settings: ({ size = 20, className }: P) => svg(size, className, <><circle cx="12" cy="12" r="3.2" /><path d="M12 3v2.2M12 18.8V21M4.2 7l1.9 1.1M17.9 15.9l1.9 1.1M4.2 17l1.9-1.1M17.9 8.1l1.9-1.1" /></>),
+  bellDot: ({ size = 20, className }: P) => svg(size, className, <><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 004 0" /><circle cx="18" cy="5" r="2.6" fill="var(--warm)" stroke="none" /></>),
 };
 
 /** The CereBro brand mark — open "C" ring cradling a glowing orb (warm palette). */

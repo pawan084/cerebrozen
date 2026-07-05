@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, authedFetch, clearSession } from "@/lib/api";
+import { AppHeader } from "@/components/AppHeader";
 
 type Consent = {
   mood_history: boolean; ai_memory: boolean; voice_storage: boolean;
@@ -135,8 +136,8 @@ export default function Account() {
 
   return (
     <>
-      <p className="eyebrow">Private by default</p>
-      <h1>Account</h1>
+      <AppHeader eyebrow="Private by default" title="Settings" />
+      <div className="page-body">
 
       {me && (
         <section className="card">
@@ -250,6 +251,7 @@ export default function Account() {
           Delete my account
         </button>
       </section>
+      </div>
     </>
   );
 }

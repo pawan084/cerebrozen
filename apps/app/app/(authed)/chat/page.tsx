@@ -4,7 +4,19 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
-import { PageHeader } from "@/components/ui";
+import { AppHeader } from "@/components/AppHeader";
+
+const STARTERS = [
+  "I feel anxious and I don't know why",
+  "Help me wind down before bed",
+  "I want to talk through a hard day",
+  "Just two minutes to reset",
+];
+const RECENT = [
+  { title: "Late-night worries", when: "Yesterday · 14 min", c: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
+  { title: "Morning intention", when: "Mon · 6 min", c: "linear-gradient(135deg,#8fe6ee,#4fd8e0)" },
+  { title: "Work stress", when: "Sun · 21 min", c: "linear-gradient(135deg,#f0a48c,#e08a9a)" },
+];
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
@@ -33,6 +45,7 @@ export default function Chat() {
   const [threadId, setThreadId] = useState("web");
   const [confirmReq, setConfirmReq] = useState<{ thread_id: string; summary?: string } | null>(null);
   const [crisis, setCrisis] = useState<CrisisInfo | null>(null);
+  const [started, setStarted] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,15 +134,15 @@ export default function Chat() {
     }
   }
 
+  function begin(text?: string) {
+    setStarted(true);
+    if (text) void send(text);
+  }
+
   return (
     <>
-      <PageHeader eyebrow="AI voice companion" title="Talk" />
-      <div className="ai-note" role="note">
-        <span className="ai-note-dot" aria-hidden="true">ⓘ</span>
-        AI companion — not a therapist or crisis service. It listens and guides; it can't
-        diagnose, prescribe, or handle emergencies.
-      </div>
-
+      <AppHeader eyebrow="Talk" title="A space to be heard" />
+      <div className="page-body">
       {crisis && (
         <div className="crisis" role="alert">
           <strong>{crisis.message || "If things feel heavy right now, you deserve support."}</strong>
@@ -152,7 +165,43 @@ export default function Chat() {
         </div>
       )}
 
-      <section className="card chatbox" aria-label="Conversation">
+      {!started && messages.length === 0 ? (
+        <>
+          <section className="talk-hero">
+            <div className="talk-orb" aria-hidden="true" />
+            <h2>I'm here whenever you're ready</h2>
+            <p>Start a live conversation, or just type. No pressure to have the right words.</p>
+            <div className="talk-actions">
+              <button className="pill-btn" onClick={() => begin()}><span className="live-dot" /> Start live session</button>
+              <button className="pill-btn ghost" onClick={() => begin()}>Type instead</button>
+            </div>
+          </section>
+          <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+            <div>
+              <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
+              {STARTERS.map((s) => (
+                <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
+              ))}
+            </div>
+            <div>
+              <h2 className="serif-h" style={{ marginBottom: 14 }}>Recent conversations</h2>
+              {RECENT.map((r) => (
+                <div key={r.title} className="convo-row">
+                  <span className="convo-dot" style={{ background: r.c }} />
+                  <div><strong>{r.title}</strong><small>{r.when}</small></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ai-note" role="note">
+            <span className="ai-note-dot" aria-hidden="true">ⓘ</span>
+            AI companion — not a therapist or crisis service. It listens and guides; it can't
+            diagnose, prescribe, or handle emergencies.
+          </div>
+          <section className="card chatbox" aria-label="Conversation">
         {messages.length === 0 && !streaming && (
           <p className="sub">What's on your mind? The companion listens first, then offers one small step.</p>
         )}
@@ -219,6 +268,9 @@ export default function Chat() {
       <p className="footnote">
         Voice conversations live in the iOS app. Free accounts have a daily message allowance.
       </p>
+        </>
+      )}
+      </div>
     </>
   );
 }
