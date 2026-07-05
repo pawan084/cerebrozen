@@ -148,13 +148,18 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
   headless), deferred as low-priority (below the fold).
 
 ### Design refresh — open follow-ups
-- [ ] Logo/banner kit (`ref/cerebro_world_class_logo_banner_kit`): reviewed 2026-07-05.
-  Verdict — the **C-ring + orb logo lockup** (real editable SVG + light/dark/transparent
-  + wordmark) is better than what we have (we lack a designed lockup) and worth adopting;
-  the **app icon** is a modest upgrade in distinctiveness but needs a warm recolor + the
-  center "eye" dot softened; the **banners** are good but their device shots show the old
-  UI (re-render post-refresh); **keep** the code-built iOS splash over the kit's static PNG.
-  Awaiting owner decision on adopting the new mark (brand-identity change).
+- [x] Logo adoption (2026-07-05): adopted the **C-ring + orb mark**, warm-recolored to the
+  palette (lavender→cyan ring, warm-lavender orb; the vector has no "eye" dot — that was
+  raster-only). New warm SVGs `apps/web/public/brand/{cerebro-mark,cerebro-lockup}.svg`
+  (Newsreader wordmark). Reusable inline `BrandMark` in apps/web (`components/BrandMark.tsx`)
+  + apps/app (`components/icons.tsx`) — landing nav/footer + app sidebar now show the mark.
+  iOS: rendered a warm 1024 opaque app icon (flattened RGB, App-Store-safe) → `AppIcon`,
+  and a transparent tight mark → `BrandLogo`; `SplashView.OrbMark` no longer circle-clips
+  (open ring). Warmed the `LaunchBackground` (#0e0c22) + `AccentColor` (#8a7bf0) colorsets
+  (asset colorsets Phase 1 missed). Verified: web builds green + nav mark on-brand; iOS
+  builds green + new springboard icon confirmed. OG/favicon deliberately kept as the warm
+  orb (the mark's orb element — reads better at 16-32px, avoids satori path limits).
+  Not done: banner re-renders (device shots still show old UI) — separate follow-up.
 - [x] Per-screen web hero rebuilds (2026-07-05): Talk (AI-disclosure note + serif header),
   Sleep (violet "This morning" hero), Journal ("Release the day" prompt hero), Insights
   (weekly-headline hero + metric bars) all rebuilt with PageHeader + HeroCard + SectionTitle,

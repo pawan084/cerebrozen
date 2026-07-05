@@ -31,15 +31,29 @@ export const Icon = {
   spark: ({ size = 20, className }: P) => svg(size, className, <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />),
 };
 
-/** The brand orb-lotus mark as a gradient dot. */
-export function BrandDot({ size = 26 }: { size?: number }) {
+/** The CereBro brand mark — open "C" ring cradling a glowing orb (warm palette). */
+export function BrandMark({ size = 26 }: { size?: number }) {
   return (
-    <span
-      style={{
-        width: size, height: size, borderRadius: "50%", flex: `0 0 ${size}px`,
-        background: "radial-gradient(circle at 38% 34%, #fff, var(--lav) 58%, var(--lav-2) 100%)",
-        boxShadow: "0 0 16px rgba(138,123,240,.55)",
-      }}
-    />
+    <svg
+      width={size} height={size} viewBox="4 32 296 296" fill="none" aria-hidden="true"
+      style={{ display: "block", flex: `0 0 ${size}px`, filter: "drop-shadow(0 0 7px rgba(138,123,240,.5))" }}
+    >
+      <defs>
+        <radialGradient id="cbMarkOrb" cx="38%" cy="34%" r="75%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="42%" stopColor="#dfe0ff" />
+          <stop offset="72%" stopColor="#8a7bf0" />
+          <stop offset="100%" stopColor="#5b52c9" />
+        </radialGradient>
+        <linearGradient id="cbMarkRing" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#cbb6ff" />
+          <stop offset="100%" stopColor="#8fe6ee" />
+        </linearGradient>
+      </defs>
+      <path d="M236 92 A112 112 0 1 0 236 268" stroke="url(#cbMarkRing)" strokeWidth="32" strokeLinecap="round" />
+      <ellipse cx="180" cy="180" rx="86" ry="30" transform="rotate(-27 180 180)" stroke="#bdf3f7" strokeWidth="5" opacity="0.5" />
+      <circle cx="180" cy="180" r="56" fill="url(#cbMarkOrb)" />
+      <circle cx="156" cy="144" r="12" fill="#ffffff" opacity="0.38" />
+    </svg>
   );
 }

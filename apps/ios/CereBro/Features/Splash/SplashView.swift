@@ -79,14 +79,12 @@ private struct OrbMark: View {
                                      center: .center, startRadius: size * 0.1, endRadius: size * 0.8))
                 .frame(width: size * 1.7, height: size * 1.7)
                 .blur(radius: 24)
-            // The real orb-lotus art; clipping to a circle drops the artwork's
-            // square corners so its dark field blends into the night sky.
+            // The C-ring brand mark (transparent PNG) sits straight over the glow —
+            // no circle clip/stroke (it's an open ring, not a filled orb).
             Image("BrandLogo")
                 .resizable()
                 .scaledToFit()
-                .clipShape(Circle())
                 .frame(width: size, height: size)
-                .overlay(Circle().stroke(Color.white.opacity(0.06), lineWidth: 1))
         }
     }
 }

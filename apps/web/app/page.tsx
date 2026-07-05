@@ -1,5 +1,6 @@
 import Waitlist from "@/components/Waitlist";
 import AppStoreBadge from "@/components/AppStoreBadge";
+import { BrandMark } from "@/components/BrandMark";
 
 const SPACES = [
   { tab: "Home", body: "One clear next step, tuned to the time of day and the goals you set." },
@@ -42,7 +43,7 @@ export default function Home() {
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <div className="brand"><span className="dot" /> CereBro</div>
+          <div className="brand"><BrandMark size={26} /> CereBro</div>
           <div className="nav-links">
             <a href="#features">Features</a>
             <a href="#spaces">The app</a>
@@ -263,7 +264,7 @@ export default function Home() {
 
       <footer className="footer">
         <div className="container footer-inner">
-          <div className="brand" style={{ fontSize: 17 }}><span className="dot" /> CereBro</div>
+          <div className="brand" style={{ fontSize: 17 }}><BrandMark size={26} /> CereBro</div>
           <div>
             © {new Date().getFullYear()} CereBro · <a href="/privacy">Privacy</a> ·{" "}
             <a href="/terms">Terms</a> · <a href="/support">Support</a>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { hasSession, signOut } from "@/lib/api";
-import { BrandDot, Icon } from "@/components/icons";
+import { BrandMark, Icon } from "@/components/icons";
 
 // Primary destinations (the mobile bottom bar shows these five, mirroring iOS
 // Home / Talk / Sleep / Journal / You).
@@ -52,7 +52,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       {/* Desktop sidebar */}
       <aside className="sidebar" aria-label="Primary">
         <Link href="/home" className="sidebar-brand">
-          <BrandDot /> <span>CereBro</span>
+          <BrandMark /> <span>CereBro</span>
         </Link>
         <div className="nav-group-label">Menu</div>
         <nav className="nav-group">{PRIMARY.map(NavLink)}</nav>
