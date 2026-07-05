@@ -159,7 +159,10 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
   (asset colorsets Phase 1 missed). Verified: web builds green + nav mark on-brand; iOS
   builds green + new springboard icon confirmed. OG/favicon deliberately kept as the warm
   orb (the mark's orb element — reads better at 16-32px, avoids satori path limits).
-  Not done: banner re-renders (device shots still show old UI) — separate follow-up.
+- [x] Marketing banners re-rendered (2026-07-05): all four (App Store feature 1024×500,
+  social/OG 1200×628, hero 1920×1080, story 1080×1920) rebuilt with the warm palette, the
+  new C-ring mark + Newsreader wordmark, and the current warm app UI (Home / onboarding /
+  splash), replacing the kit's old-UI device shots. Live in `apps/web/public/brand/banners/`.
 - [x] Per-screen web hero rebuilds (2026-07-05): Talk (AI-disclosure note + serif header),
   Sleep (violet "This morning" hero), Journal ("Release the day" prompt hero), Insights
   (weekly-headline hero + metric bars) all rebuilt with PageHeader + HeroCard + SectionTitle,
