@@ -1,5 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Newsreader } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted at build time (no runtime request to Google — CSP-safe). Exposed
+// as --font-serif; globals.css falls back to Georgia if it fails to load.
+const serif = Newsreader({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 const title = "CereBro — your quiet space for daily mental fitness";
 const description =
@@ -29,12 +40,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#080b22",
+  themeColor: "#0e0c22",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={serif.variable}>
       <body>{children}</body>
     </html>
   );

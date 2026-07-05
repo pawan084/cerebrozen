@@ -1,21 +1,23 @@
 /* @cerebro-tokens:start */
 /* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  --night: #080b22;
-  --night-top: #161e4a;
-  --card: rgba(255, 255, 255, 0.045);
-  --card-strong: rgba(255, 255, 255, 0.08);
+  --night: #0e0c22;
+  --night-top: #1a1440;
+  --card: rgba(255, 255, 255, 0.05);
+  --card-strong: rgba(255, 255, 255, 0.085);
   --line: rgba(255, 255, 255, 0.12);
-  --text: #f4f6ff;
-  --soft: #dfe5ff;
-  --muted: #aeb6e0;
-  --muted-2: #8890bd;
-  --lav: #6f7bf7;
-  --lav-2: #9b6bff;
+  --text: #f5f4ff;
+  --soft: #dfe0ff;
+  --muted: #b0a9e0;
+  --muted-2: #8f88c0;
+  --lav: #8a7bf0;
+  --lav-2: #a68bff;
   --cream: #eceefb;
-  --ink: #171d43;
-  --danger: #e0a0ad;
-  --ok: #9ad6b4;
+  --ink: #1c1740;
+  --danger: #e08a9a;
+  --ok: #7ee0a8;
+  --warm: #f0a48c;
+  --cyan: #8fe6ee;
 }
 /* @cerebro-tokens:end */
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +34,7 @@ h1, h2, h3, .serif { font-family: Georgia, serif; font-weight: 600; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; font-size: 19px; padding: 0 8px 20px; }
 .brand .dot { width: 20px; height: 20px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff, var(--lav) 55%, var(--lav-2));
-  box-shadow: 0 0 16px rgba(111, 123, 247,0.8); }
+  box-shadow: 0 0 16px rgba(138, 123, 240,0.8); }
 .navitem {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: none; border: 0; color: var(--muted); cursor: pointer;
@@ -40,7 +42,7 @@ h1, h2, h3, .serif { font-family: Georgia, serif; font-weight: 600; }
 }
 .navit em { font-style: normal; }
 .navitem:hover { color: var(--text); background: rgba(255,255,255,0.04); }
-.navitem.active { color: var(--text); background: rgba(111, 123, 247,0.16); }
+.navitem.active { color: var(--text); background: rgba(138, 123, 240,0.16); }
 .sidebar .logout { margin-top: 8px; color: var(--muted); }
 
 .main { flex: 1; padding: 28px 32px; max-width: 1200px; }
@@ -62,7 +64,7 @@ tbody tr:last-child { border-bottom: 0; }
 td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 
 .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-.tag.crisis { background: rgba(224,160,173,0.18); color: var(--danger); }
+.tag.crisis { background: rgba(224, 138, 154,0.18); color: var(--danger); }
 .tag.elevated { background: rgba(244,234,217,0.16); color: var(--cream); }
 .tag.ok { background: rgba(154,214,180,0.16); color: var(--ok); }
 .tag.muted { background: rgba(255,255,255,0.07); color: var(--muted); }
@@ -82,7 +84,7 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 }
 .login .orb { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 18px;
   background: radial-gradient(circle at 36% 30%, #fff, var(--lav) 50%, var(--lav-2));
-  box-shadow: 0 0 40px rgba(111, 123, 247,0.6); }
+  box-shadow: 0 0 40px rgba(138, 123, 240,0.6); }
 .login h1 { text-align: center; font-size: 24px; margin-bottom: 6px; }
 .login p { text-align: center; color: var(--muted); margin-bottom: 22px; }
 .field { margin-bottom: 14px; }
@@ -107,4 +109,4 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 }
 .cform .check { display: flex; align-items: center; gap: 8px; color: var(--soft); font-size: 13px; padding-top: 22px; }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
-.btn-danger { background: rgba(224,160,173,0.16); color: var(--danger); border: 1px solid rgba(224,160,173,0.3); }
+.btn-danger { background: rgba(224, 138, 154,0.16); color: var(--danger); border: 1px solid rgba(224, 138, 154,0.3); }

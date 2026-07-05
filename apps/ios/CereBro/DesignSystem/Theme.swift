@@ -23,31 +23,32 @@ enum Theme {
     /// The literal colors of the artwork. Tuning the brand happens here and only
     /// here; nothing in a feature screen should reference `Brand` directly.
     enum Brand {
-        // Night sky — the splash gradient, deepest → lifted.
-        static let nightDeep    = Color(hex: 0x060814)   // darkest corner of the sky
-        static let night        = Color(hex: 0x080B22)   // primary background
-        static let nightMid     = Color(hex: 0x121A47)   // mid sky
-        static let nightPurple  = Color(hex: 0x1C1652)   // purple-ink, lower sky
-        static let indigoLift   = Color(hex: 0x232C66)   // periwinkle-tinted radial highlight
-        static let ink          = Color(hex: 0x171D43)   // deep ink (text on light fills)
+        // Night sky — the splash gradient, deepest → lifted. Warmed 2026-07 to the
+        // Newsreader refresh: indigo base (#0e0c22) instead of the old cool navy.
+        static let nightDeep    = Color(hex: 0x0A0818)   // darkest corner of the sky
+        static let night        = Color(hex: 0x0E0C22)   // primary background (warm indigo)
+        static let nightMid     = Color(hex: 0x181240)   // mid sky
+        static let nightPurple  = Color(hex: 0x231A5C)   // purple-ink, lower sky
+        static let indigoLift   = Color(hex: 0x1A1440)   // periwinkle-tinted radial highlight
+        static let ink          = Color(hex: 0x1C1740)   // deep ink (text on light fills)
 
         // The orb-lotus mark.
-        static let periwinkle   = Color(hex: 0x6F7BF7)   // the orb ring — the primary brand hue
-        static let iris         = Color(hex: 0x8FA8FF)   // lighter blue (the "Bro" wordmark)
-        static let lavender     = Color(hex: 0xCBB6FF)   // horizon glow / soft highlight
-        static let cyan         = Color(hex: 0x36C7F5)   // aurora cyan / lotus rim
-        static let teal         = Color(hex: 0x4FD8E0)   // lotus teal
-        static let violet       = Color(hex: 0x9B6BFF)   // aurora purple
+        static let periwinkle   = Color(hex: 0x8A7BF0)   // the orb ring — the primary brand hue (warm lavender)
+        static let iris         = Color(hex: 0xA9A0F5)   // lighter lavender (the "Bro" wordmark)
+        static let lavender     = Color(hex: 0xD1C4FF)   // horizon glow / soft highlight
+        static let cyan         = Color(hex: 0x8FE6EE)   // aurora cyan / lotus rim (breathe accent)
+        static let teal         = Color(hex: 0x6FE0E6)   // lotus teal
+        static let violet       = Color(hex: 0xA68BFF)   // aurora purple
 
         // Neutrals & utility.
-        static let whiteText    = Color(hex: 0xF4F6FF)   // primary text on dark
-        static let softText     = Color(hex: 0xDFE5FF)   // secondary text / accents
-        static let mutedText    = Color(hex: 0xAEB6E0)   // tertiary text
-        static let captionText  = Color(hex: 0x838CBB)   // captions / labels
+        static let whiteText    = Color(hex: 0xF5F4FF)   // primary text on dark
+        static let softText     = Color(hex: 0xDFE0FF)   // secondary text / accents
+        static let mutedText    = Color(hex: 0xB0A9E0)   // tertiary text
+        static let captionText  = Color(hex: 0x8F88C0)   // captions / labels
         static let cream        = Color(hex: 0xECEEFB)   // light "primary" button fill
-        static let amber        = Color(hex: 0xE6A98C)   // warm / crisis accent
-        static let rose         = Color(hex: 0xE0A0AD)   // stress / caution metric
-        static let mint         = Color(hex: 0x9AD6B4)   // success / connected
+        static let amber        = Color(hex: 0xF0A48C)   // warm / crisis accent (coral)
+        static let rose         = Color(hex: 0xE08A9A)   // stress / caution metric
+        static let mint         = Color(hex: 0x7EE0A8)   // success / connected
         static let danger       = Color(hex: 0xFF8A80)   // safety / destructive
     }
 

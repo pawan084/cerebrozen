@@ -16,7 +16,7 @@ export default function OpengraphImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(160deg, #161e4a 0%, #080b22 100%)",
+          background: "linear-gradient(160deg, #1a1440 0%, #0e0c22 100%)",
           color: "#f4f6ff",
         }}
       >
@@ -28,7 +28,7 @@ export default function OpengraphImage() {
             display: "flex",
             marginBottom: 44,
             background:
-              "radial-gradient(circle at 36% 30%, #ffffff, #6f7bf7 50%, #9b6bff 100%)",
+              "radial-gradient(circle at 36% 30%, #ffffff, #8a7bf0 50%, #a68bff 100%)",
             boxShadow: "0 0 90px rgba(111,123,247,0.7)",
           }}
         />

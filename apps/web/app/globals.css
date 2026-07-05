@@ -1,21 +1,23 @@
 /* @cerebro-tokens:start */
 /* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  --night: #080b22;
-  --night-top: #161e4a;
-  --card: rgba(255, 255, 255, 0.045);
-  --card-strong: rgba(255, 255, 255, 0.08);
+  --night: #0e0c22;
+  --night-top: #1a1440;
+  --card: rgba(255, 255, 255, 0.05);
+  --card-strong: rgba(255, 255, 255, 0.085);
   --line: rgba(255, 255, 255, 0.12);
-  --text: #f4f6ff;
-  --soft: #dfe5ff;
-  --muted: #aeb6e0;
-  --muted-2: #8890bd;
-  --lav: #6f7bf7;
-  --lav-2: #9b6bff;
+  --text: #f5f4ff;
+  --soft: #dfe0ff;
+  --muted: #b0a9e0;
+  --muted-2: #8f88c0;
+  --lav: #8a7bf0;
+  --lav-2: #a68bff;
   --cream: #eceefb;
-  --ink: #171d43;
-  --danger: #e0a0ad;
-  --ok: #9ad6b4;
+  --ink: #1c1740;
+  --danger: #e08a9a;
+  --ok: #7ee0a8;
+  --warm: #f0a48c;
+  --cyan: #8fe6ee;
 }
 /* @cerebro-tokens:end */
 
@@ -28,8 +30,8 @@ html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   background:
-    radial-gradient(1200px 600px at 20% -10%, rgba(155, 107, 255, 0.30), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(224, 160, 173, 0.18), transparent 55%),
+    radial-gradient(1200px 600px at 20% -10%, rgba(166, 139, 255, 0.30), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(224, 138, 154, 0.18), transparent 55%),
     linear-gradient(180deg, var(--night-top), var(--night));
   background-attachment: fixed;
   color: var(--text);
@@ -41,7 +43,7 @@ body {
 }
 
 h1, h2, h3, .serif {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);
@@ -55,15 +57,15 @@ a { color: inherit; text-decoration: none; }
 .nav {
   position: sticky; top: 0; z-index: 50;
   backdrop-filter: blur(14px);
-  background: rgba(8, 11, 34, 0.55);
+  background: rgba(14, 12, 34, 0.55);
   border-bottom: 1px solid var(--line);
 }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-.brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; font-size: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-serif), Georgia, serif; font-size: 20px; }
 .brand .dot {
   width: 22px; height: 22px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff, var(--lav) 55%, var(--lav-2));
-  box-shadow: 0 0 18px rgba(111, 123, 247, 0.8);
+  box-shadow: 0 0 18px rgba(138, 123, 240, 0.8);
 }
 .nav-links { display: flex; gap: 28px; align-items: center; }
 .nav-links a { color: var(--muted); font-size: 14px; }
@@ -98,7 +100,7 @@ a { color: inherit; text-decoration: none; }
 .orb {
   width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 28px;
   background: radial-gradient(circle at 36% 30%, #ffffff, var(--lav) 50%, var(--lav-2) 100%);
-  box-shadow: 0 0 60px rgba(111, 123, 247, 0.65), 0 0 120px rgba(155, 107, 255, 0.4);
+  box-shadow: 0 0 60px rgba(138, 123, 240, 0.65), 0 0 120px rgba(166, 139, 255, 0.4);
   animation: breathe 6s ease-in-out infinite;
 }
 @keyframes breathe { 0%,100% { transform: scale(0.92); } 50% { transform: scale(1.06); } }
@@ -125,14 +127,14 @@ a { color: inherit; text-decoration: none; }
 .card .icon {
   width: 44px; height: 44px; border-radius: 13px;
   display: grid; place-items: center; font-size: 22px;
-  background: rgba(111, 123, 247, 0.16); margin-bottom: 16px;
+  background: rgba(138, 123, 240, 0.16); margin-bottom: 16px;
 }
 .card h3 { font-size: 19px; margin-bottom: 8px; }
 .card p { color: var(--muted); font-size: 15px; }
 
 /* Proactive band */
 .band {
-  background: linear-gradient(135deg, rgba(155, 107, 255,0.18), rgba(224,160,173,0.10));
+  background: linear-gradient(135deg, rgba(166, 139, 255,0.18), rgba(224, 138, 154,0.10));
   border: 1px solid var(--line); border-radius: 28px; padding: 44px;
 }
 .pill {
@@ -144,9 +146,9 @@ a { color: inherit; text-decoration: none; }
 
 /* Pricing */
 .price-card { text-align: left; position: relative; }
-.price-card.featured { border-color: rgba(111, 123, 247,0.6); box-shadow: 0 16px 60px rgba(155, 107, 255,0.25); }
+.price-card.featured { border-color: rgba(138, 123, 240,0.6); box-shadow: 0 16px 60px rgba(166, 139, 255,0.25); }
 .price-card .tier { color: var(--muted); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-.price-card .amount { font-family: Georgia, serif; font-size: 34px; margin: 10px 0; }
+.price-card .amount { font-family: var(--font-serif), Georgia, serif; font-size: 34px; margin: 10px 0; }
 .price-card ul { list-style: none; margin: 16px 0 0; }
 .price-card li { color: var(--soft); font-size: 14px; padding: 7px 0 7px 24px; position: relative; }
 .price-card li::before { content: "✓"; position: absolute; left: 0; color: var(--lav); font-weight: 700; }
@@ -210,9 +212,9 @@ a { color: inherit; text-decoration: none; }
   border-radius: 20px; padding: 22px 24px; backdrop-filter: blur(8px);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
-.space:hover { border-color: rgba(111,123,247,0.5); transform: translateY(-2px); }
+.space:hover { border-color: rgba(138, 123, 240,0.5); transform: translateY(-2px); }
 .space-n {
-  font-family: Georgia, serif; font-size: 26px; color: var(--lav);
+  font-family: var(--font-serif), Georgia, serif; font-size: 26px; color: var(--lav);
   min-width: 46px; opacity: 0.85;
 }
 .space h3 { font-size: 20px; margin-bottom: 4px; }
@@ -247,7 +249,7 @@ a { color: inherit; text-decoration: none; }
 .hero-device { position: relative; display: flex; justify-content: center; align-items: center; min-height: 560px; }
 .orb-glow {
   position: absolute; width: 360px; height: 360px; border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, rgba(155,107,255,0.55), rgba(111,123,247,0.32) 45%, transparent 70%);
+  background: radial-gradient(circle at 40% 35%, rgba(166, 139, 255,0.55), rgba(138, 123, 240,0.32) 45%, transparent 70%);
   filter: blur(34px); z-index: 0;
 }
 
@@ -288,10 +290,10 @@ a { color: inherit; text-decoration: none; }
   display: flex; flex-direction: column;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
-.bento-cell:hover { border-color: rgba(111,123,247,0.5); transform: translateY(-3px); }
+.bento-cell:hover { border-color: rgba(138, 123, 240,0.5); transform: translateY(-3px); }
 .bento-cell .icon {
   width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
-  font-size: 22px; background: rgba(111,123,247,0.16); margin-bottom: 14px;
+  font-size: 22px; background: rgba(138, 123, 240,0.16); margin-bottom: 14px;
 }
 .bento-cell h3 { font-size: 19px; margin-bottom: 8px; }
 .bento-cell p { color: var(--muted); font-size: 14.5px; }
@@ -300,8 +302,8 @@ a { color: inherit; text-decoration: none; }
 .bento .b-lg h3 { font-size: 27px; }
 .bento .b-lg p { font-size: 16px; }
 .bento .accent {
-  background: linear-gradient(150deg, rgba(155,107,255,0.22), rgba(111,123,247,0.10));
-  border-color: rgba(111,123,247,0.4);
+  background: linear-gradient(150deg, rgba(166, 139, 255,0.22), rgba(138, 123, 240,0.10));
+  border-color: rgba(138, 123, 240,0.4);
 }
 @media (max-width: 820px) {
   .bento { grid-template-columns: 1fr; }

@@ -14,7 +14,7 @@ export default function Icon() {
           display: "flex",
           borderRadius: 999,
           background:
-            "radial-gradient(circle at 36% 30%, #ffffff, #6f7bf7 55%, #9b6bff 100%)",
+            "radial-gradient(circle at 36% 30%, #ffffff, #8a7bf0 55%, #a68bff 100%)",
         }}
       />
     ),
