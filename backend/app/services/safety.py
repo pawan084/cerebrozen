@@ -19,9 +19,24 @@ _CRISIS_TERMS = [
     "no reason to live", "hurt myself", "self harm", "self-harm",
 ]
 _ELEVATED_TERMS = [
-    "hopeless", "can't go on", "cant go on", "worthless", "give up",
-    "unbearable", "can't cope", "cant cope", "panic attack",
+    "hopeless", "can't go on", "cant go on", "cannot go on", "can not go on",
+    "worthless", "give up", "unbearable", "can't cope", "cant cope",
+    "panic attack", "no reason to go on",
 ]
+
+_RANK = {"none": 0, "low": 1, "elevated": 2, "crisis": 3}
+
+
+def _keyword_risk(text: str) -> tuple[str, str]:
+    """The conservative keyword net, used as a floor under the LLM classifier."""
+    lowered = (text or "").lower()
+    for term in _CRISIS_TERMS:
+        if term in lowered:
+            return "crisis", f"matched phrase: {term}"
+    for term in _ELEVATED_TERMS:
+        if term in lowered:
+            return "elevated", f"matched phrase: {term}"
+    return "none", ""
 
 # Region-correct crisis hotlines live in ``app.services.crisis`` (a mirror of the
 # iOS CrisisDirectory). Import from there rather than hardcoding a country here.
@@ -41,18 +56,20 @@ async def classify(text: str) -> tuple[str, str]:
     if not text:
         return "none", ""
 
-    result = await ai.complete_json(_SYSTEM, f"Text:\n{text}")
-    if isinstance(result, dict) and result.get("risk_level") in {"none", "low", "elevated", "crisis"}:
-        return result["risk_level"], str(result.get("reason", ""))[:255]
+    # The keyword net is a FLOOR, not just a no-LLM fallback: an explicit
+    # self-harm/despair phrase is never rated below its severity even if the LLM
+    # classifier is too conservative (it under-flagged "hopeless … cannot go on").
+    kw_risk, kw_reason = _keyword_risk(text)
 
-    lowered = text.lower()
-    for term in _CRISIS_TERMS:
-        if term in lowered:
-            return "crisis", f"matched phrase: {term}"
-    for term in _ELEVATED_TERMS:
-        if term in lowered:
-            return "elevated", f"matched phrase: {term}"
-    return "none", ""
+    llm_risk, llm_reason = "none", ""
+    result = await ai.complete_json(_SYSTEM, f"Text:\n{text}")
+    if isinstance(result, dict) and result.get("risk_level") in _RANK:
+        llm_risk = result["risk_level"]
+        llm_reason = str(result.get("reason", ""))[:255]
+
+    if _RANK[kw_risk] >= _RANK[llm_risk]:
+        return kw_risk, kw_reason or llm_reason
+    return llm_risk, llm_reason
 
 
 async def scan_and_record(

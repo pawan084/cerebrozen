@@ -74,9 +74,12 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
                     db, user_id=user_id, source="chat", source_id=None, text=persist_user)
                 db.add(ChatMessage(user_id=user_id, role="user", text=persist_user, risk_level=risk))
                 await db.commit()
-                # Surface crisis prominently on the streaming path too, so the client
-                # can raise its CrisisBanner (not a cheerful "suggested activity").
-                if risk == "crisis":
+                # Surface crisis resources for elevated distress too (not only
+                # explicit crisis) so the client raises its CrisisBanner — matches
+                # the /chat path (activities.route surfaces the crisis suggestion
+                # for {"elevated", "crisis"}). Escalation stays crisis-only inside
+                # scan_and_record; this only shows the user a helpline.
+                if risk in {"elevated", "crisis"}:
                     yield _sse({"type": "crisis", "resources": crisis.resources_for(region)})
 
             parts: list[str] = []
