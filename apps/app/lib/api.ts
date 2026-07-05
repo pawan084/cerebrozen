@@ -9,6 +9,7 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const REFRESH_KEY = "cerebro_app_refresh";
+const ONBOARDED_KEY = "cerebro_app_onboarded";
 
 let accessToken: string | null = null;
 
@@ -30,6 +31,23 @@ export function clearSession() {
 /** Whether a (possibly stale) session exists — the routing guard's signal. */
 export function hasSession(): boolean {
   return readRefresh() !== null;
+}
+
+/** Whether the value-first onboarding funnel has been completed on this device.
+ * Mirrors iOS `AppState.hasOnboarded`: the funnel shows once, then the guard
+ * routes returning visitors past it. A plain sign-out leaves it set (the device
+ * has already been introduced); only `resetOnboarding()` re-arms the funnel. */
+export function hasOnboarded(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ONBOARDED_KEY) === "1";
+}
+
+export function setOnboarded() {
+  if (typeof window !== "undefined") window.localStorage.setItem(ONBOARDED_KEY, "1");
+}
+
+export function resetOnboarding() {
+  if (typeof window !== "undefined") window.localStorage.removeItem(ONBOARDED_KEY);
 }
 
 /** Rotate the token pair; false means the session is truly over. */
@@ -113,6 +131,29 @@ export async function signUp(email: string, password: string, name: string): Pro
     } catch {}
     throw new Error(detail);
   }
+  storeSession(await res.json());
+}
+
+/** Exchange a Sign in with Apple identity token for a session (find-or-create
+ * by the stable Apple id / verified email — see backend /auth/apple). */
+export async function signInApple(identityToken: string, name = ""): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/apple`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity_token: identityToken, name }),
+  });
+  if (!res.ok) throw new Error("Apple sign-in failed. Try email instead.");
+  storeSession(await res.json());
+}
+
+/** Exchange a Google ID token (credential) for a session. */
+export async function signInGoogle(idToken: string, name = ""): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken, name }),
+  });
+  if (!res.ok) throw new Error("Google sign-in failed. Try email instead.");
   storeSession(await res.json());
 }
 
