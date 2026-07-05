@@ -72,8 +72,13 @@ test.describe("Web app (authenticated client)", () => {
     await expect(aiMemory).toBeChecked({ checked: !before });
 
     // A reload drops the in-memory access token — refresh rotation restores it.
-    await nav(page, "Sleep").click();
+    // Reload on Home specifically: it fires several authed fetches at once, so a
+    // regression in the deduped single-use-refresh handling (lib/api) would race,
+    // clear the token, and bounce to /signin here.
+    await nav(page, "Home").click();
     await page.reload({ waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "Ease toward rest" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
+      .toBeVisible({ timeout: 20_000 });
+    await expect(page).toHaveURL(/\/home$/);
   });
 });

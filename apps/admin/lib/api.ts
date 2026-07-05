@@ -30,21 +30,31 @@ export async function login(email: string, password: string): Promise<string> {
   return data.access_token as string;
 }
 
-/** Rotate the token pair once; false ends the session for real. */
-async function tryRefresh(): Promise<boolean> {
-  const refresh =
-    typeof window === "undefined" ? null : window.localStorage.getItem(REFRESH_KEY);
-  if (!refresh) return false;
-  const res = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refresh }),
-  });
-  if (!res.ok) return false;
-  const data = await res.json();
-  setToken(data.access_token as string);
-  window.localStorage.setItem(REFRESH_KEY, data.refresh_token as string);
-  return true;
+// Refresh tokens are single-use (backend rotates + revokes), so concurrent
+// callers must share one rotation — otherwise the losing racers POST a revoked
+// token and spuriously fail. A fresh dashboard load fires several 401→refresh
+// paths at once, so dedupe them.
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Rotate the token pair once; false ends the session for real. Deduped. */
+function tryRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh =
+      typeof window === "undefined" ? null : window.localStorage.getItem(REFRESH_KEY);
+    if (!refresh) return false;
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    setToken(data.access_token as string);
+    window.localStorage.setItem(REFRESH_KEY, data.refresh_token as string);
+    return true;
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 }
 
 export async function api<T = any>(

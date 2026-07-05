@@ -50,21 +50,33 @@ export function resetOnboarding() {
   if (typeof window !== "undefined") window.localStorage.removeItem(ONBOARDED_KEY);
 }
 
-/** Rotate the token pair; false means the session is truly over. */
-async function refreshSession(): Promise<boolean> {
-  const refresh = readRefresh();
-  if (!refresh) return false;
-  const res = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refresh }),
-  });
-  if (!res.ok) {
-    clearSession();
-    return false;
-  }
-  storeSession(await res.json());
-  return true;
+// Refresh tokens are single-use (the backend rotates + revokes on each refresh),
+// so concurrent callers MUST share one in-flight refresh — otherwise the losing
+// racers POST an already-revoked token, fail, and clearSession() wipes a session
+// that was actually fine. A fresh page load fires several authed fetches at once
+// (Home alone hits /auth/me + streak + moods + journal), so this race is real.
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Rotate the token pair; false means the session is truly over. Deduped so
+ * simultaneous callers await a single rotation. */
+function refreshSession(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh = readRefresh();
+    if (!refresh) return false;
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) {
+      clearSession();
+      return false;
+    }
+    storeSession(await res.json());
+    return true;
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 }
 
 /** Authenticated fetch returning the raw Response — the base for JSON calls,
