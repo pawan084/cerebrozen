@@ -80,6 +80,13 @@ fun SleepScreen() {
     LaunchedEffect(Unit) { reload() }
 
     Page("How you slept, not a measurement", "Sleep") {
+        HeroCard(
+            imageUrl = HeroImg.sleep,
+            eyebrow = "Wind down",
+            title = "A calmer night",
+            subtitle = "A slower evening makes for a softer morning.",
+            height = 172.dp,
+        )
         SectionCard {
             Text("Morning check-in", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text("How rested do you feel?", style = MaterialTheme.typography.bodyMedium, color = TextMuted)

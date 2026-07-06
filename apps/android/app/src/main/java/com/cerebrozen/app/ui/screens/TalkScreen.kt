@@ -219,7 +219,7 @@ private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
                         listOf(Color.White, if (listening) Cyan else Periwinkle, Color(0xFF5B52C9)),
                     ),
                 )
-                .clickable { onTap() },
+                .clickable(onClickLabel = if (listening) "Stop listening" else "Talk to CereBro") { onTap() },
         )
     }
 }

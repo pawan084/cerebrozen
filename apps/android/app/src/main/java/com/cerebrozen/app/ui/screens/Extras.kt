@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.GraphicEq
@@ -135,7 +137,13 @@ internal fun ContentRow(
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
-                if (onTap != null) Text(if (playing) "❚❚" else "▶", style = MaterialTheme.typography.titleMedium, color = Cyan)
+                if (onTap != null) {
+                    Icon(
+                        if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (playing) "Pause $title" else "Play $title",
+                        tint = Cyan, modifier = Modifier.size(26.dp),
+                    )
+                }
             }
         }
     }
