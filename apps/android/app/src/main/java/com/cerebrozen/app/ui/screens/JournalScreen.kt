@@ -87,25 +87,26 @@ fun JournalScreen() {
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(
+            PrimaryButton(
+                text = if (busy) "One moment…" else "Save entry",
                 enabled = !busy && title.isNotBlank() && body.isNotBlank(),
-                onClick = {
-                    busy = true; status = null
-                    scope.launch {
-                        try {
-                            val saved = Api.createJournal(title.trim(), body.trim())
-                            showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
-                            title = ""; body = ""
-                            status = "Saved — private to you."
-                            runCatching { entries = parseEntries(Api.journal()) }
-                        } catch (e: Exception) {
-                            status = e.message ?: "Couldn't save."
-                        } finally {
-                            busy = false
-                        }
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                busy = true; status = null
+                scope.launch {
+                    try {
+                        val saved = Api.createJournal(title.trim(), body.trim())
+                        showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
+                        title = ""; body = ""
+                        status = "Saved — private to you."
+                        runCatching { entries = parseEntries(Api.journal()) }
+                    } catch (e: Exception) {
+                        status = e.message ?: "Couldn't save."
+                    } finally {
+                        busy = false
                     }
-                },
-            ) { Text(if (busy) "One moment…" else "Save entry") }
+                }
+            }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
 

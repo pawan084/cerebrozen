@@ -104,16 +104,16 @@ fun AuthScreen() {
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth())
-                Button(
+                PrimaryButton(
+                    text = if (busy) "One moment…" else if (creating) "Create my account" else "Sign in",
                     enabled = !busy && email.isNotBlank() && password.isNotBlank(),
-                    onClick = {
-                        run {
-                            if (creating) Session.signUp(email.trim(), password, name.trim())
-                            else Session.signIn(email.trim(), password)
-                        }
-                    },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (busy) "One moment…" else if (creating) "Create my account" else "Sign in") }
+                ) {
+                    run {
+                        if (creating) Session.signUp(email.trim(), password, name.trim())
+                        else Session.signIn(email.trim(), password)
+                    }
+                }
 
                 TextButton(onClick = { creating = !creating; error = null }) {
                     Text(if (creating) "I already have an account" else "New here? Create your space", color = TextMuted)
@@ -134,20 +134,20 @@ fun AuthScreen() {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth())
                 }
-                Button(
+                PrimaryButton(
+                    text = if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code",
                     enabled = !busy && (if (otpSent) code.length == 6 else email.isNotBlank()),
-                    onClick = {
-                        run {
-                            if (!otpSent) {
-                                Session.otpRequest(email.trim()); otpSent = true
-                                info = "Code sent to ${email.trim()} — check your email."
-                            } else {
-                                Session.otpVerify(email.trim(), code)
-                            }
-                        }
-                    },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code") }
+                ) {
+                    run {
+                        if (!otpSent) {
+                            Session.otpRequest(email.trim()); otpSent = true
+                            info = "Code sent to ${email.trim()} — check your email."
+                        } else {
+                            Session.otpVerify(email.trim(), code)
+                        }
+                    }
+                }
 
                 TextButton(onClick = { mode = AuthMode.Password; otpSent = false; code = ""; error = null; info = null }) {
                     Text("Use a password instead", color = TextMuted)

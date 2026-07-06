@@ -92,29 +92,29 @@ fun SleepScreen() {
             Text("How rested do you feel?", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 QUALITY_WORDS.forEachIndexed { i, word ->
-                    FilterChip(selected = quality == i + 1, onClick = { quality = i + 1 }, label = { Text(word) })
+                    PickChip(selected = quality == i + 1, label = word) { quality = i + 1 }
                 }
             }
             TimeRow("In bed around", bed, { bed = it })
             TimeRow("Woke up around", wake, { wake = it })
-            Button(
+            PrimaryButton(
+                text = if (busy) "One moment…" else "Save night",
                 enabled = quality > 0 && !busy,
-                onClick = {
-                    busy = true; status = null
-                    scope.launch {
-                        try {
-                            Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
-                            status = "Logged — one honest night at a time."
-                            quality = 0
-                            reload()
-                        } catch (e: Exception) {
-                            status = e.message ?: "Couldn't log."
-                        } finally {
-                            busy = false
-                        }
+            ) {
+                busy = true; status = null
+                scope.launch {
+                    try {
+                        Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
+                        status = "Logged — one honest night at a time."
+                        quality = 0
+                        reload()
+                    } catch (e: Exception) {
+                        status = e.message ?: "Couldn't log."
+                    } finally {
+                        busy = false
                     }
-                },
-            ) { Text(if (busy) "One moment…" else "Save night") }
+                }
+            }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
 

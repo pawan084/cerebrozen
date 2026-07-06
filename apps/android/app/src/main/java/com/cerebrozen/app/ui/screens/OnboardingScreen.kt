@@ -190,7 +190,7 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
         Text("Private by design — nothing is ever shared.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center)
         Spacer(Modifier.height(40.dp))
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Try a 2-minute reset") }
+        PrimaryButton(text = "Try a 2-minute reset", modifier = Modifier.fillMaxWidth()) { onStart() }
         TextButton(onClick = onSignIn) { Text("I already have an account", color = TextMuted) }
     }
 }
@@ -290,9 +290,7 @@ private fun Funnel(
         if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         content()
         Spacer(Modifier.height(4.dp))
-        Button(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth()) {
-            Text(primaryLabel)
-        }
+        PrimaryButton(text = primaryLabel, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth()) { onPrimary() }
         secondary?.invoke()
     }
 }
@@ -305,7 +303,7 @@ private fun ChipWrap(options: List<String>, selected: String?, onPick: (String) 
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         options.forEach { opt ->
-            FilterChip(selected = selected == opt, onClick = { onPick(opt) }, label = { Text(opt) })
+            PickChip(selected = selected == opt, label = opt) { onPick(opt) }
         }
     }
 }

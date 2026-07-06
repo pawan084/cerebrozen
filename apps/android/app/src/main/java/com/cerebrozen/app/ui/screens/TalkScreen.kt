@@ -152,7 +152,7 @@ fun TalkScreen() {
         if (chips.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 chips.forEach { label ->
-                    FilterChip(selected = false, onClick = { send(label) }, label = { Text(label) })
+                    PickChip(selected = false, label = label) { send(label) }
                 }
             }
         }
@@ -164,9 +164,7 @@ fun TalkScreen() {
             label = { Text("Message") },
             modifier = Modifier.fillMaxWidth(),
         )
-        Button(enabled = !busy && draft.isNotBlank(), onClick = { send(draft) }) {
-            Text(if (busy) "Thinking…" else "Send")
-        }
+        PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
     }
 }

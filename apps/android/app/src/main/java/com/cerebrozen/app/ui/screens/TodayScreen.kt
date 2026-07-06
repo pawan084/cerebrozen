@@ -129,33 +129,31 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 MOODS.forEach { mood ->
-                    FilterChip(
-                        selected = picked == mood,
-                        onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); picked = mood },
-                        label = { Text(mood.name) },
-                    )
+                    PickChip(selected = picked == mood, label = mood.name) {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); picked = mood
+                    }
                 }
             }
-            Button(
+            PrimaryButton(
+                text = if (busy) "One moment…" else "Check in",
                 enabled = picked != null && !busy,
-                onClick = {
-                    val mood = picked ?: return@Button
-                    busy = true; status = null
-                    scope.launch {
-                        try {
-                            Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            status = "Checked in — noted gently."
-                            picked = null
-                            reload()
-                        } catch (e: Exception) {
-                            status = e.message ?: "Couldn't check in."
-                        } finally {
-                            busy = false
-                        }
+            ) {
+                val mood = picked ?: return@PrimaryButton
+                busy = true; status = null
+                scope.launch {
+                    try {
+                        Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        status = "Checked in — noted gently."
+                        picked = null
+                        reload()
+                    } catch (e: Exception) {
+                        status = e.message ?: "Couldn't check in."
+                    } finally {
+                        busy = false
                     }
-                },
-            ) { Text(if (busy) "One moment…" else "Check in") }
+                }
+            }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
 
@@ -205,33 +203,23 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
 @Composable
 private fun QuickTile(label: String, icon: ImageVector, route: String, onOpen: (String) -> Unit, modifier: Modifier) {
-    Surface(
-        color = CardFill,
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
-            .border(1.dp, LineStroke, RoundedCornerShape(16.dp))
-            .clickable { onOpen(route) },
+    Column(
+        modifier
+            .glass(RoundedCornerShape(16.dp))
+            .clickable { onOpen(route) }
+            .padding(vertical = 14.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        Column(
-            Modifier.padding(vertical = 14.dp, horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
-        }
+        Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun Card(content: @Composable () -> Unit) {
-    Surface(
-        color = CardFill,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
-    ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
-    }
+    Column(
+        Modifier.fillMaxWidth().glass().padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) { content() }
 }
