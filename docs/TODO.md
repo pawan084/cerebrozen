@@ -366,6 +366,14 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   `:app:testDebugUnitTest` before assemble. Accessibility: labeled play/pause +
   voice-orb controls, ≥48dp `PickChip` targets — full TalkBack/real-device audit
   tracked in [ANDROID_QA.md](ANDROID_QA.md). Deps added: `coil-compose`.
+  Release-readiness round 2026-07-06: the release build is verified for the first
+  time (`assembleRelease` + `bundleRelease` green → `app-release.aab`, unsigned
+  pending the owner's upload key); privacy-hardened for Play (`allowBackup="false"`
+  + `data_extraction_rules` exclude the refresh token + personal-data cache from
+  cloud backup AND device transfer; release stays HTTPS-only with the prod API
+  baked in). Play submission runbook + Data-Safety mapping + owner checklist in
+  [ANDROID_RELEASE.md](ANDROID_RELEASE.md). R8 minify left off (needs a device
+  smoke pass before enabling).
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
