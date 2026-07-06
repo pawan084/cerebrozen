@@ -25,11 +25,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +87,16 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
     }
 }
 
+private val THUMB_GRADIENTS = listOf(
+    listOf(Color(0xFF8A7BF0), Color(0xFF5B52C9)),
+    listOf(Color(0xFF8FE6EE), Color(0xFF5B8FD0)),
+    listOf(Color(0xFFF0A48C), Color(0xFFB86B8F)),
+    listOf(Color(0xFFA68BFF), Color(0xFF6F7BF7)),
+)
+
+private fun thumbBrush(seed: String): Brush =
+    Brush.linearGradient(THUMB_GRADIENTS[(seed.hashCode() and 0x7fffffff) % THUMB_GRADIENTS.size])
+
 @Composable
 internal fun ContentRow(
     title: String,
@@ -87,28 +104,41 @@ internal fun ContentRow(
     meta: String,
     premium: Boolean,
     playing: Boolean = false,
+    icon: ImageVector = Icons.Outlined.GraphicEq,
     onTap: (() -> Unit)? = null,
 ) {
     SectionCard {
-        val inner = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
-        Column(inner, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
+        val mod = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
+        Row(mod, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)).background(thumbBrush(title)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
-                    if (onTap != null) Text(if (playing) "❚❚" else "▶", style = MaterialTheme.typography.titleMedium, color = Cyan)
+                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 }
             }
-            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
+                if (onTap != null) Text(if (playing) "❚❚" else "▶", style = MaterialTheme.typography.titleMedium, color = Cyan)
+            }
         }
     }
 }
 
 /** Load a content kind and render it as a list; shows honest empty/error states. */
 @Composable
-internal fun ContentList(kind: String, metaLabel: (Int) -> String, onItemTap: ((String) -> Unit)? = null) {
+internal fun ContentList(
+    kind: String,
+    metaLabel: (Int) -> String,
+    icon: ImageVector = Icons.Outlined.GraphicEq,
+    onItemTap: ((String) -> Unit)? = null,
+) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(kind) {
@@ -127,6 +157,7 @@ internal fun ContentList(kind: String, metaLabel: (Int) -> String, onItemTap: ((
                 title, c.optString("subtitle"),
                 metaLabel(c.optInt("duration_min")), c.optBoolean("premium"),
                 playing = Player.nowPlaying == title && Player.isPlaying,
+                icon = icon,
                 onTap = onItemTap?.let { { it(title) } },
             )
         }
@@ -179,7 +210,8 @@ fun InsightsScreen(onBack: () -> Unit) {
 fun ProgramsScreen(onBack: () -> Unit) = SubPage("Guided journeys", "Programs", onBack) {
     Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    ContentList("program", { d -> if (d > 0) "$d min a day" else "A few minutes a day" })
+    ContentList("program", { d -> if (d > 0) "$d min a day" else "A few minutes a day" },
+        icon = Icons.Outlined.CalendarMonth)
 }
 
 @Composable
@@ -190,9 +222,11 @@ fun SoundsScreen(onBack: () -> Unit) {
         NowPlayingBar()
         Text("Soundscapes and sleep stories to slow a racing mind.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" }, onItemTap = play)
+        ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" },
+            icon = Icons.Outlined.GraphicEq, onItemTap = play)
         Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" }, onItemTap = play)
+        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
+            icon = Icons.Outlined.Bedtime, onItemTap = play)
         Text("Tap to play a calming ambient bed — narrated stories arrive with the content pipeline.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
@@ -225,7 +259,8 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
     Text("5-4-3-2-1 grounding — come back to the present through your senses.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     Grounding()
-    ContentRow("Bubble pop", "Pop to release tension", "Play", false, onTap = { onOpen("bubblepop") })
+    ContentRow("Bubble pop", "Pop to release tension", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblepop") })
 }
 
 private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)

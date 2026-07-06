@@ -10,20 +10,26 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -44,7 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -130,18 +138,14 @@ fun TalkScreen() {
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
 
-        SectionCard {
-            if (messages.isEmpty()) {
+        if (messages.isEmpty()) {
+            SectionCard {
                 Text("What's on your mind?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text("Speak or type — small worries welcome.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
-            messages.takeLast(12).forEach { m ->
-                Text(
-                    if (m.role == "user") "You" else "CereBro",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (m.role == "user") Periwinkle else TextSoft,
-                )
-                Text(m.text, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        } else {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                messages.takeLast(12).forEach { m -> ChatBubble(m) }
             }
         }
 
@@ -164,6 +168,36 @@ fun TalkScreen() {
             Text(if (busy) "Thinking…" else "Send")
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+    }
+}
+
+@Composable
+private fun ChatBubble(m: Msg) {
+    val user = m.role == "user"
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
+    ) {
+        Surface(
+            color = if (user) Periwinkle.copy(alpha = 0.20f) else CardFill,
+            shape = RoundedCornerShape(
+                topStart = 18.dp, topEnd = 18.dp,
+                bottomStart = if (user) 18.dp else 5.dp,
+                bottomEnd = if (user) 5.dp else 18.dp,
+            ),
+            modifier = Modifier.widthIn(max = 320.dp)
+                .border(
+                    1.dp, if (user) Periwinkle.copy(alpha = 0.35f) else LineStroke,
+                    RoundedCornerShape(18.dp),
+                ),
+        ) {
+            Text(
+                m.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (user) TextSoft else TextMuted,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            )
+        }
     }
 }
 
