@@ -52,10 +52,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
@@ -105,16 +107,24 @@ internal fun ContentRow(
     premium: Boolean,
     playing: Boolean = false,
     icon: ImageVector = Icons.Outlined.GraphicEq,
+    imageUrl: String = "",
     onTap: (() -> Unit)? = null,
 ) {
     SectionCard {
         val mod = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
         Row(mod, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Real content photo (iOS AsyncImage) over a gradient fallback + symbol.
             Box(
                 Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)).background(thumbBrush(title)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(24.dp))
+                if (imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = imageUrl, contentDescription = null,
+                        contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -158,6 +168,7 @@ internal fun ContentList(
                 metaLabel(c.optInt("duration_min")), c.optBoolean("premium"),
                 playing = Player.nowPlaying == title && Player.isPlaying,
                 icon = icon,
+                imageUrl = c.optString("image_url"),
                 onTap = onItemTap?.let { { it(title) } },
             )
         }
