@@ -165,12 +165,18 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
             val nextStep = (0 until total).map { steps!!.getJSONObject(it) }
                 .firstOrNull { !it.optBoolean("done") }?.optString("title")
-            Card {
-                Text("TODAY'S PLAN", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(p.optString("focus"), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                if (nextStep != null) Text("Next: $nextStep", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                if (total > 0) Text("$done of $total done", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            HeroCard(
+                imageUrl = HeroImg.calm,
+                eyebrow = "Today's plan",
+                title = p.optString("title"),
+                subtitle = p.optString("focus"),
+                height = 190.dp,
+            ) {
+                val tail = buildString {
+                    if (nextStep != null) append("Next: $nextStep")
+                    if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
+                }
+                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             }
         }
 

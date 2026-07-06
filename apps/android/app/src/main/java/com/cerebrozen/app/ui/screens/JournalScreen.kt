@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -60,15 +61,17 @@ fun JournalScreen() {
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     Page("Private to you", "Journal") {
-        SectionCard {
-            Text("TODAY'S PROMPT", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-            Text(PROMPTS[promptIdx], style = MaterialTheme.typography.headlineSmall, color = TextSoft)
-            Text("A gentle starting point — or write about anything.",
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        HeroCard(
+            imageUrl = HeroImg.journal,
+            eyebrow = "Today's prompt",
+            title = PROMPTS[promptIdx],
+            subtitle = "A gentle starting point — or write about anything.",
+            height = 220.dp,
+        ) {
             TextButton(
                 onClick = { promptIdx = (promptIdx + 1) % PROMPTS.size },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            ) { Text("Try another", color = Periwinkle) }
+            ) { Text("Try another", color = Cyan) }
         }
 
         SectionCard {
