@@ -167,7 +167,9 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
   Sleep (violet "This morning" hero), Journal ("Release the day" prompt hero), Insights
   (weekly-headline hero + metric bars) all rebuilt with PageHeader + HeroCard + SectionTitle,
   data logic untouched. Build green; screenshotted signed-in against live backend.
-- [ ] Optional: refresh the two landing showcase thumbnails via an XCUITest capture.
+- [x] Refresh the two landing showcase thumbnails (2026-07-06): sleep-player + journal
+  regenerated from the warm iOS build so the showcase matches the warm-refreshed hero
+  (all three screens now one palette).
 
 ### Web app v1 + admin v2 — plan in [WEB_APP_PLAN.md](WEB_APP_PLAN.md)
 - [x] Infra prep (2026-07-03): `apps/app` Next.js scaffold (:3002), CORS origin added
