@@ -5,19 +5,31 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+
+private val PROMPTS = listOf(
+    "Where did you feel most like yourself today?",
+    "Name the worry — then one truer thought beside it.",
+    "What's one thing you could set down tonight?",
+    "What went better than you expected?",
+    "If today had a weather, what was it — and why?",
+)
 
 private data class Entry(val title: String, val body: String, val date: String, val risk: String)
 
@@ -42,11 +54,23 @@ fun JournalScreen() {
     var showSupport by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var promptIdx by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     Page("Private to you", "Journal") {
+        SectionCard {
+            Text("TODAY'S PROMPT", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            Text(PROMPTS[promptIdx], style = MaterialTheme.typography.headlineSmall, color = TextSoft)
+            Text("A gentle starting point — or write about anything.",
+                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            TextButton(
+                onClick = { promptIdx = (promptIdx + 1) % PROMPTS.size },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            ) { Text("Try another", color = Periwinkle) }
+        }
+
         SectionCard {
             Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             OutlinedTextField(

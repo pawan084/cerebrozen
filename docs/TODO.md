@@ -316,11 +316,15 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   a real MediaPlayer with a bundled ambient bed (res/raw) + a now-playing
   transport wired into Sounds and the Sleep "Wind down" library; Sleep gained a
   live 7-night bar chart (shows at ≥2 nights) — emulator-verified (dumpsys:
-  MediaPlayer state:started @16 kHz). Remaining for full parity: per-track
-  NARRATED audio (needs the content pipeline to serve audio URLs — today every
-  title shares the ambient bed), the Journal prompt hero, the Talk voice orb,
-  offline-first store (Room). Owner-blocked (need config): Apple/Google sign-in,
-  Play Billing, FCM.
+  MediaPlayer state:started @16 kHz). Voice + prompt round 2026-07-06: the Talk
+  tab is now a real voice companion — an orb driving on-device SpeechRecognizer →
+  /chat → TextToSpeech (keyless; RECORD_AUDIO runtime-requested; degrades to text
+  where no recognition service exists) — emulator-verified (mic permission →
+  cyan listening orb → AudioService recording); Journal gained a rotating
+  prompt hero ("Try another"). Remaining for full parity: per-track NARRATED
+  audio (needs the content pipeline to serve audio URLs — today every title
+  shares the ambient bed), offline-first store (Room). Owner-blocked (need
+  config): Apple/Google sign-in, Play Billing, FCM.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
