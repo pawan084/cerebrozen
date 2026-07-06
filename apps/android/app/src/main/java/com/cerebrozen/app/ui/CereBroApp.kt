@@ -27,12 +27,21 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.screens.AccountDeletionScreen
+import com.cerebrozen.app.ui.screens.CompanionStyleScreen
+import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
+import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GamesScreen
+import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.Onboarding
+import com.cerebrozen.app.ui.screens.PremiumScreen
+import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
+import com.cerebrozen.app.ui.screens.PrivacyScreen
 import com.cerebrozen.app.ui.screens.ProgramsScreen
+import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
@@ -116,6 +125,15 @@ fun CereBroApp() {
             composable("sounds") { SoundsScreen(onBack = back) }
             composable("games") { GamesScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
+            composable("companion") { CompanionStyleScreen(onBack = back) }
+            composable("reminders") { RemindersScreen(onBack = back) }
+            composable("privacy") { PrivacyScreen(onBack = back) }
+            composable("premium") { PremiumScreen(onBack = back) }
+            composable("crisisregion") { CrisisRegionScreen(onBack = back) }
+            composable("humansupport") { HumanSupportScreen(onBack = back) }
+            composable("privacypolicy") { PrivacyPolicyScreen(onBack = back) }
+            composable("export") { DataExportScreen(onBack = back) }
+            composable("delete") { AccountDeletionScreen(onBack = back) }
         }
     }
 }

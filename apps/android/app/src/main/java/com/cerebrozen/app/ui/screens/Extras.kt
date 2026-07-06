@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -215,8 +216,36 @@ fun GamesScreen(onBack: () -> Unit) = SubPage("A tiny reset", "Calm games", onBa
     Text("Box breathing — inhale, hold, exhale, hold. Follow the orb for a minute.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     BoxBreathing()
+    Text("5-4-3-2-1 grounding — come back to the present through your senses.",
+        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+    Grounding()
     ContentRow("Bubble pop", "Pop to release tension", "Coming soon", false)
-    ContentRow("Color drift", "Let your eyes soften", "Coming soon", false)
+}
+
+private val GROUND_STEPS = listOf(
+    "5 things you can see" to "Look around — name five, slowly.",
+    "4 things you can feel" to "Textures, temperature, your feet on the floor.",
+    "3 things you can hear" to "Near, then far.",
+    "2 things you can smell" to "Or two scents you like.",
+    "1 thing you can taste" to "Or one slow, full breath.",
+)
+
+/** The iOS 5-4-3-2-1 sensory grounding tool as a gentle stepper. */
+@Composable
+private fun Grounding() {
+    var step by remember { mutableIntStateOf(0) }
+    val last = step == GROUND_STEPS.lastIndex
+    SectionCard {
+        Text("5 · 4 · 3 · 2 · 1", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(GROUND_STEPS[step].first, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(GROUND_STEPS[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = { step = if (last) 0 else step + 1 }) {
+                Text(if (last) "Start over" else "Next")
+            }
+            if (step > 0) TextButton(onClick = { step -= 1 }) { Text("Back", color = TextMuted) }
+        }
+    }
 }
 
 /** A live box-breathing guide (4-4-4-4) with a phase-synced orb. */

@@ -170,6 +170,10 @@ object Api {
 
     suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
 
+    /** Patch profile fields (companion, region, language, name…) via PATCH /users/me. */
+    suspend fun updateProfile(patch: JSONObject): JSONObject =
+        JSONObject(Session.api("/users/me", "PATCH", patch))
+
     suspend fun consent(): JSONObject = JSONObject(Session.api("/users/me/consent"))
     suspend fun updateConsent(patch: JSONObject): JSONObject =
         JSONObject(Session.api("/users/me/consent", "PATCH", patch))

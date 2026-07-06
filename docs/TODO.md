@@ -321,9 +321,16 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   /chat → TextToSpeech (keyless; RECORD_AUDIO runtime-requested; degrades to text
   where no recognition service exists) — emulator-verified (mic permission →
   cyan listening orb → AudioService recording); Journal gained a rotating
-  prompt hero ("Try another"). Remaining for full parity: per-track NARRATED
+  prompt hero ("Try another"). iOS-interface-parity round 2026-07-06: the You tab
+  is now the iOS ProfileView nav-row hub (profile header "name · companion ·
+  language" + rows) with new sub-screens — Companion style (4-persona picker →
+  PATCH /users/me companion), Privacy & memory, Daily reminder, Premium plan,
+  Crisis region (→ PATCH region), Human support, Privacy policy, Export, Delete;
+  Games gained the iOS 5-4-3-2-1 Grounding tool. Emulator-verified (You hub +
+  companion picker). Remaining for full parity: per-track NARRATED
   audio (needs the content pipeline to serve audio URLs — today every title
-  shares the ambient bed), offline-first store (Room). Owner-blocked (need
+  shares the ambient bed), offline-first store (Room), Home HealthKit/Health-
+  Connect card. Owner-blocked (need
   config): Apple/Google sign-in, Play Billing, FCM.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
