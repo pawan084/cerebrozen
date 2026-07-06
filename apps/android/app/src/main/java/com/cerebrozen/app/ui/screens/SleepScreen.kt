@@ -43,16 +43,16 @@ import java.util.Locale
 
 private val QUALITY_WORDS = listOf("Rough", "Poor", "Okay", "Good", "Rested")
 
-private fun minutesToLabel(total: Int): String = "%dh %02dm".format(total / 60, total % 60)
+internal fun minutesToLabel(total: Int): String = "%dh %02dm".format(total / 60, total % 60)
 
-private fun hhmm(minutes: Int): String {
+internal fun hhmm(minutes: Int): String {
     val m = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
     return String.format(Locale.US, "%02d:%02d", m / 60, m % 60)
 }
 
-private data class Night(val date: String, val duration: Int, val quality: Int)
+internal data class Night(val date: String, val duration: Int, val quality: Int)
 
-private fun parseNights(rows: JSONArray): List<Night> =
+internal fun parseNights(rows: JSONArray): List<Night> =
     (0 until rows.length()).map { i ->
         val n = rows.getJSONObject(i)
         Night(n.getString("date"), n.optInt("duration_min"), n.optInt("quality"))

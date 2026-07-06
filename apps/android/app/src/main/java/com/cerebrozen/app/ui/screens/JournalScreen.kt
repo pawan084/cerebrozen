@@ -32,9 +32,9 @@ private val PROMPTS = listOf(
     "If today had a weather, what was it — and why?",
 )
 
-private data class Entry(val title: String, val body: String, val date: String, val risk: String)
+internal data class Entry(val title: String, val body: String, val date: String, val risk: String)
 
-private fun parseEntries(rows: JSONArray): List<Entry> =
+internal fun parseEntries(rows: JSONArray): List<Entry> =
     (0 until rows.length()).map { i ->
         val e = rows.getJSONObject(i)
         Entry(

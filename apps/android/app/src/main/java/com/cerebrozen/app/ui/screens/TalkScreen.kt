@@ -60,9 +60,9 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-private data class Msg(val role: String, val text: String)
+internal data class Msg(val role: String, val text: String)
 
-private fun parseChat(rows: JSONArray): List<Msg> =
+internal fun parseChat(rows: JSONArray): List<Msg> =
     (0 until rows.length()).map { i ->
         val m = rows.getJSONObject(i)
         Msg(m.getString("role"), m.getString("text"))

@@ -61,11 +61,13 @@ private val MOODS = listOf(
     MoodOption("Tired", "Need rest", "drop", 3),
 )
 
-private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+internal fun greetingFor(hour: Int): String = when (hour) {
     in 5..11 -> "Good morning"
     in 12..16 -> "Good afternoon"
     else -> "Good evening"
 }
+
+private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
 
 /** Today: quick-access grid + live mood check-in + streak + recent check-ins. */
 @Composable

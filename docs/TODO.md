@@ -354,6 +354,18 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   inert GIDClientID). Owner-blocked (need config): Google sign-in web client id,
   Apple sign-in (Android web-OAuth flow, not yet built), Play Billing (Play
   Console products), FCM push (Firebase project).
+  UI/quality round 2026-07-06 (emulator-verified, pushed to main): referenced the
+  iOS design system directly — content cards now load real `image_url` photos via
+  Coil (iOS's AsyncImage-with-gradient-fallback pattern); photographic `HeroCard`s
+  on Home/Journal/Sleep; Talk chat bubbles; a design-system pass (`Modifier.glass`
+  cards, gradient `PrimaryButton`, filled `PickChip`, styled `AppTextField`,
+  nav-bar selected pill + hairline). First automated Android tests: `SessionTest`
+  (6 — auth/refresh/offline-cache, incl. the network-blip-no-signout fix) +
+  `ScreenLogicTest` (6 — sleep math, greeting, parsers), via injectable Store/http
+  seams on `Session` + `internal` screen logic; CI Android job now runs
+  `:app:testDebugUnitTest` before assemble. Accessibility: labeled play/pause +
+  voice-orb controls, ≥48dp `PickChip` targets — full TalkBack/real-device audit
+  tracked in [ANDROID_QA.md](ANDROID_QA.md). Deps added: `coil-compose`.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

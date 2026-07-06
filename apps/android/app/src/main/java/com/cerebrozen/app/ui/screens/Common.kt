@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -164,11 +165,13 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
     val border = if (selected) Periwinkle else LineStroke
     Box(
         Modifier
+            .heightIn(min = 48.dp)   // a11y: >= 48dp touch target
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
