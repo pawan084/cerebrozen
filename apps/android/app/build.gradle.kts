@@ -64,4 +64,8 @@ dependencies {
     // gradient fallback when the url is empty/unreachable).
     implementation("io.coil-kt:coil-compose:2.7.0")
     debugImplementation(libs.androidx.ui.tooling)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    // Real org.json so JSONObject works in JVM unit tests (Android's stub throws).
+    testImplementation("org.json:json:20240303")
 }

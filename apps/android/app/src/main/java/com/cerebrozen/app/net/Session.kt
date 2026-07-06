@@ -31,11 +31,34 @@ object Session {
         private set
 
     private var access: String? = null
-    private var prefs: SharedPreferences? = null
+    private var storage: Store = MemoryStore()
+
+    /** Persistence seam — SharedPreferences in prod, a map in unit tests. */
+    internal interface Store {
+        fun getString(key: String): String?
+        fun putString(key: String, value: String)
+        fun remove(key: String)
+        fun keys(): Set<String>
+    }
+
+    /** HTTP transport seam — (url, method, body, contentType, authToken) →
+     * (status, body); throws on a network failure. Swappable in unit tests. */
+    internal var http: suspend (String, String, String?, String?, String?) -> Pair<Int, String> = ::realHttp
 
     fun init(context: Context) {
-        prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        signedIn = prefs?.getString(REFRESH_KEY, null) != null
+        storage = SharedPrefsStore(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
+        signedIn = storage.getString(REFRESH_KEY) != null
+    }
+
+    /** Point Session at fakes for unit tests (no Android, no network). */
+    internal fun resetForTest(
+        store: Store,
+        exec: suspend (String, String, String?, String?, String?) -> Pair<Int, String>,
+    ) {
+        storage = store
+        http = exec
+        access = null
+        signedIn = storage.getString(REFRESH_KEY) != null
     }
 
     class ApiException(val code: Int, message: String) : Exception(message)
@@ -48,13 +71,29 @@ object Session {
         body: String?,
         contentType: String?,
         authed: Boolean,
-    ): String = withContext(Dispatchers.IO) {
-        val conn = URL(BuildConfig.API_BASE_URL + path).openConnection() as HttpURLConnection
+    ): String {
+        val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
+        if (code !in 200..299) {
+            val detail = runCatching { JSONObject(text).optString("detail") }
+                .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
+            throw ApiException(code, detail)
+        }
+        return text
+    }
+
+    private suspend fun realHttp(
+        url: String,
+        method: String,
+        body: String?,
+        contentType: String?,
+        authToken: String?,
+    ): Pair<Int, String> = withContext(Dispatchers.IO) {
+        val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = method
             conn.connectTimeout = 15_000
             conn.readTimeout = 15_000
-            if (authed) access?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            authToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
             if (body != null) {
                 conn.doOutput = true
                 contentType?.let { conn.setRequestProperty("Content-Type", it) }
@@ -62,21 +101,30 @@ object Session {
             }
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) {
-                val detail = runCatching { JSONObject(text).optString("detail") }
-                    .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
-                throw ApiException(code, detail)
-            }
-            text
+            code to stream?.bufferedReader()?.use { it.readText() }.orEmpty()
         } finally {
             conn.disconnect()
         }
     }
 
+    private class MemoryStore : Store {
+        private val m = mutableMapOf<String, String>()
+        override fun getString(key: String) = m[key]
+        override fun putString(key: String, value: String) { m[key] = value }
+        override fun remove(key: String) { m.remove(key) }
+        override fun keys() = m.keys.toSet()
+    }
+
+    private class SharedPrefsStore(private val p: SharedPreferences) : Store {
+        override fun getString(key: String) = p.getString(key, null)
+        override fun putString(key: String, value: String) { p.edit().putString(key, value).apply() }
+        override fun remove(key: String) { p.edit().remove(key).apply() }
+        override fun keys() = p.all.keys.toSet()
+    }
+
     private fun store(tokens: JSONObject) {
         access = tokens.getString("access_token")
-        prefs?.edit()?.putString(REFRESH_KEY, tokens.getString("refresh_token"))?.apply()
+        storage.putString(REFRESH_KEY, tokens.getString("refresh_token"))
         signedIn = true
     }
 
@@ -113,7 +161,7 @@ object Session {
      * rejection (401/403) ends the session — a network blip must not sign the
      * user out (it would also wipe the offline cache on a cold, offline launch). */
     private suspend fun refresh(): Boolean {
-        val token = prefs?.getString(REFRESH_KEY, null) ?: return false
+        val token = storage.getString(REFRESH_KEY) ?: return false
         return try {
             val body = JSONObject().put("refresh_token", token)
             store(JSONObject(raw("/auth/refresh", "POST", body.toString(), "application/json", authed = false)))
@@ -152,17 +200,16 @@ object Session {
 
     private fun cacheKey(path: String) = "cache:$path"
     private fun cachePut(path: String, body: String) {
-        runCatching { prefs?.edit()?.putString(cacheKey(path), body)?.apply() }
+        runCatching { storage.putString(cacheKey(path), body) }
     }
-    private fun cacheGet(path: String): String? = prefs?.getString(cacheKey(path), null)
+    private fun cacheGet(path: String): String? = storage.getString(cacheKey(path))
     private fun clearCache() {
-        val keys = prefs?.all?.keys?.filter { it.startsWith("cache:") } ?: return
-        prefs?.edit()?.apply { keys.forEach { remove(it) } }?.apply()
+        storage.keys().filter { it.startsWith("cache:") }.forEach { storage.remove(it) }
     }
 
     fun signOut() {
         access = null
-        prefs?.edit()?.remove(REFRESH_KEY)?.apply()
+        storage.remove(REFRESH_KEY)
         clearCache()
         signedIn = false
     }
