@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -178,7 +179,7 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Orb(120.dp)
+        BrandMark(size = 120.dp)
         Spacer(Modifier.height(28.dp))
         Text("Welcome to\nCereBro", style = MaterialTheme.typography.displaySmall,
             color = TextPrimary, textAlign = TextAlign.Center)

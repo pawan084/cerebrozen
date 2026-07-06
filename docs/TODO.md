@@ -333,6 +333,14 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   airplane mode; also fixed refresh() so a network blip no longer signs the user
   out); a real local daily-reminder notification (AlarmManager + channel +
   POST_NOTIFICATIONS, no FCM — dumpsys-verified); a playable Bubble-pop game.
+  Polish round 2026-07-06: the C-ring brand mark now ships as the adaptive
+  launcher icon (rendered to density buckets + adaptive-icon XML — no more default
+  robot), an in-app Canvas BrandMark (onboarding + a brief branded splash), fade
+  screen transitions, and haptics on bubble-pop + mood chips. Remaining polish
+  (not yet world-class): Newsreader brand font (system serif today — not in repo),
+  quick-grid/tab custom iconography (still Material + text), background-audio media
+  notification / foreground service (ambient bed plays but no lock-screen
+  controls), richer motion (drifting bubbles, card-entrance stagger).
   Remaining (genuinely blocked): per-track NARRATED
   audio (needs the content pipeline to serve audio URLs — today every title
   shares the ambient bed), Home HealthKit/Health-Connect card (heavy native).

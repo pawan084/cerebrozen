@@ -27,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
@@ -69,6 +71,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
 
     fun parseRecent(moods: JSONArray): List<String> =
         (0 until minOf(moods.length(), 5)).map { i ->
@@ -120,7 +123,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 MOODS.forEach { mood ->
                     FilterChip(
                         selected = picked == mood,
-                        onClick = { picked = mood },
+                        onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); picked = mood },
                         label = { Text(mood.name) },
                     )
                 }

@@ -44,7 +44,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.Player
@@ -235,6 +237,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var score by remember { mutableIntStateOf(0) }
     var nextId by remember { mutableLongStateOf(0L) }
     val hues = listOf(Periwinkle, Cyan, Warm)
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
         while (true) {
             delay(750)
@@ -262,7 +265,10 @@ fun BubblePopScreen(onBack: () -> Unit) {
                 Box(
                     Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
                         .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
-                        .clickable { bubbles = bubbles.filterNot { it.id == b.id }; score++ },
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            bubbles = bubbles.filterNot { it.id == b.id }; score++
+                        },
                 )
             }
         }
