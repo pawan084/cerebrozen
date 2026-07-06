@@ -301,7 +301,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   end-to-end on an API-35 emulator against the dev backend (sign-in as the
   seeded demo user, check-in advanced the server streak 3→4, journal + sleep
   writes landed, /chat returned a live LLM reply with suggestion chips).
-  Gradle wrapper now committed (./gradlew just works). Remaining for parity,
+  Gradle wrapper now committed (./gradlew just works). Warm design refresh
+  applied 2026-07-06: `Color.kt` mirrors the warm tokens (indigo night #0e0c22 +
+  warm-lavender accent #8a7bf0 + coral/cyan/ok), so every token-driven screen
+  recolored at once — emulator-verified Today/Talk/Sleep in the warm palette,
+  matching iOS/web. Remaining for parity,
   in the recommended order: (1) privacy screens — consent toggles + export +
   delete (compliance surface), (2) minimal onboarding gate (18+ attestation +
   AI disclosure + consent), (3) Plans + Insights tabs, (4) crisis resources +
