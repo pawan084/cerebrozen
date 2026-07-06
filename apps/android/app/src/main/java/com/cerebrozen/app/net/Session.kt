@@ -91,36 +91,61 @@ object Session {
         store(JSONObject(raw("/auth/signup", "POST", body.toString(), "application/json", authed = false)))
     }
 
-    /** Rotate the token pair; false means the session is truly over. */
+    /** Rotate the token pair. Returns false on failure, but only a real auth
+     * rejection (401/403) ends the session — a network blip must not sign the
+     * user out (it would also wipe the offline cache on a cold, offline launch). */
     private suspend fun refresh(): Boolean {
         val token = prefs?.getString(REFRESH_KEY, null) ?: return false
         return try {
             val body = JSONObject().put("refresh_token", token)
             store(JSONObject(raw("/auth/refresh", "POST", body.toString(), "application/json", authed = false)))
             true
-        } catch (_: Exception) {
-            signOut()
+        } catch (e: ApiException) {
+            if (e.code == 401 || e.code == 403) signOut()
             false
+        } catch (_: Exception) {
+            false  // network/offline — keep the session so cached reads can serve
         }
     }
 
-    /** Authenticated call with the fresh-launch refresh + one rotation retry. */
+    /** Authenticated call with the fresh-launch refresh + one rotation retry.
+     * GET responses are cached; a network failure falls back to the last copy so
+     * read screens work offline (the store is cleared on sign-out for privacy). */
     suspend fun api(path: String, method: String = "GET", json: JSONObject? = null): String {
-        if (access == null && !refresh()) throw ApiException(401, "Signed out")
+        val isGet = method == "GET"
         return try {
-            raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
-        } catch (e: ApiException) {
-            if ((e.code == 401 || e.code == 403) && refresh()) {
+            if (access == null && !refresh()) throw ApiException(401, "Signed out")
+            val result = try {
                 raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
-            } else {
-                throw e
+            } catch (e: ApiException) {
+                if ((e.code == 401 || e.code == 403) && refresh()) {
+                    raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
+                } else {
+                    throw e
+                }
             }
+            if (isGet) cachePut(path, result)
+            result
+        } catch (e: Exception) {
+            if (isGet) cacheGet(path)?.let { return it }
+            throw e
         }
+    }
+
+    private fun cacheKey(path: String) = "cache:$path"
+    private fun cachePut(path: String, body: String) {
+        runCatching { prefs?.edit()?.putString(cacheKey(path), body)?.apply() }
+    }
+    private fun cacheGet(path: String): String? = prefs?.getString(cacheKey(path), null)
+    private fun clearCache() {
+        val keys = prefs?.all?.keys?.filter { it.startsWith("cache:") } ?: return
+        prefs?.edit()?.apply { keys.forEach { remove(it) } }?.apply()
     }
 
     fun signOut() {
         access = null
         prefs?.edit()?.remove(REFRESH_KEY)?.apply()
+        clearCache()
         signedIn = false
     }
 }
@@ -169,6 +194,10 @@ object Api {
         JSONArray(Session.api("/content?kind=" + URLEncoder.encode(kind, "UTF-8")))
 
     suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
+
+    /** The user's active daily plan, or null if none. */
+    suspend fun activePlan(): JSONObject? =
+        runCatching { JSONObject(Session.api("/plans/active")) }.getOrNull()
 
     /** Patch profile fields (companion, region, language, name…) via PATCH /users/me. */
     suspend fun updateProfile(patch: JSONObject): JSONObject =

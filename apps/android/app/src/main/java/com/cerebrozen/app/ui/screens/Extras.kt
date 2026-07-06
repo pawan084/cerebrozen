@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -32,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,6 +58,7 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 import org.json.JSONArray
 
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
@@ -212,14 +216,57 @@ internal fun NowPlayingBar() {
 }
 
 @Composable
-fun GamesScreen(onBack: () -> Unit) = SubPage("A tiny reset", "Calm games", onBack) {
+fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny reset", "Calm games", onBack) {
     Text("Box breathing — inhale, hold, exhale, hold. Follow the orb for a minute.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     BoxBreathing()
     Text("5-4-3-2-1 grounding — come back to the present through your senses.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     Grounding()
-    ContentRow("Bubble pop", "Pop to release tension", "Coming soon", false)
+    ContentRow("Bubble pop", "Pop to release tension", "Play", false, onTap = { onOpen("bubblepop") })
+}
+
+private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)
+
+/** A calm bubble-pop field — tap the drifting bubbles to pop them. */
+@Composable
+fun BubblePopScreen(onBack: () -> Unit) {
+    var bubbles by remember { mutableStateOf(listOf<Bubble>()) }
+    var score by remember { mutableIntStateOf(0) }
+    var nextId by remember { mutableLongStateOf(0L) }
+    val hues = listOf(Periwinkle, Cyan, Warm)
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(750)
+            if (bubbles.size < 7) {
+                bubbles = bubbles + Bubble(
+                    nextId++,
+                    Random.nextFloat() * 0.80f + 0.02f,
+                    Random.nextFloat() * 0.82f + 0.02f,
+                    (52..96).random(),
+                    hues[Random.nextInt(hues.size)],
+                )
+            }
+        }
+    }
+    SubPage("A tiny reset", "Bubble pop", onBack) {
+        Text("Pop them slowly — no rush, no score to chase. Popped: $score",
+            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(20.dp))
+                .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+        ) {
+            val w = maxWidth
+            val h = maxHeight
+            bubbles.forEach { b ->
+                Box(
+                    Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
+                        .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
+                        .clickable { bubbles = bubbles.filterNot { it.id == b.id }; score++ },
+                )
+            }
+        }
+    }
 }
 
 private val GROUND_STEPS = listOf(

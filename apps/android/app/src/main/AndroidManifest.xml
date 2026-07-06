@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Voice companion: on-device speech-to-text (optional; degrades to text). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Local daily reminder notifications (no FCM; scheduled via AlarmManager). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <intent>
@@ -26,6 +28,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".notify.ReminderReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

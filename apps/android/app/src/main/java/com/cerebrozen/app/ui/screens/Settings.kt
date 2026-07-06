@@ -1,5 +1,11 @@
 package com.cerebrozen.app.ui.screens
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -184,19 +191,43 @@ fun HumanSupportScreen(onBack: () -> Unit) = SubPage("Beyond the app", "Human su
 
 @Composable
 fun RemindersScreen(onBack: () -> Unit) {
-    var on by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("cerebro", Context.MODE_PRIVATE) }
+    var on by remember { mutableStateOf(prefs.getBoolean("reminder_on", false)) }
+
+    fun persist(value: Boolean) { on = value; prefs.edit().putBoolean("reminder_on", value).apply() }
+
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) { com.cerebrozen.app.notify.Reminders.schedule(context); persist(true) }
+    }
+    fun enable() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
+    }
+
     SubPage("A gentle daily nudge", "Daily reminder", onBack) {
         SectionCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("Daily check-in reminder", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text("Once a day, gentle — no streaks-pressure.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    Text("Once a day around 9am — gentle, no streak-pressure.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
-                Switch(checked = on, onCheckedChange = { on = it })
+                Switch(checked = on, onCheckedChange = {
+                    if (it) enable() else { com.cerebrozen.app.notify.Reminders.cancel(context); persist(false) }
+                })
             }
         }
-        Text("Scheduled delivery lands with push (FCM) setup; the preference is saved either way.",
+        TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context) }) {
+            Text("Send a test reminder now", color = Periwinkle)
+        }
+        Text("Delivered on-device via a scheduled alarm — no server or FCM required.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }

@@ -38,6 +38,7 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONObject
 import java.util.Calendar
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
@@ -63,6 +64,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var streak by remember { mutableIntStateOf(0) }
     var best by remember { mutableIntStateOf(0) }
     var recent by remember { mutableStateOf(listOf<String>()) }
+    var plan by remember { mutableStateOf<JSONObject?>(null) }
     var picked by remember { mutableStateOf<MoodOption?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -82,6 +84,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             best = s.optInt("best")
         }
         runCatching { recent = parseRecent(Api.moods()) }
+        runCatching { plan = Api.activePlan() }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -142,6 +145,21 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 },
             ) { Text(if (busy) "One moment…" else "Check in") }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        }
+
+        plan?.let { p ->
+            val steps = p.optJSONArray("steps")
+            val total = steps?.length() ?: 0
+            val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
+            val nextStep = (0 until total).map { steps!!.getJSONObject(it) }
+                .firstOrNull { !it.optBoolean("done") }?.optString("title")
+            Card {
+                Text("TODAY'S PLAN", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(p.optString("focus"), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                if (nextStep != null) Text("Next: $nextStep", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                if (total > 0) Text("$done of $total done", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            }
         }
 
         Card {

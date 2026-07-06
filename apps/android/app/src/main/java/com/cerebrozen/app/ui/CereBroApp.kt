@@ -28,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
+import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
@@ -123,7 +124,8 @@ fun CereBroApp() {
             composable("insights") { InsightsScreen(onBack = back) }
             composable("programs") { ProgramsScreen(onBack = back) }
             composable("sounds") { SoundsScreen(onBack = back) }
-            composable("games") { GamesScreen(onBack = back) }
+            composable("games") { GamesScreen(onOpen = open, onBack = back) }
+            composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }

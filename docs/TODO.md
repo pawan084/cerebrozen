@@ -327,10 +327,16 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   PATCH /users/me companion), Privacy & memory, Daily reminder, Premium plan,
   Crisis region (→ PATCH region), Human support, Privacy policy, Export, Delete;
   Games gained the iOS 5-4-3-2-1 Grounding tool. Emulator-verified (You hub +
-  companion picker). Remaining for full parity: per-track NARRATED
+  companion picker). Fix-all-possible round 2026-07-06: Today's plan card on Home
+  (/plans/active); a transparent offline read-cache in the API client (GET
+  responses cached, served on network failure — emulator-verified cold-start in
+  airplane mode; also fixed refresh() so a network blip no longer signs the user
+  out); a real local daily-reminder notification (AlarmManager + channel +
+  POST_NOTIFICATIONS, no FCM — dumpsys-verified); a playable Bubble-pop game.
+  Remaining (genuinely blocked): per-track NARRATED
   audio (needs the content pipeline to serve audio URLs — today every title
-  shares the ambient bed), offline-first store (Room), Home HealthKit/Health-
-  Connect card. Owner-blocked (need
+  shares the ambient bed), Home HealthKit/Health-Connect card (heavy native).
+  Owner-blocked (need
   config): Apple/Google sign-in, Play Billing, FCM.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
