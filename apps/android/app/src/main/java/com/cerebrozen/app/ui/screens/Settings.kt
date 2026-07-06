@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,7 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -51,18 +56,34 @@ internal val CONSENT_KEYS = listOf(
     "model_training" to "Help improve models",
 )
 
-/** A tappable settings row (title + subtitle + chevron) — the iOS NavRow pattern. */
+/** A tappable settings row (leading icon + title + subtitle + chevron). */
 @Composable
-internal fun NavRow(title: String, subtitle: String, emphasis: Boolean = false, onClick: () -> Unit) {
+internal fun NavRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector? = null,
+    emphasis: Boolean = false,
+    onClick: () -> Unit,
+) {
     SectionCard {
         Row(
             Modifier.fillMaxWidth().clickable { onClick() },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = if (emphasis) Cyan else TextSoft)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Row(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (icon != null) {
+                    Icon(icon, contentDescription = null,
+                        tint = if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium, color = if (emphasis) Cyan else TextSoft)
+                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
             }
             Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
         }
@@ -71,9 +92,12 @@ internal fun NavRow(title: String, subtitle: String, emphasis: Boolean = false, 
 
 @Composable
 private fun SelectableRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
     SectionCard {
         Row(
-            Modifier.fillMaxWidth().clickable { onClick() },
+            Modifier.fillMaxWidth().clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
+            },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

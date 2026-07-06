@@ -1,17 +1,17 @@
 package com.cerebrozen.app.audio
 
 import android.content.Context
-import android.media.MediaPlayer
+import android.content.Intent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.cerebrozen.app.R
 
 /**
- * A tiny, real audio player. Content records don't carry per-track audio yet, so
- * every title shares one bundled ambient bed (looped) — genuine playback, clearly
- * labelled as an ambient bed until the content pipeline serves narrated stories.
- * Compose-observable so any screen can reflect what's playing.
+ * Thin controller over [AmbientService]. The service owns the real MediaPlayer +
+ * MediaSession and keeps playing in the background with notification controls;
+ * it publishes state back here so any Compose screen can reflect what's playing.
+ * Content records carry no per-track audio yet, so every title shares one bundled
+ * ambient bed — clearly labelled as such.
  */
 object Player {
     var nowPlaying by mutableStateOf<String?>(null)
@@ -19,28 +19,29 @@ object Player {
     var isPlaying by mutableStateOf(false)
         private set
 
-    private var mp: MediaPlayer? = null
-
-    /** Play [title]; tapping the current title again pauses it. */
-    fun toggle(context: Context, title: String) {
-        if (nowPlaying == title && isPlaying) { pause(); return }
-        if (mp == null) {
-            mp = MediaPlayer.create(context.applicationContext, R.raw.ambient_bed)?.apply { isLooping = true }
-        }
-        mp?.start()
+    /** Published by the service on every state change. */
+    fun setState(title: String?, playing: Boolean) {
         nowPlaying = title
-        isPlaying = true
+        isPlaying = playing
     }
 
-    fun pause() {
-        mp?.pause()
-        isPlaying = false
+    fun toggle(context: Context, title: String) {
+        if (nowPlaying == title && isPlaying) pause(context) else play(context, title)
     }
 
-    fun stop() {
-        mp?.release()
-        mp = null
-        nowPlaying = null
-        isPlaying = false
+    fun play(context: Context, title: String) {
+        context.startForegroundService(
+            Intent(context, AmbientService::class.java)
+                .setAction(AmbientService.ACTION_PLAY)
+                .putExtra(AmbientService.EXTRA_TITLE, title),
+        )
+    }
+
+    fun pause(context: Context) {
+        context.startService(Intent(context, AmbientService::class.java).setAction(AmbientService.ACTION_PAUSE))
+    }
+
+    fun stop(context: Context) {
+        context.startService(Intent(context, AmbientService::class.java).setAction(AmbientService.ACTION_STOP))
     }
 }

@@ -11,12 +11,20 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -107,10 +115,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("Games", "games", onOpen, Modifier.weight(1f))
-            QuickTile("Insights", "insights", onOpen, Modifier.weight(1f))
-            QuickTile("Programs", "programs", onOpen, Modifier.weight(1f))
-            QuickTile("Sounds", "sounds", onOpen, Modifier.weight(1f))
+            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f))
+            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f))
+            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f))
+            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f))
         }
 
         Card {
@@ -136,6 +144,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     scope.launch {
                         try {
                             Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             status = "Checked in — noted gently."
                             picked = null
                             reload()
@@ -189,7 +198,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 }
 
 @Composable
-private fun QuickTile(label: String, route: String, onOpen: (String) -> Unit, modifier: Modifier) {
+private fun QuickTile(label: String, icon: ImageVector, route: String, onOpen: (String) -> Unit, modifier: Modifier) {
     Surface(
         color = CardFill,
         shape = RoundedCornerShape(16.dp),
@@ -198,9 +207,11 @@ private fun QuickTile(label: String, route: String, onOpen: (String) -> Unit, mo
             .clickable { onOpen(route) },
     ) {
         Column(
-            Modifier.padding(vertical = 16.dp, horizontal = 4.dp),
+            Modifier.padding(vertical = 14.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
+            Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
         }
     }

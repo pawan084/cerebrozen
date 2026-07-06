@@ -336,12 +336,15 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   Polish round 2026-07-06: the C-ring brand mark now ships as the adaptive
   launcher icon (rendered to density buckets + adaptive-icon XML — no more default
   robot), an in-app Canvas BrandMark (onboarding + a brief branded splash), fade
-  screen transitions, and haptics on bubble-pop + mood chips. Remaining polish
-  (not yet world-class): Newsreader brand font (system serif today — not in repo),
-  quick-grid/tab custom iconography (still Material + text), background-audio media
-  notification / foreground service (ambient bed plays but no lock-screen
-  controls), richer motion (drifting bubbles, card-entrance stagger).
-  Remaining (genuinely blocked): per-track NARRATED
+  screen transitions, and haptics on bubble-pop + mood chips. Polish round 2 (all
+  emulator-verified): the Newsreader variable font now ships (res/font, wired into
+  Type.kt display/headline); quick-grid + You nav-row icons (material-icons-
+  extended); a real background-audio FOREGROUND service (AmbientService +
+  MediaSession + MediaStyle transport notification with play/pause + lock-screen
+  controls — dumpsys-verified category=transport); content-rise page entrance;
+  drifting bubbles; and more haptics (companion/region select, tab switch, check-in
+  confirm). Remaining polish nice-to-haves: custom (non-Material) brand icon set,
+  ambient background motion on Home/Talk. Remaining (genuinely blocked): per-track NARRATED
   audio (needs the content pipeline to serve audio URLs — today every title
   shares the ambient bed), Home HealthKit/Health-Connect card (heavy native).
   Owner-blocked (need

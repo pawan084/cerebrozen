@@ -2,6 +2,18 @@ package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Diversity3
+import androidx.compose.material.icons.outlined.Emergency
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,20 +58,21 @@ fun YouScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        NavRow("Companion style", "${companion.ifBlank { "Calm Guide" }} · how CereBro talks with you", emphasis = true) { onOpen("companion") }
-        NavRow("Daily reminder", "Gentle daily check-in") { onOpen("reminders") }
-        NavRow("Weekly insights", "Your progress and patterns") { onOpen("insights") }
-        NavRow("Privacy & memory", "Control what CereBro remembers") { onOpen("privacy") }
-        NavRow("Premium plan", "Unlock the full library") { onOpen("premium") }
-        NavRow("Urgent support", "Emergency resources") { onOpen("crisis") }
-        NavRow("Crisis region", "Which helplines to show") { onOpen("crisisregion") }
-        NavRow("Human support", "Coach or therapist handoff") { onOpen("humansupport") }
+        NavRow("Companion style", "${companion.ifBlank { "Calm Guide" }} · how CereBro talks with you",
+            icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
+        NavRow("Daily reminder", "Gentle daily check-in", icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        NavRow("Weekly insights", "Your progress and patterns", icon = Icons.Outlined.Insights) { onOpen("insights") }
+        NavRow("Privacy & memory", "Control what CereBro remembers", icon = Icons.Outlined.Lock) { onOpen("privacy") }
+        NavRow("Premium plan", "Unlock the full library", icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        NavRow("Urgent support", "Emergency resources", icon = Icons.Outlined.Emergency) { onOpen("crisis") }
+        NavRow("Crisis region", "Which helplines to show", icon = Icons.Outlined.Public) { onOpen("crisisregion") }
+        NavRow("Human support", "Coach or therapist handoff", icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 
         Text("LEGAL & ACCOUNT", style = MaterialTheme.typography.labelSmall, color = Periwinkle,
             modifier = Modifier.padding(top = 8.dp))
-        NavRow("Privacy policy", "How we handle your data") { onOpen("privacypolicy") }
-        NavRow("Export my data", "Download a full copy") { onOpen("export") }
-        NavRow("Delete account", "Permanently erase everything") { onOpen("delete") }
+        NavRow("Privacy policy", "How we handle your data", icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
+        NavRow("Export my data", "Download a full copy", icon = Icons.Outlined.FileDownload) { onOpen("export") }
+        NavRow("Delete account", "Permanently erase everything", icon = Icons.Outlined.DeleteOutline) { onOpen("delete") }
 
         TextButton(onClick = { Session.signOut() }) { Text("Sign out", color = TextMuted) }
         Text("Wellness support, not emergency care.",

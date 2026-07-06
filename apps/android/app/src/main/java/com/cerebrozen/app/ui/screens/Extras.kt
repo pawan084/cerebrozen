@@ -210,7 +210,7 @@ internal fun NowPlayingBar() {
                 Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
             }
-            TextButton(onClick = { if (Player.isPlaying) Player.pause() else Player.toggle(context, title) }) {
+            TextButton(onClick = { if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title) }) {
                 Text(if (Player.isPlaying) "Pause" else "Play", color = Periwinkle)
             }
         }
@@ -238,18 +238,26 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var nextId by remember { mutableLongStateOf(0L) }
     val hues = listOf(Periwinkle, Cyan, Warm)
     val haptics = LocalHapticFeedback.current
+    // Spawn near the bottom…
     LaunchedEffect(Unit) {
         while (true) {
-            delay(750)
+            delay(650)
             if (bubbles.size < 7) {
                 bubbles = bubbles + Bubble(
                     nextId++,
-                    Random.nextFloat() * 0.80f + 0.02f,
-                    Random.nextFloat() * 0.82f + 0.02f,
+                    Random.nextFloat() * 0.78f + 0.04f,
+                    Random.nextFloat() * 0.16f + 0.80f,
                     (52..96).random(),
                     hues[Random.nextInt(hues.size)],
                 )
             }
+        }
+    }
+    // …and drift them gently upward, popping any that float off the top.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(40)
+            bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
         }
     }
     SubPage("A tiny reset", "Bubble pop", onBack) {

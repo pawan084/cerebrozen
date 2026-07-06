@@ -25,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -90,6 +92,7 @@ fun CereBroApp() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
+    val haptics = LocalHapticFeedback.current
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -99,6 +102,7 @@ fun CereBroApp() {
                     NavigationBarItem(
                         selected = current == tab.route,
                         onClick = {
+                            if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             navController.navigate(tab.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
