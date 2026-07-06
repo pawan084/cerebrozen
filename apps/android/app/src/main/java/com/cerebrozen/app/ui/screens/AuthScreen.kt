@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,93 +21,141 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
+import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import kotlinx.coroutines.launch
 
-/** Sign in / create account — the same email flow as iOS and the web app. */
+private enum class AuthMode { Password, Otp }
+
+/** Sign in / create account — email+password, passwordless email code (OTP), or
+ * Google. Same backend flows as iOS and the web app; Google degrades gracefully
+ * until a web client id is configured. */
 @Composable
 fun AuthScreen() {
+    var mode by remember { mutableStateOf(AuthMode.Password) }
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var otpSent by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var info by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val clientId = stringResource(R.string.google_web_client_id)
+
+    fun run(block: suspend () -> Unit) {
+        busy = true; error = null
+        scope.launch {
+            try { block() } catch (e: Exception) { error = e.message ?: "Something went wrong." } finally { busy = false }
+        }
+    }
 
     Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 48.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 48.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text("PRIVATE BY DESIGN", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         Text(
-            if (creating) "Create your space" else "Welcome back",
-            style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary,
+            if (creating && mode == AuthMode.Password) "Create your space" else "Welcome back",
+            style = MaterialTheme.typography.displaySmall, color = TextPrimary,
         )
-        Text(
-            "Your quiet space for daily mental fitness — synced with iOS and the web.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
-        )
+        Text("Your quiet space for daily mental fitness — synced with iOS and the web.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
 
-        if (creating) {
-            OutlinedTextField(
-                value = name, onValueChange = { name = it },
-                label = { Text("Name") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        OutlinedTextField(
-            value = email, onValueChange = { email = it },
-            label = { Text("Email") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = password, onValueChange = { password = it },
-            label = { Text("Password") }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-
-        Button(
-            enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+        OutlinedButton(
             onClick = {
-                busy = true; error = null
-                scope.launch {
-                    try {
-                        if (creating) Session.signUp(email.trim(), password, name.trim())
-                        else Session.signIn(email.trim(), password)
-                    } catch (e: Exception) {
-                        error = e.message ?: "Something went wrong."
-                    } finally {
-                        busy = false
+                run {
+                    val result = googleIdToken(context, clientId)
+                    if (result == null) {
+                        error = "Google sign-in isn't set up yet — use email below."
+                    } else {
+                        Session.signInWithGoogle(result.first, result.second)
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (busy) "One moment…" else if (creating) "Create my account" else "Sign in")
+            enabled = !busy, modifier = Modifier.fillMaxWidth(),
+        ) { Text("Continue with Google") }
+
+        Text("or", style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+
+        when (mode) {
+            AuthMode.Password -> {
+                if (creating) {
+                    OutlinedTextField(name, { name = it }, label = { Text("Name") },
+                        singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(password, { password = it }, label = { Text("Password") }, singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth())
+                Button(
+                    enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+                    onClick = {
+                        run {
+                            if (creating) Session.signUp(email.trim(), password, name.trim())
+                            else Session.signIn(email.trim(), password)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (busy) "One moment…" else if (creating) "Create my account" else "Sign in") }
+
+                TextButton(onClick = { creating = !creating; error = null }) {
+                    Text(if (creating) "I already have an account" else "New here? Create your space", color = TextMuted)
+                }
+                TextButton(onClick = { mode = AuthMode.Otp; error = null; info = null }) {
+                    Text("Email me a code instead", color = Periwinkle)
+                }
+            }
+
+            AuthMode.Otp -> {
+                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
+                    enabled = !otpSent,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth())
+                if (otpSent) {
+                    OutlinedTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
+                        label = { Text("6-digit code") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth())
+                }
+                Button(
+                    enabled = !busy && (if (otpSent) code.length == 6 else email.isNotBlank()),
+                    onClick = {
+                        run {
+                            if (!otpSent) {
+                                Session.otpRequest(email.trim()); otpSent = true
+                                info = "Code sent to ${email.trim()} — check your email."
+                            } else {
+                                Session.otpVerify(email.trim(), code)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code") }
+
+                TextButton(onClick = { mode = AuthMode.Password; otpSent = false; code = ""; error = null; info = null }) {
+                    Text("Use a password instead", color = TextMuted)
+                }
+            }
         }
 
-        TextButton(onClick = { creating = !creating; error = null }) {
-            Text(
-                if (creating) "I already have an account" else "New here? Create your space",
-                color = TextMuted,
-            )
-        }
+        info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Periwinkle) }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 }

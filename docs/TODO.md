@@ -347,8 +347,13 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   ambient background motion on Home/Talk. Remaining (genuinely blocked): per-track NARRATED
   audio (needs the content pipeline to serve audio URLs — today every title
   shares the ambient bed), Home HealthKit/Health-Connect card (heavy native).
-  Owner-blocked (need
-  config): Apple/Google sign-in, Play Billing, FCM.
+  Auth round 2026-07-06: passwordless email OTP now fully works
+  (/auth/otp/request+verify — emulator-verified end-to-end, new account created);
+  "Continue with Google" via Credential Manager → /auth/google is code-complete
+  and degrades gracefully until `google_web_client_id` is set (mirrors iOS's
+  inert GIDClientID). Owner-blocked (need config): Google sign-in web client id,
+  Apple sign-in (Android web-OAuth flow, not yet built), Play Billing (Play
+  Console products), FCM push (Firebase project).
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

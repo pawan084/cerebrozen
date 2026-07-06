@@ -91,6 +91,24 @@ object Session {
         store(JSONObject(raw("/auth/signup", "POST", body.toString(), "application/json", authed = false)))
     }
 
+    /** Email a 6-digit one-time sign-in code (passwordless). */
+    suspend fun otpRequest(email: String) {
+        raw("/auth/otp/request", "POST", JSONObject().put("email", email).toString(), "application/json", authed = false)
+    }
+
+    /** Exchange the emailed code for a session. */
+    suspend fun otpVerify(email: String, code: String) {
+        val body = JSONObject().put("email", email).put("code", code)
+        store(JSONObject(raw("/auth/otp/verify", "POST", body.toString(), "application/json", authed = false)))
+    }
+
+    /** Exchange a Google ID token for a session (code-complete; inert until a
+     * web client id is configured — mirrors the iOS "degrades gracefully" state). */
+    suspend fun signInWithGoogle(idToken: String, name: String) {
+        val body = JSONObject().put("id_token", idToken).put("name", name)
+        store(JSONObject(raw("/auth/google", "POST", body.toString(), "application/json", authed = false)))
+    }
+
     /** Rotate the token pair. Returns false on failure, but only a real auth
      * rejection (401/403) ends the session — a network blip must not sign the
      * user out (it would also wipe the offline cache on a cold, offline launch). */

@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CereBro</string>
+    <!-- Google web (server) OAuth client id. Blank = Google sign-in is inert;
+         set it to light up "Continue with Google" (mirrors iOS's GIDClientID). -->
+    <string name="google_web_client_id" translatable="false"></string>
 </resources>
