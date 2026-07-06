@@ -159,11 +159,7 @@ fun TalkScreen() {
 
         Text(if (voice.available) "Type instead" else "Type a message",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        OutlinedTextField(
-            value = draft, onValueChange = { draft = it },
-            label = { Text("Message") },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        AppTextField(draft, { draft = it }, "Message")
         PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
     }

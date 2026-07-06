@@ -251,15 +251,12 @@ private fun SignUpStep(feeling: String?, consent: () -> JSONObject, onBack: () -
             }
         },
     ) {
-        OutlinedTextField(name, { name = it }, label = { Text("Name") },
-            singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(password, { password = it }, label = { Text("Password (8+ characters)") },
-            singleLine = true, visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth())
+        AppTextField(name, { name = it }, "Name", singleLine = true)
+        AppTextField(email, { email = it }, "Email", singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+        AppTextField(password, { password = it }, "Password (8+ characters)", singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 }

@@ -94,16 +94,13 @@ fun AuthScreen() {
         when (mode) {
             AuthMode.Password -> {
                 if (creating) {
-                    OutlinedTextField(name, { name = it }, label = { Text("Name") },
-                        singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(name, { name = it }, "Name", singleLine = true)
                 }
-                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(password, { password = it }, label = { Text("Password") }, singleLine = true,
+                AppTextField(email, { email = it }, "Email", singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+                AppTextField(password, { password = it }, "Password", singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth())
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
                 PrimaryButton(
                     text = if (busy) "One moment…" else if (creating) "Create my account" else "Sign in",
                     enabled = !busy && email.isNotBlank() && password.isNotBlank(),
@@ -124,15 +121,12 @@ fun AuthScreen() {
             }
 
             AuthMode.Otp -> {
-                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
-                    enabled = !otpSent,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth())
+                AppTextField(email, { email = it }, "Email", singleLine = true, enabled = !otpSent,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
                 if (otpSent) {
-                    OutlinedTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
-                        label = { Text("6-digit code") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth())
+                    AppTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
+                        "6-digit code", singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
                 PrimaryButton(
                     text = if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code",

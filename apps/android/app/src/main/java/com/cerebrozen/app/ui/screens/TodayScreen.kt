@@ -107,9 +107,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("TODAY", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(greeting().uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         Text(
-            "${greeting()},\n${userName.ifBlank { "friend" }}",
+            userName.ifBlank { "friend" },
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
         )

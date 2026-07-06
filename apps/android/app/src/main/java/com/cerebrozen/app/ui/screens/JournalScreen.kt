@@ -76,17 +76,8 @@ fun JournalScreen() {
 
         SectionCard {
             Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            OutlinedTextField(
-                value = title, onValueChange = { title = it },
-                label = { Text("Title") }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = body, onValueChange = { body = it },
-                label = { Text("What's on your mind?") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            AppTextField(title, { title = it }, "Title", singleLine = true)
+            AppTextField(body, { body = it }, "What's on your mind?", minLines = 3)
             PrimaryButton(
                 text = if (busy) "One moment…" else "Save entry",
                 enabled = !busy && title.isNotBlank() && body.isNotBlank(),

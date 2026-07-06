@@ -1,6 +1,7 @@
 package com.cerebrozen.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -58,6 +61,7 @@ import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.YouScreen
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -97,28 +101,32 @@ fun CereBroApp() {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            NavigationBar(containerColor = NightMid) {
-                Tab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = current == tab.route,
-                        onClick = {
-                            if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Periwinkle,
-                            selectedTextColor = Periwinkle,
-                            unselectedIconColor = TextMuted2,
-                            unselectedTextColor = TextMuted2,
-                            indicatorColor = Color.Transparent,
-                        ),
-                    )
+            Column {
+                // Hairline glass edge so the bar reads as a distinct surface.
+                HorizontalDivider(thickness = 1.dp, color = LineStroke)
+                NavigationBar(containerColor = NightMid, tonalElevation = 0.dp) {
+                    Tab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            selected = current == tab.route,
+                            onClick = {
+                                if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navController.navigate(tab.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Periwinkle,
+                                selectedTextColor = Periwinkle,
+                                unselectedIconColor = TextMuted2,
+                                unselectedTextColor = TextMuted2,
+                                indicatorColor = Periwinkle.copy(alpha = 0.18f),
+                            ),
+                        )
+                    }
                 }
             }
         },
