@@ -1,6 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
@@ -53,9 +56,9 @@ private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_
     else -> "Good evening"
 }
 
-/** Today: live mood check-in + server streak + recent check-ins (v1 slice). */
+/** Today: quick-access grid + live mood check-in + streak + recent check-ins. */
 @Composable
-fun TodayScreen() {
+fun TodayScreen(onOpen: (String) -> Unit) {
     var userName by remember { mutableStateOf("") }
     var streak by remember { mutableIntStateOf(0) }
     var best by remember { mutableIntStateOf(0) }
@@ -96,6 +99,13 @@ fun TodayScreen() {
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
         )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickTile("Games", "games", onOpen, Modifier.weight(1f))
+            QuickTile("Insights", "insights", onOpen, Modifier.weight(1f))
+            QuickTile("Programs", "programs", onOpen, Modifier.weight(1f))
+            QuickTile("Sounds", "sounds", onOpen, Modifier.weight(1f))
+        }
 
         Card {
             Text("How are you, really?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -153,6 +163,24 @@ fun TodayScreen() {
                     Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QuickTile(label: String, route: String, onOpen: (String) -> Unit, modifier: Modifier) {
+    Surface(
+        color = CardFill,
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .border(1.dp, LineStroke, RoundedCornerShape(16.dp))
+            .clickable { onOpen(route) },
+    ) {
+        Column(
+            Modifier.padding(vertical = 16.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
         }
     }
 }

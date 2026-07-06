@@ -305,12 +305,17 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   applied 2026-07-06: `Color.kt` mirrors the warm tokens (indigo night #0e0c22 +
   warm-lavender accent #8a7bf0 + coral/cyan/ok), so every token-driven screen
   recolored at once — emulator-verified Today/Talk/Sleep in the warm palette,
-  matching iOS/web. Remaining for parity,
-  in the recommended order: (1) privacy screens — consent toggles + export +
-  delete (compliance surface), (2) minimal onboarding gate (18+ attestation +
-  AI disclosure + consent), (3) Plans + Insights tabs, (4) crisis resources +
-  trusted contact, (5) offline-first store (Room), soundscape audio,
-  Apple/Google sign-in, Play Billing, FCM, You/settings parity.
+  matching iOS/web. Feature parity round applied 2026-07-06 (all emulator-verified
+  against the dev backend): (1) onboarding funnel — welcome → 18+ attest → AI
+  disclosure → language → state-check → breathing reset → account → consent →
+  notifications; (2) You/Settings depth — live consent toggles (GET/PATCH
+  /users/me/consent), data export, account delete, crisis link, sign out;
+  (3) new destinations off a Home quick-grid — Insights (/insights/weekly bars),
+  Programs + Sounds (/content by kind), Games (live box-breathing), Crisis
+  (offline directory + trusted-contact status). Remaining for full parity:
+  soundscape/sleep AUDIO playback, the Sleep-tab sleep-story player + library +
+  7-night chart, the Journal prompt hero, the Talk voice orb, offline-first store
+  (Room). Owner-blocked (need config): Apple/Google sign-in, Play Billing, FCM.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

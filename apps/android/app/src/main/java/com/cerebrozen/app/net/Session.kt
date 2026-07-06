@@ -163,4 +163,36 @@ object Api {
     suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
     suspend fun sendChat(text: String): JSONObject =
         JSONObject(Session.api("/chat/messages", "POST", JSONObject().put("text", text)))
+
+    // ── Library / insights / account (parity with iOS + web) ──────────────
+    suspend fun content(kind: String): JSONArray =
+        JSONArray(Session.api("/content?kind=" + URLEncoder.encode(kind, "UTF-8")))
+
+    suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
+
+    suspend fun consent(): JSONObject = JSONObject(Session.api("/users/me/consent"))
+    suspend fun updateConsent(patch: JSONObject): JSONObject =
+        JSONObject(Session.api("/users/me/consent", "PATCH", patch))
+
+    /** 18+ attestation captured during onboarding (best-effort; never blocks). */
+    suspend fun attest() { Session.api("/users/me/attest", "POST", JSONObject().put("adult", true)) }
+
+    suspend fun trustedContact(): JSONObject? =
+        Session.api("/users/me/trusted-contact").let {
+            if (it.isBlank() || it.trim() == "null") null else JSONObject(it)
+        }
+    suspend fun setTrustedContact(name: String, method: String, value: String): JSONObject =
+        JSONObject(
+            Session.api(
+                "/users/me/trusted-contact", "PUT",
+                JSONObject().put("name", name).put("method", method)
+                    .put("value", value).put("notify_consent", true),
+            ),
+        )
+
+    /** Full personal-data export (privacy screen). Returns the raw JSON text. */
+    suspend fun exportData(): String = Session.api("/users/me/export")
+
+    /** Irreversible account + data deletion. */
+    suspend fun deleteAccount() { Session.api("/users/me", "DELETE") }
 }

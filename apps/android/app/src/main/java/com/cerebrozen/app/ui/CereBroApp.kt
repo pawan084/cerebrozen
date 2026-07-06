@@ -27,9 +27,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.screens.AuthScreen
+import com.cerebrozen.app.ui.screens.CrisisScreen
+import com.cerebrozen.app.ui.screens.GamesScreen
+import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
+import com.cerebrozen.app.ui.screens.Onboarding
+import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
+import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.YouScreen
@@ -55,7 +60,7 @@ fun CereBroApp() {
             Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(NightMid, Night))),
-        ) { AuthScreen() }
+        ) { Onboarding() }
         return
     }
 
@@ -99,11 +104,18 @@ fun CereBroApp() {
                 .background(Brush.verticalGradient(listOf(NightMid, Night)))
                 .padding(padding),
         ) {
-            composable(Tab.Home.route) { TodayScreen() }
+            val open: (String) -> Unit = { route -> navController.navigate(route) }
+            val back: () -> Unit = { navController.popBackStack() }
+            composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen() }
             composable(Tab.Talk.route) { TalkScreen() }
             composable(Tab.Journal.route) { JournalScreen() }
-            composable(Tab.You.route) { YouScreen() }
+            composable(Tab.You.route) { YouScreen(onOpen = open) }
+            composable("insights") { InsightsScreen(onBack = back) }
+            composable("programs") { ProgramsScreen(onBack = back) }
+            composable("sounds") { SoundsScreen(onBack = back) }
+            composable("games") { GamesScreen(onBack = back) }
+            composable("crisis") { CrisisScreen(onBack = back) }
         }
     }
 }
