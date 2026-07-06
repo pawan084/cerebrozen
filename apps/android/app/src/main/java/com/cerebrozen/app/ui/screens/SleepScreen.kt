@@ -1,9 +1,15 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -17,9 +23,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
@@ -57,6 +70,7 @@ fun SleepScreen() {
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     suspend fun reload() {
         runCatching { summary = Api.sleepSummary() }
@@ -114,6 +128,13 @@ fun SleepScreen() {
             }
         }
 
+        if (nights.size >= 2) NightsChart(nights)
+
+        Text("Wind down", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        NowPlayingBar()
+        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
+            onItemTap = { title -> Player.toggle(context, title) })
+
         if (nights.isNotEmpty()) {
             SectionCard {
                 Text("Diary", style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -125,6 +146,32 @@ fun SleepScreen() {
                 }
             }
         }
+    }
+}
+
+/** A live bar chart of the last few nights' durations. */
+@Composable
+private fun NightsChart(nights: List<Night>) {
+    val recent = nights.take(7).reversed()
+    val maxDur = (recent.maxOfOrNull { it.duration } ?: 1).coerceAtLeast(1)
+    SectionCard {
+        Text("Last 7 nights", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Row(
+            Modifier.fillMaxWidth().height(120.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            recent.forEach { n ->
+                val frac = (n.duration.toFloat() / maxDur).coerceIn(0.08f, 1f)
+                Box(
+                    Modifier.weight(1f).fillMaxHeight(frac).clip(RoundedCornerShape(6.dp))
+                        .background(Brush.verticalGradient(listOf(Periwinkle, Cyan))),
+                )
+            }
+        }
+        val avg = recent.map { it.duration }.average().toInt()
+        Text("avg ${minutesToLabel(avg)} · ${recent.size} nights",
+            style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
 }
 

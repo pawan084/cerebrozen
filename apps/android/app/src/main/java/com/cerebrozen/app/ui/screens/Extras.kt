@@ -40,8 +40,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
@@ -72,20 +74,34 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
 }
 
 @Composable
-private fun ContentRow(title: String, subtitle: String, meta: String, premium: Boolean) {
+internal fun ContentRow(
+    title: String,
+    subtitle: String,
+    meta: String,
+    premium: Boolean,
+    playing: Boolean = false,
+    onTap: (() -> Unit)? = null,
+) {
     SectionCard {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
+        val inner = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
+        Column(inner, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
+                    if (onTap != null) Text(if (playing) "❚❚" else "▶", style = MaterialTheme.typography.titleMedium, color = Cyan)
+                }
+            }
+            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         }
-        if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
 }
 
 /** Load a content kind and render it as a list; shows honest empty/error states. */
 @Composable
-private fun ContentList(kind: String, metaLabel: (Int) -> String) {
+internal fun ContentList(kind: String, metaLabel: (Int) -> String, onItemTap: ((String) -> Unit)? = null) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(kind) {
@@ -99,9 +115,12 @@ private fun ContentList(kind: String, metaLabel: (Int) -> String) {
         items!!.length() == 0 -> Text("Nothing here yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         else -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
+            val title = c.optString("title")
             ContentRow(
-                c.optString("title"), c.optString("subtitle"),
+                title, c.optString("subtitle"),
                 metaLabel(c.optInt("duration_min")), c.optBoolean("premium"),
+                playing = Player.nowPlaying == title && Player.isPlaying,
+                onTap = onItemTap?.let { { it(title) } },
             )
         }
     }
@@ -153,18 +172,42 @@ fun InsightsScreen(onBack: () -> Unit) {
 fun ProgramsScreen(onBack: () -> Unit) = SubPage("Guided journeys", "Programs", onBack) {
     Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    ContentList("program") { d -> if (d > 0) "$d min a day" else "A few minutes a day" }
+    ContentList("program", { d -> if (d > 0) "$d min a day" else "A few minutes a day" })
 }
 
 @Composable
-fun SoundsScreen(onBack: () -> Unit) = SubPage("Sound library", "Sounds", onBack) {
-    Text("Soundscapes and sleep stories to slow a racing mind.",
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    ContentList("soundscape") { d -> if (d > 0) "$d min" else "Continuous ambient" }
-    Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-    ContentList("sleep") { d -> if (d > 0) "$d min" else "Sleep story" }
-    Text("Playback lands with the audio engine — the library is live now.",
-        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+fun SoundsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val play: (String) -> Unit = { title -> Player.toggle(context, title) }
+    SubPage("Sound library", "Sounds", onBack) {
+        NowPlayingBar()
+        Text("Soundscapes and sleep stories to slow a racing mind.",
+            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" }, onItemTap = play)
+        Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" }, onItemTap = play)
+        Text("Tap to play a calming ambient bed — narrated stories arrive with the content pipeline.",
+            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+/** A compact transport shown whenever something is playing. */
+@Composable
+internal fun NowPlayingBar() {
+    val context = LocalContext.current
+    val title = Player.nowPlaying ?: return
+    SectionCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            }
+            TextButton(onClick = { if (Player.isPlaying) Player.pause() else Player.toggle(context, title) }) {
+                Text(if (Player.isPlaying) "Pause" else "Play", color = Periwinkle)
+            }
+        }
+    }
 }
 
 @Composable

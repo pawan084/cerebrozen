@@ -312,10 +312,15 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   /users/me/consent), data export, account delete, crisis link, sign out;
   (3) new destinations off a Home quick-grid — Insights (/insights/weekly bars),
   Programs + Sounds (/content by kind), Games (live box-breathing), Crisis
-  (offline directory + trusted-contact status). Remaining for full parity:
-  soundscape/sleep AUDIO playback, the Sleep-tab sleep-story player + library +
-  7-night chart, the Journal prompt hero, the Talk voice orb, offline-first store
-  (Room). Owner-blocked (need config): Apple/Google sign-in, Play Billing, FCM.
+  (offline directory + trusted-contact status). Audio + Sleep round 2026-07-06:
+  a real MediaPlayer with a bundled ambient bed (res/raw) + a now-playing
+  transport wired into Sounds and the Sleep "Wind down" library; Sleep gained a
+  live 7-night bar chart (shows at ≥2 nights) — emulator-verified (dumpsys:
+  MediaPlayer state:started @16 kHz). Remaining for full parity: per-track
+  NARRATED audio (needs the content pipeline to serve audio URLs — today every
+  title shares the ambient bed), the Journal prompt hero, the Talk voice orb,
+  offline-first store (Room). Owner-blocked (need config): Apple/Google sign-in,
+  Play Billing, FCM.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
