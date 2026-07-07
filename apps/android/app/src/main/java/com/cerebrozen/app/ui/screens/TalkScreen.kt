@@ -25,12 +25,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +54,7 @@ import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -68,15 +71,35 @@ internal fun parseChat(rows: JSONArray): List<Msg> =
         Msg(m.getString("role"), m.getString("text"))
     }
 
+/** The backend marks elevated/crisis replies with a `crisis` suggestion
+ * action (services/activities.py) — that's the signal for the banner. */
+internal fun hasCrisisSuggestion(suggestions: JSONArray?): Boolean {
+    if (suggestions == null) return false
+    return (0 until suggestions.length()).any {
+        suggestions.optJSONObject(it)?.optString("action") == "crisis"
+    }
+}
+
 /** Talk: a real voice companion (on-device speech ↔ TTS over /chat) with a
  * text fallback. Same deterministic, safety-scanned pipeline as iOS/web. */
 @Composable
-fun TalkScreen() {
+fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var messages by remember { mutableStateOf(listOf<Msg>()) }
     var draft by remember { mutableStateOf("") }
     var chips by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // Regulatory UX (mirrors iOS AIDisclosure): tappable always-visible pill +
+    // a re-shown sheet every 3 h of continuous use (NY companion-law floor).
+    var showDisclosure by remember { mutableStateOf(false) }
+    // Sticky once a reply carries crisis risk — the affordance stays reachable.
+    var crisis by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(3L * 60 * 60 * 1000)
+            showDisclosure = true
+        }
+    }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val voice = remember { VoiceEngine(context) }
@@ -94,9 +117,11 @@ fun TalkScreen() {
                 messages = messages +
                     Msg("user", reply.getJSONObject("user_message").getString("text")) +
                     Msg("assistant", replyText)
-                chips = reply.optJSONArray("suggestions")?.let { arr ->
+                val suggestions = reply.optJSONArray("suggestions")
+                chips = suggestions?.let { arr ->
                     (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
                 } ?: emptyList()
+                if (hasCrisisSuggestion(suggestions)) crisis = true
                 draft = ""
                 if (speak) voice.speak(replyText)
             } catch (e: Exception) {
@@ -121,10 +146,64 @@ fun TalkScreen() {
     }
 
     Page("AI voice companion", "Talk it through") {
-        Text(
-            "Supportive AI — not medical care. In an emergency, contact local emergency services.",
-            style = MaterialTheme.typography.bodySmall, color = TextMuted,
-        )
+        // Persistent AI disclosure — always visible, tap for the full points.
+        Row(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardFill)
+                .border(1.dp, LineStroke, RoundedCornerShape(12.dp))
+                .clickable { showDisclosure = true }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "AI companion — not a therapist or crisis service",
+                style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                modifier = Modifier.weight(1f),
+            )
+            Text("Details", style = MaterialTheme.typography.bodySmall, color = Periwinkle)
+        }
+
+        if (crisis) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Danger.copy(alpha = 0.14f))
+                    .border(1.dp, Danger.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                    .clickable { onOpen("crisis") }
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text("You matter. Support is available right now.",
+                    style = MaterialTheme.typography.titleMedium, color = Danger)
+                Text("Tap for crisis resources — real people, 24/7.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            }
+        }
+
+        if (showDisclosure) {
+            AlertDialog(
+                onDismissRequest = { showDisclosure = false },
+                title = { Text("About your AI companion") },
+                text = {
+                    Text(
+                        "• It's AI, not a person — replies are generated.\n" +
+                        "• It isn't medical care and never diagnoses or prescribes.\n" +
+                        "• It isn't for emergencies — in one, contact local services.\n" +
+                        "• Conversations are reviewed for safety signals only.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDisclosure = false }) { Text("Got it") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDisclosure = false; onOpen("crisis") }) {
+                        Text("Get crisis support")
+                    }
+                },
+            )
+        }
 
         if (voice.available) {
             VoiceOrb(listening = voice.listening, speaking = voice.speaking, onTap = { onOrbTap() })

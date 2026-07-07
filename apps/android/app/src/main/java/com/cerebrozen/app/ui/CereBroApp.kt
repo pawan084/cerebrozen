@@ -147,7 +147,7 @@ fun CereBroApp() {
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen() }
-            composable(Tab.Talk.route) { TalkScreen() }
+            composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back) }

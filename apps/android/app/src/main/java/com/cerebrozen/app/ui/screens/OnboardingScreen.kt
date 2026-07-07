@@ -59,14 +59,7 @@ private enum class OStep { Welcome, Age, Disclosure, Language, State, Reset, Con
 private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
 private val FEELINGS = listOf("Calm", "Good", "Anxious", "Low", "Tired", "Stressed")
 private val NOTIFY = listOf("Morning", "Midday", "Evening", "Off")
-private val CONSENT_ROWS = listOf(
-    "mood_history" to "Remember my mood history",
-    "ai_memory" to "Let the AI remember context",
-    "journal_memory" to "Remember journal entries",
-    "sleep_history" to "Keep my sleep history",
-    "voice_storage" to "Store voice clips",
-    "model_training" to "Help improve the models",
-)
+// Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
 
 /**
  * Value-first onboarding funnel — the adult gate, honesty disclosure, a first
@@ -87,10 +80,12 @@ fun Onboarding() {
     var language by remember { mutableStateOf("English") }
     var feeling by remember { mutableStateOf<String?>(null) }
     var notify by remember { mutableStateOf("Evening") }
+    // Private by default: NOTHING pre-ticked — consent must be an action
+    // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
     val consent = remember {
         mutableStateMapOf(
-            "mood_history" to true, "ai_memory" to true, "journal_memory" to true,
-            "sleep_history" to true, "voice_storage" to false, "model_training" to false,
+            "mood_history" to false, "ai_memory" to false, "journal_memory" to false,
+            "sleep_history" to false, "voice_storage" to false, "model_training" to false,
         )
     }
 
@@ -135,23 +130,36 @@ fun Onboarding() {
 
         OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
 
-        OStep.Consent -> Funnel(
-            "Privacy choices", "What CereBro remembers",
-            "Everything's opt-in and changeable later in Settings.",
-            "Looks good", onBack = { back() }, onPrimary = { next() },
-        ) {
-            SectionCard {
-                CONSENT_ROWS.forEach { (key, label) ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                        Switch(
-                            checked = consent[key] == true,
-                            onCheckedChange = { consent[key] = it },
-                        )
+        OStep.Consent -> {
+            // DPDP s.5(3): the notice itself is readable in English or an
+            // Eighth-Schedule language, seeded from the language step's choice.
+            var noticeLang by remember(language) { mutableStateOf(defaultNoticeCode(language)) }
+            val notice = noticeFor(noticeLang)
+            Funnel(
+                "Privacy choices", notice.title,
+                notice.caption,
+                "Looks good", onBack = { back() }, onPrimary = { next() },
+            ) {
+                ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
+                    noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
+                }
+                SectionCard {
+                    CONSENT_KEY_ORDER.forEach { key ->
+                        val cat = notice.categories.getValue(key)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                                Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            }
+                            Switch(
+                                checked = consent[key] == true,
+                                onCheckedChange = { consent[key] = it },
+                            )
+                        }
                     }
                 }
             }
@@ -294,7 +302,7 @@ private fun Funnel(
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun ChipWrap(options: List<String>, selected: String?, onPick: (String) -> Unit) {
+internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String) -> Unit) {
     androidx.compose.foundation.layout.FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

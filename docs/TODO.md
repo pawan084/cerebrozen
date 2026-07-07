@@ -420,7 +420,22 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   (+ resource shrinking): APK 13.3 MB → 2.5 MB (−81%); emulator-smoked on a
   debug-signed release build (launch → funnel → auth incl. inert Google path,
   zero AndroidRuntime errors) — owner repeats the QA pass on a real device
-  before Play upload.
+  before Play upload. Regulatory-parity round 2026-07-07 (top-3 gaps from a
+  fresh iOS↔Android audit, all emulator-verified live against the dev backend):
+  (1) DPDP consent-notice i18n — `ui/screens/ConsentNotice.kt` (13 languages,
+  third copy of the cross-stack contract) + notice-language picker on the
+  onboarding consent step AND Privacy & memory (हिन्दी/தமிழ் re-render
+  verified); fixed en route: Android had 4 consent toggles PRE-TICKED —
+  now everything defaults off (private-by-default parity with iOS/web);
+  (2) persistent AI-disclosure pill on Talk + details dialog + 3 h periodic
+  re-show (mirrors iOS AIDisclosure); (3) crisis banner on Talk when a reply
+  carries the `crisis` suggestion action (sticky, → Crisis screen — verified
+  end-to-end: risky message → live safety scan → banner → 112 screen).
+  Unit tests 12→16 (crisis detection, notice mapping/fallback, 13×6 contract
+  shape). Remaining Android gaps from the audit (lower priority, unblocked):
+  Oracle SSE + inline activity widgets + starters, forgot-password flow,
+  first-party analytics events, baseline check-in, journal search/lock,
+  sleep favorites/timer/mixing, 5 more games, Talk save-to-journal.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

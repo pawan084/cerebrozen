@@ -46,15 +46,8 @@ import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-/** iOS-parity consent keys (mirrors ProfileView → PrivacyView). */
-internal val CONSENT_KEYS = listOf(
-    "mood_history" to "Mood history",
-    "ai_memory" to "AI memory",
-    "journal_memory" to "Journal memory",
-    "sleep_history" to "Sleep history",
-    "voice_storage" to "Voice clips",
-    "model_training" to "Help improve models",
-)
+// Consent keys + localized labels/hints live in ConsentNotice.kt
+// (CONSENT_KEY_ORDER — the DPDP notice contract shared with iOS/web).
 
 /** A tappable settings row (leading icon + title + subtitle + chevron). */
 @Composable
@@ -161,17 +154,28 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
 fun PrivacyScreen(onBack: () -> Unit) {
     val consent = remember { mutableStateMapOf<String, Boolean>() }
     val scope = rememberCoroutineScope()
+    // DPDP s.5(3): the consent notice is readable in English or an
+    // Eighth-Schedule language, picked right on the notice (ConsentNotice.kt).
+    var noticeLang by remember { mutableStateOf("en") }
+    val notice = noticeFor(noticeLang)
     LaunchedEffect(Unit) {
-        runCatching { val c = Api.consent(); CONSENT_KEYS.forEach { consent[it.first] = c.optBoolean(it.first) } }
+        runCatching { val c = Api.consent(); CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
+        runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
     }
-    SubPage("Control what CereBro remembers", "Privacy & memory", onBack) {
-        Text("Everything's opt-in and changes save instantly.",
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+    SubPage("Control what CereBro remembers", notice.title, onBack) {
+        Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
+            noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
+        }
         SectionCard {
-            CONSENT_KEYS.forEach { (key, label) ->
+            CONSENT_KEY_ORDER.forEach { key ->
+                val cat = notice.categories.getValue(key)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                        Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
                     Switch(checked = consent[key] == true, onCheckedChange = { v ->
                         consent[key] = v
                         scope.launch { runCatching { Api.updateConsent(JSONObject().put(key, v)) } }
