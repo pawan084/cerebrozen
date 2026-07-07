@@ -43,6 +43,12 @@ export const viewport: Viewport = {
   themeColor: "#0e0c22",
 };
 
+// Per-request rendering so the CSP script nonce (middleware.ts) lands on every
+// framework inline script — statically prerendered HTML can't carry a fresh
+// nonce. Deliberate trade-off: the landing gives up static optimization for a
+// no-'unsafe-inline' script policy (small SSR pages behind Caddy gzip).
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={serif.variable}>

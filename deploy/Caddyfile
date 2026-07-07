@@ -6,12 +6,10 @@
 	email admin@cerebrozen.in
 }
 
-# Shared security headers for every site. The CSP is deliberately pragmatic:
-# 'unsafe-inline' script/style stays because Next.js hydration relies on inline
-# bootstrap scripts (a nonce-based upgrade needs per-app middleware — tracked
-# in docs/TODO.md). Even so it blocks remote scripts/objects/frames, remote
-# images (all assets are self-hosted since the 2026-07-04 imagery pass), and
-# pins connections to our own origins.
+# Shared security headers for every site. The CSP for the three Next.js sites
+# comes from each app's own middleware.ts (per-request script NONCE — no
+# 'unsafe-inline' scripts; Caddy passes the upstream header through). Only the
+# API block sets a CSP here, since FastAPI serves no HTML of its own.
 (security_headers) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -19,7 +17,6 @@
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.cerebrozen.in; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
 	}
 }
 
@@ -47,6 +44,9 @@ app.cerebrozen.in {
 # API (FastAPI)
 api.cerebrozen.in {
 	import security_headers
+	# JSON-only origin: a locked-down CSP as defense-in-depth against
+	# content-type confusion (nothing here renders as a document).
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
 	encode gzip zstd
 	reverse_proxy api:8000
 }

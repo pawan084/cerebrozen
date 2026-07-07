@@ -408,9 +408,21 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   the Caddyfile comment; owner: delete the DNS record).
 - [x] CSP — 2026-07-04: pragmatic policy in the shared Caddy snippet (blocks
   remote scripts/objects/frames/images, pins connect-src to our origins;
-  'unsafe-inline' script/style stays for Next hydration). Upgrade path: per-app
-  nonce middleware, still open below.
-- [ ] CSP nonce upgrade: Next middleware per app to drop 'unsafe-inline' scripts.
+  'unsafe-inline' script/style stayed for Next hydration). Superseded 2026-07-07
+  by the per-app nonce middleware (next item).
+- [x] CSP nonce upgrade — 2026-07-07: per-app `middleware.ts` (hand-duplicated
+  across apps/web+admin+app like the token blocks) issues a per-request script
+  NONCE — `script-src 'self' 'nonce-…'`, no 'unsafe-inline' scripts (styles keep
+  it — Next injects inline styles); `worker-src 'self'` pinned so /sw.js can't
+  break; `connect-src` derives from `NEXT_PUBLIC_API_URL` (dev/e2e/prod). Root
+  layouts force dynamic rendering (prerendered HTML can't carry a fresh nonce;
+  nothing used static output — the landing trades static optimization away
+  deliberately). `next dev` keeps a relaxed policy (react-refresh needs eval).
+  Caddy: CSP removed from the shared snippet (apps' headers pass through);
+  the API block gets `default-src 'none'` defense-in-depth. Also fixed:
+  apps/app Dockerfile now copies `public/` (the Web Push sw.js 404'd in
+  container builds). Verified: e2e green against production builds with
+  Chromium ENFORCING the nonce policy; headers + nonce-attr match curl-checked.
 
 ## Done — implementation pass 2026-07-02
 

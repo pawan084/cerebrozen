@@ -17,6 +17,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
+# Static assets — the Web Push service worker (/sw.js) lives here.
+COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.mjs ./next.config.mjs
 EXPOSE 3002
 CMD ["npm", "start"]
