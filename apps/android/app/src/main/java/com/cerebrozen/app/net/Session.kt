@@ -58,6 +58,7 @@ object Session {
         storage = store
         http = exec
         sseExec = ::realSse
+        binExec = ::realBin
         access = null
         signedIn = storage.getString(REFRESH_KEY) != null
     }
@@ -202,6 +203,58 @@ object Session {
             code to (if (code in 200..299) conn.inputStream
                      else conn.errorStream ?: java.io.ByteArrayInputStream(ByteArray(0)))
         }
+
+    // ── Binary transport (voice: multipart STT upload, MP3 TTS download) ──
+    /** Bytes-in/bytes-out transport seam — (url, method, body, contentType,
+     * authToken) → (status, bytes). Swappable in unit tests. */
+    internal var binExec: suspend (String, String, ByteArray?, String?, String?) -> Pair<Int, ByteArray> = ::realBin
+
+    private suspend fun realBin(
+        url: String, method: String, body: ByteArray?, contentType: String?, authToken: String?,
+    ): Pair<Int, ByteArray> = withContext(Dispatchers.IO) {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = method
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 60_000   // STT/TTS providers can take a few seconds
+            authToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            if (body != null) {
+                conn.doOutput = true
+                contentType?.let { conn.setRequestProperty("Content-Type", it) }
+                conn.outputStream.use { it.write(body) }
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            code to (stream?.readBytes() ?: ByteArray(0))
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private suspend fun binRequest(path: String, body: ByteArray, contentType: String): ByteArray {
+        if (access == null && !refresh()) throw ApiException(401, "Signed out")
+        suspend fun attempt(): Pair<Int, ByteArray> =
+            binExec(BuildConfig.API_BASE_URL + path, "POST", body, contentType, access)
+        var (code, bytes) = attempt()
+        if ((code == 401 || code == 403) && refresh()) { val r = attempt(); code = r.first; bytes = r.second }
+        if (code !in 200..299) {
+            val detail = runCatching { JSONObject(String(bytes)).optString("detail") }
+                .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
+            throw ApiException(code, detail)
+        }
+        return bytes
+    }
+
+    /** Upload one file as multipart/form-data (the /voice/stt contract). */
+    suspend fun upload(path: String, field: String, filename: String, mime: String, bytes: ByteArray): String {
+        val boundary = "cerebro-${System.nanoTime()}"
+        val body = multipartBody(boundary, field, filename, mime, bytes)
+        return String(binRequest(path, body, "multipart/form-data; boundary=$boundary"))
+    }
+
+    /** JSON POST returning raw bytes (the /voice/tts MP3 contract). */
+    suspend fun postForBytes(path: String, json: JSONObject): ByteArray =
+        binRequest(path, json.toString().toByteArray(), "application/json")
 
     /** POST an SSE endpoint and invoke [onEvent] for every `data:` JSON frame.
      * Same auth semantics as [api]: fresh-launch refresh + one rotation retry. */
@@ -374,6 +427,19 @@ object Api {
     suspend fun oracleAvailable(): Boolean =
         runCatching { JSONObject(Session.api("/oracle/status")).optBoolean("available") }
             .getOrDefault(false)
+
+    /** Which halves of the cloud voice loop the server has (Deepgram/ElevenLabs).
+     * Both false → clients keep the keyless on-device STT/TTS path. */
+    suspend fun voiceStatus(): JSONObject = JSONObject(Session.api("/voice/status"))
+
+    /** Cloud STT: recorded clip → transcript (Deepgram via /voice/stt). */
+    suspend fun stt(bytes: ByteArray, mime: String = "audio/mp4"): String =
+        JSONObject(Session.upload("/voice/stt", "audio", "clip.m4a", mime, bytes))
+            .optString("transcript")
+
+    /** Cloud TTS: reply text → MP3 bytes (ElevenLabs via /voice/tts). */
+    suspend fun tts(text: String): ByteArray =
+        Session.postForBytes("/voice/tts", JSONObject().put("text", text))
 }
 
 /** One SSE line → its JSON payload (`data: {…}`); null for blanks/comments. */
@@ -381,4 +447,17 @@ internal fun parseSseLine(line: String): org.json.JSONObject? {
     val t = line.trim()
     if (!t.startsWith("data:")) return null
     return runCatching { org.json.JSONObject(t.substring(5).trim()) }.getOrNull()
+}
+
+/** RFC 2046 multipart/form-data body for one file field — pure + testable. */
+internal fun multipartBody(
+    boundary: String, field: String, filename: String, mime: String, bytes: ByteArray,
+): ByteArray {
+    val head = (
+        "--$boundary\r\n" +
+        "Content-Disposition: form-data; name=\"$field\"; filename=\"$filename\"\r\n" +
+        "Content-Type: $mime\r\n\r\n"
+    ).toByteArray()
+    val tail = "\r\n--$boundary--\r\n".toByteArray()
+    return head + bytes + tail
 }

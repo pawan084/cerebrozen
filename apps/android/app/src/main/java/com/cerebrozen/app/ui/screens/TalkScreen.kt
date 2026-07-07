@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.audio.CloudVoice
 import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -141,7 +142,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val voice = remember { VoiceEngine(context) }
-    DisposableEffect(Unit) { onDispose { voice.dispose() } }
+    // Cloud voice (iOS-parity quality): Deepgram STT + ElevenLabs TTS via the
+    // backend when the server has keys; the on-device engine stays fallback.
+    val cloud = remember { CloudVoice(context) }
+    var cloudVoice by remember { mutableStateOf(false) }
+    var transcribing by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) { onDispose { voice.dispose(); cloud.dispose() } }
 
     var starters by remember { mutableStateOf(listOf<String>()) }
     // Agentic Oracle (SSE) when the server has it; deterministic /chat otherwise.
@@ -153,6 +159,20 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         // Empty chat → grounded conversation starters (mirrors the iOS rail).
         if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
         useOracle = Api.oracleAvailable()
+        cloudVoice = runCatching {
+            val v = Api.voiceStatus()
+            v.optBoolean("stt") && v.optBoolean("tts")
+        }.getOrDefault(false)
+    }
+
+    /** Speak a reply — studio voice when the server has TTS, else on-device. */
+    suspend fun speakReply(text: String) {
+        if (text.isBlank()) return
+        if (cloudVoice) {
+            runCatching { cloud.play(Api.tts(text)) }.onFailure { voice.speak(text) }
+        } else {
+            voice.speak(text)
+        }
     }
 
     /** Consume one Oracle SSE stream, mutating the chat state per frame.
@@ -199,7 +219,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     chips = emptyList()
                     val final = consume("/oracle/messages", JSONObject().put("text", text.trim()))
                     draft = ""
-                    if (speak && final.isNotBlank()) voice.speak(final)
+                    if (speak) speakReply(final)
                 } else {
                     val reply: JSONObject = Api.sendChat(text.trim())
                     val replyText = reply.getJSONObject("reply").getString("text")
@@ -212,7 +232,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     } ?: emptyList()
                     if (hasCrisisSuggestion(suggestions)) crisis = true
                     draft = ""
-                    if (speak) voice.speak(replyText)
+                    if (speak) speakReply(replyText)
                 }
             } catch (e: Exception) {
                 status = e.message ?: "Couldn't send."
@@ -237,17 +257,48 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    fun beginListening() {
+        if (cloudVoice) {
+            if (!cloud.startRecording()) status = "Microphone unavailable right now."
+        } else {
+            voice.startListening { t -> send(t, speak = true) }
+        }
+    }
+
+    /** Stop the cloud recording and run the full quality loop: STT → chat → TTS. */
+    fun finishCloudTurn() {
+        val bytes = cloud.stopRecording()
+        if (bytes == null) { status = "Didn't catch that — try again."; return }
+        transcribing = true
+        scope.launch {
+            try {
+                val transcript = Api.stt(bytes)
+                if (transcript.isBlank()) status = "Didn't catch that — try again."
+                else send(transcript, speak = true)
+            } catch (e: Exception) {
+                status = e.message ?: "Couldn't transcribe — you can type below."
+            } finally {
+                transcribing = false
+            }
+        }
+    }
+
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) voice.startListening { t -> send(t, speak = true) }
+        if (granted) beginListening()
         else status = "Microphone access is off — you can still type below."
     }
 
     fun onOrbTap() {
-        if (!voice.available) return
-        if (voice.listening) { voice.stopListening(); return }
-        val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (granted) voice.startListening { t -> send(t, speak = true) }
-        else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        if (!voice.available && !cloudVoice) return
+        when {
+            cloud.speaking -> cloud.stopPlayback()          // tap-to-interrupt
+            cloud.recording -> finishCloudTurn()
+            voice.listening -> voice.stopListening()
+            else -> {
+                val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                if (granted) beginListening() else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
     }
 
     Page("AI voice companion", "Talk it through") {
@@ -310,12 +361,20 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             )
         }
 
-        if (voice.available) {
-            VoiceOrb(listening = voice.listening, speaking = voice.speaking, onTap = { onOrbTap() })
+        if (voice.available || cloudVoice) {
+            VoiceOrb(
+                listening = voice.listening || cloud.recording,
+                speaking = voice.speaking || cloud.speaking,
+                onTap = { onOrbTap() },
+            )
             val hint = when {
+                transcribing -> "Hearing you…"
                 busy -> "Thinking…"
+                cloud.speaking -> "Speaking… tap to interrupt"
                 voice.speaking -> "Speaking…"
+                cloud.recording -> "Listening… tap when you're done"
                 voice.listening -> "Listening… tap to stop"
+                cloudVoice -> "Tap the orb — studio-quality voice"
                 else -> "Tap the orb to talk live"
             }
             Text(hint, style = MaterialTheme.typography.titleMedium, color = TextSoft,

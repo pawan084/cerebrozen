@@ -219,6 +219,51 @@ class SessionTest {
         assertEquals("fresh-launch + 401 retry", 2, refreshes)
     }
 
+    // ── Cloud voice transport ───────────────────────────────────────
+    @Test
+    fun multipartBody_wraps_the_file_with_boundary_and_disposition() {
+        val body = String(multipartBody("BX", "audio", "clip.m4a", "audio/mp4", "PAYLOAD".toByteArray()))
+        assertTrue(body.startsWith("--BX\r\n"))
+        assertTrue(body.contains("Content-Disposition: form-data; name=\"audio\"; filename=\"clip.m4a\""))
+        assertTrue(body.contains("Content-Type: audio/mp4\r\n\r\nPAYLOAD"))
+        assertTrue(body.endsWith("\r\n--BX--\r\n"))
+    }
+
+    @Test
+    fun stt_uploads_multipart_and_returns_the_transcript() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
+        }
+        Session.binExec = { url, method, body, contentType, auth ->
+            assertTrue(url.endsWith("/voice/stt"))
+            assertEquals("POST", method)
+            assertTrue(contentType!!.startsWith("multipart/form-data; boundary="))
+            assertTrue(String(body!!).contains("filename=\"clip.m4a\""))
+            assertEquals("a1", auth)
+            200 to """{"transcript":"i feel calm"}""".toByteArray()
+        }
+        assertEquals("i feel calm", Api.stt("AUDIO".toByteArray()))
+    }
+
+    @Test
+    fun tts_rotates_once_on_401_and_returns_bytes() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
+        }
+        var attempts = 0
+        Session.binExec = { url, _, _, _, _ ->
+            assertTrue(url.endsWith("/voice/tts"))
+            attempts++
+            if (attempts == 1) 401 to """{"detail":"stale"}""".toByteArray()
+            else 200 to byteArrayOf(0x49, 0x44, 0x33)   // "ID3"
+        }
+        val mp3 = Api.tts("hello")
+        assertEquals(3, mp3.size)
+        assertEquals("one rotation retry", 2, attempts)
+    }
+
     @Test
     fun sse_surfaces_the_error_detail_on_persistent_failure() = runTest {
         val store = FakeStore("refresh_token" to "r1")
