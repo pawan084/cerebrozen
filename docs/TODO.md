@@ -59,9 +59,15 @@ accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
   toggle + pre-fill (user still confirms; `source: healthkit` flows to the server),
   PRIVACY_LABELS row updated. Never writes to HealthKit; no PHI in iCloud.
   2026-07-03. Portal App ID capability = owner item above.
-- [ ] Check instrument licensing before using ISI/PSQI verbatim (both copyrighted;
-  commercial use needs permission) — until then, the plain-language 1–5 baseline returns
-  contextually and feeds `sleep_logs`.
+- [x] Instrument licensing CHECKED (2026-07-07): both are paid-license for
+  commercial products — **PSQI** © U. Pittsburgh (free non-commercial only;
+  commercial license via Pitt Office of Technology Management; no modifications
+  without written permission); **ISI** © C.M. Morin, distributed by Mapi
+  Research Trust/ePROVIDE (license agreement + user fee for commercial use;
+  translations via Mapi/ICON). Verdict: keep NOT shipping either verbatim — the
+  own-wording plain-language 1–5 baseline stays (details + sources in
+  [SLEEP_TRACKING.md](SLEEP_TRACKING.md) non-goals). Owner: license via
+  Pitt/Mapi only if a validated instrument ever becomes a product requirement.
 
 ### Strategy-doc adoptions (2026-07-03) — remaining decisions/work
 - [x] **Analytics vs "no trackers" promise** — DECIDED + shipped 2026-07-04:
@@ -282,7 +288,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   (Owner: create the mailbox.)
 - [x] Breach-notification runbook — 2026-07-04: [BREACH_RUNBOOK.md](BREACH_RUNBOOK.md)
   (roles, statutory clock incl. CERT-In 6 h today, templates, preparedness checklist).
-- [ ] Processor security clauses with LLM/voice/email/SMS vendors (Rule 6(1)(f)).
+- [ ] Processor security clauses with LLM/voice/email/SMS vendors (Rule 6(1)(f)) —
+  **prepared 2026-07-07**: per-vendor table + 6-point clause checklist drafted in
+  [DPDP_COMPLIANCE.md](DPDP_COMPLIANCE.md) §4; what's left is pure owner execution
+  (accept each vendor's self-serve DPA, archive the PDFs, record the no-training
+  settings) before 13 May 2027.
 - [ ] DPIIT startup recognition (eligibility for the s. 17(3) exemption if an SDF class
   notification ever covers wellness apps).
 - [x] Localize consent/notice screens — 2026-07-07: a "notice language" picker ON
@@ -406,8 +416,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   + `data_extraction_rules` exclude the refresh token + personal-data cache from
   cloud backup AND device transfer; release stays HTTPS-only with the prod API
   baked in). Play submission runbook + Data-Safety mapping + owner checklist in
-  [ANDROID_RELEASE.md](ANDROID_RELEASE.md). R8 minify left off (needs a device
-  smoke pass before enabling).
+  [ANDROID_RELEASE.md](ANDROID_RELEASE.md). R8 minify ENABLED 2026-07-07
+  (+ resource shrinking): APK 13.3 MB → 2.5 MB (−81%); emulator-smoked on a
+  debug-signed release build (launch → funnel → auth incl. inert Google path,
+  zero AndroidRuntime errors) — owner repeats the QA pass on a real device
+  before Play upload.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

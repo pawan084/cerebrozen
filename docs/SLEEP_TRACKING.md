@@ -94,10 +94,21 @@ enum, `wind_down` nudge kind, `log_sleep` widget kind — backend + iOS in one c
 
 - No microphone/accelerometer overnight sensing, no smart alarm, no snore detection.
 - No "sleep score" implying measurement precision; trends are shown as ranges/dots.
-- No ISI/PSQI verbatim in-product until licensing is verified (both instruments carry
-  copyright; commercial use typically needs permission — tracked in TODO). A
-  plain-language 1–5 baseline (already designed, removed from onboarding) returns
-  contextually instead and feeds the same `sleep_logs`/insights pipeline.
+- No ISI/PSQI verbatim in-product — licensing VERIFIED 2026-07-07, both are
+  paid-license for commercial products, so the exclusion stands:
+  - **PSQI**: © University of Pittsburgh. Free only for non-commercial research/
+    education; commercial products need a paid license from Pitt's Office of
+    Technology Management (contact via [sleep.pitt.edu/psqi](https://www.sleep.pitt.edu/psqi);
+    also distributed via [Mapi ePROVIDE](https://eprovide.mapi-trust.org/instruments/pittsburgh-sleep-quality-index)).
+    No modifications permitted without written permission.
+  - **ISI**: © C. M. Morin (1993/1996), distributed by Mapi Research Trust
+    ([ePROVIDE](https://eprovide.mapi-trust.org/instruments/insomnia-severity-index-questionnaire-3));
+    commercial (and funded-academic) use requires a license agreement + user fee;
+    translations must go through Mapi/ICON linguistic validation.
+  - Our plain-language 1–5 baseline (own wording, not derived from either
+    instrument's items) returns contextually instead and feeds the same
+    `sleep_logs`/insights pipeline. If a validated instrument ever becomes a
+    product requirement, license first (owner: budget a Mapi/Pitt fee).
 
 ## 4. Why this strengthens the product story
 

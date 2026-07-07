@@ -53,7 +53,40 @@
 - **Investor angle:** a documented DPDP-readiness posture is the diligence artifact
   referenced by INVESTOR_READINESS.md gap #8 — most India consumer apps won't have one.
 
-## 4. Open items to watch
+## 4. Processor contracts — Rule 6(1)(f) checklist (drafted 2026-07-07)
+
+s. 8(2) + Rule 6(1)(f): a Data Fiduciary may engage a Data Processor only under a
+**valid contract** with security safeguards. Our processors (the graceful-degradation
+seams — each optional, key-gated):
+
+| Processor | Personal data it sees | Standard terms to rely on / sign |
+| --- | --- | --- |
+| OpenAI (LLM) | chat/journal excerpts, plan signals (consent-gated) | Business/API terms + **DPA** (no training on API data by default — record that setting) |
+| Anthropic (LLM, alt) | same | Commercial terms + DPA |
+| Deepgram (STT) | voice audio | DPA; disable model-improvement data sharing |
+| ElevenLabs (TTS) | reply text only (no user identity needed) | DPA |
+| SMTP provider (email) | email address, nudge/verification text | provider DPA |
+| Twilio (SMS) | trusted-contact phone numbers, crisis alert text | Twilio DPA (self-serve) |
+| Hosting/VPS + Postgres host | everything at rest | hosting DPA; document encryption-at-rest + access control |
+
+Per-vendor clause checklist (what each signed agreement must contain):
+1. Processing **only on documented instructions** (our API calls), no secondary use —
+   explicitly: **no training on our users' content**.
+2. Security safeguards matching Rule 6(1): encryption in transit + at rest, access
+   control, logging.
+3. **Breach notification to us without undue delay** (we carry the 72 h/CERT-In 6 h
+   clocks — see [BREACH_RUNBOOK.md](BREACH_RUNBOOK.md)).
+4. Deletion/return of personal data on termination AND on our deletion requests
+   (mirrors s. 8(7) + our cascade delete + `deletion_ledger`).
+5. Sub-processor transparency (list + change notice).
+6. Cross-border: DPDP allows transfer except to blacklisted countries (s. 16 — none
+   notified yet); record each vendor's processing regions anyway.
+
+**Owner action** (before 13 May 2027; most are self-serve checkbox DPAs in the vendor
+dashboards): accept/countersign each vendor's DPA, save PDFs to a compliance folder,
+and record the "no-training" configuration for OpenAI/Deepgram. No code work.
+
+## 5. Open items to watch
 
 13-vs-14 date discrepancy (plan to 13 May 2027) · Rule 8(3) scope (logs vs data) ·
 age-assurance guidance · any risk-threshold guidance on breach reporting · pending
