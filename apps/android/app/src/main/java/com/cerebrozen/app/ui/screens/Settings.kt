@@ -195,6 +195,18 @@ fun PrivacyScreen(onBack: () -> Unit) {
                 }
                 Switch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
             }
+            var lockOn by remember { mutableStateOf(Session.prefGet("journal_locked") == "true") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Lock journal", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Text("Require your screen lock to open entries",
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                Switch(checked = lockOn, onCheckedChange = { v ->
+                    lockOn = v; Session.prefPut("journal_locked", v.toString())
+                })
+            }
         }
     }
 }

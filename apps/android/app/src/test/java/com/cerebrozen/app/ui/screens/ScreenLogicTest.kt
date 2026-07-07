@@ -168,4 +168,59 @@ class ScreenLogicTest {
         assertEquals(entries, filterEntries(entries, "  "))   // blank query = all
         assertEquals(emptyList<Entry>(), filterEntries(entries, "nope"))
     }
+
+    // ── Games + local stores ────────────────────────────────────────
+    private class FakeStore : com.cerebrozen.app.net.Session.Store {
+        val m = mutableMapOf<String, String>()
+        override fun getString(key: String) = m[key]
+        override fun putString(key: String, value: String) { m[key] = value }
+        override fun remove(key: String) { m.remove(key) }
+        override fun keys() = m.keys.toSet()
+    }
+
+    private fun freshStore() = com.cerebrozen.app.net.Session
+        .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
+
+    @Test
+    fun buildDeck_holds_exactly_two_of_each_emoji() {
+        val deck = buildDeck(MEMORY_EMOJIS, kotlin.random.Random(7))
+        assertEquals(MEMORY_EMOJIS.size * 2, deck.size)
+        MEMORY_EMOJIS.forEach { e -> assertEquals(2, deck.count { it == e }) }
+    }
+
+    @Test
+    fun flowerFor_is_deterministic_and_cycles_the_palette() {
+        assertEquals(flowerFor(0), FLOWERS[0])
+        assertEquals(flowerFor(FLOWERS.size), FLOWERS[0])   // wraps
+        assertEquals(flowerFor(2), flowerFor(2))
+    }
+
+    @Test
+    fun sleepFavs_toggle_round_trips_through_the_store() {
+        freshStore()
+        assertEquals(emptySet<String>(), SleepFavs.all())
+        assertEquals(setOf("Rain over hills"), SleepFavs.toggle("Rain over hills"))
+        assertEquals(setOf("Rain over hills"), SleepFavs.all())          // persisted
+        assertEquals(emptySet<String>(), SleepFavs.toggle("Rain over hills"))  // off again
+    }
+
+    @Test
+    fun gratitude_appends_trims_and_caps() {
+        freshStore()
+        assertEquals(listOf("Morning tea"), Gratitude.add("  Morning tea  "))
+        assertEquals(listOf("Morning tea"), Gratitude.add("   "))   // blank ignored
+        repeat(60) { Gratitude.add("thing $it") }
+        assertEquals(50, Gratitude.all().size)                      // capped
+        assertEquals("thing 59", Gratitude.all().last())
+    }
+
+    @Test
+    fun baseline_saves_once_and_keeps_the_first_date() {
+        freshStore()
+        assertEquals(null, BaselineStore.get())
+        BaselineStore.set(4, 2, "2026-07-07")
+        assertEquals(Triple(4, 2, "2026-07-07"), BaselineStore.get())
+        BaselineStore.set(1, 5, "2026-08-01")   // re-save: values move, date doesn't
+        assertEquals(Triple(1, 5, "2026-07-07"), BaselineStore.get())
+    }
 }

@@ -67,6 +67,8 @@ dependencies {
     // Async image loading (matches iOS AsyncImage — real content photos with a
     // gradient fallback when the url is empty/unreachable).
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // Journal lock (screen-lock/biometric gate — mirrors iOS Face ID lock).
+    implementation("androidx.biometric:biometric:1.1.0")
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

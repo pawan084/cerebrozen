@@ -26,10 +26,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
@@ -111,6 +113,8 @@ internal fun ContentRow(
     icon: ImageVector = Icons.Outlined.GraphicEq,
     imageUrl: String = "",
     onTap: (() -> Unit)? = null,
+    fav: Boolean? = null,
+    onFav: (() -> Unit)? = null,
 ) {
     SectionCard {
         val mod = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
@@ -137,6 +141,14 @@ internal fun ContentRow(
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
+                if (onFav != null && fav != null) {
+                    Icon(
+                        if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (fav) "Unfavourite $title" else "Favourite $title",
+                        tint = Warm,
+                        modifier = Modifier.size(22.dp).clickable { onFav() },
+                    )
+                }
                 if (onTap != null) {
                     Icon(
                         if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -156,6 +168,8 @@ internal fun ContentList(
     metaLabel: (Int) -> String,
     icon: ImageVector = Icons.Outlined.GraphicEq,
     onItemTap: ((String) -> Unit)? = null,
+    favs: Set<String>? = null,
+    onFav: ((String) -> Unit)? = null,
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -178,6 +192,8 @@ internal fun ContentList(
                 icon = icon,
                 imageUrl = c.optString("image_url"),
                 onTap = onItemTap?.let { { it(title) } },
+                fav = favs?.contains(title),
+                onFav = onFav?.let { { it(title) } },
             )
         }
     }
@@ -197,6 +213,17 @@ fun InsightsScreen(onBack: () -> Unit) {
     }
     SubPage("Insights · this week", headline, onBack) {
         if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // The honest "before" — renders only when a real baseline was saved.
+        BaselineStore.get()?.let { (stress, sleep, date) ->
+            SectionCard {
+                Text("Your starting point", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(
+                    "Stress ${STRESS_WORDS[stress - 1].lowercase()} ($stress/5) · sleep ${SLEEP_WORDS[sleep - 1].lowercase()} ($sleep/5)" +
+                        if (date.isNotBlank()) " · recorded $date" else "",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+            }
+        }
         SectionCard {
             val m = metrics
             if (m == null || m.length() == 0) {
@@ -237,15 +264,27 @@ fun ProgramsScreen(onBack: () -> Unit) = SubPage("Guided journeys", "Programs", 
 fun SoundsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val play: (String) -> Unit = { title -> Player.toggle(context, title) }
+    var favs by remember { mutableStateOf(SleepFavs.all()) }
+    val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
     SubPage("Sound library", "Sounds", onBack) {
         NowPlayingBar()
         Text("Soundscapes and sleep stories to slow a racing mind.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        if (favs.isNotEmpty()) {
+            Text("Favourites", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            favs.sorted().forEach { title ->
+                ContentRow(
+                    title, "", "Favourite", false,
+                    playing = Player.nowPlaying == title && Player.isPlaying,
+                    onTap = { play(title) }, fav = true, onFav = { toggleFav(title) },
+                )
+            }
+        }
         ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" },
-            icon = Icons.Outlined.GraphicEq, onItemTap = play)
+            icon = Icons.Outlined.GraphicEq, onItemTap = play, favs = favs, onFav = toggleFav)
         Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
-            icon = Icons.Outlined.Bedtime, onItemTap = play)
+            icon = Icons.Outlined.Bedtime, onItemTap = play, favs = favs, onFav = toggleFav)
         Text("Tap to play a calming ambient bed — narrated stories arrive with the content pipeline.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
@@ -263,8 +302,17 @@ internal fun NowPlayingBar() {
                 Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
             }
-            TextButton(onClick = { if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title) }) {
-                Text(if (Player.isPlaying) "Pause" else "Play", color = Periwinkle)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Sleep auto-stop: off → 15 → 30 → 45 → 60 min, fades then stops.
+                TextButton(onClick = { Player.cycleTimer(context) }) {
+                    Text(
+                        if (Player.timerMinutes > 0) "Timer ${Player.timerMinutes}m" else "Timer off",
+                        color = if (Player.timerMinutes > 0) Cyan else TextMuted,
+                    )
+                }
+                TextButton(onClick = { if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title) }) {
+                    Text(if (Player.isPlaying) "Pause" else "Play", color = Periwinkle)
+                }
             }
         }
     }
@@ -280,6 +328,16 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
     Grounding()
     ContentRow("Bubble pop", "Pop to release tension", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblepop") })
+    ContentRow("Bubble wrap", "A fresh sheet, endlessly poppable", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblewrap") })
+    ContentRow("Memory match", "Find the pairs, no clock", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("memorymatch") })
+    ContentRow("Pattern glow", "Watch the light, repeat it", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("patternglow") })
+    ContentRow("Zen ripples", "Tap the water, let it widen", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("zenripples") })
+    ContentRow("Gratitude garden", "A flower for every thank-you", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("gratitude") })
 }
 
 private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)

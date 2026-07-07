@@ -41,16 +41,21 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
+import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
+import com.cerebrozen.app.ui.screens.BubbleWrapScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GamesScreen
+import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
+import com.cerebrozen.app.ui.screens.MemoryMatchScreen
 import com.cerebrozen.app.ui.screens.Onboarding
+import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
 import com.cerebrozen.app.ui.screens.PrivacyScreen
@@ -61,6 +66,7 @@ import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.YouScreen
+import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Night
@@ -155,6 +161,12 @@ fun CereBroApp() {
             composable("sounds") { SoundsScreen(onBack = back) }
             composable("games") { GamesScreen(onOpen = open, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
+            composable("bubblewrap") { BubbleWrapScreen(onBack = back) }
+            composable("memorymatch") { MemoryMatchScreen(onBack = back) }
+            composable("patternglow") { PatternGlowScreen(onBack = back) }
+            composable("zenripples") { ZenRipplesScreen(onBack = back) }
+            composable("gratitude") { GratitudeGardenScreen(onBack = back) }
+            composable("baseline") { BaselineScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }

@@ -27,7 +27,9 @@ class AmbientService : Service() {
         const val ACTION_PLAY = "com.cerebrozen.app.PLAY"
         const val ACTION_PAUSE = "com.cerebrozen.app.PAUSE"
         const val ACTION_STOP = "com.cerebrozen.app.STOP"
+        const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_MINUTES = "minutes"
         private const val CHANNEL = "ambient_playback"
         private const val NOTIF = 77
     }
@@ -35,6 +37,8 @@ class AmbientService : Service() {
     private var mp: MediaPlayer? = null
     private var session: MediaSession? = null
     private var title = "Ambient bed"
+    // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
+    private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -49,8 +53,26 @@ class AmbientService : Service() {
             ACTION_PLAY -> { intent.getStringExtra(EXTRA_TITLE)?.let { title = it }; play() }
             ACTION_PAUSE -> pause()
             ACTION_STOP -> stopAll()
+            ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
         }
         return START_STICKY
+    }
+
+    private fun setTimer(minutes: Int) {
+        timerHandler.removeCallbacksAndMessages(null)
+        mp?.setVolume(1f, 1f)
+        Player.setTimerState(minutes)
+        if (minutes > 0) {
+            val untilFade = (minutes * 60_000L - 10_000L).coerceAtLeast(1_000L)
+            timerHandler.postDelayed({ fadeOut(10) }, untilFade)
+        }
+    }
+
+    private fun fadeOut(stepsLeft: Int) {
+        val player = mp
+        if (stepsLeft <= 0 || player == null) { stopAll(); return }
+        player.setVolume(stepsLeft / 10f, stepsLeft / 10f)
+        timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
     }
 
     private fun play() {
@@ -73,6 +95,8 @@ class AmbientService : Service() {
     }
 
     private fun stopAll() {
+        timerHandler.removeCallbacksAndMessages(null)
+        Player.setTimerState(0)
         mp?.release(); mp = null
         Player.setState(null, false)
         session?.isActive = false; session?.release(); session = null

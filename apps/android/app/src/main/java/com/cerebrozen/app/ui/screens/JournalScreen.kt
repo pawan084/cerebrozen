@@ -15,8 +15,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -45,6 +51,30 @@ internal fun parseEntries(rows: JSONArray): List<Entry> =
         )
     }
 
+/** Authenticate with any screen lock (biometric or PIN/pattern). No lock set
+ * up → unlock gracefully, mirroring iOS (emulators/tests never get stuck). */
+private fun requestJournalUnlock(activity: FragmentActivity?, onResult: (Boolean) -> Unit) {
+    if (activity == null) { onResult(true); return }
+    val auths = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    if (BiometricManager.from(activity).canAuthenticate(auths) != BiometricManager.BIOMETRIC_SUCCESS) {
+        onResult(true); return
+    }
+    BiometricPrompt(
+        activity, ContextCompat.getMainExecutor(activity),
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onResult(true)
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onResult(false)
+        },
+    ).authenticate(
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock journal")
+            .setSubtitle("Private entries stay behind your screen lock")
+            .setAllowedAuthenticators(auths)
+            .build(),
+    )
+}
+
 /** Case-insensitive title/body filter (mirrors iOS journal search). */
 internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
     val q = query.trim()
@@ -65,8 +95,28 @@ fun JournalScreen() {
     var promptIdx by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    // Journal lock (mirrors iOS Face ID lock): opt-in via Privacy & memory;
+    // unlocks per visit. Devices without any screen lock unlock gracefully so
+    // emulators/tests are never blocked (same contract as iOS).
+    val lockOn = Session.prefGet("journal_locked") == "true"
+    var unlocked by remember { mutableStateOf(!lockOn) }
+    val activity = LocalContext.current as? FragmentActivity
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
+
+    if (!unlocked) {
+        Page("Private to you", "Journal") {
+            SectionCard {
+                Text("Journal is locked", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text("Your entries stay behind your screen lock.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                PrimaryButton(text = "Unlock", modifier = Modifier.fillMaxWidth()) {
+                    requestJournalUnlock(activity) { ok -> if (ok) unlocked = true }
+                }
+            }
+        }
+        return
+    }
 
     Page("Private to you", "Journal") {
         HeroCard(

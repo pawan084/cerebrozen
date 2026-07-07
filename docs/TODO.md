@@ -455,9 +455,21 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   real LLM stream → "5-4-3-2-1 grounding" widget card → Open→Games; "log my
   mood as anxious" → interrupt card → Approve → resumed stream → mood row in
   Postgres. Unit tests 23→29 (SSE line parse, frame order, 401-rotation
-  replay, error-detail surfacing, widget parse/route). Remaining Android gaps
-  (unblocked, smaller): baseline check-in, journal biometric lock, sleep
-  favorites/timer/mixing, 5 more games.
+  replay, error-detail surfacing, widget parse/route). Final parity batch
+  (2026-07-07, all emulator-verified live): contextual baseline (Home row at
+  ≥3 real check-ins → two 1–5 scales, local-only via the Store seam, first
+  save wins the date → Insights "Your starting point" card); journal lock
+  (androidx.biometric behind a Privacy toggle — graceful unlock with no
+  screen lock enrolled, AND the real device-credential prompt verified with
+  an emulator PIN); sleep favourites (heart per row + Favourites section,
+  keyed by title) + sleep auto-stop timer (NowPlaying chip off→15→30→45→60
+  min; AmbientService fades ~10 s then stops); 5 new calm games — Memory
+  match, Pattern glow, Zen ripples, Bubble wrap, Gratitude garden
+  (persisted) — the Games hub now has 8 activities (iOS-hub parity). Unit
+  tests 29→34. **The iOS↔Android parity list is CLOSED.** Still honestly
+  blocked on the content pipeline (not code): sound mixing + per-track
+  narrated audio need multiple real audio assets; Health Connect stays
+  deferred-heavy.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

@@ -19,10 +19,27 @@ object Player {
     var isPlaying by mutableStateOf(false)
         private set
 
+    /** Sleep auto-stop timer, minutes (0 = off) — mirrors the iOS player. */
+    var timerMinutes by mutableStateOf(0)
+        private set
+
     /** Published by the service on every state change. */
     fun setState(title: String?, playing: Boolean) {
         nowPlaying = title
         isPlaying = playing
+    }
+
+    fun setTimerState(minutes: Int) { timerMinutes = minutes }
+
+    /** Off → 15 → 30 → 45 → 60 → off (same steps as the iOS sleep player). */
+    fun cycleTimer(context: Context) {
+        val next = when (timerMinutes) { 0 -> 15; 15 -> 30; 30 -> 45; 45 -> 60; else -> 0 }
+        context.startService(
+            Intent(context, AmbientService::class.java)
+                .setAction(AmbientService.ACTION_TIMER)
+                .putExtra(AmbientService.EXTRA_MINUTES, next),
+        )
+        timerMinutes = next   // optimistic; the service confirms via setTimerState
     }
 
     fun toggle(context: Context, title: String) {

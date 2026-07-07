@@ -80,6 +80,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var picked by remember { mutableStateOf<MoodOption?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var moodCount by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -96,7 +97,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             streak = s.optInt("current")
             best = s.optInt("best")
         }
-        runCatching { recent = parseRecent(Api.moods()) }
+        runCatching { val m = Api.moods(); moodCount = m.length(); recent = parseRecent(m) }
         runCatching { plan = Api.activePlan() }
     }
 
@@ -190,6 +191,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 else "Show up once a day — gentle, no pressure.",
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
+        }
+
+        // Contextual baseline (mirrors iOS): offered once a few REAL check-ins
+        // exist and only until it's saved — deliberately not an onboarding step.
+        if (moodCount >= 3 && BaselineStore.get() == null) {
+            NavRow(
+                "Your starting point",
+                "Two quick scales — see real change later",
+            ) { onOpen("baseline") }
         }
 
         if (recent.isNotEmpty()) {
