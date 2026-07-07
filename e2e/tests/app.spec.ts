@@ -29,6 +29,12 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Anxious" }).click();
     await expect(page.getByText(/Loud thoughts are real/)).toBeVisible();
 
+    // Today's plan renders the served agentic plan (auto-generated on first
+    // /plans/active — titles vary when a live LLM writes it, so assert shape:
+    // at least two real step rows; the error fallback renders exactly one).
+    await expect(page.locator(".plan-row").nth(1)).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".plan-row .plan-start").first()).toHaveText("START");
+
     // Journal: open the composer, save, the entry lands in Recent entries.
     await nav(page, "Journal").click();
     await page.getByRole("button", { name: /Write an entry/ }).click();

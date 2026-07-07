@@ -200,6 +200,13 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
   restored to the EXPLORE nav (were built but orphaned). e2e app spec asserts the
   real program title (grid-card h3 — the hero h2 mirrors it, so `getByText` was
   ambiguous), Start→Stop breathing, and Plan/Library reachability. 11/11 e2e green.
+- [x] Home "Today's plan" wired to `GET /plans/active` (2026-07-07): renders the
+  served agentic steps (sorted by order; done steps show ✓/DONE/strikethrough and
+  link to `/plan`, undone rows deep-link by step symbol — wind→Games, moon/bell→
+  Sleep, book/brain→Journal, mic/person/heart→Chat, else `/plan`); quiet
+  "Open today's plan" fallback row only on fetch failure; "Open full plan →" link.
+  e2e asserts ≥2 real step rows (LLM titles vary, so shape not text; the error
+  fallback renders exactly one row, keeping the assertion honest). 11/11 green.
 - [x] Web v1 remaining: Google (+ Apple) sign-in — done in the Design-refresh Phase 2
   (2026-07-05) via `components/AuthPanel` + `lib/social`; buttons are live once the owner
   sets `NEXT_PUBLIC_GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_APPLE_SERVICES_ID`.

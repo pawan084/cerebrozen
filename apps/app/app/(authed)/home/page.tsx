@@ -18,12 +18,23 @@ const MOODS = [
 type Streak = { current: number; best: number; week: { date: string; active: boolean }[] };
 type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
+type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
+type Plan = { id: string; title: string; steps: Step[] };
 
-const PLAN = [
-  { title: "Ease into the morning", sub: "Guided breathwork · 4 min", href: "/games", color: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
-  { title: "Midday reset", sub: "Box breathing · 2 min", href: "/games", color: "linear-gradient(135deg,#8fe6ee,#4fd8e0)" },
-  { title: "Sleep wind-down", sub: "Story · 12 min", href: "/sleep", color: "linear-gradient(135deg,#f0a48c,#e08a9a)" },
+// Step wells cycle these gradients; the step's SF-symbol name picks the web
+// surface that actually runs it (breathing → Games, wind-down → Sleep, …).
+const STEP_COLORS = [
+  "linear-gradient(135deg,#8a7bf0,#5b52c9)",
+  "linear-gradient(135deg,#8fe6ee,#4fd8e0)",
+  "linear-gradient(135deg,#f0a48c,#e08a9a)",
 ];
+function stepHref(symbol: string) {
+  if (symbol.startsWith("wind")) return "/games";
+  if (symbol.startsWith("moon") || symbol === "bell") return "/sleep";
+  if (symbol === "book" || symbol === "brain") return "/journal";
+  if (symbol === "mic" || symbol.startsWith("person") || symbol === "heart") return "/chat";
+  return "/plan";
+}
 const JUMP = [
   { label: "Talk now", href: "/chat", icon: Icon.talk, bg: "linear-gradient(160deg,rgba(138,123,240,0.35),rgba(255,255,255,0.02))" },
   { label: "Breathe", href: "/games", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(143,230,238,0.28),rgba(255,255,255,0.02))" },
@@ -38,12 +49,15 @@ export default function Home() {
   const [streak, setStreak] = useState<Streak | null>(null);
   const [moods, setMoods] = useState<Mood[]>([]);
   const [reflection, setReflection] = useState<string>("");
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [planFailed, setPlanFailed] = useState(false);
 
   useEffect(() => {
     api("/auth/me").then((m: any) => setName(m.name || "")).catch(() => {});
     api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
     api<Mood[]>("/moods?limit=14").then(setMoods).catch(() => {});
     api<Entry[]>("/journal?limit=1").then((e) => e[0]?.body && setReflection(e[0].body)).catch(() => {});
+    api<Plan>("/plans/active").then(setPlan).catch(() => setPlanFailed(true));
   }, []);
 
   async function pick(m: (typeof MOODS)[number]) {
@@ -84,20 +98,43 @@ export default function Home() {
               <p className="checkin-note">{resp || "Tap how you're feeling — there's no wrong answer."}</p>
             </section>
 
-            {/* Today's plan */}
+            {/* Today's plan — the served agentic plan, same one /plan toggles. */}
             <div className="sec-head">
               <h2 className="serif-h">Today's plan</h2>
               <span className="sec-date">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
             </div>
             <div className="plan-list">
-              {PLAN.map((s) => (
-                <Link key={s.title} href={s.href} className="plan-row">
-                  <span className="plan-play" style={{ background: s.color }}><Icon.play size={16} /></span>
-                  <span className="plan-body"><strong>{s.title}</strong><small>{s.sub}</small></span>
+              {(plan?.steps ?? [])
+                .slice()
+                .sort((a, b) => a.order - b.order)
+                .map((s, i) => (
+                  <Link key={s.id} href={s.done ? "/plan" : stepHref(s.symbol)} className="plan-row">
+                    <span
+                      className="plan-play"
+                      style={{ background: s.done ? "rgba(255,255,255,0.08)" : STEP_COLORS[i % STEP_COLORS.length], fontWeight: 700 }}
+                    >
+                      {s.done ? "✓" : <Icon.play size={16} />}
+                    </span>
+                    <span className="plan-body">
+                      <strong style={s.done ? { textDecoration: "line-through", color: "var(--muted)" } : undefined}>{s.title}</strong>
+                      <small>{s.detail}</small>
+                    </span>
+                    <span className="plan-start">{s.done ? "DONE" : "START"}</span>
+                  </Link>
+                ))}
+              {planFailed && (
+                <Link href="/plan" className="plan-row">
+                  <span className="plan-play" style={{ background: STEP_COLORS[0] }}><Icon.play size={16} /></span>
+                  <span className="plan-body"><strong>Open today's plan</strong><small>Personalized from your check-ins</small></span>
                   <span className="plan-start">START</span>
                 </Link>
-              ))}
+              )}
             </div>
+            {plan && (
+              <Link href="/plan" className="link" style={{ display: "inline-block", marginTop: 10 }}>
+                Open full plan →
+              </Link>
+            )}
 
             {/* Jump back in */}
             <div className="sec-head"><h2 className="serif-h">Jump back in</h2></div>
