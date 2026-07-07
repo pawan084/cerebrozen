@@ -15,7 +15,7 @@ from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
 from app.models.sleep import SleepLog
 from app.models.user import User
-from app.services import ai
+from app.services import ai, prompts
 
 # Curated step library used by the deterministic fallback.
 _STEP_LIBRARY = {
@@ -55,7 +55,9 @@ _TITLE_BY_GOAL = {
     "Feel less alone": "Feel more connected",
 }
 
-_SYSTEM = (
+# Registered code default — an active `prompt_templates` row overrides it live.
+_SYSTEM = prompts.register(
+    "agentic_plan",
     "You are CereBro's calm, agentic wellness planner. Given a user's goals and "
     "recent mood/journal signals, design a SHORT daily plan of 3 steps. "
     "Return JSON: {\"title\": str, \"focus\": str, \"rationale\": str, "
@@ -149,7 +151,7 @@ async def generate_plan(db: AsyncSession, user: User) -> Plan:
         f"Sleep diary (self-reported): {_sleep_note(sleep_rows) or 'none yet'}\n"
         f"Companion style: {user.companion}"
     )
-    ai_spec = await ai.complete_json(_SYSTEM, prompt, max_tokens=900)
+    ai_spec = await ai.complete_json(await prompts.get("agentic_plan", db), prompt, max_tokens=900)
     if isinstance(ai_spec, dict) and ai_spec.get("steps"):
         spec = ai_spec
         source = "ai"

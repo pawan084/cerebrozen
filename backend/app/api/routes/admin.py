@@ -14,6 +14,7 @@ from app.models.content import ContentItem
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
+from app.models.prompt import PromptTemplate
 from app.models.safety import SafetyEvent
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
@@ -26,6 +27,7 @@ from app.schemas.content_data import (
 )
 from app.schemas.user import UserOut
 from app.services import metrics, nudges
+from app.services import prompts as prompt_registry
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -287,3 +289,94 @@ async def list_nudges(
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
     sent = await nudges.dispatch_due(db)
     return {"sent": sent}
+
+
+# ── Prompt registry (versioned LLM prompts; services/prompts.py) ─────────
+class PromptSave(BaseModel):
+    template: str = Field(min_length=1, max_length=8000)
+    notes: str = Field(default="", max_length=255)
+
+
+def _prompt_row(p: PromptTemplate) -> dict:
+    return {
+        "version": p.version,
+        "active": p.active,
+        "notes": p.notes,
+        "created_at": p.created_at,
+        "template": p.template,
+    }
+
+
+@router.get("/prompts")
+async def list_prompts(db: AsyncSession = Depends(get_db)):
+    """Every registered prompt with its code default, live template, and full
+    version history. `source` says what production is actually serving."""
+    rows = (
+        await db.scalars(select(PromptTemplate).order_by(PromptTemplate.name, PromptTemplate.version.desc()))
+    ).all()
+    by_name: dict[str, list[PromptTemplate]] = {}
+    for row in rows:
+        by_name.setdefault(row.name, []).append(row)
+
+    out = []
+    for name in sorted(set(prompt_registry.registered()) | set(by_name)):
+        versions = by_name.get(name, [])
+        active = next((v for v in versions if v.active), None)
+        out.append({
+            "name": name,
+            "source": "registry" if active else "code_default",
+            "active_version": active.version if active else None,
+            "template": active.template if active else prompt_registry.default_for(name),
+            "default_template": prompt_registry.default_for(name),
+            "versions": [_prompt_row(v) for v in versions],
+        })
+    return out
+
+
+@router.post("/prompts/{name}", status_code=201)
+async def save_prompt(name: str, payload: PromptSave, db: AsyncSession = Depends(get_db)):
+    """Save a new immutable version and activate it. Names are curated: only
+    prompts the code registered (or that already have rows) are editable."""
+    known = name in prompt_registry.registered()
+    versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()
+    if not known and not versions:
+        raise HTTPException(status_code=404, detail="Unknown prompt")
+    for row in versions:
+        row.active = False
+    new = PromptTemplate(
+        name=name,
+        version=max((v.version for v in versions), default=0) + 1,
+        template=payload.template,
+        notes=payload.notes,
+        active=True,
+    )
+    db.add(new)
+    await db.commit()
+    await db.refresh(new)
+    return _prompt_row(new) | {"name": name}
+
+
+@router.post("/prompts/{name}/versions/{version}/activate")
+async def activate_prompt_version(name: str, version: int, db: AsyncSession = Depends(get_db)):
+    """Roll back/forward by activating an existing version."""
+    versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()
+    target = next((v for v in versions if v.version == version), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    for row in versions:
+        row.active = row.version == version
+    await db.commit()
+    return _prompt_row(target) | {"name": name}
+
+
+@router.post("/prompts/{name}/revert")
+async def revert_prompt(name: str, db: AsyncSession = Depends(get_db)):
+    """Deactivate every stored version — the code default serves again.
+    History is kept, so any version can be re-activated later."""
+    versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()
+    if not versions and name not in prompt_registry.registered():
+        raise HTTPException(status_code=404, detail="Unknown prompt")
+    for row in versions:
+        row.active = False
+    await db.commit()
+    return {"name": name, "source": "code_default", "template": prompt_registry.default_for(name)}

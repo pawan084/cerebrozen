@@ -412,6 +412,16 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
   reminder.
+- [x] Prompt registry — 2026-07-07: versioned, admin-editable LLM prompts.
+  `prompt_templates` (Alembic `f61b3d8e4c92`; immutable versions per name, one
+  active) + `services/prompts.py` (modules register code defaults at import;
+  call sites read `await prompts.get(name)` — active row overrides, any miss or
+  DB error falls back to the default so the LLM path can't break). All four
+  prompts wired: `agentic_plan`, `safety_classifier`, `assessment_topics`,
+  `oracle_system` (the Oracle node re-reads per turn — edits apply without a
+  graph rebuild). Admin: `/admin/prompts` (list/save/activate/revert) + a
+  "Prompts" dashboard tab (edit → new version, rollback, revert to code
+  default). Prompt changes reach production without a deploy.
 - [ ] Content depth + clinical credibility (SHIP_READINESS.md "honest gaps").
 - [x] `mcp.cerebrozen.in` — dropped 2026-07-04 (dangling subdomain removed from
   the Caddyfile comment; owner: delete the DNS record).

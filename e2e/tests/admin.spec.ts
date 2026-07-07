@@ -70,6 +70,25 @@ test.describe("Admin dashboard", () => {
     await expect(page.locator("tr", { hasText: edited })).toHaveCount(0);
   });
 
+  test("prompt registry: edit goes live as a version, revert restores the code default", async ({ page }) => {
+    await nav(page, "Prompts").click();
+    await expect(page.getByRole("heading", { name: "Prompt registry" })).toBeVisible();
+    // The four production prompts register at import time — served from code.
+    const card = page.locator(".card", { hasText: "assessment_topics" });
+    await expect(card.getByText("code default")).toBeVisible();
+
+    // Save an override: becomes v1 and active.
+    await card.getByRole("button", { name: "Edit" }).click();
+    await card.getByLabel("Template for assessment_topics").fill(`E2E registry prompt ${Date.now()}`);
+    await card.getByRole("button", { name: /save as new version/i }).click();
+    await expect(card.getByText(/v\d+ active/)).toBeVisible();
+
+    // Revert: the code default serves again; history stays listed.
+    await card.getByRole("button", { name: /revert to code default/i }).click();
+    await expect(card.getByText("code default")).toBeVisible();
+    await expect(card.locator("tr", { hasText: "v1" }).first()).toBeVisible();
+  });
+
   test("nudges can be authored for all active users", async ({ page }) => {
     await nav(page, "Nudges").click();
     const title = `E2E announcement ${Date.now()}`;

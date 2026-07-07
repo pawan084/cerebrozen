@@ -13,7 +13,7 @@ backend.
 """
 from __future__ import annotations
 
-from app.services import ai
+from app.services import ai, prompts
 
 DEFAULT_TOPIC_COUNT = 8
 MIN_TOPIC_COUNT = 4
@@ -80,7 +80,9 @@ _GENERAL_TOPICS = [
     "What I want to let go",
 ]
 
-_SYSTEM = (
+# Registered code default — an active `prompt_templates` row overrides it live.
+_SYSTEM = prompts.register(
+    "assessment_topics",
     "You are a careful psychological conversation planner for CereBro, a calm, "
     "non-clinical mental-wellness app. From a person's self-reflection (the "
     "motivations and goals they chose), propose short conversation topics they "
@@ -171,7 +173,9 @@ async def generate_topics(
 
     topics: list[str] = []
     source = "rule"
-    data = await ai.complete_json(_SYSTEM, _prompt(mots, gls, language, count), max_tokens=500)
+    data = await ai.complete_json(
+        await prompts.get("assessment_topics"), _prompt(mots, gls, language, count), max_tokens=500
+    )
     if isinstance(data, dict) and isinstance(data.get("topics"), list):
         seen: set[str] = set()
         for item in data["topics"]:

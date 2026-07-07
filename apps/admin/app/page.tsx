@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { api, clearToken, getToken, login, setToken } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
-type Tab = "overview" | "analytics" | "users" | "content" | "nudges" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "prompts" | "nudges" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "analytics", label: "Analytics" },
   { key: "users", label: "Users" },
   { key: "content", label: "Content" },
+  { key: "prompts", label: "Prompts" },
   { key: "nudges", label: "Nudges" },
   { key: "safety", label: "Safety" },
   { key: "waitlist", label: "Waitlist" },
@@ -71,6 +72,7 @@ export default function AdminPage() {
         {tab === "analytics" && <Analytics />}
         {tab === "users" && <Users />}
         {tab === "content" && <Content />}
+        {tab === "prompts" && <PromptsTab />}
         {tab === "nudges" && <NudgesTab />}
         {tab === "safety" && <Safety />}
         {tab === "waitlist" && <WaitlistTab />}
@@ -589,6 +591,123 @@ function Content() {
         </table>
         {data && data.length === 0 && <div className="empty">No content yet.</div>}
       </div>
+    </>
+  );
+}
+
+// Versioned LLM prompt registry (backend services/prompts.py): every save is a
+// new immutable version, rollback = activate an old one, revert = the code
+// default serves again. Prompt edits reach production without a deploy.
+function PromptsTab() {
+  const { data, err, reload } = useData<any[]>(() => api("/admin/prompts"));
+  const [open, setOpen] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function startEdit(p: any) {
+    setOpen(p.name);
+    setDraft(p.template);
+    setNotes("");
+  }
+
+  async function save(name: string) {
+    if (!draft.trim()) return;
+    setBusy(true);
+    try {
+      await api(`/admin/prompts/${name}`, { method: "POST", body: JSON.stringify({ template: draft, notes }) });
+      setOpen(null);
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function activate(name: string, version: number) {
+    await api(`/admin/prompts/${name}/versions/${version}/activate`, { method: "POST" });
+    reload();
+  }
+  async function revert(name: string) {
+    await api(`/admin/prompts/${name}/revert`, { method: "POST" });
+    setOpen(null);
+    reload();
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title serif">Prompt registry</h1>
+          <div className="page-sub" style={{ marginBottom: 0 }}>
+            Versioned LLM prompts — edits go live without a deploy; the code default is always the safe floor.
+          </div>
+        </div>
+      </div>
+      {err && <div className="empty">{err}</div>}
+      {(data || []).map((p) => (
+        <div className="card" key={p.name} style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div>
+              <strong className="serif" style={{ fontSize: 16 }}>{p.name}</strong>{" "}
+              {p.source === "registry"
+                ? <span className="tag elevated">v{p.active_version} active</span>
+                : <span className="tag ok">code default</span>}
+            </div>
+            <div className="row-actions">
+              {open === p.name
+                ? <button className="btn btn-ghost btn-sm" onClick={() => setOpen(null)}>Close</button>
+                : <button className="btn btn-ghost btn-sm" onClick={() => startEdit(p)}>Edit</button>}
+              {p.source === "registry" && (
+                <button className="btn btn-ghost btn-sm" onClick={() => revert(p.name)}>Revert to code default</button>
+              )}
+            </div>
+          </div>
+          <p style={{ whiteSpace: "pre-wrap", opacity: 0.75, margin: "10px 0 0", fontSize: 13 }}>
+            {open === p.name ? "" : p.template.length > 400 ? `${p.template.slice(0, 400)}…` : p.template}
+          </p>
+          {open === p.name && (
+            <div style={{ marginTop: 10 }}>
+              <label>Template</label>
+              <textarea
+                aria-label={`Template for ${p.name}`}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={10}
+                style={{ width: "100%", fontFamily: "monospace", fontSize: 12.5 }}
+              />
+              <label>Notes (what changed)</label>
+              <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={255} />
+              <div style={{ marginTop: 10 }}>
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => save(p.name)}>
+                  {busy ? "Saving…" : "Save as new version"}
+                </button>
+              </div>
+            </div>
+          )}
+          {p.versions.length > 0 && (
+            <table style={{ marginTop: 12 }}>
+              <thead><tr><th>Version</th><th>Notes</th><th>Created</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {p.versions.map((v: any) => (
+                  <tr key={v.version}>
+                    <td>v{v.version}</td>
+                    <td>{v.notes || "—"}</td>
+                    <td>{fmtDate(v.created_at)}</td>
+                    <td>{v.active ? <span className="tag elevated">active</span> : "—"}</td>
+                    <td>
+                      {!v.active && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => activate(p.name, v.version)}>
+                          Activate
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
+      {data && data.length === 0 && <div className="empty">No prompts registered.</div>}
     </>
   );
 }

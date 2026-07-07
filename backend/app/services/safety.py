@@ -11,7 +11,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.safety import SafetyEvent
-from app.services import ai
+from app.services import ai, prompts
 
 # Ordered most→least severe; first match wins in the fallback.
 _CRISIS_TERMS = [
@@ -41,7 +41,9 @@ def _keyword_risk(text: str) -> tuple[str, str]:
 # Region-correct crisis hotlines live in ``app.services.crisis`` (a mirror of the
 # iOS CrisisDirectory). Import from there rather than hardcoding a country here.
 
-_SYSTEM = (
+# Registered code default — an active `prompt_templates` row overrides it live.
+_SYSTEM = prompts.register(
+    "safety_classifier",
     "You are a careful safety classifier for a mental-wellness app. "
     "Given a user's private text, judge the risk of self-harm or crisis. "
     "Return JSON: {\"risk_level\": \"none|low|elevated|crisis\", \"reason\": \"<short>\"}. "
@@ -62,7 +64,7 @@ async def classify(text: str) -> tuple[str, str]:
     kw_risk, kw_reason = _keyword_risk(text)
 
     llm_risk, llm_reason = "none", ""
-    result = await ai.complete_json(_SYSTEM, f"Text:\n{text}")
+    result = await ai.complete_json(await prompts.get("safety_classifier"), f"Text:\n{text}")
     if isinstance(result, dict) and result.get("risk_level") in _RANK:
         llm_risk = result["risk_level"]
         llm_reason = str(result.get("reason", ""))[:255]

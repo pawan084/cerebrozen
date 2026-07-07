@@ -22,10 +22,13 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agent.tools import TOOLS
 from app.core.config import settings
+from app.services import prompts
 
 logger = logging.getLogger("cerebro.oracle")
 
-SYSTEM_PROMPT = (
+# Registered code default — an active `prompt_templates` row overrides it live.
+SYSTEM_PROMPT = prompts.register(
+    "oracle_system",
     "You are CereBro, a warm, calm wellness companion. Reflect the user's feelings and "
     "keep replies to 1–2 short sentences. You are NOT a therapist and never diagnose or "
     "prescribe.\n\n"
@@ -102,7 +105,10 @@ async def get_graph():
     llm = model.bind_tools(TOOLS)
 
     async def agent(state: MessagesState):
-        messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
+        # Live registry lookup per turn (own short session; falls back to the
+        # registered default) — prompt edits apply without rebuilding the graph.
+        system = await prompts.get("oracle_system")
+        messages = [SystemMessage(content=system), *state["messages"]]
         return {"messages": [await llm.ainvoke(messages)]}
 
     builder = StateGraph(MessagesState)

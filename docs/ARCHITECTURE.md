@@ -58,7 +58,8 @@ cere/
   `deps.py` (`get_current_user` checks `token_version` for revocation; `get_current_admin`),
   `ratelimit.py`.
 - `api/routes/` — thin endpoint modules; `api/router.py` aggregates.
-- `services/` — all business logic + provider adapters (19 modules).
+- `services/` — all business logic + provider adapters (22 modules; `prompts.py` is the
+  versioned prompt registry every LLM call site reads through).
 - `models/` — SQLAlchemy ORM; `schemas/` — Pydantic I/O.
 - `agent/` — LangGraph "Oracle" (graph.py, tools.py, context.py).
 - `prestart.py` — wait-for-db → `alembic upgrade head` (falls back to `create_all`) → seed.
@@ -77,7 +78,7 @@ cere/
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD, nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD, prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
 | `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
@@ -122,9 +123,11 @@ setup timeout as the fallback).
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
 `web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account).
-Global: `content_items`, `waitlist_entries`.
+Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
+immutable versions per name; the active row overrides the in-code default in
+`services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (14 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (15 revisions).
 
 ## iOS app (`apps/ios/CereBro`)
 
