@@ -44,6 +44,7 @@ import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.BubbleWrapScreen
+import com.cerebrozen.app.ui.screens.CbtReframeScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
@@ -53,9 +54,12 @@ import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
+import com.cerebrozen.app.ui.screens.IntentionScreen
 import com.cerebrozen.app.ui.screens.MemoryMatchScreen
 import com.cerebrozen.app.ui.screens.Onboarding
+import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
+import com.cerebrozen.app.ui.screens.PlayerScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
 import com.cerebrozen.app.ui.screens.PrivacyScreen
@@ -64,7 +68,9 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
+import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
+import com.cerebrozen.app.ui.screens.ToolsScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -152,13 +158,14 @@ fun CereBroApp() {
             val open: (String) -> Unit = { route -> navController.navigate(route) }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
-            composable(Tab.Sleep.route) { SleepScreen() }
+            composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back) }
             composable("programs") { ProgramsScreen(onBack = back) }
-            composable("sounds") { SoundsScreen(onBack = back) }
+            composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
+            composable("player") { PlayerScreen(onBack = back) }
             composable("games") { GamesScreen(onOpen = open, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("bubblewrap") { BubbleWrapScreen(onBack = back) }
@@ -167,6 +174,11 @@ fun CereBroApp() {
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }
+            composable("tools") { ToolsScreen(onOpen = open, onBack = back) }
+            composable("cbt") { CbtReframeScreen(onBack = back) }
+            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
+            composable("intention") { IntentionScreen(onBack = back) }
+            composable("tipp") { TippScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }

@@ -23,7 +23,12 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+            // Emulator default: host loopback. Real-device runs override it —
+            //   ./gradlew assembleDebug -PapiBaseUrl=http://localhost:8000
+            // paired with `adb reverse tcp:8000 tcp:8000` (device localhost →
+            // this machine's dev backend). See ANDROID_QA.md.
+            val apiBaseUrl = (project.findProperty("apiBaseUrl") as? String) ?: "http://10.0.2.2:8000"
+            buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         }
         release {
             // R8 + resource shrinking. App code is reflection-free (org.json

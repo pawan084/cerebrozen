@@ -31,6 +31,21 @@ object Player {
 
     fun setTimerState(minutes: Int) { timerMinutes = minutes }
 
+    /** Ambient volume 0–1 (independent of the system media volume). */
+    var volume by mutableStateOf(1f)
+        private set
+
+    fun setVolumeState(v: Float) { volume = v }
+
+    fun setVolume(context: Context, v: Float) {
+        volume = v
+        context.startService(
+            Intent(context, AmbientService::class.java)
+                .setAction(AmbientService.ACTION_VOLUME)
+                .putExtra(AmbientService.EXTRA_VOLUME, v),
+        )
+    }
+
     /** Off → 15 → 30 → 45 → 60 → off (same steps as the iOS sleep player). */
     fun cycleTimer(context: Context) {
         val next = when (timerMinutes) { 0 -> 15; 15 -> 30; 30 -> 45; 45 -> 60; else -> 0 }

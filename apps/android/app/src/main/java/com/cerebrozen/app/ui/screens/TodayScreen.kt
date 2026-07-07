@@ -1,10 +1,14 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.horizontalScroll
@@ -37,8 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -69,6 +77,84 @@ internal fun greetingFor(hour: Int): String = when (hour) {
 
 private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
 
+/** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
+internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
+    val arr = streak.optJSONArray("week") ?: return emptyList()
+    val letters = listOf("S", "M", "T", "W", "T", "F", "S")
+    return (0 until arr.length()).map { i ->
+        val d = arr.getJSONObject(i)
+        val date = d.optString("date")
+        val letter = runCatching {
+            val cal = Calendar.getInstance()
+            val parts = date.split("-").map(String::toInt)
+            cal.set(parts[0], parts[1] - 1, parts[2])
+            letters[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        }.getOrDefault("·")
+        letter to d.optBoolean("active")
+    }
+}
+
+/** Plan-step symbol → the Android surface that runs it (same contract as the
+ * Oracle widgetRoute + the web Home mapping). */
+internal fun planStepRoute(symbol: String): String? = when {
+    symbol.startsWith("wind") -> "games"
+    symbol.startsWith("moon") || symbol == "bell" -> "sounds"
+    symbol == "book" || symbol == "brain" -> "journal"
+    symbol == "mic" || symbol.startsWith("person") || symbol == "heart" -> "talk"
+    else -> null
+}
+
+/** Time-matched rail kind + heading (mirrors the iOS Home rails). */
+internal fun railKindFor(hour: Int): Pair<String, String> = when {
+    hour < 12 -> "meditation" to "For this morning"
+    hour < 17 -> "soundscape" to "A midday reset"
+    else -> "sleep" to "For tonight"
+}
+
+/** A horizontal card rail of served content, matched to the time of day. */
+@Composable
+private fun ContentRail(onOpen: (String) -> Unit) {
+    val (kind, heading) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    var items by remember { mutableStateOf<JSONArray?>(null) }
+    LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
+    val list = items ?: return
+    if (list.length() == 0) return
+    Text(heading, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        (0 until list.length()).forEach { i ->
+            val c = list.getJSONObject(i)
+            val title = c.optString("title")
+            Column(
+                Modifier.width(150.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CardFill)
+                    .border(1.dp, LineStroke, RoundedCornerShape(16.dp))
+                    .clickable { onOpen("sounds") }
+                    .padding(0.dp),
+            ) {
+                Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {
+                    val url = c.optString("image_url")
+                    if (url.isNotBlank()) {
+                        AsyncImage(model = url, contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
+                    } else {
+                        Box(Modifier.fillMaxSize().background(Periwinkle.copy(alpha = 0.25f)))
+                    }
+                }
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(title, style = MaterialTheme.typography.bodyMedium, color = TextSoft, maxLines = 1)
+                    val d = c.optInt("duration_min")
+                    Text(if (d > 0) "$d min" else "Ambient", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                }
+            }
+        }
+    }
+}
+
 /** Today: quick-access grid + live mood check-in + streak + recent check-ins. */
 @Composable
 fun TodayScreen(onOpen: (String) -> Unit) {
@@ -81,6 +167,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var moodCount by remember { mutableIntStateOf(0) }
+    var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -96,6 +183,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             val s = Api.streak()
             streak = s.optInt("current")
             best = s.optInt("best")
+            week = parseWeek(s)
         }
         runCatching { val m = Api.moods(); moodCount = m.length(); recent = parseRecent(m) }
         runCatching { plan = Api.activePlan() }
@@ -116,6 +204,31 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
         )
+
+        // Home leads with the goal-aware next action (mirrors iOS DailyFocus);
+        // tapping deep-links to the surface that runs the next undone step.
+        plan?.let { p ->
+            val steps = p.optJSONArray("steps")
+            val total = steps?.length() ?: 0
+            val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
+            val next = (0 until total).map { steps!!.getJSONObject(it) }
+                .firstOrNull { !it.optBoolean("done") }
+            val nextRoute = next?.optString("symbol")?.let { planStepRoute(it) }
+            HeroCard(
+                imageUrl = HeroImg.calm,
+                eyebrow = "Today's plan",
+                title = p.optString("title"),
+                subtitle = p.optString("focus"),
+                height = 190.dp,
+                onClick = nextRoute?.let { { onOpen(it) } },
+            ) {
+                val tail = buildString {
+                    if (next != null) append("Next: ${next.optString("title")}")
+                    if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
+                }
+                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            }
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f))
@@ -160,25 +273,14 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
 
-        plan?.let { p ->
-            val steps = p.optJSONArray("steps")
-            val total = steps?.length() ?: 0
-            val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
-            val nextStep = (0 until total).map { steps!!.getJSONObject(it) }
-                .firstOrNull { !it.optBoolean("done") }?.optString("title")
-            HeroCard(
-                imageUrl = HeroImg.calm,
-                eyebrow = "Today's plan",
-                title = p.optString("title"),
-                subtitle = p.optString("focus"),
-                height = 190.dp,
-            ) {
-                val tail = buildString {
-                    if (nextStep != null) append("Next: $nextStep")
-                    if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
-                }
-                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-            }
+        // Time-matched content rail (mirrors the iOS Home rails).
+        ContentRail(onOpen)
+
+        NavRow("Tools", "Small resets & reframes — 2 minutes each") { onOpen("tools") }
+
+        // Morning sleep check-in nudge (mirrors the iOS Home sleep row).
+        if (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) < 12) {
+            NavRow("How was last night?", "A 20-second sleep check-in") { onOpen("sleep") }
         }
 
         Card {
@@ -191,6 +293,22 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 else "Show up once a day — gentle, no pressure.",
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
+            // 7-dot week ring (server streak week; today is the last dot).
+            if (week.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    week.forEach { (day, active) ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Box(
+                                Modifier.size(14.dp).clip(CircleShape)
+                                    .background(if (active) Periwinkle else CardFill)
+                                    .border(1.dp, if (active) Periwinkle else LineStroke, CircleShape),
+                            )
+                            Text(day, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                }
+            }
         }
 
         // Contextual baseline (mirrors iOS): offered once a few REAL check-ins

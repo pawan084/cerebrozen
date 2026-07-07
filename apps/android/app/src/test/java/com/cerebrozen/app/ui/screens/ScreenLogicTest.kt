@@ -146,14 +146,16 @@ class ScreenLogicTest {
     }
 
     @Test
-    fun widgetRoute_maps_native_surfaces_and_leaves_ios_only_kinds_null() {
+    fun widgetRoute_maps_every_cross_stack_widget_kind_natively() {
         assertEquals("games", widgetRoute("breathing"))
         assertEquals("games", widgetRoute("grounding"))
         assertEquals("home", widgetRoute("mood_check"))
         assertEquals("journal", widgetRoute("mini_journal"))
         assertEquals("sleep", widgetRoute("sleep_checkin"))
-        assertEquals(null, widgetRoute("one_good_thing"))   // honest iOS-only note
-        assertEquals(null, widgetRoute("dbt_skill"))
+        assertEquals("onegoodthing", widgetRoute("one_good_thing"))
+        assertEquals("intention", widgetRoute("intention_set"))
+        assertEquals("tipp", widgetRoute("dbt_skill"))
+        assertEquals(null, widgetRoute("something_future"))   // unknown stays honest
     }
 
     // ── Journal search ──────────────────────────────────────────────

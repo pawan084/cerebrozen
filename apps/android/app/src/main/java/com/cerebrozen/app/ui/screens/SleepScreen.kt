@@ -61,7 +61,7 @@ internal fun parseNights(rows: JSONArray): List<Night> =
 /** Sleep diary: morning check-in + honest weekly summary + history — the same
  * non-diagnostic "awareness, not measurement" framing as iOS/web. */
 @Composable
-fun SleepScreen() {
+fun SleepScreen(onOpen: (String) -> Unit = {}) {
     var quality by remember { mutableIntStateOf(0) }
     var bed by remember { mutableIntStateOf(23 * 60) }
     var wake by remember { mutableIntStateOf(7 * 60) }
@@ -138,9 +138,13 @@ fun SleepScreen() {
         if (nights.size >= 2) NightsChart(nights)
 
         Text("Wind down", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        NowPlayingBar()
+        NowPlayingBar(onOpenPlayer = { onOpen("player") })
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
             onItemTap = { title -> Player.toggle(context, title) })
+
+        // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
+        Text("Wind-down guide", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        ContentList("wind_down", { d -> if (d > 0) "$d min" else "Guide" })
 
         if (nights.isNotEmpty()) {
             SectionCard {

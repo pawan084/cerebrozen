@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -261,13 +262,13 @@ fun ProgramsScreen(onBack: () -> Unit) = SubPage("Guided journeys", "Programs", 
 }
 
 @Composable
-fun SoundsScreen(onBack: () -> Unit) {
+fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     val context = LocalContext.current
     val play: (String) -> Unit = { title -> Player.toggle(context, title) }
     var favs by remember { mutableStateOf(SleepFavs.all()) }
     val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
     SubPage("Sound library", "Sounds", onBack) {
-        NowPlayingBar()
+        NowPlayingBar(onOpenPlayer = { onOpen("player") })
         Text("Soundscapes and sleep stories to slow a racing mind.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         if (favs.isNotEmpty()) {
@@ -290,15 +291,70 @@ fun SoundsScreen(onBack: () -> Unit) {
     }
 }
 
-/** A compact transport shown whenever something is playing. */
+/** Full-screen player for the ambient bed: art, transport, sleep timer,
+ * volume (mirrors the iOS sleep player; mixing arrives with real tracks). */
 @Composable
-internal fun NowPlayingBar() {
+fun PlayerScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val title = Player.nowPlaying
+    SubPage("Now playing", title ?: "Nothing playing", onBack) {
+        Box(
+            Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(22.dp)),
+        ) {
+            AsyncImage(
+                model = HeroImg.sleep, contentDescription = null,
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+            )
+            Box(Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
+        }
+        if (title == null) {
+            Text("Pick a soundscape or story from Sounds and it plays here.",
+                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        } else {
+            Text("Continuous ambient bed · per-track audio arrives with the content pipeline.",
+                style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            PrimaryButton(
+                text = if (Player.isPlaying) "Pause" else "Play",
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                TextButton(onClick = { Player.cycleTimer(context) }) {
+                    Text(
+                        if (Player.timerMinutes > 0) "${Player.timerMinutes} min" else "Off",
+                        color = if (Player.timerMinutes > 0) Cyan else TextMuted,
+                    )
+                }
+            }
+            Text("Volume", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Slider(
+                value = Player.volume,
+                onValueChange = { Player.setVolume(context, it) },
+                valueRange = 0f..1f,
+            )
+            Text("Fades out ~10 seconds before the timer ends — sleep through it.",
+                style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        }
+    }
+}
+
+/** A compact transport shown whenever something is playing. Tapping the title
+ * opens the full player when a route callback is provided. */
+@Composable
+internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
     val context = LocalContext.current
     val title = Player.nowPlaying ?: return
     SectionCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                if (onOpenPlayer != null) Modifier.clickable { onOpenPlayer() } else Modifier,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
                 Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
             }

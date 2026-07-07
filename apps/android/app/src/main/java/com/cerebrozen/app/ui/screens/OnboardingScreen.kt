@@ -57,10 +57,35 @@ import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private enum class OStep { Welcome, Age, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
+private enum class OStep { Welcome, Age, Disclosure, Language, State, Reset, Plan, Consent, Notify, SignUp }
+
+/** One feeling tap is the whole "assessment" — each maps into the shared
+ * motivation/goal taxonomy (cross-stack: iOS StateCheckScreen.states ⇄ web
+ * lib/onboarding.FEELINGS) so plans and conversation starters ground on it.
+ * `mood` keys the first check-in into the shared mood taxonomy. */
+internal data class StateOption(val label: String, val motivation: String, val goal: String, val mood: String)
+
+internal val STATE_OPTIONS = listOf(
+    StateOption("Stressed and tense", "Calm", "Reduce stress", "Anxious"),
+    StateOption("Can't switch off at night", "Calm", "Sleep better", "Tired"),
+    StateOption("Overthinking everything", "Focus", "Stop overthinking", "Anxious"),
+    StateOption("Doubting myself", "Confidence", "Build confidence", "Low"),
+    StateOption("Feeling distant from people", "Connection", "Feel less alone", "Low"),
+    StateOption("Can't stay consistent", "Discipline", "Strengthen willpower", "Okay"),
+)
+
+/** Headline the first plan around the chosen goal (mirrors iOS/web planTitle). */
+internal fun planTitleFor(goal: String?): String = when (goal) {
+    "Sleep better" -> "Sleep deeper"
+    "Reduce stress" -> "Ease today's stress"
+    "Stop overthinking" -> "Quiet the noise"
+    "Build confidence" -> "Steady confidence"
+    "Feel less alone" -> "Feel more connected"
+    "Strengthen willpower" -> "Small promises, kept"
+    else -> "A calmer day"
+}
 
 private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
-private val FEELINGS = listOf("Calm", "Good", "Anxious", "Low", "Tired", "Stressed")
 private val NOTIFY = listOf("Morning", "Midday", "Evening", "Off")
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
 
@@ -84,7 +109,7 @@ fun Onboarding() {
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
 
     var language by remember { mutableStateOf("English") }
-    var feeling by remember { mutableStateOf<String?>(null) }
+    var state by remember { mutableStateOf<StateOption?>(null) }
     var notify by remember { mutableStateOf("Evening") }
     // Private by default: NOTHING pre-ticked — consent must be an action
     // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
@@ -128,13 +153,42 @@ fun Onboarding() {
         }
 
         OStep.State -> Funnel(
-            "One tap is enough", "What feels most true right now?", "",
-            "Continue", primaryEnabled = feeling != null, onBack = { back() }, onPrimary = { next() },
+            "One tap is enough", "What feels most true right now?",
+            "No questionnaire — just pick the one that fits today. CereBro shapes your first reset and plan around it.",
+            "Continue", primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
         ) {
-            ChipWrap(FEELINGS, feeling) { feeling = it }
+            ChipWrap(STATE_OPTIONS.map { it.label }, state?.label) { picked ->
+                state = STATE_OPTIONS.first { it.label == picked }
+            }
         }
 
         OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
+
+        OStep.Plan -> Funnel(
+            "Your first plan", planTitleFor(state?.goal),
+            "Built from your one tap — it adapts every time you check in.",
+            "Looks right", onBack = { back() }, onPrimary = { next() },
+        ) {
+            SectionCard {
+                listOf(
+                    "🌬️" to ("Breathing reset" to "3 min · recommended now"),
+                    "📖" to ("Night journal" to "5 min reflection"),
+                    "🔔" to ("Reminder timing" to "Evening private nudge"),
+                ).forEach { (emoji, step) ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(emoji, style = MaterialTheme.typography.titleLarge)
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(step.first, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                            Text(step.second, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        }
+                    }
+                }
+            }
+        }
 
         OStep.Consent -> {
             // DPDP s.5(3): the notice itself is readable in English or an
@@ -179,7 +233,7 @@ fun Onboarding() {
         }
 
         OStep.SignUp -> SignUpStep(
-            feeling = feeling,
+            state = state,
             consent = { JSONObject().apply { consent.forEach { (k, v) -> put(k, v) } } },
             onBack = { back() },
         )
@@ -234,7 +288,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
 }
 
 @Composable
-private fun SignUpStep(feeling: String?, consent: () -> JSONObject, onBack: () -> Unit) {
+private fun SignUpStep(state: StateOption?, consent: () -> JSONObject, onBack: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -257,8 +311,17 @@ private fun SignUpStep(feeling: String?, consent: () -> JSONObject, onBack: () -
                     // Best-effort personalization — never blocks entering the app.
                     runCatching { Api.attest() }
                     runCatching { Api.updateConsent(consent()) }
-                    if (feeling != null) runCatching {
-                        Api.checkIn(feeling, "From onboarding", "sparkles", 3)
+                    if (state != null) {
+                        // The one tap grounds server personalization: plans key
+                        // off goals, conversation starters off motivations.
+                        runCatching {
+                            Api.updateProfile(
+                                JSONObject()
+                                    .put("goals", org.json.JSONArray().put(state.goal))
+                                    .put("motivations", org.json.JSONArray().put(state.motivation)),
+                            )
+                        }
+                        runCatching { Api.checkIn(state.mood, "From onboarding", "sparkles", 3) }
                     }
                 } catch (e: Exception) {
                     error = e.message ?: "Couldn't create your account."; busy = false

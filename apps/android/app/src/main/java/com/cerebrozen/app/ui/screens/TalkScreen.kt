@@ -76,13 +76,16 @@ internal fun parseWidget(o: JSONObject?): ChatWidget? {
     return ChatWidget(kind, o!!.optString("title"), o.optString("description"))
 }
 
-/** Where an inline activity lands on Android; null = honest "iOS-only" note
- * (mirrors the web WIDGET_LINKS map — breathing/grounding live in Games here). */
+/** Where an inline activity lands on Android — every cross-stack widget kind
+ * now has a native surface (the tools round closed the last gaps). */
 internal fun widgetRoute(kind: String): String? = when (kind) {
     "breathing", "grounding" -> "games"
     "mood_check" -> "home"
     "mini_journal", "journal" -> "journal"
     "sleep_checkin" -> "sleep"
+    "one_good_thing" -> "onegoodthing"
+    "intention_set" -> "intention"
+    "dbt_skill" -> "tipp"
     else -> null
 }
 

@@ -44,6 +44,7 @@ internal fun funnelStepName(step: String): String = when (step) {
     "Language" -> "language"
     "State" -> "state_check"
     "Reset" -> "first_reset"
+    "Plan" -> "first_plan"
     "Consent" -> "consent"
     "Notify" -> "notifications"
     "SignUp" -> "signup"

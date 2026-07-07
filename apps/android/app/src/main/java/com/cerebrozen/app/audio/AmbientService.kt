@@ -28,8 +28,10 @@ class AmbientService : Service() {
         const val ACTION_PAUSE = "com.cerebrozen.app.PAUSE"
         const val ACTION_STOP = "com.cerebrozen.app.STOP"
         const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
+        const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
         const val EXTRA_TITLE = "title"
         const val EXTRA_MINUTES = "minutes"
+        const val EXTRA_VOLUME = "volume"
         private const val CHANNEL = "ambient_playback"
         private const val NOTIF = 77
     }
@@ -37,6 +39,7 @@ class AmbientService : Service() {
     private var mp: MediaPlayer? = null
     private var session: MediaSession? = null
     private var title = "Ambient bed"
+    private var volume = 1f
     // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
     private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -54,6 +57,11 @@ class AmbientService : Service() {
             ACTION_PAUSE -> pause()
             ACTION_STOP -> stopAll()
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
+            ACTION_VOLUME -> {
+                volume = intent.getFloatExtra(EXTRA_VOLUME, 1f).coerceIn(0f, 1f)
+                mp?.setVolume(volume, volume)
+                Player.setVolumeState(volume)
+            }
         }
         return START_STICKY
     }
@@ -77,6 +85,7 @@ class AmbientService : Service() {
 
     private fun play() {
         if (mp == null) mp = MediaPlayer.create(this, R.raw.ambient_bed)?.apply { isLooping = true }
+        mp?.setVolume(volume, volume)
         mp?.start()
         Player.setState(title, true)
         updateSession(true)
