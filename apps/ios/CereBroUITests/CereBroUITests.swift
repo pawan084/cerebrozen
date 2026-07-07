@@ -946,4 +946,24 @@ final class CereBroUITests: XCTestCase {
         rootYou(app)
         if tap(app, row) { snapshot(app, shot) }
     }
+
+    // MARK: - Screenshot tour (design comparison)
+
+    /// Walk the five tabs and write PNGs to /tmp/cere-shots/ on the host —
+    /// simulator test runners share the Mac filesystem, so cross-platform
+    /// design comparisons (iOS vs Android vs web) can diff real pixels.
+    /// Deterministic: `-resetState YES` demo state, no backend needed.
+    func testScreenshotTour() throws {
+        let dir = URL(fileURLWithPath: "/tmp/cere-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let app = makeApp()
+        launchIntoApp(app)
+        for tab in ["Home", "Sleep", "Talk", "Journal", "You"] {
+            openTab(app, tab)
+            sleep(1)   // let hero images/animations settle
+            let shot = app.screenshot().pngRepresentation
+            try shot.write(to: dir.appendingPathComponent("ios-\(tab.lowercased()).png"))
+            snapshot(app, "tour-\(tab)")
+        }
+    }
 }
