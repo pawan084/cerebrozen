@@ -19,6 +19,10 @@ final class BackendService: ObservableObject {
     @Published private(set) var user: RemoteUser?
     @Published private(set) var plan: RemotePlan?
     @Published private(set) var insight: RemoteInsight?
+    /// Active multi-day journey ("PROGRAM · DAY X OF Y" Home card).
+    @Published private(set) var program: RemoteProgram?
+    /// Served program catalogue with backend ids (enrollment needs them).
+    @Published private(set) var remotePrograms: [RemoteContent] = []
     @Published private(set) var chat: [RemoteChat] = []
     @Published private(set) var suggestions: [RemoteSuggestion] = []
     /// Personalized, tappable conversation starters from the self-reflection.
@@ -244,7 +248,7 @@ final class BackendService: ObservableObject {
 
     func signOut() {
         Task { await APIClient.shared.logout() }   // revoke server-side, then clear
-        user = nil; plan = nil; insight = nil; chat = []; suggestions = []; starters = []
+        user = nil; plan = nil; insight = nil; program = nil; chat = []; suggestions = []; starters = []
         oracleAvailable = false; isStreaming = false; streamingText = ""
         streamingWidget = nil; pendingConfirm = nil
         status = .signedOut
@@ -255,6 +259,22 @@ final class BackendService: ObservableObject {
         guard isConnected else { return }
         plan = try? await APIClient.shared.activePlan()
         insight = try? await APIClient.shared.weeklyInsights()
+        program = (try? await APIClient.shared.activeProgram())?.program
+    }
+
+    // MARK: Programs (multi-day journeys)
+
+    func enrollProgram(contentId: String) async {
+        guard isConnected else { return }
+        if let p = (try? await APIClient.shared.enrollProgram(contentId: contentId))?.program {
+            program = p
+        }
+    }
+
+    func leaveProgram() async {
+        guard isConnected else { return }
+        _ = try? await APIClient.shared.leaveProgram()
+        program = nil
     }
 
     // MARK: Content catalogue (public — no sign-in required)
@@ -272,6 +292,7 @@ final class BackendService: ObservableObject {
                             symbol: item.symbol, imageURL: item.image_url))
         }
         catalogue = grouped
+        remotePrograms = items.filter { $0.kind == "program" }
     }
 
     // MARK: Assessment (self-reflection → conversation starters)

@@ -37,8 +37,13 @@
 - [x] Android: Daily Plan route (step toggles + regenerate), Search route (whole
   catalogue), immersive live-voice session overlay (timer/state/End/Text),
   first-run guided tour (4 stops, `tour_done` pref).
-- [ ] iOS + web ports of the above (program card, pattern dashboard, guided tour;
-  iOS Search/Plan already exist). Android proved the design 2026-07-07.
+- [x] iOS + web ports (2026-07-07): iOS — RemoteProgram/RemotePatterns APIClient
+  endpoints, Home ProgramProgressCard, ProgramsView real enroll/leave, Pattern
+  dashboard (You row), GuidedTourOverlay (gated off under `-resetState` so
+  UITests stay deterministic; build + Home UITests green). Web — /patterns page
+  (+account link), programs enroll/active banner, Home journey card, GuidedTour
+  overlay; e2e journey extended (tour walk/skip, enroll → Home card, patterns
+  empty state + delete-memory round-trip) — full docker e2e suite green.
 - [ ] Proactive stress detection (ref Home card: Watch HRV → "start 2-min reset") —
   blocked on HealthKit capability/portal (owner) + needs the paired-Watch feature bet.
 

@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var showSearch = false
     @State private var route: HomeRoute?
     @State private var celebrateStreak = false
+    @State private var showTour = false
     @Namespace private var playerZoom
 
     private var part: DayPart { .current() }
@@ -61,6 +62,13 @@ struct HomeView: View {
             StreakCard(streak: state.currentStreak, best: state.bestStreak, week: state.last7Days())
                 .entrance(1)
 
+            // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
+            if let prog = backend.program {
+                NavigationLink { ProgramsView() } label: { ProgramProgressCard(program: prog) }
+                    .buttonStyle(.pressable)
+                    .entrance(2)
+            }
+
             SectionTitle(title: part.railTitle).entrance(2)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 11) {
@@ -106,12 +114,44 @@ struct HomeView: View {
             case .sleep:   PlayerView(item: Dummy.sleepContent[0])
             }
         }
-        .task { await backend.loadCatalogue() }
+        .task { await backend.loadCatalogue(); await backend.refresh() }
         // Celebrate a streak milestone the moment it's reached (fires once).
         .onChange(of: state.newMilestone) { _, m in
             if m != nil { celebrateStreak = true; state.newMilestone = nil }
         }
         .celebration(trigger: $celebrateStreak)
+        .onAppear {
+            // First-run guided tour — once per install; never under -resetState
+            // (UITests start at Home and must stay deterministic).
+            if !UserDefaults.standard.bool(forKey: "guidedTourDone"),
+               !UserDefaults.standard.bool(forKey: "resetState") {
+                showTour = true
+            }
+        }
+        .overlay { if showTour { GuidedTourOverlay(isPresented: $showTour) } }
+    }
+}
+
+/// The ref "PROGRAM · DAY X OF Y" journey card: quiet progress, no pressure.
+struct ProgramProgressCard: View {
+    let program: RemoteProgram
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("PROGRAM · DAY \(program.day) OF \(program.days)")
+                    .appFont(10.5, weight: .bold).kerning(1.2)
+                    .foregroundStyle(Theme.Brand.cyan)
+                Text(program.title)
+                    .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.text)
+                ProgressView(value: Double(program.day), total: Double(max(1, program.days)))
+                    .tint(Theme.Palette.lav)
+                Text(program.completed ? "Complete — beautifully done."
+                     : "Showing up is the whole assignment today.")
+                    .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -329,14 +369,41 @@ struct ProgramsView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "Guided multi-day plans", title: "Programs", trailingSystemImage: "sparkles") {
+            // Active journey (real enrollment when connected — ref DAY X OF Y).
+            if let prog = backend.program {
+                ProgramProgressCard(program: prog)
+                Button("Leave this journey") { Task { await backend.leaveProgram() } }
+                    .appFont(13, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                    .buttonStyle(.pressable)
+            }
             HeroCard(tag: "Featured", title: programs.first?.title ?? "Ease work stress",
                      subtitle: "A 7-day agentic plan built around your baseline.",
                      cta: "Start", imageURL: Dummy.Img.plan) { startPlan = true }
-            ForEach(programs) { p in
-                NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
+            if backend.isConnected && !backend.remotePrograms.isEmpty {
+                // Enrollable journeys: one at a time; the day counts itself.
+                ForEach(backend.remotePrograms) { p in
+                    Card {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(p.title).appFont(15, weight: .bold).foregroundStyle(Theme.Palette.soft)
+                            Text(p.subtitle.isEmpty ? "A few minutes a day" : p.subtitle)
+                                .appFont(12.5).foregroundStyle(Theme.Palette.muted)
+                            if backend.program?.title != p.title {
+                                Button("Start this journey") {
+                                    Task { await backend.enrollProgram(contentId: p.id) }
+                                }
+                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+                                .buttonStyle(.pressable)
+                            }
+                        }
+                    }
+                }
+            } else {
+                ForEach(programs) { p in
+                    NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
+                }
             }
         }
-        .task { await backend.loadCatalogue() }
+        .task { await backend.loadCatalogue(); await backend.refresh() }
         .navigationDestination(isPresented: $startPlan) { DailyPlanView() }
     }
 }

@@ -54,6 +54,35 @@ struct RemoteMood: Codable, Identifiable {
     let created_at: String
 }
 
+/// Active multi-day journey — the day is computed server-side from the start
+/// date (nothing to advance, nothing to fail).
+struct RemoteProgram: Codable, Equatable {
+    let content_id: String
+    let title: String
+    let day: Int
+    let days: Int
+    let completed: Bool
+}
+
+struct RemoteProgramEnvelope: Codable { let program: RemoteProgram? }
+
+/// One learned statement + the data that backs it (`basis` carries the counts).
+struct RemotePattern: Codable, Identifiable {
+    var id: String { statement }
+    let statement: String
+    let basis: String
+}
+
+struct RemotePatterns: Codable {
+    let patterns: [RemotePattern]
+    let enough_data: Bool
+}
+
+struct RemoteMemoryWipe: Codable {
+    let chat_messages: Int
+    let insights: Int
+}
+
 /// One published catalogue item from the public `/content` route.
 struct RemoteContent: Codable, Identifiable {
     let id: String
@@ -339,6 +368,26 @@ actor APIClient {
     }
 
     func weeklyInsights() async throws -> RemoteInsight { try await request("/insights/weekly", method: "GET") }
+
+    // MARK: Programs (multi-day journeys — "DAY X OF Y" card)
+
+    func activeProgram() async throws -> RemoteProgramEnvelope {
+        try await request("/programs/active", method: "GET")
+    }
+
+    func enrollProgram(contentId: String) async throws -> RemoteProgramEnvelope {
+        try await request("/programs/enroll", method: "POST", json: ["content_id": contentId])
+    }
+
+    func leaveProgram() async throws -> RemoteProgramEnvelope {
+        try await request("/programs/active", method: "DELETE")
+    }
+
+    // MARK: Pattern dashboard (transparent AI memory)
+
+    func patterns() async throws -> RemotePatterns { try await request("/insights/patterns", method: "GET") }
+
+    func deleteMemory() async throws -> RemoteMemoryWipe { try await request("/users/me/memory", method: "DELETE") }
 
     // MARK: Assessment (self-reflection → conversation topics)
 

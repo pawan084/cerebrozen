@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Icon } from "@/components/icons";
-import { API_URL } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
 
 // Same served catalogue the iOS/Android rails read — no hardcoded programs.
 type Item = {
@@ -24,11 +24,38 @@ const THUMBS = [
   "linear-gradient(160deg,#7a4a7a,#301640)",
 ];
 
+type Active = { content_id: string; title: string; day: number; days: number; completed: boolean };
+
 export default function Programs() {
   const [programs, setPrograms] = useState<Item[]>([]);
+  const [active, setActive] = useState<Active | null>(null);
   const [error, setError] = useState("");
 
+  function refreshActive() {
+    api<{ program: Active | null }>("/programs/active").then((r) => setActive(r.program)).catch(() => {});
+  }
+
+  async function enroll(id: string) {
+    try {
+      const r = await api<{ program: Active }>("/programs/enroll", {
+        method: "POST",
+        body: JSON.stringify({ content_id: id }),
+      });
+      setActive(r.program);
+    } catch {
+      setError("Couldn't enroll — try again.");
+    }
+  }
+
+  async function leave() {
+    try {
+      await api("/programs/active", { method: "DELETE" });
+      setActive(null);
+    } catch {}
+  }
+
   useEffect(() => {
+    refreshActive();
     fetch(`${API_URL}/content?kind=program`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setPrograms)
@@ -71,6 +98,27 @@ export default function Programs() {
 
         {error && <p className="error">{error}</p>}
 
+        {/* Active journey (ref "PROGRAM · DAY X OF Y") — one at a time. */}
+        {active && (
+          <section className="card" style={{ marginTop: 6 }}>
+            <p className="eyebrow" style={{ color: "var(--cyan)", marginBottom: 4 }}>
+              Program · day {active.day} of {active.days}
+            </p>
+            <h3 style={{ margin: "0 0 6px" }}>{active.title}</h3>
+            <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
+              {active.completed
+                ? "Complete — beautifully done. Start another whenever you like."
+                : "The day counts itself from when you started — showing up is the whole assignment."}
+            </p>
+            <button
+              onClick={leave}
+              style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--muted)", padding: 0, marginTop: 10 }}
+            >
+              Leave this journey
+            </button>
+          </section>
+        )}
+
         <div className="sec-head"><h2 className="serif-h">All programs</h2></div>
         <div className="program-grid">
           {programs.map((p, i) => (
@@ -84,6 +132,14 @@ export default function Programs() {
                   )}
                 </div>
                 <h3>{p.title}</h3>
+                {active?.title !== p.title && (
+                  <button
+                    onClick={() => enroll(p.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--lav)", fontWeight: 700, padding: 0, marginTop: 8 }}
+                  >
+                    Start this journey
+                  </button>
+                )}
               </div>
             </div>
           ))}

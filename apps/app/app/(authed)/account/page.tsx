@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, authedFetch, clearSession } from "@/lib/api";
@@ -290,7 +291,11 @@ export default function Account() {
 
       <section className="card" aria-label="Your data">
         <h2>Your data</h2>
-        <p className="sub">Download everything the server holds for you, anytime.</p>
+        <p className="sub">
+          Download everything the server holds for you, anytime — and see{" "}
+          <Link href="/patterns" style={{ color: "var(--lav)" }}>what the AI has learned</Link>{" "}
+          (deletable there too).
+        </p>
         <button className="btn ghost" onClick={exportData}>Download my data (JSON)</button>
         {status && <p className="success" role="status">{status}</p>}
       </section>

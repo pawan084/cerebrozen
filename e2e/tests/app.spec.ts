@@ -25,6 +25,14 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });
 
+    // First-run guided tour (ref GUIDED TOUR OVERLAY): walk one stop, then
+    // skip — it must dismiss and never come back this session.
+    await expect(page.getByText(/Guided tour · 1 of 4/)).toBeVisible();
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByText("Your plan adapts")).toBeVisible();
+    await page.getByRole("button", { name: "Skip" }).click();
+    await expect(page.getByText(/Guided tour/)).toBeHidden();
+
     // Home check-in: tapping an emoji posts the mood and updates the note.
     await page.getByRole("button", { name: "Anxious" }).click();
     await expect(page.getByText(/Loud thoughts are real/)).toBeVisible();
@@ -109,6 +117,22 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("switch", { name: "AI मेमोरी" })).toBeVisible();
     await page.getByLabel("Notice language").selectOption("en");
     await expect(page.getByText("Mood history")).toBeVisible();
+
+    // Programs: enroll in a journey (ref "PROGRAM · DAY X OF Y") — the active
+    // banner appears here and the journey card lands on Home.
+    await nav(page, "Programs").click();
+    await page.getByRole("button", { name: "Start this journey" }).first().click();
+    await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
+    await nav(page, "Home").click();
+    await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
+
+    // Pattern dashboard: honest empty state for a fresh account, and the
+    // delete-memory two-step actually round-trips.
+    await page.goto(`${APP}/patterns`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/no guesses, ever/)).toBeVisible();
+    await page.getByRole("button", { name: "Delete all memory" }).click();
+    await page.getByRole("button", { name: "Click again to confirm" }).click();
+    await expect(page.getByText(/Memory cleared/)).toBeVisible();
 
     // A reload drops the in-memory access token — refresh rotation restores it.
     // Reload on Home specifically: it fires several authed fetches at once, so a

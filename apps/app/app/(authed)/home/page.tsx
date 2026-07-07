@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
+import { GuidedTour } from "@/components/GuidedTour";
 import { Icon } from "@/components/icons";
 
 // 5-emoji check-in matching the ref; each maps into the shared mood taxonomy.
@@ -20,6 +21,7 @@ type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
 type Plan = { id: string; title: string; steps: Step[] };
+type Program = { content_id: string; title: string; day: number; days: number; completed: boolean };
 
 // Step wells cycle these gradients; the step's SF-symbol name picks the web
 // surface that actually runs it (breathing → Games, wind-down → Sleep, …).
@@ -50,6 +52,7 @@ export default function Home() {
   const [moods, setMoods] = useState<Mood[]>([]);
   const [reflection, setReflection] = useState<string>("");
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [program, setProgram] = useState<Program | null>(null);
   const [planFailed, setPlanFailed] = useState(false);
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export default function Home() {
     api<Mood[]>("/moods?limit=14").then(setMoods).catch(() => {});
     api<Entry[]>("/journal?limit=1").then((e) => e[0]?.body && setReflection(e[0].body)).catch(() => {});
     api<Plan>("/plans/active").then(setPlan).catch(() => setPlanFailed(true));
+    api<{ program: Program | null }>("/programs/active").then((r) => setProgram(r.program)).catch(() => {});
   }, []);
 
   async function pick(m: (typeof MOODS)[number]) {
@@ -79,6 +83,7 @@ export default function Home() {
   return (
     <>
       <AppHeader eyebrow="Welcome back" title={`${greeting}${name ? `, ${name}` : ""}`} />
+      <GuidedTour />
       <div className="page-body">
         <div className="dash-grid">
           <div>
@@ -97,6 +102,31 @@ export default function Home() {
               </div>
               <p className="checkin-note">{resp || "Tap how you're feeling — there's no wrong answer."}</p>
             </section>
+
+            {/* Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card). */}
+            {program && (
+              <Link
+                href="/programs"
+                className="card"
+                style={{ display: "block", marginTop: 14, textDecoration: "none" }}
+              >
+                <p className="eyebrow" style={{ color: "var(--cyan)", marginBottom: 4 }}>
+                  Program · day {program.day} of {program.days}
+                </p>
+                <h3 style={{ margin: "0 0 8px" }}>{program.title}</h3>
+                <div style={{ height: 6, borderRadius: 3, background: "var(--card-strong)" }} aria-hidden="true">
+                  <div
+                    style={{
+                      height: 6, borderRadius: 3, width: `${Math.min(100, (program.day / Math.max(1, program.days)) * 100)}%`,
+                      background: "var(--lav)",
+                    }}
+                  />
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0" }}>
+                  {program.completed ? "Complete — beautifully done." : "Showing up is the whole assignment today."}
+                </p>
+              </Link>
+            )}
 
             {/* Today's plan — the served agentic plan, same one /plan toggles. */}
             <div className="sec-head">
