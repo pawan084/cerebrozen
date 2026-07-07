@@ -75,6 +75,14 @@ class Settings(BaseSettings):
     # e.g. when an external cron calls POST /admin/nudges/dispatch instead).
     nudge_dispatch_interval_minutes: int = 5
 
+    # Web Push (VAPID) for browser nudges (apps/app). The keypair is
+    # self-generated (`python -m py_vapid --gen` or `npx web-push
+    # generate-vapid-keys`) — no third-party account. Empty keys = the web
+    # client hides its notifications toggle and delivery logs instead of sends.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:support@cerebrozen.in"
+
     # APNs (token-based push). Leave key path empty to log instead of send.
     apns_key_path: str = ""        # path to the .p8 auth key
     apns_key_id: str = ""
@@ -174,6 +182,10 @@ class Settings(BaseSettings):
     @property
     def apns_enabled(self) -> bool:
         return bool(self.apns_key_path and self.apns_key_id and self.apns_team_id)
+
+    @property
+    def webpush_enabled(self) -> bool:
+        return bool(self.vapid_public_key and self.vapid_private_key)
 
     @property
     def stripe_enabled(self) -> bool:

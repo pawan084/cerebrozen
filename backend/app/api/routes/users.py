@@ -27,6 +27,7 @@ from app.schemas.content_data import (
 )
 from app.schemas.plan import PlanOut
 from app.models.trusted_contact import TrustedContact
+from app.models.web_push import WebPushSubscription
 from app.schemas.user import (
     AttestBody,
     ConsentSchema,
@@ -37,7 +38,11 @@ from app.schemas.user import (
     TrustedContactOut,
     UserOut,
     UserUpdate,
+    WebPushStatusOut,
+    WebPushSubscriptionIn,
+    WebPushSubscriptionOut,
 )
+from app.core.config import settings
 from app.services import appstore, metrics
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -201,6 +206,9 @@ async def export_my_data(
         "nudges": await rows(Nudge, NudgeOut, Nudge.scheduled_for),
         "insights": await rows(Insight, InsightOut),
         "sleep": await rows(SleepLog, SleepLogOut, SleepLog.date),
+        "push_subscriptions": await rows(
+            WebPushSubscription, WebPushSubscriptionOut, WebPushSubscription.created_at
+        ),
     }
 
 
@@ -238,3 +246,62 @@ async def set_push_token(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.get("/me/push-subscriptions", response_model=WebPushStatusOut)
+async def web_push_status(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Whether the server can deliver Web Push (VAPID configured) + the public
+    application server key the browser subscribes with. `enabled: false` lets
+    the web client degrade honestly instead of offering a dead toggle."""
+    count = len(
+        (await db.scalars(select(WebPushSubscription).where(WebPushSubscription.user_id == user.id))).all()
+    )
+    return WebPushStatusOut(
+        enabled=settings.webpush_enabled,
+        public_key=settings.vapid_public_key,
+        subscriptions=count,
+    )
+
+
+@router.post("/me/push-subscriptions", response_model=WebPushSubscriptionOut)
+async def register_web_push(
+    payload: WebPushSubscriptionIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Register (or refresh) this browser's push subscription. Endpoints are
+    globally unique, so an endpoint registered from a different account adopts
+    the row — a shared browser only notifies whoever subscribed last."""
+    sub = await db.scalar(
+        select(WebPushSubscription).where(WebPushSubscription.endpoint == payload.endpoint)
+    )
+    if sub is None:
+        sub = WebPushSubscription(endpoint=payload.endpoint)
+        db.add(sub)
+    sub.user_id = user.id
+    sub.p256dh = payload.p256dh
+    sub.auth = payload.auth
+    await db.commit()
+    await db.refresh(sub)
+    return sub
+
+
+@router.delete("/me/push-subscriptions", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister_web_push(
+    endpoint: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = await db.scalar(
+        select(WebPushSubscription).where(
+            WebPushSubscription.endpoint == endpoint,
+            WebPushSubscription.user_id == user.id,
+        )
+    )
+    if sub is not None:
+        await db.delete(sub)
+        await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -239,7 +239,17 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
 - [x] `/auth/apple` Services-ID audience — 2026-07-04: `APPLE_SERVICES_CLIENT_ID`
   accepted as a second token audience (web button itself still needs the owner's
   Services ID + Apple JS wiring).
-- [ ] Post-v1 (remaining): Web Push (VAPID) as a richer alternative to email nudges.
+- [x] Web Push (VAPID) — 2026-07-07: `web_push_subscriptions` (Alembic `e52a9c7d3b81`)
+  + `/users/me/push-subscriptions` (status+key GET / register POST / unregister
+  DELETE; endpoint unique — a shared browser notifies whoever subscribed last) +
+  `services/webpush.py` (pywebpush, RFC 8291 encrypted payloads; 404/410 endpoints
+  pruned in place). `dispatch_due` preference: native push → browser push → email
+  opt-in → honest `skipped`. Keys are a self-generated VAPID pair (`npx web-push
+  generate-vapid-keys`; no third-party account — owner sets `VAPID_*` in prod env
+  — verified in-container that base64url strings roundtrip); keyless = the
+  account-page toggle disables with an honest note (e2e-pinned) and delivery logs.
+  apps/app: `public/sw.js` (push + deeplink click-through), `lib/push.ts`,
+  account-page "Browser notifications" toggle.
 - [x] Oracle agent consent — verified 2026-07-04: the graph's system prompt embeds
   NO user data; its only data read (`get_weekly_insights`) delegates to the already
   consent-gated `insights.compute_weekly`, and every write tool is individually

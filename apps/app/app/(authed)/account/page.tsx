@@ -3,6 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, authedFetch, clearSession } from "@/lib/api";
+import {
+  getPushStatus,
+  isSubscribed,
+  pushSupported,
+  subscribePush,
+  unsubscribePush,
+  type PushStatus,
+} from "@/lib/push";
 import { AppHeader } from "@/components/AppHeader";
 
 type Consent = {
@@ -44,6 +52,9 @@ export default function Account() {
   const [confirmText, setConfirmText] = useState("");
   const [status, setStatus] = useState("");
   const [billingMsg, setBillingMsg] = useState("");
+  const [push, setPush] = useState<PushStatus | null>(null);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushMsg, setPushMsg] = useState("");
 
   useEffect(() => {
     api("/auth/me").then((u) => {
@@ -52,7 +63,25 @@ export default function Account() {
     }).catch(() => {});
     api<Consent>("/users/me/consent").then(setConsent).catch(() => {});
     api<Contact | null>("/users/me/trusted-contact").then((c) => c && setContact(c)).catch(() => {});
+    getPushStatus().then(setPush).catch(() => {});
+    isSubscribed().then(setPushOn).catch(() => {});
   }, []);
+
+  async function toggleBrowserPush() {
+    if (!push?.enabled) return;
+    setPushMsg("");
+    try {
+      if (pushOn) {
+        await unsubscribePush();
+        setPushOn(false);
+      } else {
+        await subscribePush(push.public_key);
+        setPushOn(true);
+      }
+    } catch (err: any) {
+      setPushMsg(err.message || "Couldn't update browser notifications.");
+    }
+  }
 
   async function toggleConsent(key: keyof Consent) {
     if (!consent) return;
@@ -147,12 +176,31 @@ export default function Account() {
             <input
               type="checkbox"
               role="switch"
+              checked={pushOn}
+              onChange={toggleBrowserPush}
+              disabled={!push?.enabled || !pushSupported()}
+              aria-label="Browser notifications"
+              style={{ width: "auto" }}
+            />
+            <span className="sub">
+              {push && !push.enabled
+                ? "Browser notifications aren't configured on this server yet — email nudges below still work."
+                : !pushSupported() && push
+                  ? "This browser doesn't support push notifications — email nudges below still work."
+                  : "Browser notifications — gentle nudges arrive on this device, even with the tab closed."}
+            </span>
+          </label>
+          {pushMsg && <p className="footnote" role="status">{pushMsg}</p>}
+          <label className="row" style={{ marginTop: 10, gap: 10 }}>
+            <input
+              type="checkbox"
+              role="switch"
               checked={!!me.email_nudges}
               onChange={toggleEmailNudges}
               aria-label="Email nudges"
               style={{ width: "auto" }}
             />
-            <span className="sub">Email me my nudges — the browser has no push, so gentle reminders arrive by email instead.</span>
+            <span className="sub">Email me my nudges — gentle reminders arrive by email when no browser is subscribed.</span>
           </label>
           {(me.subscription_tier ?? "free") === "free" && (
             <div style={{ marginTop: 12 }}>

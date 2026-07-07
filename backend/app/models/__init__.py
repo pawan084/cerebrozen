@@ -15,6 +15,7 @@ from app.models.trusted_contact import TrustedContact
 from app.models.login_code import LoginCode
 from app.models.product_event import ProductEvent
 from app.models.waitlist import WaitlistEntry
+from app.models.web_push import WebPushSubscription
 
 __all__ = [
     "User",
@@ -34,4 +35,5 @@ __all__ = [
     "LoginCode",
     "ProductEvent",
     "WaitlistEntry",
+    "WebPushSubscription",
 ]

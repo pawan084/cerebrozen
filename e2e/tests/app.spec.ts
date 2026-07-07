@@ -94,6 +94,14 @@ test.describe("Web app (authenticated client)", () => {
     await aiMemory.click();
     await expect(aiMemory).toBeChecked({ checked: !before });
 
+    // Web Push degrades honestly: the e2e stack runs without VAPID keys, so
+    // the browser-notifications toggle must be disabled with the "not
+    // configured" note — never a dead-looking live control.
+    const browserPush = page.getByRole("switch", { name: "Browser notifications" });
+    await expect(browserPush).toBeVisible();
+    await expect(browserPush).toBeDisabled();
+    await expect(page.getByText(/aren't configured on this server yet/)).toBeVisible();
+
     // A reload drops the in-memory access token — refresh rotation restores it.
     // Reload on Home specifically: it fires several authed fetches at once, so a
     // regression in the deduped single-use-refresh handling (lib/api) would race,

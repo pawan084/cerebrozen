@@ -42,6 +42,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | Subscriptions | `APPSTORE_BUNDLE_ID`, `APPSTORE_ROOT_CERT_PATH` | unpinned chain when blank (dev); prod template pins to the bundled `app/certs/AppleRootCA-G3.pem` |
 | Nudges | `NUDGE_DISPATCH_INTERVAL_MINUTES` | default 5; 0 = external cron via `POST /admin/nudges/dispatch` |
 | Push/Email/SMS | `APNS_*`, `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APP_BASE_URL` | logged instead of sent |
+| Web Push (browser nudges) | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — self-generated pair (`npx web-push generate-vapid-keys` emits env-ready base64url strings); no third-party account | web client's notifications toggle disables with an honest note; delivery logs |
 | Web billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, `STRIPE_RETURN_URL` | checkout 503s; webhook rejects |
 | Web Apple sign-in | `APPLE_SERVICES_CLIENT_ID` (second token audience) | native audience only |
 | Web app social (client) | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_APPLE_SERVICES_ID`, `NEXT_PUBLIC_APPLE_REDIRECT_URI` (`apps/app`) | Apple/Google buttons stay inert (no SDK loaded, honest notice) — email/OTP works; add the provider hosts to the Caddy CSP when enabling |

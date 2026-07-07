@@ -19,6 +19,9 @@ email-validator==2.2.0
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 
+# Web Push (VAPID) delivery for browser nudges (apps/app)
+pywebpush==2.0.3
+
 # AI (proactive: agentic plan + safety detection)
 anthropic==0.42.0
 openai==1.59.6

@@ -68,7 +68,7 @@ cere/
 | Prefix | Highlights |
 | --- | --- |
 | `/auth` | signup, login (lockout 5 fails/15 min), apple (bundle-id or Services-ID audience), google, otp/request + otp/verify (emailed 6-digit passwordless sign-in: find-or-create, single-use, 10 min TTL, burns after 5 wrong tries, hashed at rest), refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
-| `/users/me` | profile, attest (18+/AI disclosure; optional client tap-time, honored only when past), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade + minimal Rule 8(3) `deletion_ledger` row: hashed email only, 12-month ops purge), push-token, streak (server mirror of the iOS rules) |
+| `/users/me` | profile, attest (18+/AI disclosure; optional client tap-time, honored only when past), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade + minimal Rule 8(3) `deletion_ledger` row: hashed email only, 12-month ops purge), push-token, push-subscriptions (Web Push: status+VAPID key GET / register POST / unregister DELETE), streak (server mirror of the iOS rules) |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
@@ -95,11 +95,13 @@ cere/
 - `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
 - `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
   `APPSTORE_ROOT_CERT_PATH` is set) + notification → tier mapping.
-- `nudges.py`/`notifications.py` — scheduling + APNs push. Delivery runs in-process: a
-  lifespan task in `app.main` calls `dispatch_due` every `NUDGE_DISPATCH_INTERVAL_MINUTES`
-  (rows claimed with `FOR UPDATE SKIP LOCKED`, so multiple workers are safe); outcomes are
-  `sent`/`skipped`/`failed`; users without a push token get email delivery when they've
-  opted in (`users.email_nudges`), and `POST /admin/nudges/dispatch` remains as a manual pass.
+- `nudges.py`/`notifications.py`/`webpush.py` — scheduling + APNs + Web Push. Delivery runs
+  in-process: a lifespan task in `app.main` calls `dispatch_due` every
+  `NUDGE_DISPATCH_INTERVAL_MINUTES` (rows claimed with `FOR UPDATE SKIP LOCKED`, so multiple
+  workers are safe); outcomes are `sent`/`skipped`/`failed`. Preference order for users
+  without a native push token: browser Web Push (VAPID, `web_push_subscriptions`; dead
+  404/410 endpoints pruned in place) → email when opted in (`users.email_nudges`) → honest
+  `skipped`. `POST /admin/nudges/dispatch` remains as a manual pass.
 
 ### Oracle (LangGraph agent)
 
@@ -118,10 +120,11 @@ setup timeout as the fallback).
 
 `users` (auth-hardening, subscription, compliance, region, push_token fields) with 1:1 `consents`,
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
-`nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date).
+`nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
+`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account).
 Global: `content_items`, `waitlist_entries`.
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (9 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (14 revisions).
 
 ## iOS app (`apps/ios/CereBro`)
 

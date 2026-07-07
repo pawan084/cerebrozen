@@ -60,6 +60,28 @@ class PushTokenUpdate(BaseModel):
     push_token: str
 
 
+class WebPushSubscriptionIn(BaseModel):
+    """A browser PushSubscription (endpoint + client encryption keys)."""
+    endpoint: str = Field(max_length=1024)
+    p256dh: str = Field(max_length=255)
+    auth: str = Field(max_length=255)
+
+
+class WebPushSubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    endpoint: str
+    created_at: datetime
+
+
+class WebPushStatusOut(BaseModel):
+    """What the web client needs before subscribing: whether the server can
+    deliver at all (VAPID keys set) and the public application server key."""
+    enabled: bool
+    public_key: str
+    subscriptions: int
+
+
 class AttestBody(BaseModel):
     """Optional client-recorded age-confirmation time — the tap happened
     on-device during onboarding, possibly before the first connect."""
