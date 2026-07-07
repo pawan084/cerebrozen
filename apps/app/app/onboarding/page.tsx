@@ -14,6 +14,7 @@ import {
   applyOnboarding, clearDraft, Draft, FEELINGS, freshDraft, LANGUAGES,
   loadDraft, planTitle, PLAN_STEPS, REMINDER_TIMES, saveDraft,
 } from "@/lib/onboarding";
+import { CONSENT_NOTICE, defaultNoticeLang, NOTICE_LANGS } from "@/lib/consentNotice";
 
 const PROGRESS = [0.08, 0.15, 0.25, 0.35, 0.45, 0.58, 0.7, 0.8, 0.88, 0.96];
 
@@ -375,17 +376,19 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
 
 /* ---------- 8 · Consent ---------- */
 
-const CONSENT_ROWS: { key: keyof Draft["consent"]; title: string; sub: string }[] = [
-  { key: "mood_history", title: "Mood history", sub: "Check-ins shape insights" },
-  { key: "ai_memory", title: "AI memory", sub: "Context between chats" },
-  { key: "journal_memory", title: "Journal memory", sub: "Titles tune your plan" },
-  { key: "sleep_history", title: "Sleep history", sub: "Diary tunes your plan" },
-  { key: "voice_storage", title: "Voice storage", sub: "Off by default" },
+// The onboarding notice shows the 5 categories about to collect data
+// (model_training stays a separate opt-in on the account page).
+const CONSENT_KEYS: (keyof Draft["consent"])[] = [
+  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage",
 ];
 
 function ConsentStep({
   draft, update, onContinue, onBack,
 }: { draft: Draft; update: (p: Partial<Draft>) => void; onContinue: () => void; onBack: () => void }) {
+  // DPDP s.5(3): the notice itself is readable in English or an Eighth-Schedule
+  // language — the option lives on the notice, seeded from the language step.
+  const [lang, setLang] = useState(() => defaultNoticeLang(draft.languages));
+  const notice = CONSENT_NOTICE[lang] ?? CONSENT_NOTICE.en;
   const remembering =
     draft.consent.mood_history && draft.consent.ai_memory &&
     draft.consent.journal_memory && draft.consent.sleep_history;
@@ -404,10 +407,23 @@ function ConsentStep({
 
   return (
     <Scaffold
-      eyebrow="Privacy choices" title="What CereBro remembers"
-      caption="Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings."
+      eyebrow="Privacy choices" title={notice.title}
+      caption={notice.caption}
       progress={PROGRESS[8]} onContinue={onContinue} onBack={onBack}
     >
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span aria-hidden="true">🌐</span>
+        <select
+          aria-label="Notice language"
+          value={lang}
+          onChange={(e) => setLang(e.target.value)}
+          style={{ flex: "0 1 auto" }}
+        >
+          {NOTICE_LANGS.map((code) => (
+            <option key={code} value={code}>{CONSENT_NOTICE[code].nativeName}</option>
+          ))}
+        </select>
+      </label>
       <button
         className={remembering ? "onb-row selected" : "onb-row"}
         onClick={() => setAll(!remembering)}
@@ -415,26 +431,23 @@ function ConsentStep({
       >
         <span className="onb-row-icon">{remembering ? "✓" : "✨"}</span>
         <span className="onb-row-body">
-          <strong>{remembering ? "Remembering your patterns" : "Remember my patterns"}</strong>
-          <small>
-            {remembering
-              ? "Thank you — plans and reflections will tune to you"
-              : "Recommended — better plans and reflections over time"}
-          </small>
+          <strong>{remembering ? notice.recommendOn : notice.recommendOff}</strong>
+          <small>{remembering ? notice.recommendOnSub : notice.recommendOffSub}</small>
         </span>
       </button>
       <div className="onb-toggles">
-        {CONSENT_ROWS.map((r) => (
-          <label key={r.key} className="onb-toggle">
+        {CONSENT_KEYS.map((key) => (
+          <label key={key} className="onb-toggle">
             <span className="onb-toggle-body">
-              <strong>{r.title}</strong>
-              <small>{r.sub}</small>
+              <strong>{notice.categories[key].label}</strong>
+              <small>{notice.categories[key].hint}</small>
             </span>
             <input
               type="checkbox"
               role="switch"
-              checked={draft.consent[r.key]}
-              onChange={() => toggle(r.key)}
+              aria-label={notice.categories[key].label}
+              checked={draft.consent[key]}
+              onChange={() => toggle(key)}
             />
           </label>
         ))}

@@ -3,18 +3,24 @@ import SwiftUI
 // MARK: - Privacy & memory dashboard
 struct PrivacyView: View {
     @EnvironmentObject var state: AppState
+    /// DPDP s.5(3): the consent notice is readable in English or an
+    /// Eighth-Schedule language — the option lives right on the notice.
+    @State private var noticeLang = "en"
+    private var notice: ConsentNotice { ConsentNotices.notice(noticeLang) }
     var body: some View {
         ScreenScaffold(eyebrow: "Data control dashboard", title: "Privacy & Memory", trailingSystemImage: "lock") {
+            HStack { NoticeLanguageMenu(code: $noticeLang); Spacer() }
             SettingsGroup {
-                ToggleRow(title: "Mood history", subtitle: "Check-ins in insights & plans", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "AI memory", subtitle: "Conversation context between chats", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Journal memory", subtitle: "Journal titles in plans & insights", isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Sleep history", subtitle: "Diary in plans & insights", isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Voice storage", subtitle: "Optional audio storage", isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Model training", subtitle: "Separate opt-in only", isOn: $state.consent.modelTraining); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("mood_history").label, subtitle: notice.category("mood_history").hint, isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("ai_memory").label, subtitle: notice.category("ai_memory").hint, isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("journal_memory").label, subtitle: notice.category("journal_memory").hint, isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("sleep_history").label, subtitle: notice.category("sleep_history").hint, isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("voice_storage").label, subtitle: notice.category("voice_storage").hint, isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("model_training").label, subtitle: notice.category("model_training").hint, isOn: $state.consent.modelTraining); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Anonymous usage stats", subtitle: "Counts only — never your content or account", isOn: $state.usageStatsOn); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: "Lock journal", subtitle: "Require Face ID / passcode", isOn: $state.journalLocked)
             }
+            .onAppear { noticeLang = ConsentNotices.defaultCode(forAppLanguage: state.language) }
             Text("Usage stats are allowlisted counts (like which onboarding step was reached) tied to a random install id on our own servers — no third-party SDKs, never linked to you or your content.")
                 .appFont(11.5).foregroundStyle(Theme.Palette.muted2)
                 .fixedSize(horizontal: false, vertical: true)

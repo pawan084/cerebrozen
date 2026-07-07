@@ -11,6 +11,7 @@ import {
   unsubscribePush,
   type PushStatus,
 } from "@/lib/push";
+import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
 import { AppHeader } from "@/components/AppHeader";
 
 type Consent = {
@@ -19,13 +20,10 @@ type Consent = {
 };
 type Contact = { name: string; method: string; value: string; relationship: string; notify_consent: boolean };
 
-const CONSENT_LABELS: [keyof Consent, string, string][] = [
-  ["mood_history", "Mood history", "Let insights use your check-in history."],
-  ["ai_memory", "AI memory", "Let the companion remember context between conversations."],
-  ["journal_memory", "Journal memory", "Let journal titles tune your plan and insights."],
-  ["sleep_history", "Sleep history", "Let your sleep diary tune plans and insights."],
-  ["voice_storage", "Voice storage", "Keep voice transcripts after a session ends."],
-  ["model_training", "Model training", "Allow anonymized snippets to improve responses."],
+// Labels/hints render from the localized consent notice (DPDP s.5(3) —
+// lib/consentNotice.ts); this fixes the category order.
+const CONSENT_KEYS: (keyof Consent)[] = [
+  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];
 
 // Mirrors the backend/iOS crisis-region contract (services/crisis.py).
@@ -55,6 +53,10 @@ export default function Account() {
   const [push, setPush] = useState<PushStatus | null>(null);
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
+  // DPDP s.5(3): the consent notice is readable in English or an
+  // Eighth-Schedule language, picked right on the notice.
+  const [noticeLang, setNoticeLang] = useState("en");
+  const notice = CONSENT_NOTICE[noticeLang] ?? CONSENT_NOTICE.en;
 
   useEffect(() => {
     api("/auth/me").then((u) => {
@@ -212,21 +214,35 @@ export default function Account() {
       )}
 
       <section className="card" aria-label="Privacy choices">
-        <h2>What CereBro remembers</h2>
-        <p className="sub">All off unless you turn them on — enforced server-side.</p>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+          <h2>{notice.title}</h2>
+          <label className="row" style={{ gap: 6 }}>
+            <span aria-hidden="true">🌐</span>
+            <select
+              aria-label="Notice language"
+              value={noticeLang}
+              onChange={(e) => setNoticeLang(e.target.value)}
+            >
+              {NOTICE_LANGS.map((code) => (
+                <option key={code} value={code}>{CONSENT_NOTICE[code].nativeName}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="sub">{notice.caption}</p>
         {consent &&
-          CONSENT_LABELS.map(([key, label, hint]) => (
+          CONSENT_KEYS.map((key) => (
             <div className="entry row" key={key}>
               <div className="grow">
-                <strong>{label}</strong>
-                <div className="meta">{hint}</div>
+                <strong>{notice.categories[key].label}</strong>
+                <div className="meta">{notice.categories[key].hint}</div>
               </div>
               <input
                 type="checkbox"
                 role="switch"
                 checked={consent[key]}
                 onChange={() => toggleConsent(key)}
-                aria-label={label}
+                aria-label={notice.categories[key].label}
                 style={{ width: 20, height: 20 }}
               />
             </div>

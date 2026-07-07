@@ -285,7 +285,16 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [ ] Processor security clauses with LLM/voice/email/SMS vendors (Rule 6(1)(f)).
 - [ ] DPIIT startup recognition (eligibility for the s. 17(3) exemption if an SDF class
   notification ever covers wellness apps).
-- [ ] Localize consent/notice screens first (Eighth-Schedule language option).
+- [x] Localize consent/notice screens — 2026-07-07: a "notice language" picker ON
+  each consent surface (DPDP s.5(3) — iOS onboarding ConsentScreen + PrivacyView
+  via `Trust/ConsentNotice.swift`; web onboarding consent step + account page via
+  `apps/app/lib/consentNotice.ts`; the two files are a hand-synced cross-stack
+  contract). English + the 12 most-spoken Eighth-Schedule languages (hi bn te mr
+  ta ur gu kn ml or pa as); defaults follow the app-language step (Hinglish →
+  English — Latin script). e2e asserts the हिन्दी re-render on the account page.
+  OWNER before 13 May 2027: professional review of all translations + the
+  remaining 10 languages (Bodo, Dogri, Kashmiri, Konkani, Maithili, Manipuri,
+  Nepali, Sanskrit, Santali, Sindhi); full privacy-policy translation is separate.
 
 ### Onboarding flow review (2026-07-02) — smaller findings
 - [x] Back navigation — 2026-07-04: back chevron on every step > 0 (`StepScaffold`

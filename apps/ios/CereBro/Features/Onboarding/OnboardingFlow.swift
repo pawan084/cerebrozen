@@ -303,6 +303,10 @@ private struct ConsentScreen: View {
     var onContinue: () -> Void
     var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
+    /// DPDP s.5(3): the notice itself is readable in English or an
+    /// Eighth-Schedule language — seeded from the language step's choice.
+    @State private var noticeLang = "en"
+    private var notice: ConsentNotice { ConsentNotices.notice(noticeLang) }
 
     /// The recommended one-tap opt-in covers every "remember my patterns"
     /// category (mood, chat, journal, sleep) — each stays individually
@@ -313,12 +317,12 @@ private struct ConsentScreen: View {
     }
 
     var body: some View {
-        StepScaffold(eyebrow: "Privacy choices", title: "What CereBro remembers",
-                     caption: "Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings.",
+        StepScaffold(eyebrow: "Privacy choices", title: notice.title,
+                     caption: notice.caption,
                      progress: 0.88, onContinue: onContinue, onBack: onBack) {
-            ListRow(title: remembering ? "Remembering your patterns" : "Remember my patterns",
-                    subtitle: remembering ? "Thank you — plans and reflections will tune to you"
-                                          : "Recommended — better plans and reflections over time",
+            HStack { NoticeLanguageMenu(code: $noticeLang); Spacer() }
+            ListRow(title: remembering ? notice.recommendOn : notice.recommendOff,
+                    subtitle: remembering ? notice.recommendOnSub : notice.recommendOffSub,
                     systemImage: remembering ? "checkmark.circle.fill" : "sparkles",
                     emphasis: remembering) {
                 let on = !remembering
@@ -330,11 +334,11 @@ private struct ConsentScreen: View {
             }
             .accessibilityAddTraits(remembering ? .isSelected : [])
             SettingsGroup {
-                ToggleRow(title: "Mood history", subtitle: "Check-ins shape insights", isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "AI memory", subtitle: "Context between chats", isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Journal memory", subtitle: "Titles tune your plan", isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Sleep history", subtitle: "Diary tunes your plan", isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: "Voice storage", subtitle: "Off by default", isOn: $state.consent.voiceStorage)
+                ToggleRow(title: notice.category("mood_history").label, subtitle: notice.category("mood_history").hint, isOn: $state.consent.moodHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("ai_memory").label, subtitle: notice.category("ai_memory").hint, isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("journal_memory").label, subtitle: notice.category("journal_memory").hint, isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("sleep_history").label, subtitle: notice.category("sleep_history").hint, isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
+                ToggleRow(title: notice.category("voice_storage").label, subtitle: notice.category("voice_storage").hint, isOn: $state.consent.voiceStorage)
             }
         }
         .onAppear {
@@ -342,6 +346,7 @@ private struct ConsentScreen: View {
             state.consent = Consent(moodHistory: false, aiMemory: false,
                                     voiceStorage: false, modelTraining: false,
                                     journalMemory: false, sleepHistory: false)
+            noticeLang = ConsentNotices.defaultCode(forAppLanguage: state.language)
         }
     }
 }

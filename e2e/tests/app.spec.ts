@@ -102,6 +102,14 @@ test.describe("Web app (authenticated client)", () => {
     await expect(browserPush).toBeDisabled();
     await expect(page.getByText(/aren't configured on this server yet/)).toBeVisible();
 
+    // DPDP s.5(3): the consent notice re-renders in an Eighth-Schedule
+    // language picked right on the notice (हिन्दी here), then back to English.
+    await page.getByLabel("Notice language").selectOption("hi");
+    await expect(page.getByText("मूड इतिहास")).toBeVisible();
+    await expect(page.getByRole("switch", { name: "AI मेमोरी" })).toBeVisible();
+    await page.getByLabel("Notice language").selectOption("en");
+    await expect(page.getByText("Mood history")).toBeVisible();
+
     // A reload drops the in-memory access token — refresh rotation restores it.
     // Reload on Home specifically: it fires several authed fetches at once, so a
     // regression in the deduped single-use-refresh handling (lib/api) would race,
