@@ -443,9 +443,21 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   canonical cross-stack names; verified rows in `product_events` incl.
   welcome/age_gate/disclosure + paywall_view). Found+fixed a real backend bug:
   `/events` `source` pattern rejected `android` with 422 (predated the client)
-  — pattern extended + test pinned. Unit tests 16→23. Remaining Android gaps
-  (unblocked, larger): Oracle SSE + inline activity widgets, baseline check-in,
-  journal biometric lock, sleep favorites/timer/mixing, 5 more games.
+  — pattern extended + test pinned. Unit tests 16→23. Oracle round (2026-07-07):
+  Talk now upgrades to the streaming agentic Oracle when the server has it
+  (`Session.sse` — HttpURLConnection SSE with the same refresh-rotation
+  semantics as `api()`, seam-tested; deterministic /chat stays the fallback):
+  token streaming bubble, inline `widget` frames → `WidgetCard` (breathing/
+  grounding→Games, mood_check→Home, mini_journal→Journal, sleep_checkin→Sleep,
+  else honest iOS-only note — third copy of the widget-kinds contract),
+  `tool_confirm` → Approve/Not-now card → `/oracle/confirm` resumes the same
+  thread, `crisis` frames raise the existing banner. Emulator-verified LIVE:
+  real LLM stream → "5-4-3-2-1 grounding" widget card → Open→Games; "log my
+  mood as anxious" → interrupt card → Approve → resumed stream → mood row in
+  Postgres. Unit tests 23→29 (SSE line parse, frame order, 401-rotation
+  replay, error-detail surfacing, widget parse/route). Remaining Android gaps
+  (unblocked, smaller): baseline check-in, journal biometric lock, sleep
+  favorites/timer/mixing, 5 more games.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

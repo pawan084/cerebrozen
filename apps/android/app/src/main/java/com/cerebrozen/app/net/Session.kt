@@ -57,6 +57,7 @@ object Session {
     ) {
         storage = store
         http = exec
+        sseExec = ::realSse
         access = null
         signedIn = storage.getString(REFRESH_KEY) != null
     }
@@ -180,6 +181,51 @@ object Session {
     // APIs directly (unit-testable via resetForTest).
     internal fun prefGet(key: String): String? = storage.getString(key)
     internal fun prefPut(key: String, value: String) { storage.putString(key, value) }
+
+    // ── Oracle SSE ──────────────────────────────────────────────────────
+    /** SSE transport seam — (url, jsonBody, authToken) → (status, byte stream).
+     * Real impl streams over HttpURLConnection; tests feed ByteArrayInputStreams. */
+    internal var sseExec: suspend (String, String, String?) -> Pair<Int, java.io.InputStream> = ::realSse
+
+    private suspend fun realSse(url: String, body: String, authToken: String?): Pair<Int, java.io.InputStream> =
+        withContext(Dispatchers.IO) {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 120_000   // LLM streams pause between tokens
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Accept", "text/event-stream")
+            authToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            conn.doOutput = true
+            conn.outputStream.use { it.write(body.toByteArray()) }
+            val code = conn.responseCode
+            code to (if (code in 200..299) conn.inputStream
+                     else conn.errorStream ?: java.io.ByteArrayInputStream(ByteArray(0)))
+        }
+
+    /** POST an SSE endpoint and invoke [onEvent] for every `data:` JSON frame.
+     * Same auth semantics as [api]: fresh-launch refresh + one rotation retry. */
+    suspend fun sse(path: String, json: JSONObject, onEvent: (JSONObject) -> Unit) {
+        if (access == null && !refresh()) throw ApiException(401, "Signed out")
+        var detail = ""
+        suspend fun attempt(): Int {
+            val (code, stream) = sseExec(BuildConfig.API_BASE_URL + path, json.toString(), access)
+            withContext(Dispatchers.IO) {
+                stream.bufferedReader().use { reader ->
+                    if (code in 200..299) {
+                        reader.forEachLine { line -> parseSseLine(line)?.let(onEvent) }
+                    } else {
+                        detail = runCatching { JSONObject(reader.readText()).optString("detail") }
+                            .getOrNull().orEmpty()
+                    }
+                }
+            }
+            return code
+        }
+        var code = attempt()
+        if ((code == 401 || code == 403) && refresh()) code = attempt()
+        if (code !in 200..299) throw ApiException(code, detail.ifBlank { "Request failed ($code)" })
+    }
 
     /** Rotate the token pair. Returns false on failure, but only a real auth
      * rejection (401/403) ends the session — a network blip must not sign the
@@ -322,4 +368,17 @@ object Api {
 
     /** Irreversible account + data deletion. */
     suspend fun deleteAccount() { Session.api("/users/me", "DELETE") }
+
+    /** Whether the streaming agentic Oracle is enabled server-side (needs
+     * ORACLE_ENABLED + an LLM key); false → clients use deterministic /chat. */
+    suspend fun oracleAvailable(): Boolean =
+        runCatching { JSONObject(Session.api("/oracle/status")).optBoolean("available") }
+            .getOrDefault(false)
+}
+
+/** One SSE line → its JSON payload (`data: {…}`); null for blanks/comments. */
+internal fun parseSseLine(line: String): org.json.JSONObject? {
+    val t = line.trim()
+    if (!t.startsWith("data:")) return null
+    return runCatching { org.json.JSONObject(t.substring(5).trim()) }.getOrNull()
 }

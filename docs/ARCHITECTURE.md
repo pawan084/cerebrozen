@@ -209,7 +209,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Contract | Backend | iOS |
 | --- | --- | --- |
 | Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
-| Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` |
+| Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` ⇄ web `WIDGET_LINKS` (chat page) ⇄ android `widgetRoute` (TalkScreen.kt) |
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |

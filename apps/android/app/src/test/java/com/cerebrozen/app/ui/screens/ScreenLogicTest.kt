@@ -133,6 +133,29 @@ class ScreenLogicTest {
         assertEquals("Me: m9\n\nCereBro: m10", text)
     }
 
+    // ── Oracle widgets (cross-stack widget kinds) ───────────────────
+    @Test
+    fun parseWidget_reads_kind_title_description_and_rejects_blank_kind() {
+        val w = parseWidget(
+            JSONObject().put("widget_kind", "breathing")
+                .put("title", "2-minute breathing").put("description", "A guided breath."),
+        )
+        assertEquals(ChatWidget("breathing", "2-minute breathing", "A guided breath."), w)
+        assertEquals(null, parseWidget(JSONObject().put("title", "No kind")))
+        assertEquals(null, parseWidget(null))
+    }
+
+    @Test
+    fun widgetRoute_maps_native_surfaces_and_leaves_ios_only_kinds_null() {
+        assertEquals("games", widgetRoute("breathing"))
+        assertEquals("games", widgetRoute("grounding"))
+        assertEquals("home", widgetRoute("mood_check"))
+        assertEquals("journal", widgetRoute("mini_journal"))
+        assertEquals("sleep", widgetRoute("sleep_checkin"))
+        assertEquals(null, widgetRoute("one_good_thing"))   // honest iOS-only note
+        assertEquals(null, widgetRoute("dbt_skill"))
+    }
+
     // ── Journal search ──────────────────────────────────────────────
     @Test
     fun filterEntries_matches_title_or_body_case_insensitively() {

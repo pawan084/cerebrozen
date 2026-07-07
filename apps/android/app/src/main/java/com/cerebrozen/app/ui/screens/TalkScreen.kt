@@ -52,18 +52,39 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal data class Msg(val role: String, val text: String)
+internal data class Msg(val role: String, val text: String, val widget: ChatWidget? = null)
+
+/** An inline activity the Oracle attached to a reply (cross-stack widget kinds). */
+internal data class ChatWidget(val kind: String, val title: String, val description: String)
+
+internal fun parseWidget(o: JSONObject?): ChatWidget? {
+    val kind = o?.optString("widget_kind").orEmpty()
+    if (kind.isBlank()) return null
+    return ChatWidget(kind, o!!.optString("title"), o.optString("description"))
+}
+
+/** Where an inline activity lands on Android; null = honest "iOS-only" note
+ * (mirrors the web WIDGET_LINKS map — breathing/grounding live in Games here). */
+internal fun widgetRoute(kind: String): String? = when (kind) {
+    "breathing", "grounding" -> "games"
+    "mood_check" -> "home"
+    "mini_journal", "journal" -> "journal"
+    "sleep_checkin" -> "sleep"
+    else -> null
+}
 
 internal fun parseChat(rows: JSONArray): List<Msg> =
     (0 until rows.length()).map { i ->
@@ -120,10 +141,47 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     DisposableEffect(Unit) { onDispose { voice.dispose() } }
 
     var starters by remember { mutableStateOf(listOf<String>()) }
+    // Agentic Oracle (SSE) when the server has it; deterministic /chat otherwise.
+    var useOracle by remember { mutableStateOf(false) }
+    var streamText by remember { mutableStateOf("") }
+    var confirmReq by remember { mutableStateOf<Pair<String, String>?>(null) } // threadId → summary
     LaunchedEffect(Unit) {
         runCatching { messages = parseChat(Api.chat()) }
         // Empty chat → grounded conversation starters (mirrors the iOS rail).
         if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
+        useOracle = Api.oracleAvailable()
+    }
+
+    /** Consume one Oracle SSE stream, mutating the chat state per frame.
+     * Returns the final assistant text (for the voice path to speak). */
+    suspend fun consume(path: String, body: JSONObject): String {
+        var acc = ""
+        var widget: ChatWidget? = null
+        var final = ""
+        try {
+            Session.sse(path, body) { ev ->
+                when (ev.optString("type")) {
+                    "token" -> { acc += ev.optString("text"); streamText = acc }
+                    "widget" -> widget = parseWidget(ev.optJSONObject("widget"))
+                    "crisis" -> crisis = true
+                    "tool_confirm" -> confirmReq = ev.optString("thread_id") to
+                        ev.optString("summary").ifBlank { "Approve this action?" }
+                    "done" -> {
+                        val t = ev.optString("text").ifBlank { acc }.trim()
+                        if (t.isNotEmpty() || widget != null) messages = messages + Msg("assistant", t, widget)
+                        final = t; acc = ""; widget = null
+                    }
+                    "error" -> messages = messages + Msg(
+                        "assistant",
+                        ev.optString("detail").ifBlank { "Something went wrong — please try again." },
+                    )
+                }
+            }
+        } finally {
+            // Stream may end paused on a confirm — keep the card, drop the bubble.
+            streamText = ""
+        }
+        return final
     }
 
     fun send(text: String, speak: Boolean = false) {
@@ -131,18 +189,43 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         busy = true; status = null
         scope.launch {
             try {
-                val reply: JSONObject = Api.sendChat(text.trim())
-                val replyText = reply.getJSONObject("reply").getString("text")
-                messages = messages +
-                    Msg("user", reply.getJSONObject("user_message").getString("text")) +
-                    Msg("assistant", replyText)
-                val suggestions = reply.optJSONArray("suggestions")
-                chips = suggestions?.let { arr ->
-                    (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
-                } ?: emptyList()
-                if (hasCrisisSuggestion(suggestions)) crisis = true
-                draft = ""
-                if (speak) voice.speak(replyText)
+                if (useOracle) {
+                    // Agentic path: SSE tokens + inline widgets + confirm-before-write.
+                    // The server persists both sides; thread defaults to the user id.
+                    messages = messages + Msg("user", text.trim())
+                    chips = emptyList()
+                    val final = consume("/oracle/messages", JSONObject().put("text", text.trim()))
+                    draft = ""
+                    if (speak && final.isNotBlank()) voice.speak(final)
+                } else {
+                    val reply: JSONObject = Api.sendChat(text.trim())
+                    val replyText = reply.getJSONObject("reply").getString("text")
+                    messages = messages +
+                        Msg("user", reply.getJSONObject("user_message").getString("text")) +
+                        Msg("assistant", replyText)
+                    val suggestions = reply.optJSONArray("suggestions")
+                    chips = suggestions?.let { arr ->
+                        (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
+                    } ?: emptyList()
+                    if (hasCrisisSuggestion(suggestions)) crisis = true
+                    draft = ""
+                    if (speak) voice.speak(replyText)
+                }
+            } catch (e: Exception) {
+                status = e.message ?: "Couldn't send."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun resolveConfirm(approved: Boolean) {
+        val req = confirmReq ?: return
+        confirmReq = null
+        busy = true
+        scope.launch {
+            try {
+                consume("/oracle/confirm", JSONObject().put("thread_id", req.first).put("approved", approved))
             } catch (e: Exception) {
                 status = e.message ?: "Couldn't send."
             } finally {
@@ -251,7 +334,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
         } else {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                messages.takeLast(12).forEach { m -> ChatBubble(m) }
+                messages.takeLast(12).forEach { m ->
+                    ChatBubble(m)
+                    m.widget?.let { WidgetCard(it, onOpen) }
+                }
+                if (streamText.isNotBlank()) {
+                    ChatBubble(Msg("assistant", "$streamText ▍"))
+                }
             }
             TextButton(onClick = {
                 scope.launch {
@@ -261,6 +350,26 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 }
             }) {
                 Text("Save this conversation to my journal", color = Periwinkle)
+            }
+        }
+
+        // Confirm-before-write: the Oracle paused on a write tool (log_mood,
+        // save_journal, …) — nothing happens without an explicit approval.
+        confirmReq?.let { (_, summary) ->
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardFill)
+                    .border(1.dp, Periwinkle.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text("The companion wants to act", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(summary, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(enabled = !busy, onClick = { resolveConfirm(true) }) { Text("Approve", color = Cyan) }
+                    TextButton(enabled = !busy, onClick = { resolveConfirm(false) }) { Text("Not now", color = TextMuted) }
+                }
             }
         }
 
@@ -277,6 +386,30 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         AppTextField(draft, { draft = it }, "Message")
         PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+    }
+}
+
+/** An Oracle-suggested inline activity: title/description + a native surface
+ * when Android has one, else the honest iOS-only note (mirrors the web card). */
+@Composable
+private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(CardFill)
+            .border(1.dp, LineStroke, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("Suggested activity", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(w.title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(w.description, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        val route = widgetRoute(w.kind)
+        if (route != null) {
+            TextButton(onClick = { onOpen(route) }) { Text("Open", color = Cyan) }
+        } else {
+            Text("This one lives in the iOS app.", style = MaterialTheme.typography.bodySmall, color = TextMuted2)
+        }
     }
 }
 

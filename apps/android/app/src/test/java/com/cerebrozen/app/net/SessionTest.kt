@@ -159,4 +159,79 @@ class SessionTest {
         assertEquals("notifications", funnelStepName("Notify"))
         assertEquals("signup", funnelStepName("SignUp"))
     }
+
+    // ── Oracle SSE ──────────────────────────────────────────────────
+    @Test
+    fun parseSseLine_reads_data_frames_and_ignores_noise() {
+        assertEquals("token", parseSseLine("""data: {"type":"token","text":"hi"}""")!!.getString("type"))
+        assertNull(parseSseLine(""))                    // keep-alive blank
+        assertNull(parseSseLine(": comment"))
+        assertNull(parseSseLine("event: message"))
+        assertNull(parseSseLine("data: not-json"))      // malformed → dropped, not thrown
+    }
+
+    @Test
+    fun sse_streams_frames_in_order() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
+        }
+        val frames = """
+            data: {"type":"token","text":"Hel"}
+
+            data: {"type":"token","text":"lo"}
+
+            data: {"type":"widget","widget":{"widget_kind":"breathing"}}
+
+            data: {"type":"done","text":"Hello"}
+
+        """.trimIndent()
+        Session.sseExec = { url, body, auth ->
+            assertTrue(url.endsWith("/oracle/messages"))
+            assertTrue(body.contains("\"text\":\"hey\""))
+            assertEquals("a1", auth)   // fresh-launch refresh ran first
+            200 to frames.byteInputStream()
+        }
+        val seen = mutableListOf<String>()
+        Session.sse("/oracle/messages", org.json.JSONObject().put("text", "hey")) { ev ->
+            seen.add(ev.getString("type"))
+        }
+        assertEquals(listOf("token", "token", "widget", "done"), seen)
+    }
+
+    @Test
+    fun sse_rotates_once_on_401_then_replays() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        var refreshes = 0
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) { refreshes++; 200 to tokens } else 200 to "{}"
+        }
+        var attempts = 0
+        Session.sseExec = { _, _, _ ->
+            attempts++
+            if (attempts == 1) 401 to """{"detail":"stale"}""".byteInputStream()
+            else 200 to "data: {\"type\":\"done\",\"text\":\"ok\"}\n\n".byteInputStream()
+        }
+        val seen = mutableListOf<String>()
+        Session.sse("/oracle/messages", org.json.JSONObject().put("text", "x")) { seen.add(it.getString("type")) }
+        assertEquals(listOf("done"), seen)
+        assertEquals("one rotation retry", 2, attempts)
+        assertEquals("fresh-launch + 401 retry", 2, refreshes)
+    }
+
+    @Test
+    fun sse_surfaces_the_error_detail_on_persistent_failure() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
+        }
+        Session.sseExec = { _, _, _ -> 429 to """{"detail":"Daily message limit reached"}""".byteInputStream() }
+        try {
+            Session.sse("/oracle/messages", org.json.JSONObject().put("text", "x")) {}
+            throw AssertionError("expected ApiException")
+        } catch (e: Session.ApiException) {
+            assertEquals(429, e.code)
+            assertEquals("Daily message limit reached", e.message)
+        }
+    }
 }
