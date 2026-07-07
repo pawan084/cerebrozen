@@ -26,7 +26,11 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
         }
         release {
-            isMinifyEnabled = false
+            // R8 + resource shrinking. App code is reflection-free (org.json
+            // parsing, Intent-only class refs) and every AAR ships consumer
+            // keep rules — emulator-smoked on a debug-signed release build.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

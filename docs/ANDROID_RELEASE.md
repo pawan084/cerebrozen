@@ -60,9 +60,15 @@ content-rating questionnaire, target-audience + medical-disclaimer copy
 - `:app:testDebugUnitTest` (CI runs it) + walk the [ANDROID_QA.md](ANDROID_QA.md)
   real-device / TalkBack checklist.
 
-## Deferred: R8 minification (needs a device)
+## R8 minification — ENABLED (2026-07-07)
 
-`isMinifyEnabled = false` today, so the release APK is ~13 MB. Turning on R8
-shrink+obfuscate would trim it, but must be validated on a real device
-(reflection paths in org.json / Coil / Credential Manager) with keep-rules and a
-full smoke test — do it as its own pass, not blind before launch.
+`isMinifyEnabled = true` + `isShrinkResources = true`: release APK went
+**13.3 MB → 2.5 MB (−81%)**. App code is reflection-free (org.json parsing,
+Intent-only class refs) and Coil / Credential Manager / googleid ship consumer
+keep rules, so `proguard-rules.pro` stays empty. Emulator-smoked on a
+debug-signed release build (API-35 AVD): launch → Welcome → age gate → AI
+disclosure → language → state-check → auth screen incl. the inert
+"Continue with Google" path — zero `AndroidRuntime` errors. Owner: repeat the
+[ANDROID_QA.md](ANDROID_QA.md) pass on a real device before the Play upload
+(mapping.txt from `bundleRelease` uploads alongside the AAB for de-obfuscated
+crash reports).
