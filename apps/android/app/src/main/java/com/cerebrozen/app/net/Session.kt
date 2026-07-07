@@ -157,6 +157,30 @@ object Session {
         store(JSONObject(raw("/auth/google", "POST", body.toString(), "application/json", authed = false)))
     }
 
+    /** Email a password-reset link. The server always answers 200 (no account
+     * enumeration); the reset itself completes on the web, same as iOS. */
+    suspend fun forgotPassword(email: String) {
+        raw("/auth/password/forgot", "POST", JSONObject().put("email", email).toString(), "application/json", authed = false)
+    }
+
+    /** Anonymous first-party product event (deliberately UNauthenticated so
+     * rows can never join accounts — the /events contract; see Analytics). */
+    internal suspend fun postEvent(anonId: String, name: String, step: String?) {
+        val event = JSONObject().put("name", name)
+        step?.let { event.put("step", it) }
+        val body = JSONObject()
+            .put("anon_id", anonId)
+            .put("source", "android")
+            .put("events", org.json.JSONArray().put(event))
+        raw("/events", "POST", body.toString(), "application/json", authed = false)
+    }
+
+    // Small preference accessors on the same Store seam the tokens use —
+    // lets Analytics persist its anon id / opt-out without touching Android
+    // APIs directly (unit-testable via resetForTest).
+    internal fun prefGet(key: String): String? = storage.getString(key)
+    internal fun prefPut(key: String, value: String) { storage.putString(key, value) }
+
     /** Rotate the token pair. Returns false on failure, but only a real auth
      * rejection (401/403) ends the session — a network blip must not sign the
      * user out (it would also wipe the offline cache on a cold, offline launch). */
@@ -253,6 +277,11 @@ object Api {
     suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
     suspend fun sendChat(text: String): JSONObject =
         JSONObject(Session.api("/chat/messages", "POST", JSONObject().put("text", text)))
+
+    /** Tappable conversation starters grounded in the user's saved
+     * self-reflection (LLM or curated fallback — always non-empty). */
+    suspend fun starters(): JSONObject =
+        JSONObject(Session.api("/assessment/topics", "POST", JSONObject()))
 
     // ── Library / insights / account (parity with iOS + web) ──────────────
     suspend fun content(kind: String): JSONArray =

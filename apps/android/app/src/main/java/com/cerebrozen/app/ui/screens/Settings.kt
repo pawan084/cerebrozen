@@ -33,6 +33,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
@@ -183,11 +184,25 @@ fun PrivacyScreen(onBack: () -> Unit) {
                 }
             }
         }
+        SectionCard {
+            var statsOn by remember { mutableStateOf(Analytics.enabled) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Anonymous usage stats", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Text("Counts only — never your content or account",
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                Switch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
+            }
+        }
     }
 }
 
 @Composable
 fun PremiumScreen(onBack: () -> Unit) = SubPage("CereBro Premium", "Go deeper", onBack) {
+    // First-party paywall funnel count (anonymous, opt-out; mirrors iOS).
+    LaunchedEffect(Unit) { Analytics.track("paywall_view") }
     Text("Unlock the full library, longer programs, and unlimited voice — same private-by-design promise.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     PlanCard("Annual", "₹2,999 / year", "Save 37% · 7-day free trial", featured = true)

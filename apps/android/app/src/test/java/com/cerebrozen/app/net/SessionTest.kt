@@ -105,4 +105,58 @@ class SessionTest {
         assertNull(store.getString("refresh_token"))
         assertNull("offline cache must be wiped on sign-out (privacy)", store.getString("cache:/me"))
     }
+
+    @Test
+    fun forgotPassword_posts_unauthenticated() = runTest {
+        val store = FakeStore()
+        var seenAuth: String? = "sentinel"
+        Session.resetForTest(store) { url, method, body, _, auth ->
+            assertTrue(url.endsWith("/auth/password/forgot"))
+            assertEquals("POST", method)
+            assertTrue(body!!.contains("e@x.com"))
+            seenAuth = auth
+            200 to """{"sent":true}"""
+        }
+        Session.forgotPassword("e@x.com")
+        assertNull("reset request must carry no bearer token", seenAuth)
+    }
+
+    @Test
+    fun analytics_event_posts_anonymously_with_source_and_step() = runTest {
+        val store = FakeStore()
+        var captured: String? = null
+        var seenAuth: String? = "sentinel"
+        Session.resetForTest(store) { url, method, body, _, auth ->
+            assertTrue(url.endsWith("/events"))
+            assertEquals("POST", method)
+            captured = body; seenAuth = auth
+            202 to """{"accepted":1}"""
+        }
+        Session.postEvent("anon-123", "onboarding_step", "welcome")
+        assertNull("events are deliberately unauthenticated", seenAuth)
+        assertTrue(captured!!.contains("\"anon_id\":\"anon-123\""))
+        assertTrue(captured!!.contains("\"source\":\"android\""))
+        assertTrue(captured!!.contains("\"name\":\"onboarding_step\""))
+        assertTrue(captured!!.contains("\"step\":\"welcome\""))
+    }
+
+    @Test
+    fun analytics_toggle_defaults_on_and_persists_via_store() = runTest {
+        val store = FakeStore()
+        Session.resetForTest(store) { _, _, _, _, _ -> 200 to "{}" }
+        assertTrue("anonymous counts default on (opt-out, matches iOS)", Analytics.enabled)
+        Analytics.enabled = false
+        assertFalse(Analytics.enabled)
+        assertEquals("false", store.getString("usage_stats_on"))
+    }
+
+    @Test
+    fun funnelStepName_maps_android_steps_to_the_cross_stack_vocabulary() {
+        assertEquals("welcome", funnelStepName("Welcome"))
+        assertEquals("age_gate", funnelStepName("Age"))
+        assertEquals("state_check", funnelStepName("State"))
+        assertEquals("first_reset", funnelStepName("Reset"))
+        assertEquals("notifications", funnelStepName("Notify"))
+        assertEquals("signup", funnelStepName("SignUp"))
+    }
 }

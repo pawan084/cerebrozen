@@ -41,6 +41,14 @@ async def test_events_validation(client):
     assert (await client.post("/events", json={"anon_id": "x", "events": []})).status_code == 422
     assert (await client.post("/events", json={
         "anon_id": _anon(), "source": "carrier-pigeon", "events": []})).status_code == 422
+    # Every shipping client source is accepted — android was 422ing before
+    # 2026-07-07 (the pattern predated the Android client).
+    for source in ("ios", "web", "app", "android"):
+        r = await client.post("/events", json={
+            "anon_id": _anon(), "source": source,
+            "events": [{"name": "paywall_view"}],
+        })
+        assert r.status_code == 202, source
 
 
 async def test_onboarding_funnel_counts_unique_installs(admin_client):

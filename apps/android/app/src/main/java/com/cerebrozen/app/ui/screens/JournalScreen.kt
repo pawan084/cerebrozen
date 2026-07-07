@@ -45,6 +45,13 @@ internal fun parseEntries(rows: JSONArray): List<Entry> =
         )
     }
 
+/** Case-insensitive title/body filter (mirrors iOS journal search). */
+internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
+    val q = query.trim()
+    if (q.isEmpty()) return entries
+    return entries.filter { it.title.contains(q, ignoreCase = true) || it.body.contains(q, ignoreCase = true) }
+}
+
 /** Journal: private composer + history, mirrored to /journal (safety-scanned
  * server-side; support surfaces, never blocks). */
 @Composable
@@ -56,6 +63,7 @@ fun JournalScreen() {
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var promptIdx by remember { mutableIntStateOf(0) }
+    var query by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
@@ -115,9 +123,17 @@ fun JournalScreen() {
         if (entries.isNotEmpty()) {
             SectionCard {
                 Text("History", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                entries.take(10).forEach { e ->
+                if (entries.size > 3) {
+                    AppTextField(query, { query = it }, "Search entries", singleLine = true)
+                }
+                val shown = filterEntries(entries, query)
+                shown.take(10).forEach { e ->
                     Text("${e.title} · ${e.date}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                     Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                if (shown.isEmpty()) {
+                    Text("No entries match \"${query.trim()}\".",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
         }

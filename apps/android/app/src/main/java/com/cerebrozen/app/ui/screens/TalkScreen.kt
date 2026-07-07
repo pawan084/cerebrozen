@@ -80,6 +80,20 @@ internal fun hasCrisisSuggestion(suggestions: JSONArray?): Boolean {
     }
 }
 
+/** `/assessment/topics` → tappable starter texts (mirrors the iOS rail). */
+internal fun parseStarters(payload: JSONObject): List<String> =
+    payload.optJSONArray("topics")?.let { arr ->
+        (0 until arr.length()).mapNotNull {
+            arr.optJSONObject(it)?.optString("topic")?.takeIf(String::isNotBlank)
+        }
+    } ?: emptyList()
+
+/** The last few turns as a journal body (mirrors iOS "Save to journal"). */
+internal fun talkTranscript(messages: List<Msg>, take: Int = 8): String =
+    messages.takeLast(take).joinToString("\n\n") { m ->
+        (if (m.role == "user") "Me: " else "CereBro: ") + m.text
+    }
+
 /** Talk: a real voice companion (on-device speech ↔ TTS over /chat) with a
  * text fallback. Same deterministic, safety-scanned pipeline as iOS/web. */
 @Composable
@@ -105,7 +119,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     val voice = remember { VoiceEngine(context) }
     DisposableEffect(Unit) { onDispose { voice.dispose() } }
 
-    LaunchedEffect(Unit) { runCatching { messages = parseChat(Api.chat()) } }
+    var starters by remember { mutableStateOf(listOf<String>()) }
+    LaunchedEffect(Unit) {
+        runCatching { messages = parseChat(Api.chat()) }
+        // Empty chat → grounded conversation starters (mirrors the iOS rail).
+        if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
+    }
 
     fun send(text: String, speak: Boolean = false) {
         if (text.isBlank() || busy) return
@@ -222,9 +241,26 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Text("What's on your mind?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text("Speak or type — small worries welcome.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
+            if (starters.isNotEmpty()) {
+                Text("Or start from where you are", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    starters.forEach { topic ->
+                        PickChip(selected = false, label = topic) { send(topic) }
+                    }
+                }
+            }
         } else {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 messages.takeLast(12).forEach { m -> ChatBubble(m) }
+            }
+            TextButton(onClick = {
+                scope.launch {
+                    runCatching { Api.createJournal("Talk reflection", talkTranscript(messages)) }
+                        .onSuccess { status = "Saved to your journal." }
+                        .onFailure { status = "Couldn't save — try again." }
+                }
+            }) {
+                Text("Save this conversation to my journal", color = Periwinkle)
             }
         }
 

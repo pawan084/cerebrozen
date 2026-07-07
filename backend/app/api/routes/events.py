@@ -36,7 +36,7 @@ class EventIn(BaseModel):
 
 class EventBatch(BaseModel):
     anon_id: str = Field(min_length=8, max_length=64)
-    source: str = Field(default="ios", pattern=r"^(ios|web|app)$")
+    source: str = Field(default="ios", pattern=r"^(ios|web|app|android)$")
     events: list[EventIn] = Field(max_length=_MAX_BATCH)
 
 

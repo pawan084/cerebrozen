@@ -29,6 +29,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,8 +44,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.net.funnelStepName
 import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -76,6 +79,9 @@ fun Onboarding() {
     val order = OStep.entries
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
     fun back() { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
+
+    // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
+    LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
 
     var language by remember { mutableStateOf("English") }
     var feeling by remember { mutableStateOf<String?>(null) }
@@ -247,6 +253,7 @@ private fun SignUpStep(feeling: String?, consent: () -> JSONObject, onBack: () -
             scope.launch {
                 try {
                     Session.signUp(email.trim(), password, name.trim())
+                    Analytics.track("onboarding_done")
                     // Best-effort personalization — never blocks entering the app.
                     runCatching { Api.attest() }
                     runCatching { Api.updateConsent(consent()) }

@@ -432,10 +432,20 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   carries the `crisis` suggestion action (sticky, → Crisis screen — verified
   end-to-end: risky message → live safety scan → banner → 112 screen).
   Unit tests 12→16 (crisis detection, notice mapping/fallback, 13×6 contract
-  shape). Remaining Android gaps from the audit (lower priority, unblocked):
-  Oracle SSE + inline activity widgets + starters, forgot-password flow,
-  first-party analytics events, baseline check-in, journal search/lock,
-  sleep favorites/timer/mixing, 5 more games, Talk save-to-journal.
+  shape). Parity batch 2 (2026-07-07, all emulator-verified live): forgot-
+  password ("Forgot password?" → /auth/password/forgot — reset link confirmed
+  in api logs); conversation starters on empty Talk (POST /assessment/topics →
+  chips; live LLM topics rendered + tapped); Talk "Save this conversation to
+  my journal" (→ /journal, entry confirmed in History); journal search (local
+  title/body filter, shows at >3 entries); first-party analytics
+  (`net/Analytics.kt`: anon install id + opt-out toggle in Privacy & memory,
+  onboarding_step/onboarding_done/paywall_view — funnel steps mapped to the
+  canonical cross-stack names; verified rows in `product_events` incl.
+  welcome/age_gate/disclosure + paywall_view). Found+fixed a real backend bug:
+  `/events` `source` pattern rejected `android` with 422 (predated the client)
+  — pattern extended + test pinned. Unit tests 16→23. Remaining Android gaps
+  (unblocked, larger): Oracle SSE + inline activity widgets, baseline check-in,
+  journal biometric lock, sleep favorites/timer/mixing, 5 more games.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily

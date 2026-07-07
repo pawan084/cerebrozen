@@ -111,4 +111,38 @@ class ScreenLogicTest {
             }
         }
     }
+
+    // ── Conversation starters + Talk transcript ─────────────────────
+    @Test
+    fun parseStarters_maps_topics_and_drops_blanks() {
+        val payload = JSONObject().put(
+            "topics",
+            JSONArray()
+                .put(JSONObject().put("id", "1").put("topic", "A worry that won't settle"))
+                .put(JSONObject().put("id", "2").put("topic", ""))
+                .put(JSONObject().put("id", "3").put("topic", "One small win today")),
+        )
+        assertEquals(listOf("A worry that won't settle", "One small win today"), parseStarters(payload))
+        assertEquals(emptyList<String>(), parseStarters(JSONObject()))
+    }
+
+    @Test
+    fun talkTranscript_labels_roles_and_takes_the_tail() {
+        val messages = (1..10).map { Msg(if (it % 2 == 1) "user" else "assistant", "m$it") }
+        val text = talkTranscript(messages, take = 2)
+        assertEquals("Me: m9\n\nCereBro: m10", text)
+    }
+
+    // ── Journal search ──────────────────────────────────────────────
+    @Test
+    fun filterEntries_matches_title_or_body_case_insensitively() {
+        val entries = listOf(
+            Entry("Meeting pressure", "A bit stressed", "2026-07-01", "none"),
+            Entry("Calm evening", "Slept WELL after tea", "2026-07-02", "none"),
+        )
+        assertEquals(listOf(entries[0]), filterEntries(entries, "PRESSURE"))
+        assertEquals(listOf(entries[1]), filterEntries(entries, "slept well"))
+        assertEquals(entries, filterEntries(entries, "  "))   // blank query = all
+        assertEquals(emptyList<Entry>(), filterEntries(entries, "nope"))
+    }
 }

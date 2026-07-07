@@ -115,6 +115,21 @@ fun AuthScreen() {
                 TextButton(onClick = { creating = !creating; error = null }) {
                     Text(if (creating) "I already have an account" else "New here? Create your space", color = TextMuted)
                 }
+                if (!creating) {
+                    // Reset completes via the emailed web link (same as iOS);
+                    // the server always answers 200 — no account enumeration.
+                    TextButton(
+                        enabled = !busy && email.isNotBlank(),
+                        onClick = {
+                            run {
+                                Session.forgotPassword(email.trim())
+                                info = "Reset link sent — check your email."
+                            }
+                        },
+                    ) {
+                        Text("Forgot password?", color = TextMuted)
+                    }
+                }
                 TextButton(onClick = { mode = AuthMode.Otp; error = null; info = null }) {
                     Text("Email me a code instead", color = Periwinkle)
                 }
