@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 
-const SOUNDSCAPES = [
-  { name: "Forest rain", len: "45 min", bg: "linear-gradient(160deg,#2f5a3a,#12241a)" },
-  { name: "Warm rain", len: "60 min", bg: "linear-gradient(160deg,#8a5a2f,#3a2416)" },
-  { name: "Deep space", len: "8 hr", bg: "linear-gradient(160deg,#3a3a7a,#161240)" },
-  { name: "Ocean tide", len: "90 min", bg: "linear-gradient(160deg,#2f6a6a,#12302f)" },
+// Warm thumbnail gradients for the served soundscapes / stories.
+const SOUND_BG = [
+  "linear-gradient(160deg,#2f5a3a,#12241a)",
+  "linear-gradient(160deg,#8a5a2f,#3a2416)",
+  "linear-gradient(160deg,#3a3a7a,#161240)",
+  "linear-gradient(160deg,#2f6a6a,#12302f)",
 ];
-const STORIES = [
-  { title: "The lighthouse keeper", sub: "A slow tale of tides and quiet · 24 min", bg: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
-  { title: "Night train to nowhere", sub: "Rhythmic and drowsy · 31 min", bg: "linear-gradient(135deg,#e08a9a,#8a5a6a)" },
+const STORY_BG = [
+  "linear-gradient(135deg,#8a7bf0,#5b52c9)",
+  "linear-gradient(135deg,#e08a9a,#8a5a6a)",
 ];
 const QUALITY = ["Rough", "Poor", "Okay", "Good", "Rested"];
+
+type Content = { id: string; title: string; subtitle: string; duration_min: number };
 
 export default function Sleep() {
   const [quality, setQuality] = useState(0);
@@ -22,9 +25,13 @@ export default function Sleep() {
   const [wake, setWake] = useState("07:00");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [soundscapes, setSoundscapes] = useState<Content[]>([]);
+  const [stories, setStories] = useState<Content[]>([]);
 
   useEffect(() => {
     api<any[]>("/sleep?limit=1").then((l) => { if (l[0]) { setBedtime(l[0].bedtime.slice(0, 5)); setWake(l[0].wake_time.slice(0, 5)); } }).catch(() => {});
+    fetch(`${API_URL}/content?kind=soundscape`).then((r) => (r.ok ? r.json() : [])).then(setSoundscapes).catch(() => {});
+    fetch(`${API_URL}/content?kind=sleep`).then((r) => (r.ok ? r.json() : [])).then(setStories).catch(() => {});
   }, []);
 
   function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -50,23 +57,23 @@ export default function Sleep() {
 
         <div className="sec-head"><h2 className="serif-h">Soundscapes</h2></div>
         <div className="media-grid">
-          {SOUNDSCAPES.map((s) => (
-            <div key={s.name} className="media-card" style={{ background: s.bg }}>
+          {soundscapes.map((s, i) => (
+            <div key={s.id} className="media-card" style={{ background: SOUND_BG[i % SOUND_BG.length] }}>
               <span />
-              <span className="cap"><strong>{s.name}</strong><small>{s.len}</small></span>
+              <span className="cap"><strong>{s.title}</strong><small>{s.duration_min > 0 ? `${s.duration_min} min` : s.subtitle}</small></span>
             </div>
           ))}
         </div>
 
         <div className="sec-head"><h2 className="serif-h">Sleep stories</h2></div>
-        {STORIES.map((s) => (
-          <div key={s.title} className="story-row">
-            <span className="story-thumb" style={{ background: s.bg }} />
-            <span className="body"><strong>{s.title}</strong><small>{s.sub}</small></span>
-            <button className="play">PLAY</button>
+        {stories.map((s, i) => (
+          <div key={s.id} className="story-row">
+            <span className="story-thumb" style={{ background: STORY_BG[i % STORY_BG.length] }} />
+            <span className="body"><strong>{s.title}</strong><small>{s.subtitle}</small></span>
+            {s.duration_min > 0 && <span className="meta">{s.duration_min} min</span>}
           </div>
         ))}
-        <p className="footnote">Audio playback lives in the iOS app — here you can plan your wind-down and log your mornings.</p>
+        <p className="footnote">Served from the same catalogue as the apps. Audio playback lives in the iOS &amp; Android apps for now — here you plan your wind-down and log your mornings.</p>
 
         <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
         <form className="card-dark" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">

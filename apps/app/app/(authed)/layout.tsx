@@ -14,7 +14,9 @@ const MENU = [
   { href: "/insights", label: "Insights", icon: Icon.insights },
 ];
 const EXPLORE = [
-  { href: "/programs", label: "Programs", icon: Icon.plan },
+  { href: "/plan", label: "Plan", icon: Icon.plan },
+  { href: "/programs", label: "Programs", icon: Icon.spark },
+  { href: "/library", label: "Library", icon: Icon.library },
   { href: "/games", label: "Games", icon: Icon.games },
   { href: "/account", label: "Settings", icon: Icon.settings },
 ];

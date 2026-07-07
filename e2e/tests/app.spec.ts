@@ -57,11 +57,28 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: "Mood, last 14 days" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Gentle patterns")).toBeVisible();
 
-    // Programs + Games screens exist.
+    // Programs: renders the real seeded catalogue (not a hardcoded list).
     await nav(page, "Programs").click();
     await expect(page.getByRole("heading", { name: "Guided journeys" })).toBeVisible({ timeout: 10_000 });
+    // The featured hero (h2) mirrors the first program's title, so target the
+    // grid card's h3 specifically to keep the locator unambiguous.
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Ease work stress" }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Games: box breathing is genuinely playable — Start flips to Stop and the
+    // phase label appears (proves the game actually runs, not a dead button).
     await nav(page, "Games").click();
-    await expect(page.getByRole("heading", { name: "Bubble Pop" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Box breathing" })).toBeVisible();
+    await page.getByRole("button", { name: "Start" }).click();
+    await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+    await expect(page.getByText("Breathe in")).toBeVisible();
+
+    // Plan + Library (were built but orphaned) are now reachable from the nav.
+    await nav(page, "Plan").click();
+    await expect(page.getByText(/Agentic plan/)).toBeVisible({ timeout: 15_000 });
+    await nav(page, "Library").click();
+    await expect(page.getByRole("heading", { name: "Library", exact: true })).toBeVisible({ timeout: 10_000 });
 
     // Settings (account): consent toggle flips, enforced server-side.
     await nav(page, "Settings").click();

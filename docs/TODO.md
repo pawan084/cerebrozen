@@ -192,6 +192,14 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
   pre-traffic, with a 30 s setup timeout falling back to MemorySaver.
 - [x] Library page (2026-07-03): served `/content` catalogue grouped by kind on the
   web app; honest "playback lives in iOS" footnote.
+- [x] Dead-decoration sweep (2026-07-07): Programs now fetches the real
+  `GET /content?kind=program` catalogue (hero mirrors the first program; CTA →
+  `/plan`); Games gained a genuinely playable box-breathing game (reuses the
+  onboarding `.onb-breathe` CSS + phase logic); Sleep soundscapes/stories fetch
+  `/content?kind=soundscape|sleep` (dead PLAY buttons removed); Plan + Library
+  restored to the EXPLORE nav (were built but orphaned). e2e app spec asserts the
+  real program title (grid-card h3 — the hero h2 mirrors it, so `getByText` was
+  ambiguous), Start→Stop breathing, and Plan/Library reachability. 11/11 e2e green.
 - [x] Web v1 remaining: Google (+ Apple) sign-in — done in the Design-refresh Phase 2
   (2026-07-05) via `components/AuthPanel` + `lib/social`; buttons are live once the owner
   sets `NEXT_PUBLIC_GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_APPLE_SERVICES_ID`.
