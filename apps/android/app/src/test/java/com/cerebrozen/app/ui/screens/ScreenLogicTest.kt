@@ -71,6 +71,16 @@ class ScreenLogicTest {
         assertEquals("none", entries[0].risk)          // optString default
     }
 
+    // ── Streak milestones ───────────────────────────────────────────
+    @Test
+    fun milestoneLine_fires_only_on_milestone_days() {
+        assertEquals("🎉 3-day milestone — beautifully done", milestoneLine(3))
+        assertEquals("🎉 7-day milestone — beautifully done", milestoneLine(7))
+        assertEquals(null, milestoneLine(0))
+        assertEquals(null, milestoneLine(4))
+        assertEquals(null, milestoneLine(15))
+    }
+
     // ── Crisis suggestion detection (Talk banner) ───────────────────
     @Test
     fun hasCrisisSuggestion_detects_the_crisis_action() {

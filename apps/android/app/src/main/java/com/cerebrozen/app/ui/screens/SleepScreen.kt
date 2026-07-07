@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -79,14 +81,19 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { reload() }
 
-    Page("How you slept, not a measurement", "Sleep") {
+    Page("How you slept, not a measurement", "Sleep", trailing = Icons.Outlined.DarkMode) {
         HeroCard(
             imageUrl = HeroImg.sleep,
             eyebrow = "Wind down",
             title = "A calmer night",
             subtitle = "A slower evening makes for a softer morning.",
-            height = 172.dp,
-        )
+            height = 186.dp,
+        ) {
+            TextButton(
+                onClick = { Player.play(context, "A calmer night") },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            ) { Text("▶ Play the ambient bed", color = Cyan) }
+        }
         SectionCard {
             Text("Morning check-in", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text("How rested do you feel?", style = MaterialTheme.typography.bodyMedium, color = TextMuted)

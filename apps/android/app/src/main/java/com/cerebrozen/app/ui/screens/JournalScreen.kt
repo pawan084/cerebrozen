@@ -1,6 +1,8 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -105,7 +107,7 @@ fun JournalScreen() {
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     if (!unlocked) {
-        Page("Private to you", "Journal") {
+        Page("Private to you", "Journal", trailing = Icons.Outlined.MenuBook) {
             SectionCard {
                 Text("Journal is locked", style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text("Your entries stay behind your screen lock.",
@@ -118,7 +120,7 @@ fun JournalScreen() {
         return
     }
 
-    Page("Private to you", "Journal") {
+    Page("Private to you", "Journal", trailing = Icons.Outlined.MenuBook) {
         HeroCard(
             imageUrl = HeroImg.journal,
             eyebrow = "Today's prompt",

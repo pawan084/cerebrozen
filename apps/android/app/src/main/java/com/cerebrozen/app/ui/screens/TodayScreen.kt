@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.ContentScale
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -76,6 +77,11 @@ internal fun greetingFor(hour: Int): String = when (hour) {
 }
 
 private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+
+/** A gentle celebration line on milestone days (mirrors iOS streak
+ * celebrations — calm, never punitive). */
+internal fun milestoneLine(streak: Int): String? =
+    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak-day milestone — beautifully done" else null
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -168,6 +174,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var moodCount by remember { mutableIntStateOf(0) }
     var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
+    var goal by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -178,7 +185,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
     suspend fun reload() {
-        runCatching { userName = Api.me().optString("name") }
+        runCatching {
+            val me = Api.me()
+            userName = me.optString("name")
+            goal = me.optJSONArray("goals")?.optString(0).orEmpty()
+        }
         runCatching {
             val s = Api.streak()
             streak = s.optInt("current")
@@ -198,9 +209,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(greeting().uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        // Goal-aware eyebrow + serif greeting (mirrors iOS DailyFocus header).
         Text(
-            userName.ifBlank { "friend" },
+            (if (goal.isBlank()) "Today" else "Today · $goal").uppercase(),
+            style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+        )
+        Text(
+            "${greeting()}, ${userName.ifBlank { "friend" }}",
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
         )
@@ -288,6 +303,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 if (streak > 0) "$streak-day streak" else "Your streak starts today",
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
             )
+            milestoneLine(streak)?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+            }
             Text(
                 if (best > 0) "Best: $best days · show up once a day, no pressure."
                 else "Show up once a day — gentle, no pressure.",

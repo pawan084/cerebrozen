@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -301,7 +303,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
-    Page("AI voice companion", "Talk it through") {
+    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic) {
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
             Modifier.fillMaxWidth()
@@ -443,6 +445,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
         }
 
+        // Fast escape hatch when talking feels like too much (mirrors iOS).
+        NavRow("Quick SOS reset", "Fast anxiety/stress reset — 2 minutes") { onOpen("games") }
+
         Text(if (voice.available) "Type instead" else "Type a message",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         AppTextField(draft, { draft = it }, "Message")
@@ -516,6 +521,18 @@ private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
         label = "pulse",
     )
     Box(Modifier.fillMaxWidth().height(210.dp), contentAlignment = Alignment.Center) {
+        // Soft bloom halo behind the orb (mirrors the iOS radial glow).
+        Box(
+            Modifier.size(230.dp).scale(pulse)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            (if (listening) Cyan else Periwinkle).copy(alpha = 0.28f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
         Box(
             Modifier.size(150.dp).scale(pulse).clip(CircleShape)
                 .background(

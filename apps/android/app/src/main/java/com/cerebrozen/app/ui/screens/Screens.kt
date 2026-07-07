@@ -1,7 +1,14 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -12,6 +19,7 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
@@ -49,13 +61,26 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
     }
 
-    Page("Settings and support", "You") {
+    Page("Settings and support", "You", trailing = Icons.Outlined.Settings) {
         SectionCard {
-            Text(name.ifBlank { "You" }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(
-                "${companion.ifBlank { "Calm Guide" }} · ${language.ifBlank { "English" }}",
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // The avatar orb (mirrors iOS ProfileView's gradient orb).
+                Box(
+                    Modifier.size(46.dp).clip(CircleShape).background(
+                        Brush.radialGradient(listOf(Color.White, Color(0xFFDFE0FF), Periwinkle)),
+                    ),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(name.ifBlank { "You" }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        "${companion.ifBlank { "Calm Guide" }} · ${language.ifBlank { "English" }}",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
+            }
         }
 
         NavRow("Companion style", "${companion.ifBlank { "Calm Guide" }} · how CereBro talks with you",

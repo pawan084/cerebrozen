@@ -10,14 +10,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -34,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -57,9 +61,16 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
     .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.035f))))
     .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
 
-/** Shared page frame for the live tabs: eyebrow + serif title + scroll column. */
+/** Shared page frame for the live tabs: eyebrow + serif title + scroll column.
+ * [trailing] renders as a soft icon well top-right — quiet ornamentation
+ * mirroring iOS ScreenScaffold's trailingSystemImage, not a control. */
 @Composable
-internal fun Page(eyebrow: String, title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun Page(
+    eyebrow: String,
+    title: String,
+    trailing: ImageVector? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
     val rise = remember { Animatable(26f) }
     LaunchedEffect(Unit) { rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing)) }
@@ -71,8 +82,23 @@ internal fun Page(eyebrow: String, title: String, content: @Composable ColumnSco
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+            }
+            trailing?.let { icon ->
+                Box(
+                    Modifier.padding(top = 6.dp).size(40.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.07f))
+                        .border(1.dp, LineStroke, RoundedCornerShape(50)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = TextSoft, modifier = Modifier.size(19.dp))
+                }
+            }
+        }
         content()
     }
 }
