@@ -112,3 +112,126 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
                 )
 
     return {"period": "weekly", "headline": headline, "summary": summary, "metrics": metrics}
+
+
+# ── Pattern dashboard (transparent AI memory) ────────────────────────────
+# Each statement is derived from the user's own last-60-days data and only
+# emitted when that data actually supports it (counts + thresholds shown in
+# `basis`). No LLM, no guesses — this is the "everything CereBro has learned
+# about you" surface, so it must be embarrassingly honest.
+
+_NEG_MOODS = {"anxious", "low", "tired", "stressed", "sad", "heavy", "overwhelmed"}
+
+
+def _local_hour(dt, tzname: str) -> int:
+    try:
+        from zoneinfo import ZoneInfo
+        return dt.astimezone(ZoneInfo(tzname or "UTC")).hour
+    except Exception:
+        return dt.hour
+
+
+async def compute_patterns(db: AsyncSession, user: User) -> dict:
+    since = utcnow() - timedelta(days=60)
+    use_moods = consent_allows(user, "mood_history")
+    use_journal = consent_allows(user, "journal_memory")
+    use_sleep = consent_allows(user, "sleep_history")
+    patterns: list[dict] = []
+
+    moods = []
+    if use_moods:
+        moods = (
+            await db.scalars(
+                select(MoodLog).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
+            )
+        ).all()
+
+    # 1) Hardest time of day — dominant bucket among difficult check-ins.
+    neg = [m for m in moods if (m.mood or "").lower() in _NEG_MOODS or m.intensity >= 4]
+    if len(neg) >= 6:
+        buckets = {"Mornings": 0, "Afternoons": 0, "Evenings": 0}
+        for m in neg:
+            h = _local_hour(m.created_at, user.timezone)
+            key = "Mornings" if h < 12 else "Afternoons" if h < 18 else "Evenings"
+            buckets[key] += 1
+        top, count = max(buckets.items(), key=lambda kv: kv[1])
+        if count / len(neg) >= 0.5:
+            patterns.append({
+                "statement": f"{top} tend to be your hardest time of day.",
+                "basis": f"{count} of your {len(neg)} difficult check-ins landed there",
+            })
+
+    # 2) Journaling → calmer next day (day-level share of difficult check-ins).
+    if use_journal and moods:
+        journal_dates = set(
+            (
+                await db.scalars(
+                    select(JournalEntry.created_at).where(
+                        JournalEntry.user_id == user.id, JournalEntry.created_at >= since
+                    )
+                )
+            ).all()
+        )
+        journal_days = {d.date() for d in journal_dates}
+        if len(journal_days) >= 3:
+            def day_neg_share(day_filter):
+                days: dict = {}
+                for m in moods:
+                    d = m.created_at.date()
+                    if not day_filter(d):
+                        continue
+                    tot, bad = days.get(d, (0, 0))
+                    days[d] = (tot + 1, bad + (1 if m in neg else 0))
+                if len(days) < 3:
+                    return None
+                return sum(b / t for t, b in days.values()) / len(days)
+
+            after = day_neg_share(lambda d: (d - timedelta(days=1)) in journal_days)
+            other = day_neg_share(lambda d: (d - timedelta(days=1)) not in journal_days)
+            if after is not None and other is not None and other - after >= 0.2:
+                patterns.append({
+                    "statement": "Check-ins run calmer the day after you journal.",
+                    "basis": f"across {len(journal_days)} journaling days in the last 60",
+                })
+
+    # 3) Sleep → mood (same rested/short pairing as the weekly insight, wider window).
+    if use_sleep and use_moods and moods:
+        sleep_rows = (
+            await db.scalars(
+                select(SleepLog).where(
+                    SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=60)).date()
+                )
+            )
+        ).all()
+        if len(sleep_rows) >= 5:
+            by_date = {r.date: r.duration_min for r in sleep_rows}
+            rested = [m.intensity for m in moods if by_date.get(m.created_at.date(), 0) >= 420]
+            short = [m.intensity for m in moods if 0 < by_date.get(m.created_at.date(), 0) < 420]
+            if len(rested) >= 3 and len(short) >= 3:
+                gap = sum(short) / len(short) - sum(rested) / len(rested)
+                if gap >= 0.5:
+                    patterns.append({
+                        "statement": "Mornings after 7+ hours in bed read calmer in your check-ins.",
+                        "basis": f"{len(rested)} rested vs {len(short)} short-sleep mornings",
+                    })
+
+    # 4) Weekday rhythm — where the showing-up actually happens.
+    if len(moods) >= 10:
+        weekday = sum(1 for m in moods if m.created_at.weekday() < 5)
+        share = weekday / len(moods)
+        if share >= 0.8:
+            patterns.append({
+                "statement": "You show up most on weekdays — weekends drift.",
+                "basis": f"{weekday} of {len(moods)} check-ins were Mon–Fri",
+            })
+        elif share <= 0.35:
+            patterns.append({
+                "statement": "Weekends are when you make time for this.",
+                "basis": f"{len(moods) - weekday} of {len(moods)} check-ins were Sat–Sun",
+            })
+
+    return {
+        "patterns": patterns,
+        "enough_data": bool(patterns),
+        "sources": {"mood_history": use_moods, "journal_memory": use_journal, "sleep_history": use_sleep},
+    }

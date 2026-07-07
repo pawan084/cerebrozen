@@ -13,6 +13,7 @@ from app.api.routes import (
     moods,
     oracle,
     plans,
+    programs,
     sleep,
     users,
     voice,
@@ -29,6 +30,7 @@ api_router.include_router(sleep.router)
 api_router.include_router(journal.router)
 api_router.include_router(chat.router)
 api_router.include_router(plans.router)
+api_router.include_router(programs.router)
 api_router.include_router(content.router)
 api_router.include_router(insights.router)
 api_router.include_router(oracle.router)

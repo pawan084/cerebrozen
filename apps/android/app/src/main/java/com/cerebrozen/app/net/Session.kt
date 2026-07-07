@@ -388,7 +388,29 @@ object Api {
 
     suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
 
-    /** The user's active daily plan, or null if none. */
+    /** Transparent AI memory: honest learned statements + their data basis. */
+    suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))
+
+    /** Wipe the AI's memory (chat history + insights + Oracle thread state). */
+    suspend fun deleteMemory(): JSONObject = JSONObject(Session.api("/users/me/memory", "DELETE"))
+
+    // ── Programs (multi-day journeys — ref "DAY X OF Y" card) ──
+    suspend fun activeProgram(): JSONObject? =
+        JSONObject(Session.api("/programs/active")).optJSONObject("program")
+
+    suspend fun enrollProgram(contentId: String): JSONObject =
+        JSONObject(Session.api("/programs/enroll", "POST", JSONObject().put("content_id", contentId)))
+
+    suspend fun leaveProgram() { Session.api("/programs/active", "DELETE") }
+
+    /** Toggle one plan step; returns the refreshed plan (server reconciles). */
+    suspend fun togglePlanStep(stepId: String, done: Boolean): JSONObject =
+        JSONObject(Session.api("/plans/steps/$stepId", "PATCH", JSONObject().put("done", done)))
+
+    /** Regenerate today's plan from the latest check-ins/diary. */
+    suspend fun regeneratePlan(): JSONObject =
+        JSONObject(Session.api("/plans/generate", "POST", JSONObject()))
+
     suspend fun activePlan(): JSONObject? =
         runCatching { JSONObject(Session.api("/plans/active")) }.getOrNull()
 

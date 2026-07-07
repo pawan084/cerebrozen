@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +68,7 @@ import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import kotlinx.coroutines.launch
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -254,11 +256,66 @@ fun InsightsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun ProgramsScreen(onBack: () -> Unit) = SubPage("Guided journeys", "Programs", onBack) {
-    Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    ContentList("program", { d -> if (d > 0) "$d min a day" else "A few minutes a day" },
-        icon = Icons.Outlined.CalendarMonth)
+fun ProgramsScreen(onBack: () -> Unit) {
+    // Real enrollment (ref "PROGRAM · DAY X OF Y"): one journey at a time,
+    // the day counts itself from the start date — nothing to fail.
+    var rows by remember { mutableStateOf(listOf<Triple<String, String, String>>()) } // id, title, subtitle
+    var active by remember { mutableStateOf<org.json.JSONObject?>(null) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun refresh() {
+        runCatching { active = Api.activeProgram() }
+        runCatching {
+            val arr = Api.content("program")
+            rows = (0 until arr.length()).map { i ->
+                val c = arr.getJSONObject(i)
+                Triple(c.optString("id"), c.optString("title"), c.optString("subtitle"))
+            }
+        }
+    }
+    LaunchedEffect(Unit) { refresh() }
+
+    SubPage("Guided journeys", "Programs", onBack) {
+        Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
+            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+
+        active?.let { p ->
+            SectionCard {
+                Text("PROGRAM · DAY ${p.optInt("day")} OF ${p.optInt("days")}",
+                    style = MaterialTheme.typography.labelSmall, color = Cyan)
+                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(
+                    if (p.optBoolean("completed")) "Complete — beautifully done. Start another whenever you like."
+                    else "Showing up is the whole assignment today.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+                TextButton(onClick = {
+                    scope.launch { runCatching { Api.leaveProgram() }; refresh() }
+                }) { Text("Leave this journey", color = TextMuted) }
+            }
+        }
+
+        rows.forEach { (id, title, subtitle) ->
+            val isActive = active?.optString("title") == title
+            SectionCard {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(subtitle.ifBlank { "A few minutes a day" },
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                if (!isActive) {
+                    TextButton(onClick = {
+                        scope.launch {
+                            runCatching { Api.enrollProgram(id) }
+                                .onSuccess { status = "Enrolled — day 1 starts now." }
+                                .onFailure { status = it.message ?: "Couldn't enroll." }
+                            refresh()
+                        }
+                    }) { Text("Start this journey", color = Periwinkle) }
+                }
+            }
+        }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+    }
 }
 
 @Composable

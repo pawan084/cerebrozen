@@ -59,7 +59,10 @@ import com.cerebrozen.app.ui.screens.MemoryMatchScreen
 import com.cerebrozen.app.ui.screens.Onboarding
 import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
+import com.cerebrozen.app.ui.screens.PatternScreen
+import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
+import com.cerebrozen.app.ui.screens.SearchScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
 import com.cerebrozen.app.ui.screens.PrivacyScreen
@@ -166,6 +169,9 @@ fun CereBroApp() {
             composable("programs") { ProgramsScreen(onBack = back) }
             composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
             composable("player") { PlayerScreen(onBack = back) }
+            composable("plan") { PlanScreen(onBack = back) }
+            composable("search") { SearchScreen(onBack = back) }
+            composable("patterns") { PatternScreen(onBack = back) }
             composable("games") { GamesScreen(onOpen = open, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("bubblewrap") { BubbleWrapScreen(onBack = back) }

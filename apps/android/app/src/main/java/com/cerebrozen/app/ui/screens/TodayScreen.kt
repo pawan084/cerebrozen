@@ -21,10 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -175,6 +177,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var moodCount by remember { mutableIntStateOf(0) }
     var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
     var goal by remember { mutableStateOf("") }
+    var program by remember { mutableStateOf<JSONObject?>(null) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -198,10 +201,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
         runCatching { val m = Api.moods(); moodCount = m.length(); recent = parseRecent(m) }
         runCatching { plan = Api.activePlan() }
+        runCatching { program = Api.activeProgram() }
     }
 
     LaunchedEffect(Unit) { reload() }
+    var showTour by remember { mutableStateOf(!TourState.isDone()) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -209,16 +215,32 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Goal-aware eyebrow + serif greeting (mirrors iOS DailyFocus header).
-        Text(
-            (if (goal.isBlank()) "Today" else "Today · $goal").uppercase(),
-            style = MaterialTheme.typography.labelSmall, color = Periwinkle,
-        )
-        Text(
-            "${greeting()}, ${userName.ifBlank { "friend" }}",
-            style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary,
-        )
+        // Goal-aware eyebrow + serif greeting (mirrors iOS DailyFocus header),
+        // with the working search affordance top-right (ref SEARCH route).
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    (if (goal.isBlank()) "Today" else "Today · $goal").uppercase(),
+                    style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                )
+                Text(
+                    "${greeting()}, ${userName.ifBlank { "friend" }}",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = TextPrimary,
+                )
+            }
+            Box(
+                Modifier.padding(top = 6.dp).size(40.dp)
+                    .clip(CircleShape)
+                    .background(CardFill)
+                    .border(1.dp, LineStroke, CircleShape)
+                    .clickable { onOpen("search") },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Search, contentDescription = "Search the library",
+                    tint = TextSoft, modifier = Modifier.size(19.dp))
+            }
+        }
 
         // Home leads with the goal-aware next action (mirrors iOS DailyFocus);
         // tapping deep-links to the surface that runs the next undone step.
@@ -228,20 +250,36 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
             val next = (0 until total).map { steps!!.getJSONObject(it) }
                 .firstOrNull { !it.optBoolean("done") }
-            val nextRoute = next?.optString("symbol")?.let { planStepRoute(it) }
             HeroCard(
                 imageUrl = HeroImg.calm,
                 eyebrow = "Today's plan",
                 title = p.optString("title"),
                 subtitle = p.optString("focus"),
                 height = 190.dp,
-                onClick = nextRoute?.let { { onOpen(it) } },
+                onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)
             ) {
                 val tail = buildString {
                     if (next != null) append("Next: ${next.optString("title")}")
                     if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
                 }
                 if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            }
+        }
+
+        // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
+        program?.let { prog ->
+            Card(onClick = { onOpen("programs") }) {
+                Text("PROGRAM · DAY ${prog.optInt("day")} OF ${prog.optInt("days")}",
+                    style = MaterialTheme.typography.labelSmall, color = Cyan)
+                Text(prog.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                LinearProgressIndicator(
+                    progress = {
+                        (prog.optInt("day").toFloat() / prog.optInt("days").coerceAtLeast(1)).coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Periwinkle,
+                    trackColor = CardFill,
+                )
             }
         }
 
@@ -347,6 +385,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             }
         }
     }
+
+    // First-run guided tour (ref GUIDED TOUR OVERLAY) — once per install.
+    if (showTour) {
+        GuidedTourOverlay(onDone = { showTour = false })
+    }
+    }
 }
 
 @Composable
@@ -365,9 +409,11 @@ private fun QuickTile(label: String, icon: ImageVector, route: String, onOpen: (
 }
 
 @Composable
-private fun Card(content: @Composable () -> Unit) {
+private fun Card(onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().glass().padding(18.dp),
+        Modifier.fillMaxWidth().glass()
+            .let { if (onClick != null) it.clickable { onClick() } else it }
+            .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
 }

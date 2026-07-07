@@ -14,6 +14,7 @@ from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.login_code import LoginCode
 from app.models.product_event import ProductEvent
+from app.models.program import ProgramEnrollment
 from app.models.prompt import PromptTemplate
 from app.models.waitlist import WaitlistEntry
 from app.models.web_push import WebPushSubscription
@@ -35,6 +36,7 @@ __all__ = [
     "TrustedContact",
     "LoginCode",
     "ProductEvent",
+    "ProgramEnrollment",
     "PromptTemplate",
     "WaitlistEntry",
     "WebPushSubscription",

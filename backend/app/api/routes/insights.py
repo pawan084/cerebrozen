@@ -20,6 +20,17 @@ async def weekly_insights(
     return await insights.compute_weekly(db, user)
 
 
+@router.get("/insights/patterns")
+async def pattern_dashboard(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Transparent AI memory: every learned statement, derived only from the
+    user's own data with the supporting counts attached — visible, honest,
+    and deletable via DELETE /users/me/memory."""
+    return await insights.compute_patterns(db, user)
+
+
 @router.get("/nudges", response_model=list[NudgeOut])
 async def upcoming_nudges(
     user: User = Depends(get_current_user),

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,6 +61,7 @@ import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
@@ -149,6 +151,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     val cloud = remember { CloudVoice(context) }
     var cloudVoice by remember { mutableStateOf(false) }
     var transcribing by remember { mutableStateOf(false) }
+    // Immersive live session (ref LIVE VOICE SESSION overlay): opens on the
+    // first voice turn, stays up across turns until End/Text.
+    var voiceSession by remember { mutableStateOf(false) }
+    var sessionSeconds by remember { mutableStateOf(0) }
+    LaunchedEffect(voiceSession) {
+        sessionSeconds = 0
+        while (voiceSession) {
+            kotlinx.coroutines.delay(1_000)
+            sessionSeconds++
+        }
+    }
     DisposableEffect(Unit) { onDispose { voice.dispose(); cloud.dispose() } }
 
     var starters by remember { mutableStateOf(listOf<String>()) }
@@ -261,10 +274,19 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     fun beginListening() {
         if (cloudVoice) {
-            if (!cloud.startRecording()) status = "Microphone unavailable right now."
+            if (cloud.startRecording()) voiceSession = true
+            else status = "Microphone unavailable right now."
         } else {
+            voiceSession = true
             voice.startListening { t -> send(t, speak = true) }
         }
+    }
+
+    fun endSession() {
+        if (cloud.recording) cloud.stopRecording()   // discard the open take
+        cloud.stopPlayback()
+        voice.stopListening()
+        voiceSession = false
     }
 
     /** Stop the cloud recording and run the full quality loop: STT → chat → TTS. */
@@ -303,6 +325,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic) {
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
@@ -454,7 +477,74 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
     }
+
+    // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
+    if (voiceSession) {
+        VoiceSessionOverlay(
+            seconds = sessionSeconds,
+            stateLabel = when {
+                transcribing -> "Hearing you…"
+                busy -> "Thinking…"
+                cloud.speaking || voice.speaking -> "Speaking — tap the orb to interrupt"
+                cloud.recording || voice.listening -> "Listening… tap the orb when you're done"
+                else -> "Tap the orb to speak"
+            },
+            listening = cloud.recording || voice.listening,
+            speaking = cloud.speaking || voice.speaking,
+            caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
+            onOrb = { onOrbTap() },
+            onEnd = { endSession() },
+            onText = { voiceSession = false },
+        )
+    }
+    }
 }
+
+/** Full-screen live-session surface: elapsed time, the orb, the state label,
+ * the latest words, and End / Text controls (ref LIVE VOICE SESSION). */
+@Composable
+private fun VoiceSessionOverlay(
+    seconds: Int,
+    stateLabel: String,
+    listening: Boolean,
+    speaking: Boolean,
+    caption: String,
+    onOrb: () -> Unit,
+    onEnd: () -> Unit,
+    onText: () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxSize()
+            .background(Night.copy(alpha = 0.97f))
+            .clickable(enabled = false) {}   // swallow taps aimed behind the overlay
+            .padding(horizontal = 24.dp, vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("LIVE SESSION", style = MaterialTheme.typography.labelSmall, color = Cyan)
+            Text(fmtSession(seconds), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb)
+            Text(stateLabel, style = MaterialTheme.typography.titleMedium, color = TextSoft, textAlign = TextAlign.Center)
+            if (caption.isNotBlank()) {
+                Text(
+                    caption.take(180),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            TextButton(onClick = onEnd) { Text("End", color = Danger) }
+            TextButton(onClick = onText) { Text("Text instead", color = TextMuted) }
+        }
+    }
+}
+
+/** m:ss elapsed-session label — pure + testable. */
+internal fun fmtSession(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
 
 /** An Oracle-suggested inline activity: title/description + a native surface
  * when Android has one, else the honest iOS-only note (mirrors the web card). */

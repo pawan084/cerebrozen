@@ -71,6 +71,48 @@ class ScreenLogicTest {
         assertEquals("none", entries[0].risk)          // optString default
     }
 
+    // ── Ref-batch pure logic ────────────────────────────────────────
+    @Test
+    fun fmtSession_renders_minutes_and_padded_seconds() {
+        assertEquals("0:00", fmtSession(0))
+        assertEquals("0:09", fmtSession(9))
+        assertEquals("2:05", fmtSession(125))
+    }
+
+    @Test
+    fun filterCatalogue_needs_two_chars_and_matches_title_subtitle_kind() {
+        val pool = listOf(
+            SearchItem("Rain over quiet hills", "Sleep story", "sleep", 18, ""),
+            SearchItem("Ocean breathing", "Breathwork", "meditation", 5, ""),
+        )
+        assertEquals(0, filterCatalogue(pool, "r").size)
+        assertEquals(listOf("Rain over quiet hills"), filterCatalogue(pool, "rain").map { it.title })
+        assertEquals(listOf("Ocean breathing"), filterCatalogue(pool, "breathwork").map { it.title })
+        assertEquals(listOf("Rain over quiet hills"), filterCatalogue(pool, "SLEEP").map { it.title })
+    }
+
+    @Test
+    fun parsePlanSteps_sorts_by_order_and_reads_done() {
+        val plan = org.json.JSONObject(
+            """{"steps":[{"id":"b","title":"Second","detail":"","order":2,"done":true},
+                         {"id":"a","title":"First","detail":"","order":1,"done":false}]}"""
+        )
+        val steps = parsePlanSteps(plan)
+        assertEquals(listOf("First", "Second"), steps.map { it.title })
+        assertEquals(listOf(false, true), steps.map { it.done })
+    }
+
+    @Test
+    fun parsePatterns_reads_statement_and_basis() {
+        val payload = org.json.JSONObject(
+            """{"patterns":[{"statement":"Evenings are hardest.","basis":"6 of 8 check-ins"}]}"""
+        )
+        val learned = parsePatterns(payload)
+        assertEquals(1, learned.size)
+        assertEquals("Evenings are hardest.", learned[0].statement)
+        assertEquals("6 of 8 check-ins", learned[0].basis)
+    }
+
     // ── Streak milestones ───────────────────────────────────────────
     @Test
     fun milestoneLine_fires_only_on_milestone_days() {

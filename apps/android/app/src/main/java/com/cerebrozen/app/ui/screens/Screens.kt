@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -88,6 +89,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
         NavRow("Daily reminder", "Gentle daily check-in", icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
         NavRow("Weekly insights", "Your progress and patterns", icon = Icons.Outlined.Insights) { onOpen("insights") }
         NavRow("Privacy & memory", "Control what CereBro remembers", icon = Icons.Outlined.Lock) { onOpen("privacy") }
+        NavRow("Pattern dashboard", "What the AI has learned · delete anytime", icon = Icons.Outlined.Psychology) { onOpen("patterns") }
         NavRow("Premium plan", "Unlock the full library", icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
         NavRow("Urgent support", "Emergency resources", icon = Icons.Outlined.Emergency) { onOpen("crisis") }
         NavRow("Crisis region", "Which helplines to show", icon = Icons.Outlined.Public) { onOpen("crisisregion") }

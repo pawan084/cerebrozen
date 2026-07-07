@@ -27,6 +27,21 @@
 
 ## Open — code/product work
 
+### Ref-mock audit follow-ups (ref/ design screens, audited 2026-07-07)
+- [x] Backend + Android: program enrollment (`/programs` router + `program_enrollments`
+  table, Alembic `0b8e5d2f7a41`; day computed from start date) — "PROGRAM · DAY X OF 7"
+  Home card + enroll/leave on Programs. Device-verified; suite 250 passed / 95 %.
+- [x] Backend + Android: Pattern Dashboard (`GET /insights/patterns` honest 60-day
+  derivations w/ per-source consent gates + `DELETE /users/me/memory` chat/insights/
+  Oracle-checkpoint wipe) — You → Pattern dashboard screen.
+- [x] Android: Daily Plan route (step toggles + regenerate), Search route (whole
+  catalogue), immersive live-voice session overlay (timer/state/End/Text),
+  first-run guided tour (4 stops, `tour_done` pref).
+- [ ] iOS + web ports of the above (program card, pattern dashboard, guided tour;
+  iOS Search/Plan already exist). Android proved the design 2026-07-07.
+- [ ] Proactive stress detection (ref Home card: Watch HRV → "start 2-min reset") —
+  blocked on HealthKit capability/portal (owner) + needs the paired-Watch feature bet.
+
 ### Sleep tracking module — validated GO (2026-07-03), plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md)
 Ordered for delivery; framing rule everywhere: non-diagnostic "sleep awareness", no
 accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).

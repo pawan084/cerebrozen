@@ -236,6 +236,38 @@ async def delete_my_account(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.delete("/me/memory")
+async def delete_my_memory(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Wipe what the AI remembers about the user: conversation history,
+    computed insights, and the Oracle's durable thread state. Journals, moods
+    and the sleep diary are the user's own content with their own controls —
+    deliberately untouched here (the Pattern Dashboard's "Delete all memory").
+    """
+    chat = await db.execute(delete(ChatMessage).where(ChatMessage.user_id == user.id))
+    ins = await db.execute(delete(Insight).where(Insight.user_id == user.id))
+    # LangGraph checkpoint tables exist once the Postgres saver initialised;
+    # thread ids embed the user id (str(user.id) / "web-<id>" / client prefixes).
+    from sqlalchemy import text as sql_text
+    threads_cleared = False
+    for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
+        exists = await db.scalar(sql_text(f"SELECT to_regclass('{table}')"))
+        if exists:
+            await db.execute(
+                sql_text(f"DELETE FROM {table} WHERE thread_id LIKE :tid"),  # noqa: S608 - table name from a fixed tuple
+                {"tid": f"%{user.id}%"},
+            )
+            threads_cleared = True
+    await db.commit()
+    return {
+        "chat_messages": chat.rowcount or 0,
+        "insights": ins.rowcount or 0,
+        "oracle_threads_cleared": threads_cleared,
+    }
+
+
 @router.put("/me/push-token", response_model=UserOut)
 async def set_push_token(
     payload: PushTokenUpdate,
