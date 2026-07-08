@@ -62,7 +62,10 @@ private fun JournalingTool(
         fields.forEachIndexed { i, (label, _) ->
             AppTextField(
                 values.value[i],
-                { v -> values.value = values.value.toMutableList().also { it[i] = v } },
+                { v ->
+                    values.value = values.value.toMutableList().also { it[i] = v }
+                    saved = false   // editing after a save re-arms the button
+                },
                 label,
                 minLines = 2,
             )

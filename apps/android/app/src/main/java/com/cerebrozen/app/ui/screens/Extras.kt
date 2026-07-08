@@ -1,5 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -31,8 +33,10 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -61,6 +65,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -71,11 +77,16 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import kotlinx.coroutines.launch
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.ThumbBlue
+import com.cerebrozen.app.ui.theme.ThumbIndigo
+import com.cerebrozen.app.ui.theme.ThumbRose
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -99,10 +110,10 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
 }
 
 private val THUMB_GRADIENTS = listOf(
-    listOf(Color(0xFF8A7BF0), Color(0xFF5B52C9)),
-    listOf(Color(0xFF8FE6EE), Color(0xFF5B8FD0)),
-    listOf(Color(0xFFF0A48C), Color(0xFFB86B8F)),
-    listOf(Color(0xFFA68BFF), Color(0xFF6F7BF7)),
+    listOf(Periwinkle, PeriwinkleDeep),
+    listOf(Cyan, ThumbBlue),
+    listOf(Warm, ThumbRose),
+    listOf(Iris, ThumbIndigo),
 )
 
 private fun thumbBrush(seed: String): Brush =
@@ -147,12 +158,18 @@ internal fun ContentRow(
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
                 if (onFav != null && fav != null) {
-                    Icon(
-                        if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (fav) "Unfavourite $title" else "Favourite $title",
-                        tint = Warm,
-                        modifier = Modifier.size(22.dp).clickable { onFav() },
-                    )
+                    // 48dp touch target with a visually 22dp icon (a11y minimum).
+                    Box(
+                        Modifier.size(48.dp).clickable { onFav() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (fav) "Unfavourite $title" else "Favourite $title",
+                            tint = Warm,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
                 if (onTap != null) {
                     Icon(
@@ -210,14 +227,27 @@ fun InsightsScreen(onBack: () -> Unit) {
     var headline by remember { mutableStateOf("Your week") }
     var summary by remember { mutableStateOf("") }
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        runCatching { Api.insightsWeekly() }.onSuccess {
-            headline = it.optString("headline", "Your week")
-            summary = it.optString("summary")
-            metrics = it.optJSONArray("metrics")
-        }
+        runCatching { Api.insightsWeekly() }
+            .onSuccess {
+                headline = it.optString("headline", "Your week")
+                summary = it.optString("summary")
+                metrics = it.optJSONArray("metrics")
+            }
+            .onFailure { error = it.message ?: "Couldn't load your week — try again shortly." }
+        loading = false
     }
     SubPage("Insights · this week", headline, onBack) {
+        if (loading) {
+            Text("Reading your week…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            return@SubPage
+        }
+        error?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            return@SubPage
+        }
         if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         // The honest "before" — renders only when a real baseline was saved.
         BaselineStore.get()?.let { (stress, sleep, date) ->
@@ -265,9 +295,12 @@ fun ProgramsScreen(onBack: () -> Unit) {
     var rows by remember { mutableStateOf(listOf<Triple<String, String, String>>()) } // id, title, subtitle
     var active by remember { mutableStateOf<org.json.JSONObject?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
+        error = null
         runCatching { active = Api.activeProgram() }
         runCatching {
             val arr = Api.content("program")
@@ -275,13 +308,23 @@ fun ProgramsScreen(onBack: () -> Unit) {
                 val c = arr.getJSONObject(i)
                 Triple(c.optString("id"), c.optString("title"), c.optString("subtitle"))
             }
-        }
+        }.onFailure { error = it.message ?: "Couldn't load journeys — try again shortly." }
+        loading = false
     }
     LaunchedEffect(Unit) { refresh() }
 
     SubPage("Guided journeys", "Programs", onBack) {
         Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+
+        if (loading) {
+            Text("Loading journeys…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            return@SubPage
+        }
+        error?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            return@SubPage
+        }
 
         active?.let { p ->
             SectionCard {
@@ -399,6 +442,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                 value = Player.volume,
                 onValueChange = { Player.setVolume(context, it) },
                 valueRange = 0f..1f,
+                modifier = Modifier.semantics { contentDescription = "Volume" },
             )
             Text("Fades out ~10 seconds before the timer ends — sleep through it.",
                 style = MaterialTheme.typography.labelSmall, color = TextMuted)
@@ -566,6 +610,7 @@ private fun BoxBreathing() {
 
 @Composable
 fun CrisisScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
     var contact by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         runCatching { Api.trustedContact() }.onSuccess { tc ->
@@ -584,11 +629,30 @@ fun CrisisScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         }
         lines.forEach { (name, number) ->
-            SectionCard {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text(number, style = MaterialTheme.typography.titleMedium, color = Cyan)
+            // A letter in the value means it's the helpline-finder URL, not a phone number.
+            val isUrl = number.any { it.isLetter() }
+            val desc = if (isUrl) "Open helpline finder" else "Call $name $number"
+            SectionCard(onClick = {
+                val intent = if (isUrl) {
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://$number"))
+                } else {
+                    Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+                }
+                runCatching { ctx.startActivity(intent) }
+            }) {
+                Row(
+                    Modifier.fillMaxWidth().semantics { contentDescription = desc },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(name, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(number, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                    }
+                    Icon(
+                        if (isUrl) Icons.AutoMirrored.Outlined.OpenInNew else Icons.Outlined.Call,
+                        contentDescription = null, tint = Cyan, modifier = Modifier.size(22.dp),
+                    )
                 }
             }
         }

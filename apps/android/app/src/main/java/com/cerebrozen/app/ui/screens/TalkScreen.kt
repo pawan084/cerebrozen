@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +21,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +67,7 @@ import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -330,9 +335,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
             Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(CardFill)
-                .border(1.dp, LineStroke, RoundedCornerShape(12.dp))
+                .heightIn(min = 48.dp)
+                .glass(RoundedCornerShape(12.dp))
                 .clickable { showDisclosure = true }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,8 +429,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     ChatBubble(m)
                     m.widget?.let { WidgetCard(it, onOpen) }
                 }
+                // Live reply: streamed tokens with a blinking caret, or a typing
+                // indicator while the companion is composing its answer.
                 if (streamText.isNotBlank()) {
-                    ChatBubble(Msg("assistant", "$streamText ▍"))
+                    StreamingBubble(streamText)
+                } else if (busy) {
+                    TypingDots()
                 }
             }
             TextButton(onClick = {
@@ -473,7 +481,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
         Text(if (voice.available) "Type instead" else "Type a message",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        AppTextField(draft, { draft = it }, "Message")
+        AppTextField(draft, { draft = it }, "Message", modifier = Modifier.fillMaxWidth().imePadding())
         PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
     }
@@ -516,7 +524,14 @@ private fun VoiceSessionOverlay(
     Column(
         Modifier.fillMaxSize()
             .background(Night.copy(alpha = 0.97f))
-            .clickable(enabled = false) {}   // swallow taps aimed behind the overlay
+            // Actually swallow taps aimed behind the overlay (a disabled
+            // clickable does not intercept touches).
+            .clickable(
+                enabled = true,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+            ) {}
+            .systemBarsPadding()
             .padding(horizontal = 24.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
@@ -574,7 +589,7 @@ private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
 private fun ChatBubble(m: Msg) {
     val user = m.role == "user"
     Row(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().appear(rise = 12f),
         horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
     ) {
         Surface(
@@ -593,9 +608,61 @@ private fun ChatBubble(m: Msg) {
             Text(
                 m.text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (user) TextSoft else TextMuted,
+                color = TextSoft,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
             )
+        }
+    }
+}
+
+/** The assistant reply as it streams: committed text plus a blinking caret so the
+ * words feel typed in real time. */
+@Composable
+private fun StreamingBubble(text: String) {
+    val t = rememberInfiniteTransition(label = "typing")
+    val caret by t.animateFloat(
+        initialValue = 1f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+        label = "caret",
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Surface(
+            color = CardFill,
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 5.dp, bottomEnd = 18.dp),
+            modifier = Modifier.widthIn(max = 320.dp).border(1.dp, LineStroke, RoundedCornerShape(18.dp)),
+        ) {
+            Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                Text("▍", style = MaterialTheme.typography.bodyMedium, color = Periwinkle.copy(alpha = caret))
+            }
+        }
+    }
+}
+
+/** Three softly-pulsing dots — the companion is composing a reply (shown when we're
+ * busy but not yet streaming tokens). */
+@Composable
+private fun TypingDots() {
+    val t = rememberInfiniteTransition(label = "typingDots")
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Surface(
+            color = CardFill,
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 5.dp, bottomEnd = 18.dp),
+            modifier = Modifier.border(1.dp, LineStroke, RoundedCornerShape(18.dp)),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                repeat(3) { i ->
+                    val a by t.animateFloat(
+                        initialValue = 0.25f, targetValue = 1f,
+                        animationSpec = infiniteRepeatable(tween(600, delayMillis = i * 160), RepeatMode.Reverse),
+                        label = "dot$i",
+                    )
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(TextMuted.copy(alpha = a)))
+                }
+            }
         }
     }
 }
@@ -627,7 +694,7 @@ private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
             Modifier.size(150.dp).scale(pulse).clip(CircleShape)
                 .background(
                     Brush.radialGradient(
-                        listOf(Color.White, if (listening) Cyan else Periwinkle, Color(0xFF5B52C9)),
+                        listOf(Color.White, if (listening) Cyan else Periwinkle, PeriwinkleDeep),
                     ),
                 )
                 .clickable(onClickLabel = if (listening) "Stop listening" else "Talk to CereBro") { onTap() },

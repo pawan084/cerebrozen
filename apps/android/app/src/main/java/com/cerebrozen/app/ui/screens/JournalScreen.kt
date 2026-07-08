@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -181,7 +182,8 @@ fun JournalScreen() {
                 val shown = filterEntries(entries, query)
                 shown.take(10).forEach { e ->
                     Text("${e.title} · ${e.date}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 if (shown.isEmpty()) {
                     Text("No entries match \"${query.trim()}\".",

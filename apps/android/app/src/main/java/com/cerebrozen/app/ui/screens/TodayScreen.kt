@@ -1,5 +1,9 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,12 +29,9 @@ import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
@@ -44,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -123,6 +127,7 @@ internal fun railKindFor(hour: Int): Pair<String, String> = when {
 @Composable
 private fun ContentRail(onOpen: (String) -> Unit) {
     val (kind, heading) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val route = if (kind == "sleep") "sleep" else "sounds"
     var items by remember { mutableStateOf<JSONArray?>(null) }
     LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
     val list = items ?: return
@@ -137,16 +142,14 @@ private fun ContentRail(onOpen: (String) -> Unit) {
             val title = c.optString("title")
             Column(
                 Modifier.width(150.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(CardFill)
-                    .border(1.dp, LineStroke, RoundedCornerShape(16.dp))
-                    .clickable { onOpen("sounds") }
+                    .glass(RoundedCornerShape(16.dp))
+                    .clickable { onOpen(route) }
                     .padding(0.dp),
             ) {
                 Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {
                     val url = c.optString("image_url")
                     if (url.isNotBlank()) {
-                        AsyncImage(model = url, contentDescription = null,
+                        AsyncImage(model = url, contentDescription = title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
                     } else {
@@ -207,11 +210,16 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     LaunchedEffect(Unit) { reload() }
     var showTour by remember { mutableStateOf(!TourState.isDone()) }
 
+    // A gentle settle-in as the screen arrives (complements the NavHost cross-fade).
+    val rise = remember { Animatable(26f) }
+    LaunchedEffect(Unit) { rise.animateTo(0f, tween(460, easing = FastOutSlowInEasing)) }
+
     Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .graphicsLayer { translationY = rise.value }
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -230,7 +238,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 )
             }
             Box(
-                Modifier.padding(top = 6.dp).size(40.dp)
+                Modifier.padding(top = 6.dp).size(48.dp)
                     .clip(CircleShape)
                     .background(CardFill)
                     .border(1.dp, LineStroke, CircleShape)
@@ -268,7 +276,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
         program?.let { prog ->
-            Card(onClick = { onOpen("programs") }) {
+            SectionCard(onClick = { onOpen("programs") }) {
                 Text("PROGRAM · DAY ${prog.optInt("day")} OF ${prog.optInt("days")}",
                     style = MaterialTheme.typography.labelSmall, color = Cyan)
                 Text(prog.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -284,13 +292,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f))
-            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f))
-            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f))
-            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f))
+            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), index = 0)
+            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), index = 1)
+            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), index = 2)
+            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), index = 3)
         }
 
-        Card {
+        SectionCard {
             Text("How are you, really?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text("A 20-second check-in shapes today's plan.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             Row(
@@ -323,7 +331,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     }
                 }
             }
-            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            // The confirmation eases in rather than popping — a small, calm reward.
+            AnimatedVisibility(visible = status != null) {
+                Text(status.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
         }
 
         // Time-matched content rail (mirrors the iOS Home rails).
@@ -336,7 +347,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             NavRow("How was last night?", "A 20-second sleep check-in") { onOpen("sleep") }
         }
 
-        Card {
+        SectionCard {
             Text(
                 if (streak > 0) "$streak-day streak" else "Your streak starts today",
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
@@ -352,9 +363,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             // 7-dot week ring (server streak week; today is the last dot).
             if (week.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    week.forEach { (day, active) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    week.forEachIndexed { i, (day, active) ->
+                        Column(
+                            Modifier.appear(i, rise = 8f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
                             Box(
                                 Modifier.size(14.dp).clip(CircleShape)
                                     .background(if (active) Periwinkle else CardFill)
@@ -377,7 +391,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         if (recent.isNotEmpty()) {
-            Card {
+            SectionCard {
                 Text("Recent check-ins", style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 recent.forEach { line ->
                     Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -394,11 +408,22 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 }
 
 @Composable
-private fun QuickTile(label: String, icon: ImageVector, route: String, onOpen: (String) -> Unit, modifier: Modifier) {
+private fun QuickTile(
+    label: String,
+    icon: ImageVector,
+    route: String,
+    onOpen: (String) -> Unit,
+    modifier: Modifier,
+    index: Int = 0,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
     Column(
         modifier
+            .appear(index)
+            .pressScale(pressed)
             .glass(RoundedCornerShape(16.dp))
-            .clickable { onOpen(route) }
+            .clickable(interactionSource = interaction, indication = null) { onOpen(route) }
             .padding(vertical = 14.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -406,14 +431,4 @@ private fun QuickTile(label: String, icon: ImageVector, route: String, onOpen: (
         Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
     }
-}
-
-@Composable
-private fun Card(onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().glass()
-            .let { if (onClick != null) it.clickable { onClick() } else it }
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) { content() }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
@@ -42,10 +44,19 @@ fun PlanScreen(onBack: () -> Unit) {
     var steps by remember { mutableStateOf(listOf<PlanStep>()) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    // Distinct from the initial null-not-error case so a failed load surfaces a
+    // retry instead of an eternal "Loading…".
+    var loadError by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun adopt(p: JSONObject?) { plan = p; steps = p?.let(::parsePlanSteps) ?: emptyList() }
-    LaunchedEffect(Unit) { runCatching { adopt(Api.activePlan()) } }
+    fun load() {
+        loadError = false
+        scope.launch {
+            runCatching { adopt(Api.activePlan()) }.onFailure { loadError = true }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
 
     SubPage(
         "Agentic plan · adapts to your check-ins",
@@ -53,7 +64,13 @@ fun PlanScreen(onBack: () -> Unit) {
         onBack,
     ) {
         val p = plan
-        if (p == null) {
+        if (p == null && loadError) {
+            Text(
+                "We couldn't load your plan just now.",
+                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            )
+            PrimaryButton(text = "Try again", modifier = Modifier.fillMaxWidth()) { load() }
+        } else if (p == null) {
             Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
             SectionCard {
@@ -64,28 +81,39 @@ fun PlanScreen(onBack: () -> Unit) {
                 )
                 Text(
                     "${steps.count { it.done }} of ${steps.size} steps done · updates from your check-ins and sleep diary",
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
             SectionCard {
+                if (steps.isEmpty()) {
+                    Text(
+                        "No steps yet — update your plan to generate some.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
                 steps.forEach { step ->
                     Row(
-                        Modifier.fillMaxWidth(),
+                        Modifier.fillMaxWidth()
+                            .toggleable(
+                                value = step.done,
+                                role = Role.Checkbox,
+                                onValueChange = { done ->
+                                    // Optimistic; the server response reconciles.
+                                    steps = steps.map { if (it.id == step.id) it.copy(done = done) else it }
+                                    scope.launch {
+                                        runCatching { adopt(Api.togglePlanStep(step.id, done)) }
+                                            .onFailure {
+                                                steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
+                                            }
+                                    }
+                                },
+                            ),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(
                             checked = step.done,
-                            onCheckedChange = { done ->
-                                // Optimistic; the server response reconciles.
-                                steps = steps.map { if (it.id == step.id) it.copy(done = done) else it }
-                                scope.launch {
-                                    runCatching { adopt(Api.togglePlanStep(step.id, done)) }
-                                        .onFailure {
-                                            steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
-                                        }
-                                }
-                            },
+                            onCheckedChange = null,
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(

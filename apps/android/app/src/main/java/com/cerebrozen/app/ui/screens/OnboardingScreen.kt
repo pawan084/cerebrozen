@@ -19,16 +19,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -39,10 +42,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
@@ -50,6 +59,7 @@ import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.net.funnelStepName
 import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
@@ -180,7 +190,7 @@ fun Onboarding() {
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(emoji, style = MaterialTheme.typography.titleLarge)
+                        Text(emoji, style = MaterialTheme.typography.headlineSmall)
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(step.first, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                             Text(step.second, style = MaterialTheme.typography.bodySmall, color = TextMuted)
@@ -203,6 +213,8 @@ fun Onboarding() {
                 ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
                     noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
                 }
+                val layoutDir = if (noticeLang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
+                CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
                 SectionCard {
                     CONSENT_KEY_ORDER.forEach { key ->
                         val cat = notice.categories.getValue(key)
@@ -215,12 +227,13 @@ fun Onboarding() {
                                 Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                                 Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             }
-                            Switch(
+                            AppSwitch(
                                 checked = consent[key] == true,
                                 onCheckedChange = { consent[key] = it },
                             )
                         }
                     }
+                }
                 }
             }
         }
@@ -292,50 +305,70 @@ private fun SignUpStep(state: StateOption?, consent: () -> JSONObject, onBack: (
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showPw by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val focus = LocalFocusManager.current
+    val canSubmit = !busy && email.isNotBlank() && password.length >= 8
+
+    fun submit() {
+        if (!canSubmit) return
+        focus.clearFocus()
+        busy = true; error = null
+        scope.launch {
+            try {
+                Session.signUp(email.trim(), password, name.trim())
+                Analytics.track("onboarding_done")
+                // Best-effort personalization — never blocks entering the app.
+                runCatching { Api.attest() }
+                runCatching { Api.updateConsent(consent()) }
+                if (state != null) {
+                    // The one tap grounds server personalization: plans key
+                    // off goals, conversation starters off motivations.
+                    runCatching {
+                        Api.updateProfile(
+                            JSONObject()
+                                .put("goals", org.json.JSONArray().put(state.goal))
+                                .put("motivations", org.json.JSONArray().put(state.motivation)),
+                        )
+                    }
+                    runCatching { Api.checkIn(state.mood, "From onboarding", "sparkles", 3) }
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't create your account."; busy = false
+            }
+        }
+    }
 
     Funnel(
         "Save your space", "Create your account",
         "One account across iOS, Android and the web.",
         if (busy) "One moment…" else "Create my account",
-        primaryEnabled = !busy && email.isNotBlank() && password.length >= 8,
+        primaryEnabled = canSubmit,
         onBack = onBack,
-        onPrimary = {
-            busy = true; error = null
-            scope.launch {
-                try {
-                    Session.signUp(email.trim(), password, name.trim())
-                    Analytics.track("onboarding_done")
-                    // Best-effort personalization — never blocks entering the app.
-                    runCatching { Api.attest() }
-                    runCatching { Api.updateConsent(consent()) }
-                    if (state != null) {
-                        // The one tap grounds server personalization: plans key
-                        // off goals, conversation starters off motivations.
-                        runCatching {
-                            Api.updateProfile(
-                                JSONObject()
-                                    .put("goals", org.json.JSONArray().put(state.goal))
-                                    .put("motivations", org.json.JSONArray().put(state.motivation)),
-                            )
-                        }
-                        runCatching { Api.checkIn(state.mood, "From onboarding", "sparkles", 3) }
-                    }
-                } catch (e: Exception) {
-                    error = e.message ?: "Couldn't create your account."; busy = false
-                }
-            }
-        },
+        onPrimary = { submit() },
     ) {
-        AppTextField(name, { name = it }, "Name", singleLine = true)
+        AppTextField(name, { name = it }, "Name", singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
         AppTextField(email, { email = it }, "Email", singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
         AppTextField(password, { password = it }, "Password (8+ characters)", singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            trailingIcon = {
+                IconButton(onClick = { showPw = !showPw }) {
+                    Icon(
+                        if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                        contentDescription = if (showPw) "Hide password" else "Show password",
+                        tint = TextMuted,
+                    )
+                }
+            })
+        error?.let { Text(it, color = Danger) }
     }
 }
 
@@ -381,14 +414,4 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
             PickChip(selected = selected == opt, label = opt) { onPick(opt) }
         }
     }
-}
-
-@Composable
-private fun Orb(size: androidx.compose.ui.unit.Dp) {
-    Box(
-        Modifier.size(size).background(
-            Brush.radialGradient(listOf(androidx.compose.ui.graphics.Color.White, Periwinkle, androidx.compose.ui.graphics.Color(0xFF5B52C9))),
-            CircleShape,
-        ),
-    )
 }

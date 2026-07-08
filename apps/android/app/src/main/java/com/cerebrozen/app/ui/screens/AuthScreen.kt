@@ -1,17 +1,23 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,18 +26,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 
 private enum class AuthMode { Password, Otp }
@@ -51,8 +64,10 @@ fun AuthScreen() {
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var showPw by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val focus = LocalFocusManager.current
     val clientId = stringResource(R.string.google_web_client_id)
 
     fun run(block: suspend () -> Unit) {
@@ -74,45 +89,67 @@ fun AuthScreen() {
         Text("Your quiet space for daily mental fitness — synced with iOS and the web.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
 
-        OutlinedButton(
-            onClick = {
-                run {
-                    val result = googleIdToken(context, clientId)
-                    if (result == null) {
-                        error = "Google sign-in isn't set up yet — use email below."
-                    } else {
-                        Session.signInWithGoogle(result.first, result.second)
+        Box(
+            Modifier.fillMaxWidth()
+                .glass(RoundedCornerShape(26.dp))
+                .clickable(enabled = !busy) {
+                    run {
+                        val result = googleIdToken(context, clientId)
+                        if (result == null) {
+                            error = "Google sign-in isn't set up yet — use email below."
+                        } else {
+                            Session.signInWithGoogle(result.first, result.second)
+                        }
                     }
                 }
-            },
-            enabled = !busy, modifier = Modifier.fillMaxWidth(),
-        ) { Text("Continue with Google") }
+                .padding(horizontal = 28.dp, vertical = 15.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Continue with Google", style = MaterialTheme.typography.titleSmall, color = TextSoft)
+        }
 
         Text("or", style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
 
         when (mode) {
             AuthMode.Password -> {
-                if (creating) {
-                    AppTextField(name, { name = it }, "Name", singleLine = true)
-                }
-                AppTextField(email, { email = it }, "Email", singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-                AppTextField(password, { password = it }, "Password", singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-                PrimaryButton(
-                    text = if (busy) "One moment…" else if (creating) "Create my account" else "Sign in",
-                    enabled = !busy && email.isNotBlank() && password.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                val pwReady = !busy && email.isNotBlank() && password.isNotBlank()
+                fun submitPw() {
+                    if (!pwReady) return
+                    focus.clearFocus()
                     run {
                         if (creating) Session.signUp(email.trim(), password, name.trim())
                         else Session.signIn(email.trim(), password)
                     }
                 }
+                if (creating) {
+                    AppTextField(name, { name = it }, "Name", singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
+                }
+                AppTextField(email, { email = it }, "Email", singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
+                AppTextField(password, { password = it }, "Password", singleLine = true,
+                    visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submitPw() }),
+                    trailingIcon = {
+                        IconButton(onClick = { showPw = !showPw }) {
+                            Icon(
+                                if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = if (showPw) "Hide password" else "Show password",
+                                tint = TextMuted,
+                            )
+                        }
+                    })
+                PrimaryButton(
+                    text = if (busy) "One moment…" else if (creating) "Create my account" else "Sign in",
+                    enabled = pwReady,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { submitPw() }
 
-                TextButton(onClick = { creating = !creating; error = null }) {
+                TextButton(onClick = { creating = !creating; error = null; info = null }) {
                     Text(if (creating) "I already have an account" else "New here? Create your space", color = TextMuted)
                 }
                 if (!creating) {
@@ -136,18 +173,10 @@ fun AuthScreen() {
             }
 
             AuthMode.Otp -> {
-                AppTextField(email, { email = it }, "Email", singleLine = true, enabled = !otpSent,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-                if (otpSent) {
-                    AppTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
-                        "6-digit code", singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                }
-                PrimaryButton(
-                    text = if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code",
-                    enabled = !busy && (if (otpSent) code.length == 6 else email.isNotBlank()),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                val otpReady = !busy && (if (otpSent) code.length == 6 else email.isNotBlank())
+                fun submitOtp() {
+                    if (!otpReady) return
+                    focus.clearFocus()
                     run {
                         if (!otpSent) {
                             Session.otpRequest(email.trim()); otpSent = true
@@ -157,6 +186,20 @@ fun AuthScreen() {
                         }
                     }
                 }
+                AppTextField(email, { email = it }, "Email", singleLine = true, enabled = !otpSent,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submitOtp() }))
+                if (otpSent) {
+                    AppTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
+                        "6-digit code", singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { submitOtp() }))
+                }
+                PrimaryButton(
+                    text = if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code",
+                    enabled = otpReady,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { submitOtp() }
 
                 TextButton(onClick = { mode = AuthMode.Password; otpSent = false; code = ""; error = null; info = null }) {
                     Text("Use a password instead", color = TextMuted)
@@ -165,6 +208,6 @@ fun AuthScreen() {
         }
 
         info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Periwinkle) }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let { Text(it, color = Danger) }
     }
 }

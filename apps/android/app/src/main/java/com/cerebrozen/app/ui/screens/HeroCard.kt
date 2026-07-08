@@ -21,11 +21,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.cerebrozen.app.ui.theme.Cream
+import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
+import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextSoft
 
 /** Curated calm imagery for the hero cards (the richer ref-design look). Each
@@ -57,7 +63,7 @@ internal fun HeroCard(
     Box(mod) {
         Box(
             Modifier.fillMaxSize().background(
-                Brush.linearGradient(listOf(Periwinkle, Color(0xFF3B3486))),
+                Brush.linearGradient(listOf(Periwinkle, PeriwinkleDeep)),
             ),
         )
         if (imageUrl.isNotBlank()) {
@@ -69,15 +75,18 @@ internal fun HeroCard(
         // Scrim so text stays legible over any image.
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color(0x22000000), Color(0xE00E0C22))),
+                Brush.verticalGradient(listOf(Ink.copy(alpha = 0.13f), Night.copy(alpha = 0.88f))),
             ),
         )
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color(0xFFCBB6FF))
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White)
+            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = PeriwinkleSoft)
+            Text(
+                title, style = MaterialTheme.typography.headlineSmall, color = Cream,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
             if (subtitle.isNotBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             }

@@ -1,14 +1,17 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -18,8 +21,10 @@ import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -39,11 +44,24 @@ internal fun parsePatterns(payload: JSONObject): List<Learned> {
 @Composable
 fun PatternScreen(onBack: () -> Unit) {
     var learned by remember { mutableStateOf<List<Learned>?>(null) }
+    var patternsError by remember { mutableStateOf<String?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
     var confirming by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) { runCatching { learned = parsePatterns(Api.patterns()) } }
+    LaunchedEffect(reload) {
+        patternsError = null
+        learned = null
+        runCatching { parsePatterns(Api.patterns()) }
+            .onSuccess { learned = it }
+            .onFailure { patternsError = it.message ?: "Couldn't load your patterns — try again." }
+    }
+
+    // Two-tap delete: fall back out of the armed state if left untouched.
+    LaunchedEffect(confirming) {
+        if (confirming) { delay(4000); confirming = false }
+    }
 
     SubPage("Transparent AI memory", "Pattern dashboard", onBack) {
         Text(
@@ -53,6 +71,10 @@ fun PatternScreen(onBack: () -> Unit) {
         SectionCard {
             Text("What CereBro remembers", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             when {
+                patternsError != null -> {
+                    Text(patternsError!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    TextButton(onClick = { reload++ }) { Text("Try again", color = Periwinkle) }
+                }
                 learned == null -> Text("Looking at your data…",
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 learned!!.isEmpty() -> Text(
@@ -77,7 +99,10 @@ fun PatternScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
             TextButton(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(
+                    if (confirming) Modifier.background(Danger.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    else Modifier,
+                ),
                 onClick = {
                     if (!confirming) { confirming = true; return@TextButton }
                     scope.launch {

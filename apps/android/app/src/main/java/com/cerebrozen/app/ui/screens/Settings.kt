@@ -12,14 +12,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -32,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
@@ -158,29 +159,38 @@ fun PrivacyScreen(onBack: () -> Unit) {
     // DPDP s.5(3): the consent notice is readable in English or an
     // Eighth-Schedule language, picked right on the notice (ConsentNotice.kt).
     var noticeLang by remember { mutableStateOf("en") }
+    var loaded by remember { mutableStateOf(false) }
     val notice = noticeFor(noticeLang)
     LaunchedEffect(Unit) {
         runCatching { val c = Api.consent(); CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
         runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
+        loaded = true
     }
     SubPage("Control what CereBro remembers", notice.title, onBack) {
         Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
             noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
         }
-        SectionCard {
-            CONSENT_KEY_ORDER.forEach { key ->
-                val cat = notice.categories.getValue(key)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                        Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        if (!loaded) {
+            Text("Loading your choices…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        } else {
+            val layoutDir = if (noticeLang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
+            CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
+                SectionCard {
+                    CONSENT_KEY_ORDER.forEach { key ->
+                        val cat = notice.categories.getValue(key)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                                Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            }
+                            AppSwitch(checked = consent[key] == true, onCheckedChange = { v ->
+                                consent[key] = v
+                                scope.launch { runCatching { Api.updateConsent(JSONObject().put(key, v)) } }
+                            })
+                        }
                     }
-                    Switch(checked = consent[key] == true, onCheckedChange = { v ->
-                        consent[key] = v
-                        scope.launch { runCatching { Api.updateConsent(JSONObject().put(key, v)) } }
-                    })
                 }
             }
         }
@@ -193,7 +203,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                     Text("Counts only — never your content or account",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                Switch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
+                AppSwitch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
             }
             var lockOn by remember { mutableStateOf(Session.prefGet("journal_locked") == "true") }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,7 +213,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                     Text("Require your screen lock to open entries",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                Switch(checked = lockOn, onCheckedChange = { v ->
+                AppSwitch(checked = lockOn, onCheckedChange = { v ->
                     lockOn = v; Session.prefPut("journal_locked", v.toString())
                 })
             }
@@ -219,7 +229,7 @@ fun PremiumScreen(onBack: () -> Unit) = SubPage("CereBro Premium", "Go deeper", 
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     PlanCard("Annual", "₹2,999 / year", "Save 37% · 7-day free trial", featured = true)
     PlanCard("Monthly", "₹399 / month", "Cancel anytime", featured = false)
-    Button(onClick = {}, modifier = Modifier.fillMaxWidth(), enabled = false) { Text("Start free trial") }
+    PrimaryButton(text = "Start free trial", enabled = false, modifier = Modifier.fillMaxWidth()) {}
     Text("Billing isn't wired on Android yet — Play Billing lands with Play Console setup. On iOS this is live via StoreKit.",
         style = MaterialTheme.typography.labelSmall, color = TextMuted)
 }
@@ -274,7 +284,7 @@ fun RemindersScreen(onBack: () -> Unit) {
                     Text("Once a day around 9am — gentle, no streak-pressure.",
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
-                Switch(checked = on, onCheckedChange = {
+                AppSwitch(checked = on, onCheckedChange = {
                     if (it) enable() else { com.cerebrozen.app.notify.Reminders.cancel(context); persist(false) }
                 })
             }
@@ -298,41 +308,59 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage("How we handle your data",
 @Composable
 fun DataExportScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
+    var exportOk by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     SubPage("Your data, your copy", "Export my data", onBack) {
         Text("Download everything CereBro has stored for you — mood, journal, sleep and chat.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        Button(enabled = !busy, onClick = {
+        PrimaryButton(
+            text = if (busy) "Preparing…" else "Export my data",
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             busy = true
             scope.launch {
                 runCatching { Api.exportData() }
-                    .onSuccess { status = "Exported ${it.length} characters of your data." }
-                    .onFailure { status = it.message ?: "Export failed." }
+                    .onSuccess { exportOk = true; status = "Exported ${it.length} characters of your data." }
+                    .onFailure { exportOk = false; status = it.message ?: "Export failed." }
                 busy = false
             }
-        }) { Text(if (busy) "Preparing…" else "Export my data") }
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Ok) }
+        }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = if (exportOk) Ok else Danger) }
     }
 }
 
 @Composable
 fun AccountDeletionScreen(onBack: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     SubPage("This can't be undone", "Delete account", onBack) {
         Text("Permanently erase your account and everything in it. There's no recovery.",
             style = MaterialTheme.typography.bodyMedium, color = Danger)
         if (!confirm) {
-            Button(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth()) { Text("Delete my account") }
+            TextButton(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("Delete my account", color = Danger)
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = { scope.launch { runCatching { Api.deleteAccount() }; Session.signOut() } }) {
-                    Text("Delete forever")
+                DangerButton(text = if (busy) "Deleting…" else "Delete forever", enabled = !busy) {
+                    busy = true; error = null
+                    scope.launch {
+                        runCatching { Api.deleteAccount() }
+                            .onSuccess { Session.signOut() }
+                            .onFailure {
+                                busy = false
+                                error = it.message ?: "Couldn't delete your account. Please try again."
+                            }
+                    }
                 }
-                TextButton(onClick = { confirm = false }) { Text("Cancel", color = TextMuted) }
+                TextButton(onClick = { confirm = false }, enabled = !busy) { Text("Cancel", color = TextMuted) }
             }
         }
+        error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Danger) }
     }
 }
 

@@ -1,7 +1,6 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
@@ -60,9 +58,7 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
         Column(
             Modifier.fillMaxWidth()
                 .padding(16.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color(0xFF1A1440))
-                .border(1.dp, LineStroke, RoundedCornerShape(22.dp))
+                .glass(RoundedCornerShape(22.dp))
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -79,7 +75,7 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
                     TOUR_STOPS.indices.forEach { i ->
                         Box(
                             Modifier.size(7.dp).clip(CircleShape)
-                                .background(if (i == idx) Periwinkle else Color.White.copy(alpha = 0.18f)),
+                                .background(if (i == idx) Periwinkle else LineStroke),
                         )
                     }
                 }

@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
@@ -92,7 +97,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             TextButton(
                 onClick = { Player.play(context, "A calmer night") },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            ) { Text("▶ Play the ambient bed", color = Cyan) }
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Play the ambient bed",
+                        tint = Cyan, modifier = Modifier.size(18.dp))
+                    Text("Play the ambient bed", color = Cyan)
+                }
+            }
         }
         SectionCard {
             Text("Morning check-in", style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -144,7 +158,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         if (nights.size >= 2) NightsChart(nights)
 
-        Text("Wind down", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text("Sounds for sleep", style = MaterialTheme.typography.titleMedium, color = TextSoft)
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
             onItemTap = { title -> Player.toggle(context, title) })
@@ -172,10 +186,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 private fun NightsChart(nights: List<Night>) {
     val recent = nights.take(7).reversed()
     val maxDur = (recent.maxOfOrNull { it.duration } ?: 1).coerceAtLeast(1)
+    val avg = recent.map { it.duration }.average().toInt()
     SectionCard {
         Text("Last 7 nights", style = MaterialTheme.typography.titleMedium, color = TextSoft)
         Row(
-            Modifier.fillMaxWidth().height(120.dp),
+            Modifier.fillMaxWidth().height(120.dp)
+                .semantics {
+                    contentDescription =
+                        "Sleep durations, last ${recent.size} nights, average ${minutesToLabel(avg)}"
+                },
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -187,7 +206,6 @@ private fun NightsChart(nights: List<Night>) {
                 )
             }
         }
-        val avg = recent.map { it.duration }.average().toInt()
         Text("avg ${minutesToLabel(avg)} · ${recent.size} nights",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
@@ -197,8 +215,14 @@ private fun NightsChart(nights: List<Night>) {
 private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        TextButton(onClick = { onChange(minutes - 30) }) { Text("−30m") }
+        TextButton(
+            onClick = { onChange(minutes - 30) },
+            modifier = Modifier.semantics { contentDescription = "Set $label 30 minutes earlier" },
+        ) { Text("−30m") }
         Text(hhmm(minutes), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        TextButton(onClick = { onChange(minutes + 30) }) { Text("+30m") }
+        TextButton(
+            onClick = { onChange(minutes + 30) },
+            modifier = Modifier.semantics { contentDescription = "Set $label 30 minutes later" },
+        ) { Text("+30m") }
     }
 }

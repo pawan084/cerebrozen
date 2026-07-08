@@ -71,7 +71,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 // The avatar orb (mirrors iOS ProfileView's gradient orb).
                 Box(
                     Modifier.size(46.dp).clip(CircleShape).background(
-                        Brush.radialGradient(listOf(Color.White, Color(0xFFDFE0FF), Periwinkle)),
+                        Brush.radialGradient(listOf(Color.White, TextSoft, Periwinkle)),
                     ),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

@@ -25,6 +25,47 @@
 - [ ] **Ops config:** `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APNS_*`, and `ASC_*`
   GitHub secrets (TestFlight workflow).
 
+## Done — recent
+
+### Android UI/UX audit + fixes (2026-07-08) — full-screen design-system + a11y pass
+Audited all ~20 Compose screens against the design tokens / `Common.kt` shared
+components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
+`:app:testDebugUnitTest` green). Highlights:
+- [x] **Design-token discipline**: removed all 12 raw `Color(0x…)` hex literals from
+  screens — tokenized `HeroCard` (shared, fixed 4 at once), the Talk voice-orb and
+  You-avatar gradients, and `GuidedTour`'s card. Added tokens `PeriwinkleDeep`/
+  `PeriwinkleSoft` + thumbnail-floor tokens (`ThumbBlue/Rose/Indigo`) to `Color.kt`;
+  promoted `Type.kt` to define the previously-undefined `titleSmall`/`bodySmall`/
+  `labelLarge` (were silently falling back to Material defaults across 9 files).
+- [x] **Shared components** (`Common.kt`): added `AppSwitch` (brand-tinted), `DangerButton`
+  (destructive CTA), `SectionCard(onClick)`, and `AppTextField` `trailingIcon`/
+  `keyboardActions` slots — replaced hand-rolled cards/switches/buttons and the
+  raw `MaterialTheme.colorScheme.error` usages app-wide.
+- [x] **Crisis safety (High)**: `Extras.CrisisScreen` helpline numbers/URL are now
+  tappable (`tel:`/`https:` intents) with labels — a user in crisis can dial.
+- [x] **Touch targets ≥48dp**: Today search well (was 40dp), Extras favourite heart
+  (was 22dp), Games bubble-wrap cells (`minimumInteractiveComponentSize`).
+- [x] **a11y**: semantics/`contentDescription` on the sleep chart, game tiles/pads,
+  volume slider, time steppers; full-row `toggleable` on plan steps; icon play control
+  replacing a `▶` glyph.
+- [x] **State coverage**: real loading + error/retry states for Plan, Patterns, Search,
+  and Extras Insights/Programs (failures no longer masquerade as empty/"no data").
+- [x] **Forms**: IME Next/Done + focus flow and password-reveal toggles on Auth &
+  Onboarding; Settings export-failure now shows in `Danger` (was green `Ok`), and
+  account-deletion no longer signs out on server failure (busy/error states added).
+- [x] **i18n**: Urdu (`ur`) consent notice now mirrors RTL on Onboarding + Settings.
+- Remaining (owner): real-device QA + full TalkBack audit still pending (emulator/
+  compile-verified only); two pre-existing `MenuBook` AutoMirrored deprecation warnings.
+- [x] **Motion/polish pass — Today + Talk** (2026-07-08): added shared, calm-by-design
+  motion primitives in `Common.kt` — `Modifier.pressScale` (soft spring press-in on
+  `PrimaryButton`/`DangerButton`/`PickChip`/`QuickTile`), `Modifier.appear` (one-shot
+  rise+fade with optional stagger index), and animated selection cross-fade on
+  `PickChip`. Today: screen settle-in on load, staggered quick-tile cascade, cascading
+  streak-week dots, check-in confirmation eases in via `AnimatedVisibility`. Talk:
+  chat bubbles rise in, live reply shows a blinking-caret `StreamingBubble`, and a
+  pulsing `TypingDots` indicator while the companion composes. Compiles clean; units
+  green. (iOS-parity motion for the other tabs is the obvious follow-on.)
+
 ## Open — code/product work
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever

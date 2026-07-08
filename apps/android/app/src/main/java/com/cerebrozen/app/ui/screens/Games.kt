@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.theme.CardFill
@@ -98,11 +103,12 @@ fun MemoryMatchScreen(onBack: () -> Unit) {
                             .clip(RoundedCornerShape(14.dp))
                             .background(if (i in matched) Ok.copy(alpha = 0.18f) else CardFill)
                             .border(1.dp, if (shown) Periwinkle else LineStroke, RoundedCornerShape(14.dp))
-                            .clickable { tap(i) },
+                            .clickable { tap(i) }
+                            .semantics { role = Role.Button; contentDescription = "Memory card" },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(if (shown) deck[i] else "✦",
-                            style = MaterialTheme.typography.headlineMedium,
+                            style = MaterialTheme.typography.headlineSmall,
                             color = if (shown) TextSoft else TextMuted)
                     }
                 }
@@ -170,7 +176,8 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                             .clip(RoundedCornerShape(18.dp))
                             .background(pads[pad].copy(alpha = if (lit == pad) 0.85f else 0.22f))
                             .border(1.dp, pads[pad].copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                            .clickable { tap(pad) },
+                            .clickable { tap(pad) }
+                            .semantics { role = Role.Button; contentDescription = "Pad ${pad + 1}" },
                     )
                 }
             }
@@ -203,7 +210,8 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
                     }
-                },
+                }
+                .semantics { contentDescription = "Ripple canvas" },
         ) {
             Canvas(Modifier.matchParentSize()) {
                 ripples.forEach { r ->
@@ -237,13 +245,15 @@ fun BubbleWrapScreen(onBack: () -> Unit) {
                     val isPopped = i in popped
                     Box(
                         Modifier.weight(1f).aspectRatio(1f)
+                            .minimumInteractiveComponentSize()
                             .clip(CircleShape)
                             .background(if (isPopped) CardFill else Periwinkle.copy(alpha = 0.30f))
                             .border(1.dp, if (isPopped) LineStroke else Periwinkle.copy(alpha = 0.55f), CircleShape)
                             .clickable(enabled = !isPopped) {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 popped = popped + i
-                            },
+                            }
+                            .semantics { role = Role.Button; contentDescription = "Bubble" },
                     )
                 }
             }
@@ -285,7 +295,7 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
                 entries.asReversed().forEachIndexed { revIdx, text ->
                     val i = entries.size - 1 - revIdx
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(flowerFor(i), style = MaterialTheme.typography.titleLarge)
+                        Text(flowerFor(i), style = MaterialTheme.typography.titleMedium)
                         Text(text, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                     }
                 }
