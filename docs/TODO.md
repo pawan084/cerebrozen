@@ -45,6 +45,14 @@
   (onError → bundled bed; honest notification copy); web — `<audio controls>` on
   Library + Sleep stories + CSP `media-src`; admin — script textarea + per-row
   Generate/Regenerate with keyless-honest error.
+- [x] Android now-playing bar labelled "AMBIENT BED" even while a narrated title
+  streamed its own audio — `NowPlayingBar` now derives the label from
+  `MediaUrls.urlFor(title)` (narration vs ambient), matching the full `PlayerScreen`.
+  Found on-device 2026-07-08; iOS ("Now playing" neutral eyebrow) and web (per-item
+  `<audio>`, narrated items only) were already correct — no parallel bug.
+- [ ] Nice-to-have: iOS player eyebrow could mirror Android's narration/ambient
+  distinction (it currently shows a neutral "Now playing" — accurate, just less
+  informative). Not a bug; consistency polish only.
 - [ ] Follow-ups: premium audio gating (signed short-lived media URLs) once a
   premium narration catalogue exists; bulk "generate all missing" if the catalogue
   outgrows per-row clicks (~25+); persistent web player; compute real `duration_min`
