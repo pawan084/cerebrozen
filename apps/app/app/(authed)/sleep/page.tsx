@@ -17,7 +17,13 @@ const STORY_BG = [
 ];
 const QUALITY = ["Rough", "Poor", "Okay", "Good", "Rested"];
 
-type Content = { id: string; title: string; subtitle: string; duration_min: number };
+type Content = { id: string; title: string; subtitle: string; duration_min: number; audio_url: string };
+
+// Relative "/media/…" narration resolves against the API base; absolute passes through.
+function mediaSrc(url: string): string {
+  if (!url) return "";
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+}
 
 export default function Sleep() {
   const [quality, setQuality] = useState(0);
@@ -67,13 +73,24 @@ export default function Sleep() {
 
         <div className="sec-head"><h2 className="serif-h">Sleep stories</h2></div>
         {stories.map((s, i) => (
-          <div key={s.id} className="story-row">
-            <span className="story-thumb" style={{ background: STORY_BG[i % STORY_BG.length] }} />
-            <span className="body"><strong>{s.title}</strong><small>{s.subtitle}</small></span>
-            {s.duration_min > 0 && <span className="meta">{s.duration_min} min</span>}
+          <div key={s.id}>
+            <div className="story-row">
+              <span className="story-thumb" style={{ background: STORY_BG[i % STORY_BG.length] }} />
+              <span className="body"><strong>{s.title}</strong><small>{s.subtitle}</small></span>
+              {s.duration_min > 0 && <span className="meta">{s.duration_min} min</span>}
+            </div>
+            {s.audio_url && (
+              <audio
+                controls
+                preload="none"
+                src={mediaSrc(s.audio_url)}
+                aria-label={`Play ${s.title}`}
+                style={{ width: "100%", marginTop: 6, marginBottom: 10 }}
+              />
+            )}
           </div>
         ))}
-        <p className="footnote">Served from the same catalogue as the apps. Audio playback lives in the iOS &amp; Android apps for now — here you plan your wind-down and log your mornings.</p>
+        <p className="footnote">Served from the same catalogue as the apps. Stories with narration play right here; the soundscape mixer lives in the iOS &amp; Android apps.</p>
 
         <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
         <form className="card-dark" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">

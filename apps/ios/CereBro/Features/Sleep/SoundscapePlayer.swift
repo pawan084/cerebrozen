@@ -122,11 +122,18 @@ struct SoundLayer: Identifiable {
 @MainActor
 final class SoundscapePlayer: ObservableObject {
     @Published private(set) var isPlaying = false
+    /// True while a server-narrated track streams (AVPlayer) instead of the
+    /// ambient engine — the mix UI hides, since layers don't apply to narration.
+    @Published private(set) var isNarrating = false
     /// Seconds remaining on the sleep auto-stop timer, or nil when disarmed.
     @Published private(set) var sleepRemaining: Int?
     /// Master volume (0…1), adjustable live from the player.
     @Published var volume: Float = 0.7 {
-        didSet { if isPlaying, audioEnabled { engine.mainMixerNode.outputVolume = volume } }
+        didSet {
+            guard isPlaying, audioEnabled else { return }
+            if isNarrating { avPlayer?.volume = volume }
+            else { engine.mainMixerNode.outputVolume = volume }
+        }
     }
 
     /// The selected timer duration in minutes (drives the icon + cycling), stable
@@ -159,6 +166,13 @@ final class SoundscapePlayer: ObservableObject {
     private var sleepTimer: Timer?
     private var remoteConfigured = false
     private var nowPlayingTitle = "Soundscape"
+    /// Narration streaming (server-generated per-item audio). The ambient
+    /// engine stays the fallback whenever the URL is absent or fails.
+    private var narrationURL: URL?
+    private var avPlayer: AVPlayer?
+    private var narrationFailed = false
+    private var narrationStatusObservation: NSKeyValueObservation?
+    private var narrationEndObservers: [NSObjectProtocol] = []
 
     /// Mixable ambient layers (surfaced in the player's Mix section).
     static let layerKinds: [SoundscapeKind] = [.rain, .ocean, .wind, .meditation]
@@ -170,6 +184,11 @@ final class SoundscapePlayer: ObservableObject {
 
     func configure(for item: ContentItem) {
         nowPlayingTitle = item.title
+        // Per-item narration when the server generated it (and audio is real —
+        // under -resetState the URL is always empty via the Dummy catalogue).
+        teardownNarration()
+        narrationFailed = false
+        narrationURL = item.audioURL.isEmpty ? nil : URL(string: item.audioURL)
         // Start with the layer matching the item at full, the rest silent.
         let primary = SoundscapeKind.from(item)
         for i in 0..<mixer.count {
@@ -206,6 +225,10 @@ final class SoundscapePlayer: ObservableObject {
         guard audioEnabled else {   // UI test: state only, no real engine
             isPlaying = true; updateNowPlaying(); Haptics.soft(intensity: 0.4); return
         }
+        if let url = narrationURL, !narrationFailed {
+            playNarration(url)
+            return
+        }
         activateSession()
         if !graphBuilt {
             graphBuilt = true
@@ -229,10 +252,65 @@ final class SoundscapePlayer: ObservableObject {
         }
     }
 
+    // MARK: Narration streaming (per-item server audio)
+
+    private func playNarration(_ url: URL) {
+        activateSession()
+        if avPlayer == nil {
+            let item = AVPlayerItem(url: url)
+            let player = AVPlayer(playerItem: item)
+            // Provider/network failure → fall back to the ambient engine, honestly.
+            narrationStatusObservation = item.observe(\.status) { [weak self] item, _ in
+                guard item.status == .failed else { return }
+                Task { @MainActor in self?.narrationDidFail() }
+            }
+            let center = NotificationCenter.default
+            narrationEndObservers.append(
+                center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
+                    Task { @MainActor in self?.narrationDidFail() }
+                }
+            )
+            narrationEndObservers.append(
+                center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
+                    Task { @MainActor in self?.stop() }   // narration ends; never loops
+                }
+            )
+            avPlayer = player
+        }
+        avPlayer?.volume = volume
+        avPlayer?.play()
+        isNarrating = true
+        isPlaying = true
+        updateNowPlaying()
+        Haptics.soft(intensity: 0.4)
+    }
+
+    private func narrationDidFail() {
+        guard isNarrating || avPlayer != nil else { return }
+        let wasPlaying = isPlaying
+        teardownNarration()
+        narrationFailed = true
+        if wasPlaying { play() }   // re-enters the ambient engine path
+    }
+
+    private func teardownNarration() {
+        narrationStatusObservation?.invalidate()
+        narrationStatusObservation = nil
+        narrationEndObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        narrationEndObservers = []
+        avPlayer?.pause()
+        avPlayer = nil
+        isNarrating = false
+    }
+
     func pause() {
         if audioEnabled {
-            if usingFiles { voices.forEach { $0.pause() } }
-            engine.pause()
+            if isNarrating {
+                avPlayer?.pause()
+            } else {
+                if usingFiles { voices.forEach { $0.pause() } }
+                engine.pause()
+            }
         }
         isPlaying = false
         updateNowPlaying()
@@ -251,6 +329,7 @@ final class SoundscapePlayer: ObservableObject {
         isPlaying = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         guard audioEnabled else { return }
+        teardownNarration()
         // pause (not .stop()) keeps each voice's looped buffer scheduled.
         if usingFiles { voices.forEach { $0.pause() } }
         if engine.isRunning { engine.stop() }
@@ -326,7 +405,9 @@ final class SoundscapePlayer: ObservableObject {
                 guard let self else { t.invalidate(); return }
                 step += 1
                 if self.audioEnabled {
-                    self.engine.mainMixerNode.outputVolume = self.volume * Float(steps - step) / Float(steps)
+                    let faded = self.volume * Float(steps - step) / Float(steps)
+                    if self.isNarrating { self.avPlayer?.volume = faded }
+                    else { self.engine.mainMixerNode.outputVolume = faded }
                 }
                 if step >= steps { t.invalidate(); self.stop() }
             }

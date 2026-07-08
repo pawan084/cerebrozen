@@ -36,6 +36,9 @@ services:
     # No host port: reached only over the internal network by Caddy (api:8000).
     expose:
       - "8000"
+    volumes:
+      # Generated narration MP3s must survive redeploys (served at /media).
+      - media:/app/media
     restart: unless-stopped
 
   web:
@@ -93,3 +96,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  media:

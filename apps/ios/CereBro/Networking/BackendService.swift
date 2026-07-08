@@ -285,14 +285,24 @@ final class BackendService: ObservableObject {
         guard !catalogueLoaded, !UserDefaults.standard.bool(forKey: "resetState") else { return }
         guard let items = try? await APIClient.shared.contentList(), !items.isEmpty else { return }
         catalogueLoaded = true
+        var base = await APIClient.shared.currentBaseURL
+        while base.hasSuffix("/") { base.removeLast() }
         var grouped: [String: [ContentItem]] = [:]
         for item in items {
             grouped[item.kind, default: []].append(
                 ContentItem(title: item.title, subtitle: item.subtitle,
-                            symbol: item.symbol, imageURL: item.image_url))
+                            symbol: item.symbol, imageURL: item.image_url,
+                            audioURL: Self.resolveMedia(item.audio_url, base: base)))
         }
         catalogue = grouped
         remotePrograms = items.filter { $0.kind == "program" }
+    }
+
+    /// Server media URLs are API-relative ("/media/…"); admin-pasted absolute
+    /// URLs pass through verbatim.
+    static func resolveMedia(_ url: String?, base: String) -> String {
+        guard let url, !url.isEmpty else { return "" }
+        return url.hasPrefix("/") ? base + url : url
     }
 
     // MARK: Assessment (self-reflection → conversation starters)

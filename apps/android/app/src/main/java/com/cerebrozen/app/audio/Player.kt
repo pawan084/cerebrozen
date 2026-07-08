@@ -10,8 +10,8 @@ import androidx.compose.runtime.setValue
  * Thin controller over [AmbientService]. The service owns the real MediaPlayer +
  * MediaSession and keeps playing in the background with notification controls;
  * it publishes state back here so any Compose screen can reflect what's playing.
- * Content records carry no per-track audio yet, so every title shares one bundled
- * ambient bed — clearly labelled as such.
+ * Titles with server-generated narration (registered in [MediaUrls]) stream
+ * their own audio; everything else plays the bundled ambient bed.
  */
 object Player {
     var nowPlaying by mutableStateOf<String?>(null)
@@ -65,7 +65,8 @@ object Player {
         context.startForegroundService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_PLAY)
-                .putExtra(AmbientService.EXTRA_TITLE, title),
+                .putExtra(AmbientService.EXTRA_TITLE, title)
+                .putExtra(AmbientService.EXTRA_URL, MediaUrls.urlFor(title)),
         )
     }
 

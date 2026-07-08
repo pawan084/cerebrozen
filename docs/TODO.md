@@ -27,6 +27,30 @@
 
 ## Open — code/product work
 
+### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
+- [x] Backend: `content_items` gains `narration_script` (admin-authored) + `audio_url`
+  + `audio_generated_at` (Alembic `a7c4e9f2d310`); `POST /admin/content/{id}/narrate`
+  (synchronous ElevenLabs via the existing `voice.synthesize` with a 300 s budget,
+  3/min rate limit, honest 503/400/422/502 ladder); MP3s at `MEDIA_ROOT/narration/`
+  served by a public `/media` StaticFiles mount (Range/ETag — native players seek);
+  prod named volume `media:/app/media` (+ Dockerfile pre-chown mkdir); delete unlinks
+  minted files; public `/content` exposes `audio_url` but NEVER the script
+  (`AdminContentOut` carries it for the CMS). 9 seed narration scripts (sleep story,
+  breathwork, 3 meditations, 4 wind-downs — soundscapes/programs deliberately none;
+  empty-only backfill never clobbers admin edits).
+- [x] Clients (same-day): iOS — `SoundscapePlayer` streams narration via `AVPlayer(url:)`
+  (failure → ambient engine fallback; never loops; mix UI hidden while narrating; all
+  behind the `-resetState` gate so UITests stay deterministic); Android —
+  `MediaUrls` resolve/registry → `AmbientService` `setDataSource`+`prepareAsync`
+  (onError → bundled bed; honest notification copy); web — `<audio controls>` on
+  Library + Sleep stories + CSP `media-src`; admin — script textarea + per-row
+  Generate/Regenerate with keyless-honest error.
+- [ ] Follow-ups: premium audio gating (signed short-lived media URLs) once a
+  premium narration catalogue exists; bulk "generate all missing" if the catalogue
+  outgrows per-row clicks (~25+); persistent web player; compute real `duration_min`
+  from the generated MP3 (needs a decoder dep). OWNER: click Generate per seeded item
+  (burns ElevenLabs credits, ~15–30k chars total).
+
 ### Ref-mock audit follow-ups (ref/ design screens, audited 2026-07-07)
 - [x] Backend + Android: program enrollment (`/programs` router + `program_enrollments`
   table, Alembic `0b8e5d2f7a41`; day computed from start date) — "PROGRAM · DAY X OF 7"
@@ -486,10 +510,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   min; AmbientService fades ~10 s then stops); 5 new calm games — Memory
   match, Pattern glow, Zen ripples, Bubble wrap, Gratitude garden
   (persisted) — the Games hub now has 8 activities (iOS-hub parity). Unit
-  tests 29→34. **The iOS↔Android parity list is CLOSED.** Still honestly
-  blocked on the content pipeline (not code): sound mixing + per-track
-  narrated audio need multiple real audio assets; Health Connect stays
-  deferred-heavy.
+  tests 29→34. **The iOS↔Android parity list is CLOSED.** Per-track narrated
+  audio UNBLOCKED 2026-07-07 by the narrated-audio pipeline (see its section
+  above) — Android streams `audio_url` tracks with the bundled bed as the
+  fallback. Still open: sound MIXING needs multiple simultaneous real stems
+  (content work); Health Connect stays deferred-heavy.
 - [x] Check-in ritual reward — 2026-07-04: saving a mood check-in now offers
   "A tiny reward — seal it with a 1-minute calm game" (routes to Games; offered,
   never forced). The proactive ritual itself was already the Home hero + daily
@@ -504,7 +529,11 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
   graph rebuild). Admin: `/admin/prompts` (list/save/activate/revert) + a
   "Prompts" dashboard tab (edit → new version, rollback, revert to code
   default). Prompt changes reach production without a deploy.
-- [ ] Content depth + clinical credibility (SHIP_READINESS.md "honest gaps").
+- [ ] Content depth + clinical credibility (SHIP_READINESS.md "honest gaps") —
+  content depth materially advanced 2026-07-07 (narrated-audio pipeline above:
+  real per-track narration on all three clients); still open: a larger authored
+  catalogue, sound mixing stems, and the clinical-credibility package (named
+  advisor + efficacy citations — also investor item below).
 - [x] `mcp.cerebrozen.in` — dropped 2026-07-04 (dangling subdomain removed from
   the Caddyfile comment; owner: delete the DNS record).
 - [x] CSP — 2026-07-04: pragmatic policy in the shared Caddy snippet (blocks

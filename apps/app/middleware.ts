@@ -39,6 +39,8 @@ export function middleware(request: NextRequest) {
     `img-src 'self' data: blob:`,
     `font-src 'self' data:`,
     `connect-src 'self' ${API_ORIGIN}`,
+    // Narration audio streams from the API's public /media mount.
+    `media-src 'self' ${API_ORIGIN}`,
     `frame-ancestors 'self'`,
     `object-src 'none'`,
     `base-uri 'self'`,

@@ -35,14 +35,18 @@ async def test_admin_content_crud(admin_client):
     create = await admin_client.post("/admin/content", json={
         "title": "Test meditation", "subtitle": "calm", "kind": "meditation",
         "symbol": "leaf", "image_url": "", "duration_min": 5, "premium": False, "published": True,
+        "narration_script": "Close your eyes and follow the breath.",
     })
     assert create.status_code == 201
+    assert create.json()["narration_script"] == "Close your eyes and follow the breath."
     item_id = create.json()["id"]
 
     assert (await admin_client.get("/admin/content")).status_code == 200
 
     upd = await admin_client.patch(f"/admin/content/{item_id}", json={"title": "Renamed"})
     assert upd.status_code == 200 and upd.json()["title"] == "Renamed"
+    # Untouched fields survive partial updates.
+    assert upd.json()["narration_script"] == "Close your eyes and follow the breath."
 
     # The published item now shows in the public catalogue.
     pub = await admin_client.get("/content", params={"q": "Renamed"})

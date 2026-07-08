@@ -79,10 +79,11 @@ cere/
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD, prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
 | `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
+| `/media` | StaticFiles mount over `MEDIA_ROOT` (public, like `/content`; Range/ETag so native players stream + seek) — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
 
 ### Key services
 
@@ -220,6 +221,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Consent categories (6 flags, per-purpose) | `models/consent.py` + read-site gates | `Models.Consent` + Consent/Privacy screens (web: account page labels) |
 | Consent-notice translations (DPDP s.5(3): 13 languages, keys = consent columns) | — (client-side text) | `Trust/ConsentNotice.swift` ⇄ web `apps/app/lib/consentNotice.ts` ⇄ android `ui/screens/ConsentNotice.kt` |
 | Analytics event vocabulary + funnel step names | `routes/events.ALLOWED_EVENTS` (+ `source` enum incl. `android`) | iOS `Analytics.track` ⇄ android `net/Analytics.kt` (`funnelStepName` maps to `services/metrics.ONBOARDING_STEPS`) |
+| Narration audio (`audio_url` on `/content` items) | `models/content.py` — relative `/media/…` (backend-minted) or absolute (admin-pasted); empty ⇒ client ambient fallback; `narration_script` is admin-only (`AdminContentOut`), never public. NOTE the deliberate asymmetry with `image_url`, which is always absolute | iOS `RemoteContent.audio_url` → `BackendService.resolveMedia` → `SoundscapePlayer` AVPlayer branch ⇄ android `MediaUrls.resolve/register` → `AmbientService` stream-else-bed ⇄ web `mediaSrc()` + `<audio>` (library/sleep pages; CSP `media-src`) |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 

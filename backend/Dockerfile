@@ -16,8 +16,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-# Run as a non-root user in production.
-RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+# Run as a non-root user in production. The media dir must exist before the
+# chown so a named volume mounted there is writable by appuser.
+RUN mkdir -p media \
+    && useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000

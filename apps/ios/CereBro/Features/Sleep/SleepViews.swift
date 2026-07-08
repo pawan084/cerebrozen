@@ -213,7 +213,10 @@ struct PlayerView: View {
 
                     volumeSlider.padding(.top, 6)
 
-                    mixSection.padding(.top, 10)
+                    // Layer mixing applies to the ambient engine, not narration.
+                    if !audio.isNarrating {
+                        mixSection.padding(.top, 10)
+                    }
 
                     PlayerVisualizer(playing: audio.isPlaying).padding(.top, 6)
 

@@ -30,6 +30,7 @@ class AmbientService : Service() {
         const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
         const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_URL = "url"
         const val EXTRA_MINUTES = "minutes"
         const val EXTRA_VOLUME = "volume"
         private const val CHANNEL = "ambient_playback"
@@ -40,6 +41,11 @@ class AmbientService : Service() {
     private var session: MediaSession? = null
     private var title = "Ambient bed"
     private var volume = 1f
+    /** Current audio source: "" = bundled ambient bed, else a narration URL. */
+    private var currentSrc = ""
+    /** Streamed players prepare async; start/pause are only legal once ready. */
+    private var prepared = false
+    private var pauseRequested = false
     // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
     private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -53,7 +59,12 @@ class AmbientService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_PLAY -> { intent.getStringExtra(EXTRA_TITLE)?.let { title = it }; play() }
+            ACTION_PLAY -> {
+                intent.getStringExtra(EXTRA_TITLE)?.let { title = it }
+                // No extra (notification resume) keeps the current source;
+                // an explicit "" means this title has no narration → bed.
+                play(intent.getStringExtra(EXTRA_URL) ?: currentSrc)
+            }
             ACTION_PAUSE -> pause()
             ACTION_STOP -> stopAll()
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
@@ -83,10 +94,17 @@ class AmbientService : Service() {
         timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
     }
 
-    private fun play() {
-        if (mp == null) mp = MediaPlayer.create(this, R.raw.ambient_bed)?.apply { isLooping = true }
-        mp?.setVolume(volume, volume)
-        mp?.start()
+    private fun play(url: String = currentSrc) {
+        pauseRequested = false
+        if (mp != null && url != currentSrc) { mp?.release(); mp = null }
+        if (mp == null) {
+            currentSrc = url
+            mp = if (url.isBlank()) createBed() else createStream(url)
+        }
+        if (prepared) {
+            mp?.setVolume(volume, volume)
+            mp?.start()
+        }
         Player.setState(title, true)
         updateSession(true)
         ServiceCompat.startForeground(
@@ -95,8 +113,47 @@ class AmbientService : Service() {
         )
     }
 
+    private fun createBed(): MediaPlayer? {
+        prepared = true
+        return MediaPlayer.create(this, R.raw.ambient_bed)?.apply { isLooping = true }
+    }
+
+    /** Stream a narrated track over HTTP(S); any failure falls back to the bed. */
+    private fun createStream(url: String): MediaPlayer? {
+        prepared = false
+        val player = MediaPlayer()
+        player.setAudioAttributes(
+            android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build(),
+        )
+        player.setOnPreparedListener {
+            prepared = true
+            it.setVolume(volume, volume)
+            if (!pauseRequested) it.start()
+        }
+        player.setOnErrorListener { _, _, _ -> fallBackToBed(); true }
+        player.setOnCompletionListener { stopAll() }   // narration ends; never loops
+        return try {
+            player.setDataSource(url)
+            player.prepareAsync()
+            player
+        } catch (_: Exception) {
+            player.release()
+            currentSrc = ""
+            createBed()
+        }
+    }
+
+    private fun fallBackToBed() {
+        mp?.release(); mp = null
+        currentSrc = ""
+        if (!pauseRequested) play("")
+    }
+
     private fun pause() {
-        mp?.pause()
+        if (prepared) mp?.pause() else pauseRequested = true
         Player.setState(title, false)
         updateSession(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
@@ -149,7 +206,7 @@ class AmbientService : Service() {
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_orb)
             .setContentTitle(title)
-            .setContentText("CereBro · ambient bed")
+            .setContentText(if (currentSrc.isBlank()) "CereBro · ambient bed" else "CereBro · narration")
             .setContentIntent(open)
             .setOngoing(playing)
             .setVisibility(Notification.VISIBILITY_PUBLIC)

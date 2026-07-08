@@ -91,6 +91,9 @@ struct RemoteContent: Codable, Identifiable {
     let kind: String
     let symbol: String
     let image_url: String
+    /// Narration MP3 — relative "/media/…" (resolve against the API base) or
+    /// absolute; optional so older servers still decode.
+    let audio_url: String?
     let duration_min: Int
     let premium: Bool
 }

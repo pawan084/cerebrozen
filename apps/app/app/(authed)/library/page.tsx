@@ -11,7 +11,15 @@ type Item = {
   kind: string;
   duration_min: number;
   premium: boolean;
+  audio_url: string;
 };
+
+// Relative "/media/…" (backend-minted narration) resolves against the API base;
+// admin-pasted absolute URLs pass through.
+function mediaSrc(url: string): string {
+  if (!url) return "";
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+}
 
 const KIND_LABELS: Record<string, string> = {
   wind_down: "Wind down tonight",
@@ -47,19 +55,30 @@ export default function Library() {
           {items
             .filter((i) => i.kind === kind)
             .map((i) => (
-              <div className="entry row" key={i.id}>
-                <div className="grow">
-                  <strong>{i.title}</strong>
-                  <div className="meta">{i.subtitle}</div>
+              <div className="entry" key={i.id}>
+                <div className="row">
+                  <div className="grow">
+                    <strong>{i.title}</strong>
+                    <div className="meta">{i.subtitle}</div>
+                  </div>
+                  {i.duration_min > 0 && <span className="meta">{i.duration_min} min</span>}
+                  {i.premium && <span className="tag">premium</span>}
                 </div>
-                {i.duration_min > 0 && <span className="meta">{i.duration_min} min</span>}
-                {i.premium && <span className="tag">premium</span>}
+                {i.audio_url && (
+                  <audio
+                    controls
+                    preload="none"
+                    src={mediaSrc(i.audio_url)}
+                    aria-label={`Play ${i.title}`}
+                    style={{ width: "100%", marginTop: 8 }}
+                  />
+                )}
               </div>
             ))}
         </section>
       ))}
       <p className="footnote">
-        Audio playback (soundscapes, stories, the mixer) lives in the iOS app for now.
+        Items with narration play right here — the full mixer and offline playback live in the iOS &amp; Android apps.
       </p>
       </div>
     </>

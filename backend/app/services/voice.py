@@ -40,8 +40,12 @@ async def transcribe(audio: bytes, content_type: str = "audio/mpeg") -> str | No
         return None
 
 
-async def synthesize(text: str) -> bytes | None:
-    """Synthesize speech (MP3 bytes) from text via ElevenLabs. None if disabled/failed."""
+async def synthesize(text: str, timeout: float = 30.0) -> bytes | None:
+    """Synthesize speech (MP3 bytes) from text via ElevenLabs. None if disabled/failed.
+
+    The default timeout suits short chat replies; long-form narration (admin
+    content generation) passes a larger budget.
+    """
     if not settings.tts_enabled:
         logger.info("TTS disabled (no ElevenLabs key); skipping synthesis")
         return None
@@ -54,7 +58,7 @@ async def synthesize(text: str) -> bytes | None:
     }
     params = {"output_format": "mp3_44100_128"}
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, params=params, headers=headers, json=body)
             resp.raise_for_status()
             return resp.content

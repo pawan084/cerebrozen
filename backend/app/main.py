@@ -2,9 +2,11 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -96,6 +98,11 @@ async def security_headers(request: Request, call_next) -> Response:
 
 
 app.include_router(api_router)
+
+# Generated media (narration MP3s) — public like /content; StaticFiles serves
+# Range/ETag so native players can stream and seek.
+Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 
 
 @app.get("/health", tags=["meta"])

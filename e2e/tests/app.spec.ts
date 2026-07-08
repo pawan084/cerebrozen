@@ -93,6 +93,11 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByText(/Agentic plan/)).toBeVisible({ timeout: 15_000 });
     await nav(page, "Library").click();
     await expect(page.getByRole("heading", { name: "Library", exact: true })).toBeVisible({ timeout: 10_000 });
+    // Rails render the seeded catalogue, and every audio control that renders
+    // must carry a real source — no fake/dead players (audio elements only
+    // appear at all once narration has been generated, e.g. on keyed stacks).
+    await expect(page.getByRole("heading", { name: "Wind down tonight" })).toBeVisible();
+    await expect(page.locator("audio:not([src])")).toHaveCount(0);
 
     // Settings (account): consent toggle flips, enforced server-side.
     await nav(page, "Settings").click();
@@ -139,6 +144,9 @@ test.describe("Web app (authenticated client)", () => {
     // regression in the deduped single-use-refresh handling (lib/api) would race,
     // clear the token, and bounce to /signin here.
     await nav(page, "Home").click();
+    // The client-side navigation must land before the reload, or the reload
+    // happens on /patterns and the whole point (reload ON Home) is lost.
+    await expect(page).toHaveURL(/\/home$/);
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });

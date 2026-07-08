@@ -464,6 +464,7 @@ const KINDS = ["sleep", "meditation", "breath", "soundscape", "program", "wind_d
 const EMPTY_CONTENT = {
   title: "", subtitle: "", kind: "meditation", symbol: "sparkles",
   image_url: "", duration_min: 0, premium: false, published: true,
+  narration_script: "",
 };
 
 function Content() {
@@ -472,6 +473,8 @@ function Content() {
   const [form, setForm] = useState<any>(EMPTY_CONTENT);
   const [editId, setEditId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [narratingId, setNarratingId] = useState<string | null>(null);
+  const [audioMsg, setAudioMsg] = useState("");
 
   function set(k: string, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
   function closeForm() { setForm(EMPTY_CONTENT); setEditId(null); setShowForm(false); }
@@ -480,6 +483,7 @@ function Content() {
       title: item.title, subtitle: item.subtitle || "", kind: item.kind,
       symbol: item.symbol || "sparkles", image_url: item.image_url || "",
       duration_min: item.duration_min || 0, premium: item.premium, published: item.published,
+      narration_script: item.narration_script || "",
     });
     setEditId(item.id);
     setShowForm(true);
@@ -506,6 +510,22 @@ function Content() {
   async function remove(id: string) {
     await api(`/admin/content/${id}`, { method: "DELETE" });
     reload();
+  }
+  async function narrate(id: string) {
+    setNarratingId(id);
+    setAudioMsg("");
+    try {
+      await api(`/admin/content/${id}/narrate`, { method: "POST" });
+      reload();
+    } catch (e: any) {
+      setAudioMsg(
+        String(e?.message || e).includes("503")
+          ? "Text-to-speech isn't configured (no ElevenLabs key)."
+          : "Narration failed — try again."
+      );
+    } finally {
+      setNarratingId(null);
+    }
   }
 
   return (
@@ -547,6 +567,16 @@ function Content() {
             <label>Image URL</label>
             <input type="text" value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://…" />
           </div>
+          <div className="full">
+            <label>Narration script</label>
+            <textarea
+              rows={6}
+              value={form.narration_script}
+              onChange={(e) => set("narration_script", e.target.value)}
+              placeholder="Read aloud by the narrator voice — keep it calm and non-clinical. Leave empty for ambient-only items."
+              style={{ width: "100%", resize: "vertical" }}
+            />
+          </div>
           <label className="check">
             <input type="checkbox" checked={form.premium} onChange={(e) => set("premium", e.target.checked)} /> Premium
           </label>
@@ -560,10 +590,11 @@ function Content() {
       )}
 
       {err && <div className="empty">{err}</div>}
+      {audioMsg && <div className="empty">{audioMsg}</div>}
       <div className="card">
         <table>
           <thead>
-            <tr><th>Title</th><th>Kind</th><th>Duration</th><th>Tier</th><th>Status</th><th></th></tr>
+            <tr><th>Title</th><th>Kind</th><th>Duration</th><th>Tier</th><th>Audio</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             {(data || []).map((c) => (
@@ -572,10 +603,20 @@ function Content() {
                 <td><span className="tag muted">{c.kind}</span></td>
                 <td>{c.duration_min ? `${c.duration_min} min` : "—"}</td>
                 <td>{c.premium ? <span className="tag elevated">premium</span> : <span className="tag ok">free</span>}</td>
+                <td>{c.audio_url ? <span className="tag ok">narrated</span> : c.narration_script ? <span className="tag muted">script only</span> : "—"}</td>
                 <td>{c.published ? "Published" : "Draft"}</td>
                 <td>
                   <div className="row-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => startEdit(c)}>Edit</button>
+                    {c.narration_script && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        disabled={narratingId !== null}
+                        onClick={() => narrate(c.id)}
+                      >
+                        {narratingId === c.id ? "Generating… ~30s" : c.audio_url ? "Regenerate audio" : "Generate audio"}
+                      </button>
+                    )}
                     <button className="btn btn-ghost btn-sm" onClick={() => patch(c.id, { published: !c.published })}>
                       {c.published ? "Unpublish" : "Publish"}
                     </button>

@@ -1,6 +1,10 @@
 import os
+import tempfile
 
 os.environ["TESTING"] = "1"  # must be set before importing the app/engine
+# Isolated media dir — app.main mounts StaticFiles(MEDIA_ROOT) at import time,
+# and narration tests write real files there.
+os.environ.setdefault("MEDIA_ROOT", tempfile.mkdtemp(prefix="cerebro-media-"))
 
 # Tests run in their OWN database (`<name>_test`, created on demand) so
 # create_all never races the dev database's Alembic state or pollutes dev

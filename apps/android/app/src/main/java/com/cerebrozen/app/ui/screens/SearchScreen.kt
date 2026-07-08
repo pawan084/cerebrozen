@@ -14,6 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -25,7 +27,7 @@ import org.json.JSONObject
 
 private val SEARCH_KINDS = listOf("soundscape", "sleep", "meditation", "program", "wind_down")
 
-internal data class SearchItem(val title: String, val subtitle: String, val kind: String, val duration: Int, val imageUrl: String)
+internal data class SearchItem(val title: String, val subtitle: String, val kind: String, val duration: Int, val imageUrl: String, val audioUrl: String = "")
 
 internal fun filterCatalogue(items: List<SearchItem>, query: String): List<SearchItem> {
     val q = query.trim()
@@ -49,9 +51,11 @@ fun SearchScreen(onBack: () -> Unit) {
                 val arr = Api.content(kind)
                 (0 until arr.length()).forEach { i ->
                     val c: JSONObject = arr.getJSONObject(i)
+                    val audio = MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL)
+                    MediaUrls.register(c.optString("title"), audio)
                     all += SearchItem(
                         c.optString("title"), c.optString("subtitle"), kind,
-                        c.optInt("duration_min"), c.optString("image_url"),
+                        c.optInt("duration_min"), c.optString("image_url"), audio,
                     )
                 }
             }

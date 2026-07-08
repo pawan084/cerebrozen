@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str = "EXAVITQu4vr4xnSDxMaL"  # "Sarah" — calm, warm
     elevenlabs_model: str = "eleven_turbo_v2_5"
 
+    # Generated media (narration MP3s) live here, served read-only at /media.
+    # Relative to the working dir (/app in-container); prod mounts a named volume.
+    media_root: str = "media"
+
     # Sign in with Apple. `apple_client_id` is the token *audience* — your app's
     # bundle ID (or Services ID for web). Defaults to the APNs bundle id below.
     # Verification is always attempted; a bad/foreign token simply fails to 401.

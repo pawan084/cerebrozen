@@ -64,6 +64,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
@@ -188,6 +190,7 @@ internal fun ContentList(
         else -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
             val title = c.optString("title")
+            MediaUrls.register(title, MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL))
             ContentRow(
                 title, c.optString("subtitle"),
                 metaLabel(c.optInt("duration_min")), c.optBoolean("premium"),
@@ -343,7 +346,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
             icon = Icons.Outlined.Bedtime, onItemTap = play, favs = favs, onFav = toggleFav)
-        Text("Tap to play a calming ambient bed — narrated stories arrive with the content pipeline.",
+        Text("Titles with narration play their own audio; the rest play a calming ambient bed.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
@@ -369,8 +372,12 @@ fun PlayerScreen(onBack: () -> Unit) {
             Text("Pick a soundscape or story from Sounds and it plays here.",
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
-            Text("Continuous ambient bed · per-track audio arrives with the content pipeline.",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(
+                if (MediaUrls.urlFor(title).isBlank())
+                    "Continuous ambient bed · this title has no narration yet."
+                else "Narrated track · streams from your library.",
+                style = MaterialTheme.typography.labelSmall, color = TextMuted,
+            )
             PrimaryButton(
                 text = if (Player.isPlaying) "Pause" else "Play",
                 modifier = Modifier.fillMaxWidth(),

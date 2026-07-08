@@ -1,13 +1,15 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_admin
+from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.consent import Consent
 from app.models.content import ContentItem
@@ -20,13 +22,13 @@ from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.user import User
 from app.schemas.content_data import (
+    AdminContentOut,
     ContentCreate,
-    ContentOut,
     ContentUpdate,
     SafetyEventOut,
 )
 from app.schemas.user import UserOut
-from app.services import metrics, nudges
+from app.services import media, metrics, nudges, voice
 from app.services import prompts as prompt_registry
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
@@ -159,13 +161,13 @@ async def set_user_active(user_id: uuid.UUID, active: bool, db: AsyncSession = D
 
 
 # ── Content CRUD ────────────────────────────────────────────────────────
-@router.get("/content", response_model=list[ContentOut])
+@router.get("/content", response_model=list[AdminContentOut])
 async def admin_list_content(db: AsyncSession = Depends(get_db)):
     rows = await db.scalars(select(ContentItem).order_by(ContentItem.created_at.desc()))
     return rows.all()
 
 
-@router.post("/content", response_model=ContentOut, status_code=201)
+@router.post("/content", response_model=AdminContentOut, status_code=201)
 async def create_content(payload: ContentCreate, db: AsyncSession = Depends(get_db)):
     item = ContentItem(**payload.model_dump())
     db.add(item)
@@ -174,7 +176,7 @@ async def create_content(payload: ContentCreate, db: AsyncSession = Depends(get_
     return item
 
 
-@router.patch("/content/{item_id}", response_model=ContentOut)
+@router.patch("/content/{item_id}", response_model=AdminContentOut)
 async def update_content(item_id: uuid.UUID, payload: ContentUpdate, db: AsyncSession = Depends(get_db)):
     item = await db.get(ContentItem, item_id)
     if item is None:
@@ -191,8 +193,50 @@ async def delete_content(item_id: uuid.UUID, db: AsyncSession = Depends(get_db))
     item = await db.get(ContentItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Content not found")
+    if item.audio_url.startswith("/media/narration/"):
+        media.delete_narration(item.id)
     await db.delete(item)
     await db.commit()
+
+
+# Turbo v2.5 accepts ~40k chars per request; guard below that so a too-long
+# script gets an actionable error instead of a provider failure.
+_MAX_NARRATION_CHARS = 39_000
+
+
+@router.post("/content/{item_id}/narrate", response_model=AdminContentOut)
+@limiter.limit("3/minute")   # provider-cost guard — narration burns real TTS credits
+async def narrate_content(
+    request: Request,
+    item_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate narration audio for a content item from its script (ElevenLabs).
+
+    Synchronous by design: generation takes seconds-to-a-minute, admin-triggered
+    one item at a time. The endpoint is async, so workers keep serving.
+    """
+    item = await db.get(ContentItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Content not found")
+    if not settings.tts_enabled:
+        raise HTTPException(status_code=503, detail="Text-to-speech is not configured")
+    script = item.narration_script.strip()
+    if not script:
+        raise HTTPException(status_code=400, detail="This item has no narration script")
+    if len(script) > _MAX_NARRATION_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Narration script exceeds {_MAX_NARRATION_CHARS} characters — shorten it",
+        )
+    audio = await voice.synthesize(script, timeout=300)
+    if not audio:
+        raise HTTPException(status_code=502, detail="Speech synthesis failed")
+    item.audio_url = media.save_narration(item.id, audio)
+    item.audio_generated_at = utcnow()
+    await db.commit()
+    await db.refresh(item)
+    return item
 
 
 # ── Safety review queue ─────────────────────────────────────────────────

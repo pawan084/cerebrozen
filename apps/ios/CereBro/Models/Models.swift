@@ -8,6 +8,9 @@ struct ContentItem: Identifiable, Hashable {
     let subtitle: String
     let symbol: String
     let imageURL: String
+    /// Resolved narration URL from the server catalogue; empty = the player
+    /// falls back to the ambient soundscape engine.
+    var audioURL: String = ""
 }
 
 struct MoodOption: Identifiable, Hashable {

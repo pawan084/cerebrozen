@@ -26,6 +26,9 @@ dist/
 .turbo/
 *.tsbuildinfo
 
+# Generated media (narration MP3s — dev api bind-mount writes them here)
+backend/media/
+
 # Test / coverage artifacts
 playwright-report/
 test-results/

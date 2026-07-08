@@ -87,13 +87,15 @@ class ContentBase(BaseModel):
     kind: str = Field(max_length=40)
     symbol: str = "sparkles"
     image_url: str = ""
+    # Relative "/media/..." (backend-minted) or absolute URL; empty = no narration.
+    audio_url: str = ""
     duration_min: int = 0
     premium: bool = False
     published: bool = True
 
 
 class ContentCreate(ContentBase):
-    pass
+    narration_script: str = ""
 
 
 class ContentUpdate(BaseModel):
@@ -102,6 +104,8 @@ class ContentUpdate(BaseModel):
     kind: str | None = None
     symbol: str | None = None
     image_url: str | None = None
+    audio_url: str | None = None
+    narration_script: str | None = None
     duration_min: int | None = None
     premium: bool | None = None
     published: bool | None = None
@@ -111,6 +115,14 @@ class ContentOut(ContentBase):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     created_at: datetime
+
+
+class AdminContentOut(ContentOut):
+    """Admin CMS payload — carries the narration script (and generation stamp)
+    the public catalogue omits."""
+
+    narration_script: str = ""
+    audio_generated_at: datetime | None = None
 
 
 # ── Insight ─────────────────────────────────────────────────────────────

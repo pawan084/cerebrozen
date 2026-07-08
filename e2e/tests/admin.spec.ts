@@ -52,19 +52,32 @@ test.describe("Admin dashboard", () => {
     await nav(page, "Content").click();
     await page.getByRole("button", { name: /new item/i }).click();
     const title = `E2E item ${Date.now()}`;
+    const script = "Settle in and let the day soften.";
     await page.locator(".cform input[type=text]").first().fill(title);
+    await page.locator(".cform textarea").fill(script);
     await page.getByRole("button", { name: /create item/i }).click();
 
     const row = page.locator("tr", { hasText: title });
     await expect(row).toBeVisible();
 
     // Full edit: open the pre-filled form, rename, save, see the new title.
+    // The narration script must round-trip through the pre-fill.
     await row.getByRole("button", { name: "Edit" }).click();
+    await expect(page.locator(".cform textarea")).toHaveValue(script);
     const edited = `${title} edited`;
     await page.locator(".cform input[type=text]").first().fill(edited);
     await page.getByRole("button", { name: /save changes/i }).click();
     const editedRow = page.locator("tr", { hasText: edited });
     await expect(editedRow).toBeVisible();
+
+    // Scripted items offer narration generation. The e2e api inherits
+    // backend/.env, so a keyed dev machine really generates (row gains the
+    // `narrated` tag) while keyless CI surfaces the honest 503 copy — both
+    // outcomes are correct; a crash or silence is not.
+    await editedRow.getByRole("button", { name: "Generate audio" }).click();
+    await expect(
+      editedRow.getByText("narrated", { exact: true }).or(page.getByText(/isn't configured/i)),
+    ).toBeVisible({ timeout: 30_000 });
 
     await editedRow.getByRole("button", { name: "Delete" }).click();
     await expect(page.locator("tr", { hasText: edited })).toHaveCount(0);
