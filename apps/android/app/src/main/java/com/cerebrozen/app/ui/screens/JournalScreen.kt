@@ -1,5 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MenuBook
@@ -180,10 +182,15 @@ fun JournalScreen() {
                     AppTextField(query, { query = it }, "Search entries", singleLine = true)
                 }
                 val shown = filterEntries(entries, query)
-                shown.take(10).forEach { e ->
-                    Text("${e.title} · ${e.date}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                shown.take(10).forEachIndexed { i, e ->
+                    Column(
+                        Modifier.appear(i, rise = 8f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text("${e.title} · ${e.date}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                        Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                 }
                 if (shown.isEmpty()) {
                     Text("No entries match \"${query.trim()}\".",

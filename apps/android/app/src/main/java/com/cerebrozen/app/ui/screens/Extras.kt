@@ -2,6 +2,8 @@ package com.cerebrozen.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -61,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -95,8 +98,11 @@ import org.json.JSONArray
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
 internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val rise = remember { Animatable(24f) }
+    LaunchedEffect(Unit) { rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing)) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .graphicsLayer { translationY = rise.value }
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -132,9 +138,8 @@ internal fun ContentRow(
     fav: Boolean? = null,
     onFav: (() -> Unit)? = null,
 ) {
-    SectionCard {
-        val mod = Modifier.fillMaxWidth().let { if (onTap != null) it.clickable { onTap() } else it }
-        Row(mod, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    SectionCard(onClick = onTap) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             // Real content photo (iOS AsyncImage) over a gradient fallback + symbol.
             Box(
                 Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)).background(thumbBrush(title)),

@@ -149,8 +149,17 @@ internal fun SectionCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val base = Modifier.fillMaxWidth().glass()
-    val mod = if (onClick != null) base.clickable { onClick() } else base
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val mod = if (onClick != null) {
+        // A whisper of press-in — cards are large, so the scale is tiny on purpose.
+        Modifier.fillMaxWidth()
+            .pressScale(pressed, down = 0.985f)
+            .glass()
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
+    } else {
+        Modifier.fillMaxWidth().glass()
+    }
     Column(
         mod.padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),

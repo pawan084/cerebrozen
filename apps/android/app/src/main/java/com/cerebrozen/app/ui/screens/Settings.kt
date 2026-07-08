@@ -60,9 +60,9 @@ internal fun NavRow(
     emphasis: Boolean = false,
     onClick: () -> Unit,
 ) {
-    SectionCard {
+    SectionCard(onClick = onClick) {
         Row(
-            Modifier.fillMaxWidth().clickable { onClick() },
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -88,11 +88,11 @@ internal fun NavRow(
 @Composable
 private fun SelectableRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
     val haptics = LocalHapticFeedback.current
-    SectionCard {
+    SectionCard(onClick = {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
+    }) {
         Row(
-            Modifier.fillMaxWidth().clickable {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
-            },
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
