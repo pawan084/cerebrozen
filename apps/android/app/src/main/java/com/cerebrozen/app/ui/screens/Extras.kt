@@ -412,6 +412,7 @@ fun PlayerScreen(onBack: () -> Unit) {
 internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
     val context = LocalContext.current
     val title = Player.nowPlaying ?: return
+    val label = if (MediaUrls.urlFor(title).isBlank()) "NOW PLAYING · AMBIENT BED" else "NOW PLAYING · NARRATION"
     SectionCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
@@ -419,7 +420,7 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
                 if (onOpenPlayer != null) Modifier.clickable { onOpenPlayer() } else Modifier,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = Cyan)
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
