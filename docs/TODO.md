@@ -64,7 +64,14 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   streak-week dots, check-in confirmation eases in via `AnimatedVisibility`. Talk:
   chat bubbles rise in, live reply shows a blinking-caret `StreamingBubble`, and a
   pulsing `TypingDots` indicator while the companion composes. Compiles clean; units
-  green. (iOS-parity motion for the other tabs is the obvious follow-on.)
+  green.
+- [x] **Motion extended to the remaining tabs** (2026-07-08): `SectionCard(onClick)`
+  now carries its own press-in, so `NavRow`/`SelectableRow` (Settings/You) and
+  `ContentRow` (Sounds, Sleep stories, Search, Favourites, Games hub) inherit it;
+  `SubPage` gains the settle-in rise so all ~15 pushed sub-screens ease in; Journal
+  history entries stagger. All five nav tabs + sub-screens now share one calm-motion
+  language. Remaining: on-device tuning of durations/damping (numbers live in
+  `Common.kt`), and a TalkBack pass to confirm the added semantics read well.
 
 ## Open — code/product work
 
