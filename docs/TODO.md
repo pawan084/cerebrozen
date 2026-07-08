@@ -50,9 +50,10 @@
   `MediaUrls.urlFor(title)` (narration vs ambient), matching the full `PlayerScreen`.
   Found on-device 2026-07-08; iOS ("Now playing" neutral eyebrow) and web (per-item
   `<audio>`, narrated items only) were already correct — no parallel bug.
-- [ ] Nice-to-have: iOS player eyebrow could mirror Android's narration/ambient
-  distinction (it currently shows a neutral "Now playing" — accurate, just less
-  informative). Not a bug; consistency polish only.
+- [x] iOS player eyebrow now mirrors Android's narration/ambient distinction —
+  "Now playing · Narration" vs "· Ambient bed", driven by `SoundscapePlayer.isNarrating`
+  (reactive, follows the honest fallback if narration fails). 2026-07-08. Not built on
+  the Windows dev box — verify on a simulator before shipping.
 - [ ] Follow-ups: premium audio gating (signed short-lived media URLs) once a
   premium narration catalogue exists; bulk "generate all missing" if the catalogue
   outgrows per-row clicks (~25+); persistent web player; compute real `duration_min`

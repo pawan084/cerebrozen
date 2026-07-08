@@ -244,7 +244,7 @@ struct PlayerView: View {
         HStack(alignment: .top, spacing: 10) {
             CircleIconButton(systemImage: "chevron.left", accessibilityLabel: "Back") { dismiss() }
             VStack(alignment: .leading, spacing: 5) {
-                Text("Now playing").eyebrow()
+                Text(audio.isNarrating ? "Now playing · Narration" : "Now playing · Ambient bed").eyebrow()
                 Text(item.title)
                     .displayFont(27).foregroundStyle(Theme.Palette.text)
                     .shadow(color: Theme.Accent.sleep.opacity(0.45), radius: 12, y: 4)
