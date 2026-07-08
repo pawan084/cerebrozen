@@ -211,8 +211,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var showTour by remember { mutableStateOf(!TourState.isDone()) }
 
     // A gentle settle-in as the screen arrives (complements the NavHost cross-fade).
+    val reduceMotion = rememberReduceMotion()
     val rise = remember { Animatable(26f) }
-    LaunchedEffect(Unit) { rise.animateTo(0f, tween(460, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(460, easing = FastOutSlowInEasing))
+    }
 
     Box(Modifier.fillMaxSize()) {
     Column(

@@ -1,5 +1,6 @@
 package com.cerebrozen.app.ui.screens
 
+import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -72,6 +74,22 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
     .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.035f))))
     .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
 
+/** True when the user has asked the system to minimise animations ("Remove
+ * animations" / animator duration scale = 0) — the Android analogue of iOS's
+ * Reduce Motion. Entrances and looping animations honour this; discrete press /
+ * selection feedback stays (matching the iOS policy). */
+@Composable
+internal fun rememberReduceMotion(): Boolean {
+    val context = LocalContext.current
+    return remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+    }
+}
+
 /** A soft press-in: the target scales down slightly while held and springs back on
  * release. Keeps taps tactile without being bouncy — calm, not playful. Feed it a
  * [pressed] flag from an interaction source. */
@@ -89,8 +107,10 @@ internal fun Modifier.pressScale(pressed: Boolean, down: Float = 0.96f): Modifie
  * composition. Pass an [index] to stagger siblings into a soft cascade. */
 @Composable
 internal fun Modifier.appear(index: Int = 0, rise: Float = 20f): Modifier {
+    val reduceMotion = rememberReduceMotion()
     val anim = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) { anim.snapTo(1f); return@LaunchedEffect }  // no entrance — settle instantly
         kotlinx.coroutines.delay(index * 55L)
         anim.animateTo(1f, tween(440, easing = FastOutSlowInEasing))
     }
@@ -111,8 +131,11 @@ internal fun Page(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
+    val reduceMotion = rememberReduceMotion()
     val rise = remember { Animatable(26f) }
-    LaunchedEffect(Unit) { rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
+    }
     Column(
         Modifier
             .fillMaxSize()

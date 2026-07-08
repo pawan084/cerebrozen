@@ -73,6 +73,16 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   language. Remaining: on-device tuning of durations/damping (numbers live in
   `Common.kt`), and a TalkBack pass to confirm the added semantics read well.
 
+### Android Reduce-Motion parity (2026-07-08)
+- [x] Added a `rememberReduceMotion()` helper (reads `ANIMATOR_DURATION_SCALE == 0`,
+  the Android analogue of iOS Reduce Motion) and wired it through the motion
+  primitives, matching iOS's policy — guard entrances + looping animations, keep
+  discrete press/selection feedback: `appear` settles instantly; the `Page`/
+  `SubPage`/`TodayScreen` settle-in rises snap; the Talk `VoiceOrb` pulse,
+  `StreamingBubble` caret, and `TypingDots` rest static. `pressScale` and the
+  `PickChip` selection cross-fade intentionally stay (iOS keeps `.pressable` and
+  chip springs too). Compiles clean; units green.
+
 ### iOS chat-motion parity (2026-07-08)
 - [x] Ported the two genuinely-missing Android chat micro-interactions to iOS
   (`Features/Talk/TalkView.swift`): committed chat bubbles now `.entrance()` in

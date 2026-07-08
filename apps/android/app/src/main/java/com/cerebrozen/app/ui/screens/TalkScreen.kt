@@ -619,12 +619,14 @@ private fun ChatBubble(m: Msg) {
  * words feel typed in real time. */
 @Composable
 private fun StreamingBubble(text: String) {
+    val reduceMotion = rememberReduceMotion()
     val t = rememberInfiniteTransition(label = "typing")
-    val caret by t.animateFloat(
+    val animatedCaret by t.animateFloat(
         initialValue = 1f, targetValue = 0f,
         animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
         label = "caret",
     )
+    val caret = if (reduceMotion) 1f else animatedCaret   // steady caret, no blink
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
             color = CardFill,
@@ -643,6 +645,7 @@ private fun StreamingBubble(text: String) {
  * busy but not yet streaming tokens). */
 @Composable
 private fun TypingDots() {
+    val reduceMotion = rememberReduceMotion()
     val t = rememberInfiniteTransition(label = "typingDots")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
@@ -655,11 +658,13 @@ private fun TypingDots() {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 repeat(3) { i ->
-                    val a by t.animateFloat(
+                    val animatedAlpha by t.animateFloat(
                         initialValue = 0.25f, targetValue = 1f,
                         animationSpec = infiniteRepeatable(tween(600, delayMillis = i * 160), RepeatMode.Reverse),
                         label = "dot$i",
                     )
+                    // Reduce Motion: hold the dots at a steady mid-opacity (no pulse).
+                    val a = if (reduceMotion) 0.6f else animatedAlpha
                     Box(Modifier.size(7.dp).clip(CircleShape).background(TextMuted.copy(alpha = a)))
                 }
             }
@@ -670,13 +675,16 @@ private fun TypingDots() {
 @Composable
 private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
     val active = listening || speaking
+    val reduceMotion = rememberReduceMotion()
     val t = rememberInfiniteTransition(label = "orb")
-    val pulse by t.animateFloat(
+    val animatedPulse by t.animateFloat(
         initialValue = if (active) 0.9f else 0.82f,
         targetValue = if (active) 1.18f else 1.0f,
         animationSpec = infiniteRepeatable(tween(if (listening) 700 else 2600), RepeatMode.Reverse),
         label = "pulse",
     )
+    // Reduce Motion: rest at a steady size instead of breathing.
+    val pulse = if (reduceMotion) 1f else animatedPulse
     Box(Modifier.fillMaxWidth().height(210.dp), contentAlignment = Alignment.Center) {
         // Soft bloom halo behind the orb (mirrors the iOS radial glow).
         Box(

@@ -98,8 +98,11 @@ import org.json.JSONArray
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
 internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val reduceMotion = rememberReduceMotion()
     val rise = remember { Animatable(24f) }
-    LaunchedEffect(Unit) { rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
+    }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
