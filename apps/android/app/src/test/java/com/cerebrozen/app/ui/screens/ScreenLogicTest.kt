@@ -113,6 +113,15 @@ class ScreenLogicTest {
         assertEquals("6 of 8 check-ins", learned[0].basis)
     }
 
+    // ── Reduce Motion predicate (accessibility parity with iOS) ─────
+    @Test
+    fun reduceMotionFromScale_only_true_when_animations_are_off() {
+        assertEquals(true, reduceMotionFromScale(0f))    // "Remove animations" on
+        assertEquals(false, reduceMotionFromScale(1f))   // normal
+        assertEquals(false, reduceMotionFromScale(0.5f)) // slowed, not removed
+        assertEquals(false, reduceMotionFromScale(2f))   // sped up
+    }
+
     // ── Streak milestones ───────────────────────────────────────────
     @Test
     fun milestoneLine_fires_only_on_milestone_days() {

@@ -78,15 +78,22 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
  * animations" / animator duration scale = 0) — the Android analogue of iOS's
  * Reduce Motion. Entrances and looping animations honour this; discrete press /
  * selection feedback stays (matching the iOS policy). */
+/** Pure predicate seam for [rememberReduceMotion]: animations are "reduced" when
+ * the system animator duration scale is 0 ("Remove animations"). Kept separate so
+ * the branch is unit-testable without a composition. */
+internal fun reduceMotionFromScale(animatorDurationScale: Float): Boolean = animatorDurationScale == 0f
+
 @Composable
 internal fun rememberReduceMotion(): Boolean {
     val context = LocalContext.current
     return remember(context) {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        ) == 0f
+        reduceMotionFromScale(
+            Settings.Global.getFloat(
+                context.contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            ),
+        )
     }
 }
 

@@ -52,6 +52,10 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // Robolectric needs merged Android resources to render Compose off-device.
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -79,4 +83,11 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     // Real org.json so JSONObject works in JVM unit tests (Android's stub throws).
     testImplementation("org.json:json:20240303")
+    // Off-device Compose tests (Robolectric): renders composables in the JVM unit
+    // job so the Reduce-Motion branch is guarded without an emulator.
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

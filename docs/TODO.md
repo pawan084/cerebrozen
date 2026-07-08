@@ -82,6 +82,15 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   `StreamingBubble` caret, and `TypingDots` rest static. `pressScale` and the
   `PickChip` selection cross-fade intentionally stay (iOS keeps `.pressable` and
   chip springs too). Compiles clean; units green.
+- [x] Automated guard for the branch: `reduceMotionFromScale(scale)` pure seam +
+  a `ScreenLogicTest` case, PLUS the first Android **Compose** test —
+  `ReduceMotionComposeTest` renders `rememberReduceMotion()` and the `appear`
+  entrance off-device via Robolectric, asserting the branch flips with
+  `ANIMATOR_DURATION_SCALE` (0 → reduced, 1 → full). Added Robolectric 4.14.1 +
+  `androidx.compose.ui:ui-test-junit4` + `ui-test-manifest` +
+  `testOptions.unitTests.isIncludeAndroidResources`. Runs in the existing
+  `:app:testDebugUnitTest` job (no emulator); note Robolectric adds ~75s to that
+  job's first Compose-test run. Suite 51→**52** passing.
 
 ### iOS chat-motion parity (2026-07-08)
 - [x] Ported the two genuinely-missing Android chat micro-interactions to iOS
