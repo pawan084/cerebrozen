@@ -73,6 +73,18 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   language. Remaining: on-device tuning of durations/damping (numbers live in
   `Common.kt`), and a TalkBack pass to confirm the added semantics read well.
 
+### iOS chat-motion parity (2026-07-08)
+- [x] Ported the two genuinely-missing Android chat micro-interactions to iOS
+  (`Features/Talk/TalkView.swift`): committed chat bubbles now `.entrance()` in
+  (both the Oracle `backend.chat` and offline `state.chatHistory` loops), and the
+  streaming Oracle reply shows a `TypingDots` indicator until the first token,
+  then a `StreamingBubble` with a blinking caret (was a static "…"). Both honor
+  Reduce Motion. NOTE: **static-verified only** — the build host is Windows, so
+  this wasn't compiled with `xcodebuild`; owner should build once on macOS.
+  Everything else in the Android motion pass (`.pressable`, `.entrance` staggering,
+  animated chip/mood selection, `.celebration` check-in reward, `ScreenScaffold`
+  settle-in) already existed on iOS at parity-or-better, so nothing else ported.
+
 ## Open — code/product work
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever

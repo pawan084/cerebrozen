@@ -159,6 +159,78 @@ struct ChatBubble: View {
     }
 }
 
+/// The assistant reply as it streams in: the committed text with a soft blinking
+/// caret, so the words feel typed in real time. Mirrors the Android StreamingBubble.
+struct StreamingBubble: View {
+    let text: String
+    @State private var caretVisible = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack {
+            // Caret is a separate view (not a Text run) so its opacity actually
+            // animates — a smooth blink rather than a hard toggle.
+            HStack(alignment: .bottom, spacing: 1) {
+                Text(text).appFont(12.5).foregroundStyle(Theme.Palette.soft)
+                Text("▍").appFont(12.5).foregroundStyle(Theme.Palette.lav)
+                    .opacity(caretVisible ? 1 : 0.15)
+            }
+            .padding(.horizontal, 13).padding(.vertical, 11)
+            .background(Theme.Palette.card)
+            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Theme.Palette.line))
+            Spacer(minLength: 40)
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { caretVisible = false }
+        }
+        // VoiceOver: announce state, not every token (the finished reply is read once).
+        .accessibilityAddTraits(.updatesFrequently)
+        .accessibilityLabel("CereBro is replying")
+    }
+}
+
+/// Three softly-pulsing dots — the companion is composing a reply (shown until the
+/// first streamed token arrives). Mirrors the Android TypingDots.
+struct TypingDots: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack {
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { i in
+                    Dot(delay: Double(i) * 0.18, reduceMotion: reduceMotion)
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            .background(Theme.Palette.card)
+            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Theme.Palette.line))
+            Spacer(minLength: 40)
+        }
+        .accessibilityLabel("CereBro is thinking")
+    }
+
+    private struct Dot: View {
+        let delay: Double
+        let reduceMotion: Bool
+        @State private var lit = false
+        var body: some View {
+            Circle()
+                .fill(Theme.Palette.muted)
+                .frame(width: 7, height: 7)
+                .opacity(lit ? 1 : 0.3)
+                .onAppear {
+                    guard !reduceMotion else { return }
+                    withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true).delay(delay)) {
+                        lit = true
+                    }
+                }
+        }
+    }
+}
+
 // MARK: - Chat (text fallback)
 /// When signed into cloud sync, the transcript + replies come from the backend's
 /// AI companion (`/chat`). Otherwise it uses the local, offline transcript.
@@ -188,17 +260,19 @@ struct ChatView: View {
                 // Live transcript: assistant turns can carry an inline activity.
                 ForEach(backend.chat) { m in
                     ChatBubble(message: .init(text: m.text, isUser: m.role == "user"))
+                        .entrance(0, y: 10)
                     if let widget = m.widget {
                         ActivityWidgetCard(widget: widget)
                     }
                 }
-                // Streaming Oracle reply (token-by-token) + any inline activity.
+                // Streaming Oracle reply: a typing indicator until the first token,
+                // then the text with a blinking caret as it fills in.
                 if backend.isStreaming {
-                    ChatBubble(message: .init(text: backend.streamingText.isEmpty ? "…" : backend.streamingText, isUser: false))
-                        // VoiceOver: don't spell out every token — the finished
-                        // reply is announced once by finishStreaming.
-                        .accessibilityAddTraits(.updatesFrequently)
-                        .accessibilityLabel(backend.streamingText.isEmpty ? "CereBro is thinking" : "CereBro is replying")
+                    if backend.streamingText.isEmpty {
+                        TypingDots()
+                    } else {
+                        StreamingBubble(text: backend.streamingText)
+                    }
                     if let w = backend.streamingWidget { ActivityWidgetCard(widget: w) }
                 }
                 // Approve/decline a paused write action.
@@ -214,6 +288,7 @@ struct ChatView: View {
                 }
                 ForEach(state.chatHistory) { m in
                     ChatBubble(message: .init(text: m.text, isUser: m.isUser))
+                        .entrance(0, y: 10)
                 }
             }
             if inCrisis { CrisisBanner() }
