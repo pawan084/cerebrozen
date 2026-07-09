@@ -1,78 +1,14 @@
-# Python
+# Python virtual environments
+env/
+backend/env/
+
+# Python cache
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
+**/__pycache__/
+*.pyc
 
-# Env / secrets — never commit real keys
-.env
-.env.*
-!.env.example
-!.env.*.example
-!*.env.example
-*.pem
-*.p8
-# …except Apple's PUBLIC root cert, which pins App Store receipt chains
-!backend/app/certs/AppleRootCA-G3.pem
+# Environment files
+backend/.env
 
-# Node / Next.js
-node_modules/
-.next/
-out/
-dist/
-.turbo/
-*.tsbuildinfo
-
-# Generated media (narration MP3s — dev api bind-mount writes them here)
-backend/media/
-
-# Test / coverage artifacts
-playwright-report/
-test-results/
-.coverage
-htmlcov/
-
-# Scratch / references — not part of the production build
-temp/
-*.log
-
-# OS / editor
-.DS_Store
-.idea/
-.vscode/
-
-# Xcode
-xcuserdata/
-*.xcresult
-DerivedData/
-build/
-*.xcuserstate
-
-# Local agent settings (keep shared skills/config, drop local prefs)
-.claude/settings.local.json
-
-# Large screenshot assets — kept on disk, out of git history (regenerate via tests)
-/screenshots/
-
-# Session-generated deliverables (regenerate as needed; not source)
-/CereBro-screens-*.zip
-/CereBro-showcase.zip
-/CereBro-showcase/
-/CereBro-onboarding-flow.png
-
-# fastlane (iOS lives at apps/ios)
-apps/ios/fastlane/report.xml
-apps/ios/fastlane/Preview.html
-apps/ios/fastlane/test_output/
-apps/ios/fastlane/README.md
-apps/ios/build/
-apps/ios/*.ipa
-apps/ios/*.app.dSYM.zip
-apps/ios/Gemfile.lock
-**/.env
-
-# Local design reference / mockups (large, not source)
-ref/
+# Firebase
+apps/android/app/google-services.json
