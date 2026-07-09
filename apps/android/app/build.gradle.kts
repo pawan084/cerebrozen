@@ -1,15 +1,44 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) file.inputStream().use(::load)
+}
+
+fun secret(name: String): String =
+    (project.findProperty(name) as? String)
+        ?: localProperties.getProperty(name)
+        ?: System.getenv(name)
+        ?: ""
+
+fun quoted(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+fun googleServicesWebClientId(): String {
+    val file = project.file("google-services.json")
+    if (!file.isFile) return ""
+    return Regex(
+        """\{\s*"client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*3\s*}""",
+    ).find(file.readText())?.groupValues?.get(1).orEmpty()
+}
+
+val googleWebClientId = secret("googleWebClientId")
+    .ifBlank { secret("GOOGLE_WEB_CLIENT_ID") }
+    .ifBlank { googleServicesWebClientId() }
+    .ifBlank { "198485888313-4lqanbidm6gfondve5ahdcask264sf5p.apps.googleusercontent.com" }
+
 android {
-    namespace = "com.cerebrozen.app"
+    namespace = "com.cerebro.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cerebrozen.app"
+        applicationId = "com.cerebro.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -19,16 +48,20 @@ android {
         // emulator's host loopback (cleartext allowed only in the debug
         // manifest overlay); release is pinned to production HTTPS.
         buildConfigField("String", "API_BASE_URL", "\"https://api.cerebrozen.in\"")
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            quoted(googleWebClientId),
+        )
     }
 
     buildTypes {
         debug {
-            // Emulator default: host loopback. Real-device runs override it —
-            //   ./gradlew assembleDebug -PapiBaseUrl=http://localhost:8000
-            // paired with `adb reverse tcp:8000 tcp:8000` (device localhost →
-            // this machine's dev backend). See ANDROID_QA.md.
-            val apiBaseUrl = (project.findProperty("apiBaseUrl") as? String) ?: "http://10.0.2.2:8000"
-            buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+            // Production by default so debug builds work on real devices.
+            // Use -PapiBaseUrl=http://10.0.2.2:8000 for an emulator talking to
+            // a local backend on this machine.
+            val apiBaseUrl = secret("apiBaseUrl").ifBlank { "https://api.cerebrozen.in" }
+            buildConfigField("String", "API_BASE_URL", quoted(apiBaseUrl))
         }
         release {
             // R8 + resource shrinking. App code is reflection-free (org.json

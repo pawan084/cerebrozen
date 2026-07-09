@@ -12,7 +12,7 @@ chips). Remaining tabs/features: see the roadmap below.
 ## Stack
 - Kotlin 2.0 · AGP 8.7 · Gradle 8.11 (Kotlin DSL + version catalog `gradle/libs.versions.toml`)
 - Jetpack Compose (BOM) · Material 3 · Navigation-Compose
-- `minSdk 26` · `targetSdk/compileSdk 35` · package `com.cerebrozen.app`
+- `minSdk 26` · `targetSdk/compileSdk 35` · package `com.cerebro.app`
 
 ## Structure
 ```
@@ -47,11 +47,35 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
 
 ## Backend
 
-`BuildConfig.API_BASE_URL` is per build type: **debug** → `http://10.0.2.2:8000`
-(the emulator's alias for the host's `localhost`; cleartext is allowed only via
-the debug manifest overlay) and **release** → `https://api.cerebrozen.in`.
+`BuildConfig.API_BASE_URL` defaults to `https://api.cerebrozen.in` for both debug and release so real-device debug builds can sign in. For an emulator talking to a local backend, build with `-PapiBaseUrl=http://10.0.2.2:8000` (the emulator's alias for host localhost; cleartext is allowed only via the debug manifest overlay).
 The refresh token lives in plain SharedPreferences for now (parity with the web
 app's localStorage) — move to EncryptedSharedPreferences with security-crypto.
+
+## Google sign-in
+
+`Continue with Google` needs the server/web OAuth client id, not the Android
+client id. Gradle reads the `client_type: 3` id from `app/google-services.json`
+automatically.
+
+To override it locally without committing secrets:
+
+```properties
+# local.properties
+GOOGLE_WEB_CLIENT_ID=your-web-oauth-client-id.apps.googleusercontent.com
+```
+
+You can also pass `-PgoogleWebClientId=...` or set the
+`GOOGLE_WEB_CLIENT_ID` environment variable before building.
+
+For local debug builds, Firebase/Google Console must also include this app:
+
+```text
+Package name: com.cerebro.app
+Debug SHA-1: CD:73:57:ED:D3:BB:19:7B:6C:7F:E9:2F:F3:BC:39:2F:9B:5C:A3:F2
+```
+
+After adding the SHA-1, download the refreshed `google-services.json` and place
+it at `app/google-services.json`.
 
 ## Roadmap to iOS parity
 1. ~~Networking layer~~ ✅ minimal zero-SDK client (`net/Session.kt`) with JWT +

@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -38,14 +38,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.ui.theme.CardFill
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Ok
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.Warm
+import com.cerebro.app.ui.theme.CardFill
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.LineStroke
+import com.cerebro.app.ui.theme.Ok
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
+import com.cerebro.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random

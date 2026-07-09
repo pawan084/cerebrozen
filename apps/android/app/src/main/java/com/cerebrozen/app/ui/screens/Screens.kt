@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -39,11 +39,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.net.Api
+import com.cerebro.app.net.Session
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
 
 /** You: the iOS ProfileView hub — a profile header + nav-row settings list
  * routing to sub-screens, then legal/account actions and sign out. */

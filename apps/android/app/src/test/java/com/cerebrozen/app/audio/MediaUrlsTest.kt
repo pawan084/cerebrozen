@@ -1,4 +1,4 @@
-package com.cerebrozen.app.audio
+package com.cerebro.app.audio
 
 import org.junit.Assert.assertEquals
 import org.junit.Before

@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,13 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Night
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.net.Session
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.LineStroke
+import com.cerebro.app.ui.theme.Night
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
 
 // First-run guided tour (ref GUIDED TOUR OVERLAY): four gentle stops over
 // Home, shown once per install (`tour_done` on the Store seam).

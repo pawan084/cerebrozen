@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.theme
+package com.cerebro.app.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme

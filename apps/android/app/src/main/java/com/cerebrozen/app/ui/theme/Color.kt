@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.theme
+package com.cerebro.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -6,8 +6,8 @@ import androidx.compose.ui.graphics.Color
 // (apps/ios/CereBro/DesignSystem/Theme.swift) and the web tokens
 // (design/tokens.css). 2026-07 warm refresh: night warmed to indigo, primary
 // hue softened to warm lavender, plus coral + cyan warm accents.
-val Night = Color(0xFF0E0C22)       // --night (primary background / splash)
-val NightMid = Color(0xFF1A1440)    // --night-top (lifted gradient top)
+val Night = Color(0xFF14102A)       // --night (primary background / splash)
+val NightMid = Color(0xFF11083B)    // --night-top (lifted gradient top)
 val NightPurple = Color(0xFF161138) // warm deep mid
 val Periwinkle = Color(0xFF8A7BF0)  // --lav (primary accent, the orb ring)
 val Iris = Color(0xFFA68BFF)        // --lav-2

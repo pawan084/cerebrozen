@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,9 +24,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.ui.theme.LineStroke
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextSoft
 
 /** Curated calm imagery for the hero cards (the richer ref-design look). Each
  * degrades to a gradient if it can't load. */

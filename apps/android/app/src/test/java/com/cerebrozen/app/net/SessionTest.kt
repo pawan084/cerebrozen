@@ -1,4 +1,4 @@
-package com.cerebrozen.app.net
+package com.cerebro.app.net
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -23,12 +23,12 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.net.Api
+import com.cerebro.app.net.Session
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 

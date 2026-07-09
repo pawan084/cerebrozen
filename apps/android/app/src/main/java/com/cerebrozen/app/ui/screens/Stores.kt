@@ -1,6 +1,6 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
-import com.cerebrozen.app.net.Session
+import com.cerebro.app.net.Session
 import org.json.JSONArray
 
 // Local-first stores on the same Store seam the tokens use (JVM unit-testable

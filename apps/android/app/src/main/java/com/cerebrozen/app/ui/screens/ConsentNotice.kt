@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 // DPDP s.5(3): the consent notice must be accessible in English or an
 // Eighth-Schedule language — the option lives ON the consent surfaces

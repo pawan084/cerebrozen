@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,11 +15,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Danger
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.net.Api
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.Danger
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 

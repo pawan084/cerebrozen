@@ -1,9 +1,11 @@
-package com.cerebrozen.app.auth
+package com.cerebro.app.auth
 
 import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
@@ -18,6 +20,7 @@ suspend fun googleIdToken(context: Context, webClientId: String): Pair<String, S
         val option = GetGoogleIdOption.Builder()
             .setServerClientId(webClientId)
             .setFilterByAuthorizedAccounts(false)
+            .setAutoSelectEnabled(false)
             .build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
         val result = CredentialManager.create(context).getCredential(context, request)
@@ -28,7 +31,11 @@ suspend fun googleIdToken(context: Context, webClientId: String): Pair<String, S
         } else {
             null
         }
-    } catch (e: Exception) {
+    } catch (_: GetCredentialCancellationException) {
         null
+    } catch (_: NoCredentialException) {
+        null
+    } catch (e: Exception) {
+        throw IllegalStateException(e.message ?: "Google sign-in failed.")
     }
 }

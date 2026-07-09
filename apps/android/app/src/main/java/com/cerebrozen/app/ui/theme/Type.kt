@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 
-package com.cerebrozen.app.ui.theme
+package com.cerebro.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -9,7 +9,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.cerebrozen.app.R
+import com.cerebro.app.R
 
 // Brand serif: Newsreader (variable font), matching the iOS/web display type.
 // Body stays on the system sans; only headings use the serif.
@@ -34,7 +34,7 @@ val Typography = Typography(
         fontWeight = FontWeight.SemiBold,
         fontSize = 30.sp,
         lineHeight = 34.sp,
-        letterSpacing = (-0.3).sp,
+        letterSpacing = 0.sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = Newsreader,

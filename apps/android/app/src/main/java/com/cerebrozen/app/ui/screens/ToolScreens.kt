@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,12 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Ok
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.net.Api
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.Ok
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 
 // Native tools (iOS ToolsViews + MicroActivities parity): CBT reframe,

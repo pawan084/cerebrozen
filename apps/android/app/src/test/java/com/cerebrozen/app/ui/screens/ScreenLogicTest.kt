@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -224,7 +224,7 @@ class ScreenLogicTest {
     }
 
     // ── Games + local stores ────────────────────────────────────────
-    private class FakeStore : com.cerebrozen.app.net.Session.Store {
+    private class FakeStore : com.cerebro.app.net.Session.Store {
         val m = mutableMapOf<String, String>()
         override fun getString(key: String) = m[key]
         override fun putString(key: String, value: String) { m[key] = value }
@@ -232,7 +232,7 @@ class ScreenLogicTest {
         override fun keys() = m.keys.toSet()
     }
 
-    private fun freshStore() = com.cerebrozen.app.net.Session
+    private fun freshStore() = com.cerebro.app.net.Session
         .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
 
     @Test

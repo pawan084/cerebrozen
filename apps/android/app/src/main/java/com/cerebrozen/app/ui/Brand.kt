@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui
+package com.cerebro.app.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -28,9 +28,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.ui.theme.Night
-import com.cerebrozen.app.ui.theme.NightMid
-import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebro.app.ui.theme.Night
+import com.cerebro.app.ui.theme.NightMid
+import com.cerebro.app.ui.theme.TextPrimary
 
 /**
  * The CereBro C-ring mark, drawn on a Canvas so it scales and animates cleanly:
@@ -38,20 +38,21 @@ import com.cerebrozen.app.ui.theme.TextPrimary
  * Mirrors the shared brand SVG (apps/web/public/brand/cerebro-mark.svg).
  */
 @Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp) {
+fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean = true) {
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
         val c = Offset(this.size.width / 2f, this.size.height / 2f)
         val ringR = s * 0.36f
         val orbR = s * 0.19f
-        // Soft outer glow
-        drawCircle(
-            brush = Brush.radialGradient(
-                listOf(Color(0x338A7BF0), Color(0x00000000)),
-                center = c, radius = s * 0.5f,
-            ),
-            radius = s * 0.5f, center = c,
-        )
+        if (showGlow) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0x338A7BF0), Color(0x00000000)),
+                    center = c, radius = s * 0.5f,
+                ),
+                radius = s * 0.5f, center = c,
+            )
+        }
         // Open C-ring (gap on the right)
         drawArc(
             brush = Brush.linearGradient(

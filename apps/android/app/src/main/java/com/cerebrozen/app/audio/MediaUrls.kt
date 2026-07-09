@@ -1,4 +1,4 @@
-package com.cerebrozen.app.audio
+package com.cerebro.app.audio
 
 /**
  * Narration audio plumbing, kept as a plain object (no Android/Compose types)

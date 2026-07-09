@@ -1,4 +1,4 @@
-package com.cerebrozen.app.net
+package com.cerebro.app.net
 
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope

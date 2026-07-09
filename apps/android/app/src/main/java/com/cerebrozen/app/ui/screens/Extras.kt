@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -61,22 +63,24 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.cerebrozen.app.BuildConfig
-import com.cerebrozen.app.audio.MediaUrls
-import com.cerebrozen.app.audio.Player
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.ui.theme.CardFill
-import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebro.app.BuildConfig
+import com.cerebro.app.audio.MediaUrls
+import com.cerebro.app.audio.Player
+import com.cerebro.app.net.Api
+import com.cerebro.app.ui.theme.CardFill
+import com.cerebro.app.ui.theme.Cyan
 import kotlinx.coroutines.launch
-import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextPrimary
-import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.Warm
+import com.cerebro.app.ui.theme.LineStroke
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextPrimary
+import com.cerebro.app.ui.theme.TextSoft
+import com.cerebro.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import org.json.JSONArray
@@ -84,16 +88,31 @@ import org.json.JSONArray
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
 internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val horizontalPadding = pageHorizontalPadding()
+    val verticalPadding = pageVerticalPadding()
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        TextButton(onClick = onBack, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .border(1.dp, LineStroke, RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.055f)),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        ) {
             Text("‹ Back", color = TextMuted)
         }
         Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+        Text(
+            title,
+            style = MaterialTheme.typography.displaySmall,
+            color = TextPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
         content()
     }
 }
@@ -138,10 +157,12 @@ internal fun ContentRow(
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (subtitle.isNotBlank()) {
+                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
                 if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -416,11 +437,11 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Column(
-                if (onOpenPlayer != null) Modifier.clickable { onOpenPlayer() } else Modifier,
+                Modifier.weight(1f).let { if (onOpenPlayer != null) it.clickable { onOpenPlayer() } else it },
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text("NOW PLAYING · AMBIENT BED", style = MaterialTheme.typography.labelSmall, color = Cyan)
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Sleep auto-stop: off → 15 → 30 → 45 → 60 min, fades then stops.
@@ -439,25 +460,153 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
 }
 
 @Composable
-fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny reset", "Calm games", onBack) {
-    Text("Box breathing — inhale, hold, exhale, hold. Follow the orb for a minute.",
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    BoxBreathing()
-    Text("5-4-3-2-1 grounding — come back to the present through your senses.",
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    Grounding()
-    ContentRow("Bubble pop", "Pop to release tension", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblepop") })
-    ContentRow("Bubble wrap", "A fresh sheet, endlessly poppable", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblewrap") })
-    ContentRow("Memory match", "Find the pairs, no clock", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("memorymatch") })
-    ContentRow("Pattern glow", "Watch the light, repeat it", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("patternglow") })
-    ContentRow("Zen ripples", "Tap the water, let it widen", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("zenripples") })
-    ContentRow("Gratitude garden", "A flower for every thank-you", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("gratitude") })
+fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)),
+                ),
+            ),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = pageHorizontalPadding(), vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("PLAYFUL RESETS", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.38f))
+                    Text("Calm Games", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                }
+            }
+
+            FeaturedGameCard { onOpen("bubblepop") }
+            CalmGameRow("Bubble wrap", "A fresh sheet, endlessly poppable", Color(0xFF3F725F), "bubblewrap", onOpen)
+            CalmGameRow("Memory match", "Find the pairs, no clock", Color(0xFF65529B), "memorymatch", onOpen)
+            CalmGameRow("Pattern glow", "Watch the light, repeat it", Color(0xFF5C4AA0), "patternglow", onOpen)
+            CalmGameRow("Zen ripples", "Tap the water, let it widen", Color(0xFF3E6F86), "zenripples", onOpen)
+            CalmGameRow("Gratitude garden", "A flower for every thank-you", Color(0xFF6A548B), "gratitude", onOpen)
+            Spacer(Modifier.height(112.dp))
+        }
+    }
+}
+
+@Composable
+private fun FeaturedGameCard(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(168.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF5043A5), Color(0xFF2E2866))))
+            .clickable { onClick() }
+            .padding(26.dp),
+    ) {
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.25f))
+                .border(1.dp, Color.White.copy(alpha = 0.34f), RoundedCornerShape(50))
+                .padding(horizontal = 15.dp, vertical = 6.dp),
+        ) {
+            Text("PLAYABLE", style = MaterialTheme.typography.labelSmall, color = Color.Black)
+        }
+
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-14).dp, y = (-10).dp)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White, Color(0xFFB5A7FF), Color(0xFF6D5DDB)))),
+        )
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 6.dp, y = 24.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White, Color(0xFFFFA8AA), Color(0xFFD56E8A)))),
+        )
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .offset(x = (-44).dp, y = 0.dp)
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White, Color(0xFF9EE8E9), Color(0xFF65A7C3)))),
+        )
+
+        Column(
+            Modifier.align(Alignment.BottomStart),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text("Bubble Pop", style = MaterialTheme.typography.headlineSmall, color = Color.Black)
+            Text(
+                "Pop gently - no timer, no losing. Just breathe and tap.",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalmGameRow(title: String, subtitle: String, iconColor: Color, route: String, onOpen: (String) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.055f)),
+                ),
+            )
+            .clickable { onOpen(route) }
+            .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(iconColor),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.SportsEsports, contentDescription = null, tint = TextSoft, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        }
+    }
 }
 
 private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)
@@ -468,7 +617,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var bubbles by remember { mutableStateOf(listOf<Bubble>()) }
     var score by remember { mutableIntStateOf(0) }
     var nextId by remember { mutableLongStateOf(0L) }
-    val hues = listOf(Periwinkle, Cyan, Warm)
+    val hues = listOf(Color(0xFFD9C28D), Color(0xFFFF9DB0), Color(0xFF9D8CFF))
     val haptics = LocalHapticFeedback.current
     // Spawn near the bottom…
     LaunchedEffect(Unit) {
@@ -492,25 +641,114 @@ fun BubblePopScreen(onBack: () -> Unit) {
             bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
         }
     }
-    SubPage("A tiny reset", "Bubble pop", onBack) {
-        Text("Pop them slowly — no rush, no score to chase. Popped: $score",
-            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        BoxWithConstraints(
-            Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(20.dp))
-                .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)),
+                ),
+            ),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val w = maxWidth
-            val h = maxHeight
-            bubbles.forEach { b ->
-                Box(
-                    Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
-                        .clickable {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            bubbles = bubbles.filterNot { it.id == b.id }; score++
-                        },
-                )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .clickable { onBack() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp),
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text("BUBBLE POP", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.38f))
+                        Text("Pop & breathe", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$score", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                    Text("POPPED", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.66f))
+                }
             }
+
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxWidth()
+                    .height(414.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.045f)),
+                        ),
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(22.dp)),
+            ) {
+                val w = maxWidth
+                val h = maxHeight
+                bubbles.forEach { b ->
+                    Box(
+                        Modifier
+                            .offset(x = w * b.x, y = h * b.y)
+                            .size(b.size.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(Color.White.copy(alpha = 0.96f), b.hue, b.hue.copy(alpha = 0.78f)),
+                                ),
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
+                            .clickable {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                bubbles = bubbles.filterNot { it.id == b.id }
+                                score++
+                            },
+                    )
+                }
+            }
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    "Tap a bubble as you breathe out.\nThere's no way to lose.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSoft,
+                )
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(24.dp))
+                        .clickable {
+                            bubbles = emptyList()
+                            score = 0
+                        }
+                        .padding(horizontal = 22.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("Reset", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                }
+            }
+            Spacer(Modifier.height(112.dp))
         }
     }
 }

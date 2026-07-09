@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import android.Manifest
 import android.content.Context
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -32,18 +33,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.net.Analytics
-import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Danger
-import com.cerebrozen.app.ui.theme.Ok
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextMuted2
-import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.Warm
+import com.cerebro.app.net.Analytics
+import com.cerebro.app.net.Api
+import com.cerebro.app.net.Session
+import com.cerebro.app.ui.theme.Cyan
+import com.cerebro.app.ui.theme.Danger
+import com.cerebro.app.ui.theme.Ok
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextMuted2
+import com.cerebro.app.ui.theme.TextSoft
+import com.cerebro.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -74,7 +76,7 @@ internal fun NavRow(
                     Icon(icon, contentDescription = null,
                         tint = if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, color = if (emphasis) Cyan else TextSoft)
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
@@ -253,7 +255,7 @@ fun RemindersScreen(onBack: () -> Unit) {
     fun persist(value: Boolean) { on = value; prefs.edit().putBoolean("reminder_on", value).apply() }
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) { com.cerebrozen.app.notify.Reminders.schedule(context); persist(true) }
+        if (granted) { com.cerebro.app.notify.Reminders.schedule(context); persist(true) }
     }
     fun enable() {
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -262,24 +264,30 @@ fun RemindersScreen(onBack: () -> Unit) {
             permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
-        com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
+        com.cerebro.app.notify.Reminders.schedule(context); persist(true)
     }
 
     SubPage("A gentle daily nudge", "Daily reminder", onBack) {
         SectionCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Daily check-in reminder", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "Daily check-in reminder",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextSoft,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text("Once a day around 9am — gentle, no streak-pressure.",
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 Switch(checked = on, onCheckedChange = {
-                    if (it) enable() else { com.cerebrozen.app.notify.Reminders.cancel(context); persist(false) }
-                })
+                    if (it) enable() else { com.cerebro.app.notify.Reminders.cancel(context); persist(false) }
+                }, modifier = Modifier.padding(start = 12.dp))
             }
         }
-        TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context) }) {
+        TextButton(onClick = { com.cerebro.app.notify.Reminders.show(context) }) {
             Text("Send a test reminder now", color = Periwinkle)
         }
         Text("Delivered on-device via a scheduled alarm — no server or FCM required.",

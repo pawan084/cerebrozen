@@ -1,4 +1,4 @@
-package com.cerebrozen.app.audio
+package com.cerebro.app.audio
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,13 +8,14 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
-import com.cerebrozen.app.MainActivity
-import com.cerebrozen.app.R
+import com.cerebro.app.MainActivity
+import com.cerebro.app.R
 
 /**
  * Plays the looping ambient bed as a foreground service with a MediaStyle
@@ -24,11 +25,11 @@ import com.cerebrozen.app.R
  */
 class AmbientService : Service() {
     companion object {
-        const val ACTION_PLAY = "com.cerebrozen.app.PLAY"
-        const val ACTION_PAUSE = "com.cerebrozen.app.PAUSE"
-        const val ACTION_STOP = "com.cerebrozen.app.STOP"
-        const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
-        const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
+        const val ACTION_PLAY = "com.cerebro.app.PLAY"
+        const val ACTION_PAUSE = "com.cerebro.app.PAUSE"
+        const val ACTION_STOP = "com.cerebro.app.STOP"
+        const val ACTION_TIMER = "com.cerebro.app.TIMER"
+        const val ACTION_VOLUME = "com.cerebro.app.VOLUME"
         const val EXTRA_TITLE = "title"
         const val EXTRA_URL = "url"
         const val EXTRA_MINUTES = "minutes"
@@ -101,9 +102,19 @@ class AmbientService : Service() {
             currentSrc = url
             mp = if (url.isBlank()) createBed() else createStream(url)
         }
+        val player = mp
+        if (player == null) {
+            stopAll()
+            return
+        }
         if (prepared) {
-            mp?.setVolume(volume, volume)
-            mp?.start()
+            runCatching {
+                player.setVolume(volume, volume)
+                player.start()
+            }.onFailure {
+                stopAll()
+                return
+            }
         }
         Player.setState(title, true)
         updateSession(true)
@@ -114,24 +125,32 @@ class AmbientService : Service() {
     }
 
     private fun createBed(): MediaPlayer? {
-        prepared = true
-        return MediaPlayer.create(this, R.raw.ambient_bed)?.apply { isLooping = true }
+        prepared = false
+        return runCatching {
+            resources.openRawResourceFd(R.raw.ambient_bed).use { afd ->
+                MediaPlayer().apply {
+                    setAudioAttributes(mediaAudioAttributes())
+                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    isLooping = true
+                    prepare()
+                    setVolume(volume, volume)
+                    prepared = true
+                }
+            }
+        }.getOrNull()
     }
 
     /** Stream a narrated track over HTTP(S); any failure falls back to the bed. */
     private fun createStream(url: String): MediaPlayer? {
         prepared = false
         val player = MediaPlayer()
-        player.setAudioAttributes(
-            android.media.AudioAttributes.Builder()
-                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build(),
-        )
+        player.setAudioAttributes(mediaAudioAttributes(AudioAttributes.CONTENT_TYPE_SPEECH))
         player.setOnPreparedListener {
             prepared = true
             it.setVolume(volume, volume)
-            if (!pauseRequested) it.start()
+            if (!pauseRequested) {
+                runCatching { it.start() }.onFailure { stopAll() }
+            }
         }
         player.setOnErrorListener { _, _, _ -> fallBackToBed(); true }
         player.setOnCompletionListener { stopAll() }   // narration ends; never loops
@@ -151,6 +170,12 @@ class AmbientService : Service() {
         currentSrc = ""
         if (!pauseRequested) play("")
     }
+
+    private fun mediaAudioAttributes(contentType: Int = AudioAttributes.CONTENT_TYPE_MUSIC): AudioAttributes =
+        AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(contentType)
+            .build()
 
     private fun pause() {
         if (prepared) mp?.pause() else pauseRequested = true

@@ -1,4 +1,4 @@
-package com.cerebrozen.app.ui.screens
+package com.cerebro.app.ui.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -38,19 +38,41 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.ui.theme.Ink
-import com.cerebrozen.app.ui.theme.Iris
-import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextMuted2
-import com.cerebrozen.app.ui.theme.TextPrimary
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebro.app.ui.theme.Ink
+import com.cerebro.app.ui.theme.Iris
+import com.cerebro.app.ui.theme.LineStroke
+import com.cerebro.app.ui.theme.Periwinkle
+import com.cerebro.app.ui.theme.TextMuted
+import com.cerebro.app.ui.theme.TextMuted2
+import com.cerebro.app.ui.theme.TextPrimary
+import com.cerebro.app.ui.theme.TextSoft
 
 private val CardShape = RoundedCornerShape(20.dp)
+
+@Composable
+internal fun isCompactWidth(): Boolean = LocalConfiguration.current.screenWidthDp < 380
+
+@Composable
+internal fun pageHorizontalPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 20.dp
+}
+
+@Composable
+internal fun pageVerticalPadding() = if (isCompactWidth()) 8.dp else 10.dp
+
+@Composable
+internal fun cardPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 18.dp
+}
 
 /** The shared "glass" surface treatment — a top-lit gradient fill, a hairline
  * border, and a soft lift — so cards read as raised panes on the dark ground
@@ -73,19 +95,27 @@ internal fun Page(
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
     val rise = remember { Animatable(26f) }
+    val horizontalPadding = pageHorizontalPadding()
+    val verticalPadding = pageVerticalPadding()
     LaunchedEffect(Unit) { rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing)) }
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             trailing?.let { icon ->
                 Box(
@@ -106,8 +136,9 @@ internal fun Page(
 /** Glass card container matching the design system. */
 @Composable
 internal fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
+    val padding = cardPadding()
     Column(
-        Modifier.fillMaxWidth().glass().padding(18.dp),
+        Modifier.fillMaxWidth().glass().padding(padding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
 }
@@ -121,6 +152,7 @@ internal fun PrimaryButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val horizontalPadding = if (isCompactWidth()) 20.dp else 28.dp
     val brush = if (enabled) {
         Brush.horizontalGradient(listOf(Periwinkle, Iris))
     } else {
@@ -131,7 +163,7 @@ internal fun PrimaryButton(
             .clip(RoundedCornerShape(26.dp))
             .background(brush)
             .clickable(enabled = enabled) { onClick() }
-            .padding(horizontal = 28.dp, vertical = 15.dp),
+            .padding(horizontal = horizontalPadding, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -156,17 +188,21 @@ internal fun AppTextField(
     minLines: Int = 1,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    trailingIcon: (@Composable (() -> Unit))? = null,
+    placeholderText: String? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholderText?.let { { Text(it) } },
         modifier = modifier,
         enabled = enabled,
         singleLine = singleLine,
         minLines = minLines,
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
+        trailingIcon = trailingIcon,
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,

@@ -1,4 +1,4 @@
-package com.cerebrozen.app.audio
+package com.cerebro.app.audio
 
 import android.content.Context
 import android.media.MediaPlayer
