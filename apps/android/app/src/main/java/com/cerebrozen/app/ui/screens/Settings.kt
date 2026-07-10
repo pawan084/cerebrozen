@@ -6,6 +6,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +54,34 @@ import org.json.JSONObject
 
 // Consent keys + localized labels/hints live in ConsentNotice.kt
 // (CONSENT_KEY_ORDER — the DPDP notice contract shared with iOS/web).
+
+/** Confirm the user's device credential (PIN/password/pattern or biometrics)
+ * before toggling the journal lock — in *either* direction, since unlocking is
+ * the sensitive one. Falls through to success when no secure lock is set up (so
+ * the toggle never becomes unusable), mirroring the iOS Face ID gate. */
+private fun requestScreenLock(activity: FragmentActivity?, onResult: (Boolean) -> Unit) {
+    if (activity == null) { onResult(true); return }
+    val auths = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    if (BiometricManager.from(activity).canAuthenticate(auths) != BiometricManager.BIOMETRIC_SUCCESS) {
+        onResult(true)
+        return
+    }
+    BiometricPrompt(
+        activity,
+        ContextCompat.getMainExecutor(activity),
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onResult(true)
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onResult(false)
+        },
+    ).authenticate(
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Confirm screen lock")
+            .setSubtitle("Use your phone PIN, password, pattern, or biometrics")
+            .setAllowedAuthenticators(auths)
+            .build(),
+    )
+}
 
 /** A tappable settings row (leading icon + title + subtitle + chevron). */
 @Composable
@@ -161,6 +193,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
     var noticeLang by remember { mutableStateOf("en") }
     var loaded by remember { mutableStateOf(false) }
     val notice = noticeFor(noticeLang)
+    val activity = LocalContext.current as? FragmentActivity
     LaunchedEffect(Unit) {
         runCatching { val c = Api.consent(); CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
         runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
@@ -209,12 +242,20 @@ fun PrivacyScreen(onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Lock journal", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text("Require your screen lock to open entries",
+                    Text(if (lockOn) "Unlock journal" else "Lock journal",
+                        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Text(if (lockOn) "Turn off PIN/password protection" else "Require phone PIN, password, pattern, or biometrics",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
+                // Gate the change behind a screen-lock confirmation both ways —
+                // only persist once the user actually authenticates.
                 AppSwitch(checked = lockOn, onCheckedChange = { v ->
-                    lockOn = v; Session.prefPut("journal_locked", v.toString())
+                    requestScreenLock(activity) { ok ->
+                        if (ok) {
+                            lockOn = v
+                            Session.prefPut("journal_locked", v.toString())
+                        }
+                    }
                 })
             }
         }
