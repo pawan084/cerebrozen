@@ -51,16 +51,20 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -295,10 +299,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), index = 0)
-            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), index = 1)
-            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), index = 2)
-            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), index = 3)
+            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), Periwinkle, index = 0)
+            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), Cyan, index = 1)
+            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), Warm, index = 2)
+            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), Iris, index = 3)
         }
 
         SectionCard {
@@ -417,6 +421,7 @@ private fun QuickTile(
     route: String,
     onOpen: (String) -> Unit,
     modifier: Modifier,
+    accent: Color,
     index: Int = 0,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -429,9 +434,18 @@ private fun QuickTile(
             .clickable(interactionSource = interaction, indication = null) { onOpen(route) }
             .padding(vertical = 14.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
+        // Gradient icon chip — a small tinted well behind each glyph (fork look),
+        // one accent hue per tile.
+        Box(
+            Modifier.size(38.dp).clip(RoundedCornerShape(12.dp))
+                .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.14f))))
+                .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
     }
 }
