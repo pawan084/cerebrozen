@@ -64,6 +64,7 @@ import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -137,7 +138,15 @@ fun Onboarding() {
             "For adults only", "A quick check",
             "CereBro is built for adults. It's wellness support — not a medical or crisis service.",
             "I'm 18 or older", onBack = { back() }, onPrimary = { next() },
-        ) {}
+        ) {
+            // Set expectations up front: this is not emergency care.
+            SectionCard {
+                Text("Wellness support, not emergency care.",
+                    style = MaterialTheme.typography.titleMedium, color = Warm)
+                Text("If you are in immediate danger, call your local emergency services now.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
+        }
 
         OStep.Disclosure -> Funnel(
             "Honesty first", "What CereBro is — and isn't",
