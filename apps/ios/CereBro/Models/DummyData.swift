@@ -7,26 +7,27 @@ enum Dummy {
 
     // Imagery honesty pass (2026-07-04): remote Unsplash URLs removed —
     // every surface renders the branded gradient + SF-Symbol well that
-    // `Photo` already draws for empty URLs. Offline-correct, private, and
-    // App-Review-safe; bundle real licensed assets here if art ever lands.
+    // The reference design's bundled imagery ("asset:" → Assets.xcassets,
+    // rendered by Photo). Offline-correct, private, App-Review-safe.
+    // Heroes, rails and banners draw these; utility rows ignore imageURL.
     enum Img {
-        static let welcome   = ""
-        static let calm      = ""
-        static let breath    = ""
-        static let mood      = ""
-        static let plan      = ""
-        static let journal   = ""
-        static let write     = ""
-        static let ground    = ""
-        static let voice     = ""
-        static let chat      = ""
-        static let sleep     = ""
-        static let ocean     = ""
-        static let meditate  = ""
-        static let privacy   = ""
-        static let premium   = ""
-        static let support   = ""
-        static let bell      = ""
+        static let welcome   = "asset:ThumbWarmRain"
+        static let calm      = "asset:PhotoMountains"
+        static let breath    = "asset:ThumbForest"
+        static let mood      = "asset:ThumbSunset"
+        static let plan      = "asset:ThumbMorning"
+        static let journal   = "asset:PhotoJournal"
+        static let write     = "asset:PhotoJournal"
+        static let ground    = "asset:ThumbForest"
+        static let voice     = "asset:PhotoStars"
+        static let chat      = "asset:PhotoStars"
+        static let sleep     = "asset:ThumbDelta"
+        static let ocean     = "asset:ThumbWarmRain"
+        static let meditate  = "asset:ThumbLighthouse"
+        static let privacy   = "asset:PhotoMountains"
+        static let premium   = "asset:BannerStory"
+        static let support   = "asset:PhotoMountains"
+        static let bell      = "asset:ThumbMorning"
     }
 
     // Home
@@ -63,7 +64,7 @@ enum Dummy {
     static let programs: [ContentItem] = [
         .init(title: "Ease work stress", subtitle: "7-day plan · Breathing + journaling", symbol: "leaf", imageURL: Img.plan),
         .init(title: "Sleep deeper", subtitle: "10-day wind-down program", symbol: "moon.stars", imageURL: Img.sleep),
-        .init(title: "Stop overthinking", subtitle: "5-day CBT focus", symbol: "brain", imageURL: Img.write)
+        .init(title: "Stop overthinking", subtitle: "5-day CBT focus", symbol: "brain", imageURL: "asset:ThumbAnxiety")
     ]
 
     // Journal history
@@ -92,8 +93,8 @@ enum Dummy {
 
     // Meditation library
     static let meditations: [ContentItem] = [
-        .init(title: "Morning calm", subtitle: "Start your day · 6 min", symbol: "sun.max", imageURL: Img.calm),
-        .init(title: "Soft focus", subtitle: "Deep work · 12 min", symbol: "scope", imageURL: Img.plan),
+        .init(title: "Morning calm", subtitle: "Start your day · 6 min", symbol: "sun.max", imageURL: "asset:ThumbMorning"),
+        .init(title: "Soft focus", subtitle: "Deep work · 12 min", symbol: "scope", imageURL: "asset:ThumbFocus"),
         .init(title: "Ocean breathing", subtitle: "Breathwork · 5 min", symbol: "waveform", imageURL: Img.ocean),
         .init(title: "Body scan", subtitle: "Release tension · 10 min", symbol: "figure.mind.and.body", imageURL: Img.meditate)
     ]

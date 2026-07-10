@@ -127,6 +127,9 @@ final class CereBroUITests: XCTestCase {
     }
 
     private func back(_ app: XCUIApplication) {
+        // No blind retry here: a second tap at the chevron's coordinates can
+        // land AFTER the pop completes and hit whatever row sits underneath
+        // on the revealed screen (observed: it started the sleep player).
         let b = app.buttons["Back"]
         if b.waitForExistence(timeout: 3) && b.isHittable {
             b.tap()
@@ -548,10 +551,12 @@ final class CereBroUITests: XCTestCase {
             tap(app, "Sleep quality 4 of 5")
             snapshot(app, "sleep-03-checkin")
             tap(app, "Save check-in")
-            // Reaching Save scrolls the header (and its Back button) out of
-            // hittable range on the now-taller screen — return to the top first.
-            app.swipeDown(); app.swipeDown()
-            back(app)
+            // Deterministic return to the Sleep root: re-tapping the active
+            // tab pops the stack (same trick as rootYou). A chevron tap here
+            // races the save celebration + scroll settle and can misfire.
+            tapTabButton(app, "Sleep")
+            tapTabButton(app, "Sleep")
+            app.swipeDown(); app.swipeDown()   // root keeps its old scroll offset
             let edited = app.buttons.containing(
                 NSPredicate(format: "label CONTAINS[c] %@", "Edit this morning's check-in")).firstMatch
             XCTAssertTrue(edited.waitForExistence(timeout: 4),

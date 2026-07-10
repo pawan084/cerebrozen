@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// One shared gate for every repeating decorative animation: XCUITest waits
+/// for app idle before each interaction, so under `-resetState` all ambient
+/// loops must rest (CLAUDE.md gotcha). Reduce Motion is checked per-view.
+let motionStilledForUITests = ProcessInfo.processInfo.arguments.contains("-resetState")
+
 // MARK: - Native symbol effects
 /// Design-system icon with an optional repeating SF Symbol effect. Static by
 /// default — indefinite effects are reserved for genuinely live states (sync
@@ -55,23 +60,36 @@ struct Photo: View {
     var symbol: String = "sparkles"
 
     var body: some View {
-        AsyncImage(url: URL(string: url)) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFill()
-            default:
-                ZStack {
-                    LinearGradient(
-                        colors: [Theme.Palette.lav.opacity(0.55), Theme.Palette.nightTop],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                    NativeEffectIcon(systemImage: symbol, size: 24, weight: .light,
-                                     color: .white.opacity(0.55), effect: .pulse)
+        // Layout-neutral base: a filled image must never propose its natural
+        // size upward (a 1200px asset would push the whole screen wide) — the
+        // clear base adopts the caller's frame and the image fills inside it.
+        Color.clear
+            .overlay {
+                if url.hasPrefix("asset:") {
+                    // Bundled brand imagery ("asset:Name" → Assets.xcassets) —
+                    // instant, offline, and honest to the reference design.
+                    Image(String(url.dropFirst("asset:".count)))
+                        .resizable().scaledToFill()
+                } else {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        default:
+                            ZStack {
+                                LinearGradient(
+                                    colors: [Theme.Palette.lav.opacity(0.55), Theme.Palette.nightTop],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                NativeEffectIcon(systemImage: symbol, size: 24, weight: .light,
+                                                 color: .white.opacity(0.55), effect: .pulse)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        .clipped()
-        .accessibilityHidden(true)   // decorative imagery throughout the app
+            .clipped()
+            .accessibilityHidden(true)   // decorative imagery throughout the app
     }
 }
 
@@ -141,7 +159,9 @@ struct ScreenScaffold<Content: View>: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
-                .padding(.bottom, isRoot ? 118 : 44)
+                // The floating tab bar overlays pushed screens too — a bottom
+                // CTA (e.g. "Save check-in") must be able to scroll clear of it.
+                .padding(.bottom, 118)
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 18)
             }
@@ -196,7 +216,7 @@ struct HeroCard: View {
                         startPoint: .topLeading, endPoint: .center
                     )
                 )
-                .onAppear { if !reduceMotion { zoom = true } }
+                .onAppear { if !reduceMotion && !motionStilledForUITests { zoom = true } }
             VStack(alignment: .leading, spacing: 6) {
                 Tag(tag)
                 Spacer(minLength: 30)
@@ -693,7 +713,7 @@ struct ToolBanner: View {
                     LinearGradient(colors: [Theme.Stroke.scrimTop, .black.opacity(0.7)],
                                    startPoint: .top, endPoint: .bottom)
                 )
-                .onAppear { if !reduceMotion { zoom = true } }
+                .onAppear { if !reduceMotion && !motionStilledForUITests { zoom = true } }
             HStack(spacing: 9) {
                 Image(systemName: symbol)
                     .appFont(15, weight: .semibold).foregroundStyle(.white)
