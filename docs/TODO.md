@@ -345,6 +345,13 @@ sequence tokens → web onboarding/auth → web shell/screens → iOS polish →
 - [x] Refresh the two landing showcase thumbnails (2026-07-06): sleep-player + journal
   regenerated from the warm iOS build so the showcase matches the warm-refreshed hero
   (all three screens now one palette).
+- [x] Brand-kit assets wired into web clients (2026-07-10): landing hero now features a
+  text-free crop of the kit hero banner (`/brand/banner-hero.jpg`, framed card + palette
+  fade), static OG/Twitter image → `/brand/banner-social.jpg` (replaced the generated
+  `opengraph-image.tsx`/`twitter-image.tsx`), apple-touch-icons on web+app, and the
+  512w mark as the web app's favicon (`apps/app/public/brand/cerebro-mark.png`).
+  Nav/sidebar keep the crisp code-drawn SVG mark (raster lockup bakes an illegible
+  tagline + glow halo at ≤34px). Added public weight ~559 KB total.
 
 ### Web app v1 + admin v2 — plan in [WEB_APP_PLAN.md](WEB_APP_PLAN.md)
 - [x] Infra prep (2026-07-03): `apps/app` Next.js scaffold (:3002), CORS origin added

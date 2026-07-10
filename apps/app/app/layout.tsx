@@ -12,10 +12,28 @@ const serif = Newsreader({
   display: "swap",
 });
 
+const title = "CereBro — Your space";
+const description = "Check in, journal privately, and sleep better — CereBro on the web.";
+
 export const metadata: Metadata = {
-  title: "CereBro — Your space",
-  description: "Check in, journal privately, and sleep better — CereBro on the web.",
+  title,
+  description,
   robots: { index: false },
+  icons: { icon: "/brand/cerebro-mark.png", apple: "/apple-touch-icon.png" },
+  openGraph: {
+    title,
+    description,
+    siteName: "CereBro",
+    type: "website",
+    // Share image lives on the landing origin — one canonical copy of the banner.
+    images: [{ url: "https://cerebrozen.in/brand/banner-social.jpg", width: 1200, height: 628, alt: title }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["https://cerebrozen.in/brand/banner-social.jpg"],
+  },
 };
 
 // Per-request rendering so the CSP script nonce (middleware.ts) lands on every

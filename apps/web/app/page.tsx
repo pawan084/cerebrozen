@@ -76,8 +76,8 @@ export default function Home() {
           </div>
           <div className="hero-device">
             <div className="orb-glow" />
-            <div className="phone phone-float">
-              <img src="/screens/home.webp" alt="CereBro Home screen" width={640} height={1391} />
+            <div className="hero-banner phone-float">
+              <img src="/brand/banner-hero.jpg" alt="CereBro on iPhone — home, journal and sleep" width={970} height={1080} />
             </div>
           </div>
         </div>

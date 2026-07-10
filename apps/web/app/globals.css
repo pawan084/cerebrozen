@@ -270,6 +270,21 @@ a { color: inherit; text-decoration: none; }
 .phone-float { animation: floaty 7s ease-in-out infinite; }
 @keyframes floaty { 0%,100% { transform: translateY(-9px); } 50% { transform: translateY(9px); } }
 
+/* Brand hero banner — the kit's three-phone render (text-free crop) in a framed
+   card; the ::after gradient melts its base into the night palette so it sits
+   in the page rather than on it. */
+.hero-banner {
+  position: relative; z-index: 1;
+  width: min(440px, 100%); border-radius: 30px; overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 0 90px rgba(138, 123, 240, 0.22);
+}
+.hero-banner img { width: 100%; height: auto; display: block; }
+.hero-banner::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(14, 12, 34, 0) 58%, rgba(14, 12, 34, 0.62));
+}
+
 @media (max-width: 860px) {
   .hero { padding-top: 64px; }
   .hero-grid { grid-template-columns: 1fr; text-align: center; }

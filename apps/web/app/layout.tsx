@@ -30,12 +30,15 @@ export const metadata: Metadata = {
     url: "https://cerebrozen.in",
     siteName: "CereBro",
     type: "website",
+    images: [{ url: "/brand/banner-social.jpg", width: 1200, height: 628, alt: title }],
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
+    images: ["/brand/banner-social.jpg"],
   },
+  icons: { apple: "/apple-touch-icon.png" },
   robots: { index: true, follow: true },
 };
 
