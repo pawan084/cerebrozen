@@ -134,7 +134,7 @@ fun BreathingScreen(onBack: () -> Unit) {
                 if (!saved) {
                     scope.launch {
                         runCatching { Api.createJournal("Breathing", "Took a minute to breathe and settle.") }
-                            .onSuccess { saved = true }
+                            .onSuccess { saved = true; Celebrations.trigger() }
                             .onFailure { status = it.message ?: "Couldn't save." }
                     }
                 }
@@ -185,7 +185,7 @@ private fun JournalingTool(
         ) {
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
-                    .onSuccess { saved = true }
+                    .onSuccess { saved = true; Celebrations.trigger() }
                     .onFailure { status = it.message ?: "Couldn't save." }
             }
         }

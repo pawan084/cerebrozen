@@ -127,6 +127,9 @@ fun MemoryMatchScreen(onBack: () -> Unit) {
                 }
             }
         }
+        LaunchedEffect(matched.size) {
+            if (deck.isNotEmpty() && matched.size == deck.size) Celebrations.trigger()
+        }
         if (matched.size == deck.size) {
             Text("All matched in $moves moves — nicely done.",
                 style = MaterialTheme.typography.titleMedium, color = Ok)

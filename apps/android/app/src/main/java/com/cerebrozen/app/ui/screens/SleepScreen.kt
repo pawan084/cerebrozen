@@ -156,6 +156,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 scope.launch {
                     try {
                         Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
+                        Celebrations.trigger()
                         status = "Logged — one honest night at a time."
                         quality = 0
                         reload()

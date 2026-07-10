@@ -44,8 +44,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
@@ -186,7 +184,6 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var goal by remember { mutableStateOf("") }
     var program by remember { mutableStateOf<JSONObject?>(null) }
     val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
 
     fun parseRecent(moods: JSONArray): List<String> =
         (0 until minOf(moods.length(), 5)).map { i ->
@@ -313,9 +310,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 MOODS.forEach { mood ->
-                    PickChip(selected = picked == mood, label = mood.name) {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); picked = mood
-                    }
+                    PickChip(selected = picked == mood, label = mood.name) { picked = mood }
                 }
             }
             PrimaryButton(
@@ -327,7 +322,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 scope.launch {
                     try {
                         Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        Celebrations.trigger()
                         status = "Checked in — noted gently."
                         picked = null
                         reload()

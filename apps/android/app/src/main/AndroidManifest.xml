@@ -9,6 +9,8 @@
     <!-- Background ambient audio as a foreground media service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Tactile feedback (calm haptics on presses, check-ins, celebrations). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
         <intent>

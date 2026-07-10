@@ -58,6 +58,8 @@ import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.BreathingScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
+import com.cerebrozen.app.ui.screens.Celebration
+import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.BubbleWrapScreen
 import com.cerebrozen.app.ui.screens.CbtReframeScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
@@ -188,6 +190,7 @@ fun CereBroApp() {
     val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -288,5 +291,8 @@ fun CereBroApp() {
             composable("export") { DataExportScreen(onBack = back) }
             composable("delete") { AccountDeletionScreen(onBack = back) }
         }
+    }
+    // App-wide celebration flourish, above the nav chrome.
+    if (Celebrations.active) Celebration(onFinished = { Celebrations.clear() })
     }
 }

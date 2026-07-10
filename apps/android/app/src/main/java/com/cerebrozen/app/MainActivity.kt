@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.CereBroApp
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.CereBroTheme
 
 // FragmentActivity (still a ComponentActivity) so androidx.biometric can
@@ -20,6 +21,7 @@ class MainActivity : FragmentActivity() {
         )
         super.onCreate(savedInstanceState)
         Session.init(applicationContext)
+        Haptics.init(applicationContext)
         setContent {
             CereBroTheme {
                 CereBroApp()

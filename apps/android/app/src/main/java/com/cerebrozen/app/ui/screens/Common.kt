@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.Iris
@@ -213,7 +214,7 @@ internal fun SectionCard(
         Modifier.fillMaxWidth()
             .pressScale(pressed, down = 0.985f)
             .glass()
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { Haptics.soft(0.4f); onClick() }
     } else {
         Modifier.fillMaxWidth().glass()
     }
@@ -244,7 +245,7 @@ internal fun PrimaryButton(
             .pressScale(pressed, down = 0.97f)
             .clip(RoundedCornerShape(26.dp))
             .background(brush)
-            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { onClick() }
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.soft(0.6f); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -325,7 +326,7 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape)
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { Haptics.selection(); onClick() }
             .padding(horizontal = 16.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -378,7 +379,7 @@ internal fun DangerButton(
             .pressScale(pressed, down = 0.97f)
             .clip(RoundedCornerShape(26.dp))
             .background(brush)
-            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { onClick() }
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.warning(); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {

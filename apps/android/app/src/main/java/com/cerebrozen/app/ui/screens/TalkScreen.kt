@@ -199,6 +199,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
      * hand the turn back to the listener. */
     suspend fun speakReply(text: String) {
         if (text.isBlank()) { resumeTurn(); return }
+        com.cerebrozen.app.ui.Haptics.success()   // a felt "reply's here" in voice mode
         if (cloudVoice) {
             val spoke = runCatching { cloud.play(Api.tts(text)) }.isSuccess
             if (spoke) resumeTurn()
@@ -344,6 +345,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     fun onOrbTap() {
         if (!voice.available && !cloudVoice) return
+        com.cerebrozen.app.ui.Haptics.tap()
         when {
             cloud.speaking -> cloud.stopPlayback()          // tap-to-interrupt
             cloud.recording -> finishCloudTurn()
