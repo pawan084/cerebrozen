@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ink
@@ -100,8 +101,10 @@ fun BreathingScreen(onBack: () -> Unit) {
     }
 
     SubPage("A minute to breathe", "Breathing", onBack) {
+        ToolAmbienceEffect(R.raw.drone)
         Text("Follow the orb — in for four, hold, out for four.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        AmbienceToggle()
         Text(
             phase,
             style = MaterialTheme.typography.displaySmall,
@@ -166,7 +169,9 @@ private fun JournalingTool(
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     SubPage(eyebrow, title, onBack) {
+        ToolAmbienceEffect(R.raw.rain)
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        AmbienceToggle()
         fields.forEachIndexed { i, (label, _) ->
             AppTextField(
                 values.value[i],

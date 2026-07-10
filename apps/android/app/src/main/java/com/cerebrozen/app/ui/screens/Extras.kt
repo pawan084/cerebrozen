@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
@@ -669,8 +670,10 @@ fun BubblePopScreen(onBack: () -> Unit) {
         }
     }
     SubPage("A tiny reset", "Bubble pop", onBack) {
+        ToolAmbienceEffect(R.raw.ocean)
         Text("Pop them slowly — no rush, no score to chase.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        AmbienceToggle()
         // A quiet score panel + reset — a gentle sense of progress, easily cleared.
         Row(
             Modifier.fillMaxWidth(),
