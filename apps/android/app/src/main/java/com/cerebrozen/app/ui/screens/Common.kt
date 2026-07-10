@@ -48,8 +48,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.theme.Danger
@@ -64,6 +66,25 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 
 private val CardShape = RoundedCornerShape(20.dp)
+
+// Responsive sizing helpers — pages and cards breathe a little tighter on small
+// phones and a touch more generously on large ones, instead of one fixed inset.
+@Composable
+internal fun isCompactWidth(): Boolean = LocalConfiguration.current.screenWidthDp < 380
+
+@Composable
+internal fun pageHorizontalPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 20.dp
+}
+
+@Composable
+internal fun cardPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 18.dp
+}
 
 /** The shared "glass" surface treatment — a top-lit gradient fill, a hairline
  * border, and a soft lift — so cards read as raised panes on the dark ground
@@ -148,13 +169,19 @@ internal fun Page(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = pageHorizontalPadding(), vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             trailing?.let { icon ->
                 Box(
@@ -191,7 +218,7 @@ internal fun SectionCard(
         Modifier.fillMaxWidth().glass()
     }
     Column(
-        mod.padding(18.dp),
+        mod.padding(cardPadding()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
 }
@@ -244,12 +271,14 @@ internal fun AppTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    placeholderText: String? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholderText?.let { { Text(it) } },
         modifier = modifier,
         enabled = enabled,
         singleLine = singleLine,

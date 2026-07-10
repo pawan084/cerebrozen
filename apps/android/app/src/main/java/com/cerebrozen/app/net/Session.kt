@@ -2,6 +2,7 @@ package com.cerebrozen.app.net
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,6 +26,16 @@ import java.net.URLEncoder
 object Session {
     private const val PREFS = "cerebro"
     private const val REFRESH_KEY = "refresh_token"
+    private const val LOG_TAG = "CereBroApi"
+    // Keys whose values are masked in DEBUG response logs (never log secrets).
+    private val SENSITIVE_KEYS = setOf(
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "token",
+        "password",
+        "authorization",
+    )
 
     /** Compose-observable auth state; gates the whole UI in CereBroApp. */
     var signedIn by mutableStateOf(false)
@@ -75,12 +86,66 @@ object Session {
         authed: Boolean,
     ): String {
         val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
+        logApiResponse(method, path, code, text)
         if (code !in 200..299) {
             val detail = runCatching { JSONObject(text).optString("detail") }
                 .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
             throw ApiException(code, detail)
         }
         return text
+    }
+
+    /** DEBUG-only: log the response with sensitive fields masked. No-op in release.
+     * Fully guarded — diagnostics must never be able to break the request path
+     * (e.g. android.util.Log is unmocked and throws under plain JVM unit tests). */
+    private fun logApiResponse(method: String, path: String, code: Int, text: String) {
+        if (!BuildConfig.DEBUG) return
+        runCatching {
+            val body = redactJson(text).ifBlank { "<empty>" }
+            Log.d(LOG_TAG, "$method $path -> $code")
+            body.chunked(3_500).forEach { Log.d(LOG_TAG, it) }
+        }
+    }
+
+    private fun redactJson(text: String): String {
+        if (text.isBlank()) return text
+        return runCatching {
+            val trimmed = text.trim()
+            when {
+                trimmed.startsWith("{") -> redact(JSONObject(trimmed)).toString(2)
+                trimmed.startsWith("[") -> redact(JSONArray(trimmed)).toString(2)
+                else -> text
+            }
+        }.getOrDefault(text.take(8_000))
+    }
+
+    private fun redact(obj: JSONObject): JSONObject {
+        val copy = JSONObject()
+        obj.keys().forEach { key ->
+            val value = obj.get(key)
+            copy.put(
+                key,
+                when {
+                    key.lowercase() in SENSITIVE_KEYS -> "***"
+                    value is JSONObject -> redact(value)
+                    value is JSONArray -> redact(value)
+                    else -> value
+                },
+            )
+        }
+        return copy
+    }
+
+    private fun redact(arr: JSONArray): JSONArray {
+        val copy = JSONArray()
+        for (i in 0 until arr.length()) {
+            when (val value = arr.get(i)) {
+                is JSONObject -> copy.put(redact(value))
+                is JSONArray -> copy.put(redact(value))
+                else -> copy.put(value)
+            }
+        }
+        return copy
     }
 
     private suspend fun realHttp(

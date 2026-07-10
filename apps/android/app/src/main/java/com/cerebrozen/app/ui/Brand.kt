@@ -38,20 +38,23 @@ import com.cerebrozen.app.ui.theme.TextPrimary
  * Mirrors the shared brand SVG (apps/web/public/brand/cerebro-mark.svg).
  */
 @Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp) {
+fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean = true) {
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
         val c = Offset(this.size.width / 2f, this.size.height / 2f)
         val ringR = s * 0.36f
         val orbR = s * 0.19f
-        // Soft outer glow
-        drawCircle(
-            brush = Brush.radialGradient(
-                listOf(Color(0x338A7BF0), Color(0x00000000)),
-                center = c, radius = s * 0.5f,
-            ),
-            radius = s * 0.5f, center = c,
-        )
+        // Soft outer glow — omit it in compact placements (nav/header) where the
+        // extra bloom would spill past the mark's bounds.
+        if (showGlow) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0x338A7BF0), Color(0x00000000)),
+                    center = c, radius = s * 0.5f,
+                ),
+                radius = s * 0.5f, center = c,
+            )
+        }
         // Open C-ring (gap on the right)
         drawArc(
             brush = Brush.linearGradient(
