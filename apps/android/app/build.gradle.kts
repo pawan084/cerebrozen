@@ -1,8 +1,44 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) file.inputStream().use(::load)
+}
+
+// Resolve a config value from (in order) a -Pgradle property, local.properties,
+// or an environment variable. Falls back to "" so every integration stays inert
+// until a key is supplied (the "degrades without keys" rule).
+fun secret(name: String): String =
+    (project.findProperty(name) as? String)
+        ?: localProperties.getProperty(name)
+        ?: System.getenv(name)
+        ?: ""
+
+// Escape a value for embedding as a buildConfigField String literal.
+fun quoted(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+// Convenience: pull the web (client_type 3) OAuth client id out of a
+// google-services.json if one is present (git-ignored, never committed).
+fun googleServicesWebClientId(): String {
+    val file = project.file("google-services.json")
+    if (!file.isFile) return ""
+    return Regex(
+        """\{\s*"client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*3\s*}""",
+    ).find(file.readText())?.groupValues?.get(1).orEmpty()
+}
+
+// Google web (server) OAuth client id — mirrors iOS's GIDClientID. Blank by
+// default so "Continue with Google" degrades gracefully until configured.
+val googleWebClientId = secret("googleWebClientId")
+    .ifBlank { secret("GOOGLE_WEB_CLIENT_ID") }
+    .ifBlank { googleServicesWebClientId() }
 
 android {
     namespace = "com.cerebrozen.app"
@@ -19,16 +55,22 @@ android {
         // emulator's host loopback (cleartext allowed only in the debug
         // manifest overlay); release is pinned to production HTTPS.
         buildConfigField("String", "API_BASE_URL", "\"https://api.cerebrozen.in\"")
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            quoted(googleWebClientId),
+        )
     }
 
     buildTypes {
         debug {
-            // Emulator default: host loopback. Real-device runs override it —
+            // Emulator default: host loopback. Real-device runs override it via
+            // -PapiBaseUrl=…, an apiBaseUrl in local.properties, or an env var —
             //   ./gradlew assembleDebug -PapiBaseUrl=http://localhost:8000
             // paired with `adb reverse tcp:8000 tcp:8000` (device localhost →
             // this machine's dev backend). See ANDROID_QA.md.
-            val apiBaseUrl = (project.findProperty("apiBaseUrl") as? String) ?: "http://10.0.2.2:8000"
-            buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+            val apiBaseUrl = secret("apiBaseUrl").ifBlank { "http://10.0.2.2:8000" }
+            buildConfigField("String", "API_BASE_URL", quoted(apiBaseUrl))
         }
         release {
             // R8 + resource shrinking. App code is reflection-free (org.json

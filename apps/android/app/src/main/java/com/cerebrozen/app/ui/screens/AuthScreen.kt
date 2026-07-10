@@ -31,13 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.R
+import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Danger
@@ -68,7 +67,8 @@ fun AuthScreen() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val focus = LocalFocusManager.current
-    val clientId = stringResource(R.string.google_web_client_id)
+    // Web (server) OAuth client id, resolved at build time (blank = Google inert).
+    val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
 
     fun run(block: suspend () -> Unit) {
         busy = true; error = null
