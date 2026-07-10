@@ -1,0 +1,102 @@
+package com.cerebrozen.app.ui.screens
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Violet
+
+/**
+ * The living app backdrop — the Android port of the iOS `AppBackground`: a deep
+ * night base with three large, blurred brand-tinted orbs that drift and breathe
+ * slowly for a calm sense of depth. The primary orb takes an [accent] that shifts
+ * per section. Motion is suppressed under Reduce Motion (the orbs sit still), and
+ * the `blur` softening only renders on API 31+ — below that the orbs are already
+ * soft radial gradients, so they degrade gracefully.
+ */
+@Composable
+internal fun AuroraBackground(accent: Color = Periwinkle, modifier: Modifier = Modifier) {
+    val reduceMotion = rememberReduceMotion()
+    // Slow 11s breathe/drift — but only when motion is allowed; under Reduce Motion
+    // the orbs hold a still mid-position and no animation runs at all.
+    val driftAnim = remember { Animatable(0.5f) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) {
+            driftAnim.snapTo(0.5f)
+        } else {
+            driftAnim.snapTo(0f)
+            driftAnim.animateTo(
+                1f,
+                infiniteRepeatable(tween(11_000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            )
+        }
+    }
+    val drift = driftAnim.value
+
+    Box(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(NightMid, Night)))) {
+        AuroraOrb(accent.copy(alpha = 0.40f), size = 380.dp, blur = 90.dp,
+            fromX = -70, fromY = -180, toX = -130, toY = -240, drift = drift)
+        AuroraOrb(Violet.copy(alpha = 0.34f), size = 320.dp, blur = 100.dp,
+            fromX = 90, fromY = 30, toX = 140, toY = -60, drift = drift)
+        AuroraOrb(Cyan.copy(alpha = 0.14f), size = 260.dp, blur = 80.dp,
+            fromX = -50, fromY = 320, toX = 70, toY = 250, drift = drift)
+        // Soft top-lit sheen, mirroring the iOS top radial highlight.
+        Box(
+            Modifier.align(Alignment.TopCenter).offset(y = (-120).dp).size(420.dp)
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(TextSoft.copy(alpha = 0.10f), Color.Transparent))),
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.AuroraOrb(
+    color: Color,
+    size: Dp,
+    blur: Dp,
+    fromX: Int,
+    fromY: Int,
+    toX: Int,
+    toY: Int,
+    drift: Float,
+) {
+    val x = (fromX + (toX - fromX) * drift).dp
+    val y = (fromY + (toY - fromY) * drift).dp
+    val scale = 0.95f + 0.17f * drift
+    Box(
+        Modifier
+            .align(Alignment.Center)
+            .offset(x = x, y = y)
+            .size(size)
+            .scale(scale)
+            .blur(blur, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+            .clip(CircleShape)
+            .background(Brush.radialGradient(listOf(color, Color.Transparent))),
+    )
+}

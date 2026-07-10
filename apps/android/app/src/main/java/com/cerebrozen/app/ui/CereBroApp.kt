@@ -56,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.BreathingScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.Celebration
@@ -97,10 +98,10 @@ import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.theme.NavPillBottom
 import com.cerebrozen.app.ui.theme.NavPillTop
 import com.cerebrozen.app.ui.theme.NavScrim
-import com.cerebrozen.app.ui.theme.NightMid
-import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted2
+import com.cerebrozen.app.ui.theme.Violet
 import com.cerebrozen.app.ui.theme.TextPrimary
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
@@ -176,11 +177,10 @@ fun CereBroApp() {
     // Signed-out: the whole app is the onboarding/auth flow (live backend session,
     // same account as iOS/web). Session.signedIn is Compose-observable.
     if (!Session.signedIn) {
-        androidx.compose.foundation.layout.Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(NightMid, Night))),
-        ) { Onboarding() }
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+            AuroraBackground()
+            Onboarding()
+        }
         return
     }
 
@@ -189,8 +189,15 @@ fun CereBroApp() {
     val current = backStack?.destination?.route ?: Tab.Home.route
     val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
+    // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
+    val auroraAccent = when (current) {
+        Tab.Sleep.route -> Violet
+        Tab.Talk.route -> Cyan
+        else -> Periwinkle
+    }
 
     Box(Modifier.fillMaxSize()) {
+    AuroraBackground(accent = auroraAccent)
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -244,7 +251,6 @@ fun CereBroApp() {
             startDestination = Tab.Home.route,
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(NightMid, Night)))
                 .padding(padding),
             enterTransition = { fadeIn(tween(240)) },
             exitTransition = { fadeOut(tween(160)) },
