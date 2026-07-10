@@ -1,9 +1,13 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,13 +20,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.Iris
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -81,13 +92,8 @@ fun PatternScreen(onBack: () -> Unit) {
                     "Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.",
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
-                else -> learned!!.forEach { p ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("· ${p.statement}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                        if (p.basis.isNotBlank()) {
-                            Text("   ${p.basis}", style = MaterialTheme.typography.bodySmall, color = Cyan)
-                        }
-                    }
+                else -> learned!!.forEachIndexed { i, p ->
+                    MemoryRow(i, p.statement, p.basis)
                 }
             }
         }
@@ -120,6 +126,42 @@ fun PatternScreen(onBack: () -> Unit) {
                 Text(if (confirming) "Tap again to confirm" else "Delete all memory", color = Danger)
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        }
+    }
+}
+
+/** One learned statement, rendered as a soft lavender gradient row (teammate look,
+ * rebuilt on our tokens). Shows the real statement and, when present, its supporting
+ * count [basis]. No edit affordance — memory here is honest and read-only; deletion
+ * lives in its own section. */
+@Composable
+private fun MemoryRow(index: Int, statement: String, basis: String) {
+    val shape = RoundedCornerShape(13.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)   // a11y: >= 48dp target
+            .appear(index)
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Periwinkle.copy(alpha = 0.18f), Iris.copy(alpha = 0.10f)),
+                ),
+            )
+            .border(1.dp, LineStroke, shape)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                statement,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+            )
+            if (basis.isNotBlank()) {
+                Text(basis, style = MaterialTheme.typography.bodySmall, color = Cyan)
+            }
         }
     }
 }

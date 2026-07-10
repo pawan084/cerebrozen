@@ -79,7 +79,9 @@ import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Danger
 import kotlinx.coroutines.launch
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -128,6 +130,42 @@ private val THUMB_GRADIENTS = listOf(
 
 private fun thumbBrush(seed: String): Brush =
     Brush.linearGradient(THUMB_GRADIENTS[(seed.hashCode() and 0x7fffffff) % THUMB_GRADIENTS.size])
+
+/** Teammate-look gradient hero: a soft vertical gradient panel with a glassy pill
+ * eyebrow and overlaid title/subtitle. Pure chrome — content is passed in by the
+ * caller, so it never fabricates copy. Built on our palette tokens only. */
+@Composable
+private fun GradientHero(
+    eyebrow: String,
+    title: String,
+    subtitle: String = "",
+    colors: List<Color> = listOf(Iris, PeriwinkleDeep),
+    content: @Composable (ColumnScope.() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(shape)
+            .background(Brush.verticalGradient(colors))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.22f))
+                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        ) {
+            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Cream)
+        }
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream,
+            maxLines = 3, overflow = TextOverflow.Ellipsis)
+        if (subtitle.isNotBlank()) {
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        }
+        content?.invoke(this)
+    }
+}
 
 @Composable
 internal fun ContentRow(
@@ -260,7 +298,10 @@ fun InsightsScreen(onBack: () -> Unit) {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
         }
-        if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // Real weekly read in a gradient hero — only when the backend returned one.
+        if (summary.isNotBlank()) {
+            GradientHero(eyebrow = "This week", title = summary)
+        }
         // The honest "before" — renders only when a real baseline was saved.
         BaselineStore.get()?.let { (stress, sleep, date) ->
             SectionCard {
@@ -281,17 +322,17 @@ fun InsightsScreen(onBack: () -> Unit) {
                 (0 until m.length()).forEach { i ->
                     val row = m.getJSONObject(i)
                     val p = row.optDouble("progress", 0.0).toFloat().coerceIn(0f, 1f)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(row.optString("label"), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                            Text(row.optString("value"), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                            Text(row.optString("label"), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                            Text(row.optString("value"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                         }
                         Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)).background(CardFill)) {
                             Box(Modifier.fillMaxWidth(p).height(8.dp).clip(RoundedCornerShape(99.dp))
                                 .background(Brush.horizontalGradient(listOf(Periwinkle, Cyan))))
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
@@ -339,36 +380,59 @@ fun ProgramsScreen(onBack: () -> Unit) {
         }
 
         active?.let { p ->
-            SectionCard {
-                Text("PROGRAM · DAY ${p.optInt("day")} OF ${p.optInt("days")}",
-                    style = MaterialTheme.typography.labelSmall, color = Cyan)
-                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    if (p.optBoolean("completed")) "Complete — beautifully done. Start another whenever you like."
-                    else "Showing up is the whole assignment today.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
+            val day = p.optInt("day")
+            val days = p.optInt("days")
+            GradientHero(
+                eyebrow = "Program · Day $day of $days",
+                title = p.optString("title"),
+                subtitle = if (p.optBoolean("completed"))
+                    "Complete — beautifully done. Start another whenever you like."
+                else "Showing up is the whole assignment today.",
+            ) {
+                if (days > 0) {
+                    val prog = (day.toFloat() / days).coerceIn(0f, 1f)
+                    Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(99.dp))
+                        .background(Color.White.copy(alpha = 0.22f))) {
+                        Box(Modifier.fillMaxWidth(prog).height(6.dp).clip(RoundedCornerShape(99.dp))
+                            .background(Cream))
+                    }
+                }
                 TextButton(onClick = {
                     scope.launch { runCatching { Api.leaveProgram() }; refresh() }
-                }) { Text("Leave this journey", color = TextMuted) }
+                }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Text("Leave this journey", color = Cream.copy(alpha = 0.85f))
+                }
             }
         }
 
+        if (rows.isNotEmpty()) {
+            Text("Start something new", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        }
         rows.forEach { (id, title, subtitle) ->
             val isActive = active?.optString("title") == title
             SectionCard {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(subtitle.ifBlank { "A few minutes a day" },
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                if (!isActive) {
-                    TextButton(onClick = {
-                        scope.launch {
-                            runCatching { Api.enrollProgram(id) }
-                                .onSuccess { status = "Enrolled — day 1 starts now." }
-                                .onFailure { status = it.message ?: "Couldn't enroll." }
-                            refresh()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(thumbBrush(title)),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(subtitle.ifBlank { "A few minutes a day" },
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        if (!isActive) {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching { Api.enrollProgram(id) }
+                                        .onSuccess { status = "Enrolled — day 1 starts now." }
+                                        .onFailure { status = it.message ?: "Couldn't enroll." }
+                                    refresh()
+                                }
+                            }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                                Text("Start this journey", color = Periwinkle)
+                            }
                         }
-                    }) { Text("Start this journey", color = Periwinkle) }
+                    }
                 }
             }
         }
@@ -413,32 +477,44 @@ fun PlayerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val title = Player.nowPlaying
     SubPage("Now playing", title ?: "Nothing playing", onBack) {
-        Box(
-            Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(22.dp)),
+        // Centered art + transport (teammate player look), our tokens throughout.
+        Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AsyncImage(
-                model = HeroImg.sleep, contentDescription = null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
-            )
-            Box(Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
-        }
-        if (title == null) {
-            Text("Pick a soundscape or story from Sounds and it plays here.",
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        } else {
-            Text(
-                if (MediaUrls.urlFor(title).isBlank())
-                    "Continuous ambient bed · this title has no narration yet."
-                else "Narrated track · streams from your library.",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted,
-            )
-            PrimaryButton(
-                text = if (Player.isPlaying) "Pause" else "Play",
-                modifier = Modifier.fillMaxWidth(),
+            Box(
+                Modifier.fillMaxWidth(0.72f).height(240.dp).clip(RoundedCornerShape(26.dp))
+                    .border(1.dp, LineStroke, RoundedCornerShape(26.dp)),
             ) {
-                if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
+                AsyncImage(
+                    model = HeroImg.sleep, contentDescription = null,
+                    contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                )
+                Box(Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
             }
+            if (title == null) {
+                Text("Pick a soundscape or story from Sounds and it plays here.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    textAlign = TextAlign.Center)
+            } else {
+                Text(
+                    if (MediaUrls.urlFor(title).isBlank())
+                        "Continuous ambient bed · this title has no narration yet."
+                    else "Narrated track · streams from your library.",
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    textAlign = TextAlign.Center,
+                )
+                PrimaryButton(
+                    text = if (Player.isPlaying) "Pause" else "Play",
+                    modifier = Modifier.fillMaxWidth(0.62f),
+                ) {
+                    if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
+                }
+            }
+        }
+        if (title != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
@@ -503,8 +579,11 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
     Text("5-4-3-2-1 grounding — come back to the present through your senses.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     Grounding()
-    ContentRow("Bubble pop", "Pop to release tension", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblepop") })
+    FeaturedGameCard(
+        title = "Bubble pop",
+        subtitle = "Pop gently — no timer, no losing. Just breathe and tap.",
+        onOpen = { onOpen("bubblepop") },
+    )
     ContentRow("Bubble wrap", "A fresh sheet, endlessly poppable", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblewrap") })
     ContentRow("Memory match", "Find the pairs, no clock", "Play", false,
@@ -515,6 +594,46 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("zenripples") })
     ContentRow("Gratitude garden", "A flower for every thank-you", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("gratitude") })
+}
+
+/** Headline game tile — a gradient hero with floating orbs, tappable to open the
+ * game. Chrome only; the copy is passed in. Built on palette tokens. */
+@Composable
+private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Box(
+        Modifier.fillMaxWidth().height(168.dp).clip(shape)
+            .background(Brush.verticalGradient(listOf(PeriwinkleDeep, Iris)))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .clickable { onOpen() }
+            .semantics { contentDescription = "Play $title" }
+            .padding(24.dp),
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.22f))
+                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        ) {
+            Text("PLAYABLE", style = MaterialTheme.typography.labelSmall, color = Cream)
+        }
+        // A couple of drifting bubbles as quiet ornamentation.
+        Box(
+            Modifier.align(Alignment.TopEnd).offset(x = (-16).dp, y = 4.dp).size(40.dp).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Periwinkle))),
+        )
+        Box(
+            Modifier.align(Alignment.CenterEnd).offset(x = (-8).dp, y = (-4).dp).size(24.dp).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Cyan))),
+        )
+        Column(
+            Modifier.align(Alignment.BottomStart),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        }
+    }
 }
 
 private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)
@@ -651,10 +770,11 @@ fun CrisisScreen(onBack: () -> Unit) {
         "Find a helpline" to "findahelpline.com",
     )
     SubPage("You're not alone", "Urgent support", onBack) {
-        SectionCard {
-            Text("If you're in immediate danger, please reach out now — you deserve support.",
-                style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        }
+        GradientHero(
+            eyebrow = "You deserve support",
+            title = "If you're in immediate danger, please reach out now.",
+            colors = listOf(Warm, Danger),
+        )
         lines.forEach { (name, number) ->
             // A letter in the value means it's the helpline-finder URL, not a phone number.
             val isUrl = number.any { it.isLetter() }

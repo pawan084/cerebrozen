@@ -1,10 +1,15 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,11 +22,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -37,7 +48,9 @@ internal fun parsePlanSteps(plan: JSONObject): List<PlanStep> {
 }
 
 /** The agentic daily plan (ref DAILY PLAN route; iOS DailyPlanView / web /plan
- * parity): rationale, optimistic step toggles, regenerate from fresh signals. */
+ * parity): rationale, optimistic step toggles, regenerate from fresh signals.
+ * Re-skinned to the teammate's plan look — a gradient rationale hero and one
+ * numbered gradient card per step — rebuilt on our design tokens/components. */
 @Composable
 fun PlanScreen(onBack: () -> Unit) {
     var plan by remember { mutableStateOf<JSONObject?>(null) }
@@ -73,60 +86,81 @@ fun PlanScreen(onBack: () -> Unit) {
         } else if (p == null) {
             Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
-            SectionCard {
-                Text("Why this plan", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    p.optString("rationale").ifBlank { "Built around ${p.optString("focus").ifBlank { "your goals" }}." },
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
+            // Rationale hero — a photographic gradient card in the teammate's look.
+            HeroCard(
+                imageUrl = HeroImg.calm,
+                eyebrow = "Why this plan",
+                title = p.optString("focus").ifBlank { "Today's plan" },
+                subtitle = p.optString("rationale")
+                    .ifBlank { "Built around ${p.optString("focus").ifBlank { "your goals" }}." },
+            ) {
                 Text(
                     "${steps.count { it.done }} of ${steps.size} steps done · updates from your check-ins and sleep diary",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    style = MaterialTheme.typography.labelSmall, color = TextSoft,
                 )
             }
-            SectionCard {
-                if (steps.isEmpty()) {
+
+            if (steps.isEmpty()) {
+                SectionCard {
                     Text(
                         "No steps yet — update your plan to generate some.",
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
-                steps.forEach { step ->
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .toggleable(
-                                value = step.done,
-                                role = Role.Checkbox,
-                                onValueChange = { done ->
-                                    // Optimistic; the server response reconciles.
-                                    steps = steps.map { if (it.id == step.id) it.copy(done = done) else it }
-                                    scope.launch {
-                                        runCatching { adopt(Api.togglePlanStep(step.id, done)) }
-                                            .onFailure {
-                                                steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
-                                            }
-                                    }
-                                },
-                            ),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = step.done,
-                            onCheckedChange = null,
+            }
+
+            // One numbered gradient card per step — render ALL steps (no take()).
+            steps.forEachIndexed { index, step ->
+                Row(
+                    Modifier.fillMaxWidth()
+                        .glass()
+                        .toggleable(
+                            value = step.done,
+                            role = Role.Checkbox,
+                            onValueChange = { done ->
+                                // Optimistic; the server response reconciles.
+                                steps = steps.map { if (it.id == step.id) it.copy(done = done) else it }
+                                scope.launch {
+                                    runCatching { adopt(Api.togglePlanStep(step.id, done)) }
+                                        .onFailure {
+                                            steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
+                                        }
+                                }
+                            },
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                step.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSoft,
-                                textDecoration = if (step.done) TextDecoration.LineThrough else null,
-                            )
+                        .padding(cardPadding()),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Gradient step thumbnail carrying the step's position.
+                    Box(
+                        Modifier.size(48.dp).clip(RoundedCornerShape(13.dp))
+                            .background(Brush.linearGradient(listOf(Periwinkle, PeriwinkleDeep))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            step.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextSoft,
+                            textDecoration = if (step.done) TextDecoration.LineThrough else null,
+                        )
+                        if (step.detail.isNotBlank()) {
                             Text(step.detail, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
                     }
+                    // Reflects state; the Role.Checkbox toggle lives on the row.
+                    Checkbox(checked = step.done, onCheckedChange = null)
                 }
             }
+
             PrimaryButton(
                 text = if (busy) "Updating…" else "Update plan from my latest check-ins",
                 enabled = !busy,
