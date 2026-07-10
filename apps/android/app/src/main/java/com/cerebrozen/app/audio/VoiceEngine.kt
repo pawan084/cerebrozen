@@ -27,6 +27,11 @@ class VoiceEngine(context: Context) {
     var speaking by mutableStateOf(false)
         private set
 
+    /** Live mic amplitude while listening, normalised 0–1 — drives the reactive
+     * orb. Falls back to 0 whenever we're not actively listening. */
+    var level by mutableStateOf(0f)
+        private set
+
     val available: Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
     private val appContext = context.applicationContext
@@ -74,6 +79,7 @@ class VoiceEngine(context: Context) {
     fun stopListening() {
         recognizer?.stopListening()
         listening = false
+        level = 0f
     }
 
     /** Speak [text]; [onDone] fires once when playback finishes (or errors),
@@ -92,12 +98,14 @@ class VoiceEngine(context: Context) {
     private val listener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {}
         override fun onBeginningOfSpeech() {}
-        override fun onRmsChanged(rms: Float) {}
+        // rms is roughly 0–10 dB for speech; normalise to a 0–1 orb level.
+        override fun onRmsChanged(rms: Float) { level = (rms / 10f).coerceIn(0f, 1f) }
         override fun onBufferReceived(buffer: ByteArray?) {}
-        override fun onEndOfSpeech() { listening = false }
-        override fun onError(error: Int) { listening = false }
+        override fun onEndOfSpeech() { listening = false; level = 0f }
+        override fun onError(error: Int) { listening = false; level = 0f }
         override fun onResults(results: Bundle?) {
             listening = false
+            level = 0f
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
             if (!text.isNullOrBlank()) onFinal?.invoke(text)
         }

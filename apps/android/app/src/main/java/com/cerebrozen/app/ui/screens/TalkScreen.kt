@@ -4,14 +4,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +60,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -68,6 +73,7 @@ import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -422,6 +428,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 listening = voice.listening || cloud.recording,
                 speaking = voice.speaking || cloud.speaking,
                 onTap = { onOrbTap() },
+                thinking = transcribing || busy,
+                level = voice.level,
             )
             val hint = when {
                 transcribing -> "Hearing you…"
@@ -526,6 +534,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             },
             listening = cloud.recording || voice.listening,
             speaking = cloud.speaking || voice.speaking,
+            thinking = transcribing || busy,
+            level = voice.level,
             caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
             onOrb = { onOrbTap() },
             onEnd = { endSession() },
@@ -543,6 +553,8 @@ private fun VoiceSessionOverlay(
     stateLabel: String,
     listening: Boolean,
     speaking: Boolean,
+    thinking: Boolean,
+    level: Float,
     caption: String,
     onOrb: () -> Unit,
     onEnd: () -> Unit,
@@ -568,7 +580,7 @@ private fun VoiceSessionOverlay(
             Text(fmtSession(seconds), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb)
+            VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb, thinking = thinking, level = level)
             Text(stateLabel, style = MaterialTheme.typography.titleMedium, color = TextSoft, textAlign = TextAlign.Center)
             if (caption.isNotBlank()) {
                 Text(
@@ -720,39 +732,73 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
-    val active = listening || speaking
+private fun VoiceOrb(
+    listening: Boolean,
+    speaking: Boolean,
+    onTap: () -> Unit,
+    thinking: Boolean = false,
+    level: Float = 0f,
+) {
+    val active = listening || speaking || thinking
     val reduceMotion = rememberReduceMotion()
+    // Phase tint: thinking = iris, voice active = cyan, resting = lavender.
+    val core = when {
+        thinking -> Iris
+        listening || speaking -> Cyan
+        else -> Periwinkle
+    }
     val t = rememberInfiniteTransition(label = "orb")
     val animatedPulse by t.animateFloat(
         initialValue = if (active) 0.9f else 0.82f,
-        targetValue = if (active) 1.18f else 1.0f,
+        targetValue = if (active) 1.14f else 1.0f,
         animationSpec = infiniteRepeatable(tween(if (listening) 700 else 2600), RepeatMode.Reverse),
         label = "pulse",
     )
-    // Reduce Motion: rest at a steady size instead of breathing.
-    val pulse = if (reduceMotion) 1f else animatedPulse
+    // Ripples radiate while listening; a slow rotation drives the thinking ring.
+    val ripple by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2200, easing = LinearEasing)), label = "ripple")
+    val spin by t.animateFloat(0f, 360f, infiniteRepeatable(tween(1500, easing = LinearEasing)), label = "spin")
+
+    val basePulse = if (reduceMotion) 1f else animatedPulse
+    // Mic-reactive swell on top of the breathing pulse (listening only).
+    val pulse = if (reduceMotion || !listening) basePulse else basePulse + level * 0.16f
+
     Box(Modifier.fillMaxWidth().height(210.dp), contentAlignment = Alignment.Center) {
+        // Expanding ripple rings while listening.
+        if (listening && !reduceMotion) {
+            for (i in 0 until 3) {
+                val phase = (ripple + i / 3f) % 1f
+                Box(
+                    Modifier.size((150 + 120 * phase).dp).clip(CircleShape)
+                        .border(1.5.dp, core.copy(alpha = (1f - phase) * 0.35f), CircleShape),
+                )
+            }
+        }
         // Soft bloom halo behind the orb (mirrors the iOS radial glow).
         Box(
             Modifier.size(230.dp).scale(pulse)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            (if (listening) Cyan else Periwinkle).copy(alpha = 0.28f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
+                .background(Brush.radialGradient(listOf(core.copy(alpha = 0.28f), Color.Transparent))),
         )
+        // Rotating conic shimmer ring while the companion is thinking.
+        if (thinking && !reduceMotion) {
+            Canvas(Modifier.size(178.dp).graphicsLayer { rotationZ = spin }) {
+                drawCircle(
+                    brush = Brush.sweepGradient(listOf(Color.Transparent, core.copy(alpha = 0.1f), core, Color.Transparent)),
+                    radius = size.minDimension / 2f - 3.dp.toPx(),
+                    style = Stroke(width = 3.dp.toPx()),
+                )
+            }
+        }
+        // The orb core, with an inner specular highlight (top-left light source).
         Box(
             Modifier.size(150.dp).scale(pulse).clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color.White, if (listening) Cyan else Periwinkle, PeriwinkleDeep),
-                    ),
-                )
+                .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep)))
                 .clickable(onClickLabel = if (listening) "Stop listening" else "Talk to CereBro") { onTap() },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(56.dp).offset(x = (-24).dp, y = (-24).dp).clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.7f), Color.Transparent))),
+            )
+        }
     }
 }
