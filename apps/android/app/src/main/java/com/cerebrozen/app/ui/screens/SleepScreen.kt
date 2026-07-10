@@ -188,6 +188,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         if (nights.size >= 2) NightsChart(nights)
 
+        // Mix-your-own layered soundscape (rain + ocean + wind + drone).
+        NavRow("Mix your own soundscape", "Blend rain, ocean, wind & a soft drone") { onOpen("soundscape") }
+
         SleepSectionHeader("♫", "Sounds for sleep")
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },

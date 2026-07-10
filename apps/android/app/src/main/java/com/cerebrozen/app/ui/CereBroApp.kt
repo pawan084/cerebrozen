@@ -85,6 +85,7 @@ import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
+import com.cerebrozen.app.ui.screens.SoundscapeScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
@@ -257,6 +258,7 @@ fun CereBroApp() {
             composable("insights") { InsightsScreen(onBack = back) }
             composable("programs") { ProgramsScreen(onBack = back) }
             composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
+            composable("soundscape") { SoundscapeScreen(onBack = back) }
             composable("player") { PlayerScreen(onBack = back) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
