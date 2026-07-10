@@ -180,7 +180,13 @@ async def test_wind_down_content_kind(admin_client):
               "kind": "wind_down", "symbol": "wind"},
     )
     assert r.status_code == 201
+    item_id = r.json()["id"]
 
     r = await admin_client.get("/content", params={"kind": "wind_down"})
     assert r.status_code == 200
     assert any(c["title"] == "Slow the body first (test)" for c in r.json())
+
+    # Clean up: this can run against a live dev database — a leaked published
+    # row would ship to every client's catalogue.
+    r = await admin_client.delete(f"/admin/content/{item_id}")
+    assert r.status_code == 204
