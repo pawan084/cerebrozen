@@ -221,7 +221,11 @@ fun CereBroApp() {
                                 listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
                             ),
                         )
-                        .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(24.dp))
+                        .border(
+                            1.dp,
+                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.08f))),
+                            RoundedCornerShape(24.dp),
+                        )
                         .padding(horizontal = 9.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,

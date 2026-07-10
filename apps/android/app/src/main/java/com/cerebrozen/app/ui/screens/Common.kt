@@ -87,14 +87,20 @@ internal fun cardPadding() = when {
     else -> 18.dp
 }
 
-/** The shared "glass" surface treatment — a top-lit gradient fill, a hairline
- * border, and a soft lift — so cards read as raised panes on the dark ground
- * instead of the near-invisible 5%-white fill they were before. */
+/** The shared "frosted glass" surface treatment: a top-lit translucent fill that
+ * lets the aurora glow through, a soft lift, and a *bevelled* hairline — the border
+ * is a vertical gradient (bright at the top edge, fading down) so the pane catches
+ * light like a real bevelled edge rather than reading as a flat outline. Mirrors the
+ * iOS glass stroke (white 28%→5%). */
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
-    .shadow(14.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x40000000))
+    .shadow(18.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x5C000000))
     .clip(shape)
-    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.035f))))
-    .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
+    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.045f))))
+    .border(
+        1.dp,
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.32f), Color.White.copy(alpha = 0.06f))),
+        shape,
+    )
 
 /** True when the user has asked the system to minimise animations ("Remove
  * animations" / animator duration scale = 0) — the Android analogue of iOS's
