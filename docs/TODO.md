@@ -159,6 +159,43 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 - [ ] Proactive stress detection (ref Home card: Watch HRV → "start 2-min reset") —
   blocked on HealthKit capability/portal (owner) + needs the paired-Watch feature bet.
 
+Interactive-mock comparison round 2 (`ref/CereBro App.html` driven end-to-end in
+Playwright, 2026-07-09). Onboarding matches step-for-step where it matters; iOS is a
+deliberate superset (under-18 exit, signup step, 5 consent toggles + one-tap
+"Remember my patterns", "Private previews" chip intentionally dropped 07-04).
+Remaining iOS deltas the mock still wins on — CLOSED for iOS + web 2026-07-09
+(iOS: sim build green + 6 affected UITests passed; web: `next build` green):
+- [x] iOS Home quick-links grid (Games / Insights / Programs / Sounds) —
+  `QuickLinksGrid` on Home; Sounds opens a new `SoundLibraryView` (filter chips
+  over the served catalogue, offline fallback). Web: `.quick-grid` on /home.
+- [x] Weekly-insights teaser card on Home ("This week · See what changed ·
+  weekly insights" → Insights) — iOS NavRow + web teaser card (web shows an
+  honest last-7-days check-in count when data exists).
+- [x] State-tuned journal prompt — `JournalPrompts.tuned(toMood:)` reshapes the
+  Journal hero from today's check-in (tense/heavy/tired variants); same mapping
+  on web /journal via `GET /moods?limit=1`. Daily rotation stays the fallback.
+- [x] "Take a quick tour" row in You/account — clears only the tour-done flag
+  and returns to Home where the tour re-runs (nothing else touched).
+- [x] Motion accents from the mock's system: iOS `RadiatingRing` (streak
+  milestone halo) + occasional `sheen()` on the Premium upsell (distinct from
+  the continuous loading `shimmer()`), both Reduce-Motion-gated. Web: full cz*
+  keyframe port (13 keyframes + settle/spring easing tokens) in globals.css —
+  entrance staggers on all authed pages, selection pop, orb breathe, premium
+  sheen, streak ring, button press springs, one `prefers-reduced-motion` kill
+  switch.
+- [ ] Android parity for the new bits it lacks (insights teaser card,
+  state-tuned journal prompt, tour re-trigger row, ring/sheen accents) —
+  quick-grid it already has.
+- [ ] Splash consolidation nice-to-haves (review-2 deferrals, 2026-07-10):
+  OrbMark's three breathing circles vs `RadiatingRing` are two names for one
+  ring vocabulary; the Wordmark glint is a third shimmer implementation
+  (Shimmer/Sheen exist); the three splash TimelineViews could share one
+  30fps Canvas clock. All bounded to a 2.2s screen — polish, not debt debt.
+- [ ] Signed-out re-entry to auth now lives ONLY on Talk ("Sign in to talk
+  live") after the You sign-in CTA removal (product decision: login is part
+  of onboarding). If "Maybe later" ever leaves the signup step, delete this
+  note; if it stays, consider whether You should regain an entry point.
+
 ### Sleep tracking module — validated GO (2026-07-03), plan in [SLEEP_TRACKING.md](SLEEP_TRACKING.md)
 Ordered for delivery; framing rule everywhere: non-diagnostic "sleep awareness", no
 accuracy/staging claims (App Store 1.4.1 + 5.1.3, AASM position).
