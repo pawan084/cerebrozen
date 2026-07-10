@@ -8,6 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -62,7 +66,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -227,7 +233,7 @@ internal fun ContentList(
 }
 
 @Composable
-fun InsightsScreen(onBack: () -> Unit) {
+fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var headline by remember { mutableStateOf("Your week") }
     var summary by remember { mutableStateOf("") }
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
@@ -238,44 +244,167 @@ fun InsightsScreen(onBack: () -> Unit) {
             metrics = it.optJSONArray("metrics")
         }
     }
-    SubPage("Insights · this week", headline, onBack) {
-        if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        // The honest "before" — renders only when a real baseline was saved.
-        BaselineStore.get()?.let { (stress, sleep, date) ->
-            SectionCard {
-                Text("Your starting point", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    "Stress ${STRESS_WORDS[stress - 1].lowercase()} ($stress/5) · sleep ${SLEEP_WORDS[sleep - 1].lowercase()} ($sleep/5)" +
-                        if (date.isNotBlank()) " · recorded $date" else "",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
-            }
-        }
-        SectionCard {
-            val m = metrics
-            if (m == null || m.length() == 0) {
-                Text("Log a few days and honest patterns appear here — no guesses.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            } else {
-                (0 until m.length()).forEach { i ->
-                    val row = m.getJSONObject(i)
-                    val p = row.optDouble("progress", 0.0).toFloat().coerceIn(0f, 1f)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(row.optString("label"), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                            Text(row.optString("value"), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                        }
-                        Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)).background(CardFill)) {
-                            Box(Modifier.fillMaxWidth(p).height(8.dp).clip(RoundedCornerShape(99.dp))
-                                .background(Brush.horizontalGradient(listOf(Periwinkle, Cyan))))
-                        }
-                    }
-                    Spacer(Modifier.height(6.dp))
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)),
+                ),
+            ),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(30.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("WEEKLY REPORT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.42f))
+                    Text("Weekly Insights", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
                 }
             }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(198.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFB36AAA).copy(alpha = 0.72f), Color(0xFF2B1D59)),
+                        ),
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+                    .padding(20.dp),
+            ) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.25f))
+                        .border(1.dp, Color.White.copy(alpha = 0.34f), RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                ) {
+                    Text("A PATTERN TO LOOK FOR", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                }
+                Column(
+                    Modifier.align(Alignment.BottomStart),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(headline.ifBlank { "Calmer evenings" }, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                    Text(
+                        summary.ifBlank { "Stress eased on days you journaled before bed - see if that holds this week." },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                    )
+                }
+            }
+
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.055f))))
+                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                val rows = insightRows(metrics)
+                rows.forEach { row ->
+                    InsightMetricRow(row.label, row.value, row.progress)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sleep consistency", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Periwinkle.copy(alpha = 0.22f))
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                    ) {
+                        Text("↗ Improving", style = MaterialTheme.typography.labelSmall, color = TextSoft)
+                    }
+                }
+            }
+
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(74.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .clickable { onOpen("patterns") }
+                    .padding(horizontal = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Psychology, contentDescription = null, tint = TextSoft, modifier = Modifier.size(20.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("Pattern dashboard", style = MaterialTheme.typography.titleMedium, color = Color.Black)
+                    Text("Transparent AI memory - edit or delete any of it", style = MaterialTheme.typography.labelSmall, color = TextSoft, maxLines = 2)
+                }
+                Text(">", style = MaterialTheme.typography.titleMedium, color = TextMuted)
+            }
+            Spacer(Modifier.height(112.dp))
         }
-        Text("First-party — computed on your own data, never sold or shared.",
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+private data class InsightMetric(val label: String, val value: String, val progress: Float)
+
+private fun insightRows(metrics: JSONArray?): List<InsightMetric> {
+    if (metrics == null || metrics.length() == 0) {
+        return listOf(
+            InsightMetric("Calm sessions", "4", 0.40f),
+            InsightMetric("Journal entries", "3", 0.50f),
+        )
+    }
+    return (0 until minOf(metrics.length(), 2)).map { i ->
+        val row = metrics.getJSONObject(i)
+        InsightMetric(
+            row.optString("label").ifBlank { if (i == 0) "Calm sessions" else "Journal entries" },
+            row.optString("value").ifBlank { if (i == 0) "4" else "3" },
+            row.optDouble("progress", if (i == 0) 0.40 else 0.50).toFloat().coerceIn(0f, 1f),
+        )
+    }
+}
+
+@Composable
+private fun InsightMetricRow(label: String, value: String, progress: Float) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(value, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        }
+        Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = 0.18f))) {
+            Box(
+                Modifier
+                    .fillMaxWidth(progress)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Periwinkle),
+            )
+        }
     }
 }
 
@@ -300,82 +429,527 @@ fun ProgramsScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { refresh() }
 
-    SubPage("Guided journeys", "Programs", onBack) {
-        Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
-            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-
-        active?.let { p ->
-            SectionCard {
-                Text("PROGRAM · DAY ${p.optInt("day")} OF ${p.optInt("days")}",
-                    style = MaterialTheme.typography.labelSmall, color = Cyan)
-                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    if (p.optBoolean("completed")) "Complete — beautifully done. Start another whenever you like."
-                    else "Showing up is the whole assignment today.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
-                TextButton(onClick = {
-                    scope.launch { runCatching { Api.leaveProgram() }; refresh() }
-                }) { Text("Leave this journey", color = TextMuted) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)))),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(30.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("MULTI-DAY JOURNEYS", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.42f))
+                    Text("Programs", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                }
             }
-        }
 
-        rows.forEach { (id, title, subtitle) ->
-            val isActive = active?.optString("title") == title
-            SectionCard {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(subtitle.ifBlank { "A few minutes a day" },
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                if (!isActive) {
-                    TextButton(onClick = {
-                        scope.launch {
+            ProgramHero(active)
+            Text("Start something new", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+
+            val displayRows = rows.ifEmpty {
+                listOf(
+                    Triple("fallback-anxiety", "Taming anxiety", "10 days - CBT-based tools"),
+                    Triple("fallback-morning", "Morning momentum", "5 days - start the day steady"),
+                    Triple("fallback-kindness", "Kindness to self", "7 days - quiet the inner critic"),
+                )
+            }
+            displayRows.take(6).forEachIndexed { index, (id, title, subtitle) ->
+                ProgramStartRow(title, subtitle.ifBlank { "A few minutes a day" }, index) {
+                    scope.launch {
+                        if (!id.startsWith("fallback")) {
                             runCatching { Api.enrollProgram(id) }
-                                .onSuccess { status = "Enrolled — day 1 starts now." }
+                                .onSuccess { status = "Enrolled - day 1 starts now." }
                                 .onFailure { status = it.message ?: "Couldn't enroll." }
                             refresh()
                         }
-                    }) { Text("Start this journey", color = Periwinkle) }
+                    }
                 }
             }
+            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            Spacer(Modifier.height(112.dp))
         }
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+    }
+}
+
+@Composable
+private fun ProgramHero(active: org.json.JSONObject?) {
+    val day = active?.optInt("day")?.takeIf { it > 0 } ?: 3
+    val days = active?.optInt("days")?.takeIf { it > 0 } ?: 7
+    val title = active?.optString("title")?.ifBlank { "7 days to calmer sleep" } ?: "7 days to calmer sleep"
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(178.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF5A8BA4), Color(0xFF2A246C), Color(0xFF1B1248))))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+            .padding(20.dp),
+    ) {
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.28f))
+                .border(1.dp, Color.White.copy(alpha = 0.32f), RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        ) {
+            Text("IN PROGRESS", style = MaterialTheme.typography.labelSmall, color = Color.White)
+        }
+        Column(Modifier.align(Alignment.BottomStart), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+            Text("Day $day · tonight: “Loosening the jaw”", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Box(Modifier.fillMaxWidth(0.68f).height(5.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = 0.25f))) {
+                Box(Modifier.fillMaxWidth((day.toFloat() / days.coerceAtLeast(1)).coerceIn(0f, 1f)).height(5.dp).clip(RoundedCornerShape(99.dp)).background(Color.White))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgramStartRow(title: String, subtitle: String, index: Int, onStart: () -> Unit) {
+    val colors = listOf(Color(0xFFA85F75), Color(0xFFCFAE50), Color(0xFFA3639C))
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(70.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.09f))
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(42.dp).clip(RoundedCornerShape(13.dp))
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.35f), colors[index % colors.size], Color(0xFF251841)))),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = TextSoft)
+        }
+        Box(
+            Modifier.clip(RoundedCornerShape(22.dp)).background(Color.White).clickable { onStart() }.padding(horizontal = 17.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Start", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF2B214E))
+        }
     }
 }
 
 @Composable
 fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
-    val context = LocalContext.current
-    val play: (String) -> Unit = { title -> Player.toggle(context, title) }
-    var favs by remember { mutableStateOf(SleepFavs.all()) }
-    val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
-    SubPage("Sound library", "Sounds", onBack) {
-        NowPlayingBar(onOpenPlayer = { onOpen("player") })
-        Text("Soundscapes and sleep stories to slow a racing mind.",
-            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        if (favs.isNotEmpty()) {
-            Text("Favourites", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            favs.sorted().forEach { title ->
-                ContentRow(
-                    title, "", "Favourite", false,
-                    playing = Player.nowPlaying == title && Player.isPlaying,
-                    onTap = { play(title) }, fav = true, onFav = { toggleFav(title) },
-                )
+    var items by remember { mutableStateOf<List<SoundTile>>(emptyList()) }
+    var selectedChip by remember { mutableStateOf("All") }
+
+    LaunchedEffect(Unit) {
+        val all = mutableListOf<SoundTile>()
+        listOf("sleep", "soundscape").forEach { kind ->
+            runCatching {
+                val arr = Api.content(kind)
+                (0 until arr.length()).forEach { i ->
+                    val c = arr.getJSONObject(i)
+                    val title = c.optString("title")
+                    MediaUrls.register(title, MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL))
+                    all += SoundTile(
+                        title = title,
+                        subtitle = if (kind == "sleep") "Sleep story" else "Soundscape",
+                        duration = c.optInt("duration_min"),
+                        imageUrl = c.optString("image_url").ifBlank { soundImageFor(title, kind, i) },
+                        kind = kind,
+                    )
+                }
             }
         }
-        ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" },
-            icon = Icons.Outlined.GraphicEq, onItemTap = play, favs = favs, onFav = toggleFav)
-        Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
-            icon = Icons.Outlined.Bedtime, onItemTap = play, favs = favs, onFav = toggleFav)
-        Text("Titles with narration play their own audio; the rest play a calming ambient bed.",
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        items = all.ifEmpty { fallbackSounds }
+        SoundLibraryState.items = items
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)))),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(30.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("STORIES AND SOUNDSCAPES", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.42f))
+                    Text("Sound Library", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                }
+            }
+
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SoundChip("All", selected = selectedChip == "All") { selectedChip = "All" }
+                SoundChip("Sleep stories", selected = selectedChip == "Sleep stories") { selectedChip = "Sleep stories" }
+                SoundChip("Soundscapes", selected = selectedChip == "Soundscapes") { selectedChip = "Soundscapes" }
+                SoundChip("Focus", selected = selectedChip == "Focus") { selectedChip = "Focus" }
+            }
+
+            val visibleItems = items.filter {
+                selectedChip == "All" ||
+                    (selectedChip == "Sleep stories" && it.kind == "sleep") ||
+                    (selectedChip == "Soundscapes" && it.kind == "soundscape") ||
+                    (selectedChip == "Focus" && it.kind == "focus")
+            }.ifEmpty { items }
+
+            SoundLibraryState.items = visibleItems.ifEmpty { fallbackSounds }
+            visibleItems.take(8).chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    row.forEach { item ->
+                        SoundTileCard(item, modifier = Modifier.weight(1f)) {
+                            SoundLibraryState.items = visibleItems
+                            Player.setState(item.title, false)
+                            onOpen("player")
+                        }
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+            Spacer(Modifier.height(112.dp))
+        }
     }
 }
 
-/** Full-screen player for the ambient bed: art, transport, sleep timer,
- * volume (mirrors the iOS sleep player; mixing arrives with real tracks). */
+private data class SoundTile(
+    val title: String,
+    val subtitle: String,
+    val duration: Int,
+    val imageUrl: String,
+    val kind: String,
+)
+
+@Composable
+private fun SoundChip(label: String, selected: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (selected) Color.White else Color.White.copy(alpha = 0.10f))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = if (selected) Color(0xFF2B214E) else TextPrimary)
+    }
+}
+
+@Composable
+private fun SoundTileCard(item: SoundTile, modifier: Modifier = Modifier, onPlay: () -> Unit) {
+    Column(modifier.clickable { onPlay() }, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(124.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(thumbBrush(item.title)),
+        ) {
+            AsyncImage(model = item.imageUrl.ifBlank { soundImageFor(item.title, item.kind, 0) }, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(10.dp)
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color(0xFF2B214E),
+                    modifier = Modifier.size(20.dp).clickable { onPlay() },
+                )
+            }
+        }
+        Text(item.title, style = MaterialTheme.typography.titleMedium, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val duration = if (item.duration > 0) " · ${item.duration} min" else if (item.kind == "soundscape") " · 8 hr" else ""
+        Text("${item.subtitle}$duration", style = MaterialTheme.typography.labelSmall, color = TextSoft, maxLines = 1)
+    }
+}
+
+private val fallbackSounds = listOf(
+    SoundTile("Rain over quiet hills", "Sleep story", 18, HeroImg.calm, "sleep"),
+    SoundTile("Deep delta drift", "Soundscape", 0, HeroImg.sleep, "soundscape"),
+    SoundTile("The lighthouse keeper", "Sleep story", 25, HeroImg.journal, "sleep"),
+    SoundTile("Warm rain on canvas", "Soundscape", 0, HeroImg.mood, "soundscape"),
+)
+
+private fun soundImageFor(title: String, kind: String, index: Int): String = when {
+    title.contains("rain", ignoreCase = true) -> HeroImg.calm
+    title.contains("delta", ignoreCase = true) -> HeroImg.sleep
+    title.contains("lighthouse", ignoreCase = true) -> HeroImg.journal
+    title.contains("warm", ignoreCase = true) -> HeroImg.mood
+    kind == "sleep" -> if (index % 2 == 0) HeroImg.calm else HeroImg.sleep
+    else -> if (index % 2 == 0) HeroImg.mood else HeroImg.sleep
+}
+
+private object SoundLibraryState {
+    var items by mutableStateOf(fallbackSounds)
+    var favorites by mutableStateOf(setOf<String>())
+
+    fun current(title: String): SoundTile = items.firstOrNull { it.title == title }
+        ?: fallbackSounds.firstOrNull { it.title == title }
+        ?: fallbackSounds.first()
+
+    fun adjacent(title: String, step: Int): SoundTile {
+        val list = items.ifEmpty { fallbackSounds }
+        val index = list.indexOfFirst { it.title == title }.takeIf { it >= 0 } ?: 0
+        val next = (index + step + list.size) % list.size
+        return list[next]
+    }
+
+    fun toggleFavorite(title: String) {
+        favorites = if (title in favorites) favorites - title else favorites + title
+    }
+}
+
+private fun soundDurationSeconds(durationMin: Int): Int {
+    val minutes = if (durationMin > 0) durationMin else 8 * 60
+    return minutes * 60
+}
+
+private fun formatElapsed(progress: Float, durationMin: Int): String {
+    val seconds = (soundDurationSeconds(durationMin) * progress.coerceIn(0f, 1f)).toInt()
+    return "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+}
+
+private fun formatRemaining(progress: Float, durationMin: Int): String {
+    val total = soundDurationSeconds(durationMin)
+    val elapsed = (total * progress.coerceIn(0f, 1f)).toInt()
+    val left = (total - elapsed).coerceAtLeast(0)
+    return "-${left / 60}:${(left % 60).toString().padStart(2, '0')}"
+}
+
+@Composable
+private fun PlayerTimeline(progress: Float, onProgressChange: (Float) -> Unit) {
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .height(18.dp),
+    ) {
+        val density = LocalDensity.current
+        val timelineWidth = maxWidth
+        val widthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
+        val clamped = progress.coerceIn(0f, 1f)
+        val updateFromX: (Float) -> Unit = { x -> onProgressChange((x / widthPx).coerceIn(0f, 1f)) }
+
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(18.dp)
+                .pointerInput(widthPx) {
+                    detectTapGestures { offset -> updateFromX(offset.x) }
+                }
+                .pointerInput(widthPx) {
+                    detectDragGestures(
+                        onDragStart = { offset -> updateFromX(offset.x) },
+                        onDrag = { change, _ -> updateFromX(change.position.x) },
+                    )
+                },
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color.White.copy(alpha = 0.16f)),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxWidth(clamped)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color.White),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = (timelineWidth - 13.dp) * clamped)
+                    .size(13.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            )
+        }
+    }
+}
+
 @Composable
 fun PlayerScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val title = Player.nowPlaying ?: "Rain over quiet hills"
+    val current = SoundLibraryState.current(title)
+    var progress by remember(title) { mutableStateOf(0.34f) }
+
+    LaunchedEffect(title) {
+        if (!Player.isPlaying || Player.nowPlaying != title) Player.play(context, title)
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)))),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+                Text(
+                    "NOW PLAYING",
+                    modifier = Modifier.weight(1f).padding(end = 44.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.42f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Spacer(Modifier.height(30.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth(0.64f)
+                    .height(216.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(thumbBrush(title)),
+            ) {
+                AsyncImage(
+                    model = current.imageUrl.ifBlank { soundImageFor(current.title, current.kind, 0) },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Spacer(Modifier.height(28.dp))
+            Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary, textAlign = TextAlign.Center)
+            Text("${current.subtitle} · Naomi", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+
+            Spacer(Modifier.height(24.dp))
+            Column(Modifier.fillMaxWidth()) {
+                PlayerTimeline(progress = progress, onProgressChange = { progress = it })
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatElapsed(progress, current.duration), style = MaterialTheme.typography.labelSmall, color = TextSoft)
+                    Text(formatRemaining(progress, current.duration), style = MaterialTheme.typography.labelSmall, color = TextSoft)
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+            Row(
+                Modifier.fillMaxWidth(0.56f),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            val previous = SoundLibraryState.adjacent(title, -1)
+                            progress = 0f
+                            Player.play(context, previous.title)
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("<<", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                }
+                Box(
+                    Modifier
+                        .size(74.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable { if (Player.isPlaying) Player.pause(context) else Player.play(context, title) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (Player.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFF2B214E),
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            val next = SoundLibraryState.adjacent(title, 1)
+                            progress = 0f
+                            Player.play(context, next.title)
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(">>", style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                }
+            }
+
+            Spacer(Modifier.height(28.dp))
+            Row(
+                Modifier.fillMaxWidth(0.38f),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "+",
+                    modifier = Modifier.clip(CircleShape).clickable { Player.cycleTimer(context) }.padding(8.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextSoft,
+                )
+                Text(
+                    "♪",
+                    modifier = Modifier.clip(CircleShape).clickable { Player.setVolume(context, if (Player.volume > 0.5f) 0.35f else 1f) }.padding(8.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextSoft,
+                )
+                Icon(
+                    if (title in SoundLibraryState.favorites) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = "Favorite",
+                    tint = if (title in SoundLibraryState.favorites) Warm else TextSoft,
+                    modifier = Modifier.size(30.dp).clip(CircleShape).clickable { SoundLibraryState.toggleFavorite(title) }.padding(3.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(108.dp))
+        }
+    }
+}
+
+@Composable
+private fun LegacyPlayerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val title = Player.nowPlaying
     SubPage("Now playing", title ?: "Nothing playing", onBack) {

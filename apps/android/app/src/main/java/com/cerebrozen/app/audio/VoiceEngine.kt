@@ -33,6 +33,7 @@ class VoiceEngine(context: Context) {
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
     private var onFinal: ((String) -> Unit)? = null
+    private var onSpeechDone: (() -> Unit)? = null
 
     init {
         tts = TextToSpeech(appContext) { status ->
@@ -40,8 +41,16 @@ class VoiceEngine(context: Context) {
         }
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) { speaking = true }
-            override fun onDone(id: String?) { speaking = false }
-            @Deprecated("deprecated in API 21") override fun onError(id: String?) { speaking = false }
+            override fun onDone(id: String?) {
+                speaking = false
+                onSpeechDone?.invoke()
+                onSpeechDone = null
+            }
+            @Deprecated("deprecated in API 21") override fun onError(id: String?) {
+                speaking = false
+                onSpeechDone?.invoke()
+                onSpeechDone = null
+            }
         })
     }
 
@@ -67,8 +76,9 @@ class VoiceEngine(context: Context) {
         listening = false
     }
 
-    fun speak(text: String) {
+    fun speak(text: String, onDone: () -> Unit = {}) {
         if (text.isBlank()) return
+        onSpeechDone = onDone
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "reply")
     }
 

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.GraphicEq
@@ -206,49 +207,21 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f))
             }
 
-            StressAlertCard(onOpen = { onOpen("tools") })
+            StressAlertCard(onOpen = { onOpen("breathing") })
             CheckInHeroCard(
                 busy = busy,
                 status = status,
-                onClick = {
-                    val mood = picked ?: MOODS.first()
-                    busy = true
-                    status = null
-                    scope.launch {
-                        try {
-                            Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            status = "Checked in - noted gently."
-                            picked = null
-                            reload()
-                        } catch (e: Exception) {
-                            status = e.message ?: "Couldn't check in."
-                        } finally {
-                            busy = false
-                        }
-                    }
-                },
+                onClick = { onOpen("howyoufeel") },
             )
             StreakPreviewCard(streak = streak, best = best, week = week)
             InsightSummaryCard(onOpen = { onOpen("insights") })
             PlanSummaryCard(plan = plan, onOpen = { onOpen("plan") })
             ProgramSummaryCard(program = program, onOpen = { onOpen("programs") })
             ContentRail(onOpen)
-            NavRow("Check how you feel", "Personalize your next best action") { onOpen("home") }
-            NavRow("Tools", "Small resets & reframes - 2 minutes each") { onOpen("tools") }
-            if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < 12) {
-                NavRow("How did you sleep?", "A 20-second sleep check-in") { onOpen("sleep") }
-            }
+            HomeActionCard("♡", "Check how you feel", "Personalize your next best action") { onOpen("howyoufeel") }
+            HomeActionCard("☾", "How did you sleep?", "A 20-second morning check-in") { onOpen("morningcheckin") }
             if (moodCount >= 3 && BaselineStore.get() == null) {
                 NavRow("Your starting point", "Two quick scales - see real change later") { onOpen("baseline") }
-            }
-            if (recent.isNotEmpty()) {
-                Card {
-                    Text("Recent check-ins", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    recent.forEach { line ->
-                        Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    }
-                }
             }
             Spacer(Modifier.height(16.dp))
         }
@@ -365,27 +338,198 @@ private fun CheckInHeroCard(busy: Boolean, status: String?, onClick: () -> Unit)
 }
 
 @Composable
-private fun StreakPreviewCard(streak: Int, best: Int, week: List<Pair<String, Boolean>>) {
+fun HowYouFeelScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+    var picked by remember { mutableStateOf<MoodOption?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF6657AA), Color(0xFF2B1E5C), Color(0xFF120820)))),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = pageHorizontalPadding(), vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)).clickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(30.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text("MOOD, INTENSITY AND TRIGGER", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.42f))
+                    Text("How you feel", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                }
+            }
+
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFFA89D8B), Color(0xFF238487))))
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFD2A07C)), contentAlignment = Alignment.Center) {
+                    Text("♥", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                }
+                Text(
+                    "Name how you feel — we'll shape\nyour next step.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            MOODS.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { mood ->
+                        MoodChoiceCard(
+                            mood = mood,
+                            selected = picked?.name == mood.name,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            picked = mood
+                            status = null
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    }
+                }
+            }
+
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.085f))
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("Next best action", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(
+                    if (picked == null) "Pick how you feel and I'll suggest a gentle\nnext step."
+                    else "${picked!!.name}: start with a gentle support step.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                )
+                status?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = TextMuted) }
+            }
+
+            Spacer(Modifier.height(1.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(if (picked == null) Color.White.copy(alpha = 0.58f) else Color.White)
+                    .clickable(enabled = picked != null && !busy) {
+                        val mood = picked ?: return@clickable
+                        busy = true
+                        scope.launch {
+                            runCatching { Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity) }
+                                .onSuccess {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onOpen("talk")
+                                }
+                                .onFailure { status = it.message ?: "Couldn't check in." }
+                            busy = false
+                        }
+                    },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("♩", style = MaterialTheme.typography.titleMedium, color = Color(0xFF2B214E))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    if (busy) "One moment..." else "Start gentle support",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF2B214E),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(112.dp))
+        }
+    }
+}
+
+@Composable
+private fun MoodChoiceCard(mood: MoodOption, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
     Column(
+        modifier
+            .height(120.dp)
+            .clip(shape)
+            .background(
+                if (selected) Brush.linearGradient(listOf(Color.White.copy(alpha = 0.20f), Color(0xFF4C75A1).copy(alpha = 0.28f)))
+                else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.05f))),
+            )
+            .border(1.dp, if (selected) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.10f), shape)
+            .clickable { onClick() }
+            .padding(18.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(moodIcon(mood.name), style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(mood.name, style = MaterialTheme.typography.headlineSmall, color = Color.Black)
+            Text(mood.note, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        }
+    }
+}
+
+private fun moodIcon(name: String): String = when (name) {
+    "Good" -> "✦"
+    "Anxious" -> "△"
+    "Low" -> "☾"
+    else -> "●"
+}
+
+@Composable
+private fun StreakPreviewCard(streak: Int, best: Int, week: List<Pair<String, Boolean>>) {
+    val activeDays = if (week.isNotEmpty()) week.map { it.second }.takeLast(7) else listOf(false, false, false, false, true, true, true)
+    val days = listOf("S", "S", "M", "T", "W", "T", "F")
+    Row(
         Modifier
             .fillMaxWidth()
+            .height(92.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.10f))
-            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
-            .padding(17.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.13f), Color(0xFF5C75A4).copy(alpha = 0.34f))))
+            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(if (streak > 0) "$streak-day streak" else "3-day streak", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        Text(
-            if (best > 0) "Best: $best days - show up once a day, no pressure." else "3-day milestone - beautifully done",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            if (week.isNotEmpty()) {
-                week.forEach { (_, active) -> StreakDot(active) }
-            } else {
-                repeat(7) { StreakDot(it in 4..6) }
+        Box(Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFE2D7FF)), contentAlignment = Alignment.Center) {
+            Text("◒", style = MaterialTheme.typography.headlineSmall, color = Color(0xFF2B214E))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(if (streak > 0) "$streak-day streak" else "3-day streak", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+            Text(
+                if (best > 0) "Best: $best days —\nbeautifully done" else "3-day milestone —\nbeautifully done",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Periwinkle,
+                maxLines = 2,
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                activeDays.take(7).forEach { active -> StreakDot(active) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                days.forEach { day ->
+                    Text(day, style = MaterialTheme.typography.labelSmall, color = TextPrimary, textAlign = TextAlign.Center)
+                }
             }
         }
     }
@@ -400,6 +544,38 @@ private fun StreakDot(active: Boolean) {
             .background(if (active) Periwinkle else Color.Transparent)
             .border(1.dp, if (active) Periwinkle else Color.White.copy(alpha = 0.30f), CircleShape),
     )
+}
+
+@Composable
+private fun HomeActionCard(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.11f), Color.White.copy(alpha = 0.055f))))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Periwinkle.copy(alpha = 0.34f))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(icon, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted, maxLines = 1)
+        }
+        Text(">", style = MaterialTheme.typography.headlineSmall, color = TextMuted)
+    }
 }
 
 @Composable
@@ -431,8 +607,7 @@ private fun InsightSummaryCard(onOpen: () -> Unit) {
 
 @Composable
 private fun PlanSummaryCard(plan: JSONObject?, onOpen: () -> Unit) {
-    val title = plan?.optString("title")?.ifBlank { "Today's plan" } ?: "Today's plan"
-    val focus = plan?.optString("focus")?.ifBlank { "Ease the tension" } ?: "Ease the tension"
+    val focus = plan?.optString("focus")?.ifBlank { "Keep the calm" } ?: "Keep the calm"
     Column(
         Modifier
             .fillMaxWidth()
@@ -444,18 +619,18 @@ private fun PlanSummaryCard(plan: JSONObject?, onOpen: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("$title - $focus".uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.44f))
+            Text("TODAY'S PLAN · ${focus.uppercase()}", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.44f))
             Text(">", style = MaterialTheme.typography.titleMedium, color = TextMuted)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             StepBubble("1", active = true)
-            Text("Breathe", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text("Gratitude", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
             Text("-", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             StepBubble("", active = false)
-            Text("Ground", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextSoft)
+            Text("Pause", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextSoft)
             Text("-", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             StepBubble("", active = false)
-            Text("Sleep", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextSoft)
+            Text("Wind\ndown", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextSoft, maxLines = 2)
         }
     }
 }
@@ -494,6 +669,7 @@ private fun ProgramSummaryCard(program: JSONObject?, onOpen: () -> Unit) {
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
+                .clickable { onOpen() }
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

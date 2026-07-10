@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -35,6 +37,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.cerebro.app.net.Analytics
 import com.cerebro.app.net.Api
 import com.cerebro.app.net.Session
@@ -48,6 +52,30 @@ import com.cerebro.app.ui.theme.TextSoft
 import com.cerebro.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+
+private fun requestScreenLock(activity: FragmentActivity?, onResult: (Boolean) -> Unit) {
+    if (activity == null) { onResult(true); return }
+    val auths = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    if (BiometricManager.from(activity).canAuthenticate(auths) != BiometricManager.BIOMETRIC_SUCCESS) {
+        onResult(true)
+        return
+    }
+    BiometricPrompt(
+        activity,
+        ContextCompat.getMainExecutor(activity),
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onResult(true)
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onResult(false)
+        },
+    ).authenticate(
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Confirm screen lock")
+            .setSubtitle("Use your phone PIN, password, pattern, or biometrics")
+            .setAllowedAuthenticators(auths)
+            .build(),
+    )
+}
 
 // Consent keys + localized labels/hints live in ConsentNotice.kt
 // (CONSENT_KEY_ORDER — the DPDP notice contract shared with iOS/web).
@@ -81,7 +109,7 @@ internal fun NavRow(
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
-            Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
+            Text(">", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
         }
     }
 }
@@ -157,6 +185,7 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
 fun PrivacyScreen(onBack: () -> Unit) {
     val consent = remember { mutableStateMapOf<String, Boolean>() }
     val scope = rememberCoroutineScope()
+    val activity = LocalContext.current as? FragmentActivity
     // DPDP s.5(3): the consent notice is readable in English or an
     // Eighth-Schedule language, picked right on the notice (ConsentNotice.kt).
     var noticeLang by remember { mutableStateOf("en") }
@@ -201,12 +230,17 @@ fun PrivacyScreen(onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Lock journal", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text("Require your screen lock to open entries",
+                    Text(if (lockOn) "Unlock journal" else "Lock journal", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Text(if (lockOn) "Turn off PIN/password protection" else "Require phone PIN, password, pattern, or biometrics",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
                 Switch(checked = lockOn, onCheckedChange = { v ->
-                    lockOn = v; Session.prefPut("journal_locked", v.toString())
+                    requestScreenLock(activity) { ok ->
+                        if (ok) {
+                            lockOn = v
+                            Session.prefPut("journal_locked", v.toString())
+                        }
+                    }
                 })
             }
         }

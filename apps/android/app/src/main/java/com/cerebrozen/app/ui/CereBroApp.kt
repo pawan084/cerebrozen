@@ -59,6 +59,7 @@ import com.cerebro.app.ui.screens.AccountDeletionScreen
 import com.cerebro.app.ui.screens.BaselineScreen
 import com.cerebro.app.ui.screens.BubblePopScreen
 import com.cerebro.app.ui.screens.BubbleWrapScreen
+import com.cerebro.app.ui.screens.BreathingScreen
 import com.cerebro.app.ui.screens.CbtReframeScreen
 import com.cerebro.app.ui.screens.CompanionStyleScreen
 import com.cerebro.app.ui.screens.CrisisRegionScreen
@@ -67,10 +68,12 @@ import com.cerebro.app.ui.screens.DataExportScreen
 import com.cerebro.app.ui.screens.GamesScreen
 import com.cerebro.app.ui.screens.GratitudeGardenScreen
 import com.cerebro.app.ui.screens.HumanSupportScreen
+import com.cerebro.app.ui.screens.HowYouFeelScreen
 import com.cerebro.app.ui.screens.InsightsScreen
 import com.cerebro.app.ui.screens.JournalScreen
 import com.cerebro.app.ui.screens.IntentionScreen
 import com.cerebro.app.ui.screens.MemoryMatchScreen
+import com.cerebro.app.ui.screens.MorningCheckInScreen
 import com.cerebro.app.ui.screens.Onboarding
 import com.cerebro.app.ui.screens.OneGoodThingScreen
 import com.cerebro.app.ui.screens.PatternGlowScreen
@@ -179,52 +182,55 @@ fun CereBroApp() {
     val current = backStack?.destination?.route ?: Tab.Home.route
     val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
+    var hideBottomBar by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color(0xFF0B061E).copy(alpha = 0.96f)),
-                        ),
-                    )
-                    .navigationBarsPadding()
-                    .padding(horizontal = 13.dp, vertical = 4.dp),
-            ) {
-                Row(
+            if (!hideBottomBar) {
+                Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(if (compactNav) 72.dp else 78.dp)
-                        .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
-                        .clip(RoundedCornerShape(24.dp))
                         .background(
                             Brush.verticalGradient(
-                                listOf(Color(0xFF504184).copy(alpha = 0.96f), Color(0xFF292052).copy(alpha = 0.98f)),
+                                listOf(Color.Transparent, Color(0xFF0B061E).copy(alpha = 0.96f)),
                             ),
                         )
-                        .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(24.dp))
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .navigationBarsPadding()
+                        .padding(horizontal = 13.dp, vertical = 4.dp),
                 ) {
-                    Tab.entries.forEach { tab ->
-                        BottomTabItem(
-                            tab = tab,
-                            selected = current == tab.route,
-                            compact = compactNav,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                        )
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(if (compactNav) 72.dp else 78.dp)
+                            .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF504184).copy(alpha = 0.96f), Color(0xFF292052).copy(alpha = 0.98f)),
+                                ),
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(24.dp))
+                            .padding(horizontal = 9.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Tab.entries.forEach { tab ->
+                            BottomTabItem(
+                                tab = tab,
+                                selected = current == tab.route,
+                                compact = compactNav,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    navController.navigate(tab.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -245,16 +251,18 @@ fun CereBroApp() {
             val open: (String) -> Unit = { route -> navController.navigate(route) }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
-            composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
-            composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
+            composable(Tab.Sleep.route) { SleepScreen(onOpen = open, onBack = back) }
+            composable(Tab.Talk.route) { TalkScreen(onOpen = open, onVoiceSessionChange = { hideBottomBar = it }) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
-            composable("insights") { InsightsScreen(onBack = back) }
+            composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
             composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
             composable("player") { PlayerScreen(onBack = back) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
+            composable("howyoufeel") { HowYouFeelScreen(onBack = back, onOpen = open) }
+            composable("morningcheckin") { MorningCheckInScreen(onBack = back, onOpen = open) }
             composable("patterns") { PatternScreen(onBack = back) }
             composable("games") { GamesScreen(onOpen = open, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
@@ -265,6 +273,7 @@ fun CereBroApp() {
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }
             composable("tools") { ToolsScreen(onOpen = open, onBack = back) }
+            composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
             composable("intention") { IntentionScreen(onBack = back) }
