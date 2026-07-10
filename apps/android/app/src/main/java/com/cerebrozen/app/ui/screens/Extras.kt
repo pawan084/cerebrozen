@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -157,10 +158,13 @@ internal fun ContentRow(
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -546,8 +550,22 @@ fun BubblePopScreen(onBack: () -> Unit) {
         }
     }
     SubPage("A tiny reset", "Bubble pop", onBack) {
-        Text("Pop them slowly — no rush, no score to chase. Popped: $score",
+        Text("Pop them slowly — no rush, no score to chase.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // A quiet score panel + reset — a gentle sense of progress, easily cleared.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("POPPED", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text("$score", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+            }
+            TextButton(onClick = { bubbles = emptyList(); score = 0 }) {
+                Text("Reset", color = Cyan)
+            }
+        }
         BoxWithConstraints(
             Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(20.dp))
                 .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
@@ -558,6 +576,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
                 Box(
                     Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
                         .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
+                        .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                         .clickable {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
