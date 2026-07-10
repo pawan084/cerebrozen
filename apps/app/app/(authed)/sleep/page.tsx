@@ -54,7 +54,7 @@ export default function Sleep() {
     <>
       <AppHeader eyebrow="Sleep" title="Ease toward rest" />
       <div className="page-body">
-        <section className="media-hero" style={{ background: "linear-gradient(120deg,rgba(90,40,80,0.6),rgba(20,16,44,0.4)), radial-gradient(circle at 82% 20%, rgba(143,230,238,0.25), transparent 40%), var(--night)" }}>
+        <section className="media-hero cz-in" style={{ background: "linear-gradient(120deg,rgba(90,40,80,0.6),rgba(20,16,44,0.4)), radial-gradient(circle at 82% 20%, rgba(143,230,238,0.25), transparent 40%), var(--night)" }}>
           <div className="hero-orb" aria-hidden="true" />
           <p className="eyebrow">Tonight's wind-down</p>
           <h2>Drift off to a quieter mind</h2>
@@ -62,7 +62,7 @@ export default function Sleep() {
         </section>
 
         <div className="sec-head"><h2 className="serif-h">Soundscapes</h2></div>
-        <div className="media-grid">
+        <div className="media-grid cz-in cz-d1">
           {soundscapes.map((s, i) => (
             <div key={s.id} className="media-card" style={{ background: SOUND_BG[i % SOUND_BG.length] }}>
               <span />
@@ -73,7 +73,7 @@ export default function Sleep() {
 
         <div className="sec-head"><h2 className="serif-h">Sleep stories</h2></div>
         {stories.map((s, i) => (
-          <div key={s.id}>
+          <div key={s.id} className={`cz-in cz-d${Math.min(i + 2, 6)}`}>
             <div className="story-row">
               <span className="story-thumb" style={{ background: STORY_BG[i % STORY_BG.length] }} />
               <span className="body"><strong>{s.title}</strong><small>{s.subtitle}</small></span>
@@ -93,7 +93,7 @@ export default function Sleep() {
         <p className="footnote">Served from the same catalogue as the apps. Stories with narration play right here; the soundscape mixer lives in the iOS &amp; Android apps.</p>
 
         <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
-        <form className="card-dark" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">
+        <form className="card-dark cz-in cz-d3" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">
           <p className="sub" style={{ color: "var(--muted)", marginBottom: 12 }}>How rested do you feel?</p>
           <div className="quality-row" role="radiogroup" aria-label="Sleep quality">
             {QUALITY.map((w, i) => (

@@ -52,7 +52,7 @@ export default function PlanPage() {
 
       {plan && (
         <>
-          <section className="card">
+          <section className="card cz-in">
             <h2>Why this plan</h2>
             <p className="sub">{plan.rationale || `Built around ${plan.focus || "your goals"}.`}</p>
             <p className="footnote">
@@ -60,7 +60,7 @@ export default function PlanPage() {
             </p>
           </section>
 
-          <section className="card" aria-label="Steps">
+          <section className="card cz-in cz-d1" aria-label="Steps">
             {plan.steps
               .slice()
               .sort((a, b) => a.order - b.order)

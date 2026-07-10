@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { API_URL } from "@/lib/api";
 
 // Public catalogue (no auth required) — the same /content the iOS rails read.
@@ -30,9 +32,25 @@ const KIND_LABELS: Record<string, string> = {
   program: "Programs",
 };
 
-export default function Library() {
+// Deep-link filters (?kind=…, e.g. Home's Sounds tile). "sounds" is a composite —
+// no single catalogue kind covers it — and any single kind passes through as-is.
+const COMPOSITE_KINDS: Record<string, string[]> = {
+  sounds: ["sleep", "soundscape"],
+};
+
+function LibraryCatalogue() {
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState("");
+  const kindParam = useSearchParams().get("kind");
+  // Object.hasOwn: a crafted ?kind=constructor would otherwise resolve
+  // prototype members and crash the render on filter.includes().
+  const filter = kindParam
+    ? Object.hasOwn(COMPOSITE_KINDS, kindParam)
+      ? COMPOSITE_KINDS[kindParam]
+      : Object.hasOwn(KIND_LABELS, kindParam)
+        ? [kindParam]
+        : undefined
+    : undefined;
 
   useEffect(() => {
     fetch(`${API_URL}/content`)
@@ -41,7 +59,7 @@ export default function Library() {
       .catch(() => setError("Couldn't load the library."));
   }, []);
 
-  const kinds = Object.keys(KIND_LABELS).filter((k) => items.some((i) => i.kind === k));
+  const kinds = Object.keys(KIND_LABELS).filter((k) => (!filter || filter.includes(k)) && items.some((i) => i.kind === k));
 
   return (
     <>
@@ -49,8 +67,13 @@ export default function Library() {
       <p className="eyebrow">The living catalogue — served, not hardcoded</p>
       <h1>Library</h1>
       {error && <p className="error">{error}</p>}
-      {kinds.map((kind) => (
-        <section className="card" key={kind} aria-label={KIND_LABELS[kind]}>
+      {filter && (
+        <p className="footnote">
+          A filtered view · <Link href="/library" className="link">browse the full library</Link>
+        </p>
+      )}
+      {kinds.map((kind, i) => (
+        <section className={`card cz-in cz-d${Math.min(i + 1, 6)}`} key={kind} aria-label={KIND_LABELS[kind]}>
           <h2>{KIND_LABELS[kind]}</h2>
           {items
             .filter((i) => i.kind === kind)
@@ -82,5 +105,14 @@ export default function Library() {
       </p>
       </div>
     </>
+  );
+}
+
+// useSearchParams needs a Suspense boundary for Next 14's static build.
+export default function Library() {
+  return (
+    <Suspense>
+      <LibraryCatalogue />
+    </Suspense>
   );
 }

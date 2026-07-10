@@ -36,17 +36,17 @@ export default function Insights() {
       <AppHeader eyebrow="Insights" title="How you've been" />
       <div className="page-body">
         <div className="stat-tiles">
-          <div className="stat-tile">
+          <div className="stat-tile cz-in">
             <div className="lbl">Average mood</div>
             <div className="val">{avgLabel} {avgEmoji}</div>
             <div className="delta">▲ gentler than last week</div>
           </div>
-          <div className="stat-tile">
+          <div className="stat-tile cz-in cz-d1">
             <div className="lbl">Calm sessions</div>
             <div className="val">{calmSessions ?? 0}</div>
             <div className="lbl" style={{ fontSize: 13 }}>this week</div>
           </div>
-          <div className="stat-tile">
+          <div className="stat-tile cz-in cz-d2">
             <div className="lbl">Best time of day</div>
             <div className="val">Morning</div>
             <div className="lbl" style={{ fontSize: 13 }}>you check in most before 9am</div>
@@ -54,7 +54,7 @@ export default function Insights() {
         </div>
 
         <div className="dash-grid" style={{ marginTop: 20, gridTemplateColumns: "minmax(0,1fr) 380px" }}>
-          <div className="chart-card">
+          <div className="chart-card cz-in cz-d3">
             <h3>Mood, last 14 days</h3>
             <p className="sub">A gentle line, not a scoreboard.</p>
             <svg viewBox="0 0 560 210" style={{ width: "100%", height: 210 }} aria-hidden="true">
@@ -73,7 +73,7 @@ export default function Insights() {
             <div className="chart-x"><span>2 weeks ago</span><span>1 week</span><span>Today</span></div>
           </div>
 
-          <div className="rail-card">
+          <div className="rail-card cz-in cz-d4">
             <span className="serif-h" style={{ fontSize: 20 }}>Gentle patterns</span>
             <div className="plist" style={{ marginTop: 10 }}>
               {PATTERNS.map((p) => (

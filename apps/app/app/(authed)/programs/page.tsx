@@ -69,7 +69,7 @@ export default function Programs() {
       <AppHeader eyebrow="Programs" title="Guided journeys" />
       <div className="page-body">
         <section
-          className="media-hero"
+          className="media-hero cz-in"
           style={{
             background:
               "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), var(--night)",
@@ -100,7 +100,7 @@ export default function Programs() {
 
         {/* Active journey (ref "PROGRAM · DAY X OF Y") — one at a time. */}
         {active && (
-          <section className="card" style={{ marginTop: 6 }}>
+          <section className="card cz-in cz-d1" style={{ marginTop: 6 }}>
             <p className="eyebrow" style={{ color: "var(--cyan)", marginBottom: 4 }}>
               Program · day {active.day} of {active.days}
             </p>
@@ -122,7 +122,7 @@ export default function Programs() {
         <div className="sec-head"><h2 className="serif-h">All programs</h2></div>
         <div className="program-grid">
           {programs.map((p, i) => (
-            <div key={p.id} className="program-card">
+            <div key={p.id} className={`program-card cz-in cz-d${Math.min(i + 1, 6)}`}>
               <div className="program-thumb" style={{ background: THUMBS[i % THUMBS.length] }} />
               <div className="program-body">
                 <div className="meta">

@@ -62,7 +62,7 @@ export default function Games() {
       <AppHeader eyebrow="Calm play" title="Games to settle the mind" />
       <div className="page-body">
         <section
-          className="media-hero"
+          className="media-hero cz-in"
           style={{
             minHeight: 160,
             background:
@@ -77,7 +77,7 @@ export default function Games() {
           </p>
         </section>
 
-        <section className="card">
+        <section className="card cz-in cz-d1">
           <BoxBreather />
         </section>
 

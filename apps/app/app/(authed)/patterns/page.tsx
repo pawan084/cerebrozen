@@ -45,7 +45,7 @@ export default function Patterns() {
           Everything CereBro has learned about you — visible, honest, and yours to delete.
         </p>
 
-        <section className="card" style={{ marginTop: 14 }}>
+        <section className="card cz-in" style={{ marginTop: 14 }}>
           <h2>What CereBro remembers</h2>
           {patterns === null ? (
             <p className="sub">Looking at your data…</p>
@@ -66,7 +66,7 @@ export default function Patterns() {
           )}
         </section>
 
-        <section className="card" style={{ marginTop: 14 }}>
+        <section className="card cz-in cz-d1" style={{ marginTop: 14 }}>
           <h2 style={{ color: "var(--danger)" }}>Delete all memory</h2>
           <p className="sub" style={{ maxWidth: 560 }}>
             Removes chat history, computed insights and the companion&apos;s thread memory — it

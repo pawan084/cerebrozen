@@ -167,7 +167,7 @@ export default function Chat() {
 
       {!started && messages.length === 0 ? (
         <>
-          <section className="talk-hero">
+          <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
             <p>Start a live conversation, or just type. No pressure to have the right words.</p>
@@ -177,13 +177,13 @@ export default function Chat() {
             </div>
           </section>
           <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
-            <div>
+            <div className="cz-in cz-d1">
               <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
               {STARTERS.map((s) => (
                 <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
               ))}
             </div>
-            <div>
+            <div className="cz-in cz-d2">
               <h2 className="serif-h" style={{ marginBottom: 14 }}>Recent conversations</h2>
               {RECENT.map((r) => (
                 <div key={r.title} className="convo-row">
@@ -196,12 +196,12 @@ export default function Chat() {
         </>
       ) : (
         <>
-          <div className="ai-note" role="note">
+          <div className="ai-note cz-in" role="note">
             <span className="ai-note-dot" aria-hidden="true">ⓘ</span>
             AI companion — not a therapist or crisis service. It listens and guides; it can't
             diagnose, prescribe, or handle emergencies.
           </div>
-          <section className="card chatbox" aria-label="Conversation">
+          <section className="card chatbox cz-in cz-d1" aria-label="Conversation">
         {messages.length === 0 && !streaming && (
           <p className="sub">What's on your mind? The companion listens first, then offers one small step.</p>
         )}

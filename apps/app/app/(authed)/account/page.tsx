@@ -14,6 +14,8 @@ import {
 } from "@/lib/push";
 import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
 import { AppHeader } from "@/components/AppHeader";
+import { resetTour } from "@/components/GuidedTour";
+import { Icon } from "@/components/icons";
 
 type Consent = {
   mood_history: boolean; ai_memory: boolean; voice_storage: boolean;
@@ -172,7 +174,7 @@ export default function Account() {
       <div className="page-body">
 
       {me && (
-        <section className="card">
+        <section className="card cz-in">
           <h2>{me.name}</h2>
           <p className="sub">{me.email} · {me.subscription_tier ?? "free"} tier</p>
           <label className="row" style={{ marginTop: 10, gap: 10 }}>
@@ -214,7 +216,25 @@ export default function Account() {
         </section>
       )}
 
-      <section className="card" aria-label="Privacy choices">
+      {/* Re-run the first-visit guided tour: clears only the tour-done flag. */}
+      <button
+        type="button"
+        className="ui-row cz-in cz-d1"
+        style={{ marginBottom: 16 }}
+        onClick={() => {
+          resetTour();
+          router.push("/home");
+        }}
+      >
+        <span className="ui-row-icon"><Icon.spark size={18} /></span>
+        <span className="ui-row-body">
+          <strong>Take a quick tour</strong>
+          <small>See what CereBro can do</small>
+        </span>
+        <span className="ui-row-chevron" aria-hidden="true">›</span>
+      </button>
+
+      <section className="card cz-in cz-d2" aria-label="Privacy choices">
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
           <h2>{notice.title}</h2>
           <label className="row" style={{ gap: 6 }}>
@@ -250,7 +270,7 @@ export default function Account() {
           ))}
       </section>
 
-      <section className="card" aria-label="Crisis resources region">
+      <section className="card cz-in cz-d3" aria-label="Crisis resources region">
         <h2>Crisis resources region</h2>
         <p className="sub">Sets which hotlines appear if a conversation gets heavy.</p>
         <select value={region} onChange={(e) => saveRegion(e.target.value)} aria-label="Region">
@@ -260,7 +280,7 @@ export default function Account() {
         </select>
       </section>
 
-      <form className="card" onSubmit={saveContact} aria-label="Trusted contact">
+      <form className="card cz-in cz-d4" onSubmit={saveContact} aria-label="Trusted contact">
         <h2>Trusted contact</h2>
         <p className="sub">
           Someone we may notify — only with the consent below — if a crisis is detected.
@@ -289,7 +309,7 @@ export default function Account() {
         <button className="btn ghost">Save contact</button>
       </form>
 
-      <section className="card" aria-label="Your data">
+      <section className="card cz-in cz-d5" aria-label="Your data">
         <h2>Your data</h2>
         <p className="sub">
           Download everything the server holds for you, anytime — and see{" "}
@@ -300,7 +320,7 @@ export default function Account() {
         {status && <p className="success" role="status">{status}</p>}
       </section>
 
-      <section className="card" aria-label="Delete account">
+      <section className="card cz-in cz-d6" aria-label="Delete account">
         <h2>Delete account</h2>
         <p className="sub">
           Permanently removes your account and every journal entry, check-in, chat, and sleep log —

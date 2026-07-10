@@ -43,6 +43,15 @@ const JUMP = [
   { label: "Sleep", href: "/sleep", icon: Icon.sleep, bg: "linear-gradient(160deg,rgba(166,139,255,0.32),rgba(255,255,255,0.02))" },
   { label: "Journal", href: "/journal", icon: Icon.journal, bg: "linear-gradient(160deg,rgba(240,164,140,0.28),rgba(255,255,255,0.02))" },
 ];
+// Streak milestones worth celebrating (days) — same values as iOS AppState.milestones.
+const MILESTONES = [3, 7, 14, 30, 60, 100, 150, 365];
+// Quick links under the greeting (ref mock 4-tile grid).
+const QUICK = [
+  { label: "Games", href: "/games", icon: Icon.games, bg: "linear-gradient(160deg,rgba(143,230,238,0.22),rgba(255,255,255,0.03))" },
+  { label: "Insights", href: "/insights", icon: Icon.insights, bg: "linear-gradient(160deg,rgba(138,123,240,0.26),rgba(255,255,255,0.03))" },
+  { label: "Programs", href: "/programs", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(166,139,255,0.24),rgba(255,255,255,0.03))" },
+  { label: "Sounds", href: "/library?kind=sounds", icon: Icon.library, bg: "linear-gradient(160deg,rgba(240,164,140,0.22),rgba(255,255,255,0.03))" },
+];
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -58,7 +67,9 @@ export default function Home() {
   useEffect(() => {
     api("/auth/me").then((m: any) => setName(m.name || "")).catch(() => {});
     api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
-    api<Mood[]>("/moods?limit=14").then(setMoods).catch(() => {});
+    // 60 keeps the week counter honest for multiple check-ins a day; the rail
+    // chart below still only reads the newest 7.
+    api<Mood[]>("/moods?limit=60").then(setMoods).catch(() => {});
     api<Entry[]>("/journal?limit=1").then((e) => e[0]?.body && setReflection(e[0].body)).catch(() => {});
     api<Plan>("/plans/active").then(setPlan).catch(() => setPlanFailed(true));
     api<{ program: Program | null }>("/programs/active").then((r) => setProgram(r.program)).catch(() => {});
@@ -79,16 +90,28 @@ export default function Home() {
   // A gentle mood line for the rail chart (score by recency; fallback shape).
   const scores = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
   const pts = (scores.length >= 2 ? scores : [3, 4, 3, 4, 3, 4, 4]);
+  // One honest line for the weekly-insights teaser, from the same mood fetch.
+  const weekCheckins = moods.filter((m) => Date.now() - new Date(m.created_at).getTime() < 7 * 86400e3).length;
 
   return (
     <>
       <AppHeader eyebrow="Welcome back" title={`${greeting}${name ? `, ${name}` : ""}`} />
       <GuidedTour />
       <div className="page-body">
+        {/* Quick links (ref mock 4-tile grid) */}
+        <nav className="quick-grid cz-in" aria-label="Quick links">
+          {QUICK.map((q) => (
+            <Link key={q.label} href={q.href} className="quick-tile" style={{ background: q.bg }}>
+              <q.icon size={22} />
+              <span>{q.label}</span>
+            </Link>
+          ))}
+        </nav>
+
         <div className="dash-grid">
           <div>
             {/* Check-in hero */}
-            <section className="checkin-hero" aria-label="Daily check-in">
+            <section className="checkin-hero cz-in cz-d1" aria-label="Daily check-in">
               <div className="checkin-orb" aria-hidden="true" />
               <p className="eyebrow">Daily check-in</p>
               <h2>How are you arriving today?</h2>
@@ -103,11 +126,28 @@ export default function Home() {
               <p className="checkin-note">{resp || "Tap how you're feeling — there's no wrong answer."}</p>
             </section>
 
+            {/* Weekly-insights teaser (ref "This week" strip). */}
+            <Link
+              href="/insights"
+              className="card cz-in cz-d2"
+              style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, textDecoration: "none" }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong className="serif" style={{ fontSize: 16 }}>This week</strong>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
+                  {weekCheckins > 0
+                    ? `${weekCheckins} check-in${weekCheckins === 1 ? "" : "s"} logged · see what changed`
+                    : "See what changed · weekly insights"}
+                </span>
+              </span>
+              <Icon.chevron size={18} />
+            </Link>
+
             {/* Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card). */}
             {program && (
               <Link
                 href="/programs"
-                className="card"
+                className="card cz-in cz-d2"
                 style={{ display: "block", marginTop: 14, textDecoration: "none" }}
               >
                 <p className="eyebrow" style={{ color: "var(--cyan)", marginBottom: 4 }}>
@@ -133,7 +173,7 @@ export default function Home() {
               <h2 className="serif-h">Today's plan</h2>
               <span className="sec-date">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
             </div>
-            <div className="plan-list">
+            <div className="plan-list cz-in cz-d3">
               {(plan?.steps ?? [])
                 .slice()
                 .sort((a, b) => a.order - b.order)
@@ -168,7 +208,7 @@ export default function Home() {
 
             {/* Jump back in */}
             <div className="sec-head"><h2 className="serif-h">Jump back in</h2></div>
-            <div className="jump-grid">
+            <div className="jump-grid cz-in cz-d4">
               {JUMP.map((j) => (
                 <Link key={j.label} href={j.href} className="jump-card" style={{ background: j.bg }}>
                   <j.icon size={22} />
@@ -180,9 +220,21 @@ export default function Home() {
 
           {/* Right rail */}
           <div className="rail">
-            <div className="rail-card">
+            <div className="rail-card cz-in cz-d2">
               <span className="kicker">Day rhythm</span>
-              <div className="rail-big"><b>{streak?.best ?? streak?.current ?? 0}</b><span>day rhythm</span></div>
+              <div className="rail-big">
+                {/* Ring only on a milestone day, and only when the shown number IS the current streak. */}
+                <b
+                  className={
+                    MILESTONES.includes(streak?.current ?? 0) && (streak?.best ?? streak?.current) === streak?.current
+                      ? "cz-streak"
+                      : undefined
+                  }
+                >
+                  {streak?.best ?? streak?.current ?? 0}
+                </b>
+                <span>day rhythm</span>
+              </div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
               <div className="rhythm-bars">
                 {(streak?.week ?? Array.from({ length: 7 }, (_, i) => ({ date: `${i}`, active: false }))).map((d, i) => (
@@ -194,7 +246,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rail-card">
+            <div className="rail-card cz-in cz-d3">
               <div className="sec-head" style={{ margin: 0 }}>
                 <span className="serif-h" style={{ fontSize: 18 }}>Mood this week</span>
                 <Link href="/insights" className="link">Details</Link>
@@ -208,7 +260,7 @@ export default function Home() {
               </svg>
             </div>
 
-            <div className="rail-card reflection">
+            <div className="rail-card reflection cz-in cz-d4">
               <span className="kicker">Last reflection</span>
               <q style={{ marginTop: 10 }}>{reflection || "Your reflections will appear here — write your first journal entry to begin."}</q>
               <Link href="/journal" className="link">Open journal →</Link>

@@ -29,6 +29,14 @@ const STOPS: { label: string; caption: string }[] = [
 
 const KEY = "cb_tour_done";
 
+/** Clears only the once-per-browser flag so the tour re-runs on the next Home
+ * visit (Account → "Take a quick tour"). Touches no other stored state. */
+export function resetTour() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {}
+}
+
 export function GuidedTour() {
   const [idx, setIdx] = useState(0);
   const [show, setShow] = useState(false);

@@ -5,7 +5,16 @@ import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 
 type Entry = { id: string; title: string; body: string; tags: string[]; risk_level: string; created_at: string };
+type Checkin = { mood: string; created_at: string };
 const REVISIT = ["What do you need more of this week?", "Name a worry, then set it down.", "Who made today a little easier?"];
+
+// State-tuned prompts (ref mock): the latest mood check-in shapes the hero.
+// The .eyebrow class uppercases, so "For a tense day" renders FOR A TENSE DAY.
+const TUNED = [
+  { match: /anxious|tense/i, eyebrow: "For a tense day", title: "Name the worry", body: "Write the thought that keeps circling — then one truer thought beside it." },
+  { match: /low|heavy|sad/i, eyebrow: "For a heavy day", title: "One kind sentence", body: "Write to yourself as you would to a friend." },
+  { match: /tired|exhaust/i, eyebrow: "For a tired day", title: "Put the day down", body: "List what can wait until tomorrow — give yourself permission." },
+];
 
 export default function Journal() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -15,9 +24,19 @@ export default function Journal() {
   const [tags, setTags] = useState("");
   const [busy, setBusy] = useState(false);
   const [support, setSupport] = useState(false);
+  const [mood, setMood] = useState("");
 
-  useEffect(() => { void reload(); }, []);
+  useEffect(() => {
+    void reload();
+    // Same /moods feed Home reads — only today's check-in tunes the prompt (mirrors
+    // iOS); a stale or Good/none check-in keeps the default.
+    api<Checkin[]>("/moods?limit=1").then((m) => {
+      const latest = m[0];
+      if (latest && new Date(latest.created_at).toDateString() === new Date().toDateString()) setMood(latest.mood);
+    }).catch(() => {});
+  }, []);
   async function reload() { try { setEntries(await api<Entry[]>("/journal")); } catch {} }
+  const tuned = mood ? TUNED.find((t) => t.match.test(mood)) : undefined;
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy || !title.trim()) return; setBusy(true);
@@ -42,9 +61,14 @@ export default function Journal() {
         )}
         <div className="dash-grid">
           <div>
-            <section className="prompt-hero">
-              <p className="eyebrow">Today's prompt · shaped by your check-in</p>
-              <h2>What's one small thing that felt lighter today?</h2>
+            <section className="prompt-hero cz-in">
+              <p className="eyebrow">{tuned ? tuned.eyebrow : "Today's prompt · shaped by your check-in"}</p>
+              <h2>{tuned ? tuned.title : "What's one small thing that felt lighter today?"}</h2>
+              {tuned && (
+                <p style={{ color: "rgba(255,255,255,0.78)", fontSize: 14, margin: "-8px 0 16px", maxWidth: "48ch" }}>
+                  {tuned.body}
+                </p>
+              )}
               {!open && <button className="pill-btn" onClick={() => setOpen(true)}>+ Write an entry</button>}
               {open && (
                 <form onSubmit={save} style={{ marginTop: 6 }}>
@@ -58,8 +82,8 @@ export default function Journal() {
 
             <div className="sec-head"><h2 className="serif-h">Recent entries</h2></div>
             {entries.length === 0 && <p className="footnote">Nothing here yet — your entries collect below.</p>}
-            {entries.map((e) => (
-              <article className="entry-card" key={e.id}>
+            {entries.map((e, i) => (
+              <article className={`entry-card cz-in cz-d${Math.min(i + 1, 6)}`} key={e.id}>
                 <span className="emoji">{e.risk_level === "crisis" || e.risk_level === "elevated" ? "😔" : "🙂"}</span>
                 <span className="date">{new Date(e.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}</span>
                 <q>{e.body || e.title}</q>
@@ -68,12 +92,12 @@ export default function Journal() {
           </div>
 
           <div className="rail">
-            <div className="rail-card">
+            <div className="rail-card cz-in cz-d1">
               <span className="kicker">This month</span>
               <div className="rail-big"><b>{monthCount}</b><span>{monthCount === 1 ? "entry" : "entries"}</span></div>
               <p className="sub">Most often on quiet evenings.</p>
             </div>
-            <div className="rail-card">
+            <div className="rail-card cz-in cz-d2">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>
               <div className="plist" style={{ marginTop: 8 }}>
                 {REVISIT.map((p) => <div key={p} className="prompt-item">{p}</div>)}

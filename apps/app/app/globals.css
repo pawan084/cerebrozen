@@ -542,6 +542,19 @@ select option { color: var(--ink); }
 .plan-body small { color: var(--muted); font-size: 12.5px; }
 .plan-start { color: var(--soft); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
 
+/* Home quick links — four small tinted squares under the greeting (ref mock).
+   Stays 4-up on narrow screens: the tiles are small by design. */
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 560px; margin-bottom: 20px; }
+.quick-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  aspect-ratio: 1.15 / 1; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--soft); font-size: 13px; font-weight: 600; text-decoration: none;
+  transition: transform 0.15s var(--cz-spring), background 0.15s;
+}
+.quick-tile:hover { transform: translateY(-2px); }
+.quick-tile:active { transform: scale(0.97); }
+.quick-tile svg { color: rgba(255, 255, 255, 0.9); }
+
 /* Jump back in cards */
 .jump-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 720px) { .jump-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -649,3 +662,71 @@ select option { color: var(--ink); }
 .talk-hero p { color: rgba(255,255,255,0.78); font-size: 15px; max-width: 44ch; margin: 12px auto 0; }
 .talk-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0483a; display: inline-block; }
+
+/* ============================================================
+   Motion system (cz*) — ported from the design mock's vocabulary.
+   Easing tokens: settle for entrances, spring for taps/selection.
+   ============================================================ */
+:root {
+  --cz-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --cz-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+@keyframes czFade { 0% { opacity: 0; transform: translateY(14px) scale(0.985); } 62% { opacity: 1; transform: translateY(-2px) scale(1.004); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes czPop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes czBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.055); } }
+@keyframes czRing { 0% { transform: scale(0.6); opacity: 0.5; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes czSheen { 0% { transform: translateX(-160%) skewX(-16deg); } 60%, 100% { transform: translateX(320%) skewX(-16deg); } }
+
+/* Card/section entrances — stagger siblings with .cz-d1….cz-d6 (~80ms steps). */
+.cz-in { animation: czFade 0.35s ease both; }
+.cz-d1 { animation-delay: 0.08s; }
+.cz-d2 { animation-delay: 0.16s; }
+.cz-d3 { animation-delay: 0.24s; }
+.cz-d4 { animation-delay: 0.32s; }
+.cz-d5 { animation-delay: 0.4s; }
+.cz-d6 { animation-delay: 0.48s; }
+
+/* Ambient loops: breathing orbs. */
+.cz-breathe, .checkin-orb, .talk-orb, .media-hero .hero-orb { animation: czBreathe 4.5s ease-in-out infinite; }
+
+/* Selection pop — plays when a chip/tile gains its selected state. */
+.emoji-btn.sel, .mood-btn.selected, .pick.selected, .onb-chip.active, .ui-chip.active { animation: czPop 0.3s var(--cz-spring); }
+
+/* Premium sidebar card — an occasional sheen sweep (~3.3s of a 5.5s cycle). */
+.premium-card { position: relative; overflow: hidden; }
+.premium-card::after {
+  content: ""; position: absolute; top: -20%; bottom: -20%; left: 0; width: 46%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+  animation: czSheen 5.5s ease-in-out infinite; pointer-events: none;
+}
+
+/* One-shot radiating ring around the streak number when a streak is active. */
+.cz-streak { position: relative; display: inline-block; }
+.cz-streak::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 58px; height: 58px;
+  margin: -29px 0 0 -29px; border-radius: 50%; border: 2px solid var(--lav);
+  animation: czRing 0.9s var(--cz-settle) 1 both; pointer-events: none;
+}
+
+/* Springy press on primary buttons. */
+.btn, .pill-btn, .hero-cta, .premium-btn, .social-btn { transition: transform 0.15s var(--cz-spring); }
+.btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
+.premium-btn:active, .social-btn:active:not([disabled]) { transform: scale(0.97); }
+
+/* Reduce motion: the whole cz* vocabulary quiets down. */
+@media (prefers-reduced-motion: reduce) {
+  .cz-in, .cz-breathe,
+  .checkin-orb, .talk-orb, .media-hero .hero-orb,
+  .emoji-btn.sel, .mood-btn.selected, .pick.selected, .onb-chip.active, .ui-chip.active,
+  .premium-card::after, .cz-streak::after {
+    animation: none;
+  }
+  /* Without their keyframes the sheen stripe / ring would sit frozen — drop them. */
+  .premium-card::after, .cz-streak::after { content: none; }
+  .cz-in { transform: none; }
+  /* Mirror the base press selectors' :not([disabled]) so this override outranks them. */
+  .btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
+  .premium-btn:active, .social-btn:active:not([disabled]),
+  .quick-tile:hover, .quick-tile:active { transform: none; transition: none; }
+}
