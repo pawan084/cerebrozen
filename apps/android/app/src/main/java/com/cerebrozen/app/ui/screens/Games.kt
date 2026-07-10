@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -94,22 +96,33 @@ fun MemoryMatchScreen(onBack: () -> Unit) {
     SubPage("A gentle pairing", "Memory match", onBack) {
         Text("Find the pairs at your own pace — no clock.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        deck.indices.chunked(3).forEach { rowIdx ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowIdx.forEach { i ->
-                    val shown = i in matched || i in faceUp
-                    Box(
-                        Modifier.weight(1f).aspectRatio(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (i in matched) Ok.copy(alpha = 0.18f) else CardFill)
-                            .border(1.dp, if (shown) Periwinkle else LineStroke, RoundedCornerShape(14.dp))
-                            .clickable { tap(i) }
-                            .semantics { role = Role.Button; contentDescription = "Memory card" },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(if (shown) deck[i] else "✦",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = if (shown) TextSoft else TextMuted)
+        Column(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            deck.indices.chunked(3).forEach { rowIdx ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rowIdx.forEach { i ->
+                        val shown = i in matched || i in faceUp
+                        Box(
+                            Modifier.weight(1f).aspectRatio(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    when {
+                                        i in matched -> Ok.copy(alpha = 0.22f)
+                                        shown -> Periwinkle.copy(alpha = 0.30f)
+                                        else -> Color.White.copy(alpha = 0.075f)
+                                    },
+                                )
+                                .border(1.dp, if (shown) Periwinkle.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
+                                .clickable { tap(i) }
+                                .semantics { role = Role.Button; contentDescription = "Memory card" },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(if (shown) deck[i] else "✦",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = if (shown) TextSoft else TextMuted)
+                        }
                     }
                 }
             }
@@ -168,17 +181,31 @@ fun PatternGlowScreen(onBack: () -> Unit) {
 
     SubPage("Follow the light", "Pattern glow", onBack) {
         Text(note, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        listOf(0 to 1, 2 to 3).forEach { (l, r) ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf(l, r).forEach { pad ->
-                    Box(
-                        Modifier.weight(1f).height(110.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(pads[pad].copy(alpha = if (lit == pad) 0.85f else 0.22f))
-                            .border(1.dp, pads[pad].copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                            .clickable { tap(pad) }
-                            .semantics { role = Role.Button; contentDescription = "Pad ${pad + 1}" },
-                    )
+        Column(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            listOf(0 to 1, 2 to 3).forEach { (l, r) ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf(l, r).forEach { pad ->
+                        val active = lit == pad
+                        Box(
+                            Modifier.weight(1f).height(130.dp)
+                                .minimumInteractiveComponentSize()
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = if (active) 0.70f else 0.16f),
+                                            pads[pad].copy(alpha = if (active) 0.88f else 0.26f),
+                                        ),
+                                    ),
+                                )
+                                .border(1.dp, pads[pad].copy(alpha = if (active) 0.85f else 0.45f), RoundedCornerShape(20.dp))
+                                .clickable { tap(pad) }
+                                .semantics { role = Role.Button; contentDescription = "Pad ${pad + 1}" },
+                        )
+                    }
                 }
             }
         }
@@ -202,10 +229,14 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
         Text("Tap anywhere on the water. Watch each ripple widen and let go.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Box(
-            Modifier.fillMaxWidth().height(380.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(CardFill)
-                .border(1.dp, LineStroke, RoundedCornerShape(18.dp))
+            Modifier.fillMaxWidth().height(400.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(
+                    Brush.radialGradient(
+                        listOf(Cyan.copy(alpha = 0.33f), Color.White.copy(alpha = 0.07f), Color.White.copy(alpha = 0.025f)),
+                    ),
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
@@ -238,23 +269,28 @@ fun BubbleWrapScreen(onBack: () -> Unit) {
     SubPage("Pop at will", "Bubble wrap", onBack) {
         Text("A fresh sheet, endlessly poppable. Very serious stress research.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        (0 until rows).forEach { r ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (0 until cols).forEach { c ->
-                    val i = r * cols + c
-                    val isPopped = i in popped
-                    Box(
-                        Modifier.weight(1f).aspectRatio(1f)
-                            .minimumInteractiveComponentSize()
-                            .clip(CircleShape)
-                            .background(if (isPopped) CardFill else Periwinkle.copy(alpha = 0.30f))
-                            .border(1.dp, if (isPopped) LineStroke else Periwinkle.copy(alpha = 0.55f), CircleShape)
-                            .clickable(enabled = !isPopped) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                popped = popped + i
-                            }
-                            .semantics { role = Role.Button; contentDescription = "Bubble" },
-                    )
+        Column(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            (0 until rows).forEach { r ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (0 until cols).forEach { c ->
+                        val i = r * cols + c
+                        val isPopped = i in popped
+                        Box(
+                            Modifier.weight(1f).aspectRatio(1f)
+                                .minimumInteractiveComponentSize()
+                                .clip(CircleShape)
+                                .background(if (isPopped) CardFill else Periwinkle.copy(alpha = 0.32f))
+                                .border(1.dp, if (isPopped) LineStroke else Periwinkle.copy(alpha = 0.70f), CircleShape)
+                                .clickable(enabled = !isPopped) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    popped = popped + i
+                                }
+                                .semantics { role = Role.Button; contentDescription = "Bubble" },
+                        )
+                    }
                 }
             }
         }
@@ -294,9 +330,14 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
             SectionCard {
                 entries.asReversed().forEachIndexed { revIdx, text ->
                     val i = entries.size - 1 - revIdx
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(flowerFor(i), style = MaterialTheme.typography.titleMedium)
-                        Text(text, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(42.dp).clip(CircleShape).background(Periwinkle.copy(alpha = 0.22f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(flowerFor(i), style = MaterialTheme.typography.titleLarge)
+                        }
+                        Text(text, style = MaterialTheme.typography.bodyMedium, color = TextSoft, modifier = Modifier.weight(1f))
                     }
                 }
             }

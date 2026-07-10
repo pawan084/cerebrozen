@@ -1,6 +1,8 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,14 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,15 +33,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Ink
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -92,19 +100,41 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             eyebrow = "Wind down",
             title = "A calmer night",
             subtitle = "A slower evening makes for a softer morning.",
-            height = 186.dp,
+            height = 220.dp,
         ) {
-            TextButton(
-                onClick = { Player.play(context, "A calmer night") },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            // A "TONIGHT" badge + a prominent play pill — the richer hero look, on
+            // our tokens. Still just plays the ambient bed (no behaviour change).
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.18f))
+                        .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
                 ) {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Play the ambient bed",
-                        tint = Cyan, modifier = Modifier.size(18.dp))
-                    Text("Play the ambient bed", color = Cyan)
+                    Text("TONIGHT", style = MaterialTheme.typography.labelSmall, color = TextPrimary)
+                }
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Cream)
+                        .clickable { Player.play(context, "A calmer night") }
+                        .semantics { contentDescription = "Play the ambient bed" }
+                        .padding(horizontal = 18.dp, vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.PlayArrow, contentDescription = null,
+                            tint = Ink, modifier = Modifier.size(18.dp))
+                        Text("Play", color = Ink, fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleSmall)
+                    }
                 }
             }
         }
@@ -158,13 +188,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         if (nights.size >= 2) NightsChart(nights)
 
-        Text("Sounds for sleep", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        SleepSectionHeader("♫", "Sounds for sleep")
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
             onItemTap = { title -> Player.toggle(context, title) })
 
         // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
-        Text("Wind-down guide", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        SleepSectionHeader("☾", "Wind-down guide")
         ContentList("wind_down", { d -> if (d > 0) "$d min" else "Guide" })
 
         if (nights.isNotEmpty()) {
@@ -208,6 +238,28 @@ private fun NightsChart(nights: List<Night>) {
         }
         Text("avg ${minutesToLabel(avg)} · ${recent.size} nights",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+    }
+}
+
+/** A richer standalone section header — a soft lavender glyph leading a title —
+ * mirroring the redesign's sub-section headers, on our tokens. */
+@Composable
+private fun SleepSectionHeader(glyph: String, title: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(Periwinkle.copy(alpha = 0.20f))
+                .border(1.dp, LineStroke, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(glyph, style = MaterialTheme.typography.titleMedium, color = PeriwinkleSoft)
+        }
+        Text(title, style = MaterialTheme.typography.titleLarge, color = TextSoft)
     }
 }
 
