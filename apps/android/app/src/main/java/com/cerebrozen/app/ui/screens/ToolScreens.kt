@@ -1,9 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,18 +78,25 @@ fun BreathingScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val totalSeconds = 120
     val phases = listOf("Breathe in", "Hold", "Breathe out", "Hold")
-    val phase = phases[(elapsed / 4) % phases.size]
+    val phaseIndex = (elapsed / 4) % phases.size
+    val phase = phases[phaseIndex]
     val count = 4 - (elapsed % 4)
 
     val reduceMotion = rememberReduceMotion()
-    val transition = rememberInfiniteTransition(label = "breathing-orb")
-    val pulse by transition.animateFloat(
-        initialValue = 0.86f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(tween(4000), RepeatMode.Reverse),
+    // The orb is driven BY the phase, not a free-running timer: it expands over the
+    // inhale, holds full, contracts over the exhale, holds empty — so the motion
+    // actually matches the "Breathe in / Hold / Breathe out" label.
+    val target = when (phaseIndex) { 0, 1 -> 1.14f; else -> 0.84f }
+    val orbScale by animateFloatAsState(
+        targetValue = if (reduceMotion) 1f else target,
+        animationSpec = tween(3800, easing = FastOutSlowInEasing),
         label = "breathing-orb-scale",
     )
-    val orbScale = if (reduceMotion) 1f else pulse
+    // A gentle haptic on each phase change — a rhythm cue you can follow with eyes
+    // closed. Firmer on the active breaths, softer on the holds.
+    LaunchedEffect(phaseIndex) {
+        com.cerebrozen.app.ui.Haptics.soft(if (phaseIndex == 0 || phaseIndex == 2) 0.5f else 0.3f)
+    }
 
     LaunchedEffect(Unit) {
         while (elapsed < totalSeconds) {

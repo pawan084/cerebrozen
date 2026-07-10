@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -743,10 +744,19 @@ private fun BoxBreathing() {
     LaunchedEffect(Unit) {
         while (true) { delay(4000); phase = (phase + 1) % phases.size }
     }
-    val transition = rememberInfiniteTransition(label = "box")
-    val scale by transition.animateFloat(
-        0.8f, 1.15f, infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "s",
+    // Orb driven by the phase (not a free timer): expand on inhale, hold, contract
+    // on exhale, hold — so the motion matches the label. Steady under Reduce Motion.
+    val reduceMotion = rememberReduceMotion()
+    val target = when (phase) { 0, 1 -> 1.15f; else -> 0.8f }
+    val scale by animateFloatAsState(
+        targetValue = if (reduceMotion) 1f else target,
+        animationSpec = tween(3800, easing = FastOutSlowInEasing),
+        label = "box-scale",
     )
+    // Gentle rhythm haptic on each phase change (firmer on the active breaths).
+    LaunchedEffect(phase) {
+        com.cerebrozen.app.ui.Haptics.soft(if (phase == 0 || phase == 2) 0.5f else 0.3f)
+    }
     SectionCard {
         Text(phases[phase], style = MaterialTheme.typography.titleMedium,
             color = TextSoft, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
