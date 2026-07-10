@@ -17,6 +17,24 @@ enum JournalPrompts {
         let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
         return all[day % all.count]
     }
+
+    /// Ref state-tuned hero: when today's check-in named a feeling, the prompt
+    /// meets it ("FOR A TENSE DAY · Name the worry"). Nil → daily rotation.
+    static func tuned(toMood mood: String?) -> (tag: String, title: String, prompt: String)? {
+        switch mood {
+        case "Anxious":
+            return ("For a tense day", "Name the worry",
+                    "Write the thought that keeps circling — then one truer thought beside it.")
+        case "Low":
+            return ("For a heavy day", "One kind sentence",
+                    "Write to yourself as you would to a friend who had this exact day.")
+        case "Tired":
+            return ("For a tired day", "Put the day down",
+                    "List what can wait until tomorrow — and give yourself permission.")
+        default:
+            return nil
+        }
+    }
 }
 
 /// Context + emotion tags for an entry (broader than the old 4-word set).
@@ -41,10 +59,22 @@ struct JournalHomeView: View {
         .onAppear { if state.journalLocked && !unlocked { authenticate() } }
     }
 
+    /// Today's check-in tunes the hero when one exists (ref "FOR A TENSE DAY");
+    /// otherwise the calm daily rotation.
+    private var hero: (tag: String, title: String, prompt: String) {
+        if let log = state.moodLogs.first, Calendar.current.isDateInToday(log.date),
+           let tuned = JournalPrompts.tuned(toMood: log.mood) {
+            return tuned
+        }
+        return ("Today's prompt", "Release the day", JournalPrompts.today)
+    }
+
     private var content: some View {
-        ScreenScaffold(eyebrow: "Journal hub", title: "Journal", trailingSystemImage: "book", isRoot: true) {
-            HeroCard(tag: "Today's prompt", title: "Release the day",
-                     subtitle: JournalPrompts.today,
+        // Bind once: three separate `hero.x` reads would each redo Calendar work.
+        let hero = self.hero
+        return ScreenScaffold(eyebrow: "Journal hub", title: "Journal", trailingSystemImage: "book", isRoot: true) {
+            HeroCard(tag: hero.tag, title: hero.title,
+                     subtitle: hero.prompt,
                      cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }

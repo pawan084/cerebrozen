@@ -1,5 +1,52 @@
 import SwiftUI
 
+// MARK: - Native symbol effects
+/// Design-system icon with an optional repeating SF Symbol effect. Static by
+/// default — indefinite effects are reserved for genuinely live states (sync
+/// connected, audio playing), not chrome. Effects still respect Reduce Motion
+/// and the -resetState test gate internally, so callers never re-gate.
+struct NativeEffectIcon: View {
+    /// Only the effects we actually ship on the iOS 17 target — no aliases.
+    enum Effect {
+        case none, pulse, variableColor
+    }
+
+    let systemImage: String
+    var size: CGFloat = 16
+    var weight: Font.Weight = .semibold
+    var color: Color = Theme.Palette.soft
+    var effect: Effect = .none
+    var active: Bool = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .symbolRenderingMode(.hierarchical)
+            .appFont(size, weight: weight)
+            .foregroundStyle(color)
+            .modifier(NativeSymbolEffect(effect: effect,
+                                         active: active && !reduceMotion && !Self.underTest))
+    }
+}
+
+private struct NativeSymbolEffect: ViewModifier {
+    let effect: NativeEffectIcon.Effect
+    let active: Bool
+
+    func body(content: Content) -> some View {
+        switch effect {
+        case .none:
+            content
+        case .pulse:
+            content.symbolEffect(.pulse, isActive: active)
+        case .variableColor:
+            content.symbolEffect(.variableColor.reversing, isActive: active)
+        }
+    }
+}
+
 // MARK: - Remote photo with gradient placeholder
 /// Mirrors the reference's Unsplash imagery. Falls back to a lavender gradient
 /// while loading / offline so the app still looks complete without a network.
@@ -18,9 +65,8 @@ struct Photo: View {
                         colors: [Theme.Palette.lav.opacity(0.55), Theme.Palette.nightTop],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     )
-                    Image(systemName: symbol)
-                        .appFont(22, weight: .light)
-                        .foregroundStyle(.white.opacity(0.55))
+                    NativeEffectIcon(systemImage: symbol, size: 24, weight: .light,
+                                     color: .white.opacity(0.55), effect: .pulse)
                 }
             }
         }
@@ -95,7 +141,7 @@ struct ScreenScaffold<Content: View>: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
-                .padding(.bottom, 28)
+                .padding(.bottom, isRoot ? 118 : 44)
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 18)
             }
@@ -114,9 +160,7 @@ struct CircleIconButton: View {
     var action: () -> Void = {}
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .appFont(16, weight: .semibold)
-                .foregroundStyle(Theme.Palette.soft)
+            NativeEffectIcon(systemImage: systemImage, size: 16, weight: .semibold)
                 .frame(width: 38, height: 38)
                 .background(Theme.Stroke.iconWell, in: Circle())
                 .frame(width: 44, height: 44)        // 44pt minimum tap target (visual stays 38)
@@ -217,9 +261,8 @@ struct RowLabel: View {
 
     var body: some View {
         HStack(spacing: 9) {
-            Image(systemName: systemImage)
-                .appFont(16, weight: .semibold)
-                .foregroundStyle(Theme.Palette.soft)
+            NativeEffectIcon(systemImage: systemImage, size: 16, weight: .semibold,
+                             effect: emphasis ? .variableColor : .none)
                 .frame(width: 32, height: 32)
                 .background(Theme.Stroke.iconWell, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
@@ -230,7 +273,8 @@ struct RowLabel: View {
             }
             Spacer()
             if chevron {
-                Image(systemName: "chevron.right").appFont(13, weight: .semibold).foregroundStyle(Theme.Stroke.chevron)
+                NativeEffectIcon(systemImage: "chevron.right", size: 13, weight: .semibold,
+                                 color: Theme.Stroke.chevron)
             }
         }
         .padding(9)
@@ -253,11 +297,12 @@ struct ListRow: View {
     var systemImage: String = "sparkles"
     var imageURL: String? = nil
     var emphasis: Bool = false
+    var chevron: Bool = true
     var action: () -> Void = {}
 
     var body: some View {
         Button(action: action) {
-            RowLabel(title: title, subtitle: subtitle, systemImage: systemImage, imageURL: imageURL, emphasis: emphasis)
+            RowLabel(title: title, subtitle: subtitle, systemImage: systemImage, imageURL: imageURL, emphasis: emphasis, chevron: chevron)
         }
         .buttonStyle(.pressable)
     }
@@ -734,6 +779,11 @@ extension View {
 
     func shimmer() -> some View { modifier(Shimmer()) }
 
+    /// An occasional shine sweep (every `period` seconds) — see `Sheen`.
+    func sheen(period: TimeInterval = 5.5, cornerRadius: CGFloat = Theme.Radius.hero) -> some View {
+        modifier(Sheen(period: period, cornerRadius: cornerRadius))
+    }
+
     /// Marks this view as the source for an iOS 18 zoom navigation transition
     /// (no-op on iOS 17).
     @ViewBuilder
@@ -761,6 +811,85 @@ extension View {
     /// `index` so a stack of elements cascades. Honors Reduce Motion.
     func entrance(_ index: Int = 0, y: CGFloat = 16) -> some View {
         modifier(Entrance(index: index, y: y))
+    }
+}
+
+// MARK: - Radiating ring (ref cbRing: a soft ring that expands and fades)
+/// A gentle repeating "milestone" halo behind a circular element. Rests still
+/// under Reduce Motion (the ring simply doesn't render).
+struct RadiatingRing: View {
+    var size: CGFloat = 44
+    var color: Color = Theme.Palette.lav
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // The -resetState seed is a 3-day streak — a milestone — so without this
+    // gate every UI test would carry an endless animation on Home root.
+    private static let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
+
+    var body: some View {
+        if !reduceMotion && !Self.underTest {
+            Circle()
+                .stroke(color.opacity(expanded ? 0 : 0.5), lineWidth: 1.5)
+                .frame(width: size, height: size)
+                .scaleEffect(expanded ? 1.35 : 0.6)
+                .onAppear {
+                    // repeatForever dies when the view detaches (tab switch),
+                    // and a true→true write can't rearm it — reset first so
+                    // every re-entry restarts the loop from the small ring.
+                    expanded = false
+                    withAnimation(.easeOut(duration: 2.0).repeatForever(autoreverses: false)) {
+                        expanded = true
+                    }
+                }
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+// MARK: - Occasional sheen (ref cbSheen: a shine sweep with a long rest)
+/// Unlike `Shimmer` (a continuous loading highlight), this sweeps once every
+/// few seconds — an "alive", not "busy", accent for upsell/celebration cards.
+struct Sheen: ViewModifier {
+    var period: TimeInterval = 5.5
+    /// Clip for the sweep — pass the modified card's own corner radius.
+    var cornerRadius: CGFloat = Theme.Radius.hero
+    @State private var phase: CGFloat = -1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if reduceMotion || Self.underTest {
+            // No overlay at all — stilled users shouldn't pay for the layer.
+            content
+        } else {
+            content
+                .overlay(
+                    GeometryReader { geo in
+                        LinearGradient(colors: [.clear, .white.opacity(0.22), .clear],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: geo.size.width * 0.6)
+                            .offset(x: phase * geo.size.width * 1.6)
+                    }
+                    // Clip to the card's shape rather than .mask(content):
+                    // masking re-renders a full second copy of the content
+                    // (duplicate images/animations) and leaks into its shadow.
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .allowsHitTesting(false)
+                )
+                // .task is keyed to view identity, so re-renders don't reset
+                // the countdown the way a per-body Timer publisher did.
+                .task {
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(period))
+                        phase = -1
+                        // Commit the reset in its own frame before animating —
+                        // belt-and-braces against same-transaction coalescing.
+                        try? await Task.sleep(for: .milliseconds(16))
+                        withAnimation(.easeInOut(duration: 1.6)) { phase = 1 }
+                    }
+                }
+        }
     }
 }
 

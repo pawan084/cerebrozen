@@ -68,6 +68,9 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(hasOnboarded, forKey: Key.onboarded) }
     }
     @Published var selectedTab: Tab = .home
+    /// One-shot signal from You → "Take a quick tour": MainTabView flips to
+    /// Home and re-presents the tour overlay (works from any pushed screen).
+    @Published var tourRequested = false
 
     // MARK: Persisted user data
     @Published var journalEntries: [JournalEntry] { didSet { Self.save(journalEntries, Key.journal) } }
@@ -159,7 +162,9 @@ final class AppState: ObservableObject {
         journalLocked  = UserDefaults.standard.bool(forKey: Key.journalLock)
         toolSoundOn    = UserDefaults.standard.object(forKey: Key.toolSound) as? Bool ?? true
         hasAssessment  = UserDefaults.standard.bool(forKey: Key.hasAssessment)
-        favoriteSleep  = Set(Self.load([String].self, Key.favSleep) ?? [])
+        // Trim on load: migrates favorites saved before catalogue titles were trimmed.
+        favoriteSleep  = Set((Self.load([String].self, Key.favSleep) ?? [])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
         sleepEntries   = Self.load([SleepEntry].self, Key.sleep) ?? (seedDemo ? Self.seededSleep() : [])
         healthKitSleepEnabled = UserDefaults.standard.bool(forKey: Key.hkSleep)
         crisisRegion   = UserDefaults.standard.string(forKey: Key.crisisRegion) ?? ""
@@ -220,10 +225,16 @@ final class AppState: ObservableObject {
 
     // MARK: - Sleep favorites
 
-    func isSleepFavorite(_ title: String) -> Bool { favoriteSleep.contains(title) }
+    // Favorites are keyed by title; the catalogue now trims served titles, so
+    // normalise here too or a favorite saved against an untrimmed title
+    // silently stops matching after an app update.
+    func isSleepFavorite(_ title: String) -> Bool {
+        favoriteSleep.contains(title.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
     func toggleSleepFavorite(_ title: String) {
-        if favoriteSleep.contains(title) { favoriteSleep.remove(title) }
-        else { favoriteSleep.insert(title) }
+        let key = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if favoriteSleep.contains(key) { favoriteSleep.remove(key) }
+        else { favoriteSleep.insert(key) }
     }
 
     // MARK: - Sleep diary

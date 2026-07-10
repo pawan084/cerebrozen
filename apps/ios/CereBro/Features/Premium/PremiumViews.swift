@@ -13,6 +13,7 @@ struct PremiumView: View {
                      subtitle: "The full sleep library, richer voice sessions, and deeper personalization.",
                      cta: store.isPremium ? "You're all set" : "Choose a plan",
                      imageURL: Dummy.Img.sleep) { chooseFeaturedPlan() }
+                .sheen(period: 6)   // occasional shine sweep (ref cbSheen)
 
             if store.available {
                 // Real StoreKit products (App Store Connect configured).

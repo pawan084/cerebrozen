@@ -6,7 +6,6 @@ struct HomeView: View {
     @State private var showSearch = false
     @State private var route: HomeRoute?
     @State private var celebrateStreak = false
-    @State private var showTour = false
     @Namespace private var playerZoom
 
     private var part: DayPart { .current() }
@@ -54,13 +53,21 @@ struct HomeView: View {
                        title: "\(part.greeting),\n\(Dummy.userName)",
                        trailingSystemImage: "magnifyingglass", trailingAction: { showSearch = true },
                        trailingAccessibilityLabel: "Search", isRoot: true) {
+            // Ref quick-links grid: the four explore spaces, one tap from the top.
+            QuickLinksGrid().entrance(0)
+
             // One clear next action, chosen from the time of day + today's progress.
             HeroCard(tag: focus.tag, title: focus.title, subtitle: focus.subtitle,
                      cta: focus.cta, imageURL: Dummy.Img.calm) { route = focus.route }
-                .entrance(0, y: 22)
+                .entrance(1, y: 22)
 
             StreakCard(streak: state.currentStreak, best: state.bestStreak, week: state.last7Days())
-                .entrance(1)
+                .entrance(2)
+
+            // Ref weekly-insight teaser: a one-line pull toward the weekly report.
+            NavRow(title: "This week", subtitle: "See what changed · weekly insights",
+                   systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
+                .entrance(2)
 
             // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
             if let prog = backend.program {
@@ -120,15 +127,57 @@ struct HomeView: View {
             if m != nil { celebrateStreak = true; state.newMilestone = nil }
         }
         .celebration(trigger: $celebrateStreak)
-        .onAppear {
-            // First-run guided tour — once per install; never under -resetState
-            // (UITests start at Home and must stay deterministic).
-            if !UserDefaults.standard.bool(forKey: "guidedTourDone"),
-               !UserDefaults.standard.bool(forKey: "resetState") {
-                showTour = true
+        // The first-run guided tour is presented by MainTabView (tab-level
+        // overlay), so the replay row in You works from any pushed screen.
+    }
+}
+
+// MARK: - Quick links (ref home grid)
+/// The ref four-tile explore row: Games · Insights · Programs · Sounds.
+/// Small tinted squares with a glyph — entry points, not competition for the hero.
+struct QuickLinksGrid: View {
+    // Plain data: destinations are built lazily inside the NavigationLink
+    // closure so Home renders never construct (or AnyView-erase) the screens.
+    private static let links: [(id: String, symbol: String)] = [
+        ("Games", "gamecontroller"),
+        ("Insights", "chart.line.uptrend.xyaxis"),
+        ("Programs", "calendar"),
+        ("Sounds", "music.note"),
+    ]
+
+    @ViewBuilder
+    private func destination(for id: String) -> some View {
+        switch id {
+        case "Games":    GamesHubView()
+        case "Insights": InsightsView()
+        case "Programs": ProgramsView()
+        default:         SoundLibraryView()
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(Self.links, id: \.id) { link in
+                NavigationLink { destination(for: link.id) } label: {
+                    VStack(spacing: 7) {
+                        // Static chrome — indefinite effects stay reserved
+                        // for live states, not entry-point tiles.
+                        NativeEffectIcon(systemImage: link.symbol, size: 17, weight: .semibold)
+                            .frame(width: 44, height: 44)
+                            .background(Theme.Palette.cardEmphasis)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Theme.Palette.line))
+                        Text(link.id)
+                            .appFont(11, weight: .semibold)
+                            .foregroundStyle(Theme.Palette.muted)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel(link.id)
             }
         }
-        .overlay { if showTour { GuidedTourOverlay(isPresented: $showTour) } }
     }
 }
 
@@ -175,6 +224,8 @@ struct StreakCard: View {
         Card {
             HStack(spacing: 14) {
                 ZStack {
+                    // Milestone days get a soft radiating halo (ref cbRing).
+                    if isMilestone { RadiatingRing(size: 44) }
                     Circle().fill(Theme.Gradient.orb).frame(width: 44, height: 44)
                     Image(systemName: "leaf.fill")
                         .appFont(17, weight: .semibold).foregroundStyle(Theme.Palette.ink)

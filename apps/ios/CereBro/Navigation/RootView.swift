@@ -33,6 +33,7 @@ struct RootView: View {
 struct MainTabView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
+    @State private var showTour = false
 
     var body: some View {
         TabView(selection: $state.selectedTab) {
@@ -99,5 +100,22 @@ struct MainTabView: View {
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))
         }
         .onChange(of: state.consent) { _, new in backend.syncConsent(new) }
+        // Guided tour lives at the tab level so it renders above any pushed
+        // screen — the You-tab replay row works from anywhere, not just when
+        // Home happens to be at its stack root. First run auto-shows it;
+        // never under -resetState (UITests must stay deterministic).
+        .onAppear {
+            if !GuidedTourOverlay.isDone,
+               !UserDefaults.standard.bool(forKey: "resetState") {
+                showTour = true
+            }
+        }
+        .onChange(of: state.tourRequested) { _, requested in
+            guard requested else { return }
+            state.selectedTab = .home
+            showTour = true
+            state.tourRequested = false
+        }
+        .overlay { if showTour { GuidedTourOverlay(isPresented: $showTour) } }
     }
 }

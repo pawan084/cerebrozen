@@ -15,7 +15,18 @@ struct ProfileView: View {
         ScreenScaffold(eyebrow: "Settings and support", title: "You", trailingSystemImage: "gearshape", isRoot: true) {
             // Profile header
             HStack(spacing: 12) {
-                Circle().fill(Theme.orb).frame(width: 56, height: 56)
+                ZStack {
+                    Circle().fill(Theme.orb)
+                    // variableColor only while genuinely live (synced account);
+                    // the signed-out glyph is static chrome.
+                    NativeEffectIcon(systemImage: backend.isConnected ? "checkmark.icloud.fill" : "person.fill",
+                                     size: 22,
+                                     weight: .semibold,
+                                     color: Theme.Palette.ink,
+                                     effect: backend.isConnected ? .variableColor : .none)
+                }
+                .frame(width: 56, height: 56)
+                .shadow(color: Theme.Palette.lav.opacity(0.38), radius: 16, y: 6)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(displayName).displayFont(20).foregroundStyle(Theme.Palette.text)
                     Text("\(state.companion) · \(state.language)").appFont(12).foregroundStyle(Theme.Palette.muted2)
@@ -27,14 +38,24 @@ struct ProfileView: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.Palette.line))
 
-            NavRow(title: backend.isConnected ? "Account" : "Sign in",
-                   subtitle: backend.isConnected ? "Manage your synced account" : "Apple, Google or email — sync across devices",
-                   systemImage: "person.crop.circle", imageURL: Dummy.Img.privacy, emphasis: true) { CloudSyncView() }
+            // Sign-in happens in the onboarding funnel — You only manages an
+            // existing account (no sign-in CTA for the signed-out state).
+            if backend.isConnected {
+                NavRow(title: "Account", subtitle: "Manage your synced account",
+                       systemImage: "person.crop.circle", imageURL: Dummy.Img.privacy, emphasis: true) { CloudSyncView() }
+            }
             NavRow(title: "Companion style", subtitle: "\(state.companion) · how CereBro talks with you",
                    systemImage: "bubble.left.and.text.bubble.right", imageURL: Dummy.Img.chat) { CompanionStyleView() }
             NavRow(title: "Daily reminder",
                    subtitle: state.reminderEnabled ? "On · gentle daily check-in" : "Off · tap to set a gentle nudge",
                    systemImage: "bell", imageURL: Dummy.Img.bell) { RemindersView() }
+            // Ref "Take a quick tour": non-destructive replay of the tour.
+            // No chevron — this flips to Home and overlays, it doesn't push.
+            ListRow(title: "Take a quick tour", subtitle: "See what CereBro can do in 4 stops",
+                    systemImage: "sparkles", chevron: false) {
+                GuidedTourOverlay.reset()
+                state.tourRequested = true
+            }
             NavRow(title: "Weekly insights", subtitle: "Your progress and patterns", systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }

@@ -287,15 +287,38 @@ final class BackendService: ObservableObject {
         catalogueLoaded = true
         var base = await APIClient.shared.currentBaseURL
         while base.hasSuffix("/") { base.removeLast() }
+        // Sanitise the served feed: trim stray whitespace and collapse rows
+        // that render identically (same kind + title + subtitle), preferring
+        // the copy that can actually play server audio. Content VISIBILITY is
+        // the backend's job (`published` flag) — no title heuristics here.
         var grouped: [String: [ContentItem]] = [:]
+        var slot: [String: Int] = [:]   // dedupe key → index within its kind
         for item in items {
-            grouped[item.kind, default: []].append(
-                ContentItem(title: item.title, subtitle: item.subtitle,
-                            symbol: item.symbol, imageURL: item.image_url,
-                            audioURL: Self.resolveMedia(item.audio_url, base: base)))
+            let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let subtitle = item.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            let audioURL = Self.resolveMedia(item.audio_url, base: base)
+            let key = "\(item.kind)|\(title)|\(subtitle)"
+            let content = ContentItem(title: title, subtitle: subtitle,
+                                      symbol: item.symbol, imageURL: item.image_url,
+                                      audioURL: audioURL)
+            if let index = slot[key] {
+                if grouped[item.kind]![index].audioURL.isEmpty && !audioURL.isEmpty {
+                    grouped[item.kind]![index] = content   // playable copy wins
+                }
+            } else {
+                grouped[item.kind, default: []].append(content)
+                slot[key] = grouped[item.kind]!.count - 1
+            }
         }
         catalogue = grouped
-        remotePrograms = items.filter { $0.kind == "program" }
+        // Programs ride the same cleaning: deduped on the trimmed identity
+        // (enroll needs the original row, so duplicates drop rather than merge).
+        var seenPrograms = Set<String>()
+        remotePrograms = items.filter { item in
+            guard item.kind == "program" else { return false }
+            let key = "\(item.title.trimmingCharacters(in: .whitespacesAndNewlines))|\(item.subtitle.trimmingCharacters(in: .whitespacesAndNewlines))"
+            return seenPrograms.insert(key).inserted
+        }
     }
 
     /// Server media URLs are API-relative ("/media/…"); admin-pasted absolute

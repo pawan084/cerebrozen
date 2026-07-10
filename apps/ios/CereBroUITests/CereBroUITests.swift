@@ -118,6 +118,14 @@ final class CereBroUITests: XCTestCase {
 
     /// Pop the current screen and wait for the dismiss to finish before returning,
     /// so the next tap acts on a settled parent screen (not the outgoing one).
+    /// Open the auth form (CloudSyncView). The You tab no longer offers a
+    /// sign-in CTA (login lives in onboarding), so the signed-out entry is
+    /// the Talk tab's "Sign in to talk live" row.
+    private func openCloudSync(_ app: XCUIApplication) -> Bool {
+        openTab(app, "Talk")
+        return tap(app, "Sign in to talk live")
+    }
+
     private func back(_ app: XCUIApplication) {
         let b = app.buttons["Back"]
         if b.waitForExistence(timeout: 3) && b.isHittable {
@@ -382,8 +390,7 @@ final class CereBroUITests: XCTestCase {
                       "Did not reach the main app after onboarding")
 
         // Connect cloud sync with a fresh signup so starters generate live.
-        rootYou(app)
-        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        guard openCloudSync(app) else { throw XCTSkip("Sign-in entry missing") }
         // Segmented mode switch: wait + scroll (a raw .tap() here fails
         // silently under continueAfterFailure when the control sits below
         // the fold, leaving the form in sign-in mode).
@@ -692,8 +699,7 @@ final class CereBroUITests: XCTestCase {
     func testCloudSync() throws {
         let app = makeApp()
         launchIntoApp(app)
-        rootYou(app)
-        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        guard openCloudSync(app) else { throw XCTSkip("Sign-in entry missing") }
         _ = app.staticTexts["Sign in"].waitForExistence(timeout: 4)
         snapshot(app, "signin-form")   // modern layout: Apple · Google · email
 
@@ -724,8 +730,7 @@ final class CereBroUITests: XCTestCase {
     func testCloudChatAndPlan() throws {
         let app = makeApp()
         launchIntoApp(app)
-        rootYou(app)
-        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        guard openCloudSync(app) else { throw XCTSkip("Sign-in entry missing") }
         // Typed explicitly — the dev-only credential prefill no longer exists.
         guard app.textFields["Email"].waitForExistence(timeout: 5) else { throw XCTSkip("auth form missing") }
         clearAndType(app.textFields["Email"], "pawan@cerebro.app")
@@ -789,8 +794,7 @@ final class CereBroUITests: XCTestCase {
     func testCloudStartersFreshUser() throws {
         let app = makeApp()
         launchIntoApp(app)
-        rootYou(app)
-        guard tap(app, "Sign in") else { throw XCTSkip("Cloud sync row missing") }
+        guard openCloudSync(app) else { throw XCTSkip("Sign-in entry missing") }
 
         // Switch to "Create account" and fill a unique signup.
         // Segmented mode switch: wait + scroll (a raw .tap() here fails
@@ -872,8 +876,7 @@ final class CereBroUITests: XCTestCase {
         }
 
         // Sign in with Apple is offered alongside email auth.
-        rootYou(app)
-        if tap(app, "Sign in") {
+        if openCloudSync(app) {
             XCTAssertTrue(app.buttons["Sign in with Apple"].waitForExistence(timeout: 4), "Sign in with Apple button missing")
             snapshot(app, "cloud-apple")
         }
@@ -914,7 +917,9 @@ final class CereBroUITests: XCTestCase {
         // You — reminders, premium paywall, sign-in, trusted contact.
         visitSettled(app, "Daily reminder", "Daily Reminder", "ws-07-reminders")
         visitSettled(app, "Premium plan", "CereBro Premium", "ws-08-premium")
-        visitSettled(app, "Sign in", "Not connected", "ws-09-signin")
+        // Sign-in moved out of You (login is part of onboarding) — the
+        // signed-out auth screen is reached via Talk.
+        if openCloudSync(app) { settle(app, "Not connected"); snapshot(app, "ws-09-signin"); back(app) }
         rootYou(app)
         if tap(app, "Urgent support") {
             settle(app, "You're not alone")
@@ -954,7 +959,13 @@ final class CereBroUITests: XCTestCase {
     /// design comparisons (iOS vs Android vs web) can diff real pixels.
     /// Deterministic: `-resetState YES` demo state, no backend needed.
     func testScreenshotTour() throws {
+        #if !targetEnvironment(simulator)
+        throw XCTSkip("Host-filesystem screenshot tour is simulator-only")
+        #endif
         let dir = URL(fileURLWithPath: "/tmp/cere-shots", isDirectory: true)
+        // Start clean: a stale PNG from a previous run must never masquerade
+        // as this run's capture in the cross-platform pixel diff.
+        try? FileManager.default.removeItem(at: dir)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let app = makeApp()
         launchIntoApp(app)
@@ -964,6 +975,31 @@ final class CereBroUITests: XCTestCase {
             let shot = app.screenshot().pngRepresentation
             try shot.write(to: dir.appendingPathComponent("ios-\(tab.lowercased()).png"))
             snapshot(app, "tour-\(tab)")
+        }
+        // Pushed surfaces reached from the tabs (ref-parity pages).
+        let pushed: [(from: String, via: String, name: String)] = [
+            ("Home", "Sounds", "sounds"),
+            ("Home", "Insights", "insights"),
+            ("You", "Premium plan", "premium"),
+        ]
+        for page in pushed {
+            openTab(app, page.from)
+            var reached = tap(app, page.via)
+            if !reached {
+                // The tab bar can still be settling from the previous capture —
+                // re-anchor on the tab once before declaring the page missing.
+                openTab(app, page.from)
+                reached = tap(app, page.via)
+            }
+            guard reached else {
+                XCTFail("Screenshot tour: '\(page.via)' not reachable from \(page.from) — ios-\(page.name).png not captured")
+                continue
+            }
+            sleep(1)
+            let shot = app.screenshot().pngRepresentation
+            try shot.write(to: dir.appendingPathComponent("ios-\(page.name).png"))
+            snapshot(app, "tour-\(page.name)")
+            back(app)
         }
     }
 }

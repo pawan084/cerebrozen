@@ -18,11 +18,17 @@ struct GuidedTourOverlay: View {
          "Nothing is remembered without your say-so. Change anything under You → Privacy & memory."),
     ]
 
+    // One flag, one owner: the overlay finishes it, MainTabView reads it,
+    // and the You-tab replay row resets it — no raw key strings elsewhere.
+    private static let doneKey = "guidedTourDone"
+    static var isDone: Bool { UserDefaults.standard.bool(forKey: doneKey) }
+    static func reset() { UserDefaults.standard.set(false, forKey: doneKey) }
+
     private var stop: (label: String, caption: String) { Self.stops[idx] }
     private var isLast: Bool { idx == Self.stops.count - 1 }
 
     private func finish() {
-        UserDefaults.standard.set(true, forKey: "guidedTourDone")
+        UserDefaults.standard.set(true, forKey: Self.doneKey)
         withAnimation(.easeOut(duration: 0.25)) { isPresented = false }
     }
 

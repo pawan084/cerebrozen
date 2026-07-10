@@ -160,6 +160,84 @@ struct MeditationCard: View {
     }
 }
 
+// MARK: - Sound library (ref "Sounds" quick link)
+/// The ref Sound Library: the whole audio catalogue behind one door, with
+/// gentle filter chips. Server-first with the curated local list offline
+/// (same fallback pattern as the rail and Search).
+struct SoundLibraryView: View {
+    @EnvironmentObject var backend: BackendService
+    @State private var filter = "All"
+    private static let filters = ["All", "Sleep stories", "Soundscapes", "Meditations"]
+
+    private var pool: [ContentItem] {
+        let c = backend.catalogue
+        let stories    = c["sleep"] ?? Dummy.sleepContent
+        // Offline, only genuine soundscapes qualify — never relabel stories.
+        let scapes     = c["soundscape"] ?? Dummy.sleepContent.filter { $0.subtitle.hasPrefix("Soundscape") }
+        let meditation = (c["meditation"] ?? Dummy.meditations) + (c["breath"] ?? [])
+        let picked: [ContentItem]
+        switch filter {
+        case "Sleep stories": picked = stories
+        case "Soundscapes":   picked = scapes
+        case "Meditations":   picked = meditation
+        default:              picked = stories + scapes + meditation
+        }
+        // The same piece can appear under two kinds (e.g. "Ocean breathing" lives
+        // in both the sleep and meditation lists) as distinct items — collapse
+        // visually identical rows, preferring the copy that can actually play
+        // server audio (a local fallback item carries an empty audioURL).
+        var byKey: [String: ContentItem] = [:]
+        var order: [String] = []
+        for item in picked {
+            let key = "\(item.title)|\(item.subtitle)"
+            if let existing = byKey[key] {
+                if existing.audioURL.isEmpty && !item.audioURL.isEmpty { byKey[key] = item }
+            } else {
+                byKey[key] = item
+                order.append(key)
+            }
+        }
+        return order.compactMap { byKey[$0] }
+    }
+
+    var body: some View {
+        ScreenScaffold(eyebrow: "Stories and soundscapes", title: "Sound Library",
+                       trailingSystemImage: "music.note", accent: Theme.Accent.sleep) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Self.filters, id: \.self) { f in
+                        Button { filter = f } label: {
+                            Text(f)
+                                .appFont(12.5, weight: .semibold)
+                                .foregroundStyle(filter == f ? Theme.Palette.ink : Theme.Palette.soft)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .background(filter == f ? Theme.Palette.soft : Theme.Palette.card)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(filter == f ? .clear : Theme.Palette.line))
+                        }
+                        .buttonStyle(.pressable)
+                        .scaleEffect(filter == f ? 1.04 : 1)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: filter)
+                        .accessibilityAddTraits(filter == f ? .isSelected : [])
+                    }
+                }
+            }
+            .sensoryFeedback(.selection, trigger: filter)
+            if pool.isEmpty {
+                InsightCard(label: "Nothing here yet",
+                            title: "No \(filter.lowercased()) available right now.",
+                            detail: "New audio lands here as it's published — try another filter meanwhile.")
+            } else {
+                ForEach(pool) { item in
+                    NavRow(title: item.title, subtitle: item.subtitle,
+                           systemImage: item.symbol, imageURL: item.imageURL) { PlayerView(item: item) }
+                }
+            }
+        }
+        .task { await backend.loadCatalogue() }
+    }
+}
+
 // MARK: - Audio player (flagship now-playing screen)
 struct PlayerView: View {
     let item: ContentItem
