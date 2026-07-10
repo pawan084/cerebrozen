@@ -56,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.BreathingScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.BubbleWrapScreen
 import com.cerebrozen.app.ui.screens.CbtReframeScreen
@@ -269,6 +270,7 @@ fun CereBroApp() {
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }
             composable("tools") { ToolsScreen(onOpen = open, onBack = back) }
+            composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
             composable("intention") { IntentionScreen(onBack = back) }

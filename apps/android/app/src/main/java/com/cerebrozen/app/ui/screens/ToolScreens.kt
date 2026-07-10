@@ -1,10 +1,22 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Star
@@ -13,19 +25,31 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Ink
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // Native tools (iOS ToolsViews + MicroActivities parity): CBT reframe,
@@ -36,10 +60,94 @@ import kotlinx.coroutines.launch
 fun ToolsScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small resets", "Tools", onBack) {
     Text("Two-minute practices for the moment you're in.",
         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+    NavRow("A minute to breathe", "Follow the orb — in for four, out for four", icon = Icons.Outlined.Air) { onOpen("breathing") }
     NavRow("Untangle a thought", "CBT reframe — from stuck to balanced", icon = Icons.Outlined.Psychology) { onOpen("cbt") }
     NavRow("One good thing", "Name something that went right", icon = Icons.Outlined.Star) { onOpen("onegoodthing") }
     NavRow("Tomorrow's intention", "Set one clear point for tomorrow", icon = Icons.Outlined.WbTwilight) { onOpen("intention") }
     NavRow("TIPP skill", "DBT reset for very intense moments", icon = Icons.Outlined.SelfImprovement) { onOpen("tipp") }
+}
+
+/** A one-minute paced-breathing exercise: a slow-pulsing orb counts you through
+ * in / hold / out / hold, and you can save the practice to your journal. The orb
+ * pulse honours Reduce Motion (holds a steady size), mirroring the calm-motion
+ * policy elsewhere. */
+@Composable
+fun BreathingScreen(onBack: () -> Unit) {
+    var elapsed by remember { mutableIntStateOf(0) }
+    var saved by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val totalSeconds = 120
+    val phases = listOf("Breathe in", "Hold", "Breathe out", "Hold")
+    val phase = phases[(elapsed / 4) % phases.size]
+    val count = 4 - (elapsed % 4)
+
+    val reduceMotion = rememberReduceMotion()
+    val transition = rememberInfiniteTransition(label = "breathing-orb")
+    val pulse by transition.animateFloat(
+        initialValue = 0.86f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(tween(4000), RepeatMode.Reverse),
+        label = "breathing-orb-scale",
+    )
+    val orbScale = if (reduceMotion) 1f else pulse
+
+    LaunchedEffect(Unit) {
+        while (elapsed < totalSeconds) {
+            delay(1000)
+            elapsed += 1
+        }
+    }
+
+    SubPage("A minute to breathe", "Breathing", onBack) {
+        Text("Follow the orb — in for four, hold, out for four.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Text(
+            phase,
+            style = MaterialTheme.typography.displaySmall,
+            color = TextPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(Modifier.fillMaxWidth().height(236.dp), contentAlignment = Alignment.Center) {
+            repeat(3) { index ->
+                Box(
+                    Modifier
+                        .size((118 + index * 56).dp)
+                        .clip(CircleShape)
+                        .border(1.dp, LineStroke, CircleShape),
+                )
+            }
+            Box(
+                Modifier
+                    .size(144.dp)
+                    .scale(orbScale)
+                    .clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(Color.White, Cyan))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = Ink)
+            }
+        }
+        SectionCard(
+            onClick = {
+                if (!saved) {
+                    scope.launch {
+                        runCatching { Api.createJournal("Breathing", "Took a minute to breathe and settle.") }
+                            .onSuccess { saved = true }
+                            .onFailure { status = it.message ?: "Couldn't save." }
+                    }
+                }
+            },
+        ) {
+            Text(if (saved) "Reflection saved" else "Save reflection",
+                style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text("Add this practice to your private journal",
+                style = MaterialTheme.typography.labelSmall, color = TextSoft)
+        }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        PrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth()) { onBack() }
+    }
 }
 
 /** A small tool that writes its result to the journal (title + composed body). */
