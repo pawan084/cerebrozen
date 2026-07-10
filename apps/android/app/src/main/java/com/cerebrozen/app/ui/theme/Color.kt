@@ -32,6 +32,11 @@ val Ok = Color(0xFF7EE0A8)          // --ok (success)
 val CardFill = Color(0x0DFFFFFF)   // white 5%  (--card)
 val LineStroke = Color(0x1FFFFFFF) // white 12% (--line)
 
+// Floating bottom-nav pill — a lifted lavender-indigo capsule over a dark scrim.
+val NavPillTop = Color(0xFF504184)    // pill gradient top (lifted lavender-indigo)
+val NavPillBottom = Color(0xFF292052) // pill gradient floor (deep indigo)
+val NavScrim = Color(0xFF0B061E)      // behind-bar fade so content dims under the pill
+
 // List-thumbnail gradient floors (UI chrome for content-row artwork). The tops
 // reuse the brand accents (Periwinkle/Cyan/Warm/Iris); these are the darker
 // gradient partners that don't map to an existing palette token.
