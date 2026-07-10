@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -152,15 +153,18 @@ fun Onboarding() {
             "Honesty first", "What CereBro is — and isn't",
             "", "I understand", onBack = { back() }, onPrimary = { next() },
         ) {
-            SectionCard {
-                Text("Can help", style = MaterialTheme.typography.titleMedium, color = Cyan)
-                Text("A calm space to reflect, breathe, sleep better and talk things through.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            }
-            SectionCard {
-                Text("Can't do", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text("It isn't a therapist or crisis line. In an emergency, contact local services.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DisclosureTile(
+                    "Can help", Cyan,
+                    "A calm space to reflect, breathe, sleep better and talk things through.",
+                    Modifier.weight(1f),
+                )
+                DisclosureTile(
+                    "Can't do", TextSoft,
+                    "Not a therapist or crisis line. In an emergency, contact local services.",
+                    Modifier.weight(1f),
+                )
             }
         }
 
@@ -409,6 +413,23 @@ private fun Funnel(
         Spacer(Modifier.height(4.dp))
         PrimaryButton(text = primaryLabel, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth()) { onPrimary() }
         secondary?.invoke()
+    }
+}
+
+/** One side of the two-up disclosure — a glass tile with an accent heading. */
+@Composable
+private fun DisclosureTile(
+    title: String,
+    accent: androidx.compose.ui.graphics.Color,
+    body: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.glass(RoundedCornerShape(18.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = accent)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
     }
 }
 

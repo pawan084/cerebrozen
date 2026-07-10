@@ -31,10 +31,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -54,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -572,10 +576,30 @@ private fun VoiceSessionOverlay(
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            TextButton(onClick = onEnd) { Text("End", color = Danger) }
-            TextButton(onClick = onText) { Text("Text instead", color = TextMuted) }
+        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+            CallControl(Icons.Filled.CallEnd, "End", Danger, Danger.copy(alpha = 0.18f), onEnd)
+            CallControl(Icons.Outlined.Keyboard, "Text", TextSoft, CardFill, onText)
         }
+    }
+}
+
+/** A round live-call control — a circular glyph button with a label below
+ * (End / Text), echoing the fork's call-session look on our tokens. */
+@Composable
+private fun CallControl(icon: ImageVector, label: String, tint: Color, bg: Color, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            Modifier.size(58.dp).clip(CircleShape).background(bg)
+                .border(1.dp, tint.copy(alpha = 0.5f), CircleShape)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
 
