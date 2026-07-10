@@ -185,13 +185,22 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }.getOrDefault(false)
     }
 
-    /** Speak a reply — studio voice when the server has TTS, else on-device. */
+    // After a spoken reply, pick the mic back up so the conversation flows turn by
+    // turn. Wired below once send() is in scope (these funcs are mutually
+    // dependent); invoked on the Main-dispatched scope since VoiceEngine must be
+    // driven from the main thread.
+    var resumeTurn: () -> Unit = {}
+
+    /** Speak a reply — studio voice when the server has TTS, else on-device — then
+     * hand the turn back to the listener. */
     suspend fun speakReply(text: String) {
-        if (text.isBlank()) return
+        if (text.isBlank()) { resumeTurn(); return }
         if (cloudVoice) {
-            runCatching { cloud.play(Api.tts(text)) }.onFailure { voice.speak(text) }
+            val spoke = runCatching { cloud.play(Api.tts(text)) }.isSuccess
+            if (spoke) resumeTurn()
+            else voice.speak(text) { scope.launch { resumeTurn() } }
         } else {
-            voice.speak(text)
+            voice.speak(text) { scope.launch { resumeTurn() } }
         }
     }
 
@@ -258,6 +267,18 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 status = e.message ?: "Couldn't send."
             } finally {
                 busy = false
+            }
+        }
+    }
+
+    // Now that send() exists, wire the post-speech resume: re-arm the mic for the
+    // next turn while the voice session is still open (End/Text clears it).
+    resumeTurn = {
+        if (voiceSession) {
+            if (cloudVoice) {
+                if (!cloud.startRecording()) status = "Microphone unavailable right now."
+            } else {
+                voice.startListening { t -> send(t, speak = true) }
             }
         }
     }
