@@ -972,19 +972,76 @@ final class CereBroUITests: XCTestCase {
         // as this run's capture in the cross-platform pixel diff.
         try? FileManager.default.removeItem(at: dir)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        func capture(_ app: XCUIApplication, _ name: String) throws {
+            sleep(1)   // let hero images/animations settle
+            try app.screenshot().pngRepresentation
+                .write(to: dir.appendingPathComponent("ios-\(name).png"))
+            snapshot(app, "tour-\(name)")
+        }
+
+        // Part 1 — the onboarding funnel, captured step by step (fresh install
+        // state; numbering mirrors the real sequence).
+        let ob = makeApp()
+        ob.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
+        ob.launch()
+        _ = ob.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10)
+        try capture(ob, "onboarding-01-welcome")
+        tap(ob, "Try a 2-minute reset")
+        expectStep(ob, "A quick check", shot: "ob-age")
+        tap(ob, "I am 18 or older")
+        try capture(ob, "onboarding-02-age-gate")
+        tapExact(ob, "Continue")
+        expectStep(ob, "What CereBro is — and isn't", shot: "ob-disclosure")
+        try capture(ob, "onboarding-03-disclosure")
+        tapExact(ob, "Continue")
+        expectStep(ob, "Language", shot: "ob-language")
+        try capture(ob, "onboarding-04-language")
+        tapExact(ob, "Continue")
+        expectStep(ob, "What feels most true right now?", shot: "ob-state")
+        try capture(ob, "onboarding-05-state-check")
+        tap(ob, "Doubting myself")                          // auto-advances
+        expectStep(ob, "Let's steady your body", shot: "ob-reset")
+        try capture(ob, "onboarding-06-first-reset")
+        tapExact(ob, "Skip for now")
+        expectStep(ob, "First Plan", shot: "ob-plan")
+        try capture(ob, "onboarding-07-first-plan")
+        tapExact(ob, "Keep going")
+        expectStep(ob, "Save your space", shot: "ob-signup")
+        try capture(ob, "onboarding-08-signup")
+        tapExact(ob, "Maybe later")
+        expectStep(ob, "What CereBro remembers", shot: "ob-consent")
+        try capture(ob, "onboarding-09-consent")
+        tapExact(ob, "Continue")
+        expectStep(ob, "Notifications", shot: "ob-notifications")
+        try capture(ob, "onboarding-10-notifications")
+        ob.terminate()
+
+        // Part 2 — the main app: tab roots, then every pushed surface.
         let app = makeApp()
         launchIntoApp(app)
         for tab in ["Home", "Sleep", "Talk", "Journal", "You"] {
             openTab(app, tab)
-            sleep(1)   // let hero images/animations settle
-            let shot = app.screenshot().pngRepresentation
-            try shot.write(to: dir.appendingPathComponent("ios-\(tab.lowercased()).png"))
-            snapshot(app, "tour-\(tab)")
+            try capture(app, tab.lowercased())
         }
-        // Pushed surfaces reached from the tabs (ref-parity pages).
         let pushed: [(from: String, via: String, name: String)] = [
             ("Home", "Sounds", "sounds"),
             ("Home", "Insights", "insights"),
+            ("Home", "Check how you feel", "mood-check-in"),
+            ("Home", "How did you sleep?", "sleep-check-in"),
+            ("Home", "Today's plan", "daily-plan"),
+            ("Home", "Programs", "programs"),
+            ("Home", "Calm games", "games"),
+            ("Home", "Search", "search"),
+            ("Sleep", "Rain over quiet hills", "player"),
+            ("Sleep", "Sleep diary", "sleep-diary"),
+            ("Talk", "Switch to chat", "chat"),
+            ("Journal", "New entry", "journal-entry"),
+            ("Journal", "History", "journal-history"),
+            ("You", "Companion style", "companion-style"),
+            ("You", "Daily reminder", "reminders"),
+            ("You", "Privacy & memory", "privacy"),
+            ("You", "Pattern dashboard", "pattern-dashboard"),
+            ("You", "Urgent support", "crisis"),
             ("You", "Premium plan", "premium"),
         ]
         for page in pushed {
@@ -1000,10 +1057,7 @@ final class CereBroUITests: XCTestCase {
                 XCTFail("Screenshot tour: '\(page.via)' not reachable from \(page.from) — ios-\(page.name).png not captured")
                 continue
             }
-            sleep(1)
-            let shot = app.screenshot().pngRepresentation
-            try shot.write(to: dir.appendingPathComponent("ios-\(page.name).png"))
-            snapshot(app, "tour-\(page.name)")
+            try capture(app, page.name)
             back(app)
         }
     }
