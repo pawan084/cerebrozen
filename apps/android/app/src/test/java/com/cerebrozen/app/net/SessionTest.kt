@@ -1,5 +1,7 @@
 package com.cerebrozen.app.net
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -94,6 +96,34 @@ class SessionTest {
         assertEquals("""{"ok":1}""", Session.api("/me"))
         assertEquals("the 401 must trigger exactly one retry", 2, meCalls)
         assertTrue(Session.signedIn)
+    }
+
+    @Test
+    fun concurrent_reads_coalesce_onto_one_refresh() = runTest {
+        // Model a one-time-use rotating refresh token: r1 works once, reuse → 401.
+        val store = FakeStore("refresh_token" to "r1")
+        var refreshCalls = 0
+        var consumed = false
+        Session.resetForTest(store) { url, _, body, _, _ ->
+            when {
+                url.endsWith("/auth/refresh") -> {
+                    refreshCalls++
+                    if (!consumed && body?.contains("r1") == true) {
+                        consumed = true
+                        200 to """{"access_token":"a2","refresh_token":"r2"}"""
+                    } else {
+                        401 to """{"detail":"refresh token reuse"}"""
+                    }
+                }
+                else -> 200 to """{"ok":1}"""
+            }
+        }
+        // A burst of authed reads on a cold start (access == null) — as Home fires.
+        val results = (1..6).map { async { runCatching { Session.api("/me") }.getOrNull() } }.awaitAll()
+        assertTrue("every concurrent read must succeed", results.all { it == """{"ok":1}""" })
+        assertEquals("concurrent 401s must coalesce onto a single refresh", 1, refreshCalls)
+        assertTrue("the valid session must survive the burst — never a spurious sign-out", Session.signedIn)
+        assertEquals("r2", store.getString("refresh_token"))
     }
 
     @Test

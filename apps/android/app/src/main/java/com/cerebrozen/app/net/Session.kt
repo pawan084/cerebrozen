@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.cerebrozen.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -41,8 +42,12 @@ object Session {
     var signedIn by mutableStateOf(false)
         private set
 
-    private var access: String? = null
+    @Volatile private var access: String? = null
     private var storage: Store = MemoryStore()
+    // Serialises token refresh so a burst of concurrent 401s (e.g. every Home read
+    // firing at once on a cold launch, when access is null) coalesces onto a single
+    // /auth/refresh instead of each presenting the same one-time-use refresh token.
+    private val refreshMutex = kotlinx.coroutines.sync.Mutex()
 
     /** Persistence seam — SharedPreferences in prod, a map in unit tests. */
     internal interface Store {
@@ -297,7 +302,7 @@ object Session {
     }
 
     private suspend fun binRequest(path: String, body: ByteArray, contentType: String): ByteArray {
-        if (access == null && !refresh()) throw ApiException(401, "Signed out")
+        ensureAccess()
         suspend fun attempt(): Pair<Int, ByteArray> =
             binExec(BuildConfig.API_BASE_URL + path, "POST", body, contentType, access)
         var (code, bytes) = attempt()
@@ -324,7 +329,7 @@ object Session {
     /** POST an SSE endpoint and invoke [onEvent] for every `data:` JSON frame.
      * Same auth semantics as [api]: fresh-launch refresh + one rotation retry. */
     suspend fun sse(path: String, json: JSONObject, onEvent: (JSONObject) -> Unit) {
-        if (access == null && !refresh()) throw ApiException(401, "Signed out")
+        ensureAccess()
         var detail = ""
         suspend fun attempt(): Int {
             val (code, stream) = sseExec(BuildConfig.API_BASE_URL + path, json.toString(), access)
@@ -349,17 +354,35 @@ object Session {
      * rejection (401/403) ends the session — a network blip must not sign the
      * user out (it would also wipe the offline cache on a cold, offline launch). */
     private suspend fun refresh(): Boolean {
-        val token = storage.getString(REFRESH_KEY) ?: return false
-        return try {
-            val body = JSONObject().put("refresh_token", token)
-            store(JSONObject(raw("/auth/refresh", "POST", body.toString(), "application/json", authed = false)))
-            true
-        } catch (e: ApiException) {
-            if (e.code == 401 || e.code == 403) signOut()
-            false
-        } catch (_: Exception) {
-            false  // network/offline — keep the session so cached reads can serve
+        val seen = access
+        return refreshMutex.withLock {
+            // Coalesce: if another coroutine already rotated while we waited for the
+            // lock, use its fresh token rather than refreshing again — a second call
+            // would present an already-consumed rotating refresh token and wrongly
+            // sign the (still-valid) session out.
+            if (access != null && access != seen) return@withLock true
+            val token = storage.getString(REFRESH_KEY) ?: return@withLock false
+            try {
+                val body = JSONObject().put("refresh_token", token)
+                store(JSONObject(raw("/auth/refresh", "POST", body.toString(), "application/json", authed = false)))
+                true
+            } catch (e: ApiException) {
+                if (e.code == 401 || e.code == 403) signOut()
+                false
+            } catch (_: Exception) {
+                false  // network/offline — keep the session so cached reads can serve
+            }
         }
+    }
+
+    /** Ensure a usable access token, refreshing on a cold start. Distinguishes a
+     * real sign-out (refresh rejected → session ended) from a transient network
+     * failure (session kept) so writes surface an honest message, not a scary
+     * "Signed out" when the server was merely unreachable. */
+    private suspend fun ensureAccess() {
+        if (access != null || refresh()) return
+        if (signedIn) throw ApiException(503, "Couldn't reach the server — check your connection.")
+        throw ApiException(401, "Signed out")
     }
 
     /** Authenticated call with the fresh-launch refresh + one rotation retry.
@@ -368,7 +391,7 @@ object Session {
     suspend fun api(path: String, method: String = "GET", json: JSONObject? = null): String {
         val isGet = method == "GET"
         return try {
-            if (access == null && !refresh()) throw ApiException(401, "Signed out")
+            ensureAccess()
             val result = try {
                 raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
             } catch (e: ApiException) {
