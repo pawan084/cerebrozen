@@ -113,7 +113,8 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
         .clip(shape)
     // Real backdrop blur of the aurora when a haze source is present (API 31+);
     // the translucent tint fill + bevel then sit on top of the frosted glass.
-    if (hazeState != null) m = m.hazeEffect(hazeState)
+    // backgroundColor is required — it's what the blur composites against.
+    if (hazeState != null) m = m.hazeEffect(hazeState) { backgroundColor = Night }
     m
         .background(Gradients.glass)
         .border(1.dp, Stroke.bevel, shape)
