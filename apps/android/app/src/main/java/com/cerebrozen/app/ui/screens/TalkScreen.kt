@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.CloudVoice
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -172,6 +173,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var sessionSeconds by remember { mutableStateOf(0) }
     // Live mic level for the cloud recording path (the on-device path uses voice.level).
     var cloudLevel by remember { mutableStateOf(0f) }
+    // Duck the ambient bed under the companion's voice while it speaks.
+    LaunchedEffect(voice.speaking, cloud.speaking) {
+        if (Player.isPlaying) Player.duck(context, voice.speaking || cloud.speaking)
+    }
     LaunchedEffect(voiceSession) {
         sessionSeconds = 0
         while (voiceSession) {

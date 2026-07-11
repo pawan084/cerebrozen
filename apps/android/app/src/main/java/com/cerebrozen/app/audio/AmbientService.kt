@@ -34,10 +34,12 @@ class AmbientService : Service() {
         const val ACTION_STOP = "com.cerebrozen.app.STOP"
         const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
         const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
+        const val ACTION_DUCK = "com.cerebrozen.app.DUCK"
         const val EXTRA_TITLE = "title"
         const val EXTRA_URL = "url"
         const val EXTRA_MINUTES = "minutes"
         const val EXTRA_VOLUME = "volume"
+        const val EXTRA_DUCK = "duck"
         private const val CHANNEL = "ambient_playback"
         private const val NOTIF = 77
     }
@@ -46,6 +48,8 @@ class AmbientService : Service() {
     private var session: MediaSession? = null
     private var title = "Ambient bed"
     private var volume = 1f
+    /** 1f normally; drops while the voice companion speaks so the bed ducks under it. */
+    private var duckFactor = 1f
     /** Current audio source: "" = bundled ambient bed, else a narration URL. */
     private var currentSrc = ""
     // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
@@ -72,12 +76,18 @@ class AmbientService : Service() {
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
             ACTION_VOLUME -> {
                 volume = intent.getFloatExtra(EXTRA_VOLUME, 1f).coerceIn(0f, 1f)
-                mp?.volume = volume
+                applyVolume()
                 Player.setVolumeState(volume)
+            }
+            ACTION_DUCK -> {
+                duckFactor = if (intent.getBooleanExtra(EXTRA_DUCK, false)) 0.28f else 1f
+                applyVolume()
             }
         }
         return START_STICKY
     }
+
+    private fun applyVolume() { mp?.volume = volume * duckFactor }
 
     private fun setTimer(minutes: Int) {
         timerHandler.removeCallbacksAndMessages(null)
@@ -92,7 +102,7 @@ class AmbientService : Service() {
     private fun fadeOut(stepsLeft: Int) {
         val player = mp
         if (stepsLeft <= 0 || player == null) { stopAll(); return }
-        player.volume = volume * stepsLeft / 10f
+        player.volume = volume * duckFactor * stepsLeft / 10f
         timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
     }
 
@@ -108,7 +118,7 @@ class AmbientService : Service() {
             stopAll()
             return
         }
-        player.volume = volume
+        player.volume = volume * duckFactor
         player.playWhenReady = true   // ExoPlayer starts once prepared
         Player.setState(title, true)
         updateSession(true)
