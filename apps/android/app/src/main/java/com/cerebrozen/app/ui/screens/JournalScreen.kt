@@ -1,13 +1,24 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -18,7 +29,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,9 +42,11 @@ import androidx.fragment.app.FragmentActivity
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
@@ -42,6 +57,15 @@ private val PROMPTS = listOf(
     "What went better than you expected?",
     "If today had a weather, what was it — and why?",
 )
+
+/** Optional feeling chips for a new entry. Single-select; when chosen the mood is
+ * persisted with the entry (appended to the saved body via [Api.createJournal]),
+ * so nothing here is decorative — it becomes part of the real, searchable record. */
+private val MOODS = listOf("Calm", "Anxious", "Hopeful", "Tired", "Sad", "Grateful")
+
+/** The journal's information architecture (mirrors the redesign): a hub plus three
+ * pushed sub-screens for writing, reviewing history, and privacy. */
+private enum class JournalMode { Home, Entry, History, Private }
 
 internal data class Entry(val title: String, val body: String, val date: String, val risk: String)
 
@@ -88,7 +112,8 @@ internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
 }
 
 /** Journal: private composer + history, mirrored to /journal (safety-scanned
- * server-side; support surfaces, never blocks). */
+ * server-side; support surfaces, never blocks). Re-skinned to the redesign's
+ * multi-mode hub (Home / Entry / History / Private) on our design system. */
 @Composable
 fun JournalScreen() {
     var title by remember { mutableStateOf("") }
@@ -99,12 +124,15 @@ fun JournalScreen() {
     var busy by remember { mutableStateOf(false) }
     var promptIdx by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
+    var mood by remember { mutableStateOf<String?>(null) }
+    var mode by remember { mutableStateOf(JournalMode.Home) }
     val scope = rememberCoroutineScope()
-    // Journal lock (mirrors iOS Face ID lock): opt-in via Privacy & memory;
-    // unlocks per visit. Devices without any screen lock unlock gracefully so
+    // Journal lock (mirrors iOS Face ID lock): opt-in via Private mode; unlocks
+    // per visit. Devices without any screen lock unlock gracefully so
     // emulators/tests are never blocked (same contract as iOS).
     val lockOn = Session.prefGet("journal_locked") == "true"
     var unlocked by remember { mutableStateOf(!lockOn) }
+    var journalLocked by remember { mutableStateOf(lockOn) }
     val activity = LocalContext.current as? FragmentActivity
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
@@ -123,6 +151,133 @@ fun JournalScreen() {
         return
     }
 
+    when (mode) {
+        JournalMode.Entry -> {
+            SubPage("Private writing", "New entry", onBack = { mode = JournalMode.Home }) {
+                // Prompt rotation moved into the composer as a gentle guide.
+                SectionCard {
+                    Text("Today's prompt", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                    Text(PROMPTS[promptIdx], style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    TextButton(
+                        onClick = { promptIdx = (promptIdx + 1) % PROMPTS.size },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    ) { Text("Try another", color = Cyan) }
+                }
+                SectionCard {
+                    Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    AppTextField(title, { title = it }, "Title", singleLine = true)
+                    AppTextField(body, { body = it }, "What's on your mind?", minLines = 3)
+                    Text("How are you feeling? (optional)",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    MOODS.chunked(3).forEach { rowMoods ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowMoods.forEach { m ->
+                                PickChip(selected = mood == m, label = m) {
+                                    mood = if (mood == m) null else m
+                                }
+                            }
+                        }
+                    }
+                    PrimaryButton(
+                        text = if (busy) "One moment…" else "Save entry",
+                        enabled = !busy && title.isNotBlank() && body.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        busy = true; status = null
+                        scope.launch {
+                            try {
+                                // Persist the chosen feeling with the entry so the chip is real.
+                                val entryBody = body.trim().let { b ->
+                                    mood?.let { "$b\n\n— feeling ${it.lowercase()}" } ?: b
+                                }
+                                val saved = Api.createJournal(title.trim(), entryBody)
+                                showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
+                                title = ""; body = ""; mood = null
+                                status = "Saved — private to you."
+                                runCatching { entries = parseEntries(Api.journal()) }
+                                mode = JournalMode.Home
+                            } catch (e: Exception) {
+                                status = e.message ?: "Couldn't save."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                    status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+                }
+            }
+            return
+        }
+        JournalMode.History -> {
+            SubPage("Past entries", "History", onBack = { mode = JournalMode.Home }) {
+                if (entries.isEmpty()) {
+                    SectionCard {
+                        Text("No entries yet", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text("Your saved reflections will appear here — private to you.",
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    }
+                } else {
+                    if (entries.size > 3) {
+                        AppTextField(query, { query = it }, "Search entries", singleLine = true)
+                    }
+                    val shown = filterEntries(entries, query)
+                    shown.take(20).forEachIndexed { i, e -> JournalEntryCard(e, i) }
+                    if (shown.isEmpty()) {
+                        Text("No entries match \"${query.trim()}\".",
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    }
+                }
+            }
+            return
+        }
+        JournalMode.Private -> {
+            SubPage("Private mode", "Your privacy", onBack = { mode = JournalMode.Home }) {
+                SectionCard {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Outlined.Lock, contentDescription = null,
+                                tint = Periwinkle, modifier = Modifier.size(22.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Lock the journal",
+                                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                                Text("Require your screen lock to open",
+                                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            }
+                        }
+                        // Real toggle: wired to the same journal_locked pref the unlock
+                        // flow reads. Takes effect on the next visit.
+                        AppSwitch(checked = journalLocked, onCheckedChange = {
+                            journalLocked = it
+                            Session.prefPut("journal_locked", it.toString())
+                        })
+                    }
+                }
+                SectionCard {
+                    Text("Your entries stay private", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        "Journal entries are yours. Safety scanning quietly surfaces support " +
+                            "when something sounds heavy — it never blocks or shares your writing.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                    Text(
+                        "In India, Tele-MANAS is available any time — call or WhatsApp 14416.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
+            }
+            return
+        }
+        JournalMode.Home -> Unit
+    }
+
     Page("Private to you", "Journal", trailing = Icons.Outlined.MenuBook) {
         HeroCard(
             imageUrl = HeroImg.journal,
@@ -137,31 +292,14 @@ fun JournalScreen() {
             ) { Text("Try another", color = Cyan) }
         }
 
-        SectionCard {
-            Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            AppTextField(title, { title = it }, "Title", singleLine = true)
-            AppTextField(body, { body = it }, "What's on your mind?", minLines = 3)
-            PrimaryButton(
-                text = if (busy) "One moment…" else "Save entry",
-                enabled = !busy && title.isNotBlank() && body.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                busy = true; status = null
-                scope.launch {
-                    try {
-                        val saved = Api.createJournal(title.trim(), body.trim())
-                        showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
-                        title = ""; body = ""
-                        status = "Saved — private to you."
-                        runCatching { entries = parseEntries(Api.journal()) }
-                    } catch (e: Exception) {
-                        status = e.message ?: "Couldn't save."
-                    } finally {
-                        busy = false
-                    }
-                }
-            }
-            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        NavRow("New entry", "Private writing, safety-aware", Icons.Outlined.Edit) {
+            mode = JournalMode.Entry
+        }
+        NavRow("History", "Your past entries, searchable", Icons.Outlined.History) {
+            mode = JournalMode.History
+        }
+        NavRow("Private mode", "Lock the journal, manage privacy", Icons.Outlined.Lock) {
+            mode = JournalMode.Private
         }
 
         // Safety contract: support is surfaced, the entry is never blocked.
@@ -175,27 +313,49 @@ fun JournalScreen() {
             }
         }
 
-        if (entries.isNotEmpty()) {
-            SectionCard {
-                Text("History", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                if (entries.size > 3) {
-                    AppTextField(query, { query = it }, "Search entries", singleLine = true)
-                }
-                val shown = filterEntries(entries, query)
-                shown.take(10).forEachIndexed { i, e ->
-                    Column(
-                        Modifier.appear(i, rise = 8f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text("${e.title} · ${e.date}", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                        Text(e.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                if (shown.isEmpty()) {
-                    Text("No entries match \"${query.trim()}\".",
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+    }
+}
+
+/** A single history entry as a glass row: an accent bar (warm when the entry was
+ * flagged for support), date, title, and a two-line preview. Real data only. */
+@Composable
+private fun JournalEntryCard(entry: Entry, index: Int) {
+    val elevated = entry.risk !in listOf("none", "low")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .appear(index, rise = 8f)
+            .glass()
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .width(4.dp)
+                .height(40.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(if (elevated) Warm else Periwinkle),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(entry.date, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text(entry.title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (entry.body.isNotBlank()) {
+                Text(entry.body.take(120), style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (elevated) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Warm.copy(alpha = 0.18f))
+                    .border(1.dp, LineStroke, RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text("Support", style = MaterialTheme.typography.labelMedium, color = Warm)
             }
         }
     }

@@ -8,11 +8,14 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
-import android.media.MediaPlayer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player as Media3Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.cerebrozen.app.MainActivity
 import com.cerebrozen.app.R
 
@@ -20,7 +23,9 @@ import com.cerebrozen.app.R
  * Plays the looping ambient bed as a foreground service with a MediaStyle
  * notification (play / pause / stop + lock-screen transport), so calm audio
  * keeps going when the app is backgrounded. The [Player] object is the thin
- * controller; this service owns the actual MediaPlayer + MediaSession.
+ * controller; this service owns the actual ExoPlayer + MediaSession. ExoPlayer's
+ * REPEAT_MODE_ONE loops the bundled bed gaplessly (no seam-tick), and it also
+ * streams narrated tracks — falling back to the bed on any stream error.
  */
 class AmbientService : Service() {
     companion object {
@@ -29,23 +34,24 @@ class AmbientService : Service() {
         const val ACTION_STOP = "com.cerebrozen.app.STOP"
         const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
         const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
+        const val ACTION_DUCK = "com.cerebrozen.app.DUCK"
         const val EXTRA_TITLE = "title"
         const val EXTRA_URL = "url"
         const val EXTRA_MINUTES = "minutes"
         const val EXTRA_VOLUME = "volume"
+        const val EXTRA_DUCK = "duck"
         private const val CHANNEL = "ambient_playback"
         private const val NOTIF = 77
     }
 
-    private var mp: MediaPlayer? = null
+    private var mp: ExoPlayer? = null
     private var session: MediaSession? = null
     private var title = "Ambient bed"
     private var volume = 1f
+    /** 1f normally; drops while the voice companion speaks so the bed ducks under it. */
+    private var duckFactor = 1f
     /** Current audio source: "" = bundled ambient bed, else a narration URL. */
     private var currentSrc = ""
-    /** Streamed players prepare async; start/pause are only legal once ready. */
-    private var prepared = false
-    private var pauseRequested = false
     // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
     private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -70,16 +76,22 @@ class AmbientService : Service() {
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
             ACTION_VOLUME -> {
                 volume = intent.getFloatExtra(EXTRA_VOLUME, 1f).coerceIn(0f, 1f)
-                mp?.setVolume(volume, volume)
+                applyVolume()
                 Player.setVolumeState(volume)
+            }
+            ACTION_DUCK -> {
+                duckFactor = if (intent.getBooleanExtra(EXTRA_DUCK, false)) 0.28f else 1f
+                applyVolume()
             }
         }
         return START_STICKY
     }
 
+    private fun applyVolume() { mp?.volume = volume * duckFactor }
+
     private fun setTimer(minutes: Int) {
         timerHandler.removeCallbacksAndMessages(null)
-        mp?.setVolume(1f, 1f)
+        mp?.volume = volume
         Player.setTimerState(minutes)
         if (minutes > 0) {
             val untilFade = (minutes * 60_000L - 10_000L).coerceAtLeast(1_000L)
@@ -90,21 +102,24 @@ class AmbientService : Service() {
     private fun fadeOut(stepsLeft: Int) {
         val player = mp
         if (stepsLeft <= 0 || player == null) { stopAll(); return }
-        player.setVolume(stepsLeft / 10f, stepsLeft / 10f)
+        player.volume = volume * duckFactor * stepsLeft / 10f
         timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
     }
 
     private fun play(url: String = currentSrc) {
-        pauseRequested = false
         if (mp != null && url != currentSrc) { mp?.release(); mp = null }
         if (mp == null) {
             currentSrc = url
             mp = if (url.isBlank()) createBed() else createStream(url)
         }
-        if (prepared) {
-            mp?.setVolume(volume, volume)
-            mp?.start()
+        val player = mp
+        if (player == null) {
+            // Source creation failed outright — don't advertise a phantom session.
+            stopAll()
+            return
         }
+        player.volume = volume * duckFactor
+        player.playWhenReady = true   // ExoPlayer starts once prepared
         Player.setState(title, true)
         updateSession(true)
         ServiceCompat.startForeground(
@@ -113,47 +128,40 @@ class AmbientService : Service() {
         )
     }
 
-    private fun createBed(): MediaPlayer? {
-        prepared = true
-        return MediaPlayer.create(this, R.raw.ambient_bed)?.apply { isLooping = true }
-    }
+    /** The bundled bed, looped gaplessly via REPEAT_MODE_ONE. */
+    private fun createBed(): ExoPlayer? = runCatching {
+        ExoPlayer.Builder(this).build().apply {
+            setMediaItem(MediaItem.fromUri("android.resource://$packageName/${R.raw.ambient_bed}"))
+            repeatMode = Media3Player.REPEAT_MODE_ONE
+            volume = this@AmbientService.volume
+            prepare()
+        }
+    }.getOrNull()
 
     /** Stream a narrated track over HTTP(S); any failure falls back to the bed. */
-    private fun createStream(url: String): MediaPlayer? {
-        prepared = false
-        val player = MediaPlayer()
-        player.setAudioAttributes(
-            android.media.AudioAttributes.Builder()
-                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build(),
-        )
-        player.setOnPreparedListener {
-            prepared = true
-            it.setVolume(volume, volume)
-            if (!pauseRequested) it.start()
+    private fun createStream(url: String): ExoPlayer? = runCatching {
+        ExoPlayer.Builder(this).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            repeatMode = Media3Player.REPEAT_MODE_OFF   // narration ends; never loops
+            volume = this@AmbientService.volume
+            addListener(object : Media3Player.Listener {
+                override fun onPlayerError(error: PlaybackException) = fallBackToBed()
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Media3Player.STATE_ENDED) stopAll()
+                }
+            })
+            prepare()
         }
-        player.setOnErrorListener { _, _, _ -> fallBackToBed(); true }
-        player.setOnCompletionListener { stopAll() }   // narration ends; never loops
-        return try {
-            player.setDataSource(url)
-            player.prepareAsync()
-            player
-        } catch (_: Exception) {
-            player.release()
-            currentSrc = ""
-            createBed()
-        }
-    }
+    }.getOrNull()
 
     private fun fallBackToBed() {
         mp?.release(); mp = null
         currentSrc = ""
-        if (!pauseRequested) play("")
+        play("")
     }
 
     private fun pause() {
-        if (prepared) mp?.pause() else pauseRequested = true
+        mp?.playWhenReady = false
         Player.setState(title, false)
         updateSession(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)

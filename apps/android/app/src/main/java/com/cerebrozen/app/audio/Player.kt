@@ -77,4 +77,13 @@ object Player {
     fun stop(context: Context) {
         context.startService(Intent(context, AmbientService::class.java).setAction(AmbientService.ACTION_STOP))
     }
+
+    /** Duck the bed under the voice companion while it speaks, then restore. */
+    fun duck(context: Context, ducked: Boolean) {
+        context.startService(
+            Intent(context, AmbientService::class.java)
+                .setAction(AmbientService.ACTION_DUCK)
+                .putExtra(AmbientService.EXTRA_DUCK, ducked),
+        )
+    }
 }

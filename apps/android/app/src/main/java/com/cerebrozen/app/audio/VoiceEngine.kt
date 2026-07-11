@@ -27,12 +27,18 @@ class VoiceEngine(context: Context) {
     var speaking by mutableStateOf(false)
         private set
 
+    /** Live mic amplitude while listening, normalised 0–1 — drives the reactive
+     * orb. Falls back to 0 whenever we're not actively listening. */
+    var level by mutableStateOf(0f)
+        private set
+
     val available: Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
     private val appContext = context.applicationContext
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
     private var onFinal: ((String) -> Unit)? = null
+    private var onSpeechDone: (() -> Unit)? = null
 
     init {
         tts = TextToSpeech(appContext) { status ->
@@ -40,8 +46,16 @@ class VoiceEngine(context: Context) {
         }
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) { speaking = true }
-            override fun onDone(id: String?) { speaking = false }
-            @Deprecated("deprecated in API 21") override fun onError(id: String?) { speaking = false }
+            override fun onDone(id: String?) {
+                speaking = false
+                onSpeechDone?.invoke()
+                onSpeechDone = null
+            }
+            @Deprecated("deprecated in API 21") override fun onError(id: String?) {
+                speaking = false
+                onSpeechDone?.invoke()
+                onSpeechDone = null
+            }
         })
     }
 
@@ -65,10 +79,14 @@ class VoiceEngine(context: Context) {
     fun stopListening() {
         recognizer?.stopListening()
         listening = false
+        level = 0f
     }
 
-    fun speak(text: String) {
+    /** Speak [text]; [onDone] fires once when playback finishes (or errors),
+     * so the caller can resume listening for a natural turn-taking loop. */
+    fun speak(text: String, onDone: () -> Unit = {}) {
         if (text.isBlank()) return
+        onSpeechDone = onDone
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "reply")
     }
 
@@ -80,12 +98,14 @@ class VoiceEngine(context: Context) {
     private val listener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {}
         override fun onBeginningOfSpeech() {}
-        override fun onRmsChanged(rms: Float) {}
+        // rms is roughly 0–10 dB for speech; normalise to a 0–1 orb level.
+        override fun onRmsChanged(rms: Float) { level = (rms / 10f).coerceIn(0f, 1f) }
         override fun onBufferReceived(buffer: ByteArray?) {}
-        override fun onEndOfSpeech() { listening = false }
-        override fun onError(error: Int) { listening = false }
+        override fun onEndOfSpeech() { listening = false; level = 0f }
+        override fun onError(error: Int) { listening = false; level = 0f }
         override fun onResults(results: Bundle?) {
             listening = false
+            level = 0f
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
             if (!text.isNullOrBlank()) onFinal?.invoke(text)
         }

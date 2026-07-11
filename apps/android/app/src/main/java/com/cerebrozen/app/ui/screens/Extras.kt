@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -59,6 +60,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -74,14 +77,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Danger
 import kotlinx.coroutines.launch
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -128,6 +135,42 @@ private val THUMB_GRADIENTS = listOf(
 private fun thumbBrush(seed: String): Brush =
     Brush.linearGradient(THUMB_GRADIENTS[(seed.hashCode() and 0x7fffffff) % THUMB_GRADIENTS.size])
 
+/** Teammate-look gradient hero: a soft vertical gradient panel with a glassy pill
+ * eyebrow and overlaid title/subtitle. Pure chrome — content is passed in by the
+ * caller, so it never fabricates copy. Built on our palette tokens only. */
+@Composable
+private fun GradientHero(
+    eyebrow: String,
+    title: String,
+    subtitle: String = "",
+    colors: List<Color> = listOf(Iris, PeriwinkleDeep),
+    content: @Composable (ColumnScope.() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(shape)
+            .background(Brush.verticalGradient(colors))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.22f))
+                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        ) {
+            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Cream)
+        }
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream,
+            maxLines = 3, overflow = TextOverflow.Ellipsis)
+        if (subtitle.isNotBlank()) {
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        }
+        content?.invoke(this)
+    }
+}
+
 @Composable
 internal fun ContentRow(
     title: String,
@@ -157,10 +200,13 @@ internal fun ContentRow(
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -210,7 +256,7 @@ internal fun ContentList(
     }
     when {
         error != null -> Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        items == null -> Text("Loading…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        items == null -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
         items!!.length() == 0 -> Text("Nothing here yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         else -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
@@ -256,7 +302,10 @@ fun InsightsScreen(onBack: () -> Unit) {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
         }
-        if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // Real weekly read in a gradient hero — only when the backend returned one.
+        if (summary.isNotBlank()) {
+            GradientHero(eyebrow = "This week", title = summary)
+        }
         // The honest "before" — renders only when a real baseline was saved.
         BaselineStore.get()?.let { (stress, sleep, date) ->
             SectionCard {
@@ -277,17 +326,17 @@ fun InsightsScreen(onBack: () -> Unit) {
                 (0 until m.length()).forEach { i ->
                     val row = m.getJSONObject(i)
                     val p = row.optDouble("progress", 0.0).toFloat().coerceIn(0f, 1f)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(row.optString("label"), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                            Text(row.optString("value"), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                            Text(row.optString("label"), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                            Text(row.optString("value"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                         }
                         Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)).background(CardFill)) {
                             Box(Modifier.fillMaxWidth(p).height(8.dp).clip(RoundedCornerShape(99.dp))
                                 .background(Brush.horizontalGradient(listOf(Periwinkle, Cyan))))
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
@@ -335,36 +384,59 @@ fun ProgramsScreen(onBack: () -> Unit) {
         }
 
         active?.let { p ->
-            SectionCard {
-                Text("PROGRAM · DAY ${p.optInt("day")} OF ${p.optInt("days")}",
-                    style = MaterialTheme.typography.labelSmall, color = Cyan)
-                Text(p.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    if (p.optBoolean("completed")) "Complete — beautifully done. Start another whenever you like."
-                    else "Showing up is the whole assignment today.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
+            val day = p.optInt("day")
+            val days = p.optInt("days")
+            GradientHero(
+                eyebrow = "Program · Day $day of $days",
+                title = p.optString("title"),
+                subtitle = if (p.optBoolean("completed"))
+                    "Complete — beautifully done. Start another whenever you like."
+                else "Showing up is the whole assignment today.",
+            ) {
+                if (days > 0) {
+                    val prog = (day.toFloat() / days).coerceIn(0f, 1f)
+                    Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(99.dp))
+                        .background(Color.White.copy(alpha = 0.22f))) {
+                        Box(Modifier.fillMaxWidth(prog).height(6.dp).clip(RoundedCornerShape(99.dp))
+                            .background(Cream))
+                    }
+                }
                 TextButton(onClick = {
                     scope.launch { runCatching { Api.leaveProgram() }; refresh() }
-                }) { Text("Leave this journey", color = TextMuted) }
+                }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Text("Leave this journey", color = Cream.copy(alpha = 0.85f))
+                }
             }
         }
 
+        if (rows.isNotEmpty()) {
+            Text("Start something new", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        }
         rows.forEach { (id, title, subtitle) ->
             val isActive = active?.optString("title") == title
             SectionCard {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(subtitle.ifBlank { "A few minutes a day" },
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                if (!isActive) {
-                    TextButton(onClick = {
-                        scope.launch {
-                            runCatching { Api.enrollProgram(id) }
-                                .onSuccess { status = "Enrolled — day 1 starts now." }
-                                .onFailure { status = it.message ?: "Couldn't enroll." }
-                            refresh()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(thumbBrush(title)),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(subtitle.ifBlank { "A few minutes a day" },
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        if (!isActive) {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching { Api.enrollProgram(id) }
+                                        .onSuccess { status = "Enrolled — day 1 starts now." }
+                                        .onFailure { status = it.message ?: "Couldn't enroll." }
+                                    refresh()
+                                }
+                            }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                                Text("Start this journey", color = Periwinkle)
+                            }
                         }
-                    }) { Text("Start this journey", color = Periwinkle) }
+                    }
                 }
             }
         }
@@ -408,33 +480,105 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
 fun PlayerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val title = Player.nowPlaying
+    val reduceMotion = rememberReduceMotion()
+    val playing = title != null && Player.isPlaying
     SubPage("Now playing", title ?: "Nothing playing", onBack) {
-        Box(
-            Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(22.dp)),
+        // Centered art + transport (teammate player look), our tokens throughout.
+        Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AsyncImage(
-                model = HeroImg.sleep, contentDescription = null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
-            )
-            Box(Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
-        }
-        if (title == null) {
-            Text("Pick a soundscape or story from Sounds and it plays here.",
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        } else {
-            Text(
-                if (MediaUrls.urlFor(title).isBlank())
-                    "Continuous ambient bed · this title has no narration yet."
-                else "Narrated track · streams from your library.",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted,
-            )
-            PrimaryButton(
-                text = if (Player.isPlaying) "Pause" else "Play",
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
+            val artShape = RoundedCornerShape(26.dp)
+            // Slow "breathing" scale on the centered artwork (~5s); steady under Reduce Motion.
+            val artScale = if (reduceMotion) 1f else {
+                val breathe = rememberInfiniteTransition(label = "art-breathe")
+                val s by breathe.animateFloat(
+                    initialValue = 1f, targetValue = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        tween(5200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                    label = "art-scale",
+                )
+                s
             }
+            Box(
+                Modifier.fillMaxWidth(0.72f).height(240.dp).clip(artShape)
+                    .border(1.dp, LineStroke, artShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                // Blurred backdrop: an oversized, soft copy of the same artwork so the
+                // centered art floats over a diffuse version of itself. Modifier.blur is
+                // API 31+ and degrades gracefully (no-op) on older releases.
+                AsyncImage(
+                    model = HeroImg.sleep, contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize().scale(1.4f).blur(28.dp),
+                )
+                // Scrim to settle the backdrop into the night palette.
+                Box(Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(Night.copy(alpha = 0.35f), Night.copy(alpha = 0.72f)))))
+                // The centered, breathing artwork floating above the blur.
+                AsyncImage(
+                    model = HeroImg.sleep, contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth(0.62f).height(168.dp)
+                        .scale(artScale).clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+                )
+                // Legibility scrim beneath the base overlay.
+                Box(Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
+                // Decorative equalizer visualizer — a row of 7 bars that animate ONLY while
+                // playing and stay still under Reduce Motion. Purely ornamental: this is not
+                // elapsed time, track position, or any progress readout.
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (playing && !reduceMotion) {
+                        val eq = rememberInfiniteTransition(label = "eq")
+                        repeat(7) { i ->
+                            val h by eq.animateFloat(
+                                initialValue = 6f,
+                                targetValue = (18 + (i % 4) * 7).toFloat(),
+                                animationSpec = infiniteRepeatable(
+                                    tween(360 + i * 70, easing = FastOutSlowInEasing),
+                                    RepeatMode.Reverse),
+                                label = "eq-bar-$i",
+                            )
+                            Box(Modifier.size(width = 5.dp, height = h.dp).clip(RoundedCornerShape(3.dp))
+                                .background(Brush.verticalGradient(listOf(Cyan, Periwinkle))))
+                        }
+                    } else {
+                        listOf(10, 16, 12, 20, 12, 16, 10).forEach { hv ->
+                            Box(Modifier.size(width = 5.dp, height = hv.dp).clip(RoundedCornerShape(3.dp))
+                                .background(Cyan.copy(alpha = 0.5f)))
+                        }
+                    }
+                }
+            }
+            if (title == null) {
+                Text("Pick a soundscape or story from Sounds and it plays here.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    textAlign = TextAlign.Center)
+            } else {
+                Text(
+                    if (MediaUrls.urlFor(title).isBlank())
+                        "Continuous ambient bed · this title has no narration yet."
+                    else "Narrated track · streams from your library.",
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    textAlign = TextAlign.Center,
+                )
+                PrimaryButton(
+                    text = if (Player.isPlaying) "Pause" else "Play",
+                    modifier = Modifier.fillMaxWidth(0.62f),
+                ) {
+                    if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
+                }
+            }
+        }
+        if (title != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
@@ -499,8 +643,11 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
     Text("5-4-3-2-1 grounding — come back to the present through your senses.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     Grounding()
-    ContentRow("Bubble pop", "Pop to release tension", "Play", false,
-        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblepop") })
+    FeaturedGameCard(
+        title = "Bubble pop",
+        subtitle = "Pop gently — no timer, no losing. Just breathe and tap.",
+        onOpen = { onOpen("bubblepop") },
+    )
     ContentRow("Bubble wrap", "A fresh sheet, endlessly poppable", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("bubblewrap") })
     ContentRow("Memory match", "Find the pairs, no clock", "Play", false,
@@ -511,6 +658,50 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("zenripples") })
     ContentRow("Gratitude garden", "A flower for every thank-you", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("gratitude") })
+    ContentRow("Colour breathing", "Breathe with a shifting glow", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("colorbreathing") })
+    ContentRow("Sliding puzzle", "Slide the tiles into place, no clock", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("slidingpuzzle") })
+}
+
+/** Headline game tile — a gradient hero with floating orbs, tappable to open the
+ * game. Chrome only; the copy is passed in. Built on palette tokens. */
+@Composable
+private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Box(
+        Modifier.fillMaxWidth().height(168.dp).clip(shape)
+            .background(Brush.verticalGradient(listOf(PeriwinkleDeep, Iris)))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .clickable { onOpen() }
+            .semantics { contentDescription = "Play $title" }
+            .padding(24.dp),
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.22f))
+                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        ) {
+            Text("PLAYABLE", style = MaterialTheme.typography.labelSmall, color = Cream)
+        }
+        // A couple of drifting bubbles as quiet ornamentation.
+        Box(
+            Modifier.align(Alignment.TopEnd).offset(x = (-16).dp, y = 4.dp).size(40.dp).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Periwinkle))),
+        )
+        Box(
+            Modifier.align(Alignment.CenterEnd).offset(x = (-8).dp, y = (-4).dp).size(24.dp).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Cyan))),
+        )
+        Column(
+            Modifier.align(Alignment.BottomStart),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        }
+    }
 }
 
 private data class Bubble(val id: Long, val x: Float, val y: Float, val size: Int, val hue: Color)
@@ -546,8 +737,24 @@ fun BubblePopScreen(onBack: () -> Unit) {
         }
     }
     SubPage("A tiny reset", "Bubble pop", onBack) {
-        Text("Pop them slowly — no rush, no score to chase. Popped: $score",
+        ToolAmbienceEffect(R.raw.ocean)
+        Text("Pop them slowly — no rush, no score to chase.",
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        AmbienceToggle()
+        // A quiet score panel + reset — a gentle sense of progress, easily cleared.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("POPPED", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text("$score", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+            }
+            TextButton(onClick = { bubbles = emptyList(); score = 0 }) {
+                Text("Reset", color = Cyan)
+            }
+        }
         BoxWithConstraints(
             Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(20.dp))
                 .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
@@ -558,6 +765,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
                 Box(
                     Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
                         .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
+                        .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                         .clickable {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
@@ -602,10 +810,19 @@ private fun BoxBreathing() {
     LaunchedEffect(Unit) {
         while (true) { delay(4000); phase = (phase + 1) % phases.size }
     }
-    val transition = rememberInfiniteTransition(label = "box")
-    val scale by transition.animateFloat(
-        0.8f, 1.15f, infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "s",
+    // Orb driven by the phase (not a free timer): expand on inhale, hold, contract
+    // on exhale, hold — so the motion matches the label. Steady under Reduce Motion.
+    val reduceMotion = rememberReduceMotion()
+    val target = when (phase) { 0, 1 -> 1.15f; else -> 0.8f }
+    val scale by animateFloatAsState(
+        targetValue = if (reduceMotion) 1f else target,
+        animationSpec = tween(3800, easing = FastOutSlowInEasing),
+        label = "box-scale",
     )
+    // Gentle rhythm haptic on each phase change (firmer on the active breaths).
+    LaunchedEffect(phase) {
+        com.cerebrozen.app.ui.Haptics.soft(if (phase == 0 || phase == 2) 0.5f else 0.3f)
+    }
     SectionCard {
         Text(phases[phase], style = MaterialTheme.typography.titleMedium,
             color = TextSoft, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -632,10 +849,11 @@ fun CrisisScreen(onBack: () -> Unit) {
         "Find a helpline" to "findahelpline.com",
     )
     SubPage("You're not alone", "Urgent support", onBack) {
-        SectionCard {
-            Text("If you're in immediate danger, please reach out now — you deserve support.",
-                style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        }
+        GradientHero(
+            eyebrow = "You deserve support",
+            title = "If you're in immediate danger, please reach out now.",
+            colors = listOf(Warm, Danger),
+        )
         lines.forEach { (name, number) ->
             // A letter in the value means it's the helpline-finder URL, not a phone number.
             val isUrl = number.any { it.isLetter() }

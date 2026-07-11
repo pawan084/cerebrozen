@@ -44,23 +44,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -182,7 +184,6 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var goal by remember { mutableStateOf("") }
     var program by remember { mutableStateOf<JSONObject?>(null) }
     val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
 
     fun parseRecent(moods: JSONArray): List<String> =
         (0 until minOf(moods.length(), 5)).map { i ->
@@ -295,10 +296,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), index = 0)
-            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), index = 1)
-            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), index = 2)
-            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), index = 3)
+            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), Periwinkle, index = 0)
+            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), Cyan, index = 1)
+            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), Warm, index = 2)
+            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), Iris, index = 3)
         }
 
         SectionCard {
@@ -309,9 +310,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 MOODS.forEach { mood ->
-                    PickChip(selected = picked == mood, label = mood.name) {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); picked = mood
-                    }
+                    PickChip(selected = picked == mood, label = mood.name) { picked = mood }
                 }
             }
             PrimaryButton(
@@ -323,7 +322,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 scope.launch {
                     try {
                         Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        Celebrations.trigger()
                         status = "Checked in — noted gently."
                         picked = null
                         reload()
@@ -417,6 +416,7 @@ private fun QuickTile(
     route: String,
     onOpen: (String) -> Unit,
     modifier: Modifier,
+    accent: Color,
     index: Int = 0,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -429,9 +429,18 @@ private fun QuickTile(
             .clickable(interactionSource = interaction, indication = null) { onOpen(route) }
             .padding(vertical = 14.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
+        // Gradient icon chip — a small tinted well behind each glyph (fork look),
+        // one accent hue per tile.
+        Box(
+            Modifier.size(38.dp).clip(RoundedCornerShape(12.dp))
+                .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.14f))))
+                .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
     }
 }

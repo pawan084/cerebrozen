@@ -9,11 +9,16 @@
     <!-- Background ambient audio as a foreground media service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Tactile feedback (calm haptics on presses, check-ins, celebrations). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Optional last-night sleep prefill from Health Connect (read-only). -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
 
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
     <application
@@ -35,6 +40,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Health Connect opens the app for the permissions rationale / privacy. -->
+            <intent-filter>
+                <action android:name="androidx.health.connect.action.SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
         </activity>
 
         <receiver
@@ -43,6 +52,11 @@
 
         <service
             android:name=".audio.AmbientService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".audio.SoundscapeService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
     </application>

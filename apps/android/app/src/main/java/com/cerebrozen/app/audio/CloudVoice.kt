@@ -49,6 +49,10 @@ class CloudVoice(private val context: Context) {
         }
     }
 
+    /** Peak mic amplitude since the last call (0 when not recording) — drives the
+     * reactive orb and the trailing-silence auto-endpoint. */
+    fun maxAmplitude(): Int = recorder?.let { runCatching { it.maxAmplitude }.getOrDefault(0) } ?: 0
+
     /** Stop and return the recorded AAC clip (null if nothing usable). */
     fun stopRecording(): ByteArray? {
         val r = recorder ?: return null

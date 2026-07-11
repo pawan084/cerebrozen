@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -63,7 +64,12 @@ import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -137,21 +143,32 @@ fun Onboarding() {
             "For adults only", "A quick check",
             "CereBro is built for adults. It's wellness support — not a medical or crisis service.",
             "I'm 18 or older", onBack = { back() }, onPrimary = { next() },
-        ) {}
+        ) {
+            // Set expectations up front: this is not emergency care.
+            SectionCard {
+                Text("Wellness support, not emergency care.",
+                    style = MaterialTheme.typography.titleMedium, color = Warm)
+                Text("If you are in immediate danger, call your local emergency services now.",
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
+        }
 
         OStep.Disclosure -> Funnel(
             "Honesty first", "What CereBro is — and isn't",
             "", "I understand", onBack = { back() }, onPrimary = { next() },
         ) {
-            SectionCard {
-                Text("Can help", style = MaterialTheme.typography.titleMedium, color = Cyan)
-                Text("A calm space to reflect, breathe, sleep better and talk things through.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            }
-            SectionCard {
-                Text("Can't do", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text("It isn't a therapist or crisis line. In an emergency, contact local services.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DisclosureTile(
+                    "Can help", Cyan,
+                    "A calm space to reflect, breathe, sleep better and talk things through.",
+                    Modifier.weight(1f),
+                )
+                DisclosureTile(
+                    "Can't do", TextSoft,
+                    "Not a therapist or crisis line. In an emergency, contact local services.",
+                    Modifier.weight(1f),
+                )
             }
         }
 
@@ -262,8 +279,12 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
     ) {
         BrandMark(size = 120.dp)
         Spacer(Modifier.height(28.dp))
-        Text("Welcome to\nCereBro", style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary, textAlign = TextAlign.Center)
+        // "Bro" carries the iris→periwinkle gradient, matching the splash wordmark.
+        val welcome = buildAnnotatedString {
+            withStyle(SpanStyle(color = TextPrimary)) { append("Welcome to\nCere") }
+            withStyle(SpanStyle(brush = Brush.linearGradient(listOf(Iris, Periwinkle)))) { append("Bro") }
+        }
+        Text(welcome, style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
         Spacer(Modifier.height(12.dp))
         Text("Your quiet space for daily mental fitness, better sleep, and calmer focus.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted, textAlign = TextAlign.Center)
@@ -290,10 +311,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         secondary = { TextButton(onClick = onDone) { Text("Skip for now", color = TextMuted) } },
     ) {
         Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(150.dp).scale(scale).background(
-                Brush.radialGradient(listOf(androidx.compose.ui.graphics.Color.White, Cyan, Periwinkle)),
-                CircleShape,
-            ))
+            com.cerebrozen.app.ui.GlowOrb(size = 150.dp, scale = scale, core = Cyan)
         }
         Text("Breathe with the orb", style = MaterialTheme.typography.titleMedium,
             color = TextSoft, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -400,6 +418,23 @@ private fun Funnel(
         Spacer(Modifier.height(4.dp))
         PrimaryButton(text = primaryLabel, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth()) { onPrimary() }
         secondary?.invoke()
+    }
+}
+
+/** One side of the two-up disclosure — a glass tile with an accent heading. */
+@Composable
+private fun DisclosureTile(
+    title: String,
+    accent: androidx.compose.ui.graphics.Color,
+    body: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.glass(RoundedCornerShape(18.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = accent)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
     }
 }
 

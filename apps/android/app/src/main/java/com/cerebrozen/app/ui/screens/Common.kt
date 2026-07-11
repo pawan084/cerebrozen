@@ -4,8 +4,12 @@ import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -41,18 +45,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.LocalHazeState
+import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.Gradients
+import com.cerebrozen.app.ui.theme.Radius
+import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.Danger
+import dev.chrisbanes.haze.hazeEffect
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -63,16 +80,45 @@ import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 
-private val CardShape = RoundedCornerShape(20.dp)
+private val CardShape = RoundedCornerShape(Radius.card)
 
-/** The shared "glass" surface treatment — a top-lit gradient fill, a hairline
- * border, and a soft lift — so cards read as raised panes on the dark ground
- * instead of the near-invisible 5%-white fill they were before. */
-internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
-    .shadow(14.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x40000000))
-    .clip(shape)
-    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.035f))))
-    .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
+// Responsive sizing helpers — pages and cards breathe a little tighter on small
+// phones and a touch more generously on large ones, instead of one fixed inset.
+@Composable
+internal fun isCompactWidth(): Boolean = LocalConfiguration.current.screenWidthDp < 380
+
+@Composable
+internal fun pageHorizontalPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 20.dp
+}
+
+@Composable
+internal fun cardPadding() = when {
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 18.dp
+}
+
+/** The shared "frosted glass" surface treatment: a top-lit translucent fill that
+ * lets the aurora glow through, a soft lift, and a *bevelled* hairline — the border
+ * is a vertical gradient (bright at the top edge, fading down) so the pane catches
+ * light like a real bevelled edge rather than reading as a flat outline. Mirrors the
+ * iOS glass stroke (white 28%→5%). */
+internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
+    val hazeState = LocalHazeState.current
+    var m = this
+        .shadow(18.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x5C000000))
+        .clip(shape)
+    // Real backdrop blur of the aurora when a haze source is present (API 31+);
+    // the translucent tint fill + bevel then sit on top of the frosted glass.
+    // backgroundColor is required — it's what the blur composites against.
+    if (hazeState != null) m = m.hazeEffect(hazeState) { backgroundColor = Night }
+    m
+        .background(Gradients.glass)
+        .border(1.dp, Stroke.bevel, shape)
+}
 
 /** True when the user has asked the system to minimise animations ("Remove
  * animations" / animator duration scale = 0) — the Android analogue of iOS's
@@ -135,6 +181,7 @@ internal fun Page(
     eyebrow: String,
     title: String,
     trailing: ImageVector? = null,
+    accent: Color = Accent.default,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -148,13 +195,23 @@ internal fun Page(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = pageHorizontalPadding(), vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                Text(
+                    title,
+                    // A soft accent glow behind the serif title — subtle depth,
+                    // tinted per section (mirrors the iOS accent-tinted title shadow).
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        shadow = Shadow(accent.copy(alpha = 0.35f), Offset.Zero, 22f),
+                    ),
+                    color = TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             trailing?.let { icon ->
                 Box(
@@ -186,12 +243,12 @@ internal fun SectionCard(
         Modifier.fillMaxWidth()
             .pressScale(pressed, down = 0.985f)
             .glass()
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { Haptics.soft(0.4f); onClick() }
     } else {
         Modifier.fillMaxWidth().glass()
     }
     Column(
-        mod.padding(18.dp),
+        mod.padding(cardPadding()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
 }
@@ -208,16 +265,16 @@ internal fun PrimaryButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val brush = if (enabled) {
-        Brush.horizontalGradient(listOf(Periwinkle, Iris))
+        Gradients.primary
     } else {
         Brush.horizontalGradient(listOf(Periwinkle.copy(alpha = 0.28f), Iris.copy(alpha = 0.28f)))
     }
     Box(
         modifier
             .pressScale(pressed, down = 0.97f)
-            .clip(RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(Radius.pill))
             .background(brush)
-            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { onClick() }
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.soft(0.6f); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -244,12 +301,14 @@ internal fun AppTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    placeholderText: String? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholderText?.let { { Text(it) } },
         modifier = modifier,
         enabled = enabled,
         singleLine = singleLine,
@@ -258,7 +317,7 @@ internal fun AppTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radius.field),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,
             unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
@@ -277,7 +336,7 @@ internal fun AppTextField(
  * outline otherwise. Replaces the low-contrast Material FilterChip. */
 @Composable
 internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = RoundedCornerShape(Radius.round)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     // The fill/border/text cross-fade on selection instead of snapping — the chip
@@ -296,7 +355,7 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape)
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { Haptics.selection(); onClick() }
             .padding(horizontal = 16.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -349,7 +408,7 @@ internal fun DangerButton(
             .pressScale(pressed, down = 0.97f)
             .clip(RoundedCornerShape(26.dp))
             .background(brush)
-            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { onClick() }
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.warning(); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -360,4 +419,35 @@ internal fun DangerButton(
             color = if (enabled) Night else TextMuted2,
         )
     }
+}
+
+/** A shimmering skeleton placeholder for content that's loading — a soft fill with
+ * a highlight sweeping across it (holds a static fill under Reduce Motion). Mirrors
+ * the iOS Shimmer loader; use in place of a bare "Loading…" line. */
+@Composable
+internal fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(12.dp)) {
+    val reduceMotion = rememberReduceMotion()
+    val base = modifier.clip(shape).background(Color.White.copy(alpha = 0.06f))
+    if (reduceMotion) {
+        Box(base)
+        return
+    }
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val x by transition.animateFloat(
+        -1f, 2f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "sweep",
+    )
+    Box(
+        base.drawWithContent {
+            drawContent()
+            val sweepWidth = size.width * 0.6f
+            val startX = x * size.width
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
+                    startX = startX,
+                    endX = startX + sweepWidth,
+                ),
+            )
+        },
+    )
 }

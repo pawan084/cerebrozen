@@ -21,6 +21,7 @@ import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import org.json.JSONObject
 
@@ -97,6 +98,7 @@ fun SearchScreen(onBack: () -> Unit) {
                 Text("Nothing matches \"${query.trim()}\" — try a different word.",
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             else -> {
+                Text("RESULTS", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 hits.take(20).forEach { item ->
                     val playable = item.kind in listOf("soundscape", "sleep", "meditation")
                     ContentRow(

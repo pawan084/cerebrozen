@@ -26,11 +26,17 @@ val Danger = Color(0xFFE08A9A)      // --danger
 // Warm accents introduced by the refresh.
 val Warm = Color(0xFFF0A48C)        // --warm (coral)
 val Cyan = Color(0xFF8FE6EE)        // --cyan (breathing orb)
+val Teal = Color(0xFF6FE0E6)        // --teal (lotus / breathe accent, matches iOS)
 val Ok = Color(0xFF7EE0A8)          // --ok (success)
 
 // Glass card fills.
 val CardFill = Color(0x0DFFFFFF)   // white 5%  (--card)
 val LineStroke = Color(0x1FFFFFFF) // white 12% (--line)
+
+// Floating bottom-nav pill — a lifted lavender-indigo capsule over a dark scrim.
+val NavPillTop = Color(0xFF504184)    // pill gradient top (lifted lavender-indigo)
+val NavPillBottom = Color(0xFF292052) // pill gradient floor (deep indigo)
+val NavScrim = Color(0xFF0B061E)      // behind-bar fade so content dims under the pill
 
 // List-thumbnail gradient floors (UI chrome for content-row artwork). The tops
 // reuse the brand accents (Periwinkle/Cyan/Warm/Iris); these are the darker

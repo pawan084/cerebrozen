@@ -4,14 +4,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -31,10 +34,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -54,16 +60,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.audio.CloudVoice
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -160,6 +171,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // first voice turn, stays up across turns until End/Text.
     var voiceSession by remember { mutableStateOf(false) }
     var sessionSeconds by remember { mutableStateOf(0) }
+    // Live mic level for the cloud recording path (the on-device path uses voice.level).
+    var cloudLevel by remember { mutableStateOf(0f) }
+    // Duck the ambient bed under the companion's voice while it speaks.
+    LaunchedEffect(voice.speaking, cloud.speaking) {
+        if (Player.isPlaying) Player.duck(context, voice.speaking || cloud.speaking)
+    }
     LaunchedEffect(voiceSession) {
         sessionSeconds = 0
         while (voiceSession) {
@@ -185,13 +202,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }.getOrDefault(false)
     }
 
-    /** Speak a reply — studio voice when the server has TTS, else on-device. */
+    // After a spoken reply, pick the mic back up so the conversation flows turn by
+    // turn. Wired below once send() is in scope (these funcs are mutually
+    // dependent); invoked on the Main-dispatched scope since VoiceEngine must be
+    // driven from the main thread.
+    var resumeTurn: () -> Unit = {}
+
+    /** Speak a reply — studio voice when the server has TTS, else on-device — then
+     * hand the turn back to the listener. */
     suspend fun speakReply(text: String) {
-        if (text.isBlank()) return
+        if (text.isBlank()) { resumeTurn(); return }
+        com.cerebrozen.app.ui.Haptics.success()   // a felt "reply's here" in voice mode
         if (cloudVoice) {
-            runCatching { cloud.play(Api.tts(text)) }.onFailure { voice.speak(text) }
+            val spoke = runCatching { cloud.play(Api.tts(text)) }.isSuccess
+            if (spoke) resumeTurn()
+            else voice.speak(text) { scope.launch { resumeTurn() } }
         } else {
-            voice.speak(text)
+            voice.speak(text) { scope.launch { resumeTurn() } }
         }
     }
 
@@ -262,6 +289,18 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    // Now that send() exists, wire the post-speech resume: re-arm the mic for the
+    // next turn while the voice session is still open (End/Text clears it).
+    resumeTurn = {
+        if (voiceSession) {
+            if (cloudVoice) {
+                if (!cloud.startRecording()) status = "Microphone unavailable right now."
+            } else {
+                voice.startListening { t -> send(t, speak = true) }
+            }
+        }
+    }
+
     fun resolveConfirm(approved: Boolean) {
         val req = confirmReq ?: return
         confirmReq = null
@@ -312,6 +351,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    // Natural turn-taking on the cloud path: poll the mic level while recording and
+    // auto-finish the turn after ~1.5s of trailing silence (once speech was heard),
+    // so the user doesn't have to tap to end. Also feeds the reactive orb.
+    LaunchedEffect(cloud.recording) {
+        if (!cloud.recording) { cloudLevel = 0f; return@LaunchedEffect }
+        var silenceMs = 0
+        var heardSpeech = false
+        while (cloud.recording) {
+            kotlinx.coroutines.delay(150)
+            val amp = cloud.maxAmplitude()
+            cloudLevel = (amp / 12_000f).coerceIn(0f, 1f)
+            if (amp > 1_800) { heardSpeech = true; silenceMs = 0 } else if (heardSpeech) silenceMs += 150
+            if (heardSpeech && silenceMs >= 1_500) { finishCloudTurn(); break }
+        }
+        cloudLevel = 0f
+    }
+
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) beginListening()
         else status = "Microphone access is off — you can still type below."
@@ -319,6 +375,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     fun onOrbTap() {
         if (!voice.available && !cloudVoice) return
+        com.cerebrozen.app.ui.Haptics.tap()
         when {
             cloud.speaking -> cloud.stopPlayback()          // tap-to-interrupt
             cloud.recording -> finishCloudTurn()
@@ -331,7 +388,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     Box(Modifier.fillMaxSize()) {
-    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic) {
+    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic, accent = Cyan) {
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
             Modifier.fillMaxWidth()
@@ -395,6 +452,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 listening = voice.listening || cloud.recording,
                 speaking = voice.speaking || cloud.speaking,
                 onTap = { onOrbTap() },
+                thinking = transcribing || busy,
+                level = if (cloud.recording) cloudLevel else voice.level,
             )
             val hint = when {
                 transcribing -> "Hearing you…"
@@ -499,6 +558,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             },
             listening = cloud.recording || voice.listening,
             speaking = cloud.speaking || voice.speaking,
+            thinking = transcribing || busy,
+            level = if (cloud.recording) cloudLevel else voice.level,
             caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
             onOrb = { onOrbTap() },
             onEnd = { endSession() },
@@ -516,6 +577,8 @@ private fun VoiceSessionOverlay(
     stateLabel: String,
     listening: Boolean,
     speaking: Boolean,
+    thinking: Boolean,
+    level: Float,
     caption: String,
     onOrb: () -> Unit,
     onEnd: () -> Unit,
@@ -541,7 +604,7 @@ private fun VoiceSessionOverlay(
             Text(fmtSession(seconds), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb)
+            VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb, thinking = thinking, level = level)
             Text(stateLabel, style = MaterialTheme.typography.titleMedium, color = TextSoft, textAlign = TextAlign.Center)
             if (caption.isNotBlank()) {
                 Text(
@@ -551,10 +614,30 @@ private fun VoiceSessionOverlay(
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            TextButton(onClick = onEnd) { Text("End", color = Danger) }
-            TextButton(onClick = onText) { Text("Text instead", color = TextMuted) }
+        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+            CallControl(Icons.Filled.CallEnd, "End", Danger, Danger.copy(alpha = 0.18f), onEnd)
+            CallControl(Icons.Outlined.Keyboard, "Text", TextSoft, CardFill, onText)
         }
+    }
+}
+
+/** A round live-call control — a circular glyph button with a label below
+ * (End / Text), echoing the fork's call-session look on our tokens. */
+@Composable
+private fun CallControl(icon: ImageVector, label: String, tint: Color, bg: Color, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            Modifier.size(58.dp).clip(CircleShape).background(bg)
+                .border(1.dp, tint.copy(alpha = 0.5f), CircleShape)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
 
@@ -673,39 +756,73 @@ private fun TypingDots() {
 }
 
 @Composable
-private fun VoiceOrb(listening: Boolean, speaking: Boolean, onTap: () -> Unit) {
-    val active = listening || speaking
+private fun VoiceOrb(
+    listening: Boolean,
+    speaking: Boolean,
+    onTap: () -> Unit,
+    thinking: Boolean = false,
+    level: Float = 0f,
+) {
+    val active = listening || speaking || thinking
     val reduceMotion = rememberReduceMotion()
+    // Phase tint: thinking = iris, voice active = cyan, resting = lavender.
+    val core = when {
+        thinking -> Iris
+        listening || speaking -> Cyan
+        else -> Periwinkle
+    }
     val t = rememberInfiniteTransition(label = "orb")
     val animatedPulse by t.animateFloat(
         initialValue = if (active) 0.9f else 0.82f,
-        targetValue = if (active) 1.18f else 1.0f,
+        targetValue = if (active) 1.14f else 1.0f,
         animationSpec = infiniteRepeatable(tween(if (listening) 700 else 2600), RepeatMode.Reverse),
         label = "pulse",
     )
-    // Reduce Motion: rest at a steady size instead of breathing.
-    val pulse = if (reduceMotion) 1f else animatedPulse
+    // Ripples radiate while listening; a slow rotation drives the thinking ring.
+    val ripple by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2200, easing = LinearEasing)), label = "ripple")
+    val spin by t.animateFloat(0f, 360f, infiniteRepeatable(tween(1500, easing = LinearEasing)), label = "spin")
+
+    val basePulse = if (reduceMotion) 1f else animatedPulse
+    // Mic-reactive swell on top of the breathing pulse (listening only).
+    val pulse = if (reduceMotion || !listening) basePulse else basePulse + level * 0.16f
+
     Box(Modifier.fillMaxWidth().height(210.dp), contentAlignment = Alignment.Center) {
+        // Expanding ripple rings while listening.
+        if (listening && !reduceMotion) {
+            for (i in 0 until 3) {
+                val phase = (ripple + i / 3f) % 1f
+                Box(
+                    Modifier.size((150 + 120 * phase).dp).clip(CircleShape)
+                        .border(1.5.dp, core.copy(alpha = (1f - phase) * 0.35f), CircleShape),
+                )
+            }
+        }
         // Soft bloom halo behind the orb (mirrors the iOS radial glow).
         Box(
             Modifier.size(230.dp).scale(pulse)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            (if (listening) Cyan else Periwinkle).copy(alpha = 0.28f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
+                .background(Brush.radialGradient(listOf(core.copy(alpha = 0.28f), Color.Transparent))),
         )
+        // Rotating conic shimmer ring while the companion is thinking.
+        if (thinking && !reduceMotion) {
+            Canvas(Modifier.size(178.dp).graphicsLayer { rotationZ = spin }) {
+                drawCircle(
+                    brush = Brush.sweepGradient(listOf(Color.Transparent, core.copy(alpha = 0.1f), core, Color.Transparent)),
+                    radius = size.minDimension / 2f - 3.dp.toPx(),
+                    style = Stroke(width = 3.dp.toPx()),
+                )
+            }
+        }
+        // The orb core, with an inner specular highlight (top-left light source).
         Box(
             Modifier.size(150.dp).scale(pulse).clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color.White, if (listening) Cyan else Periwinkle, PeriwinkleDeep),
-                    ),
-                )
+                .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep)))
                 .clickable(onClickLabel = if (listening) "Stop listening" else "Talk to CereBro") { onTap() },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(56.dp).offset(x = (-24).dp, y = (-24).dp).clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.7f), Color.Transparent))),
+            )
+        }
     }
 }

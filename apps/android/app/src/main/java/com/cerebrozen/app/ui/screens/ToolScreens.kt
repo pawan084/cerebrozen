@@ -1,10 +1,20 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Star
@@ -13,19 +23,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Ink
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // Native tools (iOS ToolsViews + MicroActivities parity): CBT reframe,
@@ -36,10 +59,103 @@ import kotlinx.coroutines.launch
 fun ToolsScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small resets", "Tools", onBack) {
     Text("Two-minute practices for the moment you're in.",
         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+    NavRow("A minute to breathe", "Follow the orb — in for four, out for four", icon = Icons.Outlined.Air) { onOpen("breathing") }
     NavRow("Untangle a thought", "CBT reframe — from stuck to balanced", icon = Icons.Outlined.Psychology) { onOpen("cbt") }
     NavRow("One good thing", "Name something that went right", icon = Icons.Outlined.Star) { onOpen("onegoodthing") }
     NavRow("Tomorrow's intention", "Set one clear point for tomorrow", icon = Icons.Outlined.WbTwilight) { onOpen("intention") }
     NavRow("TIPP skill", "DBT reset for very intense moments", icon = Icons.Outlined.SelfImprovement) { onOpen("tipp") }
+}
+
+/** A one-minute paced-breathing exercise: a slow-pulsing orb counts you through
+ * in / hold / out / hold, and you can save the practice to your journal. The orb
+ * pulse honours Reduce Motion (holds a steady size), mirroring the calm-motion
+ * policy elsewhere. */
+@Composable
+fun BreathingScreen(onBack: () -> Unit) {
+    var elapsed by remember { mutableIntStateOf(0) }
+    var saved by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val totalSeconds = 120
+    val phases = listOf("Breathe in", "Hold", "Breathe out", "Hold")
+    val phaseIndex = (elapsed / 4) % phases.size
+    val phase = phases[phaseIndex]
+    val count = 4 - (elapsed % 4)
+
+    val reduceMotion = rememberReduceMotion()
+    // The orb is driven BY the phase, not a free-running timer: it expands over the
+    // inhale, holds full, contracts over the exhale, holds empty — so the motion
+    // actually matches the "Breathe in / Hold / Breathe out" label.
+    val target = when (phaseIndex) { 0, 1 -> 1.14f; else -> 0.84f }
+    val orbScale by animateFloatAsState(
+        targetValue = if (reduceMotion) 1f else target,
+        animationSpec = tween(3800, easing = FastOutSlowInEasing),
+        label = "breathing-orb-scale",
+    )
+    // A gentle haptic on each phase change — a rhythm cue you can follow with eyes
+    // closed. Firmer on the active breaths, softer on the holds.
+    LaunchedEffect(phaseIndex) {
+        com.cerebrozen.app.ui.Haptics.soft(if (phaseIndex == 0 || phaseIndex == 2) 0.5f else 0.3f)
+    }
+
+    LaunchedEffect(Unit) {
+        while (elapsed < totalSeconds) {
+            delay(1000)
+            elapsed += 1
+        }
+    }
+
+    SubPage("A minute to breathe", "Breathing", onBack) {
+        ToolAmbienceEffect(R.raw.drone)
+        Text("Follow the orb — in for four, hold, out for four.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        AmbienceToggle()
+        Text(
+            phase,
+            style = MaterialTheme.typography.displaySmall,
+            color = TextPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(Modifier.fillMaxWidth().height(236.dp), contentAlignment = Alignment.Center) {
+            repeat(3) { index ->
+                Box(
+                    Modifier
+                        .size((118 + index * 56).dp)
+                        .clip(CircleShape)
+                        .border(1.dp, LineStroke, CircleShape),
+                )
+            }
+            Box(
+                Modifier
+                    .size(144.dp)
+                    .scale(orbScale)
+                    .clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(Color.White, Cyan))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = Ink)
+            }
+        }
+        SectionCard(
+            onClick = {
+                if (!saved) {
+                    scope.launch {
+                        runCatching { Api.createJournal("Breathing", "Took a minute to breathe and settle.") }
+                            .onSuccess { saved = true; Celebrations.trigger() }
+                            .onFailure { status = it.message ?: "Couldn't save." }
+                    }
+                }
+            },
+        ) {
+            Text(if (saved) "Reflection saved" else "Save reflection",
+                style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text("Add this practice to your private journal",
+                style = MaterialTheme.typography.labelSmall, color = TextSoft)
+        }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        PrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth()) { onBack() }
+    }
 }
 
 /** A small tool that writes its result to the journal (title + composed body). */
@@ -58,7 +174,9 @@ private fun JournalingTool(
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     SubPage(eyebrow, title, onBack) {
+        ToolAmbienceEffect(R.raw.rain)
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        AmbienceToggle()
         fields.forEachIndexed { i, (label, _) ->
             AppTextField(
                 values.value[i],
@@ -77,7 +195,7 @@ private fun JournalingTool(
         ) {
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
-                    .onSuccess { saved = true }
+                    .onSuccess { saved = true; Celebrations.trigger() }
                     .onFailure { status = it.message ?: "Couldn't save." }
             }
         }
