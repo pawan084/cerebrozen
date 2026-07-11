@@ -1,5 +1,11 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -15,9 +21,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -27,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Ink
-import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
@@ -58,7 +66,20 @@ internal fun HeroCard(
     content: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(20.dp)
-    val base = Modifier.fillMaxWidth().height(height).clip(shape).border(1.dp, LineStroke, shape)
+    // Slow Ken Burns zoom on the artwork (steady under Reduce Motion).
+    val reduceMotion = rememberReduceMotion()
+    val transition = rememberInfiniteTransition(label = "hero")
+    val zoom by transition.animateFloat(
+        1f, 1.08f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Reverse), label = "kenburns",
+    )
+    val imgScale = if (reduceMotion) 1f else zoom
+    val base = Modifier
+        .fillMaxWidth()
+        .height(height)
+        .shadow(16.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x59000000))
+        .clip(shape)
+        // Top-lit bevel edge, matching the glass cards.
+        .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.06f))), shape)
     val mod = if (onClick != null) base.clickable { onClick() } else base
     Box(mod) {
         Box(
@@ -69,13 +90,22 @@ internal fun HeroCard(
         if (imageUrl.isNotBlank()) {
             AsyncImage(
                 model = imageUrl, contentDescription = null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(imgScale),
             )
         }
         // Scrim so text stays legible over any image.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(listOf(Ink.copy(alpha = 0.13f), Night.copy(alpha = 0.88f))),
+            ),
+        )
+        // Glossy diagonal sheen — a soft top-left highlight, like light on glass.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.linearGradient(
+                    0f to Color.White.copy(alpha = 0.16f),
+                    0.35f to Color.Transparent,
+                ),
             ),
         )
         Column(
