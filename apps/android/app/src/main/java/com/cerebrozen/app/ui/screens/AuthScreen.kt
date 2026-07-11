@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -20,6 +21,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -49,7 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cerebrozen.app.BuildConfig
+import com.cerebro.app.BuildConfig
 import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Danger
@@ -72,9 +75,13 @@ private enum class AuthMode { Password, Otp }
  * Google. Same backend flows as iOS and the web app; Google degrades gracefully
  * until a web client id is configured. */
 @Composable
-fun AuthScreen() {
+fun AuthScreen(
+    onBack: (() -> Unit)? = null,
+    initialCreating: Boolean = false,
+    onAccountCreated: suspend () -> Unit = {},
+) {
     var mode by remember { mutableStateOf(AuthMode.Password) }
-    var creating by remember { mutableStateOf(false) }
+    var creating by remember(initialCreating) { mutableStateOf(initialCreating) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -103,33 +110,41 @@ fun AuthScreen() {
             .background(Brush.verticalGradient(listOf(PeriwinkleDeep.copy(alpha = 0.55f), NightMid, Night))),
     ) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 48.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
+            .padding(horizontal = 30.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            "PRIVATE BY DESIGN",
-            style = MaterialTheme.typography.labelSmall,
-            color = Periwinkle,
-            letterSpacing = 3.sp,
-            modifier = Modifier.appear(0),
-        )
-        Text(
-            if (creating && mode == AuthMode.Password) "Create your space" else "Welcome back",
-            style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary,
-            modifier = Modifier.appear(1),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (onBack != null) {
+                Box(
+                    Modifier.size(45.dp).clip(RoundedCornerShape(23.dp))
+                        .background(Color.White.copy(alpha = 0.10f)).clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.ArrowBackIosNew, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+            Column {
+                Text("PRIVATE BY DESIGN", style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFB5AEE1), letterSpacing = 1.8.sp)
+                Text(
+                    if (creating) "Create your space" else "Sign in",
+                    style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp),
+                    color = Color.White,
+                )
+            }
+        }
         AuthInfoCard(
-            if (creating && mode == AuthMode.Password) {
-                "Create your quiet space for daily mental fitness — journal, check-ins and your plan, in sync."
+            if (creating) {
+                "Create your quiet space for daily mental fitness, journal and check-ins."
             } else {
-                "Sign in to keep your plan, journal and check-ins in sync across iOS and the web."
+                "Sign in to keep your plan, journal and check-ins in sync across devices."
             },
             modifier = Modifier.appear(2),
         )
 
         AuthWhiteButton(
-            text = "Continue with Google",
+            text = "G   Continue with Google",
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().appear(3),
         ) {
@@ -152,44 +167,58 @@ fun AuthScreen() {
                     if (!pwReady) return
                     focus.clearFocus()
                     run {
-                        if (creating) Session.signUp(email.trim(), password, name.trim())
-                        else Session.signIn(email.trim(), password)
+                        if (creating) {
+                            Session.signUp(email.trim(), password, name.trim())
+                            onAccountCreated()
+                        } else {
+                            Session.signIn(email.trim(), password)
+                        }
                     }
                 }
                 if (creating) {
-                    AppTextField(name, { name = it }, "Name", singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    AuthFieldLabel("Name") {
+                        AppTextField(name, { name = it }, "", placeholderText = "Your name", singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
+                    }
+                }
+                AuthFieldLabel("Email") {
+                    AppTextField(email, { email = it }, "", placeholderText = "you@email.com", singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
                 }
-                AppTextField(email, { email = it }, "Email", singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
-                AppTextField(password, { password = it }, "Password", singleLine = true,
-                    visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { submitPw() }),
-                    trailingIcon = {
-                        IconButton(onClick = { showPw = !showPw }) {
-                            Icon(
-                                if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = if (showPw) "Hide password" else "Show password",
-                                tint = TextMuted,
-                            )
-                        }
-                    })
-                PrimaryButton(
-                    text = if (busy) "One moment…" else if (creating) "Create my account" else "Sign in",
+                AuthFieldLabel("Password") {
+                    AppTextField(password, { password = it }, "", placeholderText = "••••••••", singleLine = true,
+                        visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { submitPw() }),
+                        trailingIcon = {
+                            IconButton(onClick = { showPw = !showPw }) {
+                                Icon(
+                                    if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    contentDescription = if (showPw) "Hide password" else "Show password",
+                                    tint = Periwinkle,
+                                )
+                            }
+                        })
+                }
+                AuthWhiteButton(
+                    text = if (busy) "One moment…" else if (creating) "@   Create my account" else "@   Continue with email",
                     enabled = pwReady,
                     modifier = Modifier.fillMaxWidth(),
                 ) { submitPw() }
-
-                TextButton(onClick = { creating = !creating; error = null; info = null }) {
-                    Text(if (creating) "I already have an account" else "New here? Create your space", color = TextMuted)
-                }
-                if (!creating) {
+                if (creating) {
+                    TextButton(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        onClick = { creating = false; error = null; info = null },
+                    ) {
+                        Text("I already have an account", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    }
+                } else {
                     // Reset completes via the emailed web link (same as iOS);
                     // the server always answers 200 — no account enumeration.
                     TextButton(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                         enabled = !busy && email.isNotBlank(),
                         onClick = {
                             run {
@@ -198,11 +227,14 @@ fun AuthScreen() {
                             }
                         },
                     ) {
-                        Text("Forgot password?", color = TextMuted)
+                        Text("Forgot password?", style = MaterialTheme.typography.titleMedium, color = Color.White)
                     }
-                }
-                TextButton(onClick = { mode = AuthMode.Otp; error = null; info = null }) {
-                    Text("Email me a code instead", color = Periwinkle)
+                    TextButton(
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 24.dp),
+                        onClick = { creating = true; error = null; info = null },
+                    ) {
+                        Text("New here? Create your space", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    }
                 }
             }
 
@@ -244,6 +276,14 @@ fun AuthScreen() {
         info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Periwinkle) }
         error?.let { Text(it, color = Danger) }
     }
+    }
+}
+
+@Composable
+private fun AuthFieldLabel(label: String, field: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Color(0xFFE0DDEE))
+        field()
     }
 }
 

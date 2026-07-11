@@ -17,7 +17,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player as Media3Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.cerebrozen.app.MainActivity
-import com.cerebrozen.app.R
+import com.cerebro.app.R
 
 /**
  * Plays the looping ambient bed as a foreground service with a MediaStyle

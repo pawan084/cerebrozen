@@ -60,11 +60,11 @@ internal fun AuroraBackground(accent: Color = Periwinkle, modifier: Modifier = M
     val drift = driftAnim.value
 
     Box(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(NightMid, Night)))) {
-        AuroraOrb(accent.copy(alpha = 0.40f), size = 380.dp, blur = 90.dp,
+        AuroraOrb(accent.copy(alpha = 0.16f), size = 380.dp, blur = 100.dp,
             fromX = -70, fromY = -180, toX = -130, toY = -240, drift = drift)
-        AuroraOrb(Violet.copy(alpha = 0.34f), size = 320.dp, blur = 100.dp,
+        AuroraOrb(Violet.copy(alpha = 0.12f), size = 320.dp, blur = 110.dp,
             fromX = 90, fromY = 30, toX = 140, toY = -60, drift = drift)
-        AuroraOrb(Cyan.copy(alpha = 0.14f), size = 260.dp, blur = 80.dp,
+        AuroraOrb(Cyan.copy(alpha = 0.05f), size = 260.dp, blur = 90.dp,
             fromX = -50, fromY = 320, toX = 70, toY = 250, drift = drift)
         // Soft top-lit sheen, mirroring the iOS top radial highlight.
         Box(

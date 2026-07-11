@@ -9,7 +9,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.cerebrozen.app.R
+import com.cerebro.app.R
 
 // Brand serif: Newsreader (variable font), matching the iOS/web display type.
 // Body stays on the system sans; only headings use the serif.

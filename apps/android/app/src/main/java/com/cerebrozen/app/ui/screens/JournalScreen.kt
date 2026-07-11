@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -138,7 +138,7 @@ fun JournalScreen() {
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     if (!unlocked) {
-        Page("Private to you", "Journal", trailing = Icons.Outlined.MenuBook) {
+        Page("Private to you", "Journal", trailing = Icons.AutoMirrored.Outlined.MenuBook) {
             SectionCard {
                 Text("Journal is locked", style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text("Your entries stay behind your screen lock.",
@@ -278,7 +278,7 @@ fun JournalScreen() {
         JournalMode.Home -> Unit
     }
 
-    Page("Private to you", "Journal", trailing = Icons.Outlined.MenuBook) {
+    Page("Private to you", "Journal", trailing = Icons.AutoMirrored.Outlined.MenuBook) {
         HeroCard(
             imageUrl = HeroImg.journal,
             eyebrow = "Today's prompt",

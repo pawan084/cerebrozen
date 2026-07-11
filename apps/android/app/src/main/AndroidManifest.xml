@@ -32,7 +32,7 @@
         android:theme="@style/Theme.CereBro">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.cerebrozen.app.MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CereBro">
@@ -47,16 +47,16 @@
         </activity>
 
         <receiver
-            android:name=".notify.ReminderReceiver"
+            android:name="com.cerebrozen.app.notify.ReminderReceiver"
             android:exported="false" />
 
         <service
-            android:name=".audio.AmbientService"
+            android:name="com.cerebrozen.app.audio.AmbientService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
         <service
-            android:name=".audio.SoundscapeService"
+            android:name="com.cerebrozen.app.audio.SoundscapeService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
     </application>
