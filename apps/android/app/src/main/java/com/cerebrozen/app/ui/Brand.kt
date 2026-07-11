@@ -32,10 +32,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -156,10 +160,14 @@ fun Splash() {
                 size = 112.dp,
             )
             Spacer(Modifier.height(22.dp))
+            // "Cere" solid, "Bro" in an iris→periwinkle sweep (mirrors the iOS wordmark).
+            val wordmark = buildAnnotatedString {
+                withStyle(SpanStyle(color = TextPrimary)) { append("Cere") }
+                withStyle(SpanStyle(brush = Brush.linearGradient(listOf(Iris, Periwinkle)))) { append("Bro") }
+            }
             Text(
-                "CereBro",
+                wordmark,
                 style = MaterialTheme.typography.displaySmall,
-                color = TextPrimary,
                 modifier = Modifier.alpha(appear),
             )
         }
