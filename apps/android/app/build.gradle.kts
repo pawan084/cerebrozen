@@ -125,6 +125,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     // Real backdrop blur for the frosted-glass cards over the aurora (API 31+).
     implementation("dev.chrisbanes.haze:haze:1.2.1")
+    // Health Connect — optional last-night sleep prefill (Android's HealthKit analogue).
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

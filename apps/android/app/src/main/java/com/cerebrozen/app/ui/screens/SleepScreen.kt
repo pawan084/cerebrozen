@@ -87,6 +87,21 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // Optional last-night prefill from Health Connect (Android's HealthKit analogue).
+    val hcAvailable = remember { com.cerebrozen.app.health.HealthConnectSleep.available(context) }
+    fun applyHealthConnect() {
+        scope.launch {
+            com.cerebrozen.app.health.HealthConnectSleep.readLastNight(context)?.let { (b, w) ->
+                bed = b; wake = w; status = "Pre-filled from last night's sleep."
+            } ?: run { status = "No recent sleep found in Health Connect." }
+        }
+    }
+    val hcLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { granted ->
+        if (granted.containsAll(com.cerebrozen.app.health.HealthConnectSleep.permissions)) applyHealthConnect()
+    }
+
     suspend fun reload() {
         runCatching { summary = Api.sleepSummary() }
         runCatching { nights = parseNights(Api.sleepLogs()) }
@@ -148,6 +163,14 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             }
             TimeRow("In bed around", bed, { bed = it })
             TimeRow("Woke up around", wake, { wake = it })
+            if (hcAvailable) {
+                TextButton(onClick = {
+                    scope.launch {
+                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
+                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
+                    }
+                }) { Text("Pre-fill from Health Connect", color = Cyan) }
+            }
             PrimaryButton(
                 text = if (busy) "One moment…" else "Save night",
                 enabled = quality > 0 && !busy,
