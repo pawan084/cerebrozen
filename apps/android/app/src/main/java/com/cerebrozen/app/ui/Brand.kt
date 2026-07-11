@@ -163,8 +163,8 @@ fun Splash() {
                 val sway = h * 0.05f * (drift - 0.5f) * (if (r % 2 == 0) 1f else -1f)
                 val path = Path().apply {
                     moveTo(-w * 0.1f, yBase)
-                    quadraticBezierTo(w * 0.3f, yBase - h * 0.06f + sway, w * 0.55f, yBase)
-                    quadraticBezierTo(w * 0.82f, yBase + h * 0.06f - sway, w * 1.1f, yBase - h * 0.02f)
+                    quadraticTo(w * 0.3f, yBase - h * 0.06f + sway, w * 0.55f, yBase)
+                    quadraticTo(w * 0.82f, yBase + h * 0.06f - sway, w * 1.1f, yBase - h * 0.02f)
                 }
                 drawPath(
                     path,

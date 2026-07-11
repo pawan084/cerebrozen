@@ -41,11 +41,11 @@ val googleWebClientId = secret("googleWebClientId")
     .ifBlank { googleServicesWebClientId() }
 
 android {
-    namespace = "com.cerebrozen.app"
+    namespace = "com.cerebro.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cerebrozen.app"
+        applicationId = "com.cerebro.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

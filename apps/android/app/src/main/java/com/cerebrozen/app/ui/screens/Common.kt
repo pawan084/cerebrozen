@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.LocalHazeState
 import com.cerebrozen.app.ui.theme.Accent
@@ -109,7 +110,7 @@ internal fun cardPadding() = when {
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
     val hazeState = LocalHazeState.current
     var m = this
-        .shadow(18.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x5C000000))
+        .shadow(8.dp, shape, clip = false, ambientColor = Color(0x26000000), spotColor = Color(0x30000000))
         .clip(shape)
     // Real backdrop blur of the aurora when a haze source is present (API 31+);
     // the translucent tint fill + bevel then sit on top of the frosted glass.
@@ -195,17 +196,19 @@ internal fun Page(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = pageHorizontalPadding(), vertical = 24.dp),
+            .padding(horizontal = 24.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color(0xFFAAA3D0))
                 Text(
                     title,
                     // A soft accent glow behind the serif title — subtle depth,
                     // tinted per section (mirrors the iOS accent-tinted title shadow).
                     style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 38.sp,
+                        lineHeight = 40.sp,
                         shadow = Shadow(accent.copy(alpha = 0.35f), Offset.Zero, 22f),
                     ),
                     color = TextPrimary,
@@ -267,7 +270,7 @@ internal fun PrimaryButton(
     val brush = if (enabled) {
         Gradients.primary
     } else {
-        Brush.horizontalGradient(listOf(Periwinkle.copy(alpha = 0.28f), Iris.copy(alpha = 0.28f)))
+        Brush.horizontalGradient(listOf(Color(0xFF777486), Color(0xFF777486)))
     }
     Box(
         modifier
@@ -282,7 +285,7 @@ internal fun PrimaryButton(
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Ink else TextMuted2,
+            color = Ink,
         )
     }
 }
@@ -307,7 +310,7 @@ internal fun AppTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+        label = if (label.isNotBlank()) ({ Text(label) }) else null,
         placeholder = placeholderText?.let { { Text(it) } },
         modifier = modifier,
         enabled = enabled,
@@ -320,9 +323,9 @@ internal fun AppTextField(
         shape = RoundedCornerShape(Radius.field),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
-            focusedContainerColor = Color.White.copy(alpha = 0.05f),
-            unfocusedContainerColor = Color.White.copy(alpha = 0.035f),
+            unfocusedBorderColor = Color(0xFF514B76),
+            focusedContainerColor = Color(0xFF302B55),
+            unfocusedContainerColor = Color(0xFF29254D),
             cursorColor = Periwinkle,
             focusedLabelColor = Periwinkle,
             unfocusedLabelColor = TextMuted,
@@ -342,10 +345,10 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
     // The fill/border/text cross-fade on selection instead of snapping — the chip
     // feels like it lights up rather than flicking to a new state.
     val bg by animateColorAsState(
-        if (selected) Periwinkle else Color.White.copy(alpha = 0.06f), tween(220), label = "chipBg",
+        if (selected) Color.White else Color(0xFF39355F), tween(220), label = "chipBg",
     )
     val border by animateColorAsState(
-        if (selected) Periwinkle else LineStroke, tween(220), label = "chipBorder",
+        if (selected) Color.White else LineStroke, tween(220), label = "chipBorder",
     )
     val fg by animateColorAsState(if (selected) Ink else TextSoft, tween(220), label = "chipFg")
     Box(

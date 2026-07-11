@@ -6,21 +6,21 @@ import androidx.compose.ui.graphics.Color
 // (apps/ios/CereBro/DesignSystem/Theme.swift) and the web tokens
 // (design/tokens.css). 2026-07 warm refresh: night warmed to indigo, primary
 // hue softened to warm lavender, plus coral + cyan warm accents.
-val Night = Color(0xFF0E0C22)       // --night (primary background / splash)
-val NightMid = Color(0xFF1A1440)    // --night-top (lifted gradient top)
-val NightPurple = Color(0xFF161138) // warm deep mid
-val Periwinkle = Color(0xFF8A7BF0)  // --lav (primary accent, the orb ring)
-val PeriwinkleDeep = Color(0xFF5B52C9) // --lav-deep (orb core / hero gradient floor)
-val PeriwinkleSoft = Color(0xFFCBB6FF) // --lav-soft (hero eyebrow, lifted lavender)
-val Iris = Color(0xFFA68BFF)        // --lav-2
-val Violet = Color(0xFFA68BFF)      // --lav-2 (aurora gradient partner)
+val Night = Color(0xFF100D2B)       // reference gradient floor
+val NightMid = Color(0xFF3A3372)    // reference gradient top
+val NightPurple = Color(0xFF29254D) // fields and secondary surfaces
+val Periwinkle = Color(0xFF8B78F2)  // switches, focus and icon accent
+val PeriwinkleDeep = Color(0xFF5545AD)
+val PeriwinkleSoft = Color(0xFFC5BDF3)
+val Iris = Color(0xFF9A87F5)
+val Violet = Color(0xFF7665D4)
 val Cream = Color(0xFFECEEFB)       // --cream
 val Ink = Color(0xFF1C1740)         // --ink
 
 val TextPrimary = Color(0xFFF5F4FF) // --text
-val TextSoft = Color(0xFFDFE0FF)    // --soft
-val TextMuted = Color(0xFFB0A9E0)   // --muted
-val TextMuted2 = Color(0xFF8F88C0)  // --muted-2
+val TextSoft = Color(0xFFE1DEEE)    // --soft
+val TextMuted = Color(0xFFC0BBD4)   // --muted
+val TextMuted2 = Color(0xFF928CAC)  // --muted-2
 val Danger = Color(0xFFE08A9A)      // --danger
 
 // Warm accents introduced by the refresh.
@@ -30,13 +30,13 @@ val Teal = Color(0xFF6FE0E6)        // --teal (lotus / breathe accent, matches i
 val Ok = Color(0xFF7EE0A8)          // --ok (success)
 
 // Glass card fills.
-val CardFill = Color(0x0DFFFFFF)   // white 5%  (--card)
-val LineStroke = Color(0x1FFFFFFF) // white 12% (--line)
+val CardFill = Color(0xFF302C55)
+val LineStroke = Color(0xFF514B76)
 
 // Floating bottom-nav pill — a lifted lavender-indigo capsule over a dark scrim.
-val NavPillTop = Color(0xFF504184)    // pill gradient top (lifted lavender-indigo)
-val NavPillBottom = Color(0xFF292052) // pill gradient floor (deep indigo)
-val NavScrim = Color(0xFF0B061E)      // behind-bar fade so content dims under the pill
+val NavPillTop = Color(0xFF413A70)
+val NavPillBottom = Color(0xFF28234D)
+val NavScrim = Color(0xFF100D2B)
 
 // List-thumbnail gradient floors (UI chrome for content-row artwork). The tops
 // reuse the brand accents (Periwinkle/Cyan/Warm/Iris); these are the darker

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -75,9 +76,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.cerebrozen.app.BuildConfig
-import com.cerebrozen.app.R
+import com.cerebro.app.BuildConfig
+import com.cerebro.app.R
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
@@ -113,14 +115,45 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        TextButton(onClick = onBack, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-            Text("‹ Back", color = TextMuted)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.10f))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowBackIosNew,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    eyebrow.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp),
+                    color = Color(0xFFAAA3D0),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall.copy(fontSize = 34.sp, lineHeight = 36.sp),
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Text(title, style = MaterialTheme.typography.displaySmall, color = TextPrimary)
         content()
     }
 }
@@ -185,10 +218,15 @@ internal fun ContentRow(
     onFav: (() -> Unit)? = null,
 ) {
     SectionCard(onClick = onTap) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             // Real content photo (iOS AsyncImage) over a gradient fallback + symbol.
             Box(
-                Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)).background(thumbBrush(title)),
+                Modifier.size(54.dp).clip(RoundedCornerShape(14.dp)).background(thumbBrush(title))
+                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(24.dp))
@@ -200,7 +238,7 @@ internal fun ContentRow(
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -636,7 +674,7 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
 }
 
 @Composable
-fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny reset", "Calm games", onBack) {
+fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Playful resets", "Calm games", onBack) {
     Text("Box breathing — inhale, hold, exhale, hold. Follow the orb for a minute.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     BoxBreathing()
