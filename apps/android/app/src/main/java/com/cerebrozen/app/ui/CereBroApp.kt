@@ -102,10 +102,8 @@ import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.theme.NavPillBottom
 import com.cerebrozen.app.ui.theme.NavPillTop
 import com.cerebrozen.app.ui.theme.NavScrim
-import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted2
-import com.cerebrozen.app.ui.theme.Violet
 import com.cerebrozen.app.ui.theme.TextPrimary
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
@@ -195,9 +193,9 @@ fun CereBroApp() {
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
     val auroraAccent = when (current) {
-        Tab.Sleep.route -> Violet
-        Tab.Talk.route -> Cyan
-        else -> Periwinkle
+        Tab.Sleep.route -> com.cerebrozen.app.ui.theme.Accent.sleep
+        Tab.Talk.route -> com.cerebrozen.app.ui.theme.Accent.talk
+        else -> com.cerebrozen.app.ui.theme.Accent.home
     }
 
     Box(Modifier.fillMaxSize()) {

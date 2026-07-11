@@ -170,6 +170,7 @@ internal fun Page(
     eyebrow: String,
     title: String,
     trailing: ImageVector? = null,
+    accent: Color = Periwinkle,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -191,10 +192,10 @@ internal fun Page(
                 Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 Text(
                     title,
-                    // A soft lavender glow behind the serif title — subtle depth,
-                    // mirroring the iOS accent-tinted title shadow.
+                    // A soft accent glow behind the serif title — subtle depth,
+                    // tinted per section (mirrors the iOS accent-tinted title shadow).
                     style = MaterialTheme.typography.displaySmall.copy(
-                        shadow = Shadow(Periwinkle.copy(alpha = 0.35f), Offset.Zero, 22f),
+                        shadow = Shadow(accent.copy(alpha = 0.35f), Offset.Zero, 22f),
                     ),
                     color = TextPrimary,
                     maxLines = 2,

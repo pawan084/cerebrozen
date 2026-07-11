@@ -94,7 +94,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { reload() }
 
-    Page("How you slept, not a measurement", "Sleep", trailing = Icons.Outlined.DarkMode) {
+    Page("How you slept, not a measurement", "Sleep", trailing = Icons.Outlined.DarkMode, accent = com.cerebrozen.app.ui.theme.Violet) {
         HeroCard(
             imageUrl = HeroImg.sleep,
             eyebrow = "Wind down",
