@@ -65,7 +65,7 @@ fun SoundscapeScreen(onBack: () -> Unit) {
             Text("Master volume", style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Slider(
                 value = SoundscapeMixer.master,
-                onValueChange = { SoundscapeMixer.setMasterVolume(it) },
+                onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
                 valueRange = 0f..1f,
                 colors = mixSliderColors(),
             )
@@ -95,13 +95,13 @@ fun SoundscapeScreen(onBack: () -> Unit) {
                     }
                     Text(layer.name, style = MaterialTheme.typography.titleMedium,
                         color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { SoundscapeMixer.toggleLayer(i) }) {
+                    TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
                         Text(if (on) "On" else "Off", color = if (on) Cyan else TextMuted)
                     }
                 }
                 Slider(
                     value = vol,
-                    onValueChange = { SoundscapeMixer.setLayerVolume(i, it) },
+                    onValueChange = { SoundscapeMixer.setLayerVolume(context, i, it) },
                     valueRange = 0f..1f,
                     colors = mixSliderColors(),
                 )
@@ -118,7 +118,7 @@ fun SoundscapeScreen(onBack: () -> Unit) {
                 Icon(Icons.Outlined.Bedtime, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
                 Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             }
-            TextButton(onClick = { SoundscapeMixer.cycleTimer() }) {
+            TextButton(onClick = { SoundscapeMixer.cycleTimer(context) }) {
                 Text(
                     if (SoundscapeMixer.timerMinutes > 0) "${SoundscapeMixer.timerMinutes} min" else "Off",
                     color = if (SoundscapeMixer.timerMinutes > 0) Cyan else TextMuted,
