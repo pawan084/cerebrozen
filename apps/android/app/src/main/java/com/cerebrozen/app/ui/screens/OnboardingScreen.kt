@@ -64,6 +64,10 @@ import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
@@ -275,8 +279,12 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
     ) {
         BrandMark(size = 120.dp)
         Spacer(Modifier.height(28.dp))
-        Text("Welcome to\nCereBro", style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary, textAlign = TextAlign.Center)
+        // "Bro" carries the iris→periwinkle gradient, matching the splash wordmark.
+        val welcome = buildAnnotatedString {
+            withStyle(SpanStyle(color = TextPrimary)) { append("Welcome to\nCere") }
+            withStyle(SpanStyle(brush = Brush.linearGradient(listOf(Iris, Periwinkle)))) { append("Bro") }
+        }
+        Text(welcome, style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
         Spacer(Modifier.height(12.dp))
         Text("Your quiet space for daily mental fitness, better sleep, and calmer focus.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted, textAlign = TextAlign.Center)

@@ -60,6 +60,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -87,6 +88,7 @@ import com.cerebrozen.app.ui.theme.Danger
 import kotlinx.coroutines.launch
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -254,7 +256,7 @@ internal fun ContentList(
     }
     when {
         error != null -> Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        items == null -> Text("Loading…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        items == null -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
         items!!.length() == 0 -> Text("Nothing here yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         else -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
@@ -478,6 +480,8 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
 fun PlayerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val title = Player.nowPlaying
+    val reduceMotion = rememberReduceMotion()
+    val playing = title != null && Player.isPlaying
     SubPage("Now playing", title ?: "Nothing playing", onBack) {
         // Centered art + transport (teammate player look), our tokens throughout.
         Column(
@@ -485,16 +489,74 @@ fun PlayerScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val artShape = RoundedCornerShape(26.dp)
+            // Slow "breathing" scale on the centered artwork (~5s); steady under Reduce Motion.
+            val artScale = if (reduceMotion) 1f else {
+                val breathe = rememberInfiniteTransition(label = "art-breathe")
+                val s by breathe.animateFloat(
+                    initialValue = 1f, targetValue = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        tween(5200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                    label = "art-scale",
+                )
+                s
+            }
             Box(
-                Modifier.fillMaxWidth(0.72f).height(240.dp).clip(RoundedCornerShape(26.dp))
-                    .border(1.dp, LineStroke, RoundedCornerShape(26.dp)),
+                Modifier.fillMaxWidth(0.72f).height(240.dp).clip(artShape)
+                    .border(1.dp, LineStroke, artShape),
+                contentAlignment = Alignment.Center,
             ) {
+                // Blurred backdrop: an oversized, soft copy of the same artwork so the
+                // centered art floats over a diffuse version of itself. Modifier.blur is
+                // API 31+ and degrades gracefully (no-op) on older releases.
                 AsyncImage(
                     model = HeroImg.sleep, contentDescription = null,
-                    contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize().scale(1.4f).blur(28.dp),
                 )
-                Box(Modifier.fillMaxSize().background(
+                // Scrim to settle the backdrop into the night palette.
+                Box(Modifier.matchParentSize().background(
+                    Brush.verticalGradient(listOf(Night.copy(alpha = 0.35f), Night.copy(alpha = 0.72f)))))
+                // The centered, breathing artwork floating above the blur.
+                AsyncImage(
+                    model = HeroImg.sleep, contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth(0.62f).height(168.dp)
+                        .scale(artScale).clip(RoundedCornerShape(20.dp))
+                        .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+                )
+                // Legibility scrim beneath the base overlay.
+                Box(Modifier.matchParentSize().background(
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
+                // Decorative equalizer visualizer — a row of 7 bars that animate ONLY while
+                // playing and stay still under Reduce Motion. Purely ornamental: this is not
+                // elapsed time, track position, or any progress readout.
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (playing && !reduceMotion) {
+                        val eq = rememberInfiniteTransition(label = "eq")
+                        repeat(7) { i ->
+                            val h by eq.animateFloat(
+                                initialValue = 6f,
+                                targetValue = (18 + (i % 4) * 7).toFloat(),
+                                animationSpec = infiniteRepeatable(
+                                    tween(360 + i * 70, easing = FastOutSlowInEasing),
+                                    RepeatMode.Reverse),
+                                label = "eq-bar-$i",
+                            )
+                            Box(Modifier.size(width = 5.dp, height = h.dp).clip(RoundedCornerShape(3.dp))
+                                .background(Brush.verticalGradient(listOf(Cyan, Periwinkle))))
+                        }
+                    } else {
+                        listOf(10, 16, 12, 20, 12, 16, 10).forEach { hv ->
+                            Box(Modifier.size(width = 5.dp, height = hv.dp).clip(RoundedCornerShape(3.dp))
+                                .background(Cyan.copy(alpha = 0.5f)))
+                        }
+                    }
+                }
             }
             if (title == null) {
                 Text("Pick a soundscape or story from Sounds and it plays here.",
@@ -596,6 +658,10 @@ fun GamesScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("A tiny 
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("zenripples") })
     ContentRow("Gratitude garden", "A flower for every thank-you", "Play", false,
         icon = Icons.Outlined.SportsEsports, onTap = { onOpen("gratitude") })
+    ContentRow("Colour breathing", "Breathe with a shifting glow", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("colorbreathing") })
+    ContentRow("Sliding puzzle", "Slide the tiles into place, no clock", "Play", false,
+        icon = Icons.Outlined.SportsEsports, onTap = { onOpen("slidingpuzzle") })
 }
 
 /** Headline game tile — a gradient hero with floating orbs, tappable to open the

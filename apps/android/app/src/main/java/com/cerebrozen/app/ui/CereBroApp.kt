@@ -25,6 +25,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -68,6 +70,7 @@ import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GamesScreen
+import com.cerebrozen.app.ui.screens.ColorBreathingScreen
 import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
@@ -87,6 +90,7 @@ import com.cerebrozen.app.ui.screens.PrivacyScreen
 import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
+import com.cerebrozen.app.ui.screens.SlidingPuzzleScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.SoundscapeScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
@@ -256,10 +260,12 @@ fun CereBroApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            enterTransition = { fadeIn(tween(240)) },
-            exitTransition = { fadeOut(tween(160)) },
-            popEnterTransition = { fadeIn(tween(240)) },
-            popExitTransition = { fadeOut(tween(160)) },
+            // A gentle shared-axis feel: cross-fade paired with a whisper of scale,
+            // so screens settle in rather than hard-cut.
+            enterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 0.98f, animationSpec = tween(280)) },
+            exitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 1.02f, animationSpec = tween(170)) },
+            popEnterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
+            popExitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
         ) {
             val open: (String) -> Unit = { route -> navController.navigate(route) }
             val back: () -> Unit = { navController.popBackStack() }
@@ -283,6 +289,8 @@ fun CereBroApp() {
             composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
+            composable("colorbreathing") { ColorBreathingScreen(onBack = back) }
+            composable("slidingpuzzle") { SlidingPuzzleScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }
             composable("tools") { ToolsScreen(onOpen = open, onBack = back) }
             composable("breathing") { BreathingScreen(onBack = back) }

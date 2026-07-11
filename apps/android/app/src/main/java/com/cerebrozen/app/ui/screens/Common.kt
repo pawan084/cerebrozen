@@ -4,8 +4,12 @@ import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -42,8 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -184,7 +191,11 @@ internal fun Page(
                 Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 Text(
                     title,
-                    style = MaterialTheme.typography.displaySmall,
+                    // A soft lavender glow behind the serif title — subtle depth,
+                    // mirroring the iOS accent-tinted title shadow.
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        shadow = Shadow(Periwinkle.copy(alpha = 0.35f), Offset.Zero, 22f),
+                    ),
                     color = TextPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -396,4 +407,35 @@ internal fun DangerButton(
             color = if (enabled) Night else TextMuted2,
         )
     }
+}
+
+/** A shimmering skeleton placeholder for content that's loading — a soft fill with
+ * a highlight sweeping across it (holds a static fill under Reduce Motion). Mirrors
+ * the iOS Shimmer loader; use in place of a bare "Loading…" line. */
+@Composable
+internal fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(12.dp)) {
+    val reduceMotion = rememberReduceMotion()
+    val base = modifier.clip(shape).background(Color.White.copy(alpha = 0.06f))
+    if (reduceMotion) {
+        Box(base)
+        return
+    }
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val x by transition.animateFloat(
+        -1f, 2f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "sweep",
+    )
+    Box(
+        base.drawWithContent {
+            drawContent()
+            val sweepWidth = size.width * 0.6f
+            val startX = x * size.width
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
+                    startX = startX,
+                    endX = startX + sweepWidth,
+                ),
+            )
+        },
+    )
 }

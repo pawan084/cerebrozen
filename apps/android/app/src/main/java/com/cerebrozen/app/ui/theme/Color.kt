@@ -26,6 +26,7 @@ val Danger = Color(0xFFE08A9A)      // --danger
 // Warm accents introduced by the refresh.
 val Warm = Color(0xFFF0A48C)        // --warm (coral)
 val Cyan = Color(0xFF8FE6EE)        // --cyan (breathing orb)
+val Teal = Color(0xFF6FE0E6)        // --teal (lotus / breathe accent, matches iOS)
 val Ok = Color(0xFF7EE0A8)          // --ok (success)
 
 // Glass card fills.

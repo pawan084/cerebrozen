@@ -1,5 +1,10 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,11 +12,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -45,12 +53,15 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
@@ -312,40 +323,213 @@ internal val FLOWERS = listOf("🌸", "🌼", "🌷", "🌻", "💮", "🪻")
 /** Deterministic flower per entry index — testable, stable across launches. */
 internal fun flowerFor(index: Int): String = FLOWERS[index % FLOWERS.size]
 
+/** Deterministic 0..1 planting fraction per entry — a stable scatter so a saved
+ * flower lands in the same spot on every launch. Pure, so it's unit-testable. */
+internal fun plantFraction(index: Int, salt: Int): Float =
+    ((index * 73 + salt * 149 + 31) % 100) / 100f
+
 @Composable
 fun GratitudeGardenScreen(onBack: () -> Unit) {
     var entries by remember { mutableStateOf(Gratitude.all()) }
     var draft by remember { mutableStateOf("") }
 
     SubPage("Grow something good", "Gratitude garden", onBack) {
-        Text("Name one small thing you're thankful for — a flower grows for each.",
+        Text("Name one small thing you're thankful for — a flower is planted for each.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AppTextField(draft, { draft = it }, "One good thing…", singleLine = true)
         PrimaryButton(text = "Plant it", enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
             entries = Gratitude.add(draft)
             draft = ""
         }
-        if (entries.isEmpty()) {
-            Text("Your garden is waiting for its first flower.",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
-        } else {
-            SectionCard {
-                entries.asReversed().forEachIndexed { revIdx, text ->
-                    val i = entries.size - 1 - revIdx
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The soil: every real entry becomes one flower at a deterministic spot.
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().height(300.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.05f), Ok.copy(alpha = 0.16f)),
+                    ),
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+                .semantics { contentDescription = "Gratitude garden soil with ${entries.size} flowers" },
+        ) {
+            if (entries.isEmpty()) {
+                Text("Your garden is waiting for its first flower.",
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp))
+            }
+            val flower = 34.dp
+            entries.forEachIndexed { i, text ->
+                val x = (maxWidth - flower) * plantFraction(i, 1)
+                val y = (maxHeight - flower) * plantFraction(i, 2)
+                Box(
+                    Modifier.offset(x = x, y = y).size(flower)
+                        .appear(i)
+                        .clip(CircleShape)
+                        .background(Periwinkle.copy(alpha = 0.22f))
+                        .semantics { contentDescription = "Flower: $text" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(flowerFor(i), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+        Text(
+            if (entries.isEmpty()) "Plant one small good thing."
+            else "${entries.size} ${if (entries.size == 1) "flower" else "flowers"} and counting.",
+            style = MaterialTheme.typography.labelSmall, color = TextMuted,
+        )
+    }
+}
+
+// ── Color breathing ──────────────────────────────────────────────────────
+/** The four-beat cycle, 4s each. Colour + orb scale are both driven BY the
+ * current phase index (not a free-running pulse), mirroring iOS ColorBreathing. */
+internal val BREATH_PHASES = listOf("Breathe in", "Hold", "Breathe out", "Hold")
+
+@Composable
+fun ColorBreathingScreen(onBack: () -> Unit) {
+    var phase by remember { mutableIntStateOf(0) }
+    var breaths by remember { mutableIntStateOf(0) }
+    val reduceMotion = rememberReduceMotion()
+
+    // Functional pacer: advance the phase every 4s and fire a gentle phase haptic.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(4000)
+            phase = (phase + 1) % 4
+            if (phase == 0) breaths++            // a full cycle just completed
+            Haptics.soft(if (phase == 0 || phase == 2) 0.5f else 0.3f)
+        }
+    }
+
+    // Scale is a function of phase: expand on inhale, hold full, contract on
+    // exhale, hold empty. Motion (not the pacing) honours Reduce Motion.
+    val scale by animateFloatAsState(
+        targetValue = if (phase == 0 || phase == 1) 1f else 0.6f,
+        animationSpec = if (reduceMotion) snap() else tween(3800, easing = FastOutSlowInEasing),
+        label = "breathScale",
+    )
+    val tint by animateColorAsState(
+        targetValue = when (phase) { 0 -> Cyan; 1 -> Periwinkle; 2 -> Iris; else -> Warm },
+        animationSpec = if (reduceMotion) snap() else tween(1400, easing = FastOutSlowInEasing),
+        label = "breathTint",
+    )
+
+    SubPage("Follow the glow", "Color breathing", onBack) {
+        Text("Let your breath follow the orb — in, hold, out, hold.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Box(
+            Modifier.fillMaxWidth().height(360.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(220.dp)
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(tint.copy(alpha = 0.90f), tint.copy(alpha = 0.20f)),
+                        ),
+                    )
+                    .border(1.dp, tint.copy(alpha = 0.55f), CircleShape)
+                    .semantics { contentDescription = "Breathing orb — ${BREATH_PHASES[phase]}" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(BREATH_PHASES[phase], style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            }
+        }
+        Text("$breaths calm ${if (breaths == 1) "breath" else "breaths"}",
+            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+// ── Sliding puzzle ───────────────────────────────────────────────────────
+/** Solved board: 1..8 with the blank (0) last. */
+internal val SOLVED_PUZZLE = listOf(1, 2, 3, 4, 5, 6, 7, 8, 0)
+
+/** The 3×3 grid neighbours of a cell — the tiles that could slide into a blank. */
+internal fun puzzleNeighbors(index: Int): List<Int> {
+    val row = index / 3; val col = index % 3
+    return buildList {
+        if (row > 0) add(index - 3)
+        if (row < 2) add(index + 3)
+        if (col > 0) add(index - 1)
+        if (col < 2) add(index + 1)
+    }
+}
+
+/** A solvable board: a run of random valid moves back from solved (never the
+ * solved state itself). Pure + seedable, so the reachability is testable. */
+internal fun shufflePuzzle(steps: Int = 60, random: Random = Random.Default): List<Int> {
+    var board = SOLVED_PUZZLE
+    var blank = board.indexOf(0)
+    repeat(steps) {
+        val n = puzzleNeighbors(blank).random(random)
+        board = board.toMutableList().also { it[blank] = it[n]; it[n] = 0 }
+        blank = n
+    }
+    if (board == SOLVED_PUZZLE) {           // guard against the rare no-op shuffle
+        val n = puzzleNeighbors(blank).first()
+        board = board.toMutableList().also { it[blank] = it[n]; it[n] = 0 }
+    }
+    return board
+}
+
+@Composable
+fun SlidingPuzzleScreen(onBack: () -> Unit) {
+    var board by remember { mutableStateOf(shufflePuzzle()) }
+    val solved = board == SOLVED_PUZZLE
+
+    fun tap(i: Int) {
+        if (solved) return
+        val blank = board.indexOf(0)
+        if (i in puzzleNeighbors(blank)) {
+            Haptics.soft(0.4f)
+            board = board.toMutableList().also { it[blank] = it[i]; it[i] = 0 }
+        }
+    }
+
+    LaunchedEffect(solved) { if (solved) Celebrations.trigger() }
+
+    SubPage("Order from the shuffle", "Sliding puzzle", onBack) {
+        Text("Slide the tiles until 1 through 8 line up. No timer, no score.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Column(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            (0 until 3).forEach { r ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    (0 until 3).forEach { c ->
+                        val i = r * 3 + c
+                        val v = board[i]
                         Box(
-                            Modifier.size(42.dp).clip(CircleShape).background(Periwinkle.copy(alpha = 0.22f)),
+                            Modifier.weight(1f).aspectRatio(1f)
+                                .minimumInteractiveComponentSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (v == 0) Color.White.copy(alpha = 0.04f) else Periwinkle.copy(alpha = 0.30f))
+                                .border(1.dp, if (v == 0) LineStroke else Periwinkle.copy(alpha = 0.70f), RoundedCornerShape(16.dp))
+                                .clickable(enabled = v != 0) { tap(i) }
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = if (v == 0) "Blank space" else "Tile $v"
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(flowerFor(i), style = MaterialTheme.typography.titleLarge)
+                            if (v != 0) {
+                                Text("$v", style = MaterialTheme.typography.headlineSmall, color = TextSoft)
+                            }
                         }
-                        Text(text, style = MaterialTheme.typography.bodyMedium, color = TextSoft, modifier = Modifier.weight(1f))
                     }
                 }
             }
-            Text("${entries.size} ${if (entries.size == 1) "flower" else "flowers"} and counting.",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        }
+        if (solved) {
+            Text("Solved! Every tile home.", style = MaterialTheme.typography.titleMedium, color = Ok)
+            PrimaryButton(text = "Play again", modifier = Modifier.fillMaxWidth()) { board = shufflePuzzle() }
+        } else {
+            PrimaryButton(text = "Shuffle", modifier = Modifier.fillMaxWidth()) { board = shufflePuzzle() }
         }
     }
 }
