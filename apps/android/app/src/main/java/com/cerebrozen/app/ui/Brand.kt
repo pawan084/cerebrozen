@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -43,6 +46,7 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Violet
 import kotlin.math.floor
@@ -93,6 +97,31 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean
         drawCircle(
             Color.White.copy(alpha = 0.38f), radius = orbR * 0.22f,
             center = Offset(c.x - orbR * 0.4f, c.y - orbR * 0.42f),
+        )
+    }
+}
+
+/** A layered glow orb — an outer bloom, a luminous core, and a top-left specular
+ * highlight. The signature brand hero element for welcome / breathing surfaces. */
+@Composable
+fun GlowOrb(
+    modifier: Modifier = Modifier,
+    size: Dp = 150.dp,
+    scale: Float = 1f,
+    core: Color = Cyan,
+) {
+    Box(modifier.size(size).scale(scale), contentAlignment = Alignment.Center) {
+        // Outer bloom.
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(core.copy(alpha = 0.35f), Color.Transparent))))
+        // Luminous core.
+        Box(
+            Modifier.fillMaxSize(0.72f).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep))),
+        )
+        // Top-left specular highlight.
+        Box(
+            Modifier.fillMaxSize(0.30f).offset(x = size * -0.13f, y = size * -0.13f).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.7f), Color.Transparent))),
         )
     }
 }

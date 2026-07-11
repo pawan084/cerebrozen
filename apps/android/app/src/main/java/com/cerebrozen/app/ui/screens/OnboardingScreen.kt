@@ -311,10 +311,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         secondary = { TextButton(onClick = onDone) { Text("Skip for now", color = TextMuted) } },
     ) {
         Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(150.dp).scale(scale).background(
-                Brush.radialGradient(listOf(androidx.compose.ui.graphics.Color.White, Cyan, Periwinkle)),
-                CircleShape,
-            ))
+            com.cerebrozen.app.ui.GlowOrb(size = 150.dp, scale = scale, core = Cyan)
         }
         Text("Breathe with the orb", style = MaterialTheme.typography.titleMedium,
             color = TextSoft, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
