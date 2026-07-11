@@ -170,6 +170,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // first voice turn, stays up across turns until End/Text.
     var voiceSession by remember { mutableStateOf(false) }
     var sessionSeconds by remember { mutableStateOf(0) }
+    // Live mic level for the cloud recording path (the on-device path uses voice.level).
+    var cloudLevel by remember { mutableStateOf(0f) }
     LaunchedEffect(voiceSession) {
         sessionSeconds = 0
         while (voiceSession) {
@@ -344,6 +346,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    // Natural turn-taking on the cloud path: poll the mic level while recording and
+    // auto-finish the turn after ~1.5s of trailing silence (once speech was heard),
+    // so the user doesn't have to tap to end. Also feeds the reactive orb.
+    LaunchedEffect(cloud.recording) {
+        if (!cloud.recording) { cloudLevel = 0f; return@LaunchedEffect }
+        var silenceMs = 0
+        var heardSpeech = false
+        while (cloud.recording) {
+            kotlinx.coroutines.delay(150)
+            val amp = cloud.maxAmplitude()
+            cloudLevel = (amp / 12_000f).coerceIn(0f, 1f)
+            if (amp > 1_800) { heardSpeech = true; silenceMs = 0 } else if (heardSpeech) silenceMs += 150
+            if (heardSpeech && silenceMs >= 1_500) { finishCloudTurn(); break }
+        }
+        cloudLevel = 0f
+    }
+
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) beginListening()
         else status = "Microphone access is off — you can still type below."
@@ -429,7 +448,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 speaking = voice.speaking || cloud.speaking,
                 onTap = { onOrbTap() },
                 thinking = transcribing || busy,
-                level = voice.level,
+                level = if (cloud.recording) cloudLevel else voice.level,
             )
             val hint = when {
                 transcribing -> "Hearing you…"
@@ -535,7 +554,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             listening = cloud.recording || voice.listening,
             speaking = cloud.speaking || voice.speaking,
             thinking = transcribing || busy,
-            level = voice.level,
+            level = if (cloud.recording) cloudLevel else voice.level,
             caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
             onOrb = { onOrbTap() },
             onEnd = { endSession() },
