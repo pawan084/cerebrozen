@@ -281,7 +281,14 @@ fun CereBroApp() {
             composable("programs") { ProgramsScreen(onBack = back) }
             composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
             composable("soundscape") { SoundscapeScreen(onBack = back) }
-            composable("player") { PlayerScreen(onBack = back) }
+            // The player zooms in from the tapped card (iOS-18 zoom-transition feel).
+            composable(
+                "player",
+                enterTransition = { scaleIn(initialScale = 0.85f, animationSpec = tween(320)) + fadeIn(tween(320)) },
+                exitTransition = { scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(tween(200)) },
+                popEnterTransition = { fadeIn(tween(240)) + scaleIn(initialScale = 1.05f, animationSpec = tween(240)) },
+                popExitTransition = { scaleOut(targetScale = 0.85f, animationSpec = tween(260)) + fadeOut(tween(260)) },
+            ) { PlayerScreen(onBack = back) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }

@@ -64,6 +64,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.LocalHazeState
+import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.Gradients
+import com.cerebrozen.app.ui.theme.Radius
+import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.Danger
 import dev.chrisbanes.haze.hazeEffect
 import com.cerebrozen.app.ui.theme.Ink
@@ -76,7 +80,7 @@ import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 
-private val CardShape = RoundedCornerShape(20.dp)
+private val CardShape = RoundedCornerShape(Radius.card)
 
 // Responsive sizing helpers — pages and cards breathe a little tighter on small
 // phones and a touch more generously on large ones, instead of one fixed inset.
@@ -111,12 +115,8 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
     // the translucent tint fill + bevel then sit on top of the frosted glass.
     if (hazeState != null) m = m.hazeEffect(hazeState)
     m
-        .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.045f))))
-        .border(
-            1.dp,
-            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.32f), Color.White.copy(alpha = 0.06f))),
-            shape,
-        )
+        .background(Gradients.glass)
+        .border(1.dp, Stroke.bevel, shape)
 }
 
 /** True when the user has asked the system to minimise animations ("Remove
@@ -180,7 +180,7 @@ internal fun Page(
     eyebrow: String,
     title: String,
     trailing: ImageVector? = null,
-    accent: Color = Periwinkle,
+    accent: Color = Accent.default,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -264,14 +264,14 @@ internal fun PrimaryButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val brush = if (enabled) {
-        Brush.horizontalGradient(listOf(Periwinkle, Iris))
+        Gradients.primary
     } else {
         Brush.horizontalGradient(listOf(Periwinkle.copy(alpha = 0.28f), Iris.copy(alpha = 0.28f)))
     }
     Box(
         modifier
             .pressScale(pressed, down = 0.97f)
-            .clip(RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(Radius.pill))
             .background(brush)
             .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.soft(0.6f); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
@@ -316,7 +316,7 @@ internal fun AppTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radius.field),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,
             unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
@@ -335,7 +335,7 @@ internal fun AppTextField(
  * outline otherwise. Replaces the low-contrast Material FilterChip. */
 @Composable
 internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = RoundedCornerShape(Radius.round)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     // The fill/border/text cross-fade on selection instead of snapping — the chip

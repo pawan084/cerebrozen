@@ -388,7 +388,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     Box(Modifier.fillMaxSize()) {
-    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic) {
+    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic, accent = Cyan) {
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
             Modifier.fillMaxWidth()
