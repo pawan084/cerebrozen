@@ -31,6 +31,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
@@ -198,8 +201,10 @@ fun CereBroApp() {
         else -> com.cerebrozen.app.ui.theme.Accent.home
     }
 
+    val hazeState = remember { HazeState() }
     Box(Modifier.fillMaxSize()) {
-    AuroraBackground(accent = auroraAccent)
+    AuroraBackground(accent = auroraAccent, modifier = Modifier.hazeSource(hazeState))
+    CompositionLocalProvider(LocalHazeState provides hazeState) {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -307,6 +312,7 @@ fun CereBroApp() {
             composable("export") { DataExportScreen(onBack = back) }
             composable("delete") { AccountDeletionScreen(onBack = back) }
         }
+    }
     }
     // App-wide celebration flourish, above the nav chrome.
     if (Celebrations.active) Celebration(onFinished = { Celebrations.clear() })

@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -62,7 +63,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.LocalHazeState
 import com.cerebrozen.app.ui.theme.Danger
+import dev.chrisbanes.haze.hazeEffect
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -99,15 +102,22 @@ internal fun cardPadding() = when {
  * is a vertical gradient (bright at the top edge, fading down) so the pane catches
  * light like a real bevelled edge rather than reading as a flat outline. Mirrors the
  * iOS glass stroke (white 28%→5%). */
-internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
-    .shadow(18.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x5C000000))
-    .clip(shape)
-    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.045f))))
-    .border(
-        1.dp,
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.32f), Color.White.copy(alpha = 0.06f))),
-        shape,
-    )
+internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
+    val hazeState = LocalHazeState.current
+    var m = this
+        .shadow(18.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x5C000000))
+        .clip(shape)
+    // Real backdrop blur of the aurora when a haze source is present (API 31+);
+    // the translucent tint fill + bevel then sit on top of the frosted glass.
+    if (hazeState != null) m = m.hazeEffect(hazeState)
+    m
+        .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.045f))))
+        .border(
+            1.dp,
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.32f), Color.White.copy(alpha = 0.06f))),
+            shape,
+        )
+}
 
 /** True when the user has asked the system to minimise animations ("Remove
  * animations" / animator duration scale = 0) — the Android analogue of iOS's

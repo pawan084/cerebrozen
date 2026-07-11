@@ -123,6 +123,8 @@ dependencies {
     // Layered soundscape mixer — gapless looping per ambient layer (parity with
     // the iOS AVAudioEngine SoundscapePlayer). ExoPlayer loops each track seamlessly.
     implementation("androidx.media3:media3-exoplayer:1.4.1")
+    // Real backdrop blur for the frosted-glass cards over the aurora (API 31+).
+    implementation("dev.chrisbanes.haze:haze:1.2.1")
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
