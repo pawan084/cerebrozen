@@ -103,6 +103,20 @@ class ScreenLogicTest {
     }
 
     @Test
+    fun parseTodayGuide_reads_title_and_body_and_stays_null_safe() {
+        val enrolled = JSONObject(
+            """{"title":"Sleep Reset","day":1,"days":7,
+                "today_guide":{"title":"A steady wake time","body":"Pick a wake time you can keep."}}"""
+        )
+        assertEquals("A steady wake time" to "Pick a wake time you can keep.", parseTodayGuide(enrolled))
+        // Older servers omit the field entirely (additive contract); a blank
+        // guide and a missing program both stay null.
+        assertEquals(null, parseTodayGuide(JSONObject("""{"title":"Legacy","day":2,"days":7}""")))
+        assertEquals(null, parseTodayGuide(JSONObject("""{"today_guide":{"title":" ","body":""}}""")))
+        assertEquals(null, parseTodayGuide(null))
+    }
+
+    @Test
     fun parsePatterns_reads_statement_and_basis() {
         val payload = org.json.JSONObject(
             """{"patterns":[{"statement":"Evenings are hardest.","basis":"6 of 8 check-ins"}]}"""

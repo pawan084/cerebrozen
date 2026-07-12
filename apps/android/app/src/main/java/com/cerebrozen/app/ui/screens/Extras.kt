@@ -436,6 +436,17 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     }
 }
 
+/** W15 per-day programs: today's `{title, body}` guide from the
+ * /programs/active payload — null when the program has no day guides (the
+ * field is additive; older servers simply omit it) or both fields are blank. */
+internal fun parseTodayGuide(program: org.json.JSONObject?): Pair<String, String>? {
+    val g = program?.optJSONObject("today_guide") ?: return null
+    val title = g.optString("title").trim()
+    val body = g.optString("body").trim()
+    if (title.isEmpty() && body.isEmpty()) return null
+    return title to body
+}
+
 @Composable
 fun ProgramsScreen(onBack: () -> Unit) {
     // Real enrollment (ref "PROGRAM · DAY X OF Y"): one journey at a time,
@@ -508,6 +519,16 @@ fun ProgramsScreen(onBack: () -> Unit) {
                     scope.launch { runCatching { Api.leaveProgram() }; refresh() }
                 }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
+                }
+            }
+            // W15: the current day's guide, when the program carries one —
+            // the journey card stops being day-blind.
+            parseTodayGuide(p)?.let { (guideTitle, guideBody) ->
+                SectionCard {
+                    Text(stringResource(R.string.programs_guide_header),
+                        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(guideTitle, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(guideBody, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
         }
