@@ -91,7 +91,7 @@ fun PlanScreen(onBack: () -> Unit) {
         } else {
             // Rationale hero — a photographic gradient card in the teammate's look.
             HeroCard(
-                imageUrl = HeroImg.calm,
+                kind = "program",
                 eyebrow = stringResource(R.string.plan_hero_eyebrow),
                 title = p.optString("focus").ifBlank { stringResource(R.string.today_plan_eyebrow) },
                 subtitle = p.optString("rationale")

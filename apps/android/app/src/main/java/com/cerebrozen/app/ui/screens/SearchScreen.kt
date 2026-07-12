@@ -1,11 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -110,12 +106,7 @@ fun SearchScreen(onBack: () -> Unit) {
                             item.kind.replace('_', ' '),
                         false,
                         playing = Player.nowPlaying == item.title && Player.isPlaying,
-                        icon = when (item.kind) {
-                            "sleep" -> Icons.Outlined.Bedtime
-                            "program" -> Icons.Outlined.CalendarMonth
-                            "wind_down" -> Icons.Outlined.SelfImprovement
-                            else -> Icons.Outlined.GraphicEq
-                        },
+                        kind = item.kind,   // W21: the kind picks the art family/motif
                         imageUrl = item.imageUrl,
                         onTap = if (playable) ({ Player.toggle(context, item.title) }) else null,
                     )

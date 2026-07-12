@@ -95,6 +95,7 @@ import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.SoundscapeMixer
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.ArtScrim
 import com.cerebrozen.app.ui.theme.ArtTextSoft
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cream
@@ -113,9 +114,6 @@ import com.cerebrozen.app.ui.theme.Radius
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.ThumbBlue
-import com.cerebrozen.app.ui.theme.ThumbIndigo
-import com.cerebrozen.app.ui.theme.ThumbRose
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -175,51 +173,53 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
     }
 }
 
-private val THUMB_GRADIENTS = listOf(
-    listOf(Periwinkle, PeriwinkleDeep),
-    listOf(Cyan, ThumbBlue),
-    listOf(Warm, ThumbRose),
-    listOf(Iris, ThumbIndigo),
-)
-
-private fun thumbBrush(seed: String): Brush =
-    Brush.linearGradient(THUMB_GRADIENTS[(seed.hashCode() and 0x7fffffff) % THUMB_GRADIENTS.size])
-
-/** Teammate-look gradient hero: a soft vertical gradient panel with a glassy pill
- * eyebrow and overlaid title/subtitle. Pure chrome — content is passed in by the
- * caller, so it never fabricates copy. Built on our palette tokens only. */
+/** Teammate-look gradient hero: a soft panel with a glassy pill eyebrow and
+ * overlaid title/subtitle. Pass [artKind] to paint the W21 generative art for
+ * that content kind instead of the plain vertical gradient (the enrolled
+ * program hero does). Pure chrome — content is passed in by the caller, so it
+ * never fabricates copy. Built on our palette tokens only. */
 @Composable
 private fun GradientHero(
     eyebrow: String,
     title: String,
     subtitle: String = "",
     colors: List<Color> = listOf(Iris, PeriwinkleDeep),
+    artKind: String? = null,
     content: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(22.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.verticalGradient(colors))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(
-            Modifier.clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.22f))
-                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
-                .padding(horizontal = 14.dp, vertical = 7.dp),
+    Box(Modifier.fillMaxWidth().clip(shape)) {
+        if (artKind != null) {
+            HeroArt(kind = artKind, title = title, modifier = Modifier.matchParentSize())
+            // A soft floor scrim keeps the overlay text honest over any art.
+            Box(Modifier.matchParentSize().background(
+                Brush.verticalGradient(listOf(Color.Transparent, ArtScrim.copy(alpha = 0.45f)))))
+        } else {
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(colors)))
+        }
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Cream)
+            Box(
+                Modifier.clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.22f))
+                    .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+            ) {
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Cream)
+            }
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream,
+                maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotBlank()) {
+                // ArtTextSoft: the panel's gradient art stays dark in both themes,
+                // so its overlay text must not follow the theme.
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ArtTextSoft)
+            }
+            content?.invoke(this)
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = Cream,
-            maxLines = 3, overflow = TextOverflow.Ellipsis)
-        if (subtitle.isNotBlank()) {
-            // ArtTextSoft: the panel's gradient art stays dark in both themes,
-            // so its overlay text must not follow the theme.
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ArtTextSoft)
-        }
-        content?.invoke(this)
+        // Hairline on top of the art (a border modifier would draw beneath it).
+        Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.10f), shape))
     }
 }
 
@@ -230,7 +230,7 @@ internal fun ContentRow(
     meta: String,
     premium: Boolean,
     playing: Boolean = false,
-    icon: ImageVector = Icons.Outlined.GraphicEq,
+    kind: String = "",
     imageUrl: String = "",
     onTap: (() -> Unit)? = null,
     fav: Boolean? = null,
@@ -242,19 +242,19 @@ internal fun ContentRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Real content photo (iOS AsyncImage) over a gradient fallback + symbol.
-            Box(
-                Modifier.size(54.dp).clip(RoundedCornerShape(14.dp)).background(thumbBrush(title))
-                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(24.dp))
+            // W21: designed generative art always; a real content photo (when the
+            // backend serves one AND Coil loads it) simply covers the art, so a
+            // blank or failing image_url never leaves a flat slab.
+            val thumbShape = RoundedCornerShape(14.dp)
+            Box(Modifier.size(54.dp).clip(thumbShape)) {
+                ContentArt(title = title, kind = kind, modifier = Modifier.fillMaxSize())
                 if (imageUrl.isNotBlank()) {
                     AsyncImage(
                         model = imageUrl, contentDescription = null,
                         contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
                     )
                 }
+                Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.12f), thumbShape))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextBright,
@@ -301,7 +301,6 @@ internal fun ContentRow(
 internal fun ContentList(
     kind: String,
     metaLabel: (Int) -> String,
-    icon: ImageVector = Icons.Outlined.GraphicEq,
     onItemTap: ((String) -> Unit)? = null,
     favs: Set<String>? = null,
     onFav: ((String) -> Unit)? = null,
@@ -334,7 +333,7 @@ internal fun ContentList(
                 title, c.optString("subtitle"),
                 metaLabel(c.optInt("duration_min")), c.optBoolean("premium"),
                 playing = Player.nowPlaying == title && Player.isPlaying,
-                icon = icon,
+                kind = kind,
                 imageUrl = c.optString("image_url"),
                 onTap = onItemTap?.let { { it(title) } },
                 fav = favs?.contains(title),
@@ -498,6 +497,7 @@ fun ProgramsScreen(onBack: () -> Unit) {
                 subtitle = if (p.optBoolean("completed"))
                     stringResource(R.string.programs_completed_subtitle)
                 else stringResource(R.string.programs_active_subtitle),
+                artKind = "program",   // W21: journey art (day-dot motif)
             ) {
                 if (days > 0) {
                     val prog = (day.toFloat() / days).coerceIn(0f, 1f)
@@ -543,9 +543,10 @@ fun ProgramsScreen(onBack: () -> Unit) {
             SectionCard {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(thumbBrush(title)),
-                    )
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))) {
+                        // W21: per-title program art instead of a flat gradient chip.
+                        ContentArt(title = title, kind = "program", modifier = Modifier.fillMaxSize())
+                    }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                         Text(subtitle.ifBlank { stringResource(R.string.programs_default_subtitle) },
@@ -599,6 +600,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
                 ContentRow(
                     title, "", stringResource(R.string.sounds_meta_favourite), false,
                     playing = Player.nowPlaying == title && Player.isPlaying,
+                    kind = "soundscape",
                     onTap = { play(title) }, fav = true, onFav = { toggleFav(title) },
                 )
             }
@@ -608,10 +610,10 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         val ambientMeta = stringResource(R.string.sounds_meta_ambient)
         val storyMeta = stringResource(R.string.sleep_meta_story)
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
-            icon = Icons.Outlined.GraphicEq, onItemTap = play, favs = favs, onFav = toggleFav)
+            onItemTap = play, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            icon = Icons.Outlined.Bedtime, onItemTap = play, favs = favs, onFav = toggleFav)
+            onItemTap = play, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_narration_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
@@ -790,19 +792,19 @@ fun PlayerScreen(onBack: () -> Unit) {
             ) {
                 // Blurred backdrop: an oversized, soft copy of the same artwork so the
                 // centered art floats over a diffuse version of itself. Modifier.blur is
-                // API 31+ and degrades gracefully (no-op) on older releases.
-                AsyncImage(
-                    model = HeroImg.sleep, contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                // API 31+ and degrades gracefully (no-op) on older releases. W21: the
+                // art is generative per track — no network, never a dead image.
+                ContentArt(
+                    title = title.orEmpty(), kind = "soundscape",
                     modifier = Modifier.matchParentSize().scale(1.4f).blur(28.dp),
                 )
                 // Scrim to settle the backdrop into the night palette.
                 Box(Modifier.matchParentSize().background(
                     Brush.verticalGradient(listOf(Night.copy(alpha = 0.35f), Night.copy(alpha = 0.72f)))))
                 // The centered, breathing artwork floating above the blur.
-                AsyncImage(
-                    model = HeroImg.sleep, contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                ContentArt(
+                    title = title.orEmpty(), kind = "soundscape",
+                    motifScale = 1.35f,
                     modifier = Modifier.fillMaxWidth(0.62f).height(168.dp)
                         .scale(artScale).clip(RoundedCornerShape(20.dp))
                         .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
@@ -1024,15 +1026,19 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
         icon = Icons.Outlined.HealthAndSafety) { onOpen("crisis") }
 }
 
-/** Headline game tile — a gradient hero with floating orbs, tappable to open the
- * game. Chrome only; the copy is passed in. Built on palette tokens. */
+/** Headline game tile — W21 generative hero art with floating orbs, tappable to
+ * open the game. Chrome only; the copy is passed in. Built on palette tokens. */
 @Composable
 private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     val playCd = stringResource(R.string.common_play_cd, title)
     Box(
         Modifier.fillMaxWidth().height(168.dp).clip(shape)
-            .background(Brush.verticalGradient(listOf(PeriwinkleDeep, Iris)))
+            .contentArtBackground(title, kind = "game")
+            // Settle the art's bright top so the Cream title/badge keep their
+            // contrast (same constant-dark treatment as the hero scrims).
+            .background(ArtScrim.copy(alpha = 0.18f))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, ArtScrim.copy(alpha = 0.50f))))
             .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
             .clickable { onOpen() }
             .semantics { contentDescription = playCd }

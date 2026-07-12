@@ -192,6 +192,14 @@ val ThumbBlue = Color(0xFF5B8FD0)   // cyan thumbnail floor
 val ThumbRose = Color(0xFFB86B8F)   // coral thumbnail floor
 val ThumbIndigo = Color(0xFF6F7BF7) // iris thumbnail floor
 
+// W21 generative-artwork accents (ContentArt.kt). Constants, not themed
+// getters: content art keeps its deep night base in BOTH themes (like the
+// hero/game panels above), so its hues must not follow the theme. Values =
+// the Night accents these families are named after.
+val ArtPeriwinkle = Color(0xFFA89AF6)  // = NightPalette.periwinkle
+val ArtCyan = Color(0xFF8FE6EE)        // = NightPalette.cyan
+val ArtWarm = Color(0xFFF0A48C)        // = NightPalette.warm
+
 // ---------------------------------------------------------------------------
 // Semantic roles (REDESIGN.md §4.2) — screens should prefer these over the raw
 // palette constants above. They are aliases of the themed getters, so both

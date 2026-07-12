@@ -126,6 +126,21 @@ Sounds/Mixer, Sleep CBT-I cards, 8-step onboarding, 6-category consent; zero cra
   0xFF928CAC → 0xFFA5A0BA; all text/surface pairs ≥4.5:1) with a 7-test ContrastTest gate;
   fake glassmorphism + Haze dependency removed; 12 orphaned tokens pruned.
 
+### Android artwork system (2026-07-12) — W21
+- [x] **W21 generative content art** (`ui/screens/ContentArt.kt`): deterministic Canvas
+  artwork per (title, kind) — kind-family diagonal gradient (soundscape/sleep→Violet/
+  ThumbBlue, meditation/wind_down→Teal/ThumbBlue, program→ArtWarm/ThumbRose,
+  default→ArtPeriwinkle/ThumbIndigo) with an fmix32-avalanched per-title hue drift
+  (`artSeed`, unit-tested for determinism + distribution), one calm motif per kind
+  (moon+stars / sine waves / breathing rings / rising day-dot path / brand orb) and an
+  8% top-left light. Static, network-free, constant-dark in both themes. Applied to
+  `ContentRow`/`ContentList`/Search rows, Today rail, `HeroCard` (Unsplash `HeroImg`
+  URLs deleted — heroes are art-first, AsyncImage only over real `image_url`s),
+  Player art, Programs rows + enrolled `GradientHero`, `FeaturedGameCard`, and
+  `InfoBanner` gained `artKind` (40dp art medallion + ≤10% leading accent wash —
+  worst-case blend contrast-gated in `ContrastTest` for both themes; program +
+  wind-down banners wired, utility banners stay icon-only).
+
 ### Android deep review + fixes (2026-07-12) — 6-agent audit, then fixed
 Ran a parallel 6-dimension review of the whole Android client, then fixed the findings
 (`:app:assembleDebug` + `:app:testDebugUnitTest` green via the AS-bundled JBR). Highlights:

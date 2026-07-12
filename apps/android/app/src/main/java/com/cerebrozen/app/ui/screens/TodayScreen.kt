@@ -215,13 +215,15 @@ private fun ContentRail(onOpen: (String) -> Unit) {
                     .padding(0.dp),
             ) {
                 Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {
+                    // W21: designed generative art always; a real image (when the
+                    // backend serves one AND it loads) simply covers it.
+                    ContentArt(title = title, kind = kind,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
                     val url = c.optString("image_url")
                     if (url.isNotBlank()) {
                         AsyncImage(model = url, contentDescription = title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
-                    } else {
-                        Box(Modifier.fillMaxSize().background(Periwinkle.copy(alpha = 0.25f)))
                     }
                 }
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -371,6 +373,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 actionLabel = stringResource(R.string.today_banner_winddown_action),
                 onAction = { onOpen("sounds/mixer") },
                 onDismiss = { Session.prefPut("windDownBannerDismissed", today); dismissTick++ },
+                artKind = "sleep",   // W21: content invitation → art medallion
             )
             HomeBanner.PROGRAM -> program?.let { prog ->
                 // B4: the day strip is status, not a nudge — never dismissible.
@@ -382,6 +385,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     ),
                     actionLabel = stringResource(R.string.common_open),
                     onAction = { onOpen("programs") },
+                    artKind = "program",   // W21: journey status → art medallion
                 )
             }
             HomeBanner.NONE -> {}
@@ -446,7 +450,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             val next = (0 until total).map { steps!!.getJSONObject(it) }
                 .firstOrNull { !it.optBoolean("done") }
             HeroCard(
-                imageUrl = HeroImg.calm,
+                kind = "program",
                 eyebrow = stringResource(R.string.today_plan_eyebrow),
                 title = p.optString("title"),
                 subtitle = p.optString("focus"),

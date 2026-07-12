@@ -268,6 +268,37 @@ class ContrastTest {
         assertContrast("TextBright(Ink) on bg", TextBright, Night)                               // 14.60:1
     }
 
+    // ── W21 banner wash ──────────────────────────────────────────────────────
+
+    @Test
+    fun infoBanner_kindWash_keepsTextAA_inBothThemes() {
+        // Content banners (program strip, evening wind-down) tint SurfaceRaised
+        // with a leading 10% wash of the kind's art accent, fading to
+        // transparent by 55% width. Gate the WORST case — text sitting on the
+        // full-strength blend — even though the body copy starts further in and
+        // the trailing action label sits past the gradient on plain
+        // SurfaceRaised (already gated above in both themes).
+        fun composite(over: Color, under: Color): Color {
+            val a = over.alpha
+            return Color(
+                red = over.red * a + under.red * (1 - a),
+                green = over.green * a + under.green * (1 - a),
+                blue = over.blue * a + under.blue * (1 - a),
+            )
+        }
+        listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
+            inTheme(mode) {
+                listOf("program", "sleep").forEach { kind ->
+                    val washed = composite(
+                        com.cerebrozen.app.ui.screens.artAccent(kind).copy(alpha = 0.10f),
+                        SurfaceRaised,
+                    )
+                    assertContrast("TextSecondary on $kind-washed banner ($mode)", TextSecondary, washed)
+                }
+            }
+        }
+    }
+
     @Test
     fun roleAliases_trackTheirSourceTokens() {
         listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->

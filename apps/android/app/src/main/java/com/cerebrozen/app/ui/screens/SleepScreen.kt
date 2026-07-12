@@ -181,7 +181,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         // read from the same resource and stay consistent.
         val calmerNight = stringResource(R.string.sleep_hero_title)
         HeroCard(
-            imageUrl = HeroImg.sleep,
+            kind = "sleep",
             eyebrow = stringResource(R.string.sleep_hero_eyebrow),
             title = calmerNight,
             subtitle = stringResource(R.string.sleep_hero_subtitle),

@@ -235,7 +235,14 @@ internal fun BloomRing(trigger: Int, color: Color, modifier: Modifier = Modifier
 /** A quiet, single-purpose banner (W9 B5): SurfaceRaised fill, a soft accent
  * hairline, an accent-tinted icon and calm supporting copy — with an optional
  * small accent action and an optional dismiss. Deliberately unanimated beyond
- * the shared [appear] entrance; never taller than ~72dp. */
+ * the shared [appear] entrance; never taller than ~72dp.
+ *
+ * W21: pass [artKind] on CONTENT banners (program day strip, evening
+ * wind-down) to lead with a 40dp generative-art medallion instead of the bare
+ * icon, plus a very subtle leading wash of the kind's accent (10% fading to
+ * transparent by mid-banner, so the copy and the trailing action sit on plain
+ * SurfaceRaised — ContrastTest gates the worst-case blend in both themes).
+ * Utility banners (offline, morning check-in) stay icon-only. */
 @Composable
 internal fun InfoBanner(
     icon: ImageVector,
@@ -243,21 +250,41 @@ internal fun InfoBanner(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
+    artKind: String? = null,
 ) {
     val shape = RoundedCornerShape(Radius.card)
+    val wash = artKind?.let {
+        Brush.horizontalGradient(
+            0f to artAccent(it).copy(alpha = 0.10f),
+            0.55f to Color.Transparent,
+        )
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .appear()
             .clip(shape)
             .background(SurfaceRaised)
+            .let { m -> if (wash != null) m.background(wash) else m }
             .border(1.dp, AccentSoft.copy(alpha = 0.35f), shape)
-            .padding(start = 14.dp, end = if (onDismiss != null) 2.dp else 8.dp, top = 6.dp, bottom = 6.dp)
+            .padding(
+                start = if (artKind != null) 8.dp else 14.dp,
+                end = if (onDismiss != null) 2.dp else 8.dp,
+                top = 6.dp, bottom = 6.dp,
+            )
             .heightIn(min = 44.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Accent.default, modifier = Modifier.size(18.dp))
+        if (artKind != null) {
+            // The kind doubles as the art's seed title so every banner of one
+            // kind wears the same, stable medallion.
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))) {
+                ContentArt(title = artKind, kind = artKind, modifier = Modifier.fillMaxSize())
+            }
+        } else {
+            Icon(icon, contentDescription = null, tint = Accent.default, modifier = Modifier.size(18.dp))
+        }
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,

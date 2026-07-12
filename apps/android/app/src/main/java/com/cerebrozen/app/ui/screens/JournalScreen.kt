@@ -328,7 +328,7 @@ fun JournalScreen() {
 
     Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
         HeroCard(
-            imageUrl = HeroImg.journal,
+            kind = "journal",   // no dedicated motif — the brand orb family
             eyebrow = stringResource(R.string.journal_prompt_header),
             title = prompts[promptIdx],
             subtitle = stringResource(R.string.journal_hero_subtitle),
