@@ -79,3 +79,34 @@ async def test_leave_and_bad_content(client):
         sound = ContentItem(title=f"Not a program {uuid.uuid4().hex[:4]}", kind="soundscape")
         s.add(sound); await s.commit(); await s.refresh(sound)
     assert (await client.post("/programs/enroll", json={"content_id": str(sound.id)})).status_code == 404
+
+
+async def test_seeded_sleep_reset_program(client, monkeypatch):
+    """The CBT-I-informed "Sleep Reset" 7-day program is seeded (idempotently),
+    listed in the public catalogue, and enrollable through the normal flow."""
+    from app import seed as seed_mod
+
+    monkeypatch.setattr(seed_mod.settings, "seed_demo_data", True)
+    async with SessionLocal() as s:
+        await seed_mod.seed(s)
+    async with SessionLocal() as s:   # re-boot: additive-by-title, no duplicates
+        await seed_mod.seed(s)
+
+    r = await client.get("/content", params={"kind": "program"})
+    assert r.status_code == 200
+    matches = [row for row in r.json() if row["title"] == "Sleep Reset"]
+    assert len(matches) == 1
+    reset = matches[0]
+    assert reset["premium"] is False and "7-day" in reset["subtitle"]
+    # The week guide lives server-side in the narration script (the schema has
+    # no per-day program structure); the public catalogue rightly omits it.
+    assert "narration_script" not in reset
+    async with SessionLocal() as s:
+        item = await s.get(ContentItem, uuid.UUID(reset["id"]))
+        assert "Day one" in item.narration_script and "Day seven" in item.narration_script
+
+    await _signup(client)
+    r = await client.post("/programs/enroll", json={"content_id": reset["id"]})
+    assert r.status_code == 201
+    p = r.json()["program"]
+    assert p["title"] == "Sleep Reset" and p["day"] == 1 and p["days"] == 7
