@@ -48,6 +48,8 @@ async def test_enroll_active_and_replace(client):
     assert r.status_code == 201 and r.json()["program"]["days"] == 10
     active = (await client.get("/programs/active")).json()["program"]
     assert active["content_id"] == ids[1]
+    # Programs without per-day guides simply omit the field (additive contract).
+    assert "today_guide" not in active
 
 
 async def test_day_is_computed_from_start_date(client):
@@ -110,3 +112,68 @@ async def test_seeded_sleep_reset_program(client, monkeypatch):
     assert r.status_code == 201
     p = r.json()["program"]
     assert p["title"] == "Sleep Reset" and p["day"] == 1 and p["days"] == 7
+
+
+async def test_day_guides_served_per_day_and_clamped(client, monkeypatch):
+    """W15 per-day program structure: /programs/active carries `today_guide`
+    ({title, body}) for the enrollment's current day, and the day index clamps
+    to the guide list when the enrollment runs longer than the guides."""
+    from app import seed as seed_mod
+
+    monkeypatch.setattr(seed_mod.settings, "seed_demo_data", True)
+    async with SessionLocal() as s:
+        await seed_mod.seed(s)
+
+    r = await client.get("/content", params={"kind": "program"})
+    reset = next(row for row in r.json() if row["title"] == "Sleep Reset")
+    # Public catalogue shape stays lean — guides ride the enrollment payload.
+    assert "day_guides" not in reset
+
+    await _signup(client)
+    # 10-day enrollment against 7 guides exercises the clamp below.
+    await client.post("/programs/enroll", json={"content_id": reset["id"], "days": 10})
+    p = (await client.get("/programs/active")).json()["program"]
+    assert p["day"] == 1
+    assert p["today_guide"]["title"] == "A steady wake time"
+    assert "wake time" in p["today_guide"]["body"]
+
+    async with SessionLocal() as s:   # backdate 3 days → day 4 → fourth guide
+        await s.execute(update(ProgramEnrollment).values(started_at=utcnow() - timedelta(days=3)))
+        await s.commit()
+    p = (await client.get("/programs/active")).json()["program"]
+    assert p["day"] == 4 and p["today_guide"]["title"] == "The twenty-minute rule"
+
+    async with SessionLocal() as s:   # day 10 of 10, only 7 guides → the last one
+        await s.execute(update(ProgramEnrollment).values(started_at=utcnow() - timedelta(days=9)))
+        await s.commit()
+    p = (await client.get("/programs/active")).json()["program"]
+    assert p["day"] == 10 and p["today_guide"]["title"] == "Keeping it"
+
+
+async def test_day_guides_reseed_backfills_only_null(client, monkeypatch):
+    """Re-seeding restores guides where the column is still NULL (pre-existing
+    rows) but never clobbers an admin-curated list."""
+    from app import seed as seed_mod
+
+    monkeypatch.setattr(seed_mod.settings, "seed_demo_data", True)
+    async with SessionLocal() as s:
+        await seed_mod.seed(s)
+
+    custom = [{"title": "Admin day", "body": "Curated."}]
+    async with SessionLocal() as s:
+        row = await s.scalar(select(ContentItem).where(ContentItem.title == "Sleep Reset"))
+        row.day_guides = custom
+        await s.commit()
+    async with SessionLocal() as s:   # re-boot: non-null guides stay untouched
+        await seed_mod.seed(s)
+    async with SessionLocal() as s:
+        row = await s.scalar(select(ContentItem).where(ContentItem.title == "Sleep Reset"))
+        assert row.day_guides == custom
+        row.day_guides = None          # legacy/NULL row → next boot backfills
+        await s.commit()
+    async with SessionLocal() as s:
+        await seed_mod.seed(s)
+    async with SessionLocal() as s:
+        row = await s.scalar(select(ContentItem).where(ContentItem.title == "Sleep Reset"))
+        assert row.day_guides and len(row.day_guides) == 7
+        assert row.day_guides[0]["title"] == "A steady wake time"

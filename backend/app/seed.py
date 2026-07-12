@@ -275,6 +275,85 @@ _SCRIPTS: dict[str, str] = {
     ),
 }
 
+# Per-day program guides (W15): the structured [{"title","body"}] form of a
+# program's days, served as `today_guide` on GET /programs/active for the
+# enrollment's current day. Sleep Reset's seven entries mirror the seven day
+# themes already canonical in its narration script above. Same copy rules as
+# everything else here: calm, second-person, adjunct-framed — habits alongside
+# care, never medical claims.
+_DAY_GUIDES: dict[str, list[dict]] = {
+    "Sleep Reset": [
+        {
+            "title": "A steady wake time",
+            "body": (
+                "Your body clock sets itself by when you get up, more than by "
+                "when you lie down. Pick a wake time you can keep every day "
+                "this week — even after a short night, even on the weekend — "
+                "and let it be boring. Boring is the point."
+            ),
+        },
+        {
+            "title": "Bed is for sleep",
+            "body": (
+                "Let the bed mean one thing. Reading, scrolling, planning and "
+                "worrying can all live somewhere else — a chair, another room. "
+                "When the bed keeps a single, simple meaning, lying down "
+                "starts to feel like an answer instead of a question."
+            ),
+        },
+        {
+            "title": "Your wind-down hour",
+            "body": (
+                "In the last hour before bed, turn the volume of the world "
+                "down. Dim the lights, set the phone out of reach, and choose "
+                "something that ends — a few pages, a warm shower, laying out "
+                "tomorrow. A runway, not a wall."
+            ),
+        },
+        {
+            "title": "The twenty-minute rule",
+            "body": (
+                "If you've been awake in bed for what feels like twenty "
+                "minutes, get up. Keep the lights low, do something genuinely "
+                "dull, and come back only when your eyelids are actually "
+                "heavy. Each round teaches the same quiet lesson: bed is "
+                "where sleep happens."
+            ),
+        },
+        {
+            "title": "Caffeine, light and timing",
+            "body": (
+                "The day shapes the night. Let caffeine end by early "
+                "afternoon, get some daylight in the morning, and keep late "
+                "evenings gentle — big meals, hard workouts and bright rooms "
+                "all tell the body it's earlier than it is."
+            ),
+        },
+        {
+            "title": "Your sleep window",
+            "body": (
+                "Consistency beats duration. Rather than chasing more hours, "
+                "keep the same window — roughly the same bedtime, the same "
+                "wake time — and let the body fill it more fully night by "
+                "night. A slightly shorter, steadier window often rests "
+                "better than a long, drifting one."
+            ),
+        },
+        {
+            "title": "Keeping it",
+            "body": (
+                "Some nights will still be rough — that's part of sleep, not "
+                "a failure of yours. When one comes, return to the anchors: "
+                "the same wake time, the wind-down hour, up if you're wide "
+                "awake. You know the way back now, and you can walk it as "
+                "many times as you need. If hard nights persist for weeks, "
+                "talking to a doctor is a kind next step — this program sits "
+                "alongside that care, never in place of it."
+            ),
+        },
+    ],
+}
+
 
 async def _ensure_user(db: AsyncSession, email: str, password: str, *, name: str, admin: bool) -> User:
     user = await db.scalar(select(User).where(User.email == email))
@@ -313,6 +392,7 @@ async def seed(db: AsyncSession) -> None:
                 duration_min=duration,
                 premium=premium,
                 narration_script=_SCRIPTS.get(title, ""),
+                day_guides=_DAY_GUIDES.get(title),
             )
         )
         added += 1
@@ -333,5 +413,20 @@ async def seed(db: AsyncSession) -> None:
         backfilled += 1
     if backfilled:
         logger.info("Backfilled narration scripts on %d content items", backfilled)
+
+    # Same mechanic for per-day guides: fill only where still NULL, so an
+    # admin-curated day list is never clobbered by a reboot.
+    guided = 0
+    unguided = await db.scalars(
+        select(ContentItem).where(
+            ContentItem.title.in_(_DAY_GUIDES.keys()),
+            ContentItem.day_guides.is_(None),
+        )
+    )
+    for item in unguided:
+        item.day_guides = _DAY_GUIDES[item.title]
+        guided += 1
+    if guided:
+        logger.info("Backfilled day guides on %d content items", guided)
 
     await db.commit()

@@ -117,12 +117,22 @@ class ContentOut(ContentBase):
     created_at: datetime
 
 
+class DayGuide(BaseModel):
+    """One day of a program (W15): the title + body served as `today_guide`
+    on /programs/active for the enrollment's current day."""
+
+    title: str = Field(max_length=160)
+    body: str = ""
+
+
 class AdminContentOut(ContentOut):
     """Admin CMS payload — carries the narration script (and generation stamp)
     the public catalogue omits."""
 
     narration_script: str = ""
     audio_generated_at: datetime | None = None
+    # Per-day program structure; None for non-programs and legacy rows.
+    day_guides: list[DayGuide] | None = None
 
 
 # ── Insight ─────────────────────────────────────────────────────────────
