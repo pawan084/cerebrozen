@@ -6,7 +6,10 @@ def test_known_regions_use_local_lines():
     assert "988" in crisis.reply_suffix("US")
     assert "999" in crisis.reply_suffix("GB")
     assert "116 123" in crisis.reply_suffix("GB")
-    assert "KIRAN" in crisis.reply_suffix("IN")
+    # Tele-MANAS leads India's lines (Tele-MANAS-first on every crisis surface);
+    # the suffix renders the top two lines, so 14416 + emergency 112.
+    assert "Tele-MANAS" in crisis.reply_suffix("IN")
+    assert "14416" in crisis.reply_suffix("IN")
     assert "000" in crisis.reply_suffix("AU")
 
 
