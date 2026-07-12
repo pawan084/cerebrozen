@@ -6,8 +6,9 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.cerebro.app.BuildConfig
+import com.cerebrozen.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -19,10 +20,11 @@ import java.net.URLEncoder
 /**
  * Minimal first-party API client — deliberately zero SDKs (HttpURLConnection +
  * org.json + coroutines). Token model mirrors apps/app/lib/api.ts: the ACCESS
- * token lives in memory only, the REFRESH token in SharedPreferences, and a
- * 401/403 triggers one rotation retry before signing out.
- * (Hardening note: move the refresh token to EncryptedSharedPreferences when
- * the security-crypto dependency lands — parity with web's localStorage today.)
+ * token lives in memory only, the REFRESH token in EncryptedSharedPreferences,
+ * and a 401/403 triggers one rotation retry before signing out. The GET response
+ * cache (which holds mood/journal/chat data) is encrypted at rest too; if the
+ * device keystore is unavailable we fall back to private SharedPreferences so
+ * auth still works (no worse than a plain-text store).
  */
 object Session {
     private const val PREFS = "cerebro"
@@ -40,6 +42,13 @@ object Session {
 
     /** Compose-observable auth state; gates the whole UI in CereBroApp. */
     var signedIn by mutableStateOf(false)
+        private set
+
+    /** Compose-observable offline signal: true while GET reads are being served
+     * from the encrypted response cache (a network read failed and the last copy
+     * stepped in). Flips false the moment any network GET succeeds, so surfaces
+     * like the Home offline banner clear themselves when connectivity returns. */
+    var servedStale by mutableStateOf(false)
         private set
 
     @Volatile private var access: String? = null
@@ -62,8 +71,29 @@ object Session {
     internal var http: suspend (String, String, String?, String?, String?) -> Pair<Int, String> = ::realHttp
 
     fun init(context: Context) {
-        storage = SharedPrefsStore(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
+        storage = buildStore(context)
         signedIn = storage.getString(REFRESH_KEY) != null
+    }
+
+    /** Encrypted-at-rest prefs for the refresh token + response cache, with a
+     * private-prefs fallback if the keystore can't init (some OEMs/emulators). */
+    private fun buildStore(context: Context): Store {
+        val ctx = context.applicationContext
+        return runCatching {
+            val masterKey = androidx.security.crypto.MasterKey.Builder(ctx)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
+                ctx,
+                "cerebro_secure",
+                masterKey,
+                androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+            SharedPrefsStore(prefs)
+        }.getOrElse {
+            SharedPrefsStore(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
+        }
     }
 
     /** Point Session at fakes for unit tests (no Android, no network). */
@@ -76,6 +106,7 @@ object Session {
         sseExec = ::realSse
         binExec = ::realBin
         access = null
+        servedStale = false
         signedIn = storage.getString(REFRESH_KEY) != null
     }
 
@@ -121,7 +152,9 @@ object Session {
                 trimmed.startsWith("[") -> redact(JSONArray(trimmed)).toString(2)
                 else -> text
             }
-        }.getOrDefault(text.take(8_000))
+            // Non-JSON that isn't a bare primitive: don't echo it raw (it could carry
+            // an unredacted credential in a malformed error payload).
+        }.getOrDefault("<unparseable body, ${text.length} bytes>")
     }
 
     private fun redact(obj: JSONObject): JSONObject {
@@ -162,7 +195,19 @@ object Session {
     ): Pair<Int, String> = withContext(Dispatchers.IO) {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.requestMethod = method
+            try {
+                conn.requestMethod = method
+            } catch (e: java.net.ProtocolException) {
+                // Android's HttpURLConnection rejects PATCH via a fixed method
+                // allow-list, and setRequestMethod() is final so the OkHttp-backed
+                // impl can't override it — it reads the inherited java.net field.
+                // Force that field directly (framework class, so R8 never strips it).
+                runCatching {
+                    HttpURLConnection::class.java.getDeclaredField("method")
+                        .apply { isAccessible = true }
+                        .set(conn, method)
+                }.getOrElse { throw e }
+            }
             conn.connectTimeout = 15_000
             conn.readTimeout = 15_000
             authToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
@@ -270,8 +315,17 @@ object Session {
             conn.doOutput = true
             conn.outputStream.use { it.write(body.toByteArray()) }
             val code = conn.responseCode
-            code to (if (code in 200..299) conn.inputStream
-                     else conn.errorStream ?: java.io.ByteArrayInputStream(ByteArray(0)))
+            val raw = if (code in 200..299) conn.inputStream
+                      else conn.errorStream ?: java.io.ByteArrayInputStream(ByteArray(0))
+            // Disconnect the socket when the reader closes the stream — including the
+            // cancellation path (navigating away mid-stream) — so we don't hold the
+            // connection open until the server closes it or the 120s timeout elapses.
+            val stream = object : java.io.FilterInputStream(raw) {
+                override fun close() {
+                    try { super.close() } finally { conn.disconnect() }
+                }
+            }
+            code to stream
         }
 
     // ── Binary transport (voice: multipart STT upload, MP3 TTS download) ──
@@ -334,9 +388,15 @@ object Session {
         suspend fun attempt(): Int {
             val (code, stream) = sseExec(BuildConfig.API_BASE_URL + path, json.toString(), access)
             withContext(Dispatchers.IO) {
+                val ctx = coroutineContext
                 stream.bufferedReader().use { reader ->
                     if (code in 200..299) {
-                        reader.forEachLine { line -> parseSseLine(line)?.let(onEvent) }
+                        reader.forEachLine { line ->
+                            // Stop promptly (and close the socket via use{}) if the
+                            // caller's scope was cancelled — e.g. left the Talk screen.
+                            ctx.ensureActive()
+                            parseSseLine(line)?.let(onEvent)
+                        }
                     } else {
                         detail = runCatching { JSONObject(reader.readText()).optString("detail") }
                             .getOrNull().orEmpty()
@@ -401,10 +461,22 @@ object Session {
                     throw e
                 }
             }
-            if (isGet) cachePut(path, result)
+            if (isGet) {
+                cachePut(path, result)
+                servedStale = false   // a live network read — we're online again
+            }
             result
         } catch (e: Exception) {
-            if (isGet) cacheGet(path)?.let { return it }
+            // Serve the last cached copy only for connectivity failures or server
+            // (5xx) errors — a 4xx is a real, actionable response (bad request,
+            // not-found, forbidden) and must not be masked behind stale data.
+            val serveStale = e !is ApiException || e.code >= 500
+            if (isGet && serveStale) {
+                cacheGet(path)?.let {
+                    servedStale = true   // honest signal: this is the last copy
+                    return it
+                }
+            }
             throw e
         }
     }
@@ -422,6 +494,7 @@ object Session {
         access = null
         storage.remove(REFRESH_KEY)
         clearCache()
+        servedStale = false
         signedIn = false
     }
 }

@@ -122,14 +122,60 @@ class ScreenLogicTest {
         assertEquals(false, reduceMotionFromScale(2f))   // sped up
     }
 
-    // ── Streak milestones ───────────────────────────────────────────
+    // ── Presence milestones (REDESIGN §3.6 — counts showing up, never misses) ──
     @Test
     fun milestoneLine_fires_only_on_milestone_days() {
-        assertEquals("🎉 3-day milestone — beautifully done", milestoneLine(3))
-        assertEquals("🎉 7-day milestone — beautifully done", milestoneLine(7))
+        assertEquals("🎉 3 days of showing up — beautifully done", milestoneLine(3))
+        assertEquals("🎉 7 days of showing up — beautifully done", milestoneLine(7))
         assertEquals(null, milestoneLine(0))
         assertEquals(null, milestoneLine(4))
         assertEquals(null, milestoneLine(15))
+    }
+
+    // ── Home banner slot (W9) — priority order, time windows, dismissal ──
+    @Test
+    fun homeBanner_offline_outranks_everything() {
+        assertEquals(HomeBanner.OFFLINE, homeBannerPriority(true, 8, false, emptySet(), true))
+        assertEquals(HomeBanner.OFFLINE, homeBannerPriority(true, 22, true, emptySet(), false))
+    }
+
+    @Test
+    fun homeBanner_morning_sleep_checkin_before_11_when_last_night_unlogged() {
+        assertEquals(HomeBanner.SLEEP_CHECKIN, homeBannerPriority(false, 8, false, emptySet(), true))
+        assertEquals(HomeBanner.SLEEP_CHECKIN, homeBannerPriority(false, 10, false, emptySet(), false))
+        // 11:00 is past the morning window; a logged night never asks again.
+        assertEquals(HomeBanner.PROGRAM, homeBannerPriority(false, 11, false, emptySet(), true))
+        assertEquals(HomeBanner.NONE, homeBannerPriority(false, 8, true, emptySet(), false))
+    }
+
+    @Test
+    fun homeBanner_dismissals_fall_through_to_the_next_banner() {
+        assertEquals(HomeBanner.PROGRAM, homeBannerPriority(false, 8, false, setOf("sleep"), true))
+        assertEquals(HomeBanner.NONE, homeBannerPriority(false, 8, false, setOf("sleep"), false))
+        assertEquals(HomeBanner.PROGRAM, homeBannerPriority(false, 22, true, setOf("winddown"), true))
+    }
+
+    @Test
+    fun homeBanner_evening_wind_down_from_21_unless_dismissed() {
+        assertEquals(HomeBanner.WIND_DOWN, homeBannerPriority(false, 21, true, emptySet(), true))
+        assertEquals(HomeBanner.WIND_DOWN, homeBannerPriority(false, 23, true, emptySet(), false))
+        assertEquals(HomeBanner.NONE, homeBannerPriority(false, 20, true, emptySet(), false))  // 20:59 isn't evening yet
+    }
+
+    @Test
+    fun homeBanner_program_strip_shows_while_enrolled_midday() {
+        assertEquals(HomeBanner.PROGRAM, homeBannerPriority(false, 14, true, emptySet(), true))
+        assertEquals(HomeBanner.NONE, homeBannerPriority(false, 14, true, emptySet(), false))
+    }
+
+    @Test
+    fun hasLastNightLog_accepts_today_or_yesterday_and_ignores_junk() {
+        val today = java.time.LocalDate.of(2026, 7, 11)
+        assertEquals(true, hasLastNightLog(listOf("2026-07-11"), today))   // logged this morning
+        assertEquals(true, hasLastNightLog(listOf("2026-07-10"), today))   // dated last evening
+        assertEquals(false, hasLastNightLog(listOf("2026-07-08"), today))  // older nights don't count
+        assertEquals(false, hasLastNightLog(listOf("not-a-date", ""), today))
+        assertEquals(false, hasLastNightLog(emptyList(), today))
     }
 
     // ── Crisis suggestion detection (Talk banner) ───────────────────
@@ -208,13 +254,14 @@ class ScreenLogicTest {
 
     @Test
     fun widgetRoute_maps_every_cross_stack_widget_kind_natively() {
-        assertEquals("games", widgetRoute("breathing"))
-        assertEquals("games", widgetRoute("grounding"))
+        assertEquals("breathing", widgetRoute("breathing"))
+        assertEquals("toolkit", widgetRoute("grounding"))
         assertEquals("home", widgetRoute("mood_check"))
         assertEquals("journal", widgetRoute("mini_journal"))
         assertEquals("sleep", widgetRoute("sleep_checkin"))
-        assertEquals("onegoodthing", widgetRoute("one_good_thing"))
-        assertEquals("intention", widgetRoute("intention_set"))
+        // The one-field tools became Journal quick-entry chips.
+        assertEquals("journal", widgetRoute("one_good_thing"))
+        assertEquals("journal", widgetRoute("intention_set"))
         assertEquals("tipp", widgetRoute("dbt_skill"))
         assertEquals(null, widgetRoute("something_future"))   // unknown stays honest
     }
@@ -244,11 +291,30 @@ class ScreenLogicTest {
     private fun freshStore() = com.cerebrozen.app.net.Session
         .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
 
+    // ── Breathe engine (one engine, three presets) ──────────────────
     @Test
-    fun buildDeck_holds_exactly_two_of_each_emoji() {
-        val deck = buildDeck(MEMORY_EMOJIS, kotlin.random.Random(7))
-        assertEquals(MEMORY_EMOJIS.size * 2, deck.size)
-        MEMORY_EMOJIS.forEach { e -> assertEquals(2, deck.count { it == e }) }
+    fun breathePhases_box_paces_four_beats_of_four() {
+        val phases = breathePhases(BreathePreset.Box)
+        assertEquals(listOf("Breathe in", "Hold", "Breathe out", "Hold"), phases.map { it.label })
+        assertEquals(List(4) { 4 }, phases.map { it.seconds })
+        assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
+        assertEquals(phases, breathePhases(BreathePreset.Color))   // Color shares the pacing
+    }
+
+    @Test
+    fun breathePhases_reset_has_no_holds() {
+        val phases = breathePhases(BreathePreset.Reset)
+        assertEquals(listOf("Breathe in", "Breathe out"), phases.map { it.label })
+        assertEquals(listOf(true, false), phases.map { it.expanded })
+    }
+
+    @Test
+    fun breatheTint_shifts_only_for_the_color_preset_and_wraps() {
+        assertEquals(breatheTint(BreathePreset.Box, 0), breatheTint(BreathePreset.Box, 2))
+        assertEquals(breatheTint(BreathePreset.Reset, 0), breatheTint(BreathePreset.Reset, 1))
+        val tints = (0..3).map { breatheTint(BreathePreset.Color, it) }
+        assertEquals(4, tints.distinct().size)                     // one tint per phase
+        assertEquals(tints[0], breatheTint(BreathePreset.Color, 4)) // cycle wraps
     }
 
     @Test

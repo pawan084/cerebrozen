@@ -1,10 +1,5 @@
 package com.cerebrozen.app.ui.screens
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -25,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +27,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -43,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -53,112 +44,31 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.cerebrozen.app.ui.Haptics
-import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Iris
-import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
-import com.cerebrozen.app.ui.theme.TextPrimary
-import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.VeilLine
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-// Five more calm games (iOS GamesHub parity): memory match, pattern glow,
-// zen ripples, bubble wrap, gratitude garden. All gentle — no timers, no
-// fail states that scold.
-
-// ── Memory match ─────────────────────────────────────────────────────────
-internal val MEMORY_EMOJIS = listOf("🌙", "🌊", "🍃", "☁️", "⭐", "🪷")
-
-/** A shuffled deck of pairs — pure, so the pairing contract is testable. */
-internal fun buildDeck(emojis: List<String>, random: Random = Random.Default): List<String> =
-    (emojis + emojis).shuffled(random)
-
-@Composable
-fun MemoryMatchScreen(onBack: () -> Unit) {
-    var deck by remember { mutableStateOf(buildDeck(MEMORY_EMOJIS)) }
-    var faceUp by remember { mutableStateOf(listOf<Int>()) }
-    var matched by remember { mutableStateOf(setOf<Int>()) }
-    var moves by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
-
-    fun tap(i: Int) {
-        if (i in matched || i in faceUp || faceUp.size == 2) return
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        faceUp = faceUp + i
-        if (faceUp.size == 2) {
-            moves++
-            val (a, b) = faceUp
-            if (deck[a] == deck[b]) {
-                matched = matched + a + b
-                faceUp = emptyList()
-            } else {
-                scope.launch { delay(700); faceUp = emptyList() }
-            }
-        }
-    }
-
-    SubPage("A gentle pairing", "Memory match", onBack) {
-        Text("Find the pairs at your own pace — no clock.",
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Column(
-            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            deck.indices.chunked(3).forEach { rowIdx ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    rowIdx.forEach { i ->
-                        val shown = i in matched || i in faceUp
-                        Box(
-                            Modifier.weight(1f).aspectRatio(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    when {
-                                        i in matched -> Ok.copy(alpha = 0.22f)
-                                        shown -> Periwinkle.copy(alpha = 0.30f)
-                                        else -> Color.White.copy(alpha = 0.075f)
-                                    },
-                                )
-                                .border(1.dp, if (shown) Periwinkle.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
-                                .clickable { tap(i) }
-                                .semantics { role = Role.Button; contentDescription = "Memory card" },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(if (shown) deck[i] else "✦",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = if (shown) TextSoft else TextMuted)
-                        }
-                    }
-                }
-            }
-        }
-        LaunchedEffect(matched.size) {
-            if (deck.isNotEmpty() && matched.size == deck.size) Celebrations.trigger()
-        }
-        if (matched.size == deck.size) {
-            Text("All matched in $moves moves — nicely done.",
-                style = MaterialTheme.typography.titleMedium, color = Ok)
-            TextButton(onClick = {
-                deck = buildDeck(MEMORY_EMOJIS); matched = emptySet(); faceUp = emptyList(); moves = 0
-            }) { Text("Play again", color = Periwinkle) }
-        } else {
-            Text("$moves moves · ${matched.size / 2} of ${deck.size / 2} pairs",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        }
-    }
-}
+// The Toolkit's sensory activities (REDESIGN §2.2): pattern glow (the single
+// attention anchor), zen ripples (sensory grounding) and gratitude garden
+// (gratitude practice with real persistence). All gentle — no timers, no fail
+// states that scold. The casual games (memory match, sliding puzzle, bubble
+// wrap, colour breathing) were retired in the consolidation pass.
 
 // ── Pattern glow (gentle Simon) ──────────────────────────────────────────
 @Composable
 fun PatternGlowScreen(onBack: () -> Unit) {
     val pads = listOf(Periwinkle, Cyan, Warm, Ok)
     var sequence by remember { mutableStateOf(listOf(Random.nextInt(4))) }
+    // Monotonic replay trigger: keying the replay effect on `sequence` misses a
+    // reset when Random yields the same single pad (the new list is structurally
+    // equal), so the glow wouldn't re-play and inputPos wouldn't reset. Bump this
+    // on every sequence change instead.
+    var replay by remember { mutableIntStateOf(0) }
     var lit by remember { mutableIntStateOf(-1) }
     var inputPos by remember { mutableIntStateOf(0) }
     var showing by remember { mutableStateOf(true) }
@@ -166,8 +76,8 @@ fun PatternGlowScreen(onBack: () -> Unit) {
     var note by remember { mutableStateOf("Watch the glow, then repeat it.") }
     val haptics = LocalHapticFeedback.current
 
-    // Replays the sequence whenever it changes (or after a gentle reset).
-    LaunchedEffect(sequence) {
+    // Replays the sequence on first show and after every change (success or reset).
+    LaunchedEffect(replay) {
         showing = true
         delay(600)
         sequence.forEach { pad ->
@@ -185,11 +95,11 @@ fun PatternGlowScreen(onBack: () -> Unit) {
             if (inputPos == sequence.size) {
                 best = maxOf(best, sequence.size)
                 note = "Round ${sequence.size} — lovely. One more glow."
-                sequence = sequence + Random.nextInt(4)
+                sequence = sequence + Random.nextInt(4); replay++
             }
         } else {
             note = "Reached round ${sequence.size}. Fresh start, no rush."
-            sequence = listOf(Random.nextInt(4))
+            sequence = listOf(Random.nextInt(4)); replay++
         }
     }
 
@@ -237,7 +147,14 @@ private data class Ripple(val at: Offset, val born: Long)
 fun ZenRipplesScreen(onBack: () -> Unit) {
     var ripples by remember { mutableStateOf(listOf<Ripple>()) }
     var now by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) { while (true) { withFrameNanos { now = it } } }
+    // Pump frames only while a ripple is still animating (they live ~3s); when the
+    // water is still the loop exits, so we don't recompose the Canvas every frame
+    // forever. A new tap changes `ripples` and relaunches the effect.
+    LaunchedEffect(ripples) {
+        while (ripples.any { (System.nanoTime() - it.born) < 3_000_000_000L }) {
+            withFrameNanos { now = it }
+        }
+    }
 
     SubPage("Still water", "Zen ripples", onBack) {
         Text("Tap anywhere on the water. Watch each ripple widen and let go.",
@@ -250,7 +167,7 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                         listOf(Cyan.copy(alpha = 0.33f), Color.White.copy(alpha = 0.07f), Color.White.copy(alpha = 0.025f)),
                     ),
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+                .border(1.dp, VeilLine, RoundedCornerShape(22.dp))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
@@ -268,51 +185,6 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                     }
                 }
             }
-        }
-    }
-}
-
-// ── Bubble wrap ──────────────────────────────────────────────────────────
-@Composable
-fun BubbleWrapScreen(onBack: () -> Unit) {
-    val cols = 6
-    val rows = 8
-    var popped by remember { mutableStateOf(setOf<Int>()) }
-    val haptics = LocalHapticFeedback.current
-
-    SubPage("Pop at will", "Bubble wrap", onBack) {
-        Text("A fresh sheet, endlessly poppable. Very serious stress research.",
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Column(
-            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            (0 until rows).forEach { r ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    (0 until cols).forEach { c ->
-                        val i = r * cols + c
-                        val isPopped = i in popped
-                        Box(
-                            Modifier.weight(1f).aspectRatio(1f)
-                                .minimumInteractiveComponentSize()
-                                .clip(CircleShape)
-                                .background(if (isPopped) CardFill else Periwinkle.copy(alpha = 0.32f))
-                                .border(1.dp, if (isPopped) LineStroke else Periwinkle.copy(alpha = 0.70f), CircleShape)
-                                .clickable(enabled = !isPopped) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    popped = popped + i
-                                }
-                                .semantics { role = Role.Button; contentDescription = "Bubble" },
-                        )
-                    }
-                }
-            }
-        }
-        if (popped.size == cols * rows) {
-            TextButton(onClick = { popped = emptySet() }) { Text("Fresh sheet", color = Periwinkle) }
-        } else {
-            Text("${popped.size} of ${cols * rows} popped",
-                style = MaterialTheme.typography.labelSmall, color = TextMuted)
         }
     }
 }
@@ -350,7 +222,7 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
                         listOf(Color.White.copy(alpha = 0.05f), Ok.copy(alpha = 0.16f)),
                     ),
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+                .border(1.dp, VeilLine, RoundedCornerShape(22.dp))
                 .semantics { contentDescription = "Gratitude garden soil with ${entries.size} flowers" },
         ) {
             if (entries.isEmpty()) {
@@ -379,157 +251,9 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
             else "${entries.size} ${if (entries.size == 1) "flower" else "flowers"} and counting.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted,
         )
-    }
-}
-
-// ── Color breathing ──────────────────────────────────────────────────────
-/** The four-beat cycle, 4s each. Colour + orb scale are both driven BY the
- * current phase index (not a free-running pulse), mirroring iOS ColorBreathing. */
-internal val BREATH_PHASES = listOf("Breathe in", "Hold", "Breathe out", "Hold")
-
-@Composable
-fun ColorBreathingScreen(onBack: () -> Unit) {
-    var phase by remember { mutableIntStateOf(0) }
-    var breaths by remember { mutableIntStateOf(0) }
-    val reduceMotion = rememberReduceMotion()
-
-    // Functional pacer: advance the phase every 4s and fire a gentle phase haptic.
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(4000)
-            phase = (phase + 1) % 4
-            if (phase == 0) breaths++            // a full cycle just completed
-            Haptics.soft(if (phase == 0 || phase == 2) 0.5f else 0.3f)
-        }
-    }
-
-    // Scale is a function of phase: expand on inhale, hold full, contract on
-    // exhale, hold empty. Motion (not the pacing) honours Reduce Motion.
-    val scale by animateFloatAsState(
-        targetValue = if (phase == 0 || phase == 1) 1f else 0.6f,
-        animationSpec = if (reduceMotion) snap() else tween(3800, easing = FastOutSlowInEasing),
-        label = "breathScale",
-    )
-    val tint by animateColorAsState(
-        targetValue = when (phase) { 0 -> Cyan; 1 -> Periwinkle; 2 -> Iris; else -> Warm },
-        animationSpec = if (reduceMotion) snap() else tween(1400, easing = FastOutSlowInEasing),
-        label = "breathTint",
-    )
-
-    SubPage("Follow the glow", "Color breathing", onBack) {
-        Text("Let your breath follow the orb — in, hold, out, hold.",
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Box(
-            Modifier.fillMaxWidth().height(360.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier.size(220.dp)
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(tint.copy(alpha = 0.90f), tint.copy(alpha = 0.20f)),
-                        ),
-                    )
-                    .border(1.dp, tint.copy(alpha = 0.55f), CircleShape)
-                    .semantics { contentDescription = "Breathing orb — ${BREATH_PHASES[phase]}" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(BREATH_PHASES[phase], style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            }
-        }
-        Text("$breaths calm ${if (breaths == 1) "breath" else "breaths"}",
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
-    }
-}
-
-// ── Sliding puzzle ───────────────────────────────────────────────────────
-/** Solved board: 1..8 with the blank (0) last. */
-internal val SOLVED_PUZZLE = listOf(1, 2, 3, 4, 5, 6, 7, 8, 0)
-
-/** The 3×3 grid neighbours of a cell — the tiles that could slide into a blank. */
-internal fun puzzleNeighbors(index: Int): List<Int> {
-    val row = index / 3; val col = index % 3
-    return buildList {
-        if (row > 0) add(index - 3)
-        if (row < 2) add(index + 3)
-        if (col > 0) add(index - 1)
-        if (col < 2) add(index + 1)
-    }
-}
-
-/** A solvable board: a run of random valid moves back from solved (never the
- * solved state itself). Pure + seedable, so the reachability is testable. */
-internal fun shufflePuzzle(steps: Int = 60, random: Random = Random.Default): List<Int> {
-    var board = SOLVED_PUZZLE
-    var blank = board.indexOf(0)
-    repeat(steps) {
-        val n = puzzleNeighbors(blank).random(random)
-        board = board.toMutableList().also { it[blank] = it[n]; it[n] = 0 }
-        blank = n
-    }
-    if (board == SOLVED_PUZZLE) {           // guard against the rare no-op shuffle
-        val n = puzzleNeighbors(blank).first()
-        board = board.toMutableList().also { it[blank] = it[n]; it[n] = 0 }
-    }
-    return board
-}
-
-@Composable
-fun SlidingPuzzleScreen(onBack: () -> Unit) {
-    var board by remember { mutableStateOf(shufflePuzzle()) }
-    val solved = board == SOLVED_PUZZLE
-
-    fun tap(i: Int) {
-        if (solved) return
-        val blank = board.indexOf(0)
-        if (i in puzzleNeighbors(blank)) {
-            Haptics.soft(0.4f)
-            board = board.toMutableList().also { it[blank] = it[i]; it[i] = 0 }
-        }
-    }
-
-    LaunchedEffect(solved) { if (solved) Celebrations.trigger() }
-
-    SubPage("Order from the shuffle", "Sliding puzzle", onBack) {
-        Text("Slide the tiles until 1 through 8 line up. No timer, no score.",
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Column(
-            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            (0 until 3).forEach { r ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    (0 until 3).forEach { c ->
-                        val i = r * 3 + c
-                        val v = board[i]
-                        Box(
-                            Modifier.weight(1f).aspectRatio(1f)
-                                .minimumInteractiveComponentSize()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (v == 0) Color.White.copy(alpha = 0.04f) else Periwinkle.copy(alpha = 0.30f))
-                                .border(1.dp, if (v == 0) LineStroke else Periwinkle.copy(alpha = 0.70f), RoundedCornerShape(16.dp))
-                                .clickable(enabled = v != 0) { tap(i) }
-                                .semantics {
-                                    role = Role.Button
-                                    contentDescription = if (v == 0) "Blank space" else "Tile $v"
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (v != 0) {
-                                Text("$v", style = MaterialTheme.typography.headlineSmall, color = TextSoft)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (solved) {
-            Text("Solved! Every tile home.", style = MaterialTheme.typography.titleMedium, color = Ok)
-            PrimaryButton(text = "Play again", modifier = Modifier.fillMaxWidth()) { board = shufflePuzzle() }
-        } else {
-            PrimaryButton(text = "Shuffle", modifier = Modifier.fillMaxWidth()) { board = shufflePuzzle() }
-        }
+        WhyThisWorks(
+            "Noting what you're grateful for is a studied positive-psychology practice " +
+                "linked to improved mood over time.",
+        )
     }
 }

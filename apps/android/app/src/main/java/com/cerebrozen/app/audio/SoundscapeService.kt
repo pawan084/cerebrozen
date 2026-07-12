@@ -14,11 +14,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.ServiceCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.cerebrozen.app.MainActivity
-import com.cerebro.app.R
+import com.cerebrozen.app.R
 
 /**
  * Foreground service that owns the layered soundscape mix so it keeps playing with
@@ -93,27 +95,40 @@ class SoundscapeService : Service() {
         return START_STICKY
     }
 
+    private val audioAttrs = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
+
     private fun play() {
-        if (players == null) {
-            players = LAYER_RES.map { res ->
-                ExoPlayer.Builder(this).build().apply {
-                    setMediaItem(MediaItem.fromUri("android.resource://$packageName/$res"))
-                    repeatMode = Player.REPEAT_MODE_ONE
-                    volume = 0f
-                    prepare()
-                    playWhenReady = true
-                }
-            }
-        } else {
-            players?.forEach { it.playWhenReady = true }
-        }
-        applyVolumes()
+        // Satisfy the foreground-start contract FIRST (see AmbientService.play),
+        // before constructing four ExoPlayers that could throw.
         SoundscapeMixer.publishPlaying(true)
         updateSession(true)
         ServiceCompat.startForeground(
             this, NOTIF, buildNotification(true),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
+        if (players == null) {
+            // Guard construction so a headless/low-memory environment can't crash
+            // the foreground service (parity with AmbientService's runCatching).
+            players = runCatching {
+                LAYER_RES.map { res ->
+                    ExoPlayer.Builder(this).build().apply {
+                        setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
+                        setHandleAudioBecomingNoisy(true)
+                        setWakeMode(C.WAKE_MODE_LOCAL)
+                        setMediaItem(MediaItem.fromUri("android.resource://$packageName/$res"))
+                        repeatMode = Player.REPEAT_MODE_ONE
+                        volume = 0f
+                        prepare()
+                        playWhenReady = true
+                    }
+                }
+            }.getOrNull()
+        } else {
+            players?.forEach { it.playWhenReady = true }
+        }
+        if (players == null) { stopAll(); return }
+        applyVolumes()
     }
 
     private fun applyVolumes() {

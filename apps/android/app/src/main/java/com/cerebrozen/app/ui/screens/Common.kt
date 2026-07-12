@@ -3,6 +3,7 @@ package com.cerebrozen.app.ui.screens
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Canvas
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
@@ -27,11 +28,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -42,10 +49,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -64,21 +73,34 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.ui.Haptics
-import com.cerebrozen.app.ui.LocalHazeState
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.Radius
 import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.Danger
-import dev.chrisbanes.haze.hazeEffect
+import com.cerebrozen.app.ui.theme.ButtonDisabled
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.ChipFill
+import com.cerebrozen.app.ui.theme.ChipSelectedFill
+import com.cerebrozen.app.ui.theme.ChipSelectedInk
+import com.cerebrozen.app.ui.theme.OnPrimary
+import com.cerebrozen.app.ui.theme.SwitchThumbOn
+import com.cerebrozen.app.ui.theme.Veil
+import com.cerebrozen.app.ui.theme.VeilSoft
+import com.cerebrozen.app.ui.theme.EyebrowMuted
+import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.NightPurple
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.AccentSoft
+import com.cerebrozen.app.ui.theme.SurfaceRaised
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSecondary
 import com.cerebrozen.app.ui.theme.TextSoft
 
 private val CardShape = RoundedCornerShape(Radius.card)
@@ -102,24 +124,16 @@ internal fun cardPadding() = when {
     else -> 18.dp
 }
 
-/** The shared "frosted glass" surface treatment: a top-lit translucent fill that
- * lets the aurora glow through, a soft lift, and a *bevelled* hairline — the border
- * is a vertical gradient (bright at the top edge, fading down) so the pane catches
- * light like a real bevelled edge rather than reading as a flat outline. Mirrors the
- * iOS glass stroke (white 28%→5%). */
-internal fun Modifier.glass(shape: Shape = CardShape): Modifier = composed {
-    val hazeState = LocalHazeState.current
-    var m = this
-        .shadow(8.dp, shape, clip = false, ambientColor = Color(0x26000000), spotColor = Color(0x30000000))
-        .clip(shape)
-    // Real backdrop blur of the aurora when a haze source is present (API 31+);
-    // the translucent tint fill + bevel then sit on top of the frosted glass.
-    // backgroundColor is required — it's what the blur composites against.
-    if (hazeState != null) m = m.hazeEffect(hazeState) { backgroundColor = Night }
-    m
-        .background(Gradients.glass)
-        .border(1.dp, Stroke.bevel, shape)
-}
+/** The shared card surface treatment: a top-lit solid indigo fill, a soft lift, and
+ * a *bevelled* hairline — the border is a vertical gradient (bright at the top edge,
+ * fading down) so the pane catches light like a real bevelled edge rather than
+ * reading as a flat outline. An honest soft-solid: the fill is opaque, so there is
+ * no backdrop blur behind it (REDESIGN.md §4.1). */
+internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
+    .shadow(8.dp, shape, clip = false, ambientColor = Color(0x26000000), spotColor = Color(0x30000000))
+    .clip(shape)
+    .background(Gradients.glass)
+    .border(1.dp, Stroke.bevel, shape)
 
 /** True when the user has asked the system to minimise animations ("Remove
  * animations" / animator duration scale = 0) — the Android analogue of iOS's
@@ -158,19 +172,128 @@ internal fun Modifier.pressScale(pressed: Boolean, down: Float = 0.96f): Modifie
 }
 
 /** A gentle one-shot entry: content rises a few dp and fades in on first
- * composition. Pass an [index] to stagger siblings into a soft cascade. */
+ * composition. Pass an [index] to stagger siblings into a soft cascade;
+ * [durationMs] tightens the entrance for small, frequent arrivals (chat bubbles). */
 @Composable
-internal fun Modifier.appear(index: Int = 0, rise: Float = 20f): Modifier {
+internal fun Modifier.appear(index: Int = 0, rise: Float = 20f, durationMs: Int = 440): Modifier {
     val reduceMotion = rememberReduceMotion()
     val anim = remember { Animatable(0f) }
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) { anim.snapTo(1f); return@LaunchedEffect }  // no entrance — settle instantly
         kotlinx.coroutines.delay(index * 55L)
-        anim.animateTo(1f, tween(440, easing = FastOutSlowInEasing))
+        anim.animateTo(1f, tween(durationMs, easing = FastOutSlowInEasing))
     }
     return graphicsLayer {
         translationY = (1f - anim.value) * rise
         alpha = anim.value
+    }
+}
+
+/** A gentle one-shot fill: content fades and scales in (0.6 → 1.0) on first
+ * composition, staggered [stepMs] apart by [index] — the presence-ring dots'
+ * entrance. Under Reduce Motion it settles instantly (static, never blank). */
+@Composable
+internal fun Modifier.popIn(index: Int = 0, stepMs: Long = 40L): Modifier {
+    val reduceMotion = rememberReduceMotion()
+    val anim = remember { Animatable(0f) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) { anim.snapTo(1f); return@LaunchedEffect }  // no entrance — settle instantly
+        kotlinx.coroutines.delay(index * stepMs)
+        anim.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+    }
+    return graphicsLayer {
+        val s = 0.6f + 0.4f * anim.value
+        scaleX = s
+        scaleY = s
+        alpha = anim.value
+    }
+}
+
+/** A one-shot soft ring blooming outward over a card after a successful save —
+ * a small, calm reward, deliberately NOT the full-screen celebration. Re-arms
+ * each time [trigger] increments; callers skip arming it under Reduce Motion
+ * (their confirmation line is the state change there). Extracted from the Home
+ * check-in (E2) so Journal and future surfaces share one bloom. */
+@Composable
+internal fun BloomRing(trigger: Int, color: Color, modifier: Modifier = Modifier) {
+    val progress = remember(trigger) { Animatable(0f) }
+    LaunchedEffect(trigger) { progress.animateTo(1f, tween(600, easing = FastOutSlowInEasing)) }
+    val p = progress.value
+    if (p >= 1f) return   // finished — draw nothing until the next trigger
+    Canvas(modifier) {
+        val ringScale = 0.6f + 0.8f * p            // 0.6 → 1.4
+        drawCircle(
+            color = color.copy(alpha = 0.4f * (1f - p)),   // 0.4 → 0
+            radius = size.minDimension / 2f * ringScale,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()),
+        )
+    }
+}
+
+/** A quiet, single-purpose banner (W9 B5): SurfaceRaised fill, a soft accent
+ * hairline, an accent-tinted icon and calm supporting copy — with an optional
+ * small accent action and an optional dismiss. Deliberately unanimated beyond
+ * the shared [appear] entrance; never taller than ~72dp. */
+@Composable
+internal fun InfoBanner(
+    icon: ImageVector,
+    text: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(Radius.card)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .appear()
+            .clip(shape)
+            .background(SurfaceRaised)
+            .border(1.dp, AccentSoft.copy(alpha = 0.35f), shape)
+            .padding(start = 14.dp, end = if (onDismiss != null) 2.dp else 8.dp, top = 6.dp, bottom = 6.dp)
+            .heightIn(min = 44.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Accent.default, modifier = Modifier.size(18.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (actionLabel != null && onAction != null) {
+            Box(
+                Modifier
+                    .heightIn(min = 48.dp)   // a11y floor, still inside the ≤72dp banner
+                    .clip(RoundedCornerShape(Radius.round))
+                    .clickable { onAction() }
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    actionLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Accent.default,
+                )
+            }
+        }
+        if (onDismiss != null) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable { onDismiss() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Dismiss",
+                    tint = TextMuted,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -183,6 +306,7 @@ internal fun Page(
     title: String,
     trailing: ImageVector? = null,
     accent: Color = Accent.default,
+    scrollState: ScrollState = rememberScrollState(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -194,14 +318,14 @@ internal fun Page(
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .graphicsLayer { translationY = rise.value }
             .padding(horizontal = 24.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color(0xFFAAA3D0))
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = EyebrowMuted)
                 Text(
                     title,
                     // A soft accent glow behind the serif title — subtle depth,
@@ -220,7 +344,7 @@ internal fun Page(
                 Box(
                     Modifier.padding(top = 6.dp).size(40.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.07f))
+                        .background(Veil)
                         .border(1.dp, LineStroke, RoundedCornerShape(50)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -256,8 +380,8 @@ internal fun SectionCard(
     ) { content() }
 }
 
-/** Primary CTA — a gradient lavender pill with dark, bold text. Reads as the one
- * action that matters; the dimmed disabled state still looks intentional. */
+/** Primary CTA — a near-white pill with dark, bold text. Reads as the one action
+ * that matters; the dimmed disabled state still looks intentional. */
 @Composable
 internal fun PrimaryButton(
     text: String,
@@ -270,7 +394,7 @@ internal fun PrimaryButton(
     val brush = if (enabled) {
         Gradients.primary
     } else {
-        Brush.horizontalGradient(listOf(Color(0xFF777486), Color(0xFF777486)))
+        Brush.horizontalGradient(listOf(ButtonDisabled, ButtonDisabled))
     }
     Box(
         modifier
@@ -285,7 +409,9 @@ internal fun PrimaryButton(
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = Ink,
+            // OnPrimary: Ink on the Night white pill, white on the Dawn periwinkle
+            // pill. Disabled stays Ink — legible on ButtonDisabled in both themes.
+            color = if (enabled) OnPrimary else Ink,
         )
     }
 }
@@ -323,9 +449,9 @@ internal fun AppTextField(
         shape = RoundedCornerShape(Radius.field),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,
-            unfocusedBorderColor = Color(0xFF514B76),
-            focusedContainerColor = Color(0xFF302B55),
-            unfocusedContainerColor = Color(0xFF29254D),
+            unfocusedBorderColor = LineStroke,
+            focusedContainerColor = FieldFill,
+            unfocusedContainerColor = NightPurple,
             cursorColor = Periwinkle,
             focusedLabelColor = Periwinkle,
             unfocusedLabelColor = TextMuted,
@@ -344,13 +470,15 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
     val pressed by interaction.collectIsPressedAsState()
     // The fill/border/text cross-fade on selection instead of snapping — the chip
     // feels like it lights up rather than flicking to a new state.
+    // Selected fill/text are themed: white pill + Ink on Night (as before); on
+    // Dawn a white chip vanishes on cream, so it inverts to an Ink pill + white.
     val bg by animateColorAsState(
-        if (selected) Color.White else Color(0xFF39355F), tween(220), label = "chipBg",
+        if (selected) ChipSelectedFill else ChipFill, tween(220), label = "chipBg",
     )
     val border by animateColorAsState(
-        if (selected) Color.White else LineStroke, tween(220), label = "chipBorder",
+        if (selected) ChipSelectedFill else LineStroke, tween(220), label = "chipBorder",
     )
-    val fg by animateColorAsState(if (selected) Ink else TextSoft, tween(220), label = "chipFg")
+    val fg by animateColorAsState(if (selected) ChipSelectedInk else TextSoft, tween(220), label = "chipFg")
     Box(
         Modifier
             .heightIn(min = 48.dp)   // a11y: >= 48dp touch target
@@ -380,11 +508,11 @@ internal fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, ena
         onCheckedChange = onCheckedChange,
         enabled = enabled,
         colors = SwitchDefaults.colors(
-            checkedThumbColor = Ink,
+            checkedThumbColor = SwitchThumbOn,   // Ink on Night, white on Dawn's deep track
             checkedTrackColor = Periwinkle,
             checkedBorderColor = Periwinkle,
             uncheckedThumbColor = TextSoft,
-            uncheckedTrackColor = Color.White.copy(alpha = 0.06f),
+            uncheckedTrackColor = VeilSoft,
             uncheckedBorderColor = LineStroke,
         ),
     )
@@ -430,7 +558,7 @@ internal fun DangerButton(
 @Composable
 internal fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(12.dp)) {
     val reduceMotion = rememberReduceMotion()
-    val base = modifier.clip(shape).background(Color.White.copy(alpha = 0.06f))
+    val base = modifier.clip(shape).background(VeilSoft)
     if (reduceMotion) {
         Box(base)
         return
@@ -453,4 +581,42 @@ internal fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCor
             )
         },
     )
+}
+
+/** Credibility footer (REDESIGN §2.4): a quiet, expandable provenance line for
+ * tools and programs. Collapsed it's one tappable line with a chevron; expanded
+ * it shows the honest one-line "why this works" copy. No animation — a calm,
+ * discrete state swap that's the same with or without Reduce Motion. */
+@Composable
+internal fun WhyThisWorks(text: String) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val shape = RoundedCornerShape(Radius.card)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)   // a11y: >= 48dp touch target
+            .clip(shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
+            .clickable { open = !open }
+            .padding(horizontal = cardPadding(), vertical = 13.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Why this works", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Icon(
+                if (open) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = if (open) "Collapse" else "Expand",
+                tint = TextMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        if (open) {
+            Text(text, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
+    }
 }

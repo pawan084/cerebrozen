@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cerebro.app.BuildConfig
+import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Danger
@@ -67,9 +68,35 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.AuthEyebrow
+import com.cerebrozen.app.ui.theme.AuthFieldLabel
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class AuthMode { Password, Otp }
+
+/**
+ * Sign up, then run the post-signup personalization writes shielded from
+ * cancellation.
+ *
+ * The race: [Session.signUp] flips [Session.signedIn] (Compose-observable),
+ * which immediately swaps the root composition from Onboarding to the
+ * signed-in NavHost — disposing this screen and cancelling its
+ * rememberCoroutineScope() at the next suspension point. Without a shield,
+ * everything after signup dies before it reaches the network (observed
+ * on-device: POST /auth/signup → 201, then zero of the follow-up consent/
+ * profile/check-in calls). NonCancellable lets [personalize] run to
+ * completion; the writes stay best-effort (each is runCatching-wrapped by
+ * the caller), so a partial failure still never blocks entering the app.
+ */
+internal suspend fun signUpThenPersonalize(
+    signUp: suspend () -> Unit,
+    personalize: suspend () -> Unit,
+) {
+    signUp()
+    withContext(NonCancellable) { personalize() }
+}
 
 /** Sign in / create account — email+password, passwordless email code (OTP), or
  * Google. Same backend flows as iOS and the web app; Google degrades gracefully
@@ -82,10 +109,12 @@ fun AuthScreen(
 ) {
     var mode by remember { mutableStateOf(AuthMode.Password) }
     var creating by remember(initialCreating) { mutableStateOf(initialCreating) }
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
+    // Identifiers survive rotation so they aren't re-typed. Password is deliberately
+    // NOT saved — persisting a secret into instance state is an anti-pattern.
+    var name by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
+    var code by rememberSaveable { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
@@ -126,7 +155,7 @@ fun AuthScreen(
             }
             Column {
                 Text("PRIVATE BY DESIGN", style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFB5AEE1), letterSpacing = 1.8.sp)
+                    color = AuthEyebrow, letterSpacing = 1.8.sp)
                 Text(
                     if (creating) "Create your space" else "Sign in",
                     style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp),
@@ -168,8 +197,10 @@ fun AuthScreen(
                     focus.clearFocus()
                     run {
                         if (creating) {
-                            Session.signUp(email.trim(), password, name.trim())
-                            onAccountCreated()
+                            signUpThenPersonalize(
+                                signUp = { Session.signUp(email.trim(), password, name.trim()) },
+                                personalize = onAccountCreated,
+                            )
                         } else {
                             Session.signIn(email.trim(), password)
                         }
@@ -282,7 +313,7 @@ fun AuthScreen(
 @Composable
 private fun AuthFieldLabel(label: String, field: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Color(0xFFE0DDEE))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = AuthFieldLabel)
         field()
     }
 }

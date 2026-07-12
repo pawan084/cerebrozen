@@ -1,10 +1,21 @@
 package com.cerebrozen.app.ui.screens
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -34,8 +45,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.ArrowCircleRight
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -51,15 +60,19 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.mapSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.ImeAction
@@ -67,6 +80,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,11 +100,40 @@ import androidx.compose.ui.text.withStyle
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.ChipFill
+import com.cerebrozen.app.ui.theme.EyebrowMuted
+import com.cerebrozen.app.ui.theme.GratitudeCardFill
+import com.cerebrozen.app.ui.theme.GratitudeAvatarFill
+import com.cerebrozen.app.ui.theme.GratitudeCaption
+import com.cerebrozen.app.ui.theme.InfoCardFill
+import com.cerebrozen.app.ui.theme.InfoCardStroke
+import com.cerebrozen.app.ui.theme.InfoCardHint
+import com.cerebrozen.app.ui.theme.InfoCardDivider
+import com.cerebrozen.app.ui.theme.WelcomeGradientTop
+import com.cerebrozen.app.ui.theme.WelcomeGradientBottom
+import com.cerebrozen.app.ui.theme.WelcomeTitleText
+import com.cerebrozen.app.ui.theme.WelcomeSubtitleText
+import com.cerebrozen.app.ui.theme.WelcomeSecondaryText
+import com.cerebrozen.app.ui.theme.WelcomeOrbMid
+import com.cerebrozen.app.ui.theme.WelcomeOrbEdge
+import com.cerebrozen.app.ui.theme.PrimaryButtonFill
+import com.cerebrozen.app.ui.theme.PrimaryButtonInk
+import com.cerebrozen.app.ui.theme.PrimaryButtonDisabledFill
+import com.cerebrozen.app.ui.theme.ResetDoneFill
+import com.cerebrozen.app.ui.theme.FunnelHeaderTop
+import com.cerebrozen.app.ui.theme.FunnelHeaderBottom
+import com.cerebrozen.app.ui.theme.FunnelBodyText
+import com.cerebrozen.app.ui.theme.ProgressTrack
+import com.cerebrozen.app.ui.theme.PickRowSelectedFill
+import com.cerebrozen.app.ui.theme.PickRowFill
+import com.cerebrozen.app.ui.theme.PickRowStroke
+import com.cerebrozen.app.ui.theme.PickRowChevron
+import com.cerebrozen.app.ui.theme.PickCardStroke
+import com.cerebrozen.app.ui.theme.DotUnselectedFill
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import org.json.JSONObject
 
-private enum class OStep { Welcome, Age, Disclosure, Language, State, Reset, Consent, Plan, Notify, SignUp }
+private enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
 
 /** One feeling tap is the whole "assessment" — each maps into the shared
  * motivation/goal taxonomy (cross-stack: iOS StateCheckScreen.states ⇄ web
@@ -107,20 +150,24 @@ internal val STATE_OPTIONS = listOf(
     StateOption("Can't stay consistent", "Discipline", "Strengthen willpower", "Okay"),
 )
 
-/** Headline the first plan around the chosen goal (mirrors iOS/web planTitle). */
-internal fun planTitleFor(goal: String?): String = when (goal) {
-    "Sleep better" -> "Sleep deeper"
-    "Reduce stress" -> "Ease today's stress"
-    "Stop overthinking" -> "Quiet the noise"
-    "Build confidence" -> "Steady confidence"
-    "Feel less alone" -> "Feel more connected"
-    "Strengthen willpower" -> "Small promises, kept"
-    else -> "A calmer day"
-}
-
 private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
 private val NOTIFY = listOf("Morning 9 AM", "Evening 7 PM", "Private previews", "No reminders")
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
+
+// Savers so a rotation / process death mid-funnel keeps the user's place and their
+// selections instead of dropping them back to Welcome.
+private val StateOptionSaver = Saver<StateOption?, String>(
+    save = { it?.label ?: "" },
+    restore = { label -> STATE_OPTIONS.firstOrNull { it.label == label } },
+)
+private val ConsentSaver = mapSaver(
+    save = { it.toMap() },
+    restore = { restored ->
+        mutableStateMapOf<String, Boolean>().apply {
+            restored.forEach { (k, v) -> put(k, v as Boolean) }
+        }
+    },
+)
 
 /**
  * Value-first onboarding funnel — the adult gate, honesty disclosure, a first
@@ -133,7 +180,7 @@ fun Onboarding() {
     var signIn by remember { mutableStateOf(false) }
     if (signIn) { AuthScreen(onBack = { signIn = false }); return }
 
-    var step by remember { mutableStateOf(OStep.Welcome) }
+    var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     val order = OStep.entries
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
     fun back() { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
@@ -141,27 +188,66 @@ fun Onboarding() {
     // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
 
-    var language by remember { mutableStateOf("English") }
-    var state by remember { mutableStateOf<StateOption?>(null) }
-    var notify by remember { mutableStateOf("Evening 7 PM") }
+    var language by rememberSaveable { mutableStateOf("English") }
+    var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
+    var notify by rememberSaveable { mutableStateOf("Evening 7 PM") }
     // Private by default: NOTHING pre-ticked — consent must be an action
     // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
-    val consent = remember {
+    val consent = rememberSaveable(saver = ConsentSaver) {
         mutableStateMapOf(
             "mood_history" to true, "ai_memory" to true, "journal_memory" to false,
             "sleep_history" to false, "voice_storage" to false, "model_training" to false,
         )
     }
 
-    when (step) {
+    // Apply the onboarding reminder choice for real: persist it, schedule the daily
+    // alarm at the chosen hour, and ask for notification permission (Android 13+).
+    // Without this the Notify step's selection did nothing.
+    val context = LocalContext.current
+    val notifyPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    fun applyReminderChoice() {
+        val prefs = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
+        val hour = when {
+            notify.startsWith("Morning") -> 9
+            notify.startsWith("Evening") -> 19
+            else -> { prefs.edit().putBoolean("reminder_on", false).apply(); return }
+        }
+        prefs.edit().putBoolean("reminder_on", true).apply()
+        com.cerebrozen.app.notify.Reminders.schedule(context, hour)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifyPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // W10: calm step transitions — a 250ms fade with a slight directional slide
+    // (forward slides in from the right, back from the left). Reduce Motion
+    // snaps between steps instead (no transition, never blank).
+    val reduceMotion = rememberReduceMotion()
+    val slidePx = with(LocalDensity.current) { 24.dp.roundToPx() }
+    AnimatedContent(
+        targetState = step,
+        transitionSpec = {
+            if (reduceMotion) {
+                EnterTransition.None togetherWith ExitTransition.None
+            } else {
+                val forward = targetState.ordinal >= initialState.ordinal
+                (fadeIn(tween(250)) + slideInHorizontally(tween(250)) { if (forward) slidePx else -slidePx })
+                    .togetherWith(fadeOut(tween(250)))
+            }
+        },
+        label = "onboarding-step",
+    ) { current ->
+        when (current) {
         OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
 
-        OStep.Age -> Funnel(
-            "For adults only", "A quick check",
-            "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
-            "Continue", onBack = { back() }, onPrimary = { next() },
+        OStep.Disclosure -> Funnel(
+            "Honesty first", "Who CereBro is for — and what it isn't",
+            "Here's exactly what your AI companion can and can't do for you.",
+            "I'm 18+ — continue", onBack = { back() }, onPrimary = { next() },
         ) {
-            ReferenceCard(borderColor = Warm.copy(alpha = 0.5f), fill = Color(0xFF493453)) {
+            ReferenceCard(borderColor = Warm.copy(alpha = 0.5f), fill = GratitudeCardFill) {
                 Text("Wellness support, not emergency care.",
                     style = MaterialTheme.typography.titleMedium, color = Warm)
                 Text("If you are in immediate danger, call emergency services now.",
@@ -169,21 +255,15 @@ fun Onboarding() {
             }
             ReferenceCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF5A547F)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(GratitudeAvatarFill), contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         Text("Confirmed: I am 18 or older", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                        Text("Thank you", style = MaterialTheme.typography.bodySmall, color = Color(0xFFC9C5DA))
+                        Text("Thank you", style = MaterialTheme.typography.bodySmall, color = GratitudeCaption)
                     }
                 }
             }
-        }
-
-        OStep.Disclosure -> Funnel(
-            "Honesty first", "What CereBro is — and isn't",
-            "Here's exactly what your AI companion can and can't do for you.", "Continue", onBack = { back() }, onPrimary = { next() },
-        ) {
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 DisclosureTile(
@@ -220,41 +300,41 @@ fun Onboarding() {
 
         OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
 
-        OStep.Plan -> Funnel(
-            "Made around you", "First Plan", "",
-            "Keep going", onBack = { back() }, onPrimary = { next() },
-        ) {
-            PlanHero(planTitleFor(state?.goal))
-            PlanActionCard(Icons.Outlined.Air, "Breathing reset", "3 min · recommended now")
-            PlanActionCard(Icons.AutoMirrored.Outlined.MenuBook, "Night journal", "5 min reflection")
-        }
-
         OStep.Consent -> Funnel(
             "Privacy choices", "What CereBro remembers",
             "Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings.",
             "Continue", onBack = { back() }, onPrimary = { next() },
         ) {
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF302D54))
-                    .border(1.dp, Color(0xFF514C73), RoundedCornerShape(18.dp)),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(InfoCardFill)
+                    .border(1.dp, InfoCardStroke, RoundedCornerShape(18.dp)),
             ) {
-                listOf(
+                // All six categories, every time — DPDP "specific and informed":
+                // nothing collected under a switch the user never saw.
+                val rows = listOf(
                     Triple("mood_history", "Mood history", "Used for insights"),
+                    Triple("sleep_history", "Sleep history", "Powers your sleep insights"),
+                    Triple("journal_memory", "Journal memory", "Lets the companion recall your entries"),
                     Triple("ai_memory", "AI memory", "Goals and preferences"),
                     Triple("voice_storage", "Voice storage", "Off by default"),
-                ).forEachIndexed { index, (key, label, hint) ->
+                    Triple("model_training", "Model training", "Never on without you switching it on"),
+                )
+                rows.forEachIndexed { index, (key, label, hint) ->
                     Row(
-                        Modifier.fillMaxWidth().height(75.dp).padding(horizontal = 18.dp),
+                        Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 18.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(label, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                            Text(hint, style = MaterialTheme.typography.bodySmall, color = Color(0xFFCBC7D8))
+                            Text(
+                                hint, style = MaterialTheme.typography.bodySmall, color = InfoCardHint,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
                         }
                         AppSwitch(checked = consent[key] == true, onCheckedChange = { consent[key] = it })
                     }
-                    if (index < 2) Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF464166)))
+                    if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(InfoCardDivider))
                 }
             }
         }
@@ -262,7 +342,7 @@ fun Onboarding() {
         OStep.Notify -> Funnel(
             "Gentle reminders", "Notifications",
             "You've had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.",
-            "Enter CereBro", onBack = { back() }, onPrimary = { next() },
+            "Enter CereBro", onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
         ) {
             ChipWrap(NOTIFY, notify) { notify = it }
         }
@@ -287,6 +367,7 @@ fun Onboarding() {
                 }
             },
         )
+        }
     }
 }
 
@@ -294,7 +375,7 @@ fun Onboarding() {
 private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
     BoxWithConstraints(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF3B3474), Color(0xFF12102F))))
+            .background(Brush.verticalGradient(listOf(WelcomeGradientTop, WelcomeGradientBottom)))
             .statusBarsPadding().navigationBarsPadding(),
     ) {
         val compact = maxHeight < 720.dp
@@ -320,14 +401,14 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
             Text(
                 "Your quiet space for daily mental fitness,\nbetter sleep, and calmer focus.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.5.sp, lineHeight = 24.sp),
-                color = Color(0xFFD8D5E5),
+                color = WelcomeTitleText,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(15.dp))
             Text(
                 "Private by design — nothing is ever shared.",
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                color = Color(0xFFBDB8D0),
+                color = WelcomeSubtitleText,
                 textAlign = TextAlign.Center,
             )
         }
@@ -338,17 +419,17 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
         ) {
             Row(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFFFCFBFF)).clickable(onClick = onStart),
+                    .background(PrimaryButtonFill).clickable(onClick = onStart),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.Air, null, tint = Color(0xFF211C50), modifier = Modifier.size(19.dp))
+                Icon(Icons.Outlined.Air, null, tint = PrimaryButtonInk, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.size(12.dp))
-                Text("Try a 2-minute reset", style = MaterialTheme.typography.titleMedium, color = Color(0xFF211C50))
+                Text("Try a 2-minute reset", style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
             }
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onSignIn) {
-                Text("I already have an account", style = MaterialTheme.typography.titleSmall, color = Color(0xFFE4E1EC))
+                Text("I already have an account", style = MaterialTheme.typography.titleSmall, color = WelcomeSecondaryText)
             }
         }
     }
@@ -370,7 +451,7 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
         drawCircle(Color(0x183F3889), radius * 1.27f, center)
         drawCircle(
             Brush.radialGradient(
-                0f to Color.White, 0.22f to Color(0xFFF4F1FF), 1f to Color(0xFFC9C3FF),
+                0f to Color.White, 0.22f to WelcomeOrbMid, 1f to WelcomeOrbEdge,
                 center = Offset(center.x - radius * 0.2f, center.y - radius * 0.27f),
                 radius = radius * 1.55f,
             ),
@@ -382,23 +463,9 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
 
 @Composable
 private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
-    val transition = rememberInfiniteTransition(label = "breath")
-    val scale by transition.animateFloat(
-        initialValue = 0.94f, targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "scale",
-    )
-    var breatheIn by remember { mutableStateOf(true) }
-    var count by remember { mutableStateOf(4) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            count = 4
-            repeat(4) {
-                delay(1_000)
-                count = if (count == 1) 4 else count - 1
-            }
-            breatheIn = !breatheIn
-        }
-    }
+    // The orb, count and Reduce-Motion behaviour all come from the shared
+    // BreatheEngine (Reset preset: four in, four out, no holds) — the same
+    // engine every breathe surface in the app hosts.
     Funnel(
         "Your first reset", "Let's steady your body",
         "Two minutes of guided breathing — follow the orb for a few cycles, or skip ahead if now isn't the moment.",
@@ -407,183 +474,23 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         secondary = {
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
-                    .background(Color(0xFF302D50)).clickable(onClick = onDone),
+                    .background(ResetDoneFill).clickable(onClick = onDone),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("Skip for now", style = MaterialTheme.typography.titleMedium, color = Color.White)
             }
         },
     ) {
-        Text(
-            if (breatheIn) "Breathe in" else "Breathe out",
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.displaySmall.copy(fontSize = 31.sp),
-            color = Color.White,
-            textAlign = TextAlign.Center,
-        )
-        Box(Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
-            ResetBreathingOrb(count = count, scale = scale)
-        }
-        Text("Follow the orb", style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFFBDB9D0), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-@Composable
-private fun ResetBreathingOrb(count: Int, scale: Float) {
-    Box(Modifier.size(230.dp).scale(scale), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val core = size.minDimension * 0.335f
-            drawCircle(
-                Brush.radialGradient(
-                    0f to Color(0x442FCED8), 0.58f to Color(0x222FCED8), 1f to Color.Transparent,
-                    center = center, radius = size.minDimension / 2f,
-                ),
-                size.minDimension / 2f,
-                center,
-            )
-            drawCircle(Color(0x225EE5EA), core * 1.48f, center)
-            drawCircle(Color(0x335EE5EA), core * 1.16f, center)
-            drawCircle(
-                Brush.linearGradient(
-                    listOf(Color(0xFFE5FCFF), Color(0xFF71E5EA), Color(0xFF43CAD5)),
-                    start = Offset(center.x - core, center.y - core),
-                    end = Offset(center.x + core, center.y + core),
-                ),
-                core,
-                center,
-            )
-        }
-        Text(
-            count.toString(),
-            style = MaterialTheme.typography.displaySmall.copy(
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Default, fontSize = 47.sp,
-            ),
-            color = Color(0xFF11142D),
-        )
-    }
-}
-
-@Composable
-private fun SignUpStep(state: StateOption?, consent: () -> JSONObject, onBack: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPw by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val focus = LocalFocusManager.current
-    val canSubmit = !busy && email.isNotBlank() && password.length >= 8
-
-    fun submit() {
-        if (!canSubmit) return
-        focus.clearFocus()
-        busy = true; error = null
-        scope.launch {
-            try {
-                Session.signUp(email.trim(), password, name.trim())
-                Analytics.track("onboarding_done")
-                // Best-effort personalization — never blocks entering the app.
-                runCatching { Api.attest() }
-                runCatching { Api.updateConsent(consent()) }
-                if (state != null) {
-                    // The one tap grounds server personalization: plans key
-                    // off goals, conversation starters off motivations.
-                    runCatching {
-                        Api.updateProfile(
-                            JSONObject()
-                                .put("goals", org.json.JSONArray().put(state.goal))
-                                .put("motivations", org.json.JSONArray().put(state.motivation)),
-                        )
-                    }
-                    runCatching { Api.checkIn(state.mood, "From onboarding", "sparkles", 3) }
-                }
-            } catch (e: Exception) {
-                error = e.message ?: "Couldn't create your account."; busy = false
-            }
-        }
-    }
-
-    Funnel(
-        "Save your space", "Create your account",
-        "One account across iOS, Android and the web.",
-        if (busy) "One moment…" else "Create my account",
-        primaryEnabled = canSubmit,
-        onBack = onBack,
-        onPrimary = { submit() },
-    ) {
-        AppTextField(name, { name = it }, "Name", singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
-        AppTextField(email, { email = it }, "Email", singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
-        AppTextField(password, { password = it }, "Password (8+ characters)", singleLine = true,
-            visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { submit() }),
-            trailingIcon = {
-                IconButton(onClick = { showPw = !showPw }) {
-                    Icon(
-                        if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (showPw) "Hide password" else "Show password",
-                        tint = TextMuted,
-                    )
-                }
-            })
-        error?.let { Text(it, color = Danger) }
-    }
-}
-
-@Composable
-private fun PlanHero(title: String) {
-    Column(
-        Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(24.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF657895), Color(0xFF1E293C))))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Box(
-            Modifier.clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.18f))
-                .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(18.dp))
-                .padding(horizontal = 14.dp, vertical = 7.dp),
-        ) {
-            Text("TODAY", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp), color = Color.White)
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp), color = Color.White)
-            Text("A light plan: one thing now, one tonight, one tomorrow.",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp), color = Color.White)
-        }
-    }
-}
-
-@Composable
-private fun PlanActionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
-    Row(
-        Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF2C294F)).padding(horizontal = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFF7163BA), Color(0xFF40386F))))
-                .border(1.dp, Color(0xFF8075C2), RoundedCornerShape(11.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFFC7C3D5))
-        }
+        BreatheEngine(BreathePreset.Reset, Modifier.fillMaxWidth())
     }
 }
 
 // ── Shared bits ──────────────────────────────────────────────────────────
+
+/** The last funnel fraction shown, so the next step's bar animates from it
+ * (each step is a separate composition inside AnimatedContent). Cosmetic only. */
+private object FunnelProgressMemory { var last = 0f }
+
 @Composable
 private fun Funnel(
     eyebrow: String,
@@ -598,19 +505,17 @@ private fun Funnel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val progress = when (eyebrow.lowercase()) {
-        "for adults only" -> 0.12f
         "honesty first" -> 0.25f
         "speak your language" -> 0.38f
         "one tap is enough" -> 0.50f
         "your first reset" -> 0.62f
-        "made around you" -> 0.88f
         "privacy choices" -> 0.75f
-        "gentle reminders" -> 0.91f
+        "gentle reminders" -> 0.88f
         else -> 1f
     }
     Box(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF393270), Color(0xFF11102E))))
+            .background(Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)))
             .statusBarsPadding().navigationBarsPadding(),
     ) {
         Column(
@@ -621,7 +526,7 @@ private fun Funnel(
             Text(
                 eyebrow.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 1.8.sp),
-                color = Color(0xFFAAA3D0),
+                color = EyebrowMuted,
             )
             Text(
                 title,
@@ -633,7 +538,7 @@ private fun Funnel(
             if (sub.isNotBlank()) Text(
                 sub,
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.5.sp, lineHeight = 24.sp),
-                color = Color(0xFFD0CCDE),
+                color = FunnelBodyText,
             )
             Spacer(Modifier.height(6.dp))
             content()
@@ -643,23 +548,36 @@ private fun Funnel(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp, vertical = 23.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFF484361))) {
-                Box(Modifier.fillMaxWidth(progress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White))
+            // W10: the fill glides from the previous step's fraction to this one
+            // instead of jumping. Each step is a fresh composition inside
+            // AnimatedContent, so the bar seeds from a small cross-step memory and
+            // then animates to its own fraction. Reduce Motion keeps the honest
+            // instant snap.
+            val reduceMotion = rememberReduceMotion()
+            var barTarget by remember { mutableStateOf(FunnelProgressMemory.last) }
+            LaunchedEffect(progress) {
+                barTarget = progress
+                FunnelProgressMemory.last = progress
+            }
+            val animatedProgress by animateFloatAsState(
+                targetValue = barTarget,
+                animationSpec = if (reduceMotion) snap() else tween(350),
+                label = "funnel-progress",
+            )
+            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(ProgressTrack)) {
+                Box(Modifier.fillMaxWidth(animatedProgress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White))
             }
             Spacer(Modifier.height(18.dp))
             Row(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(29.dp))
-                    .background(if (primaryEnabled) Color(0xFFFCFBFF) else Color(0xFF9998A7))
+                    .background(if (primaryEnabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
                     .clickable(enabled = primaryEnabled, onClick = onPrimary),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    if (primaryLabel == "Keep going") Icons.Outlined.ArrowCircleRight else Icons.Outlined.CheckCircle,
-                    null, tint = Color(0xFF211C50), modifier = Modifier.size(18.dp),
-                )
+                Icon(Icons.Outlined.CheckCircle, null, tint = PrimaryButtonInk, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(11.dp))
-                Text(primaryLabel, style = MaterialTheme.typography.titleMedium, color = Color(0xFF211C50))
+                Text(primaryLabel, style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
             }
             if (secondary != null) {
                 Spacer(Modifier.height(12.dp))
@@ -672,7 +590,7 @@ private fun Funnel(
 @Composable
 private fun ReferenceCard(
     borderColor: Color = Color.Transparent,
-    fill: Color = Color(0xFF39355F),
+    fill: Color = ChipFill,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -687,13 +605,13 @@ private fun ReferenceCard(
 private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(55.dp).clip(RoundedCornerShape(16.dp))
-            .background(if (selected) Color(0xFF4A456F) else Color(0xFF302C56))
-            .border(1.dp, Color(0xFF504B74), RoundedCornerShape(16.dp))
+            .background(if (selected) PickRowSelectedFill else PickRowFill)
+            .border(1.dp, PickRowStroke, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = Color.White)
-        Icon(Icons.Outlined.ChevronRight, null, tint = Color(0xFF9993B4), modifier = Modifier.size(22.dp))
+        Icon(Icons.Outlined.ChevronRight, null, tint = PickRowChevron, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -706,12 +624,12 @@ private fun DisclosureTile(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier.height(129.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF39355F))
-            .border(1.dp, Color(0xFF575178), RoundedCornerShape(17.dp)).padding(18.dp),
+        modifier.height(129.dp).clip(RoundedCornerShape(17.dp)).background(ChipFill)
+            .border(1.dp, PickCardStroke, RoundedCornerShape(17.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 19.sp), color = Color.White)
-        Text(body, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp), color = Color(0xFFD0CCDE))
+        Text(body, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp), color = FunnelBodyText)
     }
 }
 
@@ -726,14 +644,14 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
             val isSelected = selected == opt
             Box(
                 Modifier.height(47.dp).clip(RoundedCornerShape(14.dp))
-                    .background(if (isSelected) Color.White else Color(0xFF3B3766))
+                    .background(if (isSelected) Color.White else DotUnselectedFill)
                     .clickable { onPick(opt) }.padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     opt,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isSelected) Color(0xFF211C50) else Color.White,
+                    color = if (isSelected) PrimaryButtonInk else Color.White,
                 )
             }
         }

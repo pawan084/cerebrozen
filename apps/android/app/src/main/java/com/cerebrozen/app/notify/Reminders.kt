@@ -76,3 +76,19 @@ class ReminderReceiver : BroadcastReceiver() {
         Reminders.show(context)
     }
 }
+
+/**
+ * AlarmManager alarms don't survive a reboot (or an app update / force-stop), so
+ * re-arm the daily reminder on BOOT_COMPLETED and MY_PACKAGE_REPLACED whenever the
+ * user has it switched on. Without this the "gentle daily check-in" silently stops
+ * firing after the first restart while the Settings toggle still reads "on".
+ */
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action ?: return
+        if (action != Intent.ACTION_BOOT_COMPLETED && action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        val on = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
+            .getBoolean("reminder_on", false)
+        if (on) Reminders.schedule(context)
+    }
+}

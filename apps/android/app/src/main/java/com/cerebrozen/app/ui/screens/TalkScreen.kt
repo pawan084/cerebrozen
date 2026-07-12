@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
@@ -50,9 +51,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,14 +102,16 @@ internal fun parseWidget(o: JSONObject?): ChatWidget? {
 }
 
 /** Where an inline activity lands on Android — every cross-stack widget kind
- * now has a native surface (the tools round closed the last gaps). */
+ * still has a native surface after the Toolkit consolidation: breathing keeps
+ * its journaling practice, grounding lives inline in the Toolkit, and the
+ * one-field tools became Journal quick-entry chips. */
 internal fun widgetRoute(kind: String): String? = when (kind) {
-    "breathing", "grounding" -> "games"
+    "breathing" -> "breathing"
+    "grounding" -> "toolkit"
     "mood_check" -> "home"
     "mini_journal", "journal" -> "journal"
     "sleep_checkin" -> "sleep"
-    "one_good_thing" -> "onegoodthing"
-    "intention_set" -> "intention"
+    "one_good_thing", "intention_set" -> "journal"
     "dbt_skill" -> "tipp"
     else -> null
 }
@@ -133,6 +139,12 @@ internal fun parseStarters(payload: JSONObject): List<String> =
         }
     } ?: emptyList()
 
+/** Whether the "Try together" exercise offers show mid-conversation (REDESIGN §3.3):
+ * after the most recent assistant reply, once a real exchange exists, and never
+ * while the companion is composing. Pure + unit-tested. */
+internal fun showTryTogether(messageCount: Int, lastRole: String?, busy: Boolean, streaming: Boolean): Boolean =
+    messageCount >= 2 && lastRole == "assistant" && !busy && !streaming
+
 /** The last few turns as a journal body (mirrors iOS "Save to journal"). */
 internal fun talkTranscript(messages: List<Msg>, take: Int = 8): String =
     messages.takeLast(take).joinToString("\n\n") { m ->
@@ -144,15 +156,19 @@ internal fun talkTranscript(messages: List<Msg>, take: Int = 8): String =
 @Composable
 fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var messages by remember { mutableStateOf(listOf<Msg>()) }
-    var draft by remember { mutableStateOf("") }
+    // Draft survives rotation / process death so a half-typed message isn't lost.
+    var draft by rememberSaveable { mutableStateOf("") }
     var chips by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // Auto-scroll the conversation to the newest reply / streaming tokens.
+    val chatScroll = rememberScrollState()
     // Regulatory UX (mirrors iOS AIDisclosure): tappable always-visible pill +
     // a re-shown sheet every 3 h of continuous use (NY companion-law floor).
     var showDisclosure by remember { mutableStateOf(false) }
-    // Sticky once a reply carries crisis risk — the affordance stays reachable.
-    var crisis by remember { mutableStateOf(false) }
+    // Sticky once a reply carries crisis risk — the affordance stays reachable
+    // (saved so a rotation can't drop the safety banner).
+    var crisis by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(3L * 60 * 60 * 1000)
@@ -191,8 +207,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var useOracle by remember { mutableStateOf(false) }
     var streamText by remember { mutableStateOf("") }
     var confirmReq by remember { mutableStateOf<Pair<String, String>?>(null) } // threadId → summary
+    // W10: only bubbles that arrive AFTER the restored history animate in — the
+    // transcript renders settled, new turns rise gently. Int.MAX_VALUE until the
+    // history load resolves, so nothing animates prematurely.
+    var entranceFloor by remember { mutableIntStateOf(Int.MAX_VALUE) }
     LaunchedEffect(Unit) {
         runCatching { messages = parseChat(Api.chat()) }
+        entranceFloor = messages.size
         // Empty chat → grounded conversation starters (mirrors the iOS rail).
         if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
         useOracle = Api.oracleAvailable()
@@ -257,6 +278,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     fun send(text: String, speak: Boolean = false) {
         if (text.isBlank() || busy) return
         busy = true; status = null
+        // Clear the composer up front so the sent text doesn't linger in the box
+        // during streaming (and can't be wiped if the user starts a follow-up).
+        draft = ""
         scope.launch {
             try {
                 if (useOracle) {
@@ -265,7 +289,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     messages = messages + Msg("user", text.trim())
                     chips = emptyList()
                     val final = consume("/oracle/messages", JSONObject().put("text", text.trim()))
-                    draft = ""
                     if (speak) speakReply(final)
                 } else {
                     val reply: JSONObject = Api.sendChat(text.trim())
@@ -278,7 +301,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
                     } ?: emptyList()
                     if (hasCrisisSuggestion(suggestions)) crisis = true
-                    draft = ""
                     if (speak) speakReply(replyText)
                 }
             } catch (e: Exception) {
@@ -387,8 +409,25 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    // Follow the conversation as it grows — newest reply and streaming tokens stay
+    // in view instead of appearing below the fold.
+    LaunchedEffect(messages.size, streamText, busy) {
+        chatScroll.animateScrollTo(chatScroll.maxValue)
+    }
+
     Box(Modifier.fillMaxSize()) {
-    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic, accent = Cyan) {
+    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic, accent = Cyan, scrollState = chatScroll) {
+        // W10: honest offline truth for a connection-dependent surface — not
+        // dismissible, and it points at what still works.
+        if (Session.servedStale) {
+            InfoBanner(
+                icon = Icons.Outlined.CloudOff,
+                text = "You're offline — the companion needs a connection. The Toolkit below still works.",
+                actionLabel = "Toolkit",
+                onAction = { onOpen("toolkit") },
+            )
+        }
+
         // Persistent AI disclosure — always visible, tap for the full points.
         Row(
             Modifier.fillMaxWidth()
@@ -482,11 +521,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     }
                 }
             }
+            TryTogetherRow(onOpen)
         } else {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                messages.takeLast(12).forEach { m ->
-                    ChatBubble(m)
-                    m.widget?.let { WidgetCard(it, onOpen) }
+                // Keyed on the absolute index so the sliding 12-message window
+                // never re-runs an old bubble's entrance (W10).
+                val windowStart = (messages.size - 12).coerceAtLeast(0)
+                messages.takeLast(12).forEachIndexed { i, m ->
+                    key(windowStart + i) {
+                        ChatBubble(m, animate = windowStart + i >= entranceFloor)
+                        m.widget?.let { WidgetCard(it, onOpen) }
+                    }
                 }
                 // Live reply: streamed tokens with a blinking caret, or a typing
                 // indicator while the companion is composing its answer.
@@ -494,6 +539,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     StreamingBubble(streamText)
                 } else if (busy) {
                     TypingDots()
+                }
+                // Structured exercises as first-class offers (REDESIGN §3.3) —
+                // quiet, after the companion's latest reply, never while composing.
+                if (showTryTogether(messages.size, messages.lastOrNull()?.role, busy, streamText.isNotBlank())) {
+                    TryTogetherRow(onOpen)
                 }
             }
             TextButton(onClick = {
@@ -536,7 +586,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
 
         // Fast escape hatch when talking feels like too much (mirrors iOS).
-        NavRow("Quick SOS reset", "Fast anxiety/stress reset — 2 minutes") { onOpen("games") }
+        NavRow("Quick SOS reset", "Fast anxiety/stress reset — 2 minutes") { onOpen("toolkit") }
 
         Text(if (voice.available) "Type instead" else "Type a message",
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
@@ -563,7 +613,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
             onOrb = { onOrbTap() },
             onEnd = { endSession() },
-            onText = { voiceSession = false },
+            // Returning to the text composer must tear down the live mic/recognizer
+            // too — otherwise recording keeps running (and can still speak a reply)
+            // after the user has left voice mode.
+            onText = { endSession() },
         )
     }
     }
@@ -644,6 +697,20 @@ private fun CallControl(icon: ImageVector, label: String, tint: Color, bg: Color
 /** m:ss elapsed-session label — pure + testable. */
 internal fun fmtSession(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
 
+/** A quiet row of structured exercises the companion can do with you — CBT
+ * reframe, paced breathing, grounding (the evidenced spine; chat is the glue). */
+@Composable
+private fun TryTogetherRow(onOpen: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Try together", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PickChip(selected = false, label = "Reframe a thought") { onOpen("cbt") }
+            PickChip(selected = false, label = "Breathe with me") { onOpen("breathe/box") }
+            PickChip(selected = false, label = "Ground yourself") { onOpen("toolkit") }
+        }
+    }
+}
+
 /** An Oracle-suggested inline activity: title/description + a native surface
  * when Android has one, else the honest iOS-only note (mirrors the web card). */
 @Composable
@@ -668,11 +735,15 @@ private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
     }
 }
 
+/** One chat bubble. [animate] arms a one-shot 150ms rise+fade for bubbles that
+ * arrive during this session; restored history renders settled (W10). The
+ * Reduce-Motion branch lives inside [appear] (static, never blank). */
 @Composable
-private fun ChatBubble(m: Msg) {
+private fun ChatBubble(m: Msg, animate: Boolean = false) {
     val user = m.role == "user"
+    val entrance = if (animate) Modifier.appear(rise = 8f, durationMs = 150) else Modifier
     Row(
-        Modifier.fillMaxWidth().appear(rise = 12f),
+        Modifier.fillMaxWidth().then(entrance),
         horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
     ) {
         Surface(

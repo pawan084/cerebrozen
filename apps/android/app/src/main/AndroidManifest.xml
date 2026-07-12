@@ -6,9 +6,13 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Local daily reminder notifications (no FCM; scheduled via AlarmManager). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Re-arm the daily reminder alarm after a reboot (alarms don't persist). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Background ambient audio as a foreground media service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- ExoPlayer setWakeMode() (keeps overnight narration/streams alive under Doze). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Tactile feedback (calm haptics on presses, check-ins, celebrations). -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Optional last-night sleep prefill from Health Connect (read-only). -->
@@ -32,7 +36,7 @@
         android:theme="@style/Theme.CereBro">
 
         <activity
-            android:name="com.cerebrozen.app.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CereBro">
@@ -47,16 +51,25 @@
         </activity>
 
         <receiver
-            android:name="com.cerebrozen.app.notify.ReminderReceiver"
+            android:name=".notify.ReminderReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".notify.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <service
-            android:name="com.cerebrozen.app.audio.AmbientService"
+            android:name=".audio.AmbientService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
         <service
-            android:name="com.cerebrozen.app.audio.SoundscapeService"
+            android:name=".audio.SoundscapeService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
     </application>

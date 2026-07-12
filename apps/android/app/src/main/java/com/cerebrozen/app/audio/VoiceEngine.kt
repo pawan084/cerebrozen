@@ -37,12 +37,20 @@ class VoiceEngine(context: Context) {
     private val appContext = context.applicationContext
     private var recognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
+    private var ttsReady = false
+    /** A reply asked for before TTS finished initializing — spoken once ready. */
+    private var pending: Pair<String, () -> Unit>? = null
     private var onFinal: ((String) -> Unit)? = null
     private var onSpeechDone: (() -> Unit)? = null
 
     init {
         tts = TextToSpeech(appContext) { status ->
-            if (status == TextToSpeech.SUCCESS) tts?.language = Locale.getDefault()
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.getDefault()
+                ttsReady = true
+                // Replay a reply that arrived during the async init window.
+                pending?.let { (text, done) -> pending = null; speak(text, done) }
+            }
         }
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) { speaking = true }
@@ -86,8 +94,14 @@ class VoiceEngine(context: Context) {
      * so the caller can resume listening for a natural turn-taking loop. */
     fun speak(text: String, onDone: () -> Unit = {}) {
         if (text.isBlank()) return
+        // Called before onInit fired: queue it so the reply isn't dropped and the
+        // turn-taking callback still runs once TTS is ready.
+        if (!ttsReady) { pending = text to onDone; return }
         onSpeechDone = onDone
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "reply")
+        val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "reply")
+        // If the engine refuses the utterance, no progress callback will fire —
+        // resume the loop ourselves so the conversation doesn't stall.
+        if (result != TextToSpeech.SUCCESS) { onSpeechDone = null; onDone() }
     }
 
     fun dispose() {

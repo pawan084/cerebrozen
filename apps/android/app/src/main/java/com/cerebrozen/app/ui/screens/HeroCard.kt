@@ -34,13 +34,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.cerebrozen.app.ui.theme.ArtScrim
+import com.cerebrozen.app.ui.theme.ArtTextSoft
 import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Ink
-import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.PeriwinkleSoft
-import com.cerebrozen.app.ui.theme.TextSoft
 
 /** Curated calm imagery for the hero cards (the richer ref-design look). Each
  * degrades to a gradient if it can't load. */
@@ -48,7 +48,6 @@ object HeroImg {
     const val calm = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=900&q=70"     // misty mountains
     const val journal = "https://images.unsplash.com/photo-1517842645767-c639042777db?w=900&q=70"  // open notebook
     const val sleep = "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=900&q=70"     // night sky
-    const val mood = "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=900&q=70"      // soft light
 }
 
 /**
@@ -66,13 +65,16 @@ internal fun HeroCard(
     content: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(20.dp)
-    // Slow Ken Burns zoom on the artwork (steady under Reduce Motion).
+    // E4: Ken Burns whisper — the photo drifts 1.0 → 1.04 over ~14s and settles
+    // back, forever. Static under Reduce Motion (the transition never even runs).
     val reduceMotion = rememberReduceMotion()
-    val transition = rememberInfiniteTransition(label = "hero")
-    val zoom by transition.animateFloat(
-        1f, 1.08f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Reverse), label = "kenburns",
-    )
-    val imgScale = if (reduceMotion) 1f else zoom
+    val imgScale = if (reduceMotion) 1f else {
+        val transition = rememberInfiniteTransition(label = "hero")
+        val zoom by transition.animateFloat(
+            1f, 1.04f, infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Reverse), label = "kenburns",
+        )
+        zoom
+    }
     val base = Modifier
         .fillMaxWidth()
         .height(height)
@@ -93,10 +95,11 @@ internal fun HeroCard(
                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(imgScale),
             )
         }
-        // Scrim so text stays legible over any image.
+        // Scrim so text stays legible over any image — ArtScrim, not the themed
+        // Night token: the photo hero keeps its dark night art in both themes.
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Ink.copy(alpha = 0.13f), Night.copy(alpha = 0.88f))),
+                Brush.verticalGradient(listOf(Ink.copy(alpha = 0.13f), ArtScrim.copy(alpha = 0.88f))),
             ),
         )
         // Glossy diagonal sheen — a soft top-left highlight, like light on glass.
@@ -118,7 +121,7 @@ internal fun HeroCard(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             if (subtitle.isNotBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ArtTextSoft)
             }
             content?.invoke(this)
         }

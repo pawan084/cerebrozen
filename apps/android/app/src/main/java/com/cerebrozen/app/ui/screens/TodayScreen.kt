@@ -16,24 +16,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,26 +42,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Calendar
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
@@ -86,10 +82,10 @@ internal fun greetingFor(hour: Int): String = when (hour) {
 
 private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
 
-/** A gentle celebration line on milestone days (mirrors iOS streak
- * celebrations — calm, never punitive). */
+/** A gentle celebration line on milestone days — presence framing (REDESIGN
+ * §3.6): counts showing up, never chains or misses. Calm, never punitive. */
 internal fun milestoneLine(streak: Int): String? =
-    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak-day milestone — beautifully done" else null
+    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak days of showing up — beautifully done" else null
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -111,11 +107,73 @@ internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
 /** Plan-step symbol → the Android surface that runs it (same contract as the
  * Oracle widgetRoute + the web Home mapping). */
 internal fun planStepRoute(symbol: String): String? = when {
-    symbol.startsWith("wind") -> "games"
+    symbol.startsWith("wind") -> "toolkit"
     symbol.startsWith("moon") || symbol == "bell" -> "sounds"
     symbol == "book" || symbol == "brain" -> "journal"
     symbol == "mic" || symbol.startsWith("person") || symbol == "heart" -> "talk"
     else -> null
+}
+
+// ── Home banner slot (W9) ────────────────────────────────────────────────
+// At most ONE quiet banner under the greeting, by priority: offline truth →
+// morning sleep check-in → evening wind-down → program day strip.
+
+internal enum class HomeBanner { OFFLINE, SLEEP_CHECKIN, WIND_DOWN, PROGRAM, NONE }
+
+/** Pure priority resolver for the Home banner slot — no Android, no clock, so
+ * the whole decision (priority order, time windows, per-day dismissals) is
+ * unit-testable. [dismissed] carries the banner keys dismissed today
+ * ("sleep", "winddown"); offline always wins; the program strip is status,
+ * never dismissible. */
+internal fun homeBannerPriority(
+    offline: Boolean,
+    hour: Int,
+    lastNightLogged: Boolean,
+    dismissed: Set<String>,
+    enrolledInProgram: Boolean,
+): HomeBanner = when {
+    offline -> HomeBanner.OFFLINE
+    hour < 11 && !lastNightLogged && "sleep" !in dismissed -> HomeBanner.SLEEP_CHECKIN
+    hour >= 21 && "winddown" !in dismissed -> HomeBanner.WIND_DOWN
+    enrolledInProgram -> HomeBanner.PROGRAM
+    else -> HomeBanner.NONE
+}
+
+/** True when any sleep-log date covers "last night" — a log saved this morning
+ * carries today's date; one saved before midnight carries yesterday's. Pure. */
+internal fun hasLastNightLog(dates: List<String>, today: LocalDate): Boolean =
+    dates.any { raw ->
+        val d = runCatching { LocalDate.parse(raw) }.getOrNull()
+        d == today || d == today.minusDays(1)
+    }
+
+// E2's one-shot save bloom now lives in Common.kt as the shared [BloomRing]
+// (W10) — Home and Journal arm the same calm ring.
+
+/** E3: the presence card's 7-dot week ring — each dot fades/scales in with a
+ * one-shot 40ms stagger on first composition (instant under Reduce Motion).
+ * Extracted so the reduce-motion branch is testable off-device. */
+@Composable
+internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        week.forEachIndexed { i, (day, active) ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Box(
+                    Modifier
+                        .popIn(i)
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(if (active) Periwinkle else CardFill)
+                        .border(1.dp, if (active) Periwinkle else LineStroke, CircleShape)
+                        .testTag("presence-dot-$i"),
+                )
+                Text(day, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            }
+        }
+    }
 }
 
 /** Time-matched rail kind + heading (mirrors the iOS Home rails). */
@@ -168,25 +226,29 @@ private fun ContentRail(onOpen: (String) -> Unit) {
     }
 }
 
-/** Today: quick-access grid + live mood check-in + streak + recent check-ins. */
+/** Today, de-densified (REDESIGN §3.1): greeting → mood check-in → plan hero →
+ * one content rail → presence → recent check-ins. One quiet Toolkit row instead
+ * of a tile grid. */
 @Composable
 fun TodayScreen(onOpen: (String) -> Unit) {
     var userName by remember { mutableStateOf("") }
     var streak by remember { mutableIntStateOf(0) }
-    var best by remember { mutableIntStateOf(0) }
     var recent by remember { mutableStateOf(listOf<String>()) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     var picked by remember { mutableStateOf<MoodOption?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var moodCount by remember { mutableIntStateOf(0) }
     var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
     var goal by remember { mutableStateOf("") }
     var program by remember { mutableStateOf<JSONObject?>(null) }
+    // Optimistically true so the morning banner never flashes before data loads.
+    var lastNightLogged by remember { mutableStateOf(true) }
+    var bloom by remember { mutableIntStateOf(0) }        // E2: one-shot per successful check-in
+    var dismissTick by remember { mutableIntStateOf(0) }  // re-reads banner dismissals after prefPut
     val scope = rememberCoroutineScope()
 
     fun parseRecent(moods: JSONArray): List<String> =
-        (0 until minOf(moods.length(), 5)).map { i ->
+        (0 until minOf(moods.length(), 3)).map { i ->
             val m = moods.getJSONObject(i)
             "${m.getString("mood")} · ${m.getString("note")}"
         }
@@ -200,12 +262,20 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         runCatching {
             val s = Api.streak()
             streak = s.optInt("current")
-            best = s.optInt("best")
             week = parseWeek(s)
         }
-        runCatching { val m = Api.moods(); moodCount = m.length(); recent = parseRecent(m) }
+        runCatching { recent = parseRecent(Api.moods()) }
         runCatching { plan = Api.activePlan() }
         runCatching { program = Api.activeProgram() }
+        // One extra GET (cached like every read) so the morning banner knows
+        // whether last night is already logged — B2.
+        runCatching {
+            val logs = Api.sleepLogs()
+            lastNightLogged = hasLastNightLog(
+                (0 until logs.length()).map { logs.getJSONObject(it).optString("date") },
+                LocalDate.now(),
+            )
+        }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -254,8 +324,103 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        // Home leads with the goal-aware next action (mirrors iOS DailyFocus);
-        // tapping deep-links to the surface that runs the next undone step.
+        // The one quiet banner slot (W9): at most one, by honest priority.
+        val today = LocalDate.now().toString()
+        val dismissed = remember(dismissTick, today) {
+            buildSet {
+                if (Session.prefGet("sleepBannerDismissed") == today) add("sleep")
+                if (Session.prefGet("windDownBannerDismissed") == today) add("winddown")
+            }
+        }
+        when (
+            homeBannerPriority(
+                offline = Session.servedStale,
+                hour = LocalTime.now().hour,
+                lastNightLogged = lastNightLogged,
+                dismissed = dismissed,
+                enrolledInProgram = program != null,
+            )
+        ) {
+            HomeBanner.OFFLINE -> InfoBanner(
+                icon = Icons.Outlined.CloudOff,
+                text = "You're offline — showing your last copy.",
+            )
+            HomeBanner.SLEEP_CHECKIN -> InfoBanner(
+                icon = Icons.Outlined.LightMode,
+                text = "How was last night? A 20-second check-in.",
+                actionLabel = "Log it",
+                onAction = { onOpen("sleep") },
+                onDismiss = { Session.prefPut("sleepBannerDismissed", today); dismissTick++ },
+            )
+            HomeBanner.WIND_DOWN -> InfoBanner(
+                icon = Icons.Outlined.Bedtime,
+                text = "The day is winding down — a quieter mix, or tonight's wind-down guide?",
+                actionLabel = "Wind down",
+                onAction = { onOpen("sounds/mixer") },
+                onDismiss = { Session.prefPut("windDownBannerDismissed", today); dismissTick++ },
+            )
+            HomeBanner.PROGRAM -> program?.let { prog ->
+                // B4: the day strip is status, not a nudge — never dismissible.
+                InfoBanner(
+                    icon = Icons.Outlined.CalendarMonth,
+                    text = "Day ${prog.optInt("day")} of ${prog.optInt("days")} · ${prog.optString("title")}",
+                    actionLabel = "Open",
+                    onAction = { onOpen("programs") },
+                )
+            }
+            HomeBanner.NONE -> {}
+        }
+
+        // The primary daily action leads (REDESIGN §3.1): the 1-tap check-in.
+        Box {
+        SectionCard {
+            Text("How are you, really?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text("A 20-second check-in shapes today's plan.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // E7: the mood chips rise in with the shared staggered entrance.
+                MOODS.forEachIndexed { i, mood ->
+                    Box(Modifier.appear(i, rise = 10f)) {
+                        PickChip(selected = picked == mood, label = mood.name) { picked = mood }
+                    }
+                }
+            }
+            PrimaryButton(
+                text = if (busy) "One moment…" else "Check in",
+                enabled = picked != null && !busy,
+            ) {
+                val mood = picked ?: return@PrimaryButton
+                busy = true; status = null
+                scope.launch {
+                    try {
+                        Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
+                        // E2: a small inline bloom + the success pulse — a calm
+                        // daily reward, not the full-screen celebration.
+                        Haptics.success()
+                        if (!reduceMotion) bloom++
+                        status = "Checked in — noted gently."
+                        picked = null
+                        reload()
+                    } catch (e: Exception) {
+                        status = e.message ?: "Couldn't check in."
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
+            // The confirmation eases in rather than popping — a small, calm reward.
+            AnimatedVisibility(visible = status != null) {
+                Text(status.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
+        }
+        // E2: the one-shot bloom rides over the card; Reduce Motion never arms it.
+        if (bloom > 0) BloomRing(bloom, Accent.home, Modifier.matchParentSize())
+        }
+
+        // The goal-aware next action (mirrors iOS DailyFocus); tapping
+        // deep-links to the full plan.
         plan?.let { p ->
             val steps = p.optJSONArray("steps")
             val total = steps?.length() ?: 0
@@ -274,122 +439,40 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     if (next != null) append("Next: ${next.optString("title")}")
                     if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
                 }
-                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                // This sits on the hero's constant-dark photo scrim, so use the art-text
+                // constant — themed TextSoft resolves to ink on Dawn and vanishes here.
+                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = com.cerebrozen.app.ui.theme.ArtTextSoft)
             }
         }
 
-        // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
-        program?.let { prog ->
-            SectionCard(onClick = { onOpen("programs") }) {
-                Text("PROGRAM · DAY ${prog.optInt("day")} OF ${prog.optInt("days")}",
-                    style = MaterialTheme.typography.labelSmall, color = Cyan)
-                Text(prog.optString("title"), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                LinearProgressIndicator(
-                    progress = {
-                        (prog.optInt("day").toFloat() / prog.optInt("days").coerceAtLeast(1)).coerceIn(0f, 1f)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Periwinkle,
-                    trackColor = CardFill,
-                )
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            QuickTile("Games", Icons.Outlined.SportsEsports, "games", onOpen, Modifier.weight(1f), Periwinkle, index = 0)
-            QuickTile("Insights", Icons.Outlined.Insights, "insights", onOpen, Modifier.weight(1f), Cyan, index = 1)
-            QuickTile("Programs", Icons.Outlined.CalendarMonth, "programs", onOpen, Modifier.weight(1f), Warm, index = 2)
-            QuickTile("Sounds", Icons.Outlined.GraphicEq, "sounds", onOpen, Modifier.weight(1f), Iris, index = 3)
-        }
-
-        SectionCard {
-            Text("How are you, really?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text("A 20-second check-in shapes today's plan.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MOODS.forEach { mood ->
-                    PickChip(selected = picked == mood, label = mood.name) { picked = mood }
-                }
-            }
-            PrimaryButton(
-                text = if (busy) "One moment…" else "Check in",
-                enabled = picked != null && !busy,
-            ) {
-                val mood = picked ?: return@PrimaryButton
-                busy = true; status = null
-                scope.launch {
-                    try {
-                        Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                        Celebrations.trigger()
-                        status = "Checked in — noted gently."
-                        picked = null
-                        reload()
-                    } catch (e: Exception) {
-                        status = e.message ?: "Couldn't check in."
-                    } finally {
-                        busy = false
-                    }
-                }
-            }
-            // The confirmation eases in rather than popping — a small, calm reward.
-            AnimatedVisibility(visible = status != null) {
-                Text(status.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            }
-        }
+        // An active journey now lives in the banner slot under the greeting
+        // (W9 B4) — the full surface stays in `programs`.
 
         // Time-matched content rail (mirrors the iOS Home rails).
         ContentRail(onOpen)
 
-        NavRow("Tools", "Small resets & reframes — 2 minutes each") { onOpen("tools") }
+        NavRow("Toolkit", "Small practices for right now") { onOpen("toolkit") }
 
-        // Morning sleep check-in nudge (mirrors the iOS Home sleep row).
-        if (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) < 12) {
-            NavRow("How was last night?", "A 20-second sleep check-in") { onOpen("sleep") }
-        }
-
+        // Presence (REDESIGN §3.6): count the days you showed up, never the
+        // days you didn't. The ring fills; it never breaks or resets.
         SectionCard {
+            val daysPresent = week.count { it.second }
             Text(
-                if (streak > 0) "$streak-day streak" else "Your streak starts today",
+                if (daysPresent > 0 || streak > 0) "You showed up" else "Whenever you're ready",
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
             )
             milestoneLine(streak)?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
             }
             Text(
-                if (best > 0) "Best: $best days · show up once a day, no pressure."
-                else "Show up once a day — gentle, no pressure.",
+                if (daysPresent > 0)
+                    "$daysPresent ${if (daysPresent == 1) "day" else "days"} this week — once a day is plenty."
+                else "One small check-in counts as showing up — gentle, no pressure.",
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
-            // 7-dot week ring (server streak week; today is the last dot).
-            if (week.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    week.forEachIndexed { i, (day, active) ->
-                        Column(
-                            Modifier.appear(i, rise = 8f),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Box(
-                                Modifier.size(14.dp).clip(CircleShape)
-                                    .background(if (active) Periwinkle else CardFill)
-                                    .border(1.dp, if (active) Periwinkle else LineStroke, CircleShape),
-                            )
-                            Text(day, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Contextual baseline (mirrors iOS): offered once a few REAL check-ins
-        // exist and only until it's saved — deliberately not an onboarding step.
-        if (moodCount >= 3 && BaselineStore.get() == null) {
-            NavRow(
-                "Your starting point",
-                "Two quick scales — see real change later",
-            ) { onOpen("baseline") }
+            // 7-dot week ring — fills for days present; today is the last dot.
+            // E3: dots fill with a one-shot 40ms stagger (instant under Reduce Motion).
+            if (week.isNotEmpty()) PresenceWeekRing(week)
         }
 
         if (recent.isNotEmpty()) {
@@ -406,41 +489,5 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     if (showTour) {
         GuidedTourOverlay(onDone = { showTour = false })
     }
-    }
-}
-
-@Composable
-private fun QuickTile(
-    label: String,
-    icon: ImageVector,
-    route: String,
-    onOpen: (String) -> Unit,
-    modifier: Modifier,
-    accent: Color,
-    index: Int = 0,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Column(
-        modifier
-            .appear(index)
-            .pressScale(pressed)
-            .glass(RoundedCornerShape(16.dp))
-            .clickable(interactionSource = interaction, indication = null) { onOpen(route) }
-            .padding(vertical = 14.dp, horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Gradient icon chip — a small tinted well behind each glyph (fork look),
-        // one accent hue per tile.
-        Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(12.dp))
-                .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.14f))))
-                .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
-        }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextSoft, textAlign = TextAlign.Center)
     }
 }

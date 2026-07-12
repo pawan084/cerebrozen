@@ -39,12 +39,10 @@ object Analytics {
  * (backend services/metrics.ONBOARDING_STEPS; mirrors iOS/web step names). */
 internal fun funnelStepName(step: String): String = when (step) {
     "Welcome" -> "welcome"
-    "Age" -> "age_gate"
-    "Disclosure" -> "disclosure"
+    "Disclosure" -> "disclosure"  // merged step: age gate + honesty disclosure
     "Language" -> "language"
     "State" -> "state_check"
     "Reset" -> "first_reset"
-    "Plan" -> "first_plan"
     "Consent" -> "consent"
     "Notify" -> "notifications"
     "SignUp" -> "signup"

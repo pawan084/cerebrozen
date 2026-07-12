@@ -12,6 +12,11 @@ import androidx.compose.runtime.setValue
  * it publishes state back here so any Compose screen can reflect what's playing.
  * Titles with server-generated narration (registered in [MediaUrls]) stream
  * their own audio; everything else plays the bundled ambient bed.
+ *
+ * Exclusivity: starting one engine stops the other (REDESIGN §3.4) — [play]
+ * stops a running [SoundscapeMixer] first, and the mixer's play does the same
+ * to this player. [stop] never counter-calls the other engine, so the pair
+ * can't loop.
  */
 object Player {
     var nowPlaying by mutableStateOf<String?>(null)
@@ -39,6 +44,9 @@ object Player {
 
     fun setVolume(context: Context, v: Float) {
         volume = v
+        // Nothing playing → just remember the level; don't start an idle service
+        // that has no player to control (it would sit around doing nothing).
+        if (nowPlaying == null) return
         context.startService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_VOLUME)
@@ -49,12 +57,13 @@ object Player {
     /** Off → 15 → 30 → 45 → 60 → off (same steps as the iOS sleep player). */
     fun cycleTimer(context: Context) {
         val next = when (timerMinutes) { 0 -> 15; 15 -> 30; 30 -> 45; 45 -> 60; else -> 0 }
+        timerMinutes = next   // optimistic; the service confirms via setTimerState
+        if (nowPlaying == null) return   // no session to arm a timer against
         context.startService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_TIMER)
                 .putExtra(AmbientService.EXTRA_MINUTES, next),
         )
-        timerMinutes = next   // optimistic; the service confirms via setTimerState
     }
 
     fun toggle(context: Context, title: String) {
@@ -62,6 +71,9 @@ object Player {
     }
 
     fun play(context: Context, title: String) {
+        // Exactly one audio engine at a time (REDESIGN §3.4): a running mixer
+        // yields to the bed. Its stop() has no counter-call, so this can't loop.
+        if (SoundscapeMixer.isPlaying) SoundscapeMixer.stop(context)
         context.startForegroundService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_PLAY)
@@ -76,10 +88,13 @@ object Player {
 
     fun stop(context: Context) {
         context.startService(Intent(context, AmbientService::class.java).setAction(AmbientService.ACTION_STOP))
+        nowPlaying = null   // optimistic; the service confirms via setState
+        isPlaying = false
     }
 
     /** Duck the bed under the voice companion while it speaks, then restore. */
     fun duck(context: Context, ducked: Boolean) {
+        if (nowPlaying == null) return   // no bed playing → nothing to duck
         context.startService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_DUCK)

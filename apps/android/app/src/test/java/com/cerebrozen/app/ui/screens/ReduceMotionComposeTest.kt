@@ -4,15 +4,22 @@ import android.content.Context
 import android.provider.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,6 +60,57 @@ class ReduceMotionComposeTest {
         setAnimatorScale(1f)
         compose.setContent { Probe() }
         compose.onNodeWithTag("probe").assertTextEquals("full")
+    }
+
+    @Test
+    fun breatheEngine_under_reduce_motion_still_shows_phase_and_count() {
+        setAnimatorScale(0f)
+        compose.setContent { BreatheEngine(BreathePreset.Reset) }
+        // The orb holds still, but the guidance stays: phase label + count render.
+        compose.onNodeWithText("Breathe in").assertExists()
+        compose.onNodeWithText("4").assertExists()
+    }
+
+    @Test
+    fun presenceWeekRing_under_reduce_motion_renders_every_dot_immediately() {
+        setAnimatorScale(0f)
+        val week = listOf("S", "M", "T", "W", "T", "F", "S").mapIndexed { i, d -> d to (i % 2 == 0) }
+        compose.setContent { PresenceWeekRing(week) }
+        // The staggered fill is skipped: all 7 dots are present at rest without
+        // advancing any animation clock (static render, never blank).
+        (0..6).forEach { compose.onNodeWithTag("presence-dot-$it").assertExists() }
+        compose.onNodeWithText("W").assertExists()   // day letters render too
+    }
+
+    @Test
+    fun infoBanner_renders_statically_and_dismiss_is_labelled() {
+        setAnimatorScale(0f)
+        var dismissed = false
+        compose.setContent {
+            InfoBanner(
+                icon = Icons.Outlined.CloudOff,
+                text = "You're offline — showing your last copy.",
+                onDismiss = { dismissed = true },
+            )
+        }
+        compose.onNodeWithText("You're offline — showing your last copy.").assertExists()
+        compose.onNodeWithContentDescription("Dismiss").performClick()
+        assertTrue("the labelled dismiss target must invoke the callback", dismissed)
+    }
+
+    @Test
+    fun nightsChart_under_reduce_motion_renders_full_height_bars_statically() {
+        setAnimatorScale(0f)
+        // Equal durations → every bar's fraction is 1.0 of the 120dp chart row.
+        val nights = listOf(
+            Night("2026-07-10", 480, 4),
+            Night("2026-07-09", 480, 3),
+        )
+        compose.setContent { NightsChart(nights) }
+        // W10: the grow-in is skipped — bars sit at full height on the first
+        // frame, without advancing any animation clock (static, never blank).
+        compose.onNodeWithTag("night-bar-0").assertHeightIsEqualTo(120.dp)
+        compose.onNodeWithTag("night-bar-1").assertHeightIsEqualTo(120.dp)
     }
 
     @Test

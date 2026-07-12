@@ -11,10 +11,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Diversity3
-import androidx.compose.material.icons.outlined.Emergency
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,7 +45,9 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 
 /** You: the iOS ProfileView hub — a profile header + nav-row settings list
  * routing to sub-screens, then legal/account actions and sign out. */
@@ -84,14 +88,33 @@ fun YouScreen(onOpen: (String) -> Unit) {
             }
         }
 
+        // The persistent Support door (REDESIGN §2.3): calm, visually distinct,
+        // and always two taps from anywhere — never a scare button.
+        SectionCard(onClick = { onOpen("crisis") }) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.HealthAndSafety, contentDescription = null,
+                    tint = Warm, modifier = Modifier.size(24.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Support, any time", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text("Tele-MANAS 14416 · real people, 24/7",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+                Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
+            }
+        }
+
         NavRow("Companion style", "${companion.ifBlank { "Calm Guide" }} · how CereBro talks with you",
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
+        NavRow("Appearance", "Night, dawn, or match your system", icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
         NavRow("Daily reminder", "Gentle daily check-in", icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
         NavRow("Weekly insights", "Your progress and patterns", icon = Icons.Outlined.Insights) { onOpen("insights") }
         NavRow("Privacy & memory", "Control what CereBro remembers", icon = Icons.Outlined.Lock) { onOpen("privacy") }
         NavRow("Pattern dashboard", "What the AI has learned · delete anytime", icon = Icons.Outlined.Psychology) { onOpen("patterns") }
         NavRow("Premium plan", "Unlock the full library", icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
-        NavRow("Urgent support", "Emergency resources", icon = Icons.Outlined.Emergency) { onOpen("crisis") }
         NavRow("Crisis region", "Which helplines to show", icon = Icons.Outlined.Public) { onOpen("crisisregion") }
         NavRow("Human support", "Coach or therapist handoff", icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 

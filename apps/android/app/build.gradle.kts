@@ -41,11 +41,11 @@ val googleWebClientId = secret("googleWebClientId")
     .ifBlank { googleServicesWebClientId() }
 
 android {
-    namespace = "com.cerebro.app"
+    namespace = "com.cerebrozen.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cerebro.app"
+        applicationId = "com.cerebrozen.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -120,11 +120,11 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     // Journal lock (screen-lock/biometric gate — mirrors iOS Face ID lock).
     implementation("androidx.biometric:biometric:1.1.0")
+    // Encrypted-at-rest storage for the refresh token + offline response cache.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // Layered soundscape mixer — gapless looping per ambient layer (parity with
     // the iOS AVAudioEngine SoundscapePlayer). ExoPlayer loops each track seamlessly.
     implementation("androidx.media3:media3-exoplayer:1.4.1")
-    // Real backdrop blur for the frosted-glass cards over the aurora (API 31+).
-    implementation("dev.chrisbanes.haze:haze:1.2.1")
     // Health Connect — optional last-night sleep prefill (Android's HealthKit analogue).
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
     debugImplementation(libs.androidx.ui.tooling)

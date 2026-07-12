@@ -12,12 +12,14 @@ import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player as Media3Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.cerebrozen.app.MainActivity
-import com.cerebro.app.R
+import com.cerebrozen.app.R
 
 /**
  * Plays the looping ambient bed as a foreground service with a MediaStyle
@@ -107,6 +109,17 @@ class AmbientService : Service() {
     }
 
     private fun play(url: String = currentSrc) {
+        // startForegroundService() was used to reach here, so we MUST call
+        // startForeground() within ~5s or the OS kills us with
+        // ForegroundServiceDidNotStartInTimeException. Satisfy that contract FIRST,
+        // before any player construction that could throw or return null.
+        Player.setState(title, true)
+        updateSession(true)
+        ServiceCompat.startForeground(
+            this, NOTIF, buildNotification(true),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+        )
+
         if (mp != null && url != currentSrc) { mp?.release(); mp = null }
         if (mp == null) {
             currentSrc = url
@@ -114,23 +127,25 @@ class AmbientService : Service() {
         }
         val player = mp
         if (player == null) {
-            // Source creation failed outright — don't advertise a phantom session.
+            // Source creation failed — we're already foreground, so tear down cleanly.
             stopAll()
             return
         }
         player.volume = volume * duckFactor
         player.playWhenReady = true   // ExoPlayer starts once prepared
-        Player.setState(title, true)
-        updateSession(true)
-        ServiceCompat.startForeground(
-            this, NOTIF, buildNotification(true),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-        )
     }
+
+    /** Media focus + auto-pause on headphone unplug — applied to every player so
+     * CereBro ducks for calls/other apps and doesn't blast through the speaker. */
+    private val audioAttrs = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
     /** The bundled bed, looped gaplessly via REPEAT_MODE_ONE. */
     private fun createBed(): ExoPlayer? = runCatching {
         ExoPlayer.Builder(this).build().apply {
+            setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
+            setHandleAudioBecomingNoisy(true)
+            setWakeMode(C.WAKE_MODE_LOCAL)
             setMediaItem(MediaItem.fromUri("android.resource://$packageName/${R.raw.ambient_bed}"))
             repeatMode = Media3Player.REPEAT_MODE_ONE
             volume = this@AmbientService.volume
@@ -141,11 +156,18 @@ class AmbientService : Service() {
     /** Stream a narrated track over HTTP(S); any failure falls back to the bed. */
     private fun createStream(url: String): ExoPlayer? = runCatching {
         ExoPlayer.Builder(this).build().apply {
+            setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
+            setHandleAudioBecomingNoisy(true)
+            setWakeMode(C.WAKE_MODE_NETWORK)   // hold a wifi+wake lock for long narration
             setMediaItem(MediaItem.fromUri(url))
             repeatMode = Media3Player.REPEAT_MODE_OFF   // narration ends; never loops
             volume = this@AmbientService.volume
             addListener(object : Media3Player.Listener {
-                override fun onPlayerError(error: PlaybackException) = fallBackToBed()
+                // Don't release the player synchronously from inside its own error
+                // callback (re-entrant) — hop to the main handler first.
+                override fun onPlayerError(error: PlaybackException) {
+                    timerHandler.post { fallBackToBed() }
+                }
                 override fun onPlaybackStateChanged(state: Int) {
                     if (state == Media3Player.STATE_ENDED) stopAll()
                 }

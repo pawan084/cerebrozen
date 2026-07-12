@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.cerebro.app.R
+import com.cerebrozen.app.R
 
 /**
  * Controller + Compose-observable state for the layered soundscape. The actual
@@ -14,6 +14,10 @@ import com.cerebro.app.R
  * going with the screen locked / overnight); this object sends it intents and
  * mirrors the state the service publishes back. Layer/master volumes update
  * optimistically here so the sliders stay smooth.
+ *
+ * Exclusivity: starting one engine stops the other (REDESIGN §3.4) — [play]
+ * stops a playing [Player] first, and the player's play does the same to this
+ * mixer. [stop] never counter-calls the other engine, so the pair can't loop.
  */
 object SoundscapeMixer {
     /** One blendable ambient layer: display name, bundled loop, and a symbol key. */
@@ -55,6 +59,9 @@ object SoundscapeMixer {
     fun toggle(context: Context) { if (isPlaying) pause(context) else play(context) }
 
     fun play(context: Context) {
+        // Exactly one audio engine at a time (REDESIGN §3.4): a playing ambient
+        // bed yields to the mixer. Its stop() has no counter-call — no loop.
+        if (Player.isPlaying) Player.stop(context)
         context.startForegroundService(
             intent(context, SoundscapeService.ACTION_PLAY)
                 .putExtra(SoundscapeService.EXTRA_VOLUMES, volumes.toFloatArray())

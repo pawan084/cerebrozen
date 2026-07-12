@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +29,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,18 +37,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
@@ -62,6 +64,10 @@ private val PROMPTS = listOf(
  * persisted with the entry (appended to the saved body via [Api.createJournal]),
  * so nothing here is decorative — it becomes part of the real, searchable record. */
 private val MOODS = listOf("Calm", "Anxious", "Hopeful", "Tired", "Sad", "Grateful")
+
+/** Quick-entry prompts in the composer — the descendants of the retired
+ * one-good-thing / intention tool screens (REDESIGN §2.2). */
+private val QUICK_PROMPTS = listOf("One good thing", "Tonight's intention")
 
 /** The journal's information architecture (mirrors the redesign): a hub plus three
  * pushed sub-screens for writing, reviewing history, and privacy. */
@@ -80,29 +86,8 @@ internal fun parseEntries(rows: JSONArray): List<Entry> =
         )
     }
 
-/** Authenticate with any screen lock (biometric or PIN/pattern). No lock set
- * up → unlock gracefully, mirroring iOS (emulators/tests never get stuck). */
-private fun requestJournalUnlock(activity: FragmentActivity?, onResult: (Boolean) -> Unit) {
-    if (activity == null) { onResult(true); return }
-    val auths = BiometricManager.Authenticators.BIOMETRIC_WEAK or
-        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-    if (BiometricManager.from(activity).canAuthenticate(auths) != BiometricManager.BIOMETRIC_SUCCESS) {
-        onResult(true); return
-    }
-    BiometricPrompt(
-        activity, ContextCompat.getMainExecutor(activity),
-        object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onResult(true)
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onResult(false)
-        },
-    ).authenticate(
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock journal")
-            .setSubtitle("Private entries stay behind your screen lock")
-            .setAllowedAuthenticators(auths)
-            .build(),
-    )
-}
+// The device-credential gate (requestScreenLock) is shared with Settings via
+// BiometricGate.kt so unlocking here and toggling the lock in Settings can't drift.
 
 /** Case-insensitive title/body filter (mirrors iOS journal search). */
 internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
@@ -116,16 +101,25 @@ internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
  * multi-mode hub (Home / Entry / History / Private) on our design system. */
 @Composable
 fun JournalScreen() {
-    var title by remember { mutableStateOf("") }
-    var body by remember { mutableStateOf("") }
+    // Draft survives rotation / tab switch / process death — this is the user's
+    // own writing, so losing it silently is the worst thing this screen can do.
+    var title by rememberSaveable { mutableStateOf("") }
+    var body by rememberSaveable { mutableStateOf("") }
     var entries by remember { mutableStateOf(listOf<Entry>()) }
     var showSupport by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var promptIdx by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
-    var mood by remember { mutableStateOf<String?>(null) }
+    var mood by rememberSaveable { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(JournalMode.Home) }
+    // W10: one-shot bloom per saved entry (Reduce Motion never arms it), and the
+    // draft-safe banner — captured at FIRST composition, so it's true only when
+    // the fields arrived restored (rotation / process death), never after typing.
+    var bloom by remember { mutableIntStateOf(0) }
+    val restoredDraft = remember { title.isNotBlank() || body.isNotBlank() }
+    var draftBannerDismissed by remember { mutableStateOf(false) }
+    val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
     // Journal lock (mirrors iOS Face ID lock): opt-in via Private mode; unlocks
     // per visit. Devices without any screen lock unlock gracefully so
@@ -144,7 +138,7 @@ fun JournalScreen() {
                 Text("Your entries stay behind your screen lock.",
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 PrimaryButton(text = "Unlock", modifier = Modifier.fillMaxWidth()) {
-                    requestJournalUnlock(activity) { ok -> if (ok) unlocked = true }
+                    requestScreenLock(activity) { ok -> if (ok) unlocked = true }
                 }
             }
         }
@@ -163,8 +157,28 @@ fun JournalScreen() {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) { Text("Try another", color = Cyan) }
                 }
+                // W10: a small honest reassurance when the composer opens with a
+                // restored draft — dismissible, plain state, never persisted.
+                if (restoredDraft && !draftBannerDismissed && (title.isNotBlank() || body.isNotBlank())) {
+                    InfoBanner(
+                        icon = Icons.Outlined.Save,
+                        text = "Your draft is safe — it survived the restart.",
+                        onDismiss = { draftBannerDismissed = true },
+                    )
+                }
+                Box {
                 SectionCard {
                     Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    // Quick entries (REDESIGN §2.2): the old one-field tools live on
+                    // as prompt chips — tapping prefills the title, and only ever
+                    // replaces a blank title or the other prompt, never your words.
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        QUICK_PROMPTS.forEach { prompt ->
+                            PickChip(selected = title == prompt, label = prompt) {
+                                if (title.isBlank() || title in QUICK_PROMPTS) title = prompt
+                            }
+                        }
+                    }
                     AppTextField(title, { title = it }, "Title", singleLine = true)
                     AppTextField(body, { body = it }, "What's on your mind?", minLines = 3)
                     Text("How are you feeling? (optional)",
@@ -193,8 +207,15 @@ fun JournalScreen() {
                                 val saved = Api.createJournal(title.trim(), entryBody)
                                 showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
                                 title = ""; body = ""; mood = null
+                                draftBannerDismissed = true   // the draft became an entry
                                 status = "Saved — private to you."
+                                // W10: the success pulse + a small bloom over the
+                                // composer (same calm reward as the Home check-in),
+                                // then home. Reduce Motion skips straight there —
+                                // the status line is the state change.
+                                Haptics.success()
                                 runCatching { entries = parseEntries(Api.journal()) }
+                                if (!reduceMotion) { bloom++; delay(650) }
                                 mode = JournalMode.Home
                             } catch (e: Exception) {
                                 status = e.message ?: "Couldn't save."
@@ -204,6 +225,10 @@ fun JournalScreen() {
                         }
                     }
                     status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+                }
+                // W10: the one-shot bloom rides over the composer card; Reduce
+                // Motion never arms it (bloom stays 0).
+                if (bloom > 0) BloomRing(bloom, Accent.journal, Modifier.matchParentSize())
                 }
             }
             return
@@ -253,10 +278,16 @@ fun JournalScreen() {
                             }
                         }
                         // Real toggle: wired to the same journal_locked pref the unlock
-                        // flow reads. Takes effect on the next visit.
-                        AppSwitch(checked = journalLocked, onCheckedChange = {
-                            journalLocked = it
-                            Session.prefPut("journal_locked", it.toString())
+                        // flow reads. Gated behind the device credential in BOTH
+                        // directions — same as the Settings path — so an already-open
+                        // session can't silently disable the lock without authenticating.
+                        AppSwitch(checked = journalLocked, onCheckedChange = { v ->
+                            requestScreenLock(activity) { ok ->
+                                if (ok) {
+                                    journalLocked = v
+                                    Session.prefPut("journal_locked", v.toString())
+                                }
+                            }
                         })
                     }
                 }

@@ -1,142 +1,50 @@
 package com.cerebrozen.app.ui.screens
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.SelfImprovement
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.cerebro.app.R
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Ink
-import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Native tools (iOS ToolsViews + MicroActivities parity): CBT reframe,
-// one good thing, intention set, DBT TIPP. Written work mirrors to the
-// journal so it feeds reflections/insights like iOS.
+// Native tools (iOS ToolsViews + MicroActivities parity): the journaling
+// breathing practice, CBT reframe, and DBT TIPP. Written work mirrors to the
+// journal so it feeds reflections/insights like iOS. The Tools hub itself
+// merged into ToolkitScreen (REDESIGN §2.2); the one-field tools (one good
+// thing, intention) became Journal quick-entry chips.
 
-@Composable
-fun ToolsScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small resets", "Tools", onBack) {
-    Text("Two-minute practices for the moment you're in.",
-        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-    NavRow("A minute to breathe", "Follow the orb — in for four, out for four", icon = Icons.Outlined.Air) { onOpen("breathing") }
-    NavRow("Untangle a thought", "CBT reframe — from stuck to balanced", icon = Icons.Outlined.Psychology) { onOpen("cbt") }
-    NavRow("One good thing", "Name something that went right", icon = Icons.Outlined.Star) { onOpen("onegoodthing") }
-    NavRow("Tomorrow's intention", "Set one clear point for tomorrow", icon = Icons.Outlined.WbTwilight) { onOpen("intention") }
-    NavRow("TIPP skill", "DBT reset for very intense moments", icon = Icons.Outlined.SelfImprovement) { onOpen("tipp") }
-}
-
-/** A one-minute paced-breathing exercise: a slow-pulsing orb counts you through
- * in / hold / out / hold, and you can save the practice to your journal. The orb
- * pulse honours Reduce Motion (holds a steady size), mirroring the calm-motion
- * policy elsewhere. */
+/** A guided breathing practice you can save to your journal. The pacing orb is
+ * the shared [BreatheEngine] (Box preset) — this screen adds the ambience bed
+ * and the reflection save on top. */
 @Composable
 fun BreathingScreen(onBack: () -> Unit) {
-    var elapsed by remember { mutableIntStateOf(0) }
     var saved by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val totalSeconds = 120
-    val phases = listOf("Breathe in", "Hold", "Breathe out", "Hold")
-    val phaseIndex = (elapsed / 4) % phases.size
-    val phase = phases[phaseIndex]
-    val count = 4 - (elapsed % 4)
-
-    val reduceMotion = rememberReduceMotion()
-    // The orb is driven BY the phase, not a free-running timer: it expands over the
-    // inhale, holds full, contracts over the exhale, holds empty — so the motion
-    // actually matches the "Breathe in / Hold / Breathe out" label.
-    val target = when (phaseIndex) { 0, 1 -> 1.14f; else -> 0.84f }
-    val orbScale by animateFloatAsState(
-        targetValue = if (reduceMotion) 1f else target,
-        animationSpec = tween(3800, easing = FastOutSlowInEasing),
-        label = "breathing-orb-scale",
-    )
-    // A gentle haptic on each phase change — a rhythm cue you can follow with eyes
-    // closed. Firmer on the active breaths, softer on the holds.
-    LaunchedEffect(phaseIndex) {
-        com.cerebrozen.app.ui.Haptics.soft(if (phaseIndex == 0 || phaseIndex == 2) 0.5f else 0.3f)
-    }
-
-    LaunchedEffect(Unit) {
-        while (elapsed < totalSeconds) {
-            delay(1000)
-            elapsed += 1
-        }
-    }
 
     SubPage("A minute to breathe", "Breathing", onBack) {
         ToolAmbienceEffect(R.raw.drone)
         Text("Follow the orb — in for four, hold, out for four.",
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AmbienceToggle()
-        Text(
-            phase,
-            style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(Modifier.fillMaxWidth().height(236.dp), contentAlignment = Alignment.Center) {
-            repeat(3) { index ->
-                Box(
-                    Modifier
-                        .size((118 + index * 56).dp)
-                        .clip(CircleShape)
-                        .border(1.dp, LineStroke, CircleShape),
-                )
-            }
-            Box(
-                Modifier
-                    .size(144.dp)
-                    .scale(orbScale)
-                    .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(Color.White, Cyan))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = Ink)
-            }
-        }
+        BreatheEngine(BreathePreset.Box, Modifier.fillMaxWidth())
         SectionCard(
             onClick = {
                 if (!saved) {
@@ -155,6 +63,10 @@ fun BreathingScreen(onBack: () -> Unit) {
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         PrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth()) { onBack() }
+        WhyThisWorks(
+            "Paced breathing is used in clinical distress-tolerance and relaxation protocols. " +
+                "Slowing the breath activates the body's calming response.",
+        )
     }
 }
 
@@ -168,6 +80,7 @@ private fun JournalingTool(
     onBack: () -> Unit,
     compose: (List<String>) -> String,
     fields: List<Pair<String, String>>,   // label → placeholder-ish hint
+    provenance: String? = null,           // "why this works" footer (REDESIGN §2.4)
 ) {
     val values = remember { mutableStateOf(List(fields.size) { "" }) }
     var saved by remember { mutableStateOf(false) }
@@ -200,6 +113,7 @@ private fun JournalingTool(
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        provenance?.let { WhyThisWorks(it) }
     }
 }
 
@@ -219,28 +133,8 @@ fun CbtReframeScreen(onBack: () -> Unit) = JournalingTool(
         "Evidence it's not the whole story" to "",
         "A more balanced thought" to "",
     ),
-)
-
-@Composable
-fun OneGoodThingScreen(onBack: () -> Unit) = JournalingTool(
-    eyebrow = "One good thing",
-    title = "Name a small win",
-    intro = "Anything counts — a kind word, a finished task, a decent cup of tea. Naming it makes it stick.",
-    journalTitle = "One good thing",
-    onBack = onBack,
-    compose = { v -> "One good thing today: ${v[0]}" },
-    fields = listOf("What went right?" to ""),
-)
-
-@Composable
-fun IntentionScreen(onBack: () -> Unit) = JournalingTool(
-    eyebrow = "Tomorrow's intention",
-    title = "One clear point",
-    intro = "Not a to-do list — one thing that would make tomorrow feel steadier.",
-    journalTitle = "Intention",
-    onBack = onBack,
-    compose = { v -> "Tomorrow I will: ${v[0]}" },
-    fields = listOf("Tomorrow I will…" to ""),
+    provenance = "Reframing is a core cognitive-behavioural (CBT) technique — the approach " +
+        "with the strongest evidence among app-delivered tools (Linardon et al. 2024, World Psychiatry).",
 )
 
 /** DBT TIPP — a guided walkthrough, no data collected. */
@@ -275,5 +169,9 @@ fun TippScreen(onBack: () -> Unit) {
         }
         Text("If the urge to hurt yourself is present, please also reach out — Urgent support lives in the You tab.",
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        WhyThisWorks(
+            "TIPP comes from dialectical behaviour therapy (DBT) — skills clinicians teach " +
+                "for riding out intense moments.",
+        )
     }
 }

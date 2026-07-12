@@ -6,15 +6,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +39,10 @@ import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.ThemeMode
+import com.cerebrozen.app.ui.theme.prefValue
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -54,34 +55,8 @@ import org.json.JSONObject
 
 // Consent keys + localized labels/hints live in ConsentNotice.kt
 // (CONSENT_KEY_ORDER — the DPDP notice contract shared with iOS/web).
-
-/** Confirm the user's device credential (PIN/password/pattern or biometrics)
- * before toggling the journal lock — in *either* direction, since unlocking is
- * the sensitive one. Falls through to success when no secure lock is set up (so
- * the toggle never becomes unusable), mirroring the iOS Face ID gate. */
-private fun requestScreenLock(activity: FragmentActivity?, onResult: (Boolean) -> Unit) {
-    if (activity == null) { onResult(true); return }
-    val auths = BiometricManager.Authenticators.BIOMETRIC_WEAK or
-        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-    if (BiometricManager.from(activity).canAuthenticate(auths) != BiometricManager.BIOMETRIC_SUCCESS) {
-        onResult(true)
-        return
-    }
-    BiometricPrompt(
-        activity,
-        ContextCompat.getMainExecutor(activity),
-        object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onResult(true)
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = onResult(false)
-        },
-    ).authenticate(
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Confirm screen lock")
-            .setSubtitle("Use your phone PIN, password, pattern, or biometrics")
-            .setAllowedAuthenticators(auths)
-            .build(),
-    )
-}
+// The device-credential gate (requestScreenLock) lives in BiometricGate.kt so the
+// Settings and in-Journal lock toggles share one implementation.
 
 /** A tappable settings row (leading icon + title + subtitle + chevron). */
 @Composable
@@ -154,8 +129,34 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         COMPANIONS.forEach { (name, detail) ->
             SelectableRow(name, detail, selected = current == name) {
+                val prev = current
                 current = name
-                scope.launch { runCatching { Api.updateProfile(JSONObject().put("companion", name)) } }
+                scope.launch {
+                    runCatching { Api.updateProfile(JSONObject().put("companion", name)) }
+                        .onFailure { current = prev }   // don't show a choice the server didn't accept
+                }
+            }
+        }
+    }
+}
+
+private val THEME_CHOICES = listOf(
+    Triple(ThemeMode.System, "System default", "Follows your phone's light/dark setting"),
+    Triple(ThemeMode.Night, "Always night", "The deep-indigo look, day and night"),
+    Triple(ThemeMode.Dawn, "Always dawn", "A warm, light look for daytime"),
+)
+
+/** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
+ * The choice persists as `theme_mode`; Sleep always keeps the night palette. */
+@Composable
+fun AppearanceScreen(onBack: () -> Unit) {
+    SubPage("Night or dawn", "Appearance", onBack) {
+        Text("Dawn is a light, warm look that's easier to read in daylight. Sleep always stays night — it's a wind-down space.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        THEME_CHOICES.forEach { (mode, title, subtitle) ->
+            SelectableRow(title, subtitle, selected = AppTheme.mode == mode) {
+                AppTheme.mode = mode
+                Session.prefPut("theme_mode", mode.prefValue())
             }
         }
     }
@@ -177,8 +178,12 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         REGIONS.forEach { (code, label) ->
             SelectableRow(label, "", selected = region == code) {
+                val prev = region
                 region = code
-                scope.launch { runCatching { Api.updateProfile(JSONObject().put("region", code)) } }
+                scope.launch {
+                    runCatching { Api.updateProfile(JSONObject().put("region", code)) }
+                        .onFailure { region = prev }
+                }
             }
         }
     }
@@ -192,6 +197,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
     // Eighth-Schedule language, picked right on the notice (ConsentNotice.kt).
     var noticeLang by remember { mutableStateOf("en") }
     var loaded by remember { mutableStateOf(false) }
+    var consentError by remember { mutableStateOf<String?>(null) }
     val notice = noticeFor(noticeLang)
     val activity = LocalContext.current as? FragmentActivity
     LaunchedEffect(Unit) {
@@ -219,12 +225,27 @@ fun PrivacyScreen(onBack: () -> Unit) {
                                 Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             }
                             AppSwitch(checked = consent[key] == true, onCheckedChange = { v ->
+                                // Optimistic, but reconciled: if the server write
+                                // fails we revert the switch and say so, so the UI
+                                // never claims a consent state the backend rejected
+                                // (DPDP integrity — the toggle must not lie).
+                                val prev = consent[key] == true
                                 consent[key] = v
-                                scope.launch { runCatching { Api.updateConsent(JSONObject().put(key, v)) } }
+                                consentError = null
+                                scope.launch {
+                                    runCatching { Api.updateConsent(JSONObject().put(key, v)) }
+                                        .onFailure {
+                                            consent[key] = prev
+                                            consentError = "Couldn't save that change — check your connection and try again."
+                                        }
+                                }
                             })
                         }
                     }
                 }
+            }
+            consentError?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = Danger)
             }
         }
         SectionCard {
@@ -288,11 +309,14 @@ private fun PlanCard(name: String, price: String, note: String, featured: Boolea
 
 @Composable
 fun HumanSupportScreen(onBack: () -> Unit) = SubPage("Beyond the app", "Human support", onBack) {
-    Text("CereBro is a companion, not a clinician. When you want a real person, these help you find one.",
+    Text("CereBro is a companion, not a clinician. When you want a real person, these connect you with one.",
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    InfoCard("Talk to a coach", "Non-clinical support for everyday stress and habits. Coach directory is coming to India first.")
-    InfoCard("Find a therapist", "For clinical needs, a licensed professional is the right call. We'll surface vetted directories, never diagnoses.")
-    InfoCard("In a crisis", "If things feel urgent, open Urgent support for region-aware helplines — available offline.")
+    // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
+    SupportLinkRow("Tele-MANAS — call 14416", "Free government mental-health line · 24/7", "14416")
+    SupportLinkRow("Tele-MANAS on WhatsApp", "The same counsellors, by chat", "https://wa.me/9114416")
+    SupportLinkRow("iCall — talk to a counsellor", "Trained counsellors by phone · 9152987821", "9152987821")
+    SupportLinkRow("Find a therapist", "Directories of professional help near you", "https://www.findahelpline.com/in")
+    InfoCard("Talk to a coach", "A vetted coach directory for India is on our roadmap. Until it's real, the lines above reach real people today.")
 }
 
 @Composable
@@ -322,7 +346,7 @@ fun RemindersScreen(onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("Daily check-in reminder", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text("Once a day around 9am — gentle, no streak-pressure.",
+                    Text("Once a day around 9am — gentle, no pressure.",
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 AppSwitch(checked = on, onCheckedChange = {
@@ -343,6 +367,15 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage("How we handle your data",
     InfoCard("Private by design", "Your journal, chat and sleep contents stay yours. Support tooling sees counts and account state — never the words.")
     InfoCard("Your controls", "Toggle what's remembered in Privacy & memory, export a full copy any time, or delete everything permanently.")
     InfoCard("No selling, ever", "We don't sell your data or use third-party ad SDKs. Analytics are first-party aggregates.")
+
+    // Credibility disclosure (REDESIGN §2.4) — honest even where the honest
+    // answer is "on our roadmap".
+    Text("HOW CEREBRO IS BUILT", style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+        modifier = Modifier.padding(top = 8.dp))
+    InfoCard("Evidence, labeled", "Tools are labeled with why they work. Where something is comfort rather than therapy, we say so.")
+    InfoCard("What CereBro is not", "A companion alongside care, never a replacement. It doesn't diagnose or treat.")
+    InfoCard("Professional involvement", "Built with published clinical research; a formal clinical advisory process is on our roadmap.")
+
     Text("Full policy at cerebrozen.in/privacy.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
 }
 
