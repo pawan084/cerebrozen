@@ -108,7 +108,7 @@ fun SearchScreen(onBack: () -> Unit) {
                         playing = Player.nowPlaying == item.title && Player.isPlaying,
                         kind = item.kind,   // W21: the kind picks the art family/motif
                         imageUrl = item.imageUrl,
-                        onTap = if (playable) ({ Player.toggle(context, item.title) }) else null,
+                        onTap = if (playable) ({ Player.toggle(context, item.title, item.kind) }) else null,
                     )
                 }
                 if (hits.size > 20) {

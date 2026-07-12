@@ -208,7 +208,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                     Modifier
                         .clip(RoundedCornerShape(50))
                         .background(Cream)
-                        .clickable { Player.play(context, calmerNight) }
+                        .clickable { Player.play(context, calmerNight, "sleep") }
                         .semantics { contentDescription = playCd }
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                     contentAlignment = Alignment.Center,
@@ -338,7 +338,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         val storyMeta = stringResource(R.string.sleep_meta_story)
         val guideMeta = stringResource(R.string.sleep_meta_guide)
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            onItemTap = { title -> Player.toggle(context, title) })
+            onItemTap = { title -> Player.toggle(context, title, "sleep") })
 
         // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
         SleepSectionHeader("☾", stringResource(R.string.sleep_winddown_header))

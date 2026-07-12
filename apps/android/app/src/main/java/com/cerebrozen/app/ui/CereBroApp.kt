@@ -165,7 +165,7 @@ private fun BottomTabItem(
         val label = stringResource(tab.labelRes)
         Box(
             Modifier
-                .size(if (compact) 26.dp else 29.dp)
+                .size(if (compact) 30.dp else 34.dp)
                 .clip(CircleShape)
                 .background(if (selected) VeilStrong else Color.Transparent),
             contentAlignment = Alignment.Center,
@@ -174,9 +174,10 @@ private fun BottomTabItem(
                 painterResource(tab.icon),
                 contentDescription = label,
                 tint = tint,
-                // A touch larger than the old filled glyphs: thin 2dp-line icons
-                // need the extra size to keep their stroke crisp.
-                modifier = Modifier.size(if (compact) 16.dp else 18.dp).scale(iconScale),
+                // Thin 2dp-line icons carry far less visual weight than filled
+                // glyphs — owner feedback (2026-07-13): 18dp read tiny on device.
+                // 22dp (20 compact) matches the perceived size of the old set.
+                modifier = Modifier.size(if (compact) 20.dp else 22.dp).scale(iconScale),
             )
         }
         Text(

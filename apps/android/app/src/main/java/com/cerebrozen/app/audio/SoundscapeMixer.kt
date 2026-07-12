@@ -30,6 +30,32 @@ object SoundscapeMixer {
         Layer("Drone", R.raw.drone, "drone"),
     )
 
+    /** W27 §3 (Calm study): a named one-tap volume vector over the four layers.
+     * The [key] is a stable id the UI maps to a localized label; the vector is
+     * parallel to [layers] (rain, ocean, wind, drone). Sliders stay the power
+     * path — a preset is just a starting blend. */
+    data class Preset(val key: String, val volumes: List<Float>)
+
+    val presets = listOf(
+        Preset("monsoon_night", listOf(0.8f, 0f, 0.35f, 0.2f)),
+        Preset("shoreline", listOf(0f, 0.8f, 0.3f, 0f)),
+        Preset("still_air", listOf(0f, 0f, 0.25f, 0.5f)),
+    )
+
+    /** Apply a preset's blend through the existing per-layer path (so a live
+     * service hears each change); out-of-range indices are a no-op. */
+    fun applyPreset(context: Context, index: Int) {
+        val preset = presets.getOrNull(index) ?: return
+        preset.volumes.forEachIndexed { i, v -> setLayerVolume(context, i, v) }
+    }
+
+    /** The preset the current volumes match (within a slider-noise epsilon),
+     * or null — drives the chips' selected state, so nudging any slider
+     * honestly deselects the preset. */
+    fun matchingPreset(): Int? = presets.indexOfFirst { preset ->
+        preset.volumes.withIndex().all { (i, v) -> kotlin.math.abs(volumes[i] - v) < 0.01f }
+    }.takeIf { it >= 0 }
+
     var isPlaying by mutableStateOf(false)
         private set
 

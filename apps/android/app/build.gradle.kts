@@ -143,7 +143,8 @@ val coverageIncludes = listOf(
     "com/cerebrozen/app/net/**",                  // Session/Api/Analytics — auth, cache, SSE, events
     "com/cerebrozen/app/audio/MediaUrls*",        // pure URL registry/resolution
     "com/cerebrozen/app/audio/Player*",           // controller state (service intents recorded by Robolectric)
-    "com/cerebrozen/app/audio/SoundscapeMixer*",  // mixer state machine + timer/volume logic
+    "com/cerebrozen/app/audio/SoundscapeMixer*",  // mixer state machine + timer/volume/preset logic
+    "com/cerebrozen/app/audio/VolumeRamp*",       // W27 shared crossfade stepper (Robolectric drives its Handler)
     "com/cerebrozen/app/notify/**",               // Reminders + BootReceiver (Robolectric shadows AlarmManager/NotificationManager)
     "com/cerebrozen/app/health/**",               // Health Connect sleep prefill (SDK-status seam short-circuits off-device)
     "com/cerebrozen/app/ui/theme/**",             // palette objects, AppTheme mode logic, typography, CereBroTheme
@@ -180,6 +181,8 @@ val coverageExcludes = listOf(
 //    real MediaPlayer/ExoPlayer + MediaSession; need a device/emulator.
 //  * audio/CloudVoice, audio/VoiceEngine, audio/ToolAmbience — framework media
 //    (MediaRecorder/MediaPlayer) and on-device SpeechRecognizer/TextToSpeech.
+//  * audio/Chime — framework AudioTrack synthesis (W27 chime/bell); every call is
+//    runCatching-guarded and its pref accessors are trivial Session delegations.
 //  * auth/GoogleAuth — Credential Manager UI flow; needs Play services + a user.
 //  * MainActivity — Activity lifecycle + edge-to-edge window plumbing.
 

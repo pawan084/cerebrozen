@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,12 +86,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.R
+import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.SoundscapeMixer
@@ -577,7 +581,9 @@ fun ProgramsScreen(onBack: () -> Unit) {
 @Composable
 fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer: Boolean = false) {
     val context = LocalContext.current
-    val play: (String) -> Unit = { title -> Player.toggle(context, title) }
+    // W27 §2: the list a title comes from declares its kind — the aurora's tint signal.
+    val playSoundscape: (String) -> Unit = { title -> Player.toggle(context, title, "soundscape") }
+    val playSleep: (String) -> Unit = { title -> Player.toggle(context, title, "sleep") }
     var favs by remember { mutableStateOf(SleepFavs.all()) }
     val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
     var section by rememberSaveable { mutableStateOf(if (startInMixer) "mixer" else "library") }
@@ -601,7 +607,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
                     title, "", stringResource(R.string.sounds_meta_favourite), false,
                     playing = Player.nowPlaying == title && Player.isPlaying,
                     kind = "soundscape",
-                    onTap = { play(title) }, fav = true, onFav = { toggleFav(title) },
+                    onTap = { playSoundscape(title) }, fav = true, onFav = { toggleFav(title) },
                 )
             }
         }
@@ -610,10 +616,10 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         val ambientMeta = stringResource(R.string.sounds_meta_ambient)
         val storyMeta = stringResource(R.string.sleep_meta_story)
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
-            onItemTap = play, favs = favs, onFav = toggleFav)
+            onItemTap = playSoundscape, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            onItemTap = play, favs = favs, onFav = toggleFav)
+            onItemTap = playSleep, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_narration_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
@@ -674,6 +680,21 @@ private fun MixerSection() {
             valueRange = 0f..1f,
             colors = mixSliderColors(),
         )
+    }
+
+    // W27 §3 (Calm study): named one-tap starting blends over the four layers.
+    // Selection is derived by vector match, so nudging any slider honestly
+    // deselects the chip; the sliders below remain the power path.
+    val matching = SoundscapeMixer.matchingPreset()
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SoundscapeMixer.presets.forEachIndexed { i, preset ->
+            PickChip(selected = matching == i, label = presetLabel(preset.key)) {
+                SoundscapeMixer.applyPreset(context, i)
+            }
+        }
     }
 
     SoundscapeMixer.layers.forEachIndexed { i, layer ->
@@ -745,9 +766,34 @@ private fun MixerSection() {
             )
         }
     }
+    TimerBellRow()
     SoundscapeMixer.remainingText()?.let {
         Text(stringResource(R.string.mixer_fades_note, it),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+/** Localized label for a mixer preset's stable key. */
+@Composable
+private fun presetLabel(key: String): String = when (key) {
+    "monsoon_night" -> stringResource(R.string.mixer_preset_monsoon)
+    "shoreline" -> stringResource(R.string.mixer_preset_shoreline)
+    else -> stringResource(R.string.mixer_preset_still_air)
+}
+
+/** W27 §5: the session-end bell toggle, surfaced next to each sleep-timer
+ * control (default on) — when a timer completes, the fade ends with one soft
+ * chime, then silence. */
+@Composable
+private fun TimerBellRow() {
+    var bellOn by remember { mutableStateOf(Chime.timerBellEnabled) }
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        AppSwitch(checked = bellOn, onCheckedChange = { bellOn = it; Chime.timerBellEnabled = it })
     }
 }
 
@@ -816,35 +862,13 @@ fun PlayerScreen(onBack: () -> Unit) {
                 // Legibility scrim beneath the base overlay.
                 Box(Modifier.matchParentSize().background(
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))))
-                // Decorative equalizer visualizer — a row of 7 bars that animate ONLY while
-                // playing and stay still under Reduce Motion. Purely ornamental: this is not
-                // elapsed time, track position, or any progress readout.
-                Row(
-                    Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    if (playing && !reduceMotion) {
-                        val eq = rememberInfiniteTransition(label = "eq")
-                        repeat(7) { i ->
-                            val h by eq.animateFloat(
-                                initialValue = 6f,
-                                targetValue = (18 + (i % 4) * 7).toFloat(),
-                                animationSpec = infiniteRepeatable(
-                                    tween(360 + i * 70, easing = FastOutSlowInEasing),
-                                    RepeatMode.Reverse),
-                                label = "eq-bar-$i",
-                            )
-                            Box(Modifier.size(width = 5.dp, height = h.dp).clip(RoundedCornerShape(3.dp))
-                                .background(Brush.verticalGradient(listOf(Cyan, Periwinkle))))
-                        }
-                    } else {
-                        listOf(10, 16, 12, 20, 12, 16, 10).forEach { hv ->
-                            Box(Modifier.size(width = 5.dp, height = hv.dp).clip(RoundedCornerShape(3.dp))
-                                .background(Cyan.copy(alpha = 0.5f)))
-                        }
-                    }
-                }
+                // W27 §6 (Calm study): the fake-reactive 7-bar equalizer is gone —
+                // one slow-breathing dot says "playing" honestly instead.
+                BreathingDot(
+                    playing = playing,
+                    dotSize = 12.dp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+                )
             }
             if (title == null) {
                 Text(stringResource(R.string.player_empty_hint),
@@ -878,6 +902,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                     )
                 }
             }
+            TimerBellRow()
             Text(stringResource(R.string.common_volume), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             val volumeCd = stringResource(R.string.common_volume)
             Slider(
@@ -892,36 +917,37 @@ fun PlayerScreen(onBack: () -> Unit) {
     }
 }
 
-/** E5: three tiny equalizer bars beside the now-playing title — alive only while
- * audio actually plays; paused and Reduce Motion hold calm mid-height bars
- * (static, never blank). Purely ornamental — never a level or progress meter. */
+/** W27 §6 (Calm study): the honest "playing" signal — a single small dot that
+ * breathes ±15% on a slow ~4s cycle while audio actually plays. It replaces
+ * the fake-reactive EqBars (bars implied a waveform readout that never
+ * existed — the one element Calm would cut). Paused and Reduce Motion hold a
+ * static mid-size dot (static, never blank). Purely ornamental — never a
+ * level, position, or progress meter. */
 @Composable
-private fun EqBars(playing: Boolean) {
+internal fun BreathingDot(playing: Boolean, dotSize: Dp = 10.dp, modifier: Modifier = Modifier) {
     val reduceMotion = rememberReduceMotion()
-    Row(
-        Modifier.height(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.Bottom,
+    val scale = if (playing && !reduceMotion) {
+        val breathe = rememberInfiniteTransition(label = "now-playing-dot")
+        val s by breathe.animateFloat(
+            initialValue = 0.85f, targetValue = 1.15f,
+            animationSpec = infiniteRepeatable(
+                tween(2_000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "dot-scale",
+        )
+        s
+    } else 1f
+    // The outer box reserves the max-scale footprint so the breathing never
+    // nudges neighbouring layout.
+    Box(
+        modifier.size(dotSize * 1.15f).testTag("now-playing-dot"),
+        contentAlignment = Alignment.Center,
     ) {
-        if (playing && !reduceMotion) {
-            val eq = rememberInfiniteTransition(label = "now-playing-eq")
-            repeat(3) { i ->
-                // Slightly different periods keep the three bars out of phase.
-                val h by eq.animateFloat(
-                    initialValue = 4f, targetValue = 12f,
-                    animationSpec = infiniteRepeatable(
-                        tween(700 + i * 90, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                    label = "eq-bar-$i",
-                )
-                Box(Modifier.size(width = 2.dp, height = h.dp)
-                    .clip(RoundedCornerShape(1.dp)).background(Cyan))
-            }
-        } else {
-            repeat(3) {
-                Box(Modifier.size(width = 2.dp, height = 8.dp)
-                    .clip(RoundedCornerShape(1.dp)).background(Cyan.copy(alpha = 0.6f)))
-            }
-        }
+        Box(
+            Modifier.size(dotSize)
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .clip(CircleShape)
+                .background(if (playing) Cyan else Cyan.copy(alpha = 0.6f)),
+        )
     }
 }
 
@@ -943,7 +969,7 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EqBars(playing = Player.isPlaying)
+                BreathingDot(playing = Player.isPlaying)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(label, style = MaterialTheme.typography.labelSmall, color = Cyan, maxLines = 1)
                     Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft,

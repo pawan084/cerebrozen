@@ -24,6 +24,13 @@ object Player {
     var isPlaying by mutableStateOf(false)
         private set
 
+    /** W27 §2: the content kind of what's loaded ("soundscape", "sleep",
+     * "meditation"…), as declared by the screen that started it — the honest
+     * source, since only the caller knows which list the title came from.
+     * Null when nothing is loaded or the caller didn't say. */
+    var nowPlayingKind by mutableStateOf<String?>(null)
+        private set
+
     /** Sleep auto-stop timer, minutes (0 = off) — mirrors the iOS player. */
     var timerMinutes by mutableStateOf(0)
         private set
@@ -32,6 +39,16 @@ object Player {
     fun setState(title: String?, playing: Boolean) {
         nowPlaying = title
         isPlaying = playing
+        if (title == null) nowPlayingKind = null
+    }
+
+    /** W27 §2: the kind that is audibly playing right now — the aurora's tint
+     * signal. Reacts to WHAT plays (bed title kind, or the mixer as a
+     * soundscape), never to the waveform. Null when everything is silent. */
+    fun audibleKind(): String? = when {
+        isPlaying -> nowPlayingKind ?: "soundscape"
+        SoundscapeMixer.isPlaying -> "soundscape"
+        else -> null
     }
 
     fun setTimerState(minutes: Int) { timerMinutes = minutes }
@@ -66,14 +83,17 @@ object Player {
         )
     }
 
-    fun toggle(context: Context, title: String) {
-        if (nowPlaying == title && isPlaying) pause(context) else play(context, title)
+    fun toggle(context: Context, title: String, kind: String? = null) {
+        if (nowPlaying == title && isPlaying) pause(context) else play(context, title, kind)
     }
 
-    fun play(context: Context, title: String) {
+    fun play(context: Context, title: String, kind: String? = null) {
         // Exactly one audio engine at a time (REDESIGN §3.4): a running mixer
         // yields to the bed. Its stop() has no counter-call, so this can't loop.
         if (SoundscapeMixer.isPlaying) SoundscapeMixer.stop(context)
+        // A resume of the same title (kind omitted, e.g. NowPlayingBar/player
+        // transport) keeps the kind the original screen declared.
+        nowPlayingKind = kind ?: if (title == nowPlaying) nowPlayingKind else null
         context.startForegroundService(
             Intent(context, AmbientService::class.java)
                 .setAction(AmbientService.ACTION_PLAY)
@@ -90,6 +110,7 @@ object Player {
         context.startService(Intent(context, AmbientService::class.java).setAction(AmbientService.ACTION_STOP))
         nowPlaying = null   // optimistic; the service confirms via setState
         isPlaying = false
+        nowPlayingKind = null
     }
 
     /** Duck the bed under the voice companion while it speaks, then restore. */

@@ -379,6 +379,10 @@
     <string name="mixer_intro">बारिश, समुद्र, हवा और एक धीमी गूंज को मिलाकर अपनी शांति बनाएँ — हर एक को अपने हिसाब से घटाएँ-बढ़ाएँ।</string>
     <string name="mixer_master_volume">मास्टर वॉल्यूम</string>
     <string name="mixer_fades_note">%1$s में धीमे-धीमे बंद — आप सो जाएँ, यह खुद रुक जाएगा।</string>
+    <string name="mixer_preset_monsoon">मानसून की रात</string>
+    <string name="mixer_preset_shoreline">समुद्र किनारा</string>
+    <string name="mixer_preset_still_air">ठहरी हवा</string>
+    <string name="sounds_timer_bell">अंत में एक हल्की घंटी</string>
     <string name="player_eyebrow">अभी चल रहा है</string>
     <string name="player_nothing">कुछ नहीं चल रहा</string>
     <string name="player_empty_hint">ध्वनियाँ सेक्शन से कोई साउंडस्केप या कहानी चुनें — वह यहाँ चलेगी।</string>
@@ -515,6 +519,11 @@
     <string name="breathe_reset_eyebrow">एक नन्हा रीसेट</string>
     <string name="breathe_reset_title">दो मिनट का रीसेट</string>
     <string name="breathe_reset_intro">हल्की चार गिनती अंदर, चार बाहर — कुछ रोकना नहीं। जितनी देर मन हो, रहें।</string>
+    <string name="breathe_pace_gentle">सहज · 6 से</string>
+    <string name="breathe_pace_classic">क्लासिक · 4 से</string>
+    <string name="breathe_pace_slow">धीमा · 8 से</string>
+    <string name="breathe_haptics_label">हर चरण पर हल्का कंपन</string>
+    <string name="breathe_chime_label">हर चरण पर हल्की घंटी</string>
 
     <!-- ── Games ───────────────────────────────────────────────────────── -->
     <string name="patternglow_eyebrow">रोशनी के पीछे चलें</string>

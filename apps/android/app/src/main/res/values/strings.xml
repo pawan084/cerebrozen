@@ -428,6 +428,12 @@
     <string name="mixer_intro">Blend rain, ocean, wind and a soft drone into your own calm — nudge each one to taste.</string>
     <string name="mixer_master_volume">Master volume</string>
     <string name="mixer_fades_note">Fades out in %1$s — drift off, it stops itself.</string>
+    <!-- W27 §3: one-tap mixer presets (stable keys in SoundscapeMixer.presets). -->
+    <string name="mixer_preset_monsoon">Monsoon night</string>
+    <string name="mixer_preset_shoreline">Shoreline</string>
+    <string name="mixer_preset_still_air">Still air</string>
+    <!-- W27 §5: session-end bell when a sleep timer completes (default on). -->
+    <string name="sounds_timer_bell">End with a soft bell</string>
     <string name="player_eyebrow">Now playing</string>
     <string name="player_nothing">Nothing playing</string>
     <string name="player_empty_hint">Pick a soundscape or story from Sounds and it plays here.</string>
@@ -613,6 +619,12 @@
     <string name="breathe_reset_title">Two-minute reset</string>
     <string name="breathe_reset_intro">A gentle four in, four out — nothing to hold. Stay as long as you like.</string>
     <string name="breathe_why">Paced breathing is used in clinical distress-tolerance and relaxation protocols. Slowing the breath activates the body\'s calming response.</string>
+    <!-- W27 §4: pace choice + guidance toggles (eyes-closed accessibility). -->
+    <string name="breathe_pace_gentle">Gentle · 6s</string>
+    <string name="breathe_pace_classic">Classic · 4s</string>
+    <string name="breathe_pace_slow">Slow · 8s</string>
+    <string name="breathe_haptics_label">Haptic guide on phase change</string>
+    <string name="breathe_chime_label">Soft chime on phase change</string>
 
     <!-- ── Games (Games.kt) ────────────────────────────────────────────── -->
     <string name="patternglow_eyebrow">Follow the light</string>

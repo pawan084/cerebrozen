@@ -56,6 +56,10 @@ class AmbientService : Service() {
     private var currentSrc = ""
     // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
     private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    // W27 §1: shared ~600ms crossfade — play ramps in from silence, pause/stop
+    // ramp out before the player actually pauses/releases, so engine handoffs
+    // (Player↔Mixer exclusivity) and narration→bed fallbacks never hard-cut.
+    private val ramp = VolumeRamp()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -74,7 +78,7 @@ class AmbientService : Service() {
                 play(intent.getStringExtra(EXTRA_URL) ?: currentSrc)
             }
             ACTION_PAUSE -> pause()
-            ACTION_STOP -> stopAll()
+            ACTION_STOP -> stopWithRamp()
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
             ACTION_VOLUME -> {
                 volume = intent.getFloatExtra(EXTRA_VOLUME, 1f).coerceIn(0f, 1f)
@@ -89,22 +93,35 @@ class AmbientService : Service() {
         return START_STICKY
     }
 
-    private fun applyVolume() { mp?.volume = volume * duckFactor }
+    private fun targetVolume() = volume * duckFactor
+
+    /** Direct set for user intents (volume slider, voice duck) — a crossfade
+     * here would lag the slider, so any ramp in flight yields to the hand. */
+    private fun applyVolume() {
+        ramp.cancel()
+        mp?.volume = targetVolume()
+    }
 
     private fun setTimer(minutes: Int) {
         timerHandler.removeCallbacksAndMessages(null)
-        mp?.volume = volume
+        applyVolume()   // undo any half-finished timer fade
         Player.setTimerState(minutes)
         if (minutes > 0) {
             val untilFade = (minutes * 60_000L - 10_000L).coerceAtLeast(1_000L)
-            timerHandler.postDelayed({ fadeOut(10) }, untilFade)
+            timerHandler.postDelayed({ ramp.cancel(); fadeOut(10) }, untilFade)
         }
     }
 
     private fun fadeOut(stepsLeft: Int) {
         val player = mp
-        if (stepsLeft <= 0 || player == null) { stopAll(); return }
-        player.volume = volume * duckFactor * stepsLeft / 10f
+        if (stepsLeft <= 0 || player == null) {
+            // W27 §5: session-end ritual — after the fade completes, one soft
+            // bell (user-toggleable, default on), then silence. No ceremony.
+            Chime.playTimerBell()
+            stopAll()
+            return
+        }
+        player.volume = targetVolume() * stepsLeft / 10f
         timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
     }
 
@@ -131,8 +148,10 @@ class AmbientService : Service() {
             stopAll()
             return
         }
-        player.volume = volume * duckFactor
+        // W27 §1: ramp in from wherever the player sits (0 on a fresh source or
+        // after a pause tail-out) to the user's level — never a hard start.
         player.playWhenReady = true   // ExoPlayer starts once prepared
+        ramp.ramp(from = player.volume, to = targetVolume(), onStep = { mp?.volume = it })
     }
 
     /** Media focus + auto-pause on headphone unplug — applied to every player so
@@ -148,7 +167,7 @@ class AmbientService : Service() {
             setWakeMode(C.WAKE_MODE_LOCAL)
             setMediaItem(MediaItem.fromUri("android.resource://$packageName/${R.raw.ambient_bed}"))
             repeatMode = Media3Player.REPEAT_MODE_ONE
-            volume = this@AmbientService.volume
+            volume = 0f   // W27 §1: born silent; play() ramps it in
             prepare()
         }
     }.getOrNull()
@@ -161,7 +180,7 @@ class AmbientService : Service() {
             setWakeMode(C.WAKE_MODE_NETWORK)   // hold a wifi+wake lock for long narration
             setMediaItem(MediaItem.fromUri(url))
             repeatMode = Media3Player.REPEAT_MODE_OFF   // narration ends; never loops
-            volume = this@AmbientService.volume
+            volume = 0f   // W27 §1: born silent; play() ramps it in
             addListener(object : Media3Player.Listener {
                 // Don't release the player synchronously from inside its own error
                 // callback (re-entrant) — hop to the main handler first.
@@ -177,20 +196,41 @@ class AmbientService : Service() {
     }.getOrNull()
 
     private fun fallBackToBed() {
+        // W27 §1: the errored narration made no sound to fade; the replacement
+        // bed still ramps in from silence via play("") — the fallback is soft.
         mp?.release(); mp = null
         currentSrc = ""
         play("")
     }
 
     private fun pause() {
-        mp?.playWhenReady = false
+        // W27 §1: publish the paused state immediately (UI + notification stay
+        // honest), then let the audio tail out ~600ms before actually pausing.
         Player.setState(title, false)
         updateSession(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         getSystemService(NotificationManager::class.java).notify(NOTIF, buildNotification(false))
+        val player = mp ?: return
+        ramp.ramp(from = player.volume, to = 0f, onStep = { mp?.volume = it }) {
+            mp?.playWhenReady = false
+        }
+    }
+
+    /** W27 §1: stop = ramp the audio out (~600ms), then tear down. State is
+     * published immediately, so an exclusivity handoff (the mixer starting)
+     * overlaps this tail-out with its own ramp-in — a true crossfade. The
+     * cross-stop contract is unchanged: controllers stay synchronous. */
+    private fun stopWithRamp() {
+        timerHandler.removeCallbacksAndMessages(null)
+        val player = mp
+        if (player == null || !player.playWhenReady) { stopAll(); return }
+        Player.setState(null, false)
+        Player.setTimerState(0)
+        ramp.ramp(from = player.volume, to = 0f, onStep = { mp?.volume = it }) { stopAll() }
     }
 
     private fun stopAll() {
+        ramp.cancel()
         timerHandler.removeCallbacksAndMessages(null)
         Player.setTimerState(0)
         mp?.release(); mp = null
@@ -201,6 +241,7 @@ class AmbientService : Service() {
     }
 
     override fun onDestroy() {
+        ramp.cancel()
         mp?.release(); mp = null
         session?.release(); session = null
         super.onDestroy()

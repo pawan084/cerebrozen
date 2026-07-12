@@ -54,6 +54,11 @@ class SoundscapeService : Service() {
     private val volumes = floatArrayOf(0.7f, 0f, 0f, 0f)
     private var master = 0.7f
     private var fade = 1f
+    // W27 §1: crossfade factor (0 silent → 1 full) — play ramps it up over
+    // ~600ms, pause/stop ramp it down before pausing/releasing, so the mix
+    // never hard-cuts (including the Player↔Mixer exclusivity handoff).
+    private var rampFactor = 1f
+    private val ramp = VolumeRamp()
     private var timerMinutes = 0
     private var remaining = 0
     private val handler = Handler(Looper.getMainLooper())
@@ -66,7 +71,7 @@ class SoundscapeService : Service() {
         session = MediaSession(this, "cerebro-soundscape").apply { isActive = true }
     }
 
-    private fun effective(i: Int): Float = (volumes[i] * master * fade).coerceIn(0f, 1f)
+    private fun effective(i: Int): Float = (volumes[i] * master * fade * rampFactor).coerceIn(0f, 1f)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -78,7 +83,7 @@ class SoundscapeService : Service() {
                 play()
             }
             ACTION_PAUSE -> pause()
-            ACTION_STOP -> stopAll()
+            ACTION_STOP -> stopWithRamp()
             ACTION_LAYER -> {
                 val i = intent.getIntExtra(EXTRA_INDEX, -1)
                 if (i in volumes.indices) {
@@ -110,6 +115,7 @@ class SoundscapeService : Service() {
         if (players == null) {
             // Guard construction so a headless/low-memory environment can't crash
             // the foreground service (parity with AmbientService's runCatching).
+            rampFactor = 0f   // W27 §1: fresh voices are born silent
             players = runCatching {
                 LAYER_RES.map { res ->
                     ExoPlayer.Builder(this).build().apply {
@@ -128,7 +134,10 @@ class SoundscapeService : Service() {
             players?.forEach { it.playWhenReady = true }
         }
         if (players == null) { stopAll(); return }
+        // W27 §1: ramp the whole mix in from wherever it sits (0 when fresh or
+        // after a pause tail-out) to full — never a hard start.
         applyVolumes()
+        ramp.ramp(from = rampFactor, to = 1f, onStep = { rampFactor = it; applyVolumes() })
     }
 
     private fun applyVolumes() {
@@ -136,14 +145,33 @@ class SoundscapeService : Service() {
     }
 
     private fun pause() {
-        players?.forEach { it.playWhenReady = false }
+        // W27 §1: publish the paused state immediately (UI + notification stay
+        // honest), then tail the mix out ~600ms before actually pausing.
         SoundscapeMixer.publishPlaying(false)
         updateSession(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         getSystemService(NotificationManager::class.java).notify(NOTIF, buildNotification(false))
+        if (players == null) return
+        ramp.ramp(from = rampFactor, to = 0f, onStep = { rampFactor = it; applyVolumes() }) {
+            players?.forEach { it.playWhenReady = false }
+        }
+    }
+
+    /** W27 §1: stop = ramp the mix out (~600ms), then tear down. State publishes
+     * immediately, so the Player↔Mixer exclusivity handoff overlaps this
+     * tail-out with the other engine's ramp-in — a true crossfade. The
+     * cross-stop contract is unchanged: controllers stay synchronous. */
+    private fun stopWithRamp() {
+        handler.removeCallbacksAndMessages(null)
+        val active = players
+        if (active == null || active.none { it.playWhenReady }) { stopAll(); return }
+        SoundscapeMixer.publishPlaying(false)
+        SoundscapeMixer.publishTimer(0, null)
+        ramp.ramp(from = rampFactor, to = 0f, onStep = { rampFactor = it; applyVolumes() }) { stopAll() }
     }
 
     private fun stopAll() {
+        ramp.cancel()
         handler.removeCallbacksAndMessages(null)
         players?.forEach { it.release() }
         players = null
@@ -176,7 +204,13 @@ class SoundscapeService : Service() {
                 remaining -= 1
                 if (remaining == FADE_LEAD) startFade(FADE_LEAD)
                 SoundscapeMixer.publishTimer(timerMinutes, remaining.coerceAtLeast(0))
-                if (remaining <= 0) { stopAll(); return }
+                if (remaining <= 0) {
+                    // W27 §5: session-end ritual — after the 12s fade, one soft
+                    // bell (user-toggleable, default on), then silence.
+                    Chime.playTimerBell()
+                    stopAll()
+                    return
+                }
                 handler.postDelayed(this, 1_000)
             }
         }
@@ -199,6 +233,7 @@ class SoundscapeService : Service() {
     }
 
     override fun onDestroy() {
+        ramp.cancel()
         handler.removeCallbacksAndMessages(null)
         players?.forEach { it.release() }
         players = null

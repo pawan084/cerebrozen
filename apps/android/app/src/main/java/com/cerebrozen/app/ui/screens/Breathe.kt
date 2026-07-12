@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -20,7 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ink
@@ -56,20 +60,22 @@ enum class BreathePreset { Box, Color, Reset }
 /** One beat of a breathing cycle — pure data, so the pacing is unit-testable. */
 internal data class BreathPhase(val label: String, val seconds: Int, val expanded: Boolean)
 
-/** The phase sequence per preset. Box and Color pace 4-4-4-4 with holds; Reset
- * is the gentle onboarding rhythm — four in, four out, nothing to hold. */
+/** The phase sequence per preset. Box and Color pace with holds; Reset is the
+ * gentle onboarding rhythm — in, out, nothing to hold. W27 §4 (Calm study):
+ * [secondsPerPhase] is user-selectable — Classic 4s (the long-standing
+ * default), Gentle 6s, Slow 8s — scaling every phase equally. */
 // i18n: pending — pure function, needs context plumbing (phase labels are user copy;
 // unit tests assert them directly).
-internal fun breathePhases(preset: BreathePreset): List<BreathPhase> = when (preset) {
+internal fun breathePhases(preset: BreathePreset, secondsPerPhase: Int = 4): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
-        BreathPhase("Breathe in", 4, expanded = true),
-        BreathPhase("Breathe out", 4, expanded = false),
+        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
+        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
     )
     BreathePreset.Box, BreathePreset.Color -> listOf(
-        BreathPhase("Breathe in", 4, expanded = true),
-        BreathPhase("Hold", 4, expanded = true),
-        BreathPhase("Breathe out", 4, expanded = false),
-        BreathPhase("Hold", 4, expanded = false),
+        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
+        BreathPhase("Hold", secondsPerPhase, expanded = true),
+        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
+        BreathPhase("Hold", secondsPerPhase, expanded = false),
     )
 }
 
@@ -85,17 +91,26 @@ internal fun breatheTint(preset: BreathePreset, phase: Int): Color = when (prese
  * inhale, hold, contract on exhale) — never a free-running pulse — and holds a
  * steady size under Reduce Motion while the label and count keep guiding. */
 @Composable
-fun BreatheEngine(preset: BreathePreset, modifier: Modifier = Modifier) {
-    val phases = remember(preset) { breathePhases(preset) }
-    var phase by remember(preset) { mutableIntStateOf(0) }
-    var count by remember(preset) { mutableIntStateOf(phases.first().seconds) }
+fun BreatheEngine(
+    preset: BreathePreset,
+    modifier: Modifier = Modifier,
+    secondsPerPhase: Int = 4,
+    hapticsOn: Boolean = true,
+    chimeOn: Boolean = false,
+) {
+    val phases = remember(preset, secondsPerPhase) { breathePhases(preset, secondsPerPhase) }
+    var phase by remember(preset, secondsPerPhase) { mutableIntStateOf(0) }
+    var count by remember(preset, secondsPerPhase) { mutableIntStateOf(phases.first().seconds) }
     var breaths by remember(preset) { mutableIntStateOf(0) }
     val reduceMotion = rememberReduceMotion()
 
     // One pacer for every preset: a 1-second tick counts the phase down, then
     // advances it. A gentle haptic marks each phase change — a rhythm you can
     // follow with eyes closed; firmer on the active breaths, softer on holds.
-    LaunchedEffect(preset) {
+    // W27 §4: the haptic is now user-toggleable, and an OFF-by-default soft
+    // chime can mark phase changes too. Both are guidance, not motion —
+    // Reduce Motion deliberately leaves them alone.
+    LaunchedEffect(preset, secondsPerPhase, hapticsOn, chimeOn) {
         while (true) {
             delay(1_000)
             if (count > 1) {
@@ -105,7 +120,8 @@ fun BreatheEngine(preset: BreathePreset, modifier: Modifier = Modifier) {
                 phase = next
                 count = phases[next].seconds
                 if (next == 0) breaths += 1
-                Haptics.soft(if (phases[next].label.startsWith("Breathe")) 0.5f else 0.3f)
+                if (hapticsOn) Haptics.soft(if (phases[next].label.startsWith("Breathe")) 0.5f else 0.3f)
+                if (chimeOn) Chime.play()
             }
         }
     }
@@ -198,9 +214,40 @@ fun BreatheScreen(preset: BreathePreset, onBack: () -> Unit) {
             stringResource(R.string.breathe_reset_intro),
         )
     }
+    // W27 §4 (Calm parity, treated as accessibility): a per-phase pace choice,
+    // a persisted haptic-guide toggle (default on) and a persisted OFF-by-default
+    // soft chime — a rhythm you can follow with eyes closed. Chime and haptics
+    // are guidance, not motion, so Reduce Motion leaves them untouched.
+    var pace by rememberSaveable { mutableIntStateOf(4) }
+    var hapticsOn by remember { mutableStateOf(Chime.breatheHapticsEnabled) }
+    var chimeOn by remember { mutableStateOf(Chime.breatheChimeEnabled) }
     SubPage(eyebrow, title, onBack) {
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        BreatheEngine(preset, Modifier.fillMaxWidth())
+        BreatheEngine(
+            preset, Modifier.fillMaxWidth(),
+            secondsPerPhase = pace, hapticsOn = hapticsOn, chimeOn = chimeOn,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PickChip(selected = pace == 6, label = stringResource(R.string.breathe_pace_gentle)) { pace = 6 }
+            PickChip(selected = pace == 4, label = stringResource(R.string.breathe_pace_classic)) { pace = 4 }
+            PickChip(selected = pace == 8, label = stringResource(R.string.breathe_pace_slow)) { pace = 8 }
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.breathe_haptics_label), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            AppSwitch(checked = hapticsOn, onCheckedChange = { hapticsOn = it; Chime.breatheHapticsEnabled = it })
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.breathe_chime_label), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            AppSwitch(checked = chimeOn, onCheckedChange = { chimeOn = it; Chime.breatheChimeEnabled = it })
+        }
         PrimaryButton(text = stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth()) { onBack() }
         WhyThisWorks(stringResource(R.string.breathe_why))
     }
