@@ -25,7 +25,102 @@
 - [ ] **Ops config:** `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APNS_*`, and `ASC_*`
   GitHub secrets (TestFlight workflow).
 
+## Open — needs a product/legal decision (surfaced by the 2026-07-12 Android deep review)
+
+- [ ] **Analytics fire before the consent screen** (`net/Analytics.kt` defaults `enabled`
+  true; `OnboardingScreen` tracks `onboarding_step` from Welcome onward). It's anonymous +
+  opt-out, but it's telemetry before any affirmative consent. Decide: gate funnel tracking
+  until after the consent step, or accept/document it as a DPDP position. (Not auto-changed —
+  gating would drop pre-consent funnel data.)
+- [x] **Onboarding Consent step shows only 3 of 6 categories** — FIXED 2026-07-12 (redesign
+  W3): all six categories now render with labels/hints; defaults unchanged.
+- [ ] **Health Connect sleep read is gated by HC's own permission, not the in-app
+  `sleep_history` consent flag** (`SleepScreen`). Confirm HC permission is the accepted consent
+  boundary, or gate the prefill on the app toggle too.
+
+## Open — redesign follow-ups (from docs/REDESIGN.md, Phases 1–2 shipped 2026-07-12)
+
+- [x] **Dawn light theme** (REDESIGN §4.1 Phase 2 remainder) — shipped 2026-07-12 without a
+  screen migration: the top-level tokens in `Color.kt`/`Tokens.kt` are now theme-aware
+  getters resolving `AppTheme.isNight` (snapshot state), so every screen got Dawn for free.
+  You → Appearance persists `theme_mode` (System/Night/Dawn); Sleep, the splash and the
+  signed-out funnel force Night; `ContrastTest` gates both palettes ≥4.5:1 and pins the
+  Night palette byte-identical.
+- [ ] **iOS parity for the redesign** — the Android IA changes (Toolkit merge, breathe
+  engine, sounds consolidation, presence framing, onboarding trim) intentionally diverge
+  from iOS until backported.
+- [ ] **Phase 3 roadmap**: Hindi UI localization (externalize strings as they're touched),
+  CBT-I weekly program (backend), premium launch behind the OECD dark-pattern checklist.
+- [x] **Onboarding `onAccountCreated` race** — FIXED 2026-07-12 (W7): post-signup writes run
+  under `NonCancellable` in AuthScreen's `signUpThenPersonalize`; `AuthFlowTest` reproduces
+  the race and fails without the fix.
+- [x] **Night-palette accent contrast debt** — FIXED 2026-07-12: Night `Periwinkle`
+  brightened 0xFF8B78F2 → 0xFFA89AF6 (minimal in-family lighten clearing 4.5:1 on
+  CardFill 5.33 / Night 7.73 / raised 4.66); nav-wash constants follow; ContrastTest
+  now gates it and the Night pin was updated deliberately.
+
 ## Done — recent
+
+### Evidence-based redesign, Phases 1–2 (2026-07-12) — 6 implementation waves
+Research-driven redesign per docs/REDESIGN.md (verified findings F1–F11). All waves
+compile/test-green; emulator smoke-verified end-to-end (Home, Toolkit, breathe engine,
+Sounds/Mixer, Sleep CBT-I cards, 8-step onboarding, 6-category consent; zero crashes).
+- [x] **IA consolidation**: 4 breathing surfaces → one parameterized `Breathe.kt` engine;
+  Games+Tools → one Toolkit hub (Ground/Breathe/Reframe/Settle); killed memorymatch,
+  slidingpuzzle, bubblewrap, colorbreathing; onegoodthing/intention → Journal prompt chips;
+  sounds+soundscape+player → one Sounds hub (Library|Mixer) with `sounds/mixer` deep-link.
+- [x] **Audio exclusivity**: `Player.play` ⇄ `SoundscapeMixer.play` cross-stop (loop-safe,
+  Robolectric-tested 4/4) — the two engines can no longer play simultaneously.
+- [x] **Home de-densified** 11 → 6 blocks, check-in first; streak → "presence" framing
+  (no loss/reset language anywhere).
+- [x] **Safety**: crisis ≤2 taps (You Support door + Toolkit footer); Tele-MANAS now leads
+  CrisisScreen (call + WhatsApp); HumanSupport stubs replaced with real Tele-MANAS/iCall/
+  findahelpline links.
+- [x] **Credibility layer**: `WhyThisWorks` provenance footers on breathe/CBT/TIPP/
+  gratitude/programs; "How CereBro is built" honesty cards; Sleep reframed to
+  "improve your sleep" with CBT-I stimulus-control education + "Your rhythm" consistency
+  insight (pure helpers, unit-tested incl. midnight wrap).
+- [x] **Talk**: "Try together" structured-exercise chips (CBT reframe / box breathing /
+  grounding) in empty + active conversations — rule-based-first per evidence F3.
+- [x] **Onboarding**: 10 → 8 steps (fake Plan preview killed; Age merged into Disclosure);
+  consent step now renders all 6 DPDP categories.
+- [x] **Tokens**: semantic role layer in Color.kt; WCAG contrast fixed (TextMuted2
+  0xFF928CAC → 0xFFA5A0BA; all text/surface pairs ≥4.5:1) with a 7-test ContrastTest gate;
+  fake glassmorphism + Haze dependency removed; 12 orphaned tokens pruned.
+
+### Android deep review + fixes (2026-07-12) — 6-agent audit, then fixed
+Ran a parallel 6-dimension review of the whole Android client, then fixed the findings
+(`:app:assembleDebug` + `:app:testDebugUnitTest` green via the AS-bundled JBR). Highlights:
+- [x] **App identity restored**: reverted an accidental `com.cerebro.app` namespace/applicationId
+  (a "cerebro**zen**"→"cerebro" slip in the `cc7cbd4` "ui" commit) back to `com.cerebrozen.app`,
+  collapsing the namespace-vs-source split-brain (manifest back to relative component names).
+- [x] **PATCH works in prod**: `Session.realHttp` now forces the method past Android's
+  `HttpURLConnection` allow-list via reflection — profile/plan/consent PATCH writes were throwing
+  `ProtocolException` (tests missed it; transport is stubbed).
+- [x] **Voice/mic**: "Text" during a live session now tears down the mic (`endSession`) instead of
+  leaving it hot; TTS gated on init so the first cold-start reply isn't dropped; recorded voice
+  files deleted on dispose; cloud playback disk I/O off the main thread.
+- [x] **Audio services**: foreground-start contract satisfied before player creation (no more
+  `ForegroundServiceDidNotStartInTimeException`), `SoundscapeService` player creation guarded,
+  audio-focus + becoming-noisy + wake-mode on every ExoPlayer, re-entrant `release()` in
+  `onPlayerError` hopped to the main handler, idle-service starts guarded.
+- [x] **Reminders survive reboot**: added `BootReceiver` (BOOT_COMPLETED + MY_PACKAGE_REPLACED) +
+  `RECEIVE_BOOT_COMPLETED`; wired the onboarding notification choice to actually schedule.
+- [x] **Consent integrity**: Settings consent/companion/region toggles now revert + surface an
+  error on a failed server write (were silently optimistic); Journal "Private mode" toggle routed
+  through the same device-credential gate as Settings (shared `BiometricGate.kt`).
+- [x] **Networking hardening**: refresh token + response cache moved to `EncryptedSharedPreferences`
+  (private-prefs fallback); SSE cancellable + disconnects on leave; GET cache-fallback only on
+  connectivity/5xx (not 4xx); DEBUG log no longer echoes unparseable bodies raw.
+- [x] **State loss**: `rememberSaveable` for the onboarding funnel (step + selections + consent),
+  Talk draft + crisis banner, Journal draft, Auth identifiers (not the password).
+- [x] **Compose correctness**: Talk auto-scrolls to newest; draft cleared on send; `MediaUrls.register`
+  moved out of composition into a `LaunchedEffect`; Zen-ripples frame loop self-stops when idle;
+  Pattern-glow replay keyed on a nonce; onboarding breathing honours Reduce Motion; removed a dead
+  duplicate `SignUpStep`.
+- [x] **Design tokens**: eliminated all raw brand `Color(0x…)` hex from `Onboarding`/`Auth`/`Common`/
+  `Extras` screens — promoted to named tokens in `Color.kt`; updated stale glass/CTA KDoc after the
+  opaque reskin.
 
 ### Android UI/UX audit + fixes (2026-07-08) — full-screen design-system + a11y pass
 Audited all ~20 Compose screens against the design tokens / `Common.kt` shared
