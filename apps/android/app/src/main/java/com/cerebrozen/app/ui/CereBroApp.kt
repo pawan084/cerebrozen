@@ -60,6 +60,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.res.stringResource
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
@@ -111,12 +113,12 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.VeilStrong
 import com.cerebrozen.app.ui.theme.themeModeFromPref
 
-private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    Home("home", "Home", Icons.Filled.Home),
-    Sleep("sleep", "Sleep", Icons.Filled.Bedtime),
-    Talk("talk", "Talk", Icons.Filled.Mic),
-    Journal("journal", "Journal", Icons.Filled.Book),
-    You("you", "You", Icons.Filled.Person),
+private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, val icon: ImageVector) {
+    Home("home", R.string.tab_home, Icons.Filled.Home),
+    Sleep("sleep", R.string.tab_sleep, Icons.Filled.Bedtime),
+    Talk("talk", R.string.tab_talk, Icons.Filled.Mic),
+    Journal("journal", R.string.tab_journal, Icons.Filled.Book),
+    You("you", R.string.tab_you, Icons.Filled.Person),
 }
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
@@ -164,6 +166,7 @@ private fun BottomTabItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        val label = stringResource(tab.labelRes)
         Box(
             Modifier
                 .size(if (compact) 26.dp else 29.dp)
@@ -173,13 +176,13 @@ private fun BottomTabItem(
         ) {
             Icon(
                 tab.icon,
-                contentDescription = tab.label,
+                contentDescription = label,
                 tint = tint,
                 modifier = Modifier.size(if (compact) 15.dp else 17.dp).scale(iconScale),
             )
         }
         Text(
-            tab.label,
+            label,
             color = tint,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -241,6 +244,11 @@ fun CereBroApp() {
         }
         return
     }
+
+    // An authenticated session is an established relationship — unlock the
+    // anonymous, opt-out telemetry for returning users who never walked the
+    // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
+    LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()

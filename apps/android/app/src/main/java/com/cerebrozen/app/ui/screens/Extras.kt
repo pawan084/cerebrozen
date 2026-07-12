@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -148,7 +149,7 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
             ) {
                 Icon(
                     Icons.Outlined.ArrowBackIosNew,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = TextBright,
                     modifier = Modifier.size(21.dp),
                 )
@@ -266,7 +267,7 @@ internal fun ContentRow(
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (premium) Text("PREMIUM", style = MaterialTheme.typography.labelSmall, color = Warm)
+                if (premium) Text(stringResource(R.string.common_premium_badge), style = MaterialTheme.typography.labelSmall, color = Warm)
                 if (onFav != null && fav != null) {
                     // 48dp touch target with a visually 22dp icon (a11y minimum).
                     Box(
@@ -275,7 +276,8 @@ internal fun ContentRow(
                     ) {
                         Icon(
                             if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (fav) "Unfavourite $title" else "Favourite $title",
+                            contentDescription = if (fav) stringResource(R.string.common_unfavourite_cd, title)
+                            else stringResource(R.string.common_favourite_cd, title),
                             tint = Warm,
                             modifier = Modifier.size(22.dp),
                         )
@@ -284,7 +286,8 @@ internal fun ContentRow(
                 if (onTap != null) {
                     Icon(
                         if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (playing) "Pause $title" else "Play $title",
+                        contentDescription = if (playing) stringResource(R.string.common_pause_cd, title)
+                        else stringResource(R.string.common_play_cd, title),
                         tint = Cyan, modifier = Modifier.size(26.dp),
                     )
                 }
@@ -305,10 +308,11 @@ internal fun ContentList(
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    val loadFailed = stringResource(R.string.content_error_fallback)
     LaunchedEffect(kind) {
         runCatching { Api.content(kind) }
             .onSuccess { items = it }
-            .onFailure { error = it.message ?: "Couldn't load." }
+            .onFailure { error = it.message ?: loadFailed }
     }
     // Register narration URLs as a side effect of loading, not during render — the
     // registry is shared mutable state and must not be written on every recomposition.
@@ -322,7 +326,7 @@ internal fun ContentList(
     when {
         error != null -> Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         items == null -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
-        items!!.length() == 0 -> Text("Nothing here yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        items!!.length() == 0 -> Text(stringResource(R.string.content_empty), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         else -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
             val title = c.optString("title")
@@ -342,7 +346,9 @@ internal fun ContentList(
 
 @Composable
 fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
-    var headline by remember { mutableStateOf("Your week") }
+    val defaultHeadline = stringResource(R.string.insights_default_headline)
+    val loadFailed = stringResource(R.string.insights_error_fallback)
+    var headline by remember { mutableStateOf(defaultHeadline) }
     var summary by remember { mutableStateOf("") }
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -350,16 +356,16 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     LaunchedEffect(Unit) {
         runCatching { Api.insightsWeekly() }
             .onSuccess {
-                headline = it.optString("headline", "Your week")
+                headline = it.optString("headline", defaultHeadline)
                 summary = it.optString("summary")
                 metrics = it.optJSONArray("metrics")
             }
-            .onFailure { error = it.message ?: "Couldn't load your week — try again shortly." }
+            .onFailure { error = it.message ?: loadFailed }
         loading = false
     }
-    SubPage("Insights · this week", headline, onBack) {
+    SubPage(stringResource(R.string.insights_eyebrow), headline, onBack) {
         if (loading) {
-            Text("Reading your week…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.insights_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
         }
         error?.let {
@@ -368,7 +374,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         }
         // Real weekly read in a gradient hero — only when the backend returned one.
         if (summary.isNotBlank()) {
-            GradientHero(eyebrow = "This week", title = summary)
+            GradientHero(eyebrow = stringResource(R.string.insights_hero_eyebrow), title = summary)
         }
         // The honest "before" — renders only when a real baseline was saved;
         // otherwise the invitation lives here (REDESIGN §2.2: baseline is the
@@ -377,20 +383,26 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         if (baseline != null) {
             val (stress, sleep, date) = baseline
             SectionCard {
-                Text("Your starting point", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.insights_baseline_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(
-                    "Stress ${STRESS_WORDS[stress - 1].lowercase()} ($stress/5) · sleep ${SLEEP_WORDS[sleep - 1].lowercase()} ($sleep/5)" +
-                        if (date.isNotBlank()) " · recorded $date" else "",
+                    stringResource(
+                        R.string.insights_baseline_summary,
+                        stressWords()[stress - 1].lowercase(), stress,
+                        sleepWords()[sleep - 1].lowercase(), sleep,
+                    ) + if (date.isNotBlank()) stringResource(R.string.insights_baseline_recorded, date) else "",
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
         } else {
-            NavRow("Set your starting point", "Two quick scales — see real change later") { onOpen("baseline") }
+            NavRow(
+                stringResource(R.string.insights_baseline_nav_title),
+                stringResource(R.string.insights_baseline_nav_subtitle),
+            ) { onOpen("baseline") }
         }
         SectionCard {
             val m = metrics
             if (m == null || m.length() == 0) {
-                Text("Log a few days and honest patterns appear here — no guesses.",
+                Text(stringResource(R.string.insights_metrics_empty),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             } else {
                 // W10: each metric fills 0→value once (60ms stagger, 400ms);
@@ -419,7 +431,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 }
             }
         }
-        Text("First-party — computed on your own data, never sold or shared.",
+        Text(stringResource(R.string.insights_privacy_footer),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
@@ -434,6 +446,7 @@ fun ProgramsScreen(onBack: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val loadFailed = stringResource(R.string.programs_error_fallback)
 
     suspend fun refresh() {
         error = null
@@ -444,20 +457,20 @@ fun ProgramsScreen(onBack: () -> Unit) {
                 val c = arr.getJSONObject(i)
                 Triple(c.optString("id"), c.optString("title"), c.optString("subtitle"))
             }
-        }.onFailure { error = it.message ?: "Couldn't load journeys — try again shortly." }
+        }.onFailure { error = it.message ?: loadFailed }
         loading = false
     }
     LaunchedEffect(Unit) { refresh() }
 
-    SubPage("Guided journeys", "Programs", onBack) {
-        Text("Multi-day paths to a calmer baseline. Start any time; go at your pace.",
+    SubPage(stringResource(R.string.programs_eyebrow), stringResource(R.string.programs_title), onBack) {
+        Text(stringResource(R.string.programs_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         // Credibility line (REDESIGN §2.4) — honest provenance, no overclaim.
-        Text("Programs are evidence-informed — built on CBT and sleep-science techniques.",
+        Text(stringResource(R.string.programs_evidence),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
 
         if (loading) {
-            Text("Loading journeys…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.programs_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
         }
         error?.let {
@@ -469,11 +482,11 @@ fun ProgramsScreen(onBack: () -> Unit) {
             val day = p.optInt("day")
             val days = p.optInt("days")
             GradientHero(
-                eyebrow = "Program · Day $day of $days",
+                eyebrow = stringResource(R.string.programs_day_eyebrow, day, days),
                 title = p.optString("title"),
                 subtitle = if (p.optBoolean("completed"))
-                    "Complete — beautifully done. Start another whenever you like."
-                else "Showing up is the whole assignment today.",
+                    stringResource(R.string.programs_completed_subtitle)
+                else stringResource(R.string.programs_active_subtitle),
             ) {
                 if (days > 0) {
                     val prog = (day.toFloat() / days).coerceIn(0f, 1f)
@@ -494,14 +507,16 @@ fun ProgramsScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     scope.launch { runCatching { Api.leaveProgram() }; refresh() }
                 }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                    Text("Leave this journey", color = Cream.copy(alpha = 0.85f))
+                    Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
                 }
             }
         }
 
         if (rows.isNotEmpty()) {
-            Text("Start something new", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.programs_start_new_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
+        val enrolledStatus = stringResource(R.string.programs_enrolled_status)
+        val enrollFailed = stringResource(R.string.programs_enroll_error)
         rows.forEach { (id, title, subtitle) ->
             val isActive = active?.optString("title") == title
             SectionCard {
@@ -512,18 +527,18 @@ fun ProgramsScreen(onBack: () -> Unit) {
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                        Text(subtitle.ifBlank { "A few minutes a day" },
+                        Text(subtitle.ifBlank { stringResource(R.string.programs_default_subtitle) },
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                         if (!isActive) {
                             TextButton(onClick = {
                                 scope.launch {
                                     runCatching { Api.enrollProgram(id) }
-                                        .onSuccess { status = "Enrolled — day 1 starts now." }
-                                        .onFailure { status = it.message ?: "Couldn't enroll." }
+                                        .onSuccess { status = enrolledStatus }
+                                        .onFailure { status = it.message ?: enrollFailed }
                                     refresh()
                                 }
                             }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                                Text("Start this journey", color = Periwinkle)
+                                Text(stringResource(R.string.programs_start), color = Periwinkle)
                             }
                         }
                     }
@@ -544,10 +559,10 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
     var favs by remember { mutableStateOf(SleepFavs.all()) }
     val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
     var section by rememberSaveable { mutableStateOf(if (startInMixer) "mixer" else "library") }
-    SubPage("Sound library", "Sounds", onBack) {
+    SubPage(stringResource(R.string.sounds_eyebrow), stringResource(R.string.sounds_title), onBack) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PickChip(selected = section == "library", label = "Library") { section = "library" }
-            PickChip(selected = section == "mixer", label = "Mixer") { section = "mixer" }
+            PickChip(selected = section == "library", label = stringResource(R.string.sounds_section_library)) { section = "library" }
+            PickChip(selected = section == "mixer", label = stringResource(R.string.sounds_section_mixer)) { section = "mixer" }
         }
         if (section == "mixer") {
             MixerSection()
@@ -555,24 +570,28 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         }
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         SleepTimerPill()
-        Text("Soundscapes and sleep stories to slow a racing mind.",
+        Text(stringResource(R.string.sounds_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         if (favs.isNotEmpty()) {
-            Text("Favourites", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.sounds_favourites_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             favs.sorted().forEach { title ->
                 ContentRow(
-                    title, "", "Favourite", false,
+                    title, "", stringResource(R.string.sounds_meta_favourite), false,
                     playing = Player.nowPlaying == title && Player.isPlaying,
                     onTap = { play(title) }, fav = true, onFav = { toggleFav(title) },
                 )
             }
         }
-        ContentList("soundscape", { d -> if (d > 0) "$d min" else "Continuous ambient" },
+        // metaLabel lambdas are not composable — capture the templates here.
+        val minutesTemplate = stringResource(R.string.common_minutes)
+        val ambientMeta = stringResource(R.string.sounds_meta_ambient)
+        val storyMeta = stringResource(R.string.sleep_meta_story)
+        ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
             icon = Icons.Outlined.GraphicEq, onItemTap = play, favs = favs, onFav = toggleFav)
-        Text("Sleep stories", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
+        Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
             icon = Icons.Outlined.Bedtime, onItemTap = play, favs = favs, onFav = toggleFav)
-        Text("Titles with narration play their own audio; the rest play a calming ambient bed.",
+        Text(stringResource(R.string.sounds_narration_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
@@ -582,8 +601,8 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
  * nothing tappable; renders nothing when no fade-out is armed. */
 @Composable
 private fun SleepTimerPill() {
-    val label = SoundscapeMixer.remainingText()?.let { "Fading out in $it" }
-        ?: Player.timerMinutes.takeIf { it > 0 }?.let { "Sleep timer: ${it}m" }
+    val label = SoundscapeMixer.remainingText()?.let { stringResource(R.string.sounds_fading_out_in, it) }
+        ?: Player.timerMinutes.takeIf { it > 0 }?.let { stringResource(R.string.sounds_sleep_timer_short, it) }
         ?: return
     Row(
         Modifier
@@ -614,15 +633,18 @@ private fun layerIcon(symbol: String): ImageVector = when (symbol) {
 private fun MixerSection() {
     val context = LocalContext.current
     val playing = SoundscapeMixer.isPlaying
-    Text("Blend rain, ocean, wind and a soft drone into your own calm — nudge each one to taste.",
+    Text(stringResource(R.string.mixer_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
 
-    PrimaryButton(text = if (playing) "Pause" else "Play", modifier = Modifier.fillMaxWidth()) {
+    PrimaryButton(
+        text = if (playing) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         SoundscapeMixer.toggle(context)
     }
 
     SectionCard {
-        Text("Master volume", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         Slider(
             value = SoundscapeMixer.master,
             onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
@@ -667,7 +689,10 @@ private fun MixerSection() {
                 Text(layer.name, style = MaterialTheme.typography.titleMedium,
                     color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
                 TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
-                    Text(if (on) "On" else "Off", color = if (on) Cyan else TextMuted)
+                    Text(
+                        if (on) stringResource(R.string.common_on) else stringResource(R.string.common_off),
+                        color = if (on) Cyan else TextMuted,
+                    )
                 }
             }
             Slider(
@@ -687,17 +712,18 @@ private fun MixerSection() {
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Bedtime, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-            Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         }
         TextButton(onClick = { SoundscapeMixer.cycleTimer(context) }) {
             Text(
-                if (SoundscapeMixer.timerMinutes > 0) "${SoundscapeMixer.timerMinutes} min" else "Off",
+                if (SoundscapeMixer.timerMinutes > 0) stringResource(R.string.common_minutes, SoundscapeMixer.timerMinutes)
+                else stringResource(R.string.common_off),
                 color = if (SoundscapeMixer.timerMinutes > 0) Cyan else TextMuted,
             )
         }
     }
     SoundscapeMixer.remainingText()?.let {
-        Text("Fades out in $it — drift off, it stops itself.",
+        Text(stringResource(R.string.mixer_fades_note, it),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
@@ -717,7 +743,7 @@ fun PlayerScreen(onBack: () -> Unit) {
     val title = Player.nowPlaying
     val reduceMotion = rememberReduceMotion()
     val playing = title != null && Player.isPlaying
-    SubPage("Now playing", title ?: "Nothing playing", onBack) {
+    SubPage(stringResource(R.string.player_eyebrow), title ?: stringResource(R.string.player_nothing), onBack) {
         // Centered art + transport (teammate player look), our tokens throughout.
         Column(
             Modifier.fillMaxWidth(),
@@ -794,19 +820,19 @@ fun PlayerScreen(onBack: () -> Unit) {
                 }
             }
             if (title == null) {
-                Text("Pick a soundscape or story from Sounds and it plays here.",
+                Text(stringResource(R.string.player_empty_hint),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     textAlign = TextAlign.Center)
             } else {
                 Text(
                     if (MediaUrls.urlFor(title).isBlank())
-                        "Continuous ambient bed · this title has no narration yet."
-                    else "Narrated track · streams from your library.",
+                        stringResource(R.string.player_ambient_note)
+                    else stringResource(R.string.player_narrated_note),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                     textAlign = TextAlign.Center,
                 )
                 PrimaryButton(
-                    text = if (Player.isPlaying) "Pause" else "Play",
+                    text = if (Player.isPlaying) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
                     modifier = Modifier.fillMaxWidth(0.62f),
                 ) {
                     if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title)
@@ -816,22 +842,24 @@ fun PlayerScreen(onBack: () -> Unit) {
         if (title != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("Sleep timer", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                 TextButton(onClick = { Player.cycleTimer(context) }) {
                     Text(
-                        if (Player.timerMinutes > 0) "${Player.timerMinutes} min" else "Off",
+                        if (Player.timerMinutes > 0) stringResource(R.string.common_minutes, Player.timerMinutes)
+                        else stringResource(R.string.common_off),
                         color = if (Player.timerMinutes > 0) Cyan else TextMuted,
                     )
                 }
             }
-            Text("Volume", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Text(stringResource(R.string.common_volume), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            val volumeCd = stringResource(R.string.common_volume)
             Slider(
                 value = Player.volume,
                 onValueChange = { Player.setVolume(context, it) },
                 valueRange = 0f..1f,
-                modifier = Modifier.semantics { contentDescription = "Volume" },
+                modifier = Modifier.semantics { contentDescription = volumeCd },
             )
-            Text("Fades out ~10 seconds before the timer ends — sleep through it.",
+            Text(stringResource(R.string.player_fade_note),
                 style = MaterialTheme.typography.labelSmall, color = TextMuted)
         }
     }
@@ -876,7 +904,8 @@ private fun EqBars(playing: Boolean) {
 internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
     val context = LocalContext.current
     val title = Player.nowPlaying ?: return
-    val label = if (MediaUrls.urlFor(title).isBlank()) "NOW PLAYING · AMBIENT BED" else "NOW PLAYING · NARRATION"
+    val label = if (MediaUrls.urlFor(title).isBlank()) stringResource(R.string.nowplaying_label_ambient)
+    else stringResource(R.string.nowplaying_label_narration)
     SectionCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
@@ -895,12 +924,16 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
                 // Sleep auto-stop: off → 15 → 30 → 45 → 60 min, fades then stops.
                 TextButton(onClick = { Player.cycleTimer(context) }) {
                     Text(
-                        if (Player.timerMinutes > 0) "Timer ${Player.timerMinutes}m" else "Timer off",
+                        if (Player.timerMinutes > 0) stringResource(R.string.nowplaying_timer_on, Player.timerMinutes)
+                        else stringResource(R.string.nowplaying_timer_off),
                         color = if (Player.timerMinutes > 0) Cyan else TextMuted,
                     )
                 }
                 TextButton(onClick = { if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title) }) {
-                    Text(if (Player.isPlaying) "Pause" else "Play", color = Periwinkle)
+                    Text(
+                        if (Player.isPlaying) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
+                        color = Periwinkle,
+                    )
                 }
             }
         }
@@ -922,37 +955,46 @@ private fun ToolkitHeader(label: String) {
  * are jobs, not categories — Ground · Breathe · Reframe · Settle — with the
  * evidence-lineage tool (CBT reframe) leading its section. */
 @Composable
-fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small ways to steady", "Toolkit", onBack) {
-    Text("Pick what the moment needs — ground, breathe, reframe, settle.",
+fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
+    SubPage(stringResource(R.string.toolkit_eyebrow), stringResource(R.string.toolkit_title), onBack) {
+    Text(stringResource(R.string.toolkit_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
 
-    ToolkitHeader("Ground")
-    Text("5-4-3-2-1 grounding — come back to the present through your senses.",
+    ToolkitHeader(stringResource(R.string.toolkit_header_ground))
+    Text(stringResource(R.string.toolkit_grounding_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     Grounding()
-    NavRow("Zen ripples", "Tap the water, let it widen", icon = Icons.Outlined.Waves) { onOpen("zenripples") }
+    NavRow(stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
+        icon = Icons.Outlined.Waves) { onOpen("zenripples") }
     FeaturedGameCard(
-        title = "Bubble pop",
-        subtitle = "Pop gently — no timer, no losing. Just breathe and tap.",
+        title = stringResource(R.string.toolkit_bubble_title),
+        subtitle = stringResource(R.string.toolkit_bubble_subtitle),
         onOpen = { onOpen("bubblepop") },
     )
 
-    ToolkitHeader("Breathe")
-    NavRow("Box breathing", "In, hold, out, hold — four counts each", icon = Icons.Outlined.Air) { onOpen("breathe/box") }
-    NavRow("Two-minute reset", "A gentle in and out, nothing to hold", icon = Icons.Outlined.SelfImprovement) { onOpen("breathe/reset") }
+    ToolkitHeader(stringResource(R.string.toolkit_header_breathe))
+    NavRow(stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
+        icon = Icons.Outlined.Air) { onOpen("breathe/box") }
+    NavRow(stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
+        icon = Icons.Outlined.SelfImprovement) { onOpen("breathe/reset") }
 
-    ToolkitHeader("Reframe")
-    NavRow("Untangle a thought", "CBT reframe — from stuck to balanced", icon = Icons.Outlined.Psychology) { onOpen("cbt") }
-    NavRow("TIPP skill", "DBT reset for very intense moments", icon = Icons.Outlined.Spa) { onOpen("tipp") }
+    ToolkitHeader(stringResource(R.string.toolkit_header_reframe))
+    NavRow(stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
+        icon = Icons.Outlined.Psychology) { onOpen("cbt") }
+    NavRow(stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
+        icon = Icons.Outlined.Spa) { onOpen("tipp") }
 
-    ToolkitHeader("Settle")
-    NavRow("Gratitude garden", "A flower for every thank-you", icon = Icons.Outlined.LocalFlorist) { onOpen("gratitude") }
-    NavRow("Pattern glow", "Watch the light, repeat it", icon = Icons.Outlined.AutoAwesome) { onOpen("patternglow") }
-    NavRow("Sounds", "Soundscapes and sleep stories", icon = Icons.Outlined.GraphicEq) { onOpen("sounds") }
+    ToolkitHeader(stringResource(R.string.toolkit_header_settle))
+    NavRow(stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
+        icon = Icons.Outlined.LocalFlorist) { onOpen("gratitude") }
+    NavRow(stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
+        icon = Icons.Outlined.AutoAwesome) { onOpen("patternglow") }
+    NavRow(stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
+        icon = Icons.Outlined.GraphicEq) { onOpen("sounds") }
 
     // The quiet, always-there door (REDESIGN §2.3) — support belongs in the
     // toolkit too, two taps from anywhere.
-    NavRow("Need support right now?", "Tele-MANAS 14416 · real people, 24/7",
+    NavRow(stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
         icon = Icons.Outlined.HealthAndSafety) { onOpen("crisis") }
 }
 
@@ -961,12 +1003,13 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small
 @Composable
 private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
+    val playCd = stringResource(R.string.common_play_cd, title)
     Box(
         Modifier.fillMaxWidth().height(168.dp).clip(shape)
             .background(Brush.verticalGradient(listOf(PeriwinkleDeep, Iris)))
             .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
             .clickable { onOpen() }
-            .semantics { contentDescription = "Play $title" }
+            .semantics { contentDescription = playCd }
             .padding(24.dp),
     ) {
         Box(
@@ -975,7 +1018,7 @@ private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit
                 .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
                 .padding(horizontal = 14.dp, vertical = 6.dp),
         ) {
-            Text("PLAYABLE", style = MaterialTheme.typography.labelSmall, color = Cream)
+            Text(stringResource(R.string.toolkit_playable_badge), style = MaterialTheme.typography.labelSmall, color = Cream)
         }
         // A couple of drifting bubbles as quiet ornamentation.
         Box(
@@ -1029,9 +1072,9 @@ fun BubblePopScreen(onBack: () -> Unit) {
             bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
         }
     }
-    SubPage("A tiny reset", "Bubble pop", onBack) {
+    SubPage(stringResource(R.string.bubblepop_eyebrow), stringResource(R.string.bubblepop_title), onBack) {
         ToolAmbienceEffect(R.raw.ocean)
-        Text("Pop them slowly — no rush, no score to chase.",
+        Text(stringResource(R.string.bubblepop_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         AmbienceToggle()
         // A quiet score panel + reset — a gentle sense of progress, easily cleared.
@@ -1041,11 +1084,11 @@ fun BubblePopScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("POPPED", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(stringResource(R.string.bubblepop_popped), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 Text("$score", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
             }
             TextButton(onClick = { bubbles = emptyList(); score = 0 }) {
-                Text("Reset", color = Cyan)
+                Text(stringResource(R.string.common_reset), color = Cyan)
             }
         }
         BoxWithConstraints(
@@ -1069,12 +1112,14 @@ fun BubblePopScreen(onBack: () -> Unit) {
     }
 }
 
-private val GROUND_STEPS = listOf(
-    "5 things you can see" to "Look around — name five, slowly.",
-    "4 things you can feel" to "Textures, temperature, your feet on the floor.",
-    "3 things you can hear" to "Near, then far.",
-    "2 things you can smell" to "Or two scents you like.",
-    "1 thing you can taste" to "Or one slow, full breath.",
+/** The 5-4-3-2-1 grounding steps, resolved from resources in composition. */
+@Composable
+private fun groundSteps(): List<Pair<String, String>> = listOf(
+    stringResource(R.string.ground_step1_title) to stringResource(R.string.ground_step1_hint),
+    stringResource(R.string.ground_step2_title) to stringResource(R.string.ground_step2_hint),
+    stringResource(R.string.ground_step3_title) to stringResource(R.string.ground_step3_hint),
+    stringResource(R.string.ground_step4_title) to stringResource(R.string.ground_step4_hint),
+    stringResource(R.string.ground_step5_title) to stringResource(R.string.ground_step5_hint),
 )
 
 /** The iOS 5-4-3-2-1 sensory grounding tool as a gentle stepper — inlined at the
@@ -1082,16 +1127,17 @@ private val GROUND_STEPS = listOf(
 @Composable
 private fun Grounding() {
     var step by remember { mutableIntStateOf(0) }
-    val last = step == GROUND_STEPS.lastIndex
+    val steps = groundSteps()
+    val last = step == steps.lastIndex
     SectionCard {
-        Text("5 · 4 · 3 · 2 · 1", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Text(GROUND_STEPS[step].first, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        Text(GROUND_STEPS[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(onClick = { step = if (last) 0 else step + 1 }) {
-                Text(if (last) "Start over" else "Next")
+                Text(if (last) stringResource(R.string.ground_start_over) else stringResource(R.string.common_next))
             }
-            if (step > 0) TextButton(onClick = { step -= 1 }) { Text("Back", color = TextMuted) }
+            if (step > 0) TextButton(onClick = { step -= 1 }) { Text(stringResource(R.string.common_back), color = TextMuted) }
         }
     }
 }
@@ -1119,7 +1165,8 @@ internal fun openSupportTarget(ctx: android.content.Context, target: String) {
 internal fun SupportLinkRow(title: String, detail: String, target: String) {
     val ctx = LocalContext.current
     val isUrl = isSupportUrl(target)
-    val desc = if (isUrl) "Open $title" else "Call $title $detail"
+    val desc = if (isUrl) stringResource(R.string.crisis_open_cd, title)
+    else stringResource(R.string.crisis_call_cd, title, detail)
     SectionCard(onClick = { openSupportTarget(ctx, target) }) {
         Row(
             Modifier.fillMaxWidth().semantics { contentDescription = desc },
@@ -1148,28 +1195,29 @@ fun CrisisScreen(onBack: () -> Unit) {
     }
     // Static (offline-safe) directory — Tele-MANAS leads every crisis surface
     // (REDESIGN §2.3), then emergency services, then an international finder.
+    // Numbers/targets are dial/URL contracts and stay literal.
     val lines = listOf(
-        "Tele-MANAS — real people, 24/7" to "14416",
-        "Tele-MANAS on WhatsApp" to "wa.me/9114416",
-        "Emergency services" to "112",
-        "KIRAN mental-health helpline" to "1800-599-0019",
-        "Find a helpline" to "findahelpline.com",
+        stringResource(R.string.crisis_line_telemanas) to "14416",
+        stringResource(R.string.crisis_line_telemanas_whatsapp) to "wa.me/9114416",
+        stringResource(R.string.crisis_line_emergency) to "112",
+        stringResource(R.string.crisis_line_kiran) to "1800-599-0019",
+        stringResource(R.string.crisis_line_find_helpline) to "findahelpline.com",
     )
-    SubPage("You're not alone", "Urgent support", onBack) {
+    SubPage(stringResource(R.string.crisis_eyebrow), stringResource(R.string.crisis_title), onBack) {
         GradientHero(
-            eyebrow = "You deserve support",
-            title = "If you're in immediate danger, please reach out now.",
+            eyebrow = stringResource(R.string.crisis_hero_eyebrow),
+            title = stringResource(R.string.crisis_hero_title),
             colors = listOf(Warm, Danger),
         )
         lines.forEach { (name, number) ->
             SupportLinkRow(name, number, number)
         }
         SectionCard {
-            Text("Trusted contact", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(contact ?: "Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).",
+            Text(stringResource(R.string.crisis_trusted_contact_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(contact ?: stringResource(R.string.crisis_trusted_contact_empty),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         }
-        Text("Wellness support, not emergency care.",
+        Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }

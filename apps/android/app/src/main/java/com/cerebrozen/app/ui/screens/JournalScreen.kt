@@ -35,9 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
@@ -52,22 +54,33 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
-private val PROMPTS = listOf(
-    "Where did you feel most like yourself today?",
-    "Name the worry — then one truer thought beside it.",
-    "What's one thing you could set down tonight?",
-    "What went better than you expected?",
-    "If today had a weather, what was it — and why?",
+/** The rotating writing prompts, resolved from resources in composition. */
+@Composable
+private fun journalPrompts(): List<String> = listOf(
+    stringResource(R.string.journal_prompt_1),
+    stringResource(R.string.journal_prompt_2),
+    stringResource(R.string.journal_prompt_3),
+    stringResource(R.string.journal_prompt_4),
+    stringResource(R.string.journal_prompt_5),
 )
 
 /** Optional feeling chips for a new entry. Single-select; when chosen the mood is
  * persisted with the entry (appended to the saved body via [Api.createJournal]),
  * so nothing here is decorative — it becomes part of the real, searchable record. */
-private val MOODS = listOf("Calm", "Anxious", "Hopeful", "Tired", "Sad", "Grateful")
+@Composable
+private fun journalMoods(): List<String> = listOf(
+    stringResource(R.string.journal_mood_calm), stringResource(R.string.journal_mood_anxious),
+    stringResource(R.string.journal_mood_hopeful), stringResource(R.string.journal_mood_tired),
+    stringResource(R.string.journal_mood_sad), stringResource(R.string.journal_mood_grateful),
+)
 
 /** Quick-entry prompts in the composer — the descendants of the retired
  * one-good-thing / intention tool screens (REDESIGN §2.2). */
-private val QUICK_PROMPTS = listOf("One good thing", "Tonight's intention")
+@Composable
+private fun quickPrompts(): List<String> = listOf(
+    stringResource(R.string.journal_quick_good_thing),
+    stringResource(R.string.journal_quick_intention),
+)
 
 /** The journal's information architecture (mirrors the redesign): a hub plus three
  * pushed sub-screens for writing, reviewing history, and privacy. */
@@ -128,16 +141,17 @@ fun JournalScreen() {
     var unlocked by remember { mutableStateOf(!lockOn) }
     var journalLocked by remember { mutableStateOf(lockOn) }
     val activity = LocalContext.current as? FragmentActivity
+    val prompts = journalPrompts()
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     if (!unlocked) {
-        Page("Private to you", "Journal", trailing = Icons.AutoMirrored.Outlined.MenuBook) {
+        Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
             SectionCard {
-                Text("Journal is locked", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text("Your entries stay behind your screen lock.",
+                Text(stringResource(R.string.journal_locked_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.journal_locked_body),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                PrimaryButton(text = "Unlock", modifier = Modifier.fillMaxWidth()) {
+                PrimaryButton(text = stringResource(R.string.journal_unlock), modifier = Modifier.fillMaxWidth()) {
                     requestScreenLock(activity) { ok -> if (ok) unlocked = true }
                 }
             }
@@ -147,43 +161,44 @@ fun JournalScreen() {
 
     when (mode) {
         JournalMode.Entry -> {
-            SubPage("Private writing", "New entry", onBack = { mode = JournalMode.Home }) {
+            SubPage(stringResource(R.string.journal_entry_eyebrow), stringResource(R.string.journal_entry_title), onBack = { mode = JournalMode.Home }) {
                 // Prompt rotation moved into the composer as a gentle guide.
                 SectionCard {
-                    Text("Today's prompt", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                    Text(PROMPTS[promptIdx], style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.journal_prompt_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                    Text(prompts[promptIdx], style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     TextButton(
-                        onClick = { promptIdx = (promptIdx + 1) % PROMPTS.size },
+                        onClick = { promptIdx = (promptIdx + 1) % prompts.size },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                    ) { Text("Try another", color = Cyan) }
+                    ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
                 }
                 // W10: a small honest reassurance when the composer opens with a
                 // restored draft — dismissible, plain state, never persisted.
                 if (restoredDraft && !draftBannerDismissed && (title.isNotBlank() || body.isNotBlank())) {
                     InfoBanner(
                         icon = Icons.Outlined.Save,
-                        text = "Your draft is safe — it survived the restart.",
+                        text = stringResource(R.string.journal_draft_safe),
                         onDismiss = { draftBannerDismissed = true },
                     )
                 }
                 Box {
                 SectionCard {
-                    Text("Release the day", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.journal_release_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     // Quick entries (REDESIGN §2.2): the old one-field tools live on
                     // as prompt chips — tapping prefills the title, and only ever
                     // replaces a blank title or the other prompt, never your words.
+                    val quick = quickPrompts()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        QUICK_PROMPTS.forEach { prompt ->
+                        quick.forEach { prompt ->
                             PickChip(selected = title == prompt, label = prompt) {
-                                if (title.isBlank() || title in QUICK_PROMPTS) title = prompt
+                                if (title.isBlank() || title in quick) title = prompt
                             }
                         }
                     }
-                    AppTextField(title, { title = it }, "Title", singleLine = true)
-                    AppTextField(body, { body = it }, "What's on your mind?", minLines = 3)
-                    Text("How are you feeling? (optional)",
+                    AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
+                    AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
+                    Text(stringResource(R.string.journal_feeling_label),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    MOODS.chunked(3).forEach { rowMoods ->
+                    journalMoods().chunked(3).forEach { rowMoods ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowMoods.forEach { m ->
                                 PickChip(selected = mood == m, label = m) {
@@ -192,8 +207,11 @@ fun JournalScreen() {
                             }
                         }
                     }
+                    val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
+                    val savedStatus = stringResource(R.string.journal_saved)
+                    val saveFailed = stringResource(R.string.common_save_failed)
                     PrimaryButton(
-                        text = if (busy) "One moment…" else "Save entry",
+                        text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.journal_save_cta),
                         enabled = !busy && title.isNotBlank() && body.isNotBlank(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -202,13 +220,13 @@ fun JournalScreen() {
                             try {
                                 // Persist the chosen feeling with the entry so the chip is real.
                                 val entryBody = body.trim().let { b ->
-                                    mood?.let { "$b\n\n— feeling ${it.lowercase()}" } ?: b
+                                    mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
                                 }
                                 val saved = Api.createJournal(title.trim(), entryBody)
                                 showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
                                 title = ""; body = ""; mood = null
                                 draftBannerDismissed = true   // the draft became an entry
-                                status = "Saved — private to you."
+                                status = savedStatus
                                 // W10: the success pulse + a small bloom over the
                                 // composer (same calm reward as the Home check-in),
                                 // then home. Reduce Motion skips straight there —
@@ -218,7 +236,7 @@ fun JournalScreen() {
                                 if (!reduceMotion) { bloom++; delay(650) }
                                 mode = JournalMode.Home
                             } catch (e: Exception) {
-                                status = e.message ?: "Couldn't save."
+                                status = e.message ?: saveFailed
                             } finally {
                                 busy = false
                             }
@@ -234,21 +252,21 @@ fun JournalScreen() {
             return
         }
         JournalMode.History -> {
-            SubPage("Past entries", "History", onBack = { mode = JournalMode.Home }) {
+            SubPage(stringResource(R.string.journal_history_eyebrow), stringResource(R.string.journal_history_title), onBack = { mode = JournalMode.Home }) {
                 if (entries.isEmpty()) {
                     SectionCard {
-                        Text("No entries yet", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                        Text("Your saved reflections will appear here — private to you.",
+                        Text(stringResource(R.string.journal_no_entries_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(stringResource(R.string.journal_no_entries_body),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                     }
                 } else {
                     if (entries.size > 3) {
-                        AppTextField(query, { query = it }, "Search entries", singleLine = true)
+                        AppTextField(query, { query = it }, stringResource(R.string.journal_search_label), singleLine = true)
                     }
                     val shown = filterEntries(entries, query)
                     shown.take(20).forEachIndexed { i, e -> JournalEntryCard(e, i) }
                     if (shown.isEmpty()) {
-                        Text("No entries match \"${query.trim()}\".",
+                        Text(stringResource(R.string.journal_no_match, query.trim()),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                     }
                 }
@@ -256,7 +274,7 @@ fun JournalScreen() {
             return
         }
         JournalMode.Private -> {
-            SubPage("Private mode", "Your privacy", onBack = { mode = JournalMode.Home }) {
+            SubPage(stringResource(R.string.journal_private_eyebrow), stringResource(R.string.journal_private_title), onBack = { mode = JournalMode.Home }) {
                 SectionCard {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -271,9 +289,9 @@ fun JournalScreen() {
                             Icon(Icons.Outlined.Lock, contentDescription = null,
                                 tint = Periwinkle, modifier = Modifier.size(22.dp))
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Lock the journal",
+                                Text(stringResource(R.string.journal_lock_title),
                                     style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                                Text("Require your screen lock to open",
+                                Text(stringResource(R.string.journal_lock_hint),
                                     style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             }
                         }
@@ -292,14 +310,13 @@ fun JournalScreen() {
                     }
                 }
                 SectionCard {
-                    Text("Your entries stay private", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.journal_private_body_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        "Journal entries are yours. Safety scanning quietly surfaces support " +
-                            "when something sounds heavy — it never blocks or shares your writing.",
+                        stringResource(R.string.journal_private_body),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                     Text(
-                        "In India, Tele-MANAS is available any time — call or WhatsApp 14416.",
+                        stringResource(R.string.journal_telemanas),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -309,36 +326,36 @@ fun JournalScreen() {
         JournalMode.Home -> Unit
     }
 
-    Page("Private to you", "Journal", trailing = Icons.AutoMirrored.Outlined.MenuBook) {
+    Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
         HeroCard(
             imageUrl = HeroImg.journal,
-            eyebrow = "Today's prompt",
-            title = PROMPTS[promptIdx],
-            subtitle = "A gentle starting point — or write about anything.",
+            eyebrow = stringResource(R.string.journal_prompt_header),
+            title = prompts[promptIdx],
+            subtitle = stringResource(R.string.journal_hero_subtitle),
             height = 220.dp,
         ) {
             TextButton(
-                onClick = { promptIdx = (promptIdx + 1) % PROMPTS.size },
+                onClick = { promptIdx = (promptIdx + 1) % prompts.size },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            ) { Text("Try another", color = Cyan) }
+            ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
         }
 
-        NavRow("New entry", "Private writing, safety-aware", Icons.Outlined.Edit) {
+        NavRow(stringResource(R.string.journal_new_title), stringResource(R.string.journal_new_subtitle), Icons.Outlined.Edit) {
             mode = JournalMode.Entry
         }
-        NavRow("History", "Your past entries, searchable", Icons.Outlined.History) {
+        NavRow(stringResource(R.string.journal_history_title), stringResource(R.string.journal_history_subtitle), Icons.Outlined.History) {
             mode = JournalMode.History
         }
-        NavRow("Private mode", "Lock the journal, manage privacy", Icons.Outlined.Lock) {
+        NavRow(stringResource(R.string.journal_private_mode), stringResource(R.string.journal_private_subtitle), Icons.Outlined.Lock) {
             mode = JournalMode.Private
         }
 
         // Safety contract: support is surfaced, the entry is never blocked.
         if (showSupport) {
             SectionCard {
-                Text("You don't have to carry this alone", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.journal_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(
-                    "That entry sounded heavy. If things feel urgent, real people can help right now — in India, call or WhatsApp Tele-MANAS at 14416, or dial your local emergency number.",
+                    stringResource(R.string.journal_support_body),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
@@ -386,7 +403,7 @@ private fun JournalEntryCard(entry: Entry, index: Int) {
                     .border(1.dp, LineStroke, RoundedCornerShape(50))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Text("Support", style = MaterialTheme.typography.labelMedium, color = Warm)
+                Text(stringResource(R.string.journal_support_badge), style = MaterialTheme.typography.labelMedium, color = Warm)
             }
         }
     }

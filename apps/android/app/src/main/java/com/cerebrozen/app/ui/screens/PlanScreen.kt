@@ -24,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
@@ -71,31 +73,37 @@ fun PlanScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { load() }
 
+    val defaultTitle = stringResource(R.string.plan_default_title)
     SubPage(
-        "Agentic plan · adapts to your check-ins",
-        plan?.optString("title")?.ifBlank { "Daily plan" } ?: "Daily plan",
+        stringResource(R.string.plan_eyebrow),
+        plan?.optString("title")?.ifBlank { defaultTitle } ?: defaultTitle,
         onBack,
     ) {
         val p = plan
         if (p == null && loadError) {
             Text(
-                "We couldn't load your plan just now.",
+                stringResource(R.string.plan_load_error),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
-            PrimaryButton(text = "Try again", modifier = Modifier.fillMaxWidth()) { load() }
+            PrimaryButton(text = stringResource(R.string.common_try_again), modifier = Modifier.fillMaxWidth()) { load() }
         } else if (p == null) {
-            Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.plan_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
             // Rationale hero — a photographic gradient card in the teammate's look.
             HeroCard(
                 imageUrl = HeroImg.calm,
-                eyebrow = "Why this plan",
-                title = p.optString("focus").ifBlank { "Today's plan" },
+                eyebrow = stringResource(R.string.plan_hero_eyebrow),
+                title = p.optString("focus").ifBlank { stringResource(R.string.today_plan_eyebrow) },
                 subtitle = p.optString("rationale")
-                    .ifBlank { "Built around ${p.optString("focus").ifBlank { "your goals" }}." },
+                    .ifBlank {
+                        stringResource(
+                            R.string.plan_rationale_fallback,
+                            p.optString("focus").ifBlank { stringResource(R.string.plan_your_goals) },
+                        )
+                    },
             ) {
                 Text(
-                    "${steps.count { it.done }} of ${steps.size} steps done · updates from your check-ins and sleep diary",
+                    stringResource(R.string.plan_steps_summary, steps.count { it.done }, steps.size),
                     style = MaterialTheme.typography.labelSmall, color = TextSoft,
                 )
             }
@@ -103,7 +111,7 @@ fun PlanScreen(onBack: () -> Unit) {
             if (steps.isEmpty()) {
                 SectionCard {
                     Text(
-                        "No steps yet — update your plan to generate some.",
+                        stringResource(R.string.plan_no_steps),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -161,15 +169,16 @@ fun PlanScreen(onBack: () -> Unit) {
                 }
             }
 
+            val updateFailed = stringResource(R.string.plan_update_failed)
             PrimaryButton(
-                text = if (busy) "Updating…" else "Update plan from my latest check-ins",
+                text = if (busy) stringResource(R.string.plan_updating) else stringResource(R.string.plan_update_cta),
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 busy = true; status = null
                 scope.launch {
                     runCatching { adopt(Api.regeneratePlan()) }
-                        .onFailure { status = it.message ?: "Couldn't update." }
+                        .onFailure { status = it.message ?: updateFailed }
                     busy = false
                 }
             }

@@ -34,8 +34,10 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -112,6 +114,9 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
     }
 }
 
+// i18n: pending — the companion names double as the server-side `companion`
+// profile value (cross-stack contract), so this list needs a label/value split
+// before its display strings can be localized.
 private val COMPANIONS = listOf(
     "Calm Guide" to "Steady and soothing — grounds you first, never rushes",
     "Warm Friend" to "Encouraging and familiar — like a friend who gets it",
@@ -124,8 +129,8 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     var current by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { runCatching { current = Api.me().optString("companion") } }
-    SubPage("How CereBro talks with you", "Companion style", onBack) {
-        Text("Same care, different voice. Change it any time — conversations adapt from the next message.",
+    SubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
+        Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         COMPANIONS.forEach { (name, detail) ->
             SelectableRow(name, detail, selected = current == name) {
@@ -140,20 +145,19 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     }
 }
 
-private val THEME_CHOICES = listOf(
-    Triple(ThemeMode.System, "System default", "Follows your phone's light/dark setting"),
-    Triple(ThemeMode.Night, "Always night", "The deep-indigo look, day and night"),
-    Triple(ThemeMode.Dawn, "Always dawn", "A warm, light look for daytime"),
-)
-
 /** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
  * The choice persists as `theme_mode`; Sleep always keeps the night palette. */
 @Composable
 fun AppearanceScreen(onBack: () -> Unit) {
-    SubPage("Night or dawn", "Appearance", onBack) {
-        Text("Dawn is a light, warm look that's easier to read in daylight. Sleep always stays night — it's a wind-down space.",
+    val themeChoices = listOf(
+        Triple(ThemeMode.System, stringResource(R.string.theme_system_title), stringResource(R.string.theme_system_hint)),
+        Triple(ThemeMode.Night, stringResource(R.string.theme_night_title), stringResource(R.string.theme_night_hint)),
+        Triple(ThemeMode.Dawn, stringResource(R.string.theme_dawn_title), stringResource(R.string.theme_dawn_hint)),
+    )
+    SubPage(stringResource(R.string.appearance_eyebrow), stringResource(R.string.appearance_title), onBack) {
+        Text(stringResource(R.string.appearance_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        THEME_CHOICES.forEach { (mode, title, subtitle) ->
+        themeChoices.forEach { (mode, title, subtitle) ->
             SelectableRow(title, subtitle, selected = AppTheme.mode == mode) {
                 AppTheme.mode = mode
                 Session.prefPut("theme_mode", mode.prefValue())
@@ -162,21 +166,22 @@ fun AppearanceScreen(onBack: () -> Unit) {
     }
 }
 
-private val REGIONS = listOf(
-    "" to "Automatic (device)", "IN" to "India", "US" to "United States",
-    "GB" to "United Kingdom", "CA" to "Canada", "AU" to "Australia",
-    "NZ" to "New Zealand", "EU" to "Europe",
-)
-
 @Composable
 fun CrisisRegionScreen(onBack: () -> Unit) {
+    // Region codes are the cross-stack contract; only the labels are localized.
+    val regions = listOf(
+        "" to stringResource(R.string.region_auto), "IN" to stringResource(R.string.region_in),
+        "US" to stringResource(R.string.region_us), "GB" to stringResource(R.string.region_gb),
+        "CA" to stringResource(R.string.region_ca), "AU" to stringResource(R.string.region_au),
+        "NZ" to stringResource(R.string.region_nz), "EU" to stringResource(R.string.region_eu),
+    )
     var region by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { runCatching { region = Api.me().optString("region") } }
-    SubPage("Urgent support uses this", "Crisis region", onBack) {
-        Text("Sets which emergency lines the crisis screen shows.",
+    SubPage(stringResource(R.string.crisisregion_eyebrow), stringResource(R.string.crisisregion_title), onBack) {
+        Text(stringResource(R.string.crisisregion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        REGIONS.forEach { (code, label) ->
+        regions.forEach { (code, label) ->
             SelectableRow(label, "", selected = region == code) {
                 val prev = region
                 region = code
@@ -205,14 +210,15 @@ fun PrivacyScreen(onBack: () -> Unit) {
         runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
         loaded = true
     }
-    SubPage("Control what CereBro remembers", notice.title, onBack) {
+    SubPage(stringResource(R.string.privacy_control_line), notice.title, onBack) {
         Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
             noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
         }
         if (!loaded) {
-            Text("Loading your choices…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.privacy_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
+            val consentSaveError = stringResource(R.string.privacy_consent_error)
             val layoutDir = if (noticeLang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
                 SectionCard {
@@ -236,7 +242,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                                     runCatching { Api.updateConsent(JSONObject().put(key, v)) }
                                         .onFailure {
                                             consent[key] = prev
-                                            consentError = "Couldn't save that change — check your connection and try again."
+                                            consentError = consentSaveError
                                         }
                                 }
                             })
@@ -253,8 +259,8 @@ fun PrivacyScreen(onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Anonymous usage stats", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text("Counts only — never your content or account",
+                    Text(stringResource(R.string.privacy_stats_title), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                    Text(stringResource(R.string.privacy_stats_hint),
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
                 AppSwitch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
@@ -263,10 +269,14 @@ fun PrivacyScreen(onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(if (lockOn) "Unlock journal" else "Lock journal",
-                        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                    Text(if (lockOn) "Turn off PIN/password protection" else "Require phone PIN, password, pattern, or biometrics",
-                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Text(
+                        if (lockOn) stringResource(R.string.privacy_unlock_journal) else stringResource(R.string.privacy_lock_journal),
+                        style = MaterialTheme.typography.bodyMedium, color = TextSoft,
+                    )
+                    Text(
+                        if (lockOn) stringResource(R.string.privacy_unlock_hint) else stringResource(R.string.privacy_lock_hint),
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                    )
                 }
                 // Gate the change behind a screen-lock confirmation both ways —
                 // only persist once the user actually authenticates.
@@ -284,15 +294,17 @@ fun PrivacyScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PremiumScreen(onBack: () -> Unit) = SubPage("CereBro Premium", "Go deeper", onBack) {
+fun PremiumScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.premium_eyebrow), stringResource(R.string.premium_title), onBack) {
     // First-party paywall funnel count (anonymous, opt-out; mirrors iOS).
     LaunchedEffect(Unit) { Analytics.track("paywall_view") }
-    Text("Unlock the full library, longer programs, and unlimited voice — same private-by-design promise.",
+    Text(stringResource(R.string.premium_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    PlanCard("Annual", "₹2,999 / year", "Save 37% · 7-day free trial", featured = true)
-    PlanCard("Monthly", "₹399 / month", "Cancel anytime", featured = false)
-    PrimaryButton(text = "Start free trial", enabled = false, modifier = Modifier.fillMaxWidth()) {}
-    Text("Billing isn't wired on Android yet — Play Billing lands with Play Console setup. On iOS this is live via StoreKit.",
+    PlanCard(stringResource(R.string.premium_annual), stringResource(R.string.premium_annual_price),
+        stringResource(R.string.premium_annual_note), featured = true)
+    PlanCard(stringResource(R.string.premium_monthly), stringResource(R.string.premium_monthly_price),
+        stringResource(R.string.premium_monthly_note), featured = false)
+    PrimaryButton(text = stringResource(R.string.premium_cta), enabled = false, modifier = Modifier.fillMaxWidth()) {}
+    Text(stringResource(R.string.premium_billing_note),
         style = MaterialTheme.typography.labelSmall, color = TextMuted)
 }
 
@@ -308,15 +320,16 @@ private fun PlanCard(name: String, price: String, note: String, featured: Boolea
 }
 
 @Composable
-fun HumanSupportScreen(onBack: () -> Unit) = SubPage("Beyond the app", "Human support", onBack) {
-    Text("CereBro is a companion, not a clinician. When you want a real person, these connect you with one.",
+fun HumanSupportScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.humansupport_eyebrow), stringResource(R.string.humansupport_title), onBack) {
+    Text(stringResource(R.string.humansupport_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
-    SupportLinkRow("Tele-MANAS — call 14416", "Free government mental-health line · 24/7", "14416")
-    SupportLinkRow("Tele-MANAS on WhatsApp", "The same counsellors, by chat", "https://wa.me/9114416")
-    SupportLinkRow("iCall — talk to a counsellor", "Trained counsellors by phone · 9152987821", "9152987821")
-    SupportLinkRow("Find a therapist", "Directories of professional help near you", "https://www.findahelpline.com/in")
-    InfoCard("Talk to a coach", "A vetted coach directory for India is on our roadmap. Until it's real, the lines above reach real people today.")
+    // The dial/URL targets are contracts and stay literal.
+    SupportLinkRow(stringResource(R.string.humansupport_telemanas_title), stringResource(R.string.humansupport_telemanas_detail), "14416")
+    SupportLinkRow(stringResource(R.string.crisis_line_telemanas_whatsapp), stringResource(R.string.humansupport_whatsapp_detail), "https://wa.me/9114416")
+    SupportLinkRow(stringResource(R.string.humansupport_icall_title), stringResource(R.string.humansupport_icall_detail), "9152987821")
+    SupportLinkRow(stringResource(R.string.humansupport_find_title), stringResource(R.string.humansupport_find_detail), "https://www.findahelpline.com/in")
+    InfoCard(stringResource(R.string.humansupport_coach_title), stringResource(R.string.humansupport_coach_body))
 }
 
 @Composable
@@ -340,13 +353,13 @@ fun RemindersScreen(onBack: () -> Unit) {
         com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
     }
 
-    SubPage("A gentle daily nudge", "Daily reminder", onBack) {
+    SubPage(stringResource(R.string.reminders_eyebrow), stringResource(R.string.reminders_title), onBack) {
         SectionCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Daily check-in reminder", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text("Once a day around 9am — gentle, no pressure.",
+                    Text(stringResource(R.string.reminders_toggle_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.reminders_toggle_hint),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 AppSwitch(checked = on, onCheckedChange = {
@@ -355,28 +368,28 @@ fun RemindersScreen(onBack: () -> Unit) {
             }
         }
         TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context) }) {
-            Text("Send a test reminder now", color = Periwinkle)
+            Text(stringResource(R.string.reminders_test), color = Periwinkle)
         }
-        Text("Delivered on-device via a scheduled alarm — no server or FCM required.",
+        Text(stringResource(R.string.reminders_delivery_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
 
 @Composable
-fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage("How we handle your data", "Privacy policy", onBack) {
-    InfoCard("Private by design", "Your journal, chat and sleep contents stay yours. Support tooling sees counts and account state — never the words.")
-    InfoCard("Your controls", "Toggle what's remembered in Privacy & memory, export a full copy any time, or delete everything permanently.")
-    InfoCard("No selling, ever", "We don't sell your data or use third-party ad SDKs. Analytics are first-party aggregates.")
+fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.privacypolicy_eyebrow), stringResource(R.string.privacypolicy_title), onBack) {
+    InfoCard(stringResource(R.string.privacypolicy_private_title), stringResource(R.string.privacypolicy_private_body))
+    InfoCard(stringResource(R.string.privacypolicy_controls_title), stringResource(R.string.privacypolicy_controls_body))
+    InfoCard(stringResource(R.string.privacypolicy_noselling_title), stringResource(R.string.privacypolicy_noselling_body))
 
     // Credibility disclosure (REDESIGN §2.4) — honest even where the honest
     // answer is "on our roadmap".
-    Text("HOW CEREBRO IS BUILT", style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+    Text(stringResource(R.string.privacypolicy_built_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle,
         modifier = Modifier.padding(top = 8.dp))
-    InfoCard("Evidence, labeled", "Tools are labeled with why they work. Where something is comfort rather than therapy, we say so.")
-    InfoCard("What CereBro is not", "A companion alongside care, never a replacement. It doesn't diagnose or treat.")
-    InfoCard("Professional involvement", "Built with published clinical research; a formal clinical advisory process is on our roadmap.")
+    InfoCard(stringResource(R.string.privacypolicy_evidence_title), stringResource(R.string.privacypolicy_evidence_body))
+    InfoCard(stringResource(R.string.privacypolicy_not_title), stringResource(R.string.privacypolicy_not_body))
+    InfoCard(stringResource(R.string.privacypolicy_professional_title), stringResource(R.string.privacypolicy_professional_body))
 
-    Text("Full policy at cerebrozen.in/privacy.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Text(stringResource(R.string.privacypolicy_full_policy), style = MaterialTheme.typography.labelSmall, color = TextMuted)
 }
 
 @Composable
@@ -385,19 +398,21 @@ fun DataExportScreen(onBack: () -> Unit) {
     var exportOk by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    SubPage("Your data, your copy", "Export my data", onBack) {
-        Text("Download everything CereBro has stored for you — mood, journal, sleep and chat.",
+    val successTemplate = stringResource(R.string.export_success)
+    val exportFailed = stringResource(R.string.export_failed)
+    SubPage(stringResource(R.string.export_eyebrow), stringResource(R.string.export_title), onBack) {
+        Text(stringResource(R.string.export_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         PrimaryButton(
-            text = if (busy) "Preparing…" else "Export my data",
+            text = if (busy) stringResource(R.string.export_preparing) else stringResource(R.string.export_title),
             enabled = !busy,
             modifier = Modifier.fillMaxWidth(),
         ) {
             busy = true
             scope.launch {
                 runCatching { Api.exportData() }
-                    .onSuccess { exportOk = true; status = "Exported ${it.length} characters of your data." }
-                    .onFailure { exportOk = false; status = it.message ?: "Export failed." }
+                    .onSuccess { exportOk = true; status = successTemplate.format(it.length) }
+                    .onFailure { exportOk = false; status = it.message ?: exportFailed }
                 busy = false
             }
         }
@@ -411,27 +426,31 @@ fun AccountDeletionScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    SubPage("This can't be undone", "Delete account", onBack) {
-        Text("Permanently erase your account and everything in it. There's no recovery.",
+    val deleteFailed = stringResource(R.string.delete_error_fallback)
+    SubPage(stringResource(R.string.delete_eyebrow), stringResource(R.string.delete_title), onBack) {
+        Text(stringResource(R.string.delete_warning),
             style = MaterialTheme.typography.bodyMedium, color = Danger)
         if (!confirm) {
             TextButton(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Delete my account", color = Danger)
+                Text(stringResource(R.string.delete_cta), color = Danger)
             }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DangerButton(text = if (busy) "Deleting…" else "Delete forever", enabled = !busy) {
+                DangerButton(
+                    text = if (busy) stringResource(R.string.delete_busy) else stringResource(R.string.delete_forever),
+                    enabled = !busy,
+                ) {
                     busy = true; error = null
                     scope.launch {
                         runCatching { Api.deleteAccount() }
                             .onSuccess { Session.signOut() }
                             .onFailure {
                                 busy = false
-                                error = it.message ?: "Couldn't delete your account. Please try again."
+                                error = it.message ?: deleteFailed
                             }
                     }
                 }
-                TextButton(onClick = { confirm = false }, enabled = !busy) { Text("Cancel", color = TextMuted) }
+                TextButton(onClick = { confirm = false }, enabled = !busy) { Text(stringResource(R.string.common_cancel), color = TextMuted) }
             }
         }
         error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Danger) }

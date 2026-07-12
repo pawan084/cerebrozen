@@ -43,9 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
@@ -67,6 +70,8 @@ import java.util.Calendar
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
 private data class MoodOption(val name: String, val note: String, val symbol: String, val intensity: Int)
 
+// i18n: pending — mood names/notes are the cross-stack mood taxonomy persisted
+// to the backend; needs a label/value split before display strings can localize.
 private val MOODS = listOf(
     MoodOption("Good", "Clear", "sparkles", 2),
     MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
@@ -74,6 +79,7 @@ private val MOODS = listOf(
     MoodOption("Tired", "Need rest", "drop", 3),
 )
 
+// i18n: pending — pure function, needs context plumbing
 internal fun greetingFor(hour: Int): String = when (hour) {
     in 5..11 -> "Good morning"
     in 12..16 -> "Good afternoon"
@@ -84,6 +90,7 @@ private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar
 
 /** A gentle celebration line on milestone days — presence framing (REDESIGN
  * §3.6): counts showing up, never chains or misses. Calm, never punitive. */
+// i18n: pending — pure function, needs context plumbing
 internal fun milestoneLine(streak: Int): String? =
     if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak days of showing up — beautifully done" else null
 
@@ -177,6 +184,7 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
 }
 
 /** Time-matched rail kind + heading (mirrors the iOS Home rails). */
+// i18n: pending — pure function, needs context plumbing (headings are user copy)
 internal fun railKindFor(hour: Int): Pair<String, String> = when {
     hour < 12 -> "meditation" to "For this morning"
     hour < 17 -> "soundscape" to "A midday reset"
@@ -219,7 +227,10 @@ private fun ContentRail(onOpen: (String) -> Unit) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(title, style = MaterialTheme.typography.bodyMedium, color = TextSoft, maxLines = 1)
                     val d = c.optInt("duration_min")
-                    Text(if (d > 0) "$d min" else "Ambient", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(
+                        if (d > 0) stringResource(R.string.common_minutes, d) else stringResource(R.string.today_rail_ambient),
+                        style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    )
                 }
             }
         }
@@ -302,11 +313,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    (if (goal.isBlank()) "Today" else "Today · $goal").uppercase(),
+                    (if (goal.isBlank()) stringResource(R.string.today_eyebrow)
+                    else stringResource(R.string.today_eyebrow_goal, goal)).uppercase(),
                     style = MaterialTheme.typography.labelSmall, color = Periwinkle,
                 )
+                val friend = stringResource(R.string.today_friend)
                 Text(
-                    "${greeting()}, ${userName.ifBlank { "friend" }}",
+                    stringResource(R.string.today_greeting_format, greeting(), userName.ifBlank { friend }),
                     style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary,
                 )
@@ -319,7 +332,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     .clickable { onOpen("search") },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Search, contentDescription = "Search the library",
+                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.today_search_cd),
                     tint = TextSoft, modifier = Modifier.size(19.dp))
             }
         }
@@ -343,19 +356,19 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         ) {
             HomeBanner.OFFLINE -> InfoBanner(
                 icon = Icons.Outlined.CloudOff,
-                text = "You're offline — showing your last copy.",
+                text = stringResource(R.string.today_banner_offline),
             )
             HomeBanner.SLEEP_CHECKIN -> InfoBanner(
                 icon = Icons.Outlined.LightMode,
-                text = "How was last night? A 20-second check-in.",
-                actionLabel = "Log it",
+                text = stringResource(R.string.today_banner_sleep),
+                actionLabel = stringResource(R.string.today_banner_sleep_action),
                 onAction = { onOpen("sleep") },
                 onDismiss = { Session.prefPut("sleepBannerDismissed", today); dismissTick++ },
             )
             HomeBanner.WIND_DOWN -> InfoBanner(
                 icon = Icons.Outlined.Bedtime,
-                text = "The day is winding down — a quieter mix, or tonight's wind-down guide?",
-                actionLabel = "Wind down",
+                text = stringResource(R.string.today_banner_winddown),
+                actionLabel = stringResource(R.string.today_banner_winddown_action),
                 onAction = { onOpen("sounds/mixer") },
                 onDismiss = { Session.prefPut("windDownBannerDismissed", today); dismissTick++ },
             )
@@ -363,8 +376,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 // B4: the day strip is status, not a nudge — never dismissible.
                 InfoBanner(
                     icon = Icons.Outlined.CalendarMonth,
-                    text = "Day ${prog.optInt("day")} of ${prog.optInt("days")} · ${prog.optString("title")}",
-                    actionLabel = "Open",
+                    text = stringResource(
+                        R.string.today_banner_program,
+                        prog.optInt("day"), prog.optInt("days"), prog.optString("title"),
+                    ),
+                    actionLabel = stringResource(R.string.common_open),
                     onAction = { onOpen("programs") },
                 )
             }
@@ -374,8 +390,8 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         // The primary daily action leads (REDESIGN §3.1): the 1-tap check-in.
         Box {
         SectionCard {
-            Text("How are you, really?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text("A 20-second check-in shapes today's plan.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.today_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.today_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -387,8 +403,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     }
                 }
             }
+            val checkedIn = stringResource(R.string.today_checkin_done)
+            val checkinFailed = stringResource(R.string.today_checkin_failed)
             PrimaryButton(
-                text = if (busy) "One moment…" else "Check in",
+                text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.today_checkin_cta),
                 enabled = picked != null && !busy,
             ) {
                 val mood = picked ?: return@PrimaryButton
@@ -400,11 +418,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         // daily reward, not the full-screen celebration.
                         Haptics.success()
                         if (!reduceMotion) bloom++
-                        status = "Checked in — noted gently."
+                        status = checkedIn
                         picked = null
                         reload()
                     } catch (e: Exception) {
-                        status = e.message ?: "Couldn't check in."
+                        status = e.message ?: checkinFailed
                     } finally {
                         busy = false
                     }
@@ -429,15 +447,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 .firstOrNull { !it.optBoolean("done") }
             HeroCard(
                 imageUrl = HeroImg.calm,
-                eyebrow = "Today's plan",
+                eyebrow = stringResource(R.string.today_plan_eyebrow),
                 title = p.optString("title"),
                 subtitle = p.optString("focus"),
                 height = 190.dp,
                 onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)
             ) {
+                val nextLabel = next?.let { stringResource(R.string.today_plan_next, it.optString("title")) }
+                val doneLabel = if (total > 0) stringResource(R.string.today_plan_done_count, done, total) else null
                 val tail = buildString {
-                    if (next != null) append("Next: ${next.optString("title")}")
-                    if (total > 0) { if (isNotEmpty()) append("  ·  "); append("$done of $total done") }
+                    if (nextLabel != null) append(nextLabel)
+                    if (doneLabel != null) { if (isNotEmpty()) append("  ·  "); append(doneLabel) }
                 }
                 // This sits on the hero's constant-dark photo scrim, so use the art-text
                 // constant — themed TextSoft resolves to ink on Dawn and vanishes here.
@@ -451,14 +471,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         // Time-matched content rail (mirrors the iOS Home rails).
         ContentRail(onOpen)
 
-        NavRow("Toolkit", "Small practices for right now") { onOpen("toolkit") }
+        NavRow(stringResource(R.string.today_toolkit_title), stringResource(R.string.today_toolkit_subtitle)) { onOpen("toolkit") }
 
         // Presence (REDESIGN §3.6): count the days you showed up, never the
         // days you didn't. The ring fills; it never breaks or resets.
         SectionCard {
             val daysPresent = week.count { it.second }
             Text(
-                if (daysPresent > 0 || streak > 0) "You showed up" else "Whenever you're ready",
+                if (daysPresent > 0 || streak > 0) stringResource(R.string.today_presence_title)
+                else stringResource(R.string.today_presence_ready),
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
             )
             milestoneLine(streak)?.let {
@@ -466,8 +487,8 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             }
             Text(
                 if (daysPresent > 0)
-                    "$daysPresent ${if (daysPresent == 1) "day" else "days"} this week — once a day is plenty."
-                else "One small check-in counts as showing up — gentle, no pressure.",
+                    pluralStringResource(R.plurals.today_presence_days, daysPresent, daysPresent)
+                else stringResource(R.string.today_presence_empty),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
             // 7-dot week ring — fills for days present; today is the last dot.
@@ -477,7 +498,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         if (recent.isNotEmpty()) {
             SectionCard {
-                Text("Recent check-ins", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.today_recent_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 recent.forEach { line ->
                     Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }

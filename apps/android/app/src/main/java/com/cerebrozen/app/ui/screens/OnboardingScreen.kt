@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -84,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -141,6 +143,9 @@ private enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent,
  * `mood` keys the first check-in into the shared mood taxonomy. */
 internal data class StateOption(val label: String, val motivation: String, val goal: String, val mood: String)
 
+// i18n: pending — labels double as the rememberSaveable key (StateOptionSaver)
+// and motivation/goal/mood are the cross-stack taxonomy; needs an id-based
+// split before the labels can localize.
 internal val STATE_OPTIONS = listOf(
     StateOption("Stressed and tense", "Calm", "Reduce stress", "Anxious"),
     StateOption("Can't switch off at night", "Calm", "Sleep better", "Tired"),
@@ -150,6 +155,9 @@ internal val STATE_OPTIONS = listOf(
     StateOption("Can't stay consistent", "Discipline", "Strengthen willpower", "Okay"),
 )
 
+// i18n: pending — the picked value is the rememberSaveable default/state and
+// (for NOTIFY) drives startsWith("Morning"/"Evening") logic; needs an id-based
+// split before these display strings can localize.
 private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
 private val NOTIFY = listOf("Morning 9 AM", "Evening 7 PM", "Private previews", "No reminders")
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
@@ -243,14 +251,14 @@ fun Onboarding() {
         OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
 
         OStep.Disclosure -> Funnel(
-            "Honesty first", "Who CereBro is for — and what it isn't",
-            "Here's exactly what your AI companion can and can't do for you.",
-            "I'm 18+ — continue", onBack = { back() }, onPrimary = { next() },
+            stringResource(R.string.ob_disclosure_eyebrow), stringResource(R.string.ob_disclosure_title),
+            stringResource(R.string.ob_disclosure_sub),
+            stringResource(R.string.ob_disclosure_cta), onBack = { back() }, onPrimary = { next() },
         ) {
             ReferenceCard(borderColor = Warm.copy(alpha = 0.5f), fill = GratitudeCardFill) {
-                Text("Wellness support, not emergency care.",
+                Text(stringResource(R.string.common_wellness_footer),
                     style = MaterialTheme.typography.titleMedium, color = Warm)
-                Text("If you are in immediate danger, call emergency services now.",
+                Text(stringResource(R.string.ob_danger_line),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
             ReferenceCard {
@@ -259,37 +267,38 @@ fun Onboarding() {
                         Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Column {
-                        Text("Confirmed: I am 18 or older", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                        Text("Thank you", style = MaterialTheme.typography.bodySmall, color = GratitudeCaption)
+                        Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.ob_thank_you), style = MaterialTheme.typography.bodySmall, color = GratitudeCaption)
                     }
                 }
             }
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 DisclosureTile(
-                    "Can help", Cyan,
-                    "Listen, reflect, guide tools, suggest a plan.",
+                    stringResource(R.string.ob_can_help_title), Cyan,
+                    stringResource(R.string.ob_can_help_body),
                     Modifier.weight(1f),
                 )
                 DisclosureTile(
-                    "Can't do", TextSoft,
-                    "Diagnose, prescribe, replace therapy, or handle emergencies.",
+                    stringResource(R.string.ob_cant_do_title), TextSoft,
+                    stringResource(R.string.ob_cant_do_body),
                     Modifier.weight(1f),
                 )
             }
         }
 
         OStep.Language -> Funnel(
-            "Speak your language", "Language", "Talk and reflect in the language you think in. Mix more than one if that's you.",
-            "Continue", onBack = { back() }, onPrimary = { next() },
+            stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
+            stringResource(R.string.ob_language_sub),
+            stringResource(R.string.common_continue), onBack = { back() }, onPrimary = { next() },
         ) {
             ChipWrap(LANGUAGES, language) { language = it }
         }
 
         OStep.State -> Funnel(
-            "One tap is enough", "What feels most true right now?",
-            "No questionnaire — just pick the one that fits today. CereBro shapes your first reset and plan around it.",
-            "Continue", primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
+            stringResource(R.string.ob_state_eyebrow), stringResource(R.string.ob_state_title),
+            stringResource(R.string.ob_state_sub),
+            stringResource(R.string.common_continue), primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 STATE_OPTIONS.forEach { option ->
@@ -301,9 +310,12 @@ fun Onboarding() {
         OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
 
         OStep.Consent -> Funnel(
-            "Privacy choices", "What CereBro remembers",
-            "Private by default — CereBro remembers nothing you don't switch on. Change any of this later in Settings.",
-            "Continue", onBack = { back() }, onPrimary = { next() },
+            stringResource(R.string.ob_consent_eyebrow), stringResource(R.string.ob_consent_title),
+            stringResource(R.string.ob_consent_sub),
+            stringResource(R.string.common_continue), onBack = { back() },
+            // Passing the consent step unlocks anonymous telemetry (DPDP posture:
+            // nothing is counted before this moment — Analytics.track no-ops).
+            onPrimary = { Analytics.unlock(); next() },
         ) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(InfoCardFill)
@@ -311,13 +323,14 @@ fun Onboarding() {
             ) {
                 // All six categories, every time — DPDP "specific and informed":
                 // nothing collected under a switch the user never saw.
+                // Keys are the consent contract; labels/hints are display copy.
                 val rows = listOf(
-                    Triple("mood_history", "Mood history", "Used for insights"),
-                    Triple("sleep_history", "Sleep history", "Powers your sleep insights"),
-                    Triple("journal_memory", "Journal memory", "Lets the companion recall your entries"),
-                    Triple("ai_memory", "AI memory", "Goals and preferences"),
-                    Triple("voice_storage", "Voice storage", "Off by default"),
-                    Triple("model_training", "Model training", "Never on without you switching it on"),
+                    Triple("mood_history", stringResource(R.string.ob_consent_mood), stringResource(R.string.ob_consent_mood_hint)),
+                    Triple("sleep_history", stringResource(R.string.ob_consent_sleep), stringResource(R.string.ob_consent_sleep_hint)),
+                    Triple("journal_memory", stringResource(R.string.ob_consent_journal), stringResource(R.string.ob_consent_journal_hint)),
+                    Triple("ai_memory", stringResource(R.string.ob_consent_ai), stringResource(R.string.ob_consent_ai_hint)),
+                    Triple("voice_storage", stringResource(R.string.ob_consent_voice), stringResource(R.string.ob_consent_voice_hint)),
+                    Triple("model_training", stringResource(R.string.ob_consent_training), stringResource(R.string.ob_consent_training_hint)),
                 )
                 rows.forEachIndexed { index, (key, label, hint) ->
                     Row(
@@ -340,9 +353,9 @@ fun Onboarding() {
         }
 
         OStep.Notify -> Funnel(
-            "Gentle reminders", "Notifications",
-            "You've had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.",
-            "Enter CereBro", onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
+            stringResource(R.string.ob_notify_eyebrow), stringResource(R.string.ob_notify_title),
+            stringResource(R.string.ob_notify_sub),
+            stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
         ) {
             ChipWrap(NOTIFY, notify) { notify = it }
         }
@@ -390,7 +403,7 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Welcome to\nCereBro",
+                stringResource(R.string.ob_welcome_title),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = 40.sp, lineHeight = 41.sp, letterSpacing = (-0.6).sp,
                 ),
@@ -399,14 +412,14 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
             )
             Spacer(Modifier.height(23.dp))
             Text(
-                "Your quiet space for daily mental fitness,\nbetter sleep, and calmer focus.",
+                stringResource(R.string.ob_welcome_sub),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.5.sp, lineHeight = 24.sp),
                 color = WelcomeTitleText,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(15.dp))
             Text(
-                "Private by design — nothing is ever shared.",
+                stringResource(R.string.ob_welcome_privacy),
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 color = WelcomeSubtitleText,
                 textAlign = TextAlign.Center,
@@ -425,11 +438,11 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
             ) {
                 Icon(Icons.Outlined.Air, null, tint = PrimaryButtonInk, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.size(12.dp))
-                Text("Try a 2-minute reset", style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
+                Text(stringResource(R.string.ob_welcome_cta), style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
             }
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onSignIn) {
-                Text("I already have an account", style = MaterialTheme.typography.titleSmall, color = WelcomeSecondaryText)
+                Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleSmall, color = WelcomeSecondaryText)
             }
         }
     }
@@ -467,9 +480,9 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
     // BreatheEngine (Reset preset: four in, four out, no holds) — the same
     // engine every breathe surface in the app hosts.
     Funnel(
-        "Your first reset", "Let's steady your body",
-        "Two minutes of guided breathing — follow the orb for a few cycles, or skip ahead if now isn't the moment.",
-        "I feel steadier", onBack = onBack, onPrimary = onDone,
+        stringResource(R.string.ob_reset_eyebrow), stringResource(R.string.ob_reset_title),
+        stringResource(R.string.ob_reset_sub),
+        stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
         titleCentered = true,
         secondary = {
             Box(
@@ -477,7 +490,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
                     .background(ResetDoneFill).clickable(onClick = onDone),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Skip for now", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = Color.White)
             }
         },
     ) {
@@ -504,6 +517,8 @@ private fun Funnel(
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // i18n: pending — the progress fraction keys off the English eyebrow copy;
+    // needs a step-id parameter before the eyebrow strings can localize.
     val progress = when (eyebrow.lowercase()) {
         "honesty first" -> 0.25f
         "speak your language" -> 0.38f

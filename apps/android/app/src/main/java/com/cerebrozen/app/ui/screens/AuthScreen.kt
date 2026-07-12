@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.R
 import com.cerebrozen.app.auth.googleIdToken
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Danger
@@ -125,11 +127,16 @@ fun AuthScreen(
     val focus = LocalFocusManager.current
     // Web (server) OAuth client id, resolved at build time (blank = Google inert).
     val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+    // Copy used inside non-composable closures — resolved once per composition.
+    val genericError = stringResource(R.string.auth_error_generic)
+    val googleNotSetup = stringResource(R.string.auth_google_not_setup)
+    val resetSent = stringResource(R.string.auth_reset_sent)
+    val codeSentTemplate = stringResource(R.string.auth_otp_code_sent)
 
     fun run(block: suspend () -> Unit) {
         busy = true; error = null
         scope.launch {
-            try { block() } catch (e: Exception) { error = e.message ?: "Something went wrong." } finally { busy = false }
+            try { block() } catch (e: Exception) { error = e.message ?: genericError } finally { busy = false }
         }
     }
 
@@ -150,14 +157,14 @@ fun AuthScreen(
                         .background(Color.White.copy(alpha = 0.10f)).clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.ArrowBackIosNew, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }
             Column {
-                Text("PRIVATE BY DESIGN", style = MaterialTheme.typography.labelSmall,
+                Text(stringResource(R.string.auth_eyebrow), style = MaterialTheme.typography.labelSmall,
                     color = AuthEyebrow, letterSpacing = 1.8.sp)
                 Text(
-                    if (creating) "Create your space" else "Sign in",
+                    if (creating) stringResource(R.string.auth_create_title) else stringResource(R.string.auth_signin_title),
                     style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp),
                     color = Color.White,
                 )
@@ -165,29 +172,29 @@ fun AuthScreen(
         }
         AuthInfoCard(
             if (creating) {
-                "Create your quiet space for daily mental fitness, journal and check-ins."
+                stringResource(R.string.auth_info_create)
             } else {
-                "Sign in to keep your plan, journal and check-ins in sync across devices."
+                stringResource(R.string.auth_info_signin)
             },
             modifier = Modifier.appear(2),
         )
 
         AuthWhiteButton(
-            text = "G   Continue with Google",
+            text = stringResource(R.string.auth_google_cta),
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().appear(3),
         ) {
             run {
                 val result = googleIdToken(context, clientId)
                 if (result == null) {
-                    error = "Google sign-in isn't set up yet — use email below."
+                    error = googleNotSetup
                 } else {
                     Session.signInWithGoogle(result.first, result.second)
                 }
             }
         }
 
-        AuthDivider(if (mode == AuthMode.Password) "OR USE EMAIL" else "EMAIL CODE")
+        AuthDivider(if (mode == AuthMode.Password) stringResource(R.string.auth_divider_email) else stringResource(R.string.auth_divider_otp))
 
         when (mode) {
             AuthMode.Password -> {
@@ -207,18 +214,18 @@ fun AuthScreen(
                     }
                 }
                 if (creating) {
-                    AuthFieldLabel("Name") {
-                        AppTextField(name, { name = it }, "", placeholderText = "Your name", singleLine = true,
+                    AuthFieldLabel(stringResource(R.string.auth_name_label)) {
+                        AppTextField(name, { name = it }, "", placeholderText = stringResource(R.string.auth_name_placeholder), singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                             keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
                     }
                 }
-                AuthFieldLabel("Email") {
-                    AppTextField(email, { email = it }, "", placeholderText = "you@email.com", singleLine = true,
+                AuthFieldLabel(stringResource(R.string.auth_email_label)) {
+                    AppTextField(email, { email = it }, "", placeholderText = stringResource(R.string.auth_email_placeholder), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
                 }
-                AuthFieldLabel("Password") {
+                AuthFieldLabel(stringResource(R.string.auth_password_label)) {
                     AppTextField(password, { password = it }, "", placeholderText = "••••••••", singleLine = true,
                         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -227,14 +234,17 @@ fun AuthScreen(
                             IconButton(onClick = { showPw = !showPw }) {
                                 Icon(
                                     if (showPw) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                    contentDescription = if (showPw) "Hide password" else "Show password",
+                                    contentDescription = if (showPw) stringResource(R.string.auth_hide_password)
+                                    else stringResource(R.string.auth_show_password),
                                     tint = Periwinkle,
                                 )
                             }
                         })
                 }
                 AuthWhiteButton(
-                    text = if (busy) "One moment…" else if (creating) "@   Create my account" else "@   Continue with email",
+                    text = if (busy) stringResource(R.string.common_one_moment)
+                    else if (creating) stringResource(R.string.auth_create_cta)
+                    else stringResource(R.string.auth_email_cta),
                     enabled = pwReady,
                     modifier = Modifier.fillMaxWidth(),
                 ) { submitPw() }
@@ -243,7 +253,7 @@ fun AuthScreen(
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = { creating = false; error = null; info = null },
                     ) {
-                        Text("I already have an account", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleMedium, color = Color.White)
                     }
                 } else {
                     // Reset completes via the emailed web link (same as iOS);
@@ -254,17 +264,17 @@ fun AuthScreen(
                         onClick = {
                             run {
                                 Session.forgotPassword(email.trim())
-                                info = "Reset link sent — check your email."
+                                info = resetSent
                             }
                         },
                     ) {
-                        Text("Forgot password?", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_forgot), style = MaterialTheme.typography.titleMedium, color = Color.White)
                     }
                     TextButton(
                         modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 24.dp),
                         onClick = { creating = true; error = null; info = null },
                     ) {
-                        Text("New here? Create your space", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_new_here), style = MaterialTheme.typography.titleMedium, color = Color.White)
                     }
                 }
             }
@@ -277,29 +287,31 @@ fun AuthScreen(
                     run {
                         if (!otpSent) {
                             Session.otpRequest(email.trim()); otpSent = true
-                            info = "Code sent to ${email.trim()} — check your email."
+                            info = codeSentTemplate.format(email.trim())
                         } else {
                             Session.otpVerify(email.trim(), code)
                         }
                     }
                 }
-                AppTextField(email, { email = it }, "Email", singleLine = true, enabled = !otpSent,
+                AppTextField(email, { email = it }, stringResource(R.string.auth_email_label), singleLine = true, enabled = !otpSent,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { submitOtp() }))
                 if (otpSent) {
                     AppTextField(code, { if (it.length <= 6) code = it.filter(Char::isDigit) },
-                        "6-digit code", singleLine = true,
+                        stringResource(R.string.auth_otp_code_label), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { submitOtp() }))
                 }
                 PrimaryButton(
-                    text = if (busy) "One moment…" else if (otpSent) "Verify code" else "Email me a code",
+                    text = if (busy) stringResource(R.string.common_one_moment)
+                    else if (otpSent) stringResource(R.string.auth_verify_cta)
+                    else stringResource(R.string.auth_email_code_cta),
                     enabled = otpReady,
                     modifier = Modifier.fillMaxWidth(),
                 ) { submitOtp() }
 
                 TextButton(onClick = { mode = AuthMode.Password; otpSent = false; code = ""; error = null; info = null }) {
-                    Text("Use a password instead", color = TextMuted)
+                    Text(stringResource(R.string.auth_use_password), color = TextMuted)
                 }
             }
         }

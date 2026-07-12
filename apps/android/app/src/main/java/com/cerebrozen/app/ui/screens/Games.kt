@@ -38,12 +38,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -73,7 +76,11 @@ fun PatternGlowScreen(onBack: () -> Unit) {
     var inputPos by remember { mutableIntStateOf(0) }
     var showing by remember { mutableStateOf(true) }
     var best by remember { mutableIntStateOf(0) }
-    var note by remember { mutableStateOf("Watch the glow, then repeat it.") }
+    // Templates for the tap() closure below (not a composable context).
+    val noteStart = stringResource(R.string.patternglow_note_start)
+    val noteSuccess = stringResource(R.string.patternglow_note_success)
+    val noteReset = stringResource(R.string.patternglow_note_reset)
+    var note by remember { mutableStateOf(noteStart) }
     val haptics = LocalHapticFeedback.current
 
     // Replays the sequence on first show and after every change (success or reset).
@@ -94,16 +101,16 @@ fun PatternGlowScreen(onBack: () -> Unit) {
             inputPos++
             if (inputPos == sequence.size) {
                 best = maxOf(best, sequence.size)
-                note = "Round ${sequence.size} — lovely. One more glow."
+                note = noteSuccess.format(sequence.size)
                 sequence = sequence + Random.nextInt(4); replay++
             }
         } else {
-            note = "Reached round ${sequence.size}. Fresh start, no rush."
+            note = noteReset.format(sequence.size)
             sequence = listOf(Random.nextInt(4)); replay++
         }
     }
 
-    SubPage("Follow the light", "Pattern glow", onBack) {
+    SubPage(stringResource(R.string.patternglow_eyebrow), stringResource(R.string.patternglow_title), onBack) {
         Text(note, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Column(
             Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(14.dp),
@@ -113,6 +120,7 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     listOf(l, r).forEach { pad ->
                         val active = lit == pad
+                        val padCd = stringResource(R.string.patternglow_pad_cd, pad + 1)
                         Box(
                             Modifier.weight(1f).height(130.dp)
                                 .minimumInteractiveComponentSize()
@@ -127,14 +135,15 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                                 )
                                 .border(1.dp, pads[pad].copy(alpha = if (active) 0.85f else 0.45f), RoundedCornerShape(20.dp))
                                 .clickable { tap(pad) }
-                                .semantics { role = Role.Button; contentDescription = "Pad ${pad + 1}" },
+                                .semantics { role = Role.Button; contentDescription = padCd },
                         )
                     }
                 }
             }
         }
         Text(
-            (if (showing) "Watching…" else "Your turn") + if (best > 0) "  ·  best round $best" else "",
+            (if (showing) stringResource(R.string.patternglow_watching) else stringResource(R.string.patternglow_your_turn)) +
+                if (best > 0) stringResource(R.string.patternglow_best_suffix, best) else "",
             style = MaterialTheme.typography.labelSmall, color = TextMuted,
         )
     }
@@ -156,9 +165,10 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
         }
     }
 
-    SubPage("Still water", "Zen ripples", onBack) {
-        Text("Tap anywhere on the water. Watch each ripple widen and let go.",
+    SubPage(stringResource(R.string.zen_eyebrow), stringResource(R.string.zen_title), onBack) {
+        Text(stringResource(R.string.zen_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        val canvasCd = stringResource(R.string.zen_canvas_cd)
         Box(
             Modifier.fillMaxWidth().height(400.dp)
                 .clip(RoundedCornerShape(22.dp))
@@ -173,7 +183,7 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
                     }
                 }
-                .semantics { contentDescription = "Ripple canvas" },
+                .semantics { contentDescription = canvasCd },
         ) {
             Canvas(Modifier.matchParentSize()) {
                 ripples.forEach { r ->
@@ -205,15 +215,16 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
     var entries by remember { mutableStateOf(Gratitude.all()) }
     var draft by remember { mutableStateOf("") }
 
-    SubPage("Grow something good", "Gratitude garden", onBack) {
-        Text("Name one small thing you're thankful for — a flower is planted for each.",
+    SubPage(stringResource(R.string.gratitude_eyebrow), stringResource(R.string.gratitude_title), onBack) {
+        Text(stringResource(R.string.gratitude_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        AppTextField(draft, { draft = it }, "One good thing…", singleLine = true)
-        PrimaryButton(text = "Plant it", enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        AppTextField(draft, { draft = it }, stringResource(R.string.gratitude_field_label), singleLine = true)
+        PrimaryButton(text = stringResource(R.string.gratitude_plant_cta), enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
             entries = Gratitude.add(draft)
             draft = ""
         }
         // The soil: every real entry becomes one flower at a deterministic spot.
+        val soilCd = stringResource(R.string.gratitude_soil_cd, entries.size)
         BoxWithConstraints(
             Modifier.fillMaxWidth().height(300.dp)
                 .clip(RoundedCornerShape(22.dp))
@@ -223,10 +234,10 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
                     ),
                 )
                 .border(1.dp, VeilLine, RoundedCornerShape(22.dp))
-                .semantics { contentDescription = "Gratitude garden soil with ${entries.size} flowers" },
+                .semantics { contentDescription = soilCd },
         ) {
             if (entries.isEmpty()) {
-                Text("Your garden is waiting for its first flower.",
+                Text(stringResource(R.string.gratitude_empty),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp))
             }
@@ -234,12 +245,13 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
             entries.forEachIndexed { i, text ->
                 val x = (maxWidth - flower) * plantFraction(i, 1)
                 val y = (maxHeight - flower) * plantFraction(i, 2)
+                val flowerCd = stringResource(R.string.gratitude_flower_cd, text)
                 Box(
                     Modifier.offset(x = x, y = y).size(flower)
                         .appear(i)
                         .clip(CircleShape)
                         .background(Periwinkle.copy(alpha = 0.22f))
-                        .semantics { contentDescription = "Flower: $text" },
+                        .semantics { contentDescription = flowerCd },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(flowerFor(i), style = MaterialTheme.typography.titleMedium)
@@ -247,13 +259,10 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
             }
         }
         Text(
-            if (entries.isEmpty()) "Plant one small good thing."
-            else "${entries.size} ${if (entries.size == 1) "flower" else "flowers"} and counting.",
+            if (entries.isEmpty()) stringResource(R.string.gratitude_first)
+            else pluralStringResource(R.plurals.gratitude_flower_count, entries.size, entries.size),
             style = MaterialTheme.typography.labelSmall, color = TextMuted,
         )
-        WhyThisWorks(
-            "Noting what you're grateful for is a studied positive-psychology practice " +
-                "linked to improved mood over time.",
-        )
+        WhyThisWorks(stringResource(R.string.gratitude_why))
     }
 }

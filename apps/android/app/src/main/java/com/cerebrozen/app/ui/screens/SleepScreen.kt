@@ -39,10 +39,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cream
@@ -61,8 +63,7 @@ import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val QUALITY_WORDS = listOf("Rough", "Poor", "Okay", "Good", "Rested")
-
+// i18n: pending — pure function, needs context plumbing ("7h 30m" format)
 internal fun minutesToLabel(total: Int): String = "%dh %02dm".format(total / 60, total % 60)
 
 internal fun hhmm(minutes: Int): String {
@@ -125,6 +126,7 @@ internal fun bedtimeSpreadMinutes(logs: List<Night>): Int? {
 }
 
 /** The one gentle CBT-I principle the data supports — consistency over duration. */
+// i18n: pending — pure function, needs context plumbing
 internal fun rhythmPrinciple(spreadMin: Int): String =
     if (spreadMin > 90) {
         "A steadier bedtime — even an imperfect one — does more for sleep than extra hours."
@@ -133,11 +135,8 @@ internal fun rhythmPrinciple(spreadMin: Int): String =
     }
 
 /** A human-sized duration for prose ("45m", "1h 50m") — no zero-hour prefix. */
+// i18n: pending — pure function, needs context plumbing
 internal fun spreadLabel(min: Int): String = if (min < 60) "${min}m" else minutesToLabel(min)
-
-private const val CBT_I_WHY =
-    "From CBT-I (cognitive behavioural therapy for insomnia) — the best-evidenced " +
-        "approach in sleep apps (Lancet Digital Health, 2025)."
 
 /** Sleep: morning check-in + honest weekly summary + diary, with a CBT-I-informed
  * layer on top — the job is improving sleep night by night, not measuring it. */
@@ -155,11 +154,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
     // Optional last-night prefill from Health Connect (Android's HealthKit analogue).
     val hcAvailable = remember { com.cerebrozen.app.health.HealthConnectSleep.available(context) }
+    val hcDone = stringResource(R.string.sleep_hc_done)
+    val hcNone = stringResource(R.string.sleep_hc_none)
     fun applyHealthConnect() {
         scope.launch {
             com.cerebrozen.app.health.HealthConnectSleep.readLastNight(context)?.let { (b, w) ->
-                bed = b; wake = w; status = "Pre-filled from last night's sleep."
-            } ?: run { status = "No recent sleep found in Health Connect." }
+                bed = b; wake = w; status = hcDone
+            } ?: run { status = hcNone }
         }
     }
     val hcLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -175,12 +176,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { reload() }
 
-    Page("Improve your sleep, night by night", "Sleep", trailing = Icons.Outlined.DarkMode, accent = com.cerebrozen.app.ui.theme.Violet) {
+    Page(stringResource(R.string.sleep_eyebrow), stringResource(R.string.sleep_title), trailing = Icons.Outlined.DarkMode, accent = com.cerebrozen.app.ui.theme.Violet) {
+        // The hero title doubles as the ambient bed's now-playing title, so both
+        // read from the same resource and stay consistent.
+        val calmerNight = stringResource(R.string.sleep_hero_title)
         HeroCard(
             imageUrl = HeroImg.sleep,
-            eyebrow = "Wind down",
-            title = "A calmer night",
-            subtitle = "A slower evening makes for a softer morning.",
+            eyebrow = stringResource(R.string.sleep_hero_eyebrow),
+            title = calmerNight,
+            subtitle = stringResource(R.string.sleep_hero_subtitle),
             height = 220.dp,
         ) {
             // A "TONIGHT" badge + a prominent play pill — the richer hero look, on
@@ -196,14 +200,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                         .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
                         .padding(horizontal = 12.dp, vertical = 5.dp),
                 ) {
-                    Text("TONIGHT", style = MaterialTheme.typography.labelSmall, color = TextPrimary)
+                    Text(stringResource(R.string.sleep_tonight_badge), style = MaterialTheme.typography.labelSmall, color = TextPrimary)
                 }
+                val playCd = stringResource(R.string.sleep_play_cd)
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(50))
                         .background(Cream)
-                        .clickable { Player.play(context, "A calmer night") }
-                        .semantics { contentDescription = "Play the ambient bed" }
+                        .clickable { Player.play(context, calmerNight) }
+                        .semantics { contentDescription = playCd }
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -213,36 +218,45 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                     ) {
                         Icon(Icons.Outlined.PlayArrow, contentDescription = null,
                             tint = Ink, modifier = Modifier.size(18.dp))
-                        Text("Play", color = Ink, fontWeight = FontWeight.SemiBold,
+                        Text(stringResource(R.string.common_play_label), color = Ink, fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleSmall)
                     }
                 }
             }
         }
         SectionCard {
-            Text("Morning check-in", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text("How rested do you feel?", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            Text(stringResource(R.string.sleep_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // W10: the quality chips rise in with the shared staggered entrance
                 // (instant under Reduce Motion — handled inside appear).
-                QUALITY_WORDS.forEachIndexed { i, word ->
+                sleepWords().forEachIndexed { i, word ->
                     Box(Modifier.appear(i, rise = 10f)) {
                         PickChip(selected = quality == i + 1, label = word) { quality = i + 1 }
                     }
                 }
             }
-            TimeRow("In bed around", bed, { bed = it })
-            TimeRow("Woke up around", wake, { wake = it })
+            TimeRow(stringResource(R.string.sleep_inbed_label), bed, { bed = it })
+            TimeRow(stringResource(R.string.sleep_wake_label), wake, { wake = it })
             if (hcAvailable) {
                 TextButton(onClick = {
                     scope.launch {
                         if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
                         else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
                     }
-                }) { Text("Pre-fill from Health Connect", color = Cyan) }
+                }) { Text(stringResource(R.string.sleep_hc_prefill), color = Cyan) }
+                // Consent boundary (owner decision 2026-07-13): the OS-level Health
+                // Connect grant governs this read; the in-app "Sleep history" toggle
+                // governs server-side memory. Nothing leaves the phone until Save.
+                Text(
+                    stringResource(R.string.sleep_hc_boundary_hint),
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                )
             }
+            val logged = stringResource(R.string.sleep_logged)
+            val logFailed = stringResource(R.string.sleep_log_failed)
             PrimaryButton(
-                text = if (busy) "One moment…" else "Save night",
+                text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.sleep_save_cta),
                 enabled = quality > 0 && !busy,
             ) {
                 busy = true; status = null
@@ -250,11 +264,11 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                     try {
                         Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
                         Celebrations.trigger()
-                        status = "Logged — one honest night at a time."
+                        status = logged
                         quality = 0
                         reload()
                     } catch (e: Exception) {
-                        status = e.message ?: "Couldn't log."
+                        status = e.message ?: logFailed
                     } finally {
                         busy = false
                     }
@@ -265,15 +279,20 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         summary?.let { s ->
             SectionCard {
-                Text("This week", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.sleep_week_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 if (s.optBoolean("enough_data")) {
                     Text(
-                        "${minutesToLabel(s.optInt("avg_duration_min"))} avg · feeling ${"%.1f".format(s.optDouble("avg_quality"))}/5 · trend ${s.optString("trend")}",
+                        stringResource(
+                            R.string.sleep_week_summary,
+                            minutesToLabel(s.optInt("avg_duration_min")),
+                            "%.1f".format(s.optDouble("avg_quality")),
+                            s.optString("trend"),
+                        ),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 } else {
                     Text(
-                        "Log a few more nights and honest averages appear here — no guesses.",
+                        stringResource(R.string.sleep_week_empty),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -288,9 +307,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             val spread = bedtimeSpreadMinutes(recent)
             if (recent.size >= 3 && avgSleep != null && spread != null) {
                 SectionCard {
-                    Text("Your rhythm", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.sleep_rhythm_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        "You averaged ${spreadLabel(avgSleep)}. Your bedtime varied by about ${spreadLabel(spread)} this week.",
+                        stringResource(R.string.sleep_rhythm_line, spreadLabel(avgSleep), spreadLabel(spread)),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                     Text(rhythmPrinciple(spread), style = MaterialTheme.typography.bodyMedium, color = PeriwinkleSoft)
@@ -302,42 +321,46 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         // Mix-your-own layered soundscape — lives in the Sounds hub's Mixer
         // section now (REDESIGN §3.4); this door opens it directly.
-        NavRow("Mix your own soundscape", "Blend rain, ocean, wind & a soft drone") { onOpen("sounds/mixer") }
+        NavRow(stringResource(R.string.sleep_mixer_nav_title), stringResource(R.string.sleep_mixer_nav_subtitle)) { onOpen("sounds/mixer") }
 
-        SleepSectionHeader("♫", "Sounds for sleep")
+        SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
-        ContentList("sleep", { d -> if (d > 0) "$d min" else "Sleep story" },
+        // metaLabel lambdas are not composable — capture the templates here.
+        val minutesTemplate = stringResource(R.string.common_minutes)
+        val storyMeta = stringResource(R.string.sleep_meta_story)
+        val guideMeta = stringResource(R.string.sleep_meta_guide)
+        ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
             onItemTap = { title -> Player.toggle(context, title) })
 
         // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
-        SleepSectionHeader("☾", "Wind-down guide")
-        ContentList("wind_down", { d -> if (d > 0) "$d min" else "Guide" })
+        SleepSectionHeader("☾", stringResource(R.string.sleep_winddown_header))
+        ContentList("wind_down", { d -> if (d > 0) minutesTemplate.format(d) else guideMeta })
 
         // Stimulus-control micro-education (CBT-I Phase 1) — two small, steady
         // ideas, each with an honest provenance footer.
         SectionCard {
-            Text("Bed is for sleep", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.sleep_bed_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text(
-                "If you're wide awake for 20+ minutes, get up, do something quiet and dim, come back sleepy.",
+                stringResource(R.string.sleep_bed_body),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
         }
-        WhyThisWorks(CBT_I_WHY)
+        WhyThisWorks(stringResource(R.string.sleep_cbti_why))
         SectionCard {
-            Text("Same wake time, even after a short night", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.sleep_waketime_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text(
-                "Your body clock anchors on when you get up.",
+                stringResource(R.string.sleep_waketime_body),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
         }
-        WhyThisWorks(CBT_I_WHY)
+        WhyThisWorks(stringResource(R.string.sleep_cbti_why))
 
         if (nights.isNotEmpty()) {
             SectionCard {
-                Text("Diary", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.sleep_diary_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 nights.take(7).forEach { n ->
                     Text(
-                        "${n.date} · ${minutesToLabel(n.duration)} · felt ${n.quality}/5",
+                        stringResource(R.string.sleep_diary_line, n.date, minutesToLabel(n.duration), n.quality),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -357,13 +380,11 @@ internal fun NightsChart(nights: List<Night>) {
     val avg = recent.map { it.duration }.average().toInt()
     val reduceMotion = rememberReduceMotion()
     SectionCard {
-        Text("Last 7 nights", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(stringResource(R.string.sleep_chart_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        val chartCd = stringResource(R.string.sleep_chart_cd, recent.size, minutesToLabel(avg))
         Row(
             Modifier.fillMaxWidth().height(120.dp)
-                .semantics {
-                    contentDescription =
-                        "Sleep durations, last ${recent.size} nights, average ${minutesToLabel(avg)}"
-                },
+                .semantics { contentDescription = chartCd },
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -384,7 +405,7 @@ internal fun NightsChart(nights: List<Night>) {
                 )
             }
         }
-        Text("avg ${minutesToLabel(avg)} · ${recent.size} nights",
+        Text(stringResource(R.string.sleep_chart_footer, minutesToLabel(avg), recent.size),
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
 }
@@ -415,14 +436,16 @@ private fun SleepSectionHeader(glyph: String, title: String) {
 private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        val earlierCd = stringResource(R.string.sleep_time_earlier_cd, label)
+        val laterCd = stringResource(R.string.sleep_time_later_cd, label)
         TextButton(
             onClick = { onChange(minutes - 30) },
-            modifier = Modifier.semantics { contentDescription = "Set $label 30 minutes earlier" },
-        ) { Text("−30m") }
+            modifier = Modifier.semantics { contentDescription = earlierCd },
+        ) { Text(stringResource(R.string.sleep_minus_30)) }
         Text(hhmm(minutes), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         TextButton(
             onClick = { onChange(minutes + 30) },
-            modifier = Modifier.semantics { contentDescription = "Set $label 30 minutes later" },
-        ) { Text("+30m") }
+            modifier = Modifier.semantics { contentDescription = laterCd },
+        ) { Text(stringResource(R.string.sleep_plus_30)) }
     }
 }

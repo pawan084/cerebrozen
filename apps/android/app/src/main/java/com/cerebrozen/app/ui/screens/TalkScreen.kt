@@ -68,8 +68,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.CloudVoice
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.VoiceEngine
@@ -146,6 +148,7 @@ internal fun showTryTogether(messageCount: Int, lastRole: String?, busy: Boolean
     messageCount >= 2 && lastRole == "assistant" && !busy && !streaming
 
 /** The last few turns as a journal body (mirrors iOS "Save to journal"). */
+// i18n: pending — pure function, needs context plumbing ("Me: " / "CereBro: " prefixes).
 internal fun talkTranscript(messages: List<Msg>, take: Int = 8): String =
     messages.takeLast(take).joinToString("\n\n") { m ->
         (if (m.role == "user") "Me: " else "CereBro: ") + m.text
@@ -177,6 +180,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    // Copy used inside non-composable closures below — resolved once per composition.
+    val errGeneric = stringResource(R.string.talk_error_generic)
+    val confirmFallback = stringResource(R.string.talk_confirm_fallback)
+    val sendFailed = stringResource(R.string.talk_send_failed)
+    val micUnavailable = stringResource(R.string.talk_mic_unavailable)
+    val didntCatch = stringResource(R.string.talk_didnt_catch)
+    val transcribeFailed = stringResource(R.string.talk_transcribe_failed)
+    val micOff = stringResource(R.string.talk_mic_off)
     val voice = remember { VoiceEngine(context) }
     // Cloud voice (iOS-parity quality): Deepgram STT + ElevenLabs TTS via the
     // backend when the server has keys; the on-device engine stays fallback.
@@ -256,7 +267,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     "widget" -> widget = parseWidget(ev.optJSONObject("widget"))
                     "crisis" -> crisis = true
                     "tool_confirm" -> confirmReq = ev.optString("thread_id") to
-                        ev.optString("summary").ifBlank { "Approve this action?" }
+                        ev.optString("summary").ifBlank { confirmFallback }
                     "done" -> {
                         val t = ev.optString("text").ifBlank { acc }.trim()
                         if (t.isNotEmpty() || widget != null) messages = messages + Msg("assistant", t, widget)
@@ -264,7 +275,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     }
                     "error" -> messages = messages + Msg(
                         "assistant",
-                        ev.optString("detail").ifBlank { "Something went wrong — please try again." },
+                        ev.optString("detail").ifBlank { errGeneric },
                     )
                 }
             }
@@ -304,7 +315,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     if (speak) speakReply(replyText)
                 }
             } catch (e: Exception) {
-                status = e.message ?: "Couldn't send."
+                status = e.message ?: sendFailed
             } finally {
                 busy = false
             }
@@ -316,7 +327,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     resumeTurn = {
         if (voiceSession) {
             if (cloudVoice) {
-                if (!cloud.startRecording()) status = "Microphone unavailable right now."
+                if (!cloud.startRecording()) status = micUnavailable
             } else {
                 voice.startListening { t -> send(t, speak = true) }
             }
@@ -331,7 +342,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             try {
                 consume("/oracle/confirm", JSONObject().put("thread_id", req.first).put("approved", approved))
             } catch (e: Exception) {
-                status = e.message ?: "Couldn't send."
+                status = e.message ?: sendFailed
             } finally {
                 busy = false
             }
@@ -341,7 +352,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     fun beginListening() {
         if (cloudVoice) {
             if (cloud.startRecording()) voiceSession = true
-            else status = "Microphone unavailable right now."
+            else status = micUnavailable
         } else {
             voiceSession = true
             voice.startListening { t -> send(t, speak = true) }
@@ -358,15 +369,15 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     /** Stop the cloud recording and run the full quality loop: STT → chat → TTS. */
     fun finishCloudTurn() {
         val bytes = cloud.stopRecording()
-        if (bytes == null) { status = "Didn't catch that — try again."; return }
+        if (bytes == null) { status = didntCatch; return }
         transcribing = true
         scope.launch {
             try {
                 val transcript = Api.stt(bytes)
-                if (transcript.isBlank()) status = "Didn't catch that — try again."
+                if (transcript.isBlank()) status = didntCatch
                 else send(transcript, speak = true)
             } catch (e: Exception) {
-                status = e.message ?: "Couldn't transcribe — you can type below."
+                status = e.message ?: transcribeFailed
             } finally {
                 transcribing = false
             }
@@ -392,7 +403,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) beginListening()
-        else status = "Microphone access is off — you can still type below."
+        else status = micOff
     }
 
     fun onOrbTap() {
@@ -416,14 +427,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     Box(Modifier.fillMaxSize()) {
-    Page("AI voice companion", "Talk it through", trailing = Icons.Outlined.Mic, accent = Cyan, scrollState = chatScroll) {
+    Page(stringResource(R.string.talk_eyebrow), stringResource(R.string.talk_title), trailing = Icons.Outlined.Mic, accent = Cyan, scrollState = chatScroll) {
         // W10: honest offline truth for a connection-dependent surface — not
         // dismissible, and it points at what still works.
         if (Session.servedStale) {
             InfoBanner(
                 icon = Icons.Outlined.CloudOff,
-                text = "You're offline — the companion needs a connection. The Toolkit below still works.",
-                actionLabel = "Toolkit",
+                text = stringResource(R.string.talk_offline_banner),
+                actionLabel = stringResource(R.string.talk_offline_action),
                 onAction = { onOpen("toolkit") },
             )
         }
@@ -439,11 +450,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "AI companion — not a therapist or crisis service",
+                stringResource(R.string.talk_disclosure_pill),
                 style = MaterialTheme.typography.bodySmall, color = TextMuted,
                 modifier = Modifier.weight(1f),
             )
-            Text("Details", style = MaterialTheme.typography.bodySmall, color = Periwinkle)
+            Text(stringResource(R.string.talk_disclosure_details), style = MaterialTheme.typography.bodySmall, color = Periwinkle)
         }
 
         if (crisis) {
@@ -456,9 +467,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Text("You matter. Support is available right now.",
+                Text(stringResource(R.string.talk_crisis_title),
                     style = MaterialTheme.typography.titleMedium, color = Danger)
-                Text("Tap for crisis resources — real people, 24/7.",
+                Text(stringResource(R.string.talk_crisis_subtitle),
                     style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             }
         }
@@ -466,21 +477,16 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         if (showDisclosure) {
             AlertDialog(
                 onDismissRequest = { showDisclosure = false },
-                title = { Text("About your AI companion") },
+                title = { Text(stringResource(R.string.talk_disclosure_dialog_title)) },
                 text = {
-                    Text(
-                        "• It's AI, not a person — replies are generated.\n" +
-                        "• It isn't medical care and never diagnoses or prescribes.\n" +
-                        "• It isn't for emergencies — in one, contact local services.\n" +
-                        "• Conversations are reviewed for safety signals only.",
-                    )
+                    Text(stringResource(R.string.talk_disclosure_dialog_body))
                 },
                 confirmButton = {
-                    TextButton(onClick = { showDisclosure = false }) { Text("Got it") }
+                    TextButton(onClick = { showDisclosure = false }) { Text(stringResource(R.string.talk_disclosure_ok)) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDisclosure = false; onOpen("crisis") }) {
-                        Text("Get crisis support")
+                        Text(stringResource(R.string.talk_disclosure_crisis))
                     }
                 },
             )
@@ -495,14 +501,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 level = if (cloud.recording) cloudLevel else voice.level,
             )
             val hint = when {
-                transcribing -> "Hearing you…"
-                busy -> "Thinking…"
-                cloud.speaking -> "Speaking… tap to interrupt"
-                voice.speaking -> "Speaking…"
-                cloud.recording -> "Listening… tap when you're done"
-                voice.listening -> "Listening… tap to stop"
-                cloudVoice -> "Tap the orb — studio-quality voice"
-                else -> "Tap the orb to talk live"
+                transcribing -> stringResource(R.string.talk_hint_hearing)
+                busy -> stringResource(R.string.talk_hint_thinking)
+                cloud.speaking -> stringResource(R.string.talk_hint_speaking_interrupt)
+                voice.speaking -> stringResource(R.string.talk_hint_speaking)
+                cloud.recording -> stringResource(R.string.talk_hint_listening_done)
+                voice.listening -> stringResource(R.string.talk_hint_listening_stop)
+                cloudVoice -> stringResource(R.string.talk_hint_orb_studio)
+                else -> stringResource(R.string.talk_hint_orb)
             }
             Text(hint, style = MaterialTheme.typography.titleMedium, color = TextSoft,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -510,11 +516,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
         if (messages.isEmpty()) {
             SectionCard {
-                Text("What's on your mind?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text("Speak or type — small worries welcome.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
             if (starters.isNotEmpty()) {
-                Text("Or start from where you are", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(stringResource(R.string.talk_starters_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     starters.forEach { topic ->
                         PickChip(selected = false, label = topic) { send(topic) }
@@ -546,14 +552,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     TryTogetherRow(onOpen)
                 }
             }
+            val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
+            val savedStatus = stringResource(R.string.talk_saved_status)
+            val saveFailed = stringResource(R.string.talk_save_failed)
             TextButton(onClick = {
                 scope.launch {
-                    runCatching { Api.createJournal("Talk reflection", talkTranscript(messages)) }
-                        .onSuccess { status = "Saved to your journal." }
-                        .onFailure { status = "Couldn't save — try again." }
+                    runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
+                        .onSuccess { status = savedStatus }
+                        .onFailure { status = saveFailed }
                 }
             }) {
-                Text("Save this conversation to my journal", color = Periwinkle)
+                Text(stringResource(R.string.talk_save_journal), color = Periwinkle)
             }
         }
 
@@ -568,11 +577,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("The companion wants to act", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(stringResource(R.string.talk_confirm_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 Text(summary, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(enabled = !busy, onClick = { resolveConfirm(true) }) { Text("Approve", color = Cyan) }
-                    TextButton(enabled = !busy, onClick = { resolveConfirm(false) }) { Text("Not now", color = TextMuted) }
+                    TextButton(enabled = !busy, onClick = { resolveConfirm(true) }) { Text(stringResource(R.string.talk_approve), color = Cyan) }
+                    TextButton(enabled = !busy, onClick = { resolveConfirm(false) }) { Text(stringResource(R.string.talk_not_now), color = TextMuted) }
                 }
             }
         }
@@ -586,12 +595,15 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
 
         // Fast escape hatch when talking feels like too much (mirrors iOS).
-        NavRow("Quick SOS reset", "Fast anxiety/stress reset — 2 minutes") { onOpen("toolkit") }
+        NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
 
-        Text(if (voice.available) "Type instead" else "Type a message",
+        Text(if (voice.available) stringResource(R.string.talk_type_instead) else stringResource(R.string.talk_type_message),
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        AppTextField(draft, { draft = it }, "Message", modifier = Modifier.fillMaxWidth().imePadding())
-        PrimaryButton(text = if (busy) "Thinking…" else "Send", enabled = !busy && draft.isNotBlank()) { send(draft) }
+        AppTextField(draft, { draft = it }, stringResource(R.string.talk_field_label), modifier = Modifier.fillMaxWidth().imePadding())
+        PrimaryButton(
+            text = if (busy) stringResource(R.string.talk_hint_thinking) else stringResource(R.string.common_send),
+            enabled = !busy && draft.isNotBlank(),
+        ) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
     }
 
@@ -600,11 +612,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         VoiceSessionOverlay(
             seconds = sessionSeconds,
             stateLabel = when {
-                transcribing -> "Hearing you…"
-                busy -> "Thinking…"
-                cloud.speaking || voice.speaking -> "Speaking — tap the orb to interrupt"
-                cloud.recording || voice.listening -> "Listening… tap the orb when you're done"
-                else -> "Tap the orb to speak"
+                transcribing -> stringResource(R.string.talk_hint_hearing)
+                busy -> stringResource(R.string.talk_hint_thinking)
+                cloud.speaking || voice.speaking -> stringResource(R.string.talk_state_speaking_interrupt)
+                cloud.recording || voice.listening -> stringResource(R.string.talk_state_listening)
+                else -> stringResource(R.string.talk_state_orb)
             },
             listening = cloud.recording || voice.listening,
             speaking = cloud.speaking || voice.speaking,
@@ -653,7 +665,7 @@ private fun VoiceSessionOverlay(
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("LIVE SESSION", style = MaterialTheme.typography.labelSmall, color = Cyan)
+            Text(stringResource(R.string.talk_live_session), style = MaterialTheme.typography.labelSmall, color = Cyan)
             Text(fmtSession(seconds), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -668,8 +680,8 @@ private fun VoiceSessionOverlay(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            CallControl(Icons.Filled.CallEnd, "End", Danger, Danger.copy(alpha = 0.18f), onEnd)
-            CallControl(Icons.Outlined.Keyboard, "Text", TextSoft, CardFill, onText)
+            CallControl(Icons.Filled.CallEnd, stringResource(R.string.talk_end), Danger, Danger.copy(alpha = 0.18f), onEnd)
+            CallControl(Icons.Outlined.Keyboard, stringResource(R.string.talk_text), TextSoft, CardFill, onText)
         }
     }
 }
@@ -702,11 +714,11 @@ internal fun fmtSession(seconds: Int): String = "%d:%02d".format(seconds / 60, s
 @Composable
 private fun TryTogetherRow(onOpen: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Try together", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(stringResource(R.string.talk_try_together), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PickChip(selected = false, label = "Reframe a thought") { onOpen("cbt") }
-            PickChip(selected = false, label = "Breathe with me") { onOpen("breathe/box") }
-            PickChip(selected = false, label = "Ground yourself") { onOpen("toolkit") }
+            PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
+            PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
+            PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("toolkit") }
         }
     }
 }
@@ -723,14 +735,14 @@ private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text("Suggested activity", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        Text(stringResource(R.string.talk_suggested_activity), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         Text(w.title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
         Text(w.description, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         val route = widgetRoute(w.kind)
         if (route != null) {
-            TextButton(onClick = { onOpen(route) }) { Text("Open", color = Cyan) }
+            TextButton(onClick = { onOpen(route) }) { Text(stringResource(R.string.common_open), color = Cyan) }
         } else {
-            Text("This one lives in the iOS app.", style = MaterialTheme.typography.bodySmall, color = TextMuted2)
+            Text(stringResource(R.string.talk_ios_only), style = MaterialTheme.typography.bodySmall, color = TextMuted2)
         }
     }
 }
@@ -887,7 +899,10 @@ private fun VoiceOrb(
         Box(
             Modifier.size(150.dp).scale(pulse).clip(CircleShape)
                 .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep)))
-                .clickable(onClickLabel = if (listening) "Stop listening" else "Talk to CereBro") { onTap() },
+                .clickable(
+                    onClickLabel = if (listening) stringResource(R.string.talk_orb_stop_cd)
+                    else stringResource(R.string.talk_orb_talk_cd),
+                ) { onTap() },
             contentAlignment = Alignment.Center,
         ) {
             Box(

@@ -17,7 +17,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.MediaUrls
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
@@ -72,13 +74,13 @@ fun SearchScreen(onBack: () -> Unit) {
         loading = false
     }
 
-    SubPage("The whole library", "Search", onBack) {
+    SubPage(stringResource(R.string.search_eyebrow), stringResource(R.string.search_title), onBack) {
         AppTextField(
-            query, { query = it }, "Sounds, stories, programs…", singleLine = true,
+            query, { query = it }, stringResource(R.string.search_field_label), singleLine = true,
             trailingIcon = if (query.isNotEmpty()) {
                 {
                     IconButton(onClick = { query = "" }) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Clear search", tint = TextMuted)
+                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.search_clear_cd), tint = TextMuted)
                     }
                 }
             } else null,
@@ -86,24 +88,26 @@ fun SearchScreen(onBack: () -> Unit) {
         val hits = filterCatalogue(pool, query)
         when {
             query.trim().length < 2 ->
-                Text("Type a couple of letters — everything served to the apps is searchable.",
+                Text(stringResource(R.string.search_hint),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             loading ->
-                Text("Searching the library…",
+                Text(stringResource(R.string.search_loading),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             loadError ->
-                Text("Couldn't load the library — check your connection and try again.",
+                Text(stringResource(R.string.search_error),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             hits.isEmpty() ->
-                Text("Nothing matches \"${query.trim()}\" — try a different word.",
+                Text(stringResource(R.string.search_no_match, query.trim()),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             else -> {
-                Text("RESULTS", style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(stringResource(R.string.search_results), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 hits.take(20).forEach { item ->
                     val playable = item.kind in listOf("soundscape", "sleep", "meditation")
                     ContentRow(
                         item.title, item.subtitle,
-                        (if (item.duration > 0) "${item.duration} min · " else "") + item.kind.replace('_', ' '),
+                        // The kind is a backend content-kind value, shown as-is.
+                        (if (item.duration > 0) stringResource(R.string.common_minutes, item.duration) + " · " else "") +
+                            item.kind.replace('_', ' '),
                         false,
                         playing = Player.nowPlaying == item.title && Player.isPlaying,
                         icon = when (item.kind) {
@@ -117,7 +121,7 @@ fun SearchScreen(onBack: () -> Unit) {
                     )
                 }
                 if (hits.size > 20) {
-                    Text("Showing first 20 — refine your search.",
+                    Text(stringResource(R.string.search_refine),
                         style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
             }

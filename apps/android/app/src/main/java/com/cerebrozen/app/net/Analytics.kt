@@ -17,11 +17,21 @@ import kotlinx.coroutines.launch
 object Analytics {
     private const val ID_KEY = "anon_id"
     private const val OPT_KEY = "usage_stats_on"
+    private const val UNLOCK_KEY = "analytics_unlocked"
     private val scope = CoroutineScope(Dispatchers.IO)
 
     var enabled: Boolean
         get() = Session.prefGet(OPT_KEY) != "false"
         set(value) { Session.prefPut(OPT_KEY, value.toString()) }
+
+    /** DPDP posture (owner decision 2026-07-13): no telemetry before consent.
+     * Tracking stays silent until the user passes the onboarding Consent step
+     * or authenticates (an existing account has an established relationship);
+     * after that the opt-out toggle above governs as before. */
+    val unlocked: Boolean
+        get() = Session.prefGet(UNLOCK_KEY) == "true"
+
+    fun unlock() { Session.prefPut(UNLOCK_KEY, "true") }
 
     private fun anonId(): String =
         Session.prefGet(ID_KEY) ?: UUID.randomUUID().toString().also { Session.prefPut(ID_KEY, it) }
@@ -29,7 +39,7 @@ object Analytics {
     /** Fire-and-forget: never blocks a screen and never surfaces errors —
      * these are counts, not truth. */
     fun track(name: String, step: String? = null) {
-        if (!enabled) return
+        if (!unlocked || !enabled) return
         val id = anonId()
         scope.launch { runCatching { Session.postEvent(id, name, step) } }
     }

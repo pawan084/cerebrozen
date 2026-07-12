@@ -28,10 +28,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ink
@@ -55,6 +58,8 @@ internal data class BreathPhase(val label: String, val seconds: Int, val expande
 
 /** The phase sequence per preset. Box and Color pace 4-4-4-4 with holds; Reset
  * is the gentle onboarding rhythm — four in, four out, nothing to hold. */
+// i18n: pending — pure function, needs context plumbing (phase labels are user copy;
+// unit tests assert them directly).
 internal fun breathePhases(preset: BreathePreset): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
         BreathPhase("Breathe in", 4, expanded = true),
@@ -152,6 +157,7 @@ fun BreatheEngine(preset: BreathePreset, modifier: Modifier = Modifier) {
                         .border(1.dp, LineStroke, CircleShape),
                 )
             }
+            val orbCd = stringResource(R.string.breathe_orb_cd, phases[phase].label)
             Box(
                 Modifier
                     .size(146.dp)
@@ -159,15 +165,15 @@ fun BreatheEngine(preset: BreathePreset, modifier: Modifier = Modifier) {
                     .clip(CircleShape)
                     .background(Brush.radialGradient(listOf(Color.White, tint)))
                     .border(1.dp, tint.copy(alpha = 0.55f), CircleShape)
-                    .semantics { contentDescription = "Breathing orb — ${phases[phase].label}" },
+                    .semantics { contentDescription = orbCd },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = Ink)
             }
         }
         Text(
-            if (breaths == 0) "Settle in — the rhythm finds you"
-            else "$breaths calm ${if (breaths == 1) "breath" else "breaths"}",
+            if (breaths == 0) stringResource(R.string.breathe_settle)
+            else pluralStringResource(R.plurals.breathe_calm_breaths, breaths, breaths),
             style = MaterialTheme.typography.labelSmall,
             color = TextMuted,
         )
@@ -180,25 +186,22 @@ fun BreatheEngine(preset: BreathePreset, modifier: Modifier = Modifier) {
 fun BreatheScreen(preset: BreathePreset, onBack: () -> Unit) {
     val (eyebrow, title, intro) = when (preset) {
         BreathePreset.Box -> Triple(
-            "Steady in fours", "Box breathing",
-            "In for four, hold for four, out for four, hold for four — let the orb set the pace.",
+            stringResource(R.string.breathe_box_eyebrow), stringResource(R.string.breathe_box_title),
+            stringResource(R.string.breathe_box_intro),
         )
         BreathePreset.Color -> Triple(
-            "Follow the glow", "Color breathing",
-            "Let your breath follow the orb as the glow shifts with each phase.",
+            stringResource(R.string.breathe_color_eyebrow), stringResource(R.string.breathe_color_title),
+            stringResource(R.string.breathe_color_intro),
         )
         BreathePreset.Reset -> Triple(
-            "A tiny reset", "Two-minute reset",
-            "A gentle four in, four out — nothing to hold. Stay as long as you like.",
+            stringResource(R.string.breathe_reset_eyebrow), stringResource(R.string.breathe_reset_title),
+            stringResource(R.string.breathe_reset_intro),
         )
     }
     SubPage(eyebrow, title, onBack) {
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         BreatheEngine(preset, Modifier.fillMaxWidth())
-        PrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth()) { onBack() }
-        WhyThisWorks(
-            "Paced breathing is used in clinical distress-tolerance and relaxation protocols. " +
-                "Slowing the breath activates the body's calming response.",
-        )
+        PrimaryButton(text = stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth()) { onBack() }
+        WhyThisWorks(stringResource(R.string.breathe_why))
     }
 }

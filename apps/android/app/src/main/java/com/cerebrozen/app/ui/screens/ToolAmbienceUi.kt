@@ -21,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.ToolAmbience
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
@@ -56,12 +58,12 @@ internal fun AmbienceToggle(modifier: Modifier = Modifier) {
     ) {
         Icon(
             if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
-            contentDescription = if (muted) "Turn ambience on" else "Mute ambience",
+            contentDescription = if (muted) stringResource(R.string.ambience_on_cd) else stringResource(R.string.ambience_mute_cd),
             tint = if (muted) TextMuted else Cyan,
             modifier = Modifier.size(16.dp),
         )
         Text(
-            if (muted) "Sound off" else "Ambience",
+            if (muted) stringResource(R.string.ambience_sound_off) else stringResource(R.string.ambience_label),
             style = MaterialTheme.typography.labelSmall,
             color = if (muted) TextMuted else TextSoft,
         )

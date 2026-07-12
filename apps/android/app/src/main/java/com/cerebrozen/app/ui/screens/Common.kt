@@ -67,11 +67,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Gradients
@@ -288,7 +290,7 @@ internal fun InfoBanner(
             ) {
                 Icon(
                     Icons.Outlined.Close,
-                    contentDescription = "Dismiss",
+                    contentDescription = stringResource(R.string.common_dismiss),
                     tint = TextMuted,
                     modifier = Modifier.size(16.dp),
                 )
@@ -607,10 +609,10 @@ internal fun WhyThisWorks(text: String) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Why this works", style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            Text(stringResource(R.string.common_why_this_works), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             Icon(
                 if (open) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                contentDescription = if (open) "Collapse" else "Expand",
+                contentDescription = if (open) stringResource(R.string.common_collapse) else stringResource(R.string.common_expand),
                 tint = TextMuted,
                 modifier = Modifier.size(18.dp),
             )
