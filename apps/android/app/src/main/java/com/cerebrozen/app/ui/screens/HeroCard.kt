@@ -55,6 +55,7 @@ internal fun HeroCard(
     kind: String = "",
     imageUrl: String = "",
     height: Dp = 200.dp,
+    alive: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
@@ -68,9 +69,10 @@ internal fun HeroCard(
         .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.06f))), shape)
     val mod = if (onClick != null) base.clickable { onClick() } else base
     Box(mod) {
-        // The designed default: deterministic generative art (static — it's
-        // artwork, not ambience).
-        HeroArt(kind = kind, title = title, modifier = Modifier.fillMaxSize())
+        // The designed default: deterministic generative art. [alive] opts the
+        // hero into the W24 living-art loop (imperceptibly slow ambience;
+        // Reduce Motion renders it exactly as static as before).
+        HeroArt(kind = kind, title = title, modifier = Modifier.fillMaxSize(), alive = alive)
         if (imageUrl.isNotBlank()) {
             // E4: Ken Burns whisper — the photo drifts 1.0 → 1.04 over ~14s and
             // settles back, forever. Static under Reduce Motion (the transition

@@ -15,12 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.animateColorAsState
@@ -54,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -113,12 +107,14 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.VeilStrong
 import com.cerebrozen.app.ui.theme.themeModeFromPref
 
-private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, val icon: ImageVector) {
-    Home("home", R.string.tab_home, Icons.Filled.Home),
-    Sleep("sleep", R.string.tab_sleep, Icons.Filled.Bedtime),
-    Talk("talk", R.string.tab_talk, Icons.Filled.Mic),
-    Journal("journal", R.string.tab_journal, Icons.Filled.Book),
-    You("you", R.string.tab_you, Icons.Filled.Person),
+// W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
+// instead of stock Material glyphs — one consistent 2dp rounded-line set.
+private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
+    Home("home", R.string.tab_home, R.drawable.ic_tab_home),
+    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
+    Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
+    Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
+    You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
@@ -175,10 +171,12 @@ private fun BottomTabItem(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                tab.icon,
+                painterResource(tab.icon),
                 contentDescription = label,
                 tint = tint,
-                modifier = Modifier.size(if (compact) 15.dp else 17.dp).scale(iconScale),
+                // A touch larger than the old filled glyphs: thin 2dp-line icons
+                // need the extra size to keep their stroke crisp.
+                modifier = Modifier.size(if (compact) 16.dp else 18.dp).scale(iconScale),
             )
         }
         Text(
@@ -189,6 +187,40 @@ private fun BottomTabItem(
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
+    }
+}
+
+/** W24 D3: Night↔Dawn changes glide instead of snapping. A Crossfade around
+ * the themed tree would recreate the NavHost (destroying navigation state), so
+ * instead a full-screen wash of the NEW theme's backdrop appears the instant
+ * the preference flips and fades away over 350ms — the re-tokened screen
+ * emerges from a calm solid, never a hard cut. Keyed on the *preference*-
+ * resolved theme only (Appearance choice / system dark), deliberately ignoring
+ * the Sleep tab's forceNight flips, which keep their existing nav cross-fade.
+ * Reduce Motion: no scrim — the honest instant snap. */
+@Composable
+private fun ThemeGlideScrim() {
+    val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
+    val prefNight = when (AppTheme.mode) {
+        com.cerebrozen.app.ui.theme.ThemeMode.System -> AppTheme.systemDark
+        com.cerebrozen.app.ui.theme.ThemeMode.Night -> true
+        com.cerebrozen.app.ui.theme.ThemeMode.Dawn -> false
+    }
+    var seen by remember { mutableStateOf(prefNight) }
+    val veil = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(prefNight) {
+        if (seen != prefNight) {
+            seen = prefNight
+            if (!reduceMotion) {
+                veil.snapTo(1f)
+                veil.animateTo(0f, tween(350))
+            }
+        }
+    }
+    // Night resolves against the NEW theme, so the wash is the destination's
+    // own backdrop. The Box never consumes input; it is purely a veil.
+    if (veil.value > 0f) {
+        Box(Modifier.fillMaxSize().background(com.cerebrozen.app.ui.theme.Night.copy(alpha = veil.value)))
     }
 }
 
@@ -391,5 +423,7 @@ fun CereBroApp() {
     }
     // App-wide celebration flourish, above the nav chrome.
     if (Celebrations.active) Celebration(onFinished = { Celebrations.clear() })
+    // W24 D3: the Appearance-change wash, above everything (it fades to nothing).
+    ThemeGlideScrim()
     }
 }

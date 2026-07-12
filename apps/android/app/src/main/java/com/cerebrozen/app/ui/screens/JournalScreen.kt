@@ -255,6 +255,8 @@ fun JournalScreen() {
             SubPage(stringResource(R.string.journal_history_eyebrow), stringResource(R.string.journal_history_title), onBack = { mode = JournalMode.Home }) {
                 if (entries.isEmpty()) {
                     SectionCard {
+                        // W24: a small one-shot art illustration above the copy.
+                        EmptyStateArt(kind = "journal")
                         Text(stringResource(R.string.journal_no_entries_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                         Text(stringResource(R.string.journal_no_entries_body),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)

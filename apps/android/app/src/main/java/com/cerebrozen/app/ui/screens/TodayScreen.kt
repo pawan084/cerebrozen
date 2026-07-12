@@ -455,6 +455,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 title = p.optString("title"),
                 subtitle = p.optString("focus"),
                 height = 190.dp,
+                alive = true,   // W24: a slow glow pass walks the day dots
                 onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)
             ) {
                 val nextLabel = next?.let { stringResource(R.string.today_plan_next, it.optString("title")) }

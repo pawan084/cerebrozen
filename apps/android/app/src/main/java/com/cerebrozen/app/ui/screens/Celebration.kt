@@ -35,6 +35,7 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.Warm
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.sin
 
 /**
@@ -55,7 +56,35 @@ object Celebrations {
 
 private val PARTICLE_COLORS = listOf(Periwinkle, Cyan, Warm, Iris)
 
-/** The overlay itself — host once, at the app root, above everything else. */
+// Deterministic pseudo-random in 0..1 (same fold Brand.kt's starfield uses) so
+// the constellation is stable within a bloom — no per-frame flicker.
+private fun bloomRand(i: Int, salt: Int): Float {
+    val v = sin(i * 12.9898f + salt * 78.233f) * 43758.547f
+    return v - floor(v)
+}
+
+/** Draws one soft four-point star (the ContentArt sparkle shape). */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBloomStar(
+    center: Offset,
+    r: Float,
+    color: Color,
+    alpha: Float,
+) {
+    val path = androidx.compose.ui.graphics.Path().apply {
+        moveTo(center.x, center.y - r)
+        quadraticTo(center.x, center.y, center.x + r, center.y)
+        quadraticTo(center.x, center.y, center.x, center.y + r)
+        quadraticTo(center.x, center.y, center.x - r, center.y)
+        quadraticTo(center.x, center.y, center.x, center.y - r)
+        close()
+    }
+    drawPath(path, color.copy(alpha = alpha.coerceIn(0f, 1f)))
+}
+
+/** The overlay itself — host once, at the app root, above everything else.
+ * W24: a calm constellation-bloom — soft star points drift outward from the
+ * medallion on staggered starts and dissolve (one-shot, ≤1.4s). Reduce Motion
+ * keeps the medallion-only appearance. */
 @Composable
 internal fun Celebration(onFinished: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
@@ -66,7 +95,7 @@ internal fun Celebration(onFinished: () -> Unit) {
             progress.snapTo(1f)
             kotlinx.coroutines.delay(650)
         } else {
-            progress.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
+            progress.animateTo(1f, tween(1300, easing = FastOutSlowInEasing))
         }
         onFinished()
     }
@@ -76,19 +105,27 @@ internal fun Celebration(onFinished: () -> Unit) {
     Box(Modifier.fillMaxSize().alpha(overlayAlpha), contentAlignment = Alignment.Center) {
         if (!reduceMotion) {
             Canvas(Modifier.fillMaxSize()) {
-                val n = 14
+                val n = 11
                 val cx = size.width / 2f
                 val cy = size.height / 2f
-                val maxR = size.minDimension * 0.34f
+                val maxR = size.minDimension * 0.36f
                 for (i in 0 until n) {
-                    val ang = (i.toFloat() / n) * 2f * Math.PI.toFloat()
-                    val r = maxR * p
-                    val x = cx + cos(ang) * r
-                    val y = cy + sin(ang) * r
-                    drawCircle(
-                        color = PARTICLE_COLORS[i % PARTICLE_COLORS.size].copy(alpha = (1f - p).coerceIn(0f, 1f)),
-                        radius = 8f * (1f - p * 0.5f),
-                        center = Offset(x, y),
+                    // Each star gets its own angle jitter, reach, size and a
+                    // staggered start, so the ring reads as a constellation
+                    // blooming, not a burst.
+                    val delay = 0.22f * bloomRand(i, 1)
+                    val t = ((p - delay) / (1f - delay)).coerceIn(0f, 1f)
+                    if (t <= 0f) continue
+                    val eased = 1f - (1f - t) * (1f - t)   // gentle decelerate
+                    val ang = (i.toFloat() / n + 0.04f * (bloomRand(i, 2) - 0.5f)) * 2f * Math.PI.toFloat()
+                    val reach = maxR * (0.72f + 0.28f * bloomRand(i, 3)) * eased
+                    val center = Offset(cx + cos(ang) * reach, cy + sin(ang) * reach)
+                    val starR = (7f + 6f * bloomRand(i, 4)) * (1f - 0.35f * t)
+                    drawBloomStar(
+                        center = center,
+                        r = starR,
+                        color = PARTICLE_COLORS[i % PARTICLE_COLORS.size],
+                        alpha = 0.9f * (1f - t),
                     )
                 }
             }

@@ -797,17 +797,21 @@ fun PlayerScreen(onBack: () -> Unit) {
                 ContentArt(
                     title = title.orEmpty(), kind = "soundscape",
                     modifier = Modifier.matchParentSize().scale(1.4f).blur(28.dp),
+                    alive = true,   // W24: the blurred waves drift on the 22s loop
                 )
                 // Scrim to settle the backdrop into the night palette.
                 Box(Modifier.matchParentSize().background(
                     Brush.verticalGradient(listOf(Night.copy(alpha = 0.35f), Night.copy(alpha = 0.72f)))))
-                // The centered, breathing artwork floating above the blur.
+                // The centered, breathing artwork floating above the blur — also
+                // alive: the blur+scrim mute the backdrop's drift to nothing, so
+                // the crisp center carries the visible (still whisper-slow) motion.
                 ContentArt(
                     title = title.orEmpty(), kind = "soundscape",
                     motifScale = 1.35f,
                     modifier = Modifier.fillMaxWidth(0.62f).height(168.dp)
                         .scale(artScale).clip(RoundedCornerShape(20.dp))
                         .border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+                    alive = true,
                 )
                 // Legibility scrim beneath the base overlay.
                 Box(Modifier.matchParentSize().background(
@@ -1228,9 +1232,13 @@ fun CrisisScreen(onBack: () -> Unit) {
     // Static (offline-safe) directory — Tele-MANAS leads every crisis surface
     // (REDESIGN §2.3), then emergency services, then an international finder.
     // Numbers/targets are dial/URL contracts and stay literal.
+    // W25 (CTA audit): the former "Tele-MANAS on WhatsApp" row (wa.me/9114416)
+    // was removed — no official national Tele-MANAS WhatsApp number exists, and
+    // wa.me parses that target as an invalid +91-14416 account. A crisis surface
+    // must never point at a dead chat; the 14416 voice line is the real pathway
+    // (also restores parity with iOS CrisisResources + backend crisis.py).
     val lines = listOf(
         stringResource(R.string.crisis_line_telemanas) to "14416",
-        stringResource(R.string.crisis_line_telemanas_whatsapp) to "wa.me/9114416",
         stringResource(R.string.crisis_line_emergency) to "112",
         stringResource(R.string.crisis_line_kiran) to "1800-599-0019",
         stringResource(R.string.crisis_line_find_helpline) to "findahelpline.com",

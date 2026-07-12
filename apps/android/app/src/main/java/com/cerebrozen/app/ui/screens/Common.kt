@@ -71,6 +71,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
@@ -232,6 +233,33 @@ internal fun BloomRing(trigger: Int, color: Color, modifier: Modifier = Modifier
     }
 }
 
+/** W24 D2: a small kind-matched art medallion for empty states — the same
+ * generative ContentArt system the tiles use, sized as a quiet illustration
+ * (48–64dp) above the empty copy. Appears once with a gentle settle
+ * (fade + 0.92 → 1, ~320ms); Reduce Motion rests it at the final frame.
+ * Decorative only — no contentDescription, no copy of its own. */
+@Composable
+internal fun EmptyStateArt(kind: String, size: Dp = 56.dp, modifier: Modifier = Modifier) {
+    val reduceMotion = rememberReduceMotion()
+    val settle = remember { Animatable(if (reduceMotion) 1f else 0f) }
+    LaunchedEffect(Unit) { settle.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+    Box(
+        modifier
+            .size(size)
+            .graphicsLayer {
+                val s = 0.92f + 0.08f * settle.value
+                scaleX = s
+                scaleY = s
+                alpha = settle.value
+            }
+            .clip(RoundedCornerShape(16.dp)),
+    ) {
+        // The kind doubles as the seed title (like the InfoBanner medallion),
+        // so each surface's illustration is stable across visits.
+        ContentArt(title = kind, kind = kind, modifier = Modifier.fillMaxSize())
+    }
+}
+
 /** A quiet, single-purpose banner (W9 B5): SurfaceRaised fill, a soft accent
  * hairline, an accent-tinted icon and calm supporting copy — with an optional
  * small accent action and an optional dismiss. Deliberately unanimated beyond
@@ -278,8 +306,21 @@ internal fun InfoBanner(
     ) {
         if (artKind != null) {
             // The kind doubles as the art's seed title so every banner of one
-            // kind wears the same, stable medallion.
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))) {
+            // kind wears the same, stable medallion. W24: it settles in once
+            // (0.92 → 1, 250ms) on first composition; Reduce Motion rests it
+            // at full size from the first frame.
+            val reduceMotion = rememberReduceMotion()
+            val settle = remember { Animatable(if (reduceMotion) 1f else 0f) }
+            LaunchedEffect(Unit) { settle.animateTo(1f, tween(250, easing = FastOutSlowInEasing)) }
+            Box(
+                Modifier.size(40.dp)
+                    .graphicsLayer {
+                        val s = 0.92f + 0.08f * settle.value
+                        scaleX = s
+                        scaleY = s
+                    }
+                    .clip(RoundedCornerShape(12.dp)),
+            ) {
                 ContentArt(title = artKind, kind = artKind, modifier = Modifier.fillMaxSize())
             }
         } else {

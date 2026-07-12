@@ -516,6 +516,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
         if (messages.isEmpty()) {
             SectionCard {
+                // W24: a small one-shot art illustration above the copy.
+                EmptyStateArt(kind = "talk")
                 Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }

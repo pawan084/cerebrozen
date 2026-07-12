@@ -326,7 +326,8 @@ fun HumanSupportScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.hum
     // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
     // The dial/URL targets are contracts and stay literal.
     SupportLinkRow(stringResource(R.string.humansupport_telemanas_title), stringResource(R.string.humansupport_telemanas_detail), "14416")
-    SupportLinkRow(stringResource(R.string.crisis_line_telemanas_whatsapp), stringResource(R.string.humansupport_whatsapp_detail), "https://wa.me/9114416")
+    // W25: the WhatsApp row was removed — no official national Tele-MANAS
+    // WhatsApp exists (wa.me/9114416 was an invalid target). Voice line stays.
     SupportLinkRow(stringResource(R.string.humansupport_icall_title), stringResource(R.string.humansupport_icall_detail), "9152987821")
     SupportLinkRow(stringResource(R.string.humansupport_find_title), stringResource(R.string.humansupport_find_detail), "https://www.findahelpline.com/in")
     InfoCard(stringResource(R.string.humansupport_coach_title), stringResource(R.string.humansupport_coach_body))

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W24 tab icon: rounded journal with a written line — thin rounded-line
+     style (2dp stroke on a 24dp grid, shared across the whole tab set). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Cover: rounded spine on the left, open edge on the right. -->
+    <path
+        android:pathData="M17.9,19.3 L9,19.3 Q6.1,19.3 6.1,16.4 L6.1,7.3 Q6.1,4.7 8.7,4.7 L17.9,4.7 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- The binding fold near the base. -->
+    <path
+        android:pathData="M6.1,16.4 Q6.1,15.2 8.7,15.2 L17.9,15.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- One written line. -->
+    <path
+        android:pathData="M9.6,9 L14.4,9"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+</vector>

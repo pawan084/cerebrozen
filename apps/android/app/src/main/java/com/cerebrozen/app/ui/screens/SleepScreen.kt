@@ -186,6 +186,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             title = calmerNight,
             subtitle = stringResource(R.string.sleep_hero_subtitle),
             height = 220.dp,
+            alive = true,   // W24: hero stars twinkle, imperceptibly slow
         ) {
             // A "TONIGHT" badge + a prominent play pill — the richer hero look, on
             // our tokens. Still just plays the ambient bed (no behaviour change).
@@ -291,6 +292,8 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 } else {
+                    // W24: a small one-shot art illustration above the copy.
+                    EmptyStateArt(kind = "sleep", size = 48.dp)
                     Text(
                         stringResource(R.string.sleep_week_empty),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,

@@ -45,7 +45,6 @@
     <string name="crisis_hero_eyebrow">You deserve support</string>
     <string name="crisis_hero_title">If you\'re in immediate danger, please reach out now.</string>
     <string name="crisis_line_telemanas">Tele-MANAS — real people, 24/7</string>
-    <string name="crisis_line_telemanas_whatsapp">Tele-MANAS on WhatsApp</string>
     <string name="crisis_line_emergency">Emergency services</string>
     <string name="crisis_line_kiran">KIRAN mental-health helpline</string>
     <string name="crisis_line_find_helpline">Find a helpline</string>
@@ -61,7 +60,6 @@
     <string name="humansupport_intro">CereBro is a companion, not a clinician. When you want a real person, these connect you with one.</string>
     <string name="humansupport_telemanas_title">Tele-MANAS — call 14416</string>
     <string name="humansupport_telemanas_detail">Free government mental-health line · 24/7</string>
-    <string name="humansupport_whatsapp_detail">The same counsellors, by chat</string>
     <string name="humansupport_icall_title">iCall — talk to a counsellor</string>
     <string name="humansupport_icall_detail">Trained counsellors by phone · 9152987821</string>
     <string name="humansupport_find_title">Find a therapist</string>
@@ -249,7 +247,7 @@
     <string name="journal_lock_hint">Require your screen lock to open</string>
     <string name="journal_private_body_title">Your entries stay private</string>
     <string name="journal_private_body">Journal entries are yours. Safety scanning quietly surfaces support when something sounds heavy — it never blocks or shares your writing.</string>
-    <string name="journal_telemanas">In India, Tele-MANAS is available any time — call or WhatsApp 14416.</string>
+    <string name="journal_telemanas">In India, Tele-MANAS is available any time — call 14416, free, day or night.</string>
     <string name="journal_hero_subtitle">A gentle starting point — or write about anything.</string>
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing, safety-aware</string>
@@ -257,7 +255,7 @@
     <string name="journal_private_mode">Private mode</string>
     <string name="journal_private_subtitle">Lock the journal, manage privacy</string>
     <string name="journal_support_title">You don\'t have to carry this alone</string>
-    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now — in India, call or WhatsApp Tele-MANAS at 14416, or dial your local emergency number.</string>
+    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now — in India, call Tele-MANAS at 14416, or dial your local emergency number.</string>
     <string name="journal_support_badge">Support</string>
 
     <!-- ── You (Screens.kt) ────────────────────────────────────────────── -->
