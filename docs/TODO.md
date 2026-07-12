@@ -82,7 +82,13 @@
   current day (clamped to the last guide; programs without guides omit the field,
   so iOS — which ignores unknown JSON fields — is unaffected). Android
   ProgramsScreen renders the guide under the enrolled hero; an iOS "today's
-  focus" card remains open when iOS work resumes.
+  focus" card remains open when iOS work resumes. Day guides are editable
+  from the admin CMS (W17): `ContentCreate`/`ContentUpdate` accept
+  `day_guides` (validated `DayGuide` list; explicit null clears) and the
+  admin Content form has a per-day title+body row editor. (Found while
+  verifying: `backend/Dockerfile` COPY could carry a read-only `media/` mode
+  from Windows/OneDrive checkouts, 500-ing narration saves in image-only
+  runs like the e2e stack — fixed with an explicit `chmod -R u+w media`.)
 - [x] **Onboarding `onAccountCreated` race** — FIXED 2026-07-12 (W7): post-signup writes run
   under `NonCancellable` in AuthScreen's `signUpThenPersonalize`; `AuthFlowTest` reproduces
   the race and fails without the fix.

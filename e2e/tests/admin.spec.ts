@@ -49,6 +49,9 @@ test.describe("Admin dashboard", () => {
   });
 
   test("content can be created, edited and deleted", async ({ page }) => {
+    // Real narration generation (keyed dev machine) takes ~30s on its own, and the
+    // W17 day-guide round-trip added steps — the default 30s test budget is too tight.
+    test.setTimeout(90_000);
     await nav(page, "Content").click();
     await page.getByRole("button", { name: /new item/i }).click();
     const title = `E2E item ${Date.now()}`;
@@ -66,9 +69,19 @@ test.describe("Admin dashboard", () => {
     await expect(page.locator(".cform textarea")).toHaveValue(script);
     const edited = `${title} edited`;
     await page.locator(".cform input[type=text]").first().fill(edited);
+    // W17: program day guides are edited in the same form and saved by the same PATCH.
+    await page.getByRole("button", { name: "+ Add day" }).click();
+    await page.getByPlaceholder("Day title").fill("Day 1 — Arrive");
+    await page.getByPlaceholder(/What this day asks/).fill("Settle in tonight.");
     await page.getByRole("button", { name: /save changes/i }).click();
     const editedRow = page.locator("tr", { hasText: edited });
     await expect(editedRow).toBeVisible();
+
+    // The saved guide round-trips through the pre-filled form.
+    await editedRow.getByRole("button", { name: "Edit" }).click();
+    await expect(page.getByPlaceholder("Day title")).toHaveValue("Day 1 — Arrive");
+    await expect(page.getByPlaceholder(/What this day asks/)).toHaveValue("Settle in tonight.");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
 
     // Scripted items offer narration generation. The e2e api inherits
     // backend/.env, so a keyed dev machine really generates (row gains the
