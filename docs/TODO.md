@@ -27,16 +27,16 @@
 
 ## Open — needs a product/legal decision (surfaced by the 2026-07-12 Android deep review)
 
-- [ ] **Analytics fire before the consent screen** (`net/Analytics.kt` defaults `enabled`
-  true; `OnboardingScreen` tracks `onboarding_step` from Welcome onward). It's anonymous +
-  opt-out, but it's telemetry before any affirmative consent. Decide: gate funnel tracking
-  until after the consent step, or accept/document it as a DPDP position. (Not auto-changed —
-  gating would drop pre-consent funnel data.)
+- [x] **Analytics fire before the consent screen** — DECIDED + IMPLEMENTED 2026-07-13
+  (owner: gate until consent). `Analytics.track` no-ops until `analytics_unlocked`, set on
+  passing the onboarding Consent step or on an authenticated session (returning users).
+  Funnel events before Consent are intentionally uncounted.
 - [x] **Onboarding Consent step shows only 3 of 6 categories** — FIXED 2026-07-12 (redesign
   W3): all six categories now render with labels/hints; defaults unchanged.
-- [ ] **Health Connect sleep read is gated by HC's own permission, not the in-app
-  `sleep_history` consent flag** (`SleepScreen`). Confirm HC permission is the accepted consent
-  boundary, or gate the prefill on the app toggle too.
+- [x] **Health Connect consent boundary** — DECIDED + IMPLEMENTED 2026-07-13 (owner: the
+  OS-level HC grant is the consent act for the local read; the in-app `sleep_history` toggle
+  governs server-side memory). SleepScreen states the boundary next to the prefill button
+  (`sleep_hc_boundary_hint`).
 
 ## Open — redesign follow-ups (from docs/REDESIGN.md, Phases 1–2 shipped 2026-07-12)
 
@@ -50,7 +50,23 @@
   engine, sounds consolidation, presence framing, onboarding trim) intentionally diverge
   from iOS until backported.
 - [ ] **Phase 3 roadmap**: Hindi UI localization (externalize strings as they're touched),
-  CBT-I weekly program (backend), premium launch behind the OECD dark-pattern checklist.
+  premium launch behind the OECD dark-pattern checklist. Android groundwork landed
+  2026-07-12 (W11): ~370 user-facing strings across all Compose screens now live in
+  `app/src/main/res/values/strings.xml` (`stringResource`, positional args, plurals);
+  ConsentNotice.kt keeps its own 13-language system. Remaining before a `values-hi/`
+  drop: pure functions still returning English copy (`greetingFor`, `milestoneLine`,
+  `railKindFor`, `minutesToLabel`, `spreadLabel`, `rhythmPrinciple`, `breathePhases`
+  labels, `talkTranscript` prefixes — all marked `// i18n: pending`), value-doubling
+  lists needing a label/value split (Today `MOODS`, onboarding `STATE_OPTIONS` /
+  `LANGUAGES` / `NOTIFY`, Settings `COMPANIONS`, YouScreen profile fallbacks), the
+  onboarding `Funnel` progress keyed off English eyebrows, and non-Compose copy
+  (`notify/Reminders.kt` notification title/body, `audio/SoundscapeMixer.kt` layer
+  names). CBT-I weekly program (backend)
+  seeded 2026-07-12 (W12): "Sleep Reset" 7-day program in the `/content` catalogue
+  (kind=program, free), enrollable via the existing `/programs` flow; the seven day
+  themes live in its narration script because the schema has no per-day program
+  structure — a per-day model (day titles/bodies served to clients) is the remaining
+  debt for a truly day-aware program surface.
 - [x] **Onboarding `onAccountCreated` race** — FIXED 2026-07-12 (W7): post-signup writes run
   under `NonCancellable` in AuthScreen's `signUpThenPersonalize`; `AuthFlowTest` reproduces
   the race and fails without the fix.
