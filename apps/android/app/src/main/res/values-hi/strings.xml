@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DRAFT — machine-assisted translation for human clinical review.
+  Safety/crisis/clinical strings are deliberately omitted (English fallback) pending review.
+  Do not ship to production without a qualified reviewer sign-off.
+
+  Deliberately omitted categories (English serves via resource fallback):
+    - Crisis screen (crisis_*)
+    - Human support directory (humansupport_*)
+    - Talk AI-disclosure, in-chat crisis banner, SOS shortcut, reframe chip
+    - TIPP / DBT skill (tipp_*, toolkit_tipp_*)
+    - CBT reframe tool (cbt_*, toolkit_cbt_*, toolkit_header_reframe)
+    - "Why this works" provenance texts (common_why_this_works, *_why, programs_evidence)
+    - Sleep CBT-I education cards (sleep_bed_*, sleep_waketime_*, sleep_cbti_why)
+    - sleep_hc_boundary_hint (Health Connect data boundary)
+    - Onboarding disclosure / age gate / danger line (ob_disclosure_*, ob_danger_line,
+      ob_confirmed_18, ob_can_help_*, ob_cant_do_*)
+    - Crisis region picker (crisisregion_*, region_*, you_crisisregion_*)
+    - Safety-adjacent lines elsewhere (common_wellness_footer, you_support_title,
+      you_humansupport_subtitle, toolkit_support_title, journal_support_*,
+      journal_telemanas, journal_private_body_title, journal_private_body,
+      journal_new_subtitle, tour_stop3_body)
+    - Privacy-policy clinical-positioning cards (privacypolicy_evidence_*,
+      privacypolicy_not_*, privacypolicy_professional_*)
+  Also omitted as language-neutral (identical to default): app_name,
+  today_greeting_format, ground_counter, auth_email_placeholder.
+-->
+<resources>
+
+    <!-- ── Shared / common ─────────────────────────────────────────────── -->
+    <string name="common_back">वापस</string>
+    <string name="common_dismiss">हटाएँ</string>
+    <string name="common_next">आगे</string>
+    <string name="common_cancel">रद्द करें</string>
+    <string name="common_done">हो गया</string>
+    <string name="common_open">खोलें</string>
+    <string name="common_send">भेजें</string>
+    <string name="common_reset">रीसेट</string>
+    <string name="common_try_again">फिर से कोशिश करें</string>
+    <string name="common_one_moment">एक पल…</string>
+    <string name="common_continue">जारी रखें</string>
+    <string name="common_minutes">%1$d मिनट</string>
+    <string name="common_volume">वॉल्यूम</string>
+    <string name="common_sleep_timer">स्लीप टाइमर</string>
+    <string name="common_on">चालू</string>
+    <string name="common_off">बंद</string>
+    <string name="common_play_label">चलाएँ</string>
+    <string name="common_pause_label">रोकें</string>
+    <string name="common_play_cd">%1$s चलाएँ</string>
+    <string name="common_pause_cd">%1$s रोकें</string>
+    <string name="common_favourite_cd">%1$s को पसंदीदा बनाएँ</string>
+    <string name="common_unfavourite_cd">%1$s को पसंदीदा से हटाएँ</string>
+    <string name="common_premium_badge">प्रीमियम</string>
+    <string name="common_save_failed">सहेजा नहीं जा सका।</string>
+    <string name="common_expand">विस्तार करें</string>
+    <string name="common_collapse">समेटें</string>
+
+    <!-- ── Bottom tabs ─────────────────────────────────────────────────── -->
+    <string name="tab_home">होम</string>
+    <string name="tab_sleep">नींद</string>
+    <string name="tab_talk">बात</string>
+    <string name="tab_journal">जर्नल</string>
+    <string name="tab_you">आप</string>
+
+    <!-- Crisis screen: deliberately not translated (English fallback). -->
+    <!-- Human support: deliberately not translated (English fallback). -->
+
+    <!-- ── Talk ────────────────────────────────────────────────────────── -->
+    <string name="talk_eyebrow">AI वॉइस साथी</string>
+    <string name="talk_title">खुलकर बात करें</string>
+    <string name="talk_offline_banner">आप ऑफ़लाइन हैं — साथी को इंटरनेट चाहिए। नीचे दी गई टूलकिट अब भी काम करती है।</string>
+    <string name="talk_offline_action">टूलकिट</string>
+    <string name="talk_hint_hearing">आपको सुन रहे हैं…</string>
+    <string name="talk_hint_thinking">सोच रहे हैं…</string>
+    <string name="talk_hint_speaking_interrupt">बोल रहे हैं… रोकने के लिए टैप करें</string>
+    <string name="talk_hint_speaking">बोल रहे हैं…</string>
+    <string name="talk_hint_listening_done">सुन रहे हैं… पूरा होने पर टैप करें</string>
+    <string name="talk_hint_listening_stop">सुन रहे हैं… रोकने के लिए टैप करें</string>
+    <string name="talk_hint_orb_studio">ऑर्ब टैप करें — स्टूडियो-क्वालिटी आवाज़</string>
+    <string name="talk_hint_orb">लाइव बात करने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_empty_title">मन में क्या चल रहा है?</string>
+    <string name="talk_empty_subtitle">बोलें या लिखें — छोटी-छोटी चिंताएँ भी कह सकते हैं।</string>
+    <string name="talk_starters_header">या यहीं से शुरू करें</string>
+    <string name="talk_save_journal">यह बातचीत मेरे जर्नल में सहेजें</string>
+    <string name="talk_journal_entry_title">बातचीत की झलक</string>
+    <string name="talk_saved_status">आपके जर्नल में सहेज लिया गया।</string>
+    <string name="talk_save_failed">सहेजा नहीं जा सका — फिर से कोशिश करें।</string>
+    <string name="talk_confirm_header">साथी एक कदम उठाना चाहता है</string>
+    <string name="talk_confirm_fallback">क्या इस कार्रवाई की अनुमति दें?</string>
+    <string name="talk_error_generic">कुछ गड़बड़ हो गई — कृपया फिर से कोशिश करें।</string>
+    <string name="talk_approve">अनुमति दें</string>
+    <string name="talk_not_now">अभी नहीं</string>
+    <string name="talk_type_instead">टाइप करें</string>
+    <string name="talk_type_message">संदेश लिखें</string>
+    <string name="talk_field_label">संदेश</string>
+    <string name="talk_send_failed">भेजा नहीं जा सका।</string>
+    <string name="talk_mic_unavailable">माइक्रोफ़ोन अभी उपलब्ध नहीं है।</string>
+    <string name="talk_didnt_catch">सुनाई नहीं दिया — फिर से कोशिश करें।</string>
+    <string name="talk_transcribe_failed">लिख नहीं पाए — आप नीचे टाइप कर सकते हैं।</string>
+    <string name="talk_mic_off">माइक्रोफ़ोन की अनुमति बंद है — आप नीचे टाइप कर सकते हैं।</string>
+    <string name="talk_live_session">लाइव सत्र</string>
+    <string name="talk_state_speaking_interrupt">बोल रहे हैं — बीच में रोकने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_state_listening">सुन रहे हैं… पूरा होने पर ऑर्ब टैप करें</string>
+    <string name="talk_state_orb">बोलने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_end">समाप्त</string>
+    <string name="talk_text">टेक्स्ट</string>
+    <string name="talk_try_together">साथ में आज़माएँ</string>
+    <string name="talk_chip_breathe">मेरे साथ साँस लें</string>
+    <string name="talk_chip_ground">वर्तमान में लौटें</string>
+    <string name="talk_suggested_activity">सुझाई गई गतिविधि</string>
+    <string name="talk_ios_only">यह फ़िलहाल iOS ऐप में ही है।</string>
+    <string name="talk_orb_stop_cd">सुनना बंद करें</string>
+    <string name="talk_orb_talk_cd">CereBro से बात करें</string>
+
+    <!-- ── Today ───────────────────────────────────────────────────────── -->
+    <string name="today_eyebrow">आज</string>
+    <string name="today_eyebrow_goal">आज · %1$s</string>
+    <string name="today_friend">दोस्त</string>
+    <string name="today_search_cd">लाइब्रेरी में खोजें</string>
+    <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>
+    <string name="today_banner_sleep">कल रात कैसी रही? 20 सेकंड का चेक-इन।</string>
+    <string name="today_banner_sleep_action">दर्ज करें</string>
+    <string name="today_banner_winddown">दिन ढल रहा है — एक शांत मिक्स, या आज रात की विंड-डाउन गाइड?</string>
+    <string name="today_banner_winddown_action">विंड डाउन</string>
+    <string name="today_banner_program">दिन %1$d / %2$d · %3$s</string>
+    <string name="today_checkin_title">आप सच में कैसे हैं?</string>
+    <string name="today_checkin_subtitle">20 सेकंड का चेक-इन आज की योजना तय करता है।</string>
+    <string name="today_checkin_cta">चेक-इन करें</string>
+    <string name="today_checkin_done">चेक-इन हो गया — धीरे से दर्ज कर लिया।</string>
+    <string name="today_checkin_failed">चेक-इन नहीं हो पाया।</string>
+    <string name="today_plan_eyebrow">आज की योजना</string>
+    <string name="today_plan_next">अगला: %1$s</string>
+    <string name="today_plan_done_count">%2$d में से %1$d पूरे</string>
+    <string name="today_rail_ambient">एंबिएंट</string>
+    <string name="today_toolkit_title">टूलकिट</string>
+    <string name="today_toolkit_subtitle">अभी के लिए छोटे-छोटे अभ्यास</string>
+    <string name="today_presence_title">आप आए</string>
+    <string name="today_presence_ready">जब भी आप तैयार हों</string>
+    <plurals name="today_presence_days">
+        <item quantity="one">इस हफ़्ते %1$d दिन — दिन में एक बार काफ़ी है।</item>
+        <item quantity="other">इस हफ़्ते %1$d दिन — दिन में एक बार काफ़ी है।</item>
+    </plurals>
+    <string name="today_presence_empty">एक छोटा-सा चेक-इन भी आने के बराबर है — आराम से, कोई दबाव नहीं।</string>
+    <string name="today_recent_title">हाल के चेक-इन</string>
+
+    <!-- ── Sleep ───────────────────────────────────────────────────────── -->
+    <string name="sleep_eyebrow">रात-दर-रात, बेहतर नींद</string>
+    <string name="sleep_title">नींद</string>
+    <string name="sleep_hero_eyebrow">शांत शाम</string>
+    <string name="sleep_hero_title">एक शांत रात</string>
+    <string name="sleep_hero_subtitle">धीमी शाम से सुबह नरम हो जाती है।</string>
+    <string name="sleep_tonight_badge">आज रात</string>
+    <string name="sleep_play_cd">एंबिएंट ध्वनि चलाएँ</string>
+    <string name="sleep_checkin_title">सुबह का चेक-इन</string>
+    <string name="sleep_checkin_subtitle">कितना आराम महसूस हो रहा है?</string>
+    <string name="sleep_inbed_label">बिस्तर पर गए, लगभग</string>
+    <string name="sleep_wake_label">उठे, लगभग</string>
+    <string name="sleep_time_earlier_cd">%1$s को 30 मिनट पहले करें</string>
+    <string name="sleep_time_later_cd">%1$s को 30 मिनट बाद करें</string>
+    <string name="sleep_minus_30">−30 मि</string>
+    <string name="sleep_plus_30">+30 मि</string>
+    <string name="sleep_programs_nav_title">प्रोग्राम</string>
+    <string name="sleep_programs_nav_subtitle">कई दिनों की गाइडेड यात्राएँ — Sleep Reset से शुरू करें</string>
+    <string name="sleep_hc_prefill">Health Connect से भरें</string>
+    <string name="sleep_hc_done">कल रात की नींद से भर दिया गया।</string>
+    <string name="sleep_hc_none">Health Connect में हाल की नींद नहीं मिली।</string>
+    <string name="sleep_save_cta">रात सहेजें</string>
+    <string name="sleep_logged">दर्ज हो गया — एक-एक सच्ची रात।</string>
+    <string name="sleep_log_failed">दर्ज नहीं हो पाया।</string>
+    <string name="sleep_week_title">इस हफ़्ते</string>
+    <string name="sleep_week_summary">औसत %1$s · महसूस %2$s/5 · रुझान %3$s</string>
+    <string name="sleep_week_empty">कुछ और रातें दर्ज करें, फिर यहाँ सच्चे औसत दिखेंगे — कोई अंदाज़ा नहीं।</string>
+    <string name="sleep_rhythm_title">आपकी लय</string>
+    <string name="sleep_rhythm_line">आपका औसत %1$s रहा। इस हफ़्ते सोने का समय लगभग %2$s आगे-पीछे रहा।</string>
+    <string name="sleep_mixer_nav_title">अपना साउंडस्केप बनाएँ</string>
+    <string name="sleep_mixer_nav_subtitle">बारिश, समुद्र, हवा और एक धीमी गूंज मिलाएँ</string>
+    <string name="sleep_sounds_header">नींद के लिए ध्वनियाँ</string>
+    <string name="sleep_winddown_header">विंड-डाउन गाइड</string>
+    <string name="sleep_meta_guide">गाइड</string>
+    <string name="sleep_meta_story">नींद की कहानी</string>
+    <string name="sleep_diary_title">डायरी</string>
+    <string name="sleep_diary_line">%1$s · %2$s · महसूस %3$d/5</string>
+    <string name="sleep_chart_title">पिछली 7 रातें</string>
+    <string name="sleep_chart_cd">नींद की अवधि, पिछली %1$d रातें, औसत %2$s</string>
+    <string name="sleep_chart_footer">औसत %1$s · %2$d रातें</string>
+
+    <!-- ── Journal ─────────────────────────────────────────────────────── -->
+    <string name="journal_eyebrow">सिर्फ़ आपके लिए</string>
+    <string name="journal_title">जर्नल</string>
+    <string name="journal_locked_title">जर्नल लॉक है</string>
+    <string name="journal_locked_body">आपकी प्रविष्टियाँ आपके स्क्रीन लॉक के पीछे सुरक्षित रहती हैं।</string>
+    <string name="journal_unlock">अनलॉक करें</string>
+    <string name="journal_prompt_1">आज आप कहाँ सबसे ज़्यादा अपने जैसे महसूस हुए?</string>
+    <string name="journal_prompt_2">चिंता को नाम दें — फिर उसके पास एक ज़्यादा सच्चा विचार लिखें।</string>
+    <string name="journal_prompt_3">आज रात आप कौन-सी एक चीज़ उतारकर रख सकते हैं?</string>
+    <string name="journal_prompt_4">उम्मीद से बेहतर क्या रहा?</string>
+    <string name="journal_prompt_5">अगर आज का दिन कोई मौसम होता, तो कौन-सा — और क्यों?</string>
+    <string name="journal_mood_calm">शांत</string>
+    <string name="journal_mood_anxious">बेचैन</string>
+    <string name="journal_mood_hopeful">आशावान</string>
+    <string name="journal_mood_tired">थका हुआ</string>
+    <string name="journal_mood_sad">उदास</string>
+    <string name="journal_mood_grateful">आभारी</string>
+    <string name="journal_quick_good_thing">एक अच्छी बात</string>
+    <string name="journal_quick_intention">आज रात का इरादा</string>
+    <string name="journal_entry_eyebrow">निजी लेखन</string>
+    <string name="journal_entry_title">नई प्रविष्टि</string>
+    <string name="journal_prompt_header">आज का सवाल</string>
+    <string name="journal_try_another">कोई और आज़माएँ</string>
+    <string name="journal_draft_safe">आपका ड्राफ़्ट सुरक्षित है — रीस्टार्ट के बाद भी बचा रहा।</string>
+    <string name="journal_release_title">दिन को विदा दें</string>
+    <string name="journal_title_label">शीर्षक</string>
+    <string name="journal_body_label">मन में क्या चल रहा है?</string>
+    <string name="journal_feeling_label">कैसा महसूस हो रहा है? (वैकल्पिक)</string>
+    <string name="journal_save_cta">प्रविष्टि सहेजें</string>
+    <string name="journal_entry_feeling_format">%1$s\n\n— महसूस: %2$s</string>
+    <string name="journal_saved">सहेज लिया — सिर्फ़ आपके लिए।</string>
+    <string name="journal_history_eyebrow">पुरानी प्रविष्टियाँ</string>
+    <string name="journal_history_title">इतिहास</string>
+    <string name="journal_no_entries_title">अभी कोई प्रविष्टि नहीं</string>
+    <string name="journal_no_entries_body">आपकी सहेजी बातें यहाँ दिखेंगी — सिर्फ़ आपके लिए।</string>
+    <string name="journal_search_label">प्रविष्टियाँ खोजें</string>
+    <string name="journal_no_match">\"%1$s\" से मेल खाती कोई प्रविष्टि नहीं।</string>
+    <string name="journal_private_eyebrow">निजी मोड</string>
+    <string name="journal_private_title">आपकी निजता</string>
+    <string name="journal_lock_title">जर्नल लॉक करें</string>
+    <string name="journal_lock_hint">खोलने के लिए स्क्रीन लॉक ज़रूरी</string>
+    <string name="journal_hero_subtitle">एक हल्की-सी शुरुआत — या किसी भी बारे में लिखें।</string>
+    <string name="journal_new_title">नई प्रविष्टि</string>
+    <string name="journal_history_subtitle">आपकी पुरानी प्रविष्टियाँ, खोजने योग्य</string>
+    <string name="journal_private_mode">निजी मोड</string>
+    <string name="journal_private_subtitle">जर्नल लॉक करें, निजता सँभालें</string>
+
+    <!-- ── You ─────────────────────────────────────────────────────────── -->
+    <string name="you_eyebrow">सेटिंग और सहायता</string>
+    <string name="you_title">आप</string>
+    <string name="you_default_name">आप</string>
+    <string name="you_companion_title">साथी की शैली</string>
+    <string name="you_companion_subtitle">%1$s · CereBro आपसे कैसे बात करता है</string>
+    <string name="you_appearance_title">रूप-रंग</string>
+    <string name="you_appearance_subtitle">रात, भोर, या आपके सिस्टम जैसा</string>
+    <string name="you_reminder_title">दैनिक रिमाइंडर</string>
+    <string name="you_reminder_subtitle">हल्का-सा दैनिक चेक-इन</string>
+    <string name="you_insights_title">साप्ताहिक इनसाइट</string>
+    <string name="you_insights_subtitle">आपकी प्रगति और पैटर्न</string>
+    <string name="you_privacy_title">निजता और मेमोरी</string>
+    <string name="privacy_control_line">तय करें कि CereBro क्या याद रखे</string>
+    <string name="you_patterns_title">पैटर्न डैशबोर्ड</string>
+    <string name="you_patterns_subtitle">AI ने जो सीखा · कभी भी मिटाएँ</string>
+    <string name="you_premium_title">प्रीमियम प्लान</string>
+    <string name="you_premium_subtitle">पूरी लाइब्रेरी खोलें</string>
+    <string name="you_legal_header">कानूनी और खाता</string>
+    <string name="you_export_subtitle">पूरी कॉपी डाउनलोड करें</string>
+    <string name="you_delete_subtitle">सब कुछ स्थायी रूप से मिटाएँ</string>
+    <string name="you_signout">साइन आउट</string>
+
+    <!-- ── Onboarding ──────────────────────────────────────────────────── -->
+    <string name="ob_welcome_title">CereBro में\nआपका स्वागत है</string>
+    <string name="ob_welcome_sub">रोज़ की मानसिक फ़िटनेस, बेहतर नींद\nऔर शांत मन के लिए आपकी अपनी जगह।</string>
+    <string name="ob_welcome_privacy">निजता पहले — कुछ भी कभी साझा नहीं होता।</string>
+    <string name="ob_welcome_cta">2 मिनट का रीसेट आज़माएँ</string>
+    <string name="auth_have_account">मेरा खाता पहले से है</string>
+    <string name="ob_thank_you">धन्यवाद</string>
+    <string name="ob_language_eyebrow">अपनी भाषा में</string>
+    <string name="ob_language_title">भाषा</string>
+    <string name="ob_language_sub">जिस भाषा में सोचते हैं, उसी में बात करें और लिखें। चाहें तो एक से ज़्यादा मिलाएँ।</string>
+    <string name="ob_state_eyebrow">एक टैप काफ़ी है</string>
+    <string name="ob_state_title">अभी सबसे सच क्या लगता है?</string>
+    <string name="ob_state_sub">कोई प्रश्नावली नहीं — बस वह चुनें जो आज पर बैठता है। CereBro उसी के अनुसार आपका पहला रीसेट और योजना बनाता है।</string>
+    <string name="ob_reset_eyebrow">आपका पहला रीसेट</string>
+    <string name="ob_reset_title">चलिए, शरीर को थोड़ा थामें</string>
+    <string name="ob_reset_sub">दो मिनट की गाइडेड साँसें — कुछ चक्रों तक ऑर्ब के साथ चलें, या अभी मन न हो तो आगे बढ़ जाएँ।</string>
+    <string name="ob_reset_cta">अब कुछ स्थिर लग रहा है</string>
+    <string name="ob_reset_skip">अभी छोड़ें</string>
+    <string name="ob_consent_eyebrow">निजता के विकल्प</string>
+    <string name="ob_consent_title">CereBro क्या याद रखता है</string>
+    <string name="ob_consent_sub">डिफ़ॉल्ट रूप से निजी — जो आप चालू नहीं करते, CereBro उसे याद नहीं रखता। बाद में सेटिंग्स में कभी भी बदलें।</string>
+    <string name="ob_consent_mood">मूड इतिहास</string>
+    <string name="ob_consent_mood_hint">इनसाइट के लिए इस्तेमाल होता है</string>
+    <string name="ob_consent_sleep">नींद का इतिहास</string>
+    <string name="ob_consent_sleep_hint">आपकी नींद की इनसाइट इसी से बनती हैं</string>
+    <string name="ob_consent_journal">जर्नल मेमोरी</string>
+    <string name="ob_consent_journal_hint">साथी को आपकी प्रविष्टियाँ याद रहती हैं</string>
+    <string name="ob_consent_ai">AI मेमोरी</string>
+    <string name="ob_consent_ai_hint">लक्ष्य और पसंद</string>
+    <string name="ob_consent_voice">वॉइस स्टोरेज</string>
+    <string name="ob_consent_voice_hint">डिफ़ॉल्ट रूप से बंद</string>
+    <string name="ob_consent_training">मॉडल ट्रेनिंग</string>
+    <string name="ob_consent_training_hint">आपके चालू किए बिना कभी नहीं</string>
+    <string name="ob_notify_eyebrow">हल्के रिमाइंडर</string>
+    <string name="ob_notify_title">सूचनाएँ</string>
+    <string name="ob_notify_sub">पहली जीत हो गई — कल लौटने के लिए एक हल्की-सी याद दिला दें? कभी शोर नहीं, बंद करना हमेशा आसान।</string>
+    <string name="ob_notify_cta">CereBro में आएँ</string>
+
+    <!-- ── Auth ────────────────────────────────────────────────────────── -->
+    <string name="auth_eyebrow">निजता, डिज़ाइन से</string>
+    <string name="auth_create_title">अपनी जगह बनाएँ</string>
+    <string name="auth_signin_title">साइन इन</string>
+    <string name="auth_info_create">रोज़ की मानसिक फ़िटनेस, जर्नल और चेक-इन के लिए अपनी शांत जगह बनाएँ।</string>
+    <string name="auth_info_signin">साइन इन करें ताकि आपकी योजना, जर्नल और चेक-इन सभी डिवाइस पर साथ रहें।</string>
+    <string name="auth_google_cta">"G   Google के साथ जारी रखें"</string>
+    <string name="auth_google_not_setup">Google साइन-इन अभी सेट नहीं है — नीचे ईमेल इस्तेमाल करें।</string>
+    <string name="auth_error_generic">कुछ गड़बड़ हो गई।</string>
+    <string name="auth_divider_email">या ईमेल से</string>
+    <string name="auth_divider_otp">ईमेल कोड</string>
+    <string name="auth_name_label">नाम</string>
+    <string name="auth_name_placeholder">आपका नाम</string>
+    <string name="auth_email_label">ईमेल</string>
+    <string name="auth_password_label">पासवर्ड</string>
+    <string name="auth_hide_password">पासवर्ड छिपाएँ</string>
+    <string name="auth_show_password">पासवर्ड दिखाएँ</string>
+    <string name="auth_create_cta">"@   मेरा खाता बनाएँ"</string>
+    <string name="auth_email_cta">"@   ईमेल के साथ जारी रखें"</string>
+    <string name="auth_forgot">पासवर्ड भूल गए?</string>
+    <string name="auth_reset_sent">रीसेट लिंक भेज दिया — अपना ईमेल देखें।</string>
+    <string name="auth_new_here">नए हैं? अपनी जगह बनाएँ</string>
+    <string name="auth_otp_code_sent">%1$s पर कोड भेजा गया — अपना ईमेल देखें।</string>
+    <string name="auth_otp_code_label">6 अंकों का कोड</string>
+    <string name="auth_verify_cta">कोड सत्यापित करें</string>
+    <string name="auth_email_code_cta">मुझे कोड ईमेल करें</string>
+    <string name="auth_use_password">इसके बजाय पासवर्ड इस्तेमाल करें</string>
+
+    <!-- ── Toolkit hub ─────────────────────────────────────────────────── -->
+    <string name="toolkit_eyebrow">थमने के छोटे तरीक़े</string>
+    <string name="toolkit_title">टूलकिट</string>
+    <string name="toolkit_intro">जो इस पल चाहिए वह चुनें — वर्तमान में लौटें, साँस लें, सोच सुलझाएँ, ठहरें।</string>
+    <string name="toolkit_header_ground">वर्तमान में लौटें</string>
+    <string name="toolkit_header_breathe">साँस</string>
+    <string name="toolkit_header_settle">ठहराव</string>
+    <string name="toolkit_grounding_intro">5-4-3-2-1 ग्राउंडिंग — अपनी इंद्रियों के सहारे वर्तमान में लौटें।</string>
+    <string name="toolkit_zen_title">ज़ेन लहरें</string>
+    <string name="toolkit_zen_subtitle">पानी को छुएँ, लहर को फैलने दें</string>
+    <string name="toolkit_bubble_title">बबल पॉप</string>
+    <string name="toolkit_bubble_subtitle">धीरे-धीरे फोड़ें — न टाइमर, न हार। बस साँस लें और टैप करें।</string>
+    <string name="toolkit_box_title">बॉक्स ब्रीदिंग</string>
+    <string name="toolkit_box_subtitle">अंदर, रोकें, बाहर, रोकें — चार-चार गिनती</string>
+    <string name="toolkit_reset_title">दो मिनट का रीसेट</string>
+    <string name="toolkit_reset_subtitle">हल्की साँस अंदर-बाहर, कुछ रोकना नहीं</string>
+    <string name="toolkit_gratitude_title">आभार की बगिया</string>
+    <string name="toolkit_gratitude_subtitle">हर धन्यवाद के लिए एक फूल</string>
+    <string name="toolkit_pattern_title">पैटर्न ग्लो</string>
+    <string name="toolkit_pattern_subtitle">रोशनी देखें, फिर दोहराएँ</string>
+    <string name="toolkit_sounds_title">ध्वनियाँ</string>
+    <string name="toolkit_sounds_subtitle">साउंडस्केप और नींद की कहानियाँ</string>
+    <string name="toolkit_playable_badge">खेलने योग्य</string>
+
+    <!-- ── Grounding stepper ───────────────────────────────────────────── -->
+    <string name="ground_step1_title">5 चीज़ें जो आप देख सकते हैं</string>
+    <string name="ground_step1_hint">चारों ओर देखें — धीरे-धीरे पाँच के नाम लें।</string>
+    <string name="ground_step2_title">4 चीज़ें जो आप छूकर महसूस कर सकते हैं</string>
+    <string name="ground_step2_hint">बनावट, तापमान, फ़र्श पर आपके पैर।</string>
+    <string name="ground_step3_title">3 आवाज़ें जो आप सुन सकते हैं</string>
+    <string name="ground_step3_hint">पहले पास की, फिर दूर की।</string>
+    <string name="ground_step4_title">2 चीज़ें जिन्हें आप सूंघ सकते हैं</string>
+    <string name="ground_step4_hint">या दो खुशबुएँ जो आपको पसंद हैं।</string>
+    <string name="ground_step5_title">1 चीज़ जिसका स्वाद ले सकते हैं</string>
+    <string name="ground_step5_hint">या एक धीमी, पूरी साँस।</string>
+    <string name="ground_start_over">फिर से शुरू करें</string>
+
+    <!-- ── Bubble pop ──────────────────────────────────────────────────── -->
+    <string name="bubblepop_eyebrow">एक नन्हा रीसेट</string>
+    <string name="bubblepop_title">बबल पॉप</string>
+    <string name="bubblepop_intro">धीरे-धीरे फोड़ें — न जल्दी, न कोई स्कोर।</string>
+    <string name="bubblepop_popped">फूटे</string>
+
+    <!-- ── Sounds hub + mixer + player ─────────────────────────────────── -->
+    <string name="sounds_eyebrow">साउंड लाइब्रेरी</string>
+    <string name="sounds_title">ध्वनियाँ</string>
+    <string name="sounds_section_library">लाइब्रेरी</string>
+    <string name="sounds_section_mixer">मिक्सर</string>
+    <string name="sounds_intro">दौड़ते मन को धीमा करने के लिए साउंडस्केप और नींद की कहानियाँ।</string>
+    <string name="sounds_favourites_header">पसंदीदा</string>
+    <string name="sounds_meta_favourite">पसंदीदा</string>
+    <string name="sounds_meta_ambient">लगातार एंबिएंट</string>
+    <string name="sounds_sleep_stories_header">नींद की कहानियाँ</string>
+    <string name="sounds_narration_note">जिन शीर्षकों में वाचन है, वे अपना ऑडियो चलाते हैं; बाक़ी एक शांत एंबिएंट ध्वनि चलाते हैं।</string>
+    <string name="sounds_fading_out_in">%1$s में धीमे-धीमे बंद</string>
+    <string name="sounds_sleep_timer_short">स्लीप टाइमर: %1$d मि</string>
+    <string name="mixer_intro">बारिश, समुद्र, हवा और एक धीमी गूंज को मिलाकर अपनी शांति बनाएँ — हर एक को अपने हिसाब से घटाएँ-बढ़ाएँ।</string>
+    <string name="mixer_master_volume">मास्टर वॉल्यूम</string>
+    <string name="mixer_fades_note">%1$s में धीमे-धीमे बंद — आप सो जाएँ, यह खुद रुक जाएगा।</string>
+    <string name="player_eyebrow">अभी चल रहा है</string>
+    <string name="player_nothing">कुछ नहीं चल रहा</string>
+    <string name="player_empty_hint">ध्वनियाँ सेक्शन से कोई साउंडस्केप या कहानी चुनें — वह यहाँ चलेगी।</string>
+    <string name="player_ambient_note">लगातार एंबिएंट ध्वनि · इस शीर्षक का वाचन अभी नहीं है।</string>
+    <string name="player_narrated_note">वाचन वाला ट्रैक · आपकी लाइब्रेरी से स्ट्रीम होता है।</string>
+    <string name="player_fade_note">टाइमर ख़त्म होने से ~10 सेकंड पहले धीमा हो जाता है — आप आराम से सोते रहें।</string>
+    <string name="nowplaying_label_ambient">अभी चल रहा · एंबिएंट</string>
+    <string name="nowplaying_label_narration">अभी चल रहा · वाचन</string>
+    <string name="nowplaying_timer_on">टाइमर %1$d मि</string>
+    <string name="nowplaying_timer_off">टाइमर बंद</string>
+
+    <!-- ── Insights ────────────────────────────────────────────────────── -->
+    <string name="insights_eyebrow">इनसाइट · इस हफ़्ते</string>
+    <string name="insights_default_headline">आपका हफ़्ता</string>
+    <string name="insights_error_fallback">आपका हफ़्ता लोड नहीं हो पाया — थोड़ी देर में फिर कोशिश करें।</string>
+    <string name="insights_loading">आपका हफ़्ता पढ़ रहे हैं…</string>
+    <string name="insights_hero_eyebrow">इस हफ़्ते</string>
+    <string name="insights_baseline_title">आपकी शुरुआत</string>
+    <string name="insights_baseline_summary">तनाव %1$s (%2$d/5) · नींद %3$s (%4$d/5)</string>
+    <string name="insights_baseline_recorded">" · %1$s को दर्ज"</string>
+    <string name="insights_baseline_nav_title">अपनी शुरुआत दर्ज करें</string>
+    <string name="insights_baseline_nav_subtitle">दो छोटे पैमाने — बाद में असली बदलाव देखें</string>
+    <string name="insights_metrics_empty">कुछ दिन दर्ज करें, फिर यहाँ सच्चे पैटर्न दिखेंगे — कोई अंदाज़ा नहीं।</string>
+    <string name="insights_privacy_footer">फ़र्स्ट-पार्टी — आपके अपने डेटा पर, कभी बेचा या साझा नहीं जाता।</string>
+
+    <!-- ── Programs ────────────────────────────────────────────────────── -->
+    <string name="programs_eyebrow">गाइडेड यात्राएँ</string>
+    <string name="programs_title">प्रोग्राम</string>
+    <string name="programs_intro">शांत आधार की ओर कई दिनों के रास्ते। कभी भी शुरू करें; अपनी रफ़्तार से चलें।</string>
+    <string name="programs_loading">यात्राएँ लोड हो रही हैं…</string>
+    <string name="programs_error_fallback">यात्राएँ लोड नहीं हो पाईं — थोड़ी देर में फिर कोशिश करें।</string>
+    <string name="programs_day_eyebrow">प्रोग्राम · दिन %1$d / %2$d</string>
+    <string name="programs_completed_subtitle">पूरा हुआ — बहुत सुंदर। जब मन हो, कोई और शुरू करें।</string>
+    <string name="programs_active_subtitle">आज बस आ जाना ही पूरा काम है।</string>
+    <string name="programs_guide_header">आज का फ़ोकस</string>
+    <string name="programs_leave">यह यात्रा छोड़ें</string>
+    <string name="programs_start_new_header">कुछ नया शुरू करें</string>
+    <string name="programs_default_subtitle">दिन में बस कुछ मिनट</string>
+    <string name="programs_enrolled_status">नामांकित — दिन 1 अभी से शुरू।</string>
+    <string name="programs_enroll_error">नामांकन नहीं हो पाया।</string>
+    <string name="programs_start">यह यात्रा शुरू करें</string>
+
+    <!-- ── Content list shared ─────────────────────────────────────────── -->
+    <string name="content_error_fallback">लोड नहीं हो पाया।</string>
+    <string name="content_empty">यहाँ अभी कुछ नहीं है।</string>
+
+    <!-- ── Settings sub-screens ────────────────────────────────────────── -->
+    <string name="companion_eyebrow">CereBro आपसे कैसे बात करता है</string>
+    <string name="companion_title">साथी की शैली</string>
+    <string name="companion_intro">वही अपनापन, अलग अंदाज़। कभी भी बदलें — अगले संदेश से बातचीत ढल जाती है।</string>
+    <string name="appearance_eyebrow">रात या भोर</string>
+    <string name="appearance_title">रूप-रंग</string>
+    <string name="appearance_intro">भोर एक हल्का, गर्म रूप है जो दिन की रोशनी में पढ़ने में आसान है। नींद हमेशा रात में रहती है — वह शांत होने की जगह है।</string>
+    <string name="theme_system_title">सिस्टम डिफ़ॉल्ट</string>
+    <string name="theme_system_hint">आपके फ़ोन की लाइट/डार्क सेटिंग के अनुसार</string>
+    <string name="theme_night_title">हमेशा रात</string>
+    <string name="theme_night_hint">गहरा नीला रूप, दिन-रात</string>
+    <string name="theme_dawn_title">हमेशा भोर</string>
+    <string name="theme_dawn_hint">दिन के लिए एक गर्म, हल्का रूप</string>
+    <string name="privacy_loading">आपके विकल्प लोड हो रहे हैं…</string>
+    <string name="privacy_consent_error">यह बदलाव सहेजा नहीं जा सका — कनेक्शन देखें और फिर कोशिश करें।</string>
+    <string name="privacy_stats_title">गुमनाम उपयोग आँकड़े</string>
+    <string name="privacy_stats_hint">सिर्फ़ गिनती — कभी आपकी सामग्री या खाता नहीं</string>
+    <string name="privacy_unlock_journal">जर्नल अनलॉक करें</string>
+    <string name="privacy_lock_journal">जर्नल लॉक करें</string>
+    <string name="privacy_unlock_hint">PIN/पासवर्ड सुरक्षा बंद करें</string>
+    <string name="privacy_lock_hint">फ़ोन का PIN, पासवर्ड, पैटर्न या बायोमेट्रिक ज़रूरी</string>
+    <string name="premium_eyebrow">CereBro प्रीमियम</string>
+    <string name="premium_title">और गहराई तक</string>
+    <string name="premium_intro">पूरी लाइब्रेरी, लंबे प्रोग्राम और असीमित वॉइस खोलें — वही निजता-पहले वादा।</string>
+    <string name="premium_annual">वार्षिक</string>
+    <string name="premium_annual_price">₹2,999 / वर्ष</string>
+    <string name="premium_annual_note" formatted="false">37% बचत · 7 दिन का निःशुल्क ट्रायल</string>
+    <string name="premium_monthly">मासिक</string>
+    <string name="premium_monthly_price">₹399 / माह</string>
+    <string name="premium_monthly_note">कभी भी रद्द करें</string>
+    <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
+    <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी। iOS पर यह StoreKit के ज़रिये चालू है।</string>
+    <string name="reminders_eyebrow">एक हल्की-सी रोज़ की याद</string>
+    <string name="reminders_title">दैनिक रिमाइंडर</string>
+    <string name="reminders_toggle_title">दैनिक चेक-इन रिमाइंडर</string>
+    <string name="reminders_toggle_hint">दिन में एक बार, सुबह करीब 9 बजे — हल्का, कोई दबाव नहीं।</string>
+    <string name="reminders_test">अभी एक टेस्ट रिमाइंडर भेजें</string>
+    <string name="reminders_delivery_note">फ़ोन पर ही, तय समय के अलार्म से — किसी सर्वर या FCM की ज़रूरत नहीं।</string>
+    <string name="privacypolicy_eyebrow">हम आपका डेटा कैसे सँभालते हैं</string>
+    <string name="privacypolicy_title">निजता नीति</string>
+    <string name="privacypolicy_private_title">निजता, डिज़ाइन से</string>
+    <string name="privacypolicy_private_body">आपका जर्नल, चैट और नींद की सामग्री आपकी ही रहती है। सपोर्ट टूलिंग को सिर्फ़ गिनती और खाते की स्थिति दिखती है — शब्द कभी नहीं।</string>
+    <string name="privacypolicy_controls_title">आपके नियंत्रण</string>
+    <string name="privacypolicy_controls_body">निजता और मेमोरी में तय करें कि क्या याद रहे, कभी भी पूरी कॉपी निर्यात करें, या सब कुछ स्थायी रूप से मिटाएँ।</string>
+    <string name="privacypolicy_noselling_title">बेचना नहीं, कभी नहीं</string>
+    <string name="privacypolicy_noselling_body">हम आपका डेटा नहीं बेचते और न ही थर्ड-पार्टी विज्ञापन SDK इस्तेमाल करते हैं। एनालिटिक्स फ़र्स्ट-पार्टी समग्र आँकड़े हैं।</string>
+    <string name="privacypolicy_built_header">CereBro कैसे बना है</string>
+    <string name="privacypolicy_full_policy">पूरी नीति cerebrozen.in/privacy पर।</string>
+    <string name="export_eyebrow">आपका डेटा, आपकी कॉपी</string>
+    <string name="export_title">मेरा डेटा निर्यात करें</string>
+    <string name="export_intro">CereBro ने आपके लिए जो भी सहेजा है, सब डाउनलोड करें — मूड, जर्नल, नींद और चैट।</string>
+    <string name="export_preparing">तैयार हो रहा है…</string>
+    <string name="export_success">आपके डेटा के %1$d अक्षर निर्यात हुए।</string>
+    <string name="export_failed">निर्यात नहीं हो पाया।</string>
+    <string name="delete_eyebrow">इसे वापस नहीं किया जा सकता</string>
+    <string name="delete_title">खाता मिटाएँ</string>
+    <string name="delete_warning">आपका खाता और उसमें रखा सब कुछ स्थायी रूप से मिट जाएगा। वापसी का कोई रास्ता नहीं।</string>
+    <string name="delete_cta">मेरा खाता मिटाएँ</string>
+    <string name="delete_busy">मिटाया जा रहा है…</string>
+    <string name="delete_forever">हमेशा के लिए मिटाएँ</string>
+    <string name="delete_error_fallback">आपका खाता मिटाया नहीं जा सका। कृपया फिर कोशिश करें।</string>
+
+    <!-- ── Tools ───────────────────────────────────────────────────────── -->
+    <string name="breathing_eyebrow">साँस के लिए एक मिनट</string>
+    <string name="breathing_title">साँसें</string>
+    <string name="breathing_intro">ऑर्ब के साथ चलें — चार गिनती अंदर, रोकें, चार गिनती बाहर।</string>
+    <string name="breathing_journal_title">साँस अभ्यास</string>
+    <string name="breathing_journal_body">एक मिनट रुककर साँस ली और मन थमा।</string>
+    <string name="breathing_saved">विचार सहेज लिया</string>
+    <string name="breathing_save">विचार सहेजें</string>
+    <string name="breathing_save_hint">इस अभ्यास को अपने निजी जर्नल में जोड़ें</string>
+    <string name="tool_saved_cta">आपके जर्नल में सहेज लिया</string>
+    <string name="tool_save_cta">जर्नल में सहेजें</string>
+
+    <!-- ── Breathe engine + screens ────────────────────────────────────── -->
+    <string name="breathe_orb_cd">साँस ऑर्ब — %1$s</string>
+    <string name="breathe_settle">बैठ जाइए — लय खुद आपको मिल जाएगी</string>
+    <plurals name="breathe_calm_breaths">
+        <item quantity="one">%1$d शांत साँस</item>
+        <item quantity="other">%1$d शांत साँसें</item>
+    </plurals>
+    <string name="breathe_box_eyebrow">चार-चार की गिनती में</string>
+    <string name="breathe_box_title">बॉक्स ब्रीदिंग</string>
+    <string name="breathe_box_intro">चार गिनती अंदर, चार रोकें, चार बाहर, चार रोकें — रफ़्तार ऑर्ब तय करे।</string>
+    <string name="breathe_color_eyebrow">चमक के साथ चलें</string>
+    <string name="breathe_color_title">कलर ब्रीदिंग</string>
+    <string name="breathe_color_intro">हर चरण के साथ बदलती चमक के संग अपनी साँस को चलने दें।</string>
+    <string name="breathe_reset_eyebrow">एक नन्हा रीसेट</string>
+    <string name="breathe_reset_title">दो मिनट का रीसेट</string>
+    <string name="breathe_reset_intro">हल्की चार गिनती अंदर, चार बाहर — कुछ रोकना नहीं। जितनी देर मन हो, रहें।</string>
+
+    <!-- ── Games ───────────────────────────────────────────────────────── -->
+    <string name="patternglow_eyebrow">रोशनी के पीछे चलें</string>
+    <string name="patternglow_title">पैटर्न ग्लो</string>
+    <string name="patternglow_note_start">चमक देखें, फिर उसे दोहराएँ।</string>
+    <string name="patternglow_note_success">राउंड %1$d — बहुत बढ़िया। एक और चमक।</string>
+    <string name="patternglow_note_reset">राउंड %1$d तक पहुँचे। नई शुरुआत, कोई जल्दी नहीं।</string>
+    <string name="patternglow_pad_cd">पैड %1$d</string>
+    <string name="patternglow_watching">देख रहे हैं…</string>
+    <string name="patternglow_your_turn">अब आपकी बारी</string>
+    <string name="patternglow_best_suffix">"  ·  सबसे अच्छा राउंड %1$d"</string>
+    <string name="zen_eyebrow">ठहरा पानी</string>
+    <string name="zen_title">ज़ेन लहरें</string>
+    <string name="zen_intro">पानी पर कहीं भी टैप करें। हर लहर को फैलते देखें और जाने दें।</string>
+    <string name="zen_canvas_cd">लहर कैनवास</string>
+    <string name="gratitude_eyebrow">कुछ अच्छा उगाएँ</string>
+    <string name="gratitude_title">आभार की बगिया</string>
+    <string name="gratitude_intro">एक छोटी-सी बात जिसके लिए आभारी हैं — हर एक के लिए एक फूल लगता है।</string>
+    <string name="gratitude_field_label">एक अच्छी बात…</string>
+    <string name="gratitude_plant_cta">रोप दें</string>
+    <string name="gratitude_soil_cd">आभार की बगिया, %1$d फूलों के साथ</string>
+    <string name="gratitude_empty">आपकी बगिया अपने पहले फूल की राह देख रही है।</string>
+    <string name="gratitude_flower_cd">फूल: %1$s</string>
+    <string name="gratitude_first">एक छोटी-सी अच्छी बात रोपें।</string>
+    <plurals name="gratitude_flower_count">
+        <item quantity="one">%1$d फूल, और बढ़ रहे।</item>
+        <item quantity="other">%1$d फूल, और बढ़ रहे।</item>
+    </plurals>
+
+    <!-- ── Plan ────────────────────────────────────────────────────────── -->
+    <string name="plan_eyebrow">एजेंटिक योजना · आपके चेक-इन से ढलती है</string>
+    <string name="plan_default_title">दैनिक योजना</string>
+    <string name="plan_load_error">अभी आपकी योजना लोड नहीं हो पाई।</string>
+    <string name="plan_loading">आपकी योजना लोड हो रही है…</string>
+    <string name="plan_hero_eyebrow">यह योजना क्यों</string>
+    <string name="plan_rationale_fallback">%1$s को ध्यान में रखकर बनाई गई।</string>
+    <string name="plan_your_goals">आपके लक्ष्यों</string>
+    <string name="plan_steps_summary">%2$d में से %1$d कदम पूरे · आपके चेक-इन और नींद डायरी से अपडेट होती है</string>
+    <string name="plan_no_steps">अभी कोई कदम नहीं — कुछ बनाने के लिए योजना अपडेट करें।</string>
+    <string name="plan_updating">अपडेट हो रही है…</string>
+    <string name="plan_update_cta">मेरे ताज़ा चेक-इन से योजना अपडेट करें</string>
+    <string name="plan_update_failed">अपडेट नहीं हो पाई।</string>
+
+    <!-- ── Patterns ────────────────────────────────────────────────────── -->
+    <string name="patterns_eyebrow">पारदर्शी AI मेमोरी</string>
+    <string name="patterns_title">पैटर्न डैशबोर्ड</string>
+    <string name="patterns_intro">CereBro ने आपके बारे में जो भी सीखा है — सब दिखता है, ईमानदार है, और मिटाना आपके हाथ में।</string>
+    <string name="patterns_remembers_title">CereBro क्या याद रखता है</string>
+    <string name="patterns_error_fallback">आपके पैटर्न लोड नहीं हो पाए — फिर कोशिश करें।</string>
+    <string name="patterns_loading">आपका डेटा देख रहे हैं…</string>
+    <string name="patterns_empty">अभी कुछ नहीं। पैटर्न तभी दिखते हैं जब कुछ हफ़्तों के असली चेक-इन उन्हें पक्का करें — अंदाज़ा कभी नहीं।</string>
+    <string name="patterns_delete_title">सारी मेमोरी मिटाएँ</string>
+    <string name="patterns_delete_body">चैट इतिहास, बनी हुई इनसाइट और साथी की थ्रेड-मेमोरी हट जाती है — वह नए सिरे से शुरू करता है। आपका जर्नल, चेक-इन और नींद डायरी रहते हैं: वे आपकी सामग्री हैं, अपने अलग नियंत्रणों के साथ।</string>
+    <string name="patterns_cleared">मेमोरी साफ़ — %1$d संदेश और %2$d इनसाइट भुला दिए गए।</string>
+    <string name="patterns_delete_failed">मिटाया नहीं जा सका — फिर कोशिश करें।</string>
+    <string name="patterns_confirm">पक्का करने के लिए फिर टैप करें</string>
+
+    <!-- ── Search ──────────────────────────────────────────────────────── -->
+    <string name="search_eyebrow">पूरी लाइब्रेरी</string>
+    <string name="search_title">खोज</string>
+    <string name="search_field_label">ध्वनियाँ, कहानियाँ, प्रोग्राम…</string>
+    <string name="search_clear_cd">खोज साफ़ करें</string>
+    <string name="search_hint">बस दो-एक अक्षर लिखें — ऐप में जो कुछ है, सब खोजा जा सकता है।</string>
+    <string name="search_loading">लाइब्रेरी में खोज रहे हैं…</string>
+    <string name="search_error">लाइब्रेरी लोड नहीं हो पाई — कनेक्शन देखें और फिर कोशिश करें।</string>
+    <string name="search_no_match">\"%1$s\" से कुछ नहीं मिला — कोई और शब्द आज़माएँ।</string>
+    <string name="search_results">परिणाम</string>
+    <string name="search_refine">पहले 20 दिख रहे हैं — खोज को और सटीक करें।</string>
+
+    <!-- ── Guided tour ─────────────────────────────────────────────────── -->
+    <string name="tour_stop1_title">रोज़ चेक-इन करें</string>
+    <string name="tour_stop1_body">एक टैप CereBro को बताता है कि आप कैसे आए हैं — योजनाएँ, इनसाइट और शुरुआती सुझाव इसी से ढलते हैं।</string>
+    <string name="tour_stop2_title">आपकी योजना ढलती है</string>
+    <string name="tour_stop2_body">दिन के तीन छोटे कदम, आपके चेक-इन और नींद डायरी से नए सिरे से बनते हैं। हीरो पर कभी भी टैप करें।</string>
+    <string name="tour_stop3_title">खुलकर बात करें</string>
+    <string name="tour_stop4_title">डिफ़ॉल्ट रूप से निजी</string>
+    <string name="tour_stop4_body">आपकी हाँ के बिना कुछ याद नहीं रखा जाता। आप → निजता और मेमोरी में कभी भी बदलें।</string>
+    <string name="tour_header">गाइडेड टूर · %2$d में से %1$d</string>
+    <string name="tour_skip">छोड़ें</string>
+    <string name="tour_begin">चलिए शुरू करें</string>
+
+    <!-- ── Baseline ────────────────────────────────────────────────────── -->
+    <string name="baseline_eyebrow">दो छोटे पैमाने</string>
+    <string name="baseline_intro">इन दिनों चीज़ें कहाँ हैं। इसे सहेजने से आगे की इनसाइट अंदाज़े की जगह असली बदलाव दिखाती हैं।</string>
+    <string name="baseline_stress_q">हाल में आप कितना तनाव महसूस कर रहे हैं?</string>
+    <string name="baseline_sleep_q">हाल में नींद कैसी रही है?</string>
+    <string name="baseline_saved">सहेज लिया — धन्यवाद</string>
+    <string name="baseline_save_cta">मेरी शुरुआत सहेजें</string>
+    <string name="baseline_privacy">इसी डिवाइस पर रहता है — सिर्फ़ इनसाइट में आपकी प्रगति दिखाने के लिए।</string>
+    <string name="baseline_stress_1">बहुत शांत</string>
+    <string name="baseline_stress_2">ज़्यादातर शांत</string>
+    <string name="baseline_stress_3">सँभल रहा है</string>
+    <string name="baseline_stress_4">खिंचा-खिंचा</string>
+    <string name="baseline_stress_5">बहुत बोझ</string>
+    <string name="baseline_sleep_1">बहुत खराब</string>
+    <string name="baseline_sleep_2">खराब</string>
+    <string name="baseline_sleep_3">ठीक-ठाक</string>
+    <string name="baseline_sleep_4">अच्छी</string>
+    <string name="baseline_sleep_5">तरोताज़ा</string>
+
+    <!-- ── Tool ambience ───────────────────────────────────────────────── -->
+    <string name="ambience_on_cd">एंबिएंस चालू करें</string>
+    <string name="ambience_mute_cd">एंबिएंस म्यूट करें</string>
+    <string name="ambience_sound_off">ध्वनि बंद</string>
+    <string name="ambience_label">एंबिएंस</string>
+</resources>

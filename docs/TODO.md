@@ -53,8 +53,19 @@
   premium launch behind the OECD dark-pattern checklist. Android groundwork landed
   2026-07-12 (W11): ~370 user-facing strings across all Compose screens now live in
   `app/src/main/res/values/strings.xml` (`stringResource`, positional args, plurals);
-  ConsentNotice.kt keeps its own 13-language system. Remaining before a `values-hi/`
-  drop: pure functions still returning English copy (`greetingFor`, `milestoneLine`,
+  ConsentNotice.kt keeps its own 13-language system. **DRAFT `values-hi/strings.xml`
+  created 2026-07-12 (W16)** — 530 of 657 resources machine-translated (आप-form, calm
+  tone, brand words Latin, placeholders/plurals preserved), builds green; **pending
+  qualified clinical/linguistic review before ship**. Deliberately left in English
+  (resource fallback) pending that review: crisis screen (`crisis_*`), human-support
+  directory (`humansupport_*`), Talk AI-disclosure + in-chat crisis banner + SOS/
+  reframe chips, TIPP (DBT) skill, CBT reframe tool, "Why this works" provenance
+  texts, sleep CBT-I education cards, `sleep_hc_boundary_hint`, onboarding
+  disclosure/age-gate/danger line, crisis-region picker, journal safety-escalation +
+  safety-scanning copy, privacy-policy clinical-positioning cards (full list in the
+  file header). Remaining before a shippable Hindi
+  drop: the review sign-off above, plus pure functions still returning English copy
+  (`greetingFor`, `milestoneLine`,
   `railKindFor`, `minutesToLabel`, `spreadLabel`, `rhythmPrinciple`, `breathePhases`
   labels, `talkTranscript` prefixes — all marked `// i18n: pending`), value-doubling
   lists needing a label/value split (Today `MOODS`, onboarding `STATE_OPTIONS` /
@@ -63,10 +74,15 @@
   (`notify/Reminders.kt` notification title/body, `audio/SoundscapeMixer.kt` layer
   names). CBT-I weekly program (backend)
   seeded 2026-07-12 (W12): "Sleep Reset" 7-day program in the `/content` catalogue
-  (kind=program, free), enrollable via the existing `/programs` flow; the seven day
-  themes live in its narration script because the schema has no per-day program
-  structure — a per-day model (day titles/bodies served to clients) is the remaining
-  debt for a truly day-aware program surface.
+  (kind=program, free), enrollable via the existing `/programs` flow. Per-day program
+  model DONE 2026-07-12 (W15): nullable JSONB `content_items.day_guides`
+  (`[{"title","body"}]`, Alembic `b8e6d1a4f527`), Sleep Reset seeded with its seven
+  day guides (idempotent, backfill-only-where-NULL like narration_script), and
+  `GET /programs/active` additively returns `today_guide` for the enrollment's
+  current day (clamped to the last guide; programs without guides omit the field,
+  so iOS — which ignores unknown JSON fields — is unaffected). Android
+  ProgramsScreen renders the guide under the enrolled hero; an iOS "today's
+  focus" card remains open when iOS work resumes.
 - [x] **Onboarding `onAccountCreated` race** — FIXED 2026-07-12 (W7): post-signup writes run
   under `NonCancellable` in AuthScreen's `signUpThenPersonalize`; `AuthFlowTest` reproduces
   the race and fails without the fix.
