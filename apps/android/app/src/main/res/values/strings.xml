@@ -175,6 +175,8 @@
     <string name="sleep_time_later_cd">Set %1$s 30 minutes later</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
+    <string name="sleep_programs_nav_title">Programs</string>
+    <string name="sleep_programs_nav_subtitle">Guided multi-day journeys — start with Sleep Reset</string>
     <string name="sleep_hc_prefill">Pre-fill from Health Connect</string>
     <string name="sleep_hc_boundary_hint">Uses your Health Connect permission to read last night on this phone — nothing is saved until you tap Save night. The Sleep history switch in Privacy &amp; memory controls what CereBro remembers.</string>
     <string name="sleep_hc_done">Pre-filled from last night\'s sleep.</string>

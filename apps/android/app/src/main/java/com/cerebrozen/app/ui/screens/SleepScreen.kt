@@ -323,6 +323,11 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         // section now (REDESIGN §3.4); this door opens it directly.
         NavRow(stringResource(R.string.sleep_mixer_nav_title), stringResource(R.string.sleep_mixer_nav_subtitle)) { onOpen("sounds/mixer") }
 
+        // Programs door — after the redesign cut Home's program tiles, this is
+        // the unenrolled entry point (the Home banner only shows once enrolled),
+        // and the sleep tab is where the flagship Sleep Reset journey belongs.
+        NavRow(stringResource(R.string.sleep_programs_nav_title), stringResource(R.string.sleep_programs_nav_subtitle)) { onOpen("programs") }
+
         SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         // metaLabel lambdas are not composable — capture the templates here.

@@ -910,14 +910,17 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Row(
-                if (onOpenPlayer != null) Modifier.clickable { onOpenPlayer() } else Modifier,
+                // Weighted so a long title truncates instead of squeezing the
+                // transport actions into vertical wraps ("Pa-us-e").
+                (if (onOpenPlayer != null) Modifier.clickable { onOpenPlayer() } else Modifier).weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 EqBars(playing = Player.isPlaying)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = Cyan)
-                    Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = Cyan, maxLines = 1)
+                    Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -927,12 +930,14 @@ internal fun NowPlayingBar(onOpenPlayer: (() -> Unit)? = null) {
                         if (Player.timerMinutes > 0) stringResource(R.string.nowplaying_timer_on, Player.timerMinutes)
                         else stringResource(R.string.nowplaying_timer_off),
                         color = if (Player.timerMinutes > 0) Cyan else TextMuted,
+                        maxLines = 1, softWrap = false,
                     )
                 }
                 TextButton(onClick = { if (Player.isPlaying) Player.pause(context) else Player.toggle(context, title) }) {
                     Text(
                         if (Player.isPlaying) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
                         color = Periwinkle,
+                        maxLines = 1, softWrap = false,
                     )
                 }
             }
