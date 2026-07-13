@@ -24,8 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
@@ -60,13 +62,14 @@ fun PatternScreen(onBack: () -> Unit) {
     var confirming by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val loadFailed = stringResource(R.string.patterns_error_fallback)
 
     LaunchedEffect(reload) {
         patternsError = null
         learned = null
         runCatching { parsePatterns(Api.patterns()) }
             .onSuccess { learned = it }
-            .onFailure { patternsError = it.message ?: "Couldn't load your patterns — try again." }
+            .onFailure { patternsError = it.message ?: loadFailed }
     }
 
     // Two-tap delete: fall back out of the armed state if left untouched.
@@ -74,22 +77,22 @@ fun PatternScreen(onBack: () -> Unit) {
         if (confirming) { delay(4000); confirming = false }
     }
 
-    SubPage("Transparent AI memory", "Pattern dashboard", onBack) {
+    SubPage(stringResource(R.string.patterns_eyebrow), stringResource(R.string.patterns_title), onBack) {
         Text(
-            "Everything CereBro has learned about you — visible, honest, and yours to delete.",
+            stringResource(R.string.patterns_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
         )
         SectionCard {
-            Text("What CereBro remembers", style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(stringResource(R.string.patterns_remembers_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             when {
                 patternsError != null -> {
                     Text(patternsError!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    TextButton(onClick = { reload++ }) { Text("Try again", color = Periwinkle) }
+                    TextButton(onClick = { reload++ }) { Text(stringResource(R.string.common_try_again), color = Periwinkle) }
                 }
-                learned == null -> Text("Looking at your data…",
+                learned == null -> Text(stringResource(R.string.patterns_loading),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 learned!!.isEmpty() -> Text(
-                    "Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.",
+                    stringResource(R.string.patterns_empty),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
                 else -> learned!!.forEachIndexed { i, p ->
@@ -98,12 +101,13 @@ fun PatternScreen(onBack: () -> Unit) {
             }
         }
         SectionCard {
-            Text("Delete all memory", style = MaterialTheme.typography.titleMedium, color = Danger)
+            Text(stringResource(R.string.patterns_delete_title), style = MaterialTheme.typography.titleMedium, color = Danger)
             Text(
-                "Removes chat history, computed insights and the companion's thread memory — it starts fresh. " +
-                    "Your journal, check-ins and sleep diary stay: they're your content, with their own controls.",
+                stringResource(R.string.patterns_delete_body),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
+            val clearedTemplate = stringResource(R.string.patterns_cleared)
+            val deleteFailed = stringResource(R.string.patterns_delete_failed)
             TextButton(
                 modifier = Modifier.fillMaxWidth().then(
                     if (confirming) Modifier.background(Danger.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
@@ -116,14 +120,16 @@ fun PatternScreen(onBack: () -> Unit) {
                             .onSuccess {
                                 confirming = false
                                 learned = emptyList()
-                                status = "Memory cleared — ${it.optInt("chat_messages")} messages and " +
-                                    "${it.optInt("insights")} insights forgotten."
+                                status = clearedTemplate.format(it.optInt("chat_messages"), it.optInt("insights"))
                             }
-                            .onFailure { status = it.message ?: "Couldn't delete — try again." }
+                            .onFailure { status = it.message ?: deleteFailed }
                     }
                 },
             ) {
-                Text(if (confirming) "Tap again to confirm" else "Delete all memory", color = Danger)
+                Text(
+                    if (confirming) stringResource(R.string.patterns_confirm) else stringResource(R.string.patterns_delete_title),
+                    color = Danger,
+                )
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }

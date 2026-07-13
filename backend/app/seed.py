@@ -33,6 +33,15 @@ _CONTENT = [
     ("Ease work stress", "7-day plan · Breathing + journaling", "program", "leaf", 0, False),
     ("Sleep deeper", "10-day wind-down program", "program", "moon.stars", 0, True),
     ("Stop overthinking", "5-day CBT focus", "program", "brain", 0, False),
+    # Sleep Reset (docs/REDESIGN.md §3.2 Phase 2/3): the CBT-I-informed weekly
+    # program as a first-class Program. The schema has no per-day structure —
+    # a program is one row and the journey card derives "day N of 7" from the
+    # enrollment start date — so the seven day themes live in the narration
+    # script below (server-persisted, admin-editable) until a per-day model
+    # exists. Day themes: 1 steady wake time · 2 bed is for sleep · 3 wind-down
+    # hour · 4 the 20-minute rule · 5 caffeine, light and timing · 6 your sleep
+    # window · 7 keeping it.
+    ("Sleep Reset", "7-day plan · One steady sleep habit each night", "program", "moon.zzz", 0, False),
     # CBT-I-informed wind-down guide (docs/SLEEP_TRACKING.md) — awareness copy,
     # never diagnosis/treatment claims. Mirrored as the iOS offline fallback.
     ("Keep a steady wake time", "Anchors your body clock — even after a rough night", "wind_down", "alarm", 0, False),
@@ -43,7 +52,10 @@ _CONTENT = [
 
 # Narration scripts for the items where a spoken voice IS the experience
 # (stories, breathwork, meditations, wind-down guidance). Soundscapes and
-# programs deliberately have none — ambient audio is correct there.
+# programs deliberately have none — ambient audio is correct there — with
+# one exception: Sleep Reset's script is the program's week guide (the
+# canonical server-side home for its seven day themes; see _CONTENT note),
+# and doubles as a calm spoken overview if an admin ever narrates it.
 # Same copy rules as the catalogue: calm, second-person, non-clinical.
 # Admins generate the audio per item via POST /admin/content/{id}/narrate.
 _SCRIPTS: dict[str, str] = {
@@ -165,6 +177,44 @@ _SCRIPTS: dict[str, str] = {
         "room around it. When you're ready, wiggle your fingers and toes, "
         "take a fuller breath, and return at your own pace."
     ),
+    "Sleep Reset": (
+        "Welcome to Sleep Reset — seven days, one small change at a time. "
+        "Nothing here is a quick fix, and none of it is medical care. These "
+        "are quiet, well-worn habits that give sleep room to find you. If "
+        "your nights stay hard for weeks, talking to a doctor is a kind next "
+        "step — this program sits alongside that care, never in place of it.\n\n"
+        "Day one: a steady wake time. Your body clock sets itself by when "
+        "you get up, more than by when you lie down. Pick a wake time you "
+        "can keep every day this week — even after a short night, even on "
+        "the weekend — and let it be boring. Boring is the point.\n\n"
+        "Day two: bed is for sleep. Let the bed mean one thing. Reading, "
+        "scrolling, planning and worrying can all live somewhere else — a "
+        "chair, another room. When the bed keeps a single, simple meaning, "
+        "lying down starts to feel like an answer instead of a question.\n\n"
+        "Day three: your wind-down hour. In the last hour before bed, turn "
+        "the volume of the world down. Dim the lights, set the phone out of "
+        "reach, and choose something that ends — a few pages, a warm shower, "
+        "laying out tomorrow. A runway, not a wall.\n\n"
+        "Day four: the twenty-minute rule. If you've been awake in bed for "
+        "what feels like twenty minutes, get up. Keep the lights low, do "
+        "something genuinely dull, and come back only when your eyelids are "
+        "actually heavy. Each round teaches the same quiet lesson: bed is "
+        "where sleep happens.\n\n"
+        "Day five: caffeine, light and timing. The day shapes the night. "
+        "Let caffeine end by early afternoon, get some daylight in the "
+        "morning, and keep late evenings gentle — big meals, hard workouts "
+        "and bright rooms all tell the body it's earlier than it is.\n\n"
+        "Day six: your sleep window. Consistency beats duration. Rather "
+        "than chasing more hours, keep the same window — roughly the same "
+        "bedtime, the same wake time — and let the body fill it more fully "
+        "night by night. A slightly shorter, steadier window often rests "
+        "better than a long, drifting one.\n\n"
+        "Day seven: keeping it. Some nights will still be rough — that's "
+        "part of sleep, not a failure of yours. When one comes, return to "
+        "the anchors: the same wake time, the wind-down hour, up if you're "
+        "wide awake. You know the way back now, and you can walk it as many "
+        "times as you need."
+    ),
     "Keep a steady wake time": (
         "Here's one small anchor for better nights: a steady wake time.\n\n"
         "Your body runs on an internal clock, and that clock sets itself by "
@@ -225,6 +275,85 @@ _SCRIPTS: dict[str, str] = {
     ),
 }
 
+# Per-day program guides (W15): the structured [{"title","body"}] form of a
+# program's days, served as `today_guide` on GET /programs/active for the
+# enrollment's current day. Sleep Reset's seven entries mirror the seven day
+# themes already canonical in its narration script above. Same copy rules as
+# everything else here: calm, second-person, adjunct-framed — habits alongside
+# care, never medical claims.
+_DAY_GUIDES: dict[str, list[dict]] = {
+    "Sleep Reset": [
+        {
+            "title": "A steady wake time",
+            "body": (
+                "Your body clock sets itself by when you get up, more than by "
+                "when you lie down. Pick a wake time you can keep every day "
+                "this week — even after a short night, even on the weekend — "
+                "and let it be boring. Boring is the point."
+            ),
+        },
+        {
+            "title": "Bed is for sleep",
+            "body": (
+                "Let the bed mean one thing. Reading, scrolling, planning and "
+                "worrying can all live somewhere else — a chair, another room. "
+                "When the bed keeps a single, simple meaning, lying down "
+                "starts to feel like an answer instead of a question."
+            ),
+        },
+        {
+            "title": "Your wind-down hour",
+            "body": (
+                "In the last hour before bed, turn the volume of the world "
+                "down. Dim the lights, set the phone out of reach, and choose "
+                "something that ends — a few pages, a warm shower, laying out "
+                "tomorrow. A runway, not a wall."
+            ),
+        },
+        {
+            "title": "The twenty-minute rule",
+            "body": (
+                "If you've been awake in bed for what feels like twenty "
+                "minutes, get up. Keep the lights low, do something genuinely "
+                "dull, and come back only when your eyelids are actually "
+                "heavy. Each round teaches the same quiet lesson: bed is "
+                "where sleep happens."
+            ),
+        },
+        {
+            "title": "Caffeine, light and timing",
+            "body": (
+                "The day shapes the night. Let caffeine end by early "
+                "afternoon, get some daylight in the morning, and keep late "
+                "evenings gentle — big meals, hard workouts and bright rooms "
+                "all tell the body it's earlier than it is."
+            ),
+        },
+        {
+            "title": "Your sleep window",
+            "body": (
+                "Consistency beats duration. Rather than chasing more hours, "
+                "keep the same window — roughly the same bedtime, the same "
+                "wake time — and let the body fill it more fully night by "
+                "night. A slightly shorter, steadier window often rests "
+                "better than a long, drifting one."
+            ),
+        },
+        {
+            "title": "Keeping it",
+            "body": (
+                "Some nights will still be rough — that's part of sleep, not "
+                "a failure of yours. When one comes, return to the anchors: "
+                "the same wake time, the wind-down hour, up if you're wide "
+                "awake. You know the way back now, and you can walk it as "
+                "many times as you need. If hard nights persist for weeks, "
+                "talking to a doctor is a kind next step — this program sits "
+                "alongside that care, never in place of it."
+            ),
+        },
+    ],
+}
+
 
 async def _ensure_user(db: AsyncSession, email: str, password: str, *, name: str, admin: bool) -> User:
     user = await db.scalar(select(User).where(User.email == email))
@@ -263,6 +392,7 @@ async def seed(db: AsyncSession) -> None:
                 duration_min=duration,
                 premium=premium,
                 narration_script=_SCRIPTS.get(title, ""),
+                day_guides=_DAY_GUIDES.get(title),
             )
         )
         added += 1
@@ -283,5 +413,20 @@ async def seed(db: AsyncSession) -> None:
         backfilled += 1
     if backfilled:
         logger.info("Backfilled narration scripts on %d content items", backfilled)
+
+    # Same mechanic for per-day guides: fill only where still NULL, so an
+    # admin-curated day list is never clobbered by a reboot.
+    guided = 0
+    unguided = await db.scalars(
+        select(ContentItem).where(
+            ContentItem.title.in_(_DAY_GUIDES.keys()),
+            ContentItem.day_guides.is_(None),
+        )
+    )
+    for item in unguided:
+        item.day_guides = _DAY_GUIDES[item.title]
+        guided += 1
+    if guided:
+        logger.info("Backfilled day guides on %d content items", guided)
 
     await db.commit()

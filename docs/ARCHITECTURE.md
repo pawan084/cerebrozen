@@ -36,7 +36,11 @@ offline with blank keys.
 ```
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
-  apps/android/   Kotlin + Compose: live auth + Today/Journal/Sleep/Talk (emulator-verified)
+  apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
+                  docs/REDESIGN.md): 5 tabs + ~34 routes, unified breathe engine, Toolkit hub,
+                  one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
+                  Night/Dawn theme (theme-aware token getters in ui/theme, AppTheme state,
+                  ContrastTest gate), InfoBanner slot on Home, crisis ≤2 taps (Tele-MANAS-first)
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
@@ -74,7 +78,7 @@ cere/
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
 | `/plans` | active (lazily generated), generate, step patch |
-| `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail), enroll (one at a time; replaces), leave |
+| `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |

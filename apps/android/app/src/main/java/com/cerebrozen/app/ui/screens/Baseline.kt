@@ -10,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
 import java.time.LocalDate
@@ -18,8 +20,21 @@ import java.time.LocalDate
 // few real check-ins exist (mirrors iOS BaselineCheckView; local-only, never
 // leaves the device). Insights' "Your starting point" card renders from this.
 
-internal val STRESS_WORDS = listOf("Very calm", "Mostly calm", "Managing", "Stretched", "Overwhelmed")
-internal val SLEEP_WORDS = listOf("Rough", "Poor", "Okay", "Good", "Rested")
+/** The 1–5 stress scale words, resolved from resources (also read by Insights). */
+@Composable
+internal fun stressWords(): List<String> = listOf(
+    stringResource(R.string.baseline_stress_1), stringResource(R.string.baseline_stress_2),
+    stringResource(R.string.baseline_stress_3), stringResource(R.string.baseline_stress_4),
+    stringResource(R.string.baseline_stress_5),
+)
+
+/** The 1–5 sleep-feel scale words (shared with the Sleep morning check-in). */
+@Composable
+internal fun sleepWords(): List<String> = listOf(
+    stringResource(R.string.baseline_sleep_1), stringResource(R.string.baseline_sleep_2),
+    stringResource(R.string.baseline_sleep_3), stringResource(R.string.baseline_sleep_4),
+    stringResource(R.string.baseline_sleep_5),
+)
 
 @Composable
 fun BaselineScreen(onBack: () -> Unit) {
@@ -27,20 +42,20 @@ fun BaselineScreen(onBack: () -> Unit) {
     var sleep by remember { mutableIntStateOf(0) }
     var saved by remember { mutableStateOf(false) }
 
-    SubPage("Two quick scales", "Your starting point", onBack) {
+    SubPage(stringResource(R.string.baseline_eyebrow), stringResource(R.string.insights_baseline_title), onBack) {
         Text(
-            "Where things stand these days. Saving this lets future insights show real change instead of guesses.",
+            stringResource(R.string.baseline_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
         )
 
-        Text("How stressed have you felt lately?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        ScaleRow(STRESS_WORDS, stress) { stress = it }
+        Text(stringResource(R.string.baseline_stress_q), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        ScaleRow(stressWords(), stress) { stress = it }
 
-        Text("How has sleep felt lately?", style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        ScaleRow(SLEEP_WORDS, sleep) { sleep = it }
+        Text(stringResource(R.string.baseline_sleep_q), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        ScaleRow(sleepWords(), sleep) { sleep = it }
 
         PrimaryButton(
-            text = if (saved) "Saved — thank you" else "Save my starting point",
+            text = if (saved) stringResource(R.string.baseline_saved) else stringResource(R.string.baseline_save_cta),
             enabled = stress > 0 && sleep > 0 && !saved,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -49,7 +64,7 @@ fun BaselineScreen(onBack: () -> Unit) {
         }
 
         Text(
-            "Stays on this device — used only to show your progress in Insights.",
+            stringResource(R.string.baseline_privacy),
             style = MaterialTheme.typography.labelSmall, color = TextMuted,
         )
     }

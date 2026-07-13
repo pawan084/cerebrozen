@@ -38,6 +38,20 @@ def _view(e: ProgramEnrollment) -> dict:
     }
 
 
+def _today_guide(item: ContentItem | None, day: int) -> dict | None:
+    """Per-day program structure (W15): the current day's {title, body} guide.
+
+    The day index clamps into the guide list — an enrollment longer than the
+    list keeps showing the final guide, never an error. Additive: programs
+    without day_guides simply omit the field, and older clients ignore it.
+    """
+    guides = (item.day_guides if item is not None else None) or []
+    if not guides:
+        return None
+    g = guides[min(max(day, 1), len(guides)) - 1]
+    return {"title": str(g.get("title", "")), "body": str(g.get("body", ""))}
+
+
 async def _active(db: AsyncSession, user: User) -> ProgramEnrollment | None:
     return await db.scalar(
         select(ProgramEnrollment)
@@ -51,7 +65,13 @@ async def active_program(
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     e = await _active(db, user)
-    return {"program": _view(e) if e else None}
+    if e is None:
+        return {"program": None}
+    view = _view(e)
+    guide = _today_guide(await db.get(ContentItem, e.content_id), view["day"])
+    if guide is not None:
+        view["today_guide"] = guide
+    return {"program": view}
 
 
 @router.post("/enroll", status_code=201)

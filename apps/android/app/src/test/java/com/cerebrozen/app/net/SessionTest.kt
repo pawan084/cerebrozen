@@ -58,6 +58,28 @@ class SessionTest {
     }
 
     @Test
+    fun servedStale_flips_on_cache_fallback_and_clears_when_back_online() = runTest {
+        val store = FakeStore("refresh_token" to "r1")
+        var online = true
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (!online) throw IOException("offline")
+            when {
+                url.endsWith("/auth/refresh") -> 200 to tokens
+                url.endsWith("/me") -> 200 to """{"ok":1}"""
+                else -> 200 to "{}"
+            }
+        }
+        Session.api("/me")                       // live network read
+        assertFalse("a live GET must not read as stale", Session.servedStale)
+        online = false
+        Session.api("/me")                       // served from the offline cache
+        assertTrue("a cache fallback must raise the offline signal", Session.servedStale)
+        online = true
+        Session.api("/me")                       // network is back
+        assertFalse("the signal must clear itself when a network GET succeeds", Session.servedStale)
+    }
+
+    @Test
     fun network_blip_during_refresh_does_not_sign_out() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         Session.resetForTest(store) { url, _, _, _, _ ->
@@ -183,9 +205,11 @@ class SessionTest {
     @Test
     fun funnelStepName_maps_android_steps_to_the_cross_stack_vocabulary() {
         assertEquals("welcome", funnelStepName("Welcome"))
-        assertEquals("age_gate", funnelStepName("Age"))
+        assertEquals("disclosure", funnelStepName("Disclosure"))  // merged age gate + honesty step
+        assertEquals("language", funnelStepName("Language"))
         assertEquals("state_check", funnelStepName("State"))
         assertEquals("first_reset", funnelStepName("Reset"))
+        assertEquals("consent", funnelStepName("Consent"))
         assertEquals("notifications", funnelStepName("Notify"))
         assertEquals("signup", funnelStepName("SignUp"))
     }

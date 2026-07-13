@@ -35,6 +35,11 @@ _REGIONS: dict[str, list[dict[str, str]]] = {
         {"name": "Need to talk?", "number": "1737"},
     ],
     "IN": [
+        # Tele-MANAS leads (India's 24/7 government mental-health line) — the
+        # design rule is Tele-MANAS-first on every crisis surface (REDESIGN
+        # §2.3); Android's CrisisScreen already leads with it, this closes the
+        # server-side drift found in the 2026-07-13 web parity audit.
+        {"name": "Tele-MANAS mental health support", "number": "14416"},
         {"name": "Emergency services", "number": "112"},
         {"name": "KIRAN mental health helpline", "number": "1800-599-0019"},
     ],

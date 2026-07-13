@@ -17,8 +17,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Run as a non-root user in production. The media dir must exist before the
-# chown so a named volume mounted there is writable by appuser.
-RUN mkdir -p media \
+# chown so a named volume mounted there is writable by appuser. COPY can carry
+# a read-only mode from the host (e.g. Windows/OneDrive checkouts strip the
+# write bit), so restore owner-write explicitly or narration saves 500.
+RUN mkdir -p media && chmod -R u+w media \
     && useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 

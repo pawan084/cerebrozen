@@ -15,23 +15,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -50,38 +48,34 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import androidx.compose.ui.res.stringResource
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
+import com.cerebrozen.app.ui.screens.BreathePreset
+import com.cerebrozen.app.ui.screens.BreatheScreen
 import com.cerebrozen.app.ui.screens.BreathingScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.Celebration
 import com.cerebrozen.app.ui.screens.Celebrations
-import com.cerebrozen.app.ui.screens.BubbleWrapScreen
 import com.cerebrozen.app.ui.screens.CbtReframeScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
-import com.cerebrozen.app.ui.screens.GamesScreen
-import com.cerebrozen.app.ui.screens.ColorBreathingScreen
 import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
-import com.cerebrozen.app.ui.screens.IntentionScreen
-import com.cerebrozen.app.ui.screens.MemoryMatchScreen
 import com.cerebrozen.app.ui.screens.Onboarding
-import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
@@ -93,28 +87,34 @@ import com.cerebrozen.app.ui.screens.PrivacyScreen
 import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
-import com.cerebrozen.app.ui.screens.SlidingPuzzleScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
-import com.cerebrozen.app.ui.screens.SoundscapeScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
-import com.cerebrozen.app.ui.screens.ToolsScreen
+import com.cerebrozen.app.ui.screens.ToolkitScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.screens.ZenRipplesScreen
+import com.cerebrozen.app.ui.screens.AppearanceScreen
+import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.NavPillBottom
 import com.cerebrozen.app.ui.theme.NavPillTop
 import com.cerebrozen.app.ui.theme.NavScrim
-import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.NavSelectedHi
+import com.cerebrozen.app.ui.theme.NavSelectedLo
+import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.VeilStrong
+import com.cerebrozen.app.ui.theme.themeModeFromPref
 
-private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    Home("home", "Home", Icons.Filled.Home),
-    Sleep("sleep", "Sleep", Icons.Filled.Bedtime),
-    Talk("talk", "Talk", Icons.Filled.Mic),
-    Journal("journal", "Journal", Icons.Filled.Book),
-    You("you", "You", Icons.Filled.Person),
+// W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
+// instead of stock Material glyphs — one consistent 2dp rounded-line set.
+private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
+    Home("home", R.string.tab_home, R.drawable.ic_tab_home),
+    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
+    Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
+    Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
+    You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
@@ -130,14 +130,24 @@ private fun BottomTabItem(
     onClick: () -> Unit,
 ) {
     val tint = if (selected) TextPrimary else TextMuted2
+    // W10: the icon settles in with a soft spring on becoming selected (0.9 → 1.0);
+    // unselected icons rest a whisper smaller. Reduce Motion holds every icon
+    // steady at full size (static, never blank).
+    val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
+    val springScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.9f,
+        animationSpec = spring(dampingRatio = 0.6f),
+        label = "tab-icon-spring",
+    )
+    val iconScale = if (reduceMotion) 1f else springScale
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (selected) {
-                    Brush.radialGradient(
-                        listOf(Periwinkle.copy(alpha = 0.72f), Periwinkle.copy(alpha = 0.18f)),
-                    )
+                    // NavSelectedHi/Lo = the Periwinkle wash, tuned per theme so the
+                    // selected label keeps AA contrast on both pills (Color.kt).
+                    Brush.radialGradient(listOf(NavSelectedHi, NavSelectedLo))
                 } else {
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                 },
@@ -152,17 +162,26 @@ private fun BottomTabItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        val label = stringResource(tab.labelRes)
         Box(
             Modifier
-                .size(if (compact) 26.dp else 29.dp)
+                .size(if (compact) 30.dp else 34.dp)
                 .clip(CircleShape)
-                .background(if (selected) Color.White.copy(alpha = 0.18f) else Color.Transparent),
+                .background(if (selected) VeilStrong else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(tab.icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(if (compact) 15.dp else 17.dp))
+            Icon(
+                painterResource(tab.icon),
+                contentDescription = label,
+                tint = tint,
+                // Thin 2dp-line icons carry far less visual weight than filled
+                // glyphs — owner feedback (2026-07-13): 18dp read tiny on device.
+                // 22dp (20 compact) matches the perceived size of the old set.
+                modifier = Modifier.size(if (compact) 20.dp else 22.dp).scale(iconScale),
+            )
         }
         Text(
-            tab.label,
+            label,
             color = tint,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -172,16 +191,86 @@ private fun BottomTabItem(
     }
 }
 
+/** W24 D3: Night↔Dawn changes glide instead of snapping. A Crossfade around
+ * the themed tree would recreate the NavHost (destroying navigation state), so
+ * instead a full-screen wash of the NEW theme's backdrop appears the instant
+ * the preference flips and fades away over 350ms — the re-tokened screen
+ * emerges from a calm solid, never a hard cut. Keyed on the *preference*-
+ * resolved theme only (Appearance choice / system dark), deliberately ignoring
+ * the Sleep tab's forceNight flips, which keep their existing nav cross-fade.
+ * Reduce Motion: no scrim — the honest instant snap. */
+@Composable
+private fun ThemeGlideScrim() {
+    val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
+    val prefNight = when (AppTheme.mode) {
+        com.cerebrozen.app.ui.theme.ThemeMode.System -> AppTheme.systemDark
+        com.cerebrozen.app.ui.theme.ThemeMode.Night -> true
+        com.cerebrozen.app.ui.theme.ThemeMode.Dawn -> false
+    }
+    var seen by remember { mutableStateOf(prefNight) }
+    val veil = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(prefNight) {
+        if (seen != prefNight) {
+            seen = prefNight
+            if (!reduceMotion) {
+                veil.snapTo(1f)
+                veil.animateTo(0f, tween(350))
+            }
+        }
+    }
+    // Night resolves against the NEW theme, so the wash is the destination's
+    // own backdrop. The Box never consumes input; it is purely a veil.
+    if (veil.value > 0f) {
+        Box(Modifier.fillMaxSize().background(com.cerebrozen.app.ui.theme.Night.copy(alpha = veil.value)))
+    }
+}
+
+/** Keeps the status/navigation-bar icon appearance in step with the theme:
+ * light icons over Night, dark icons over Dawn. */
+@Composable
+private fun SyncSystemBarIcons() {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val lightBars = !AppTheme.isNight
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            // Unwrap ContextThemeWrapper layers to find the host Activity's window.
+            var ctx = view.context
+            while (ctx is android.content.ContextWrapper) {
+                if (ctx is android.app.Activity) break
+                ctx = ctx.baseContext
+            }
+            (ctx as? android.app.Activity)?.window?.let { window ->
+                androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = lightBars
+                    isAppearanceLightNavigationBars = lightBars
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun CereBroApp() {
-    // A brief branded splash on cold launch.
+    // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
+    // restore the persisted preference once, and keep the bar icons in step.
+    AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    remember { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")); true }
+    SyncSystemBarIcons()
+
+    // A brief branded splash on cold launch — always Night (brand moment).
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(1100); showSplash = false }
-    if (showSplash) { Splash(); return }
+    if (showSplash) {
+        AppTheme.forceNight = true
+        Splash()
+        return
+    }
 
     // Signed-out: the whole app is the onboarding/auth flow (live backend session,
-    // same account as iOS/web). Session.signedIn is Compose-observable.
+    // same account as iOS/web). Session.signedIn is Compose-observable. The funnel's
+    // bespoke night art doesn't theme, so it is always Night.
     if (!Session.signedIn) {
+        AppTheme.forceNight = true
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             AuroraBackground()
             Onboarding()
@@ -189,22 +278,34 @@ fun CereBroApp() {
         return
     }
 
+    // An authenticated session is an established relationship — unlock the
+    // anonymous, opt-out telemetry for returning users who never walked the
+    // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
+    LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
+
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
+    // Sleep contexts always keep the night palette (REDESIGN §4.1).
+    AppTheme.forceNight = current == Tab.Sleep.route
     val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
-    val auroraAccent = when (current) {
-        Tab.Sleep.route -> com.cerebrozen.app.ui.theme.Accent.sleep
-        Tab.Talk.route -> com.cerebrozen.app.ui.theme.Accent.talk
-        else -> com.cerebrozen.app.ui.theme.Accent.home
-    }
+    // E6: the accent cross-fades between tabs instead of snapping; Reduce Motion
+    // keeps the honest instant snap.
+    val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
+    val auroraAccent by animateColorAsState(
+        targetValue = when (current) {
+            Tab.Sleep.route -> com.cerebrozen.app.ui.theme.Accent.sleep
+            Tab.Talk.route -> com.cerebrozen.app.ui.theme.Accent.talk
+            else -> com.cerebrozen.app.ui.theme.Accent.home
+        },
+        animationSpec = if (reduceMotion) snap() else tween(600),
+        label = "aurora-accent",
+    )
 
-    val hazeState = remember { HazeState() }
     Box(Modifier.fillMaxSize()) {
-    AuroraBackground(accent = auroraAccent, modifier = Modifier.hazeSource(hazeState))
-    CompositionLocalProvider(LocalHazeState provides hazeState) {
+    AuroraBackground(accent = auroraAccent)
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -228,11 +329,7 @@ fun CereBroApp() {
                                 listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
                             ),
                         )
-                        .border(
-                            1.dp,
-                            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.08f))),
-                            RoundedCornerShape(24.dp),
-                        )
+                        .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
                         .padding(horizontal = 9.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -277,10 +374,13 @@ fun CereBroApp() {
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
-            composable("insights") { InsightsScreen(onBack = back) }
+            composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
+            // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
+            // a pill switch. `sounds/mixer` deep-links straight to the Mixer (the
+            // old standalone `soundscape` route folded in here).
             composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
-            composable("soundscape") { SoundscapeScreen(onBack = back) }
+            composable("sounds/mixer") { SoundsScreen(onBack = back, onOpen = open, startInMixer = true) }
             // The player zooms in from the tapped card (iOS-18 zoom-transition feel).
             composable(
                 "player",
@@ -292,24 +392,26 @@ fun CereBroApp() {
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }
-            composable("games") { GamesScreen(onOpen = open, onBack = back) }
+            // Toolkit is the one activities hub (games + tools merged). The old
+            // `games` and `tools` routes stay as aliases so Oracle widgets, plan
+            // steps and saved deep-links keep landing somewhere real.
+            composable("toolkit") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("games") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("tools") { ToolkitScreen(onOpen = open, onBack = back) }
+            // The one parameterized breathe engine (box / two-minute reset).
+            composable("breathe/box") { BreatheScreen(BreathePreset.Box, onBack = back) }
+            composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
-            composable("bubblewrap") { BubbleWrapScreen(onBack = back) }
-            composable("memorymatch") { MemoryMatchScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
-            composable("colorbreathing") { ColorBreathingScreen(onBack = back) }
-            composable("slidingpuzzle") { SlidingPuzzleScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }
-            composable("tools") { ToolsScreen(onOpen = open, onBack = back) }
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
-            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
-            composable("intention") { IntentionScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
+            composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }
             composable("privacy") { PrivacyScreen(onBack = back) }
             composable("premium") { PremiumScreen(onBack = back) }
@@ -320,8 +422,9 @@ fun CereBroApp() {
             composable("delete") { AccountDeletionScreen(onBack = back) }
         }
     }
-    }
     // App-wide celebration flourish, above the nav chrome.
     if (Celebrations.active) Celebration(onFinished = { Celebrations.clear() })
+    // W24 D3: the Appearance-change wash, above everything (it fades to nothing).
+    ThemeGlideScrim()
     }
 }

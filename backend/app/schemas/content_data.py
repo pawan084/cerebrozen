@@ -81,6 +81,14 @@ class ChatReply(BaseModel):
 
 
 # ── Content ─────────────────────────────────────────────────────────────
+class DayGuide(BaseModel):
+    """One day of a program (W15): the title + body served as `today_guide`
+    on /programs/active for the enrollment's current day."""
+
+    title: str = Field(max_length=160)
+    body: str = ""
+
+
 class ContentBase(BaseModel):
     title: str = Field(max_length=160)
     subtitle: str = ""
@@ -96,6 +104,8 @@ class ContentBase(BaseModel):
 
 class ContentCreate(ContentBase):
     narration_script: str = ""
+    # Per-day program structure (W17); None for non-programs.
+    day_guides: list[DayGuide] | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -109,6 +119,8 @@ class ContentUpdate(BaseModel):
     duration_min: int | None = None
     premium: bool | None = None
     published: bool | None = None
+    # Omitted = untouched (exclude_unset PATCH); explicit null clears the guides.
+    day_guides: list[DayGuide] | None = None
 
 
 class ContentOut(ContentBase):
@@ -123,6 +135,8 @@ class AdminContentOut(ContentOut):
 
     narration_script: str = ""
     audio_generated_at: datetime | None = None
+    # Per-day program structure; None for non-programs and legacy rows.
+    day_guides: list[DayGuide] | None = None
 
 
 # ── Insight ─────────────────────────────────────────────────────────────

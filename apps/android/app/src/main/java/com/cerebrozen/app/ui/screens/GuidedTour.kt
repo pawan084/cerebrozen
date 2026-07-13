@@ -22,7 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -34,11 +36,13 @@ import com.cerebrozen.app.ui.theme.TextSoft
 // First-run guided tour (ref GUIDED TOUR OVERLAY): four gentle stops over
 // Home, shown once per install (`tour_done` on the Store seam).
 
-internal val TOUR_STOPS = listOf(
-    "Check in daily" to "One tap tells CereBro how you're arriving — plans, insights and starters all personalize from it.",
-    "Your plan adapts" to "Three small steps a day, rebuilt from your check-ins and sleep diary. Tap the hero any time.",
-    "Talk it through" to "A voice companion that listens first. It's AI — never a therapist, and always honest about that.",
-    "Private by default" to "Nothing is remembered without your say-so. Change anything under You → Privacy & memory.",
+/** The four tour stops, resolved from resources in composition. */
+@Composable
+internal fun tourStops(): List<Pair<String, String>> = listOf(
+    stringResource(R.string.tour_stop1_title) to stringResource(R.string.tour_stop1_body),
+    stringResource(R.string.tour_stop2_title) to stringResource(R.string.tour_stop2_body),
+    stringResource(R.string.tour_stop3_title) to stringResource(R.string.tour_stop3_body),
+    stringResource(R.string.tour_stop4_title) to stringResource(R.string.tour_stop4_body),
 )
 
 internal object TourState {
@@ -50,7 +54,8 @@ internal object TourState {
 @Composable
 internal fun GuidedTourOverlay(onDone: () -> Unit) {
     var idx by remember { mutableIntStateOf(0) }
-    val (label, caption) = TOUR_STOPS[idx]
+    val stops = tourStops()
+    val (label, caption) = stops[idx]
     Box(
         Modifier.fillMaxSize().background(Night.copy(alpha = 0.82f)),
         contentAlignment = Alignment.BottomCenter,
@@ -62,7 +67,7 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("GUIDED TOUR · ${idx + 1} OF ${TOUR_STOPS.size}",
+            Text(stringResource(R.string.tour_header, idx + 1, stops.size),
                 style = MaterialTheme.typography.labelSmall, color = Cyan)
             Text(label, style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text(caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -72,7 +77,7 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TOUR_STOPS.indices.forEach { i ->
+                    stops.indices.forEach { i ->
                         Box(
                             Modifier.size(7.dp).clip(CircleShape)
                                 .background(if (i == idx) Periwinkle else LineStroke),
@@ -81,13 +86,16 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
                 }
                 Row {
                     TextButton(onClick = { TourState.markDone(); onDone() }) {
-                        Text("Skip", color = TextMuted)
+                        Text(stringResource(R.string.tour_skip), color = TextMuted)
                     }
                     TextButton(onClick = {
-                        if (idx < TOUR_STOPS.size - 1) idx++
+                        if (idx < stops.size - 1) idx++
                         else { TourState.markDone(); onDone() }
                     }) {
-                        Text(if (idx < TOUR_STOPS.size - 1) "Next" else "Let's begin", color = Periwinkle)
+                        Text(
+                            if (idx < stops.size - 1) stringResource(R.string.common_next) else stringResource(R.string.tour_begin),
+                            color = Periwinkle,
+                        )
                     }
                 }
             }

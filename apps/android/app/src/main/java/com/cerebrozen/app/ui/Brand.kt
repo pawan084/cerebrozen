@@ -133,16 +133,35 @@ private fun starRand(i: Int, salt: Int): Float {
     return v - floor(v)
 }
 
-/** A brief branded launch: a night scene — starfield + soft aurora ribbons — with
- * the mark breathing in over it. The ribbons drift gently (steady under Reduce
- * Motion); the whole scene fades in. */
+// W24: the splash settle curves, kept pure so the choreography is testable by
+// inspection. One 0→1 progress drives everything (≤900ms, one-shot).
+/** Orb scale: 0.92 → 1 with a gentle ease-out over the first ~65%. */
+internal fun splashOrbScale(t: Float): Float {
+    val k = (t / 0.65f).coerceIn(0f, 1f)
+    val eased = 1f - (1f - k) * (1f - k)
+    return 0.92f + 0.08f * eased
+}
+
+/** Glow bloom: swells past its resting strength mid-settle, then eases back —
+ * the orb "arrives" with a soft breath of light (rests at 1). */
+internal fun splashGlowBloom(t: Float): Float =
+    1f + 0.9f * sin(t.coerceIn(0f, 1f) * Math.PI.toFloat())
+
+/** Wordmark: fades up beneath the orb over the last ~55%. */
+internal fun splashWordmarkAppear(t: Float): Float = ((t - 0.45f) / 0.55f).coerceIn(0f, 1f)
+
+/** A brief branded launch: a night scene — starfield + soft aurora ribbons —
+ * with the orb settling into the wordmark: the mark scales 0.92→1 under a soft
+ * glow bloom while "CereBro" fades up beneath (one-shot, ≤900ms). Reduce
+ * Motion: the final frame, statically — never blank. */
 @Composable
 fun Splash() {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { progress.animateTo(1f, tween(900)) }
-    val appear = progress.value
-
     val reduceMotion = rememberReduceMotion()
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) progress.snapTo(1f) else progress.animateTo(1f, tween(900))
+    }
+    val appear = progress.value
     val transition = rememberInfiniteTransition(label = "splash")
     val animatedDrift by transition.animateFloat(
         0f, 1f, infiniteRepeatable(tween(9_000, easing = LinearEasing), RepeatMode.Reverse), label = "drift",
@@ -184,20 +203,36 @@ fun Splash() {
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BrandMark(
-                Modifier.scale(0.82f + 0.18f * appear).alpha(appear),
-                size = 112.dp,
-            )
+            // The orb settles in (0.92 → 1) beneath a glow that blooms past its
+            // resting strength and eases back — one calm arrival, then stillness.
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(150.dp)
+                        .alpha((0.5f * splashGlowBloom(appear) * appear).coerceAtMost(1f))
+                        .background(
+                            Brush.radialGradient(listOf(Color(0x668A7BF0), Color(0x00000000))),
+                            CircleShape,
+                        ),
+                )
+                BrandMark(
+                    Modifier.scale(splashOrbScale(appear)).alpha(appear),
+                    size = 112.dp,
+                )
+            }
             Spacer(Modifier.height(22.dp))
-            // "Cere" solid, "Bro" in an iris→periwinkle sweep (mirrors the iOS wordmark).
+            // "Cere" solid, "Bro" in an iris→periwinkle sweep (mirrors the iOS
+            // wordmark) — fading up beneath the orb over the settle's back half.
             val wordmark = buildAnnotatedString {
                 withStyle(SpanStyle(color = TextPrimary)) { append("Cere") }
                 withStyle(SpanStyle(brush = Brush.linearGradient(listOf(Iris, Periwinkle)))) { append("Bro") }
             }
+            val textT = splashWordmarkAppear(appear)
             Text(
                 wordmark,
                 style = MaterialTheme.typography.displaySmall,
-                modifier = Modifier.alpha(appear),
+                modifier = Modifier
+                    .offset(y = 8.dp * (1f - textT))
+                    .alpha(textT),
             )
         }
     }

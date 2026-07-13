@@ -57,6 +57,33 @@ async def test_admin_content_crud(admin_client):
     assert (await admin_client.delete(f"/admin/content/{uuid.uuid4()}")).status_code == 404
 
 
+async def test_admin_content_day_guides_edit(admin_client):
+    guides = [{"title": f"Day {i}", "body": f"Guide {i}"} for i in range(1, 4)]
+    create = await admin_client.post("/admin/content", json={
+        "title": "Guides program", "kind": "program", "day_guides": guides,
+    })
+    assert create.status_code == 201 and create.json()["day_guides"] == guides
+    item_id = create.json()["id"]
+
+    # Round-trip an edit; untouched fields survive the partial update.
+    new_guides = [{"title": "Day 1", "body": "Rewritten"}]
+    upd = await admin_client.patch(f"/admin/content/{item_id}", json={"day_guides": new_guides})
+    assert upd.status_code == 200 and upd.json()["day_guides"] == new_guides
+    assert upd.json()["title"] == "Guides program"
+
+    # Invalid shape (a guide without a title) → 422, nothing written.
+    bad = await admin_client.patch(f"/admin/content/{item_id}", json={"day_guides": [{"body": "no title"}]})
+    assert bad.status_code == 422
+    listing = (await admin_client.get("/admin/content")).json()
+    assert next(c for c in listing if c["id"] == item_id)["day_guides"] == new_guides
+
+    # Explicit null clears the guides (back to a non-program row).
+    cleared = await admin_client.patch(f"/admin/content/{item_id}", json={"day_guides": None})
+    assert cleared.status_code == 200 and cleared.json()["day_guides"] is None
+
+    assert (await admin_client.delete(f"/admin/content/{item_id}")).status_code == 204
+
+
 async def test_admin_safety_queue_and_resolve(admin_client):
     # A crisis-flagged journal entry creates a safety event.
     await admin_client.post("/journal", json={"title": "dark", "body": "I want to end my life", "tags": []})

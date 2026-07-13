@@ -464,7 +464,7 @@ const KINDS = ["sleep", "meditation", "breath", "soundscape", "program", "wind_d
 const EMPTY_CONTENT = {
   title: "", subtitle: "", kind: "meditation", symbol: "sparkles",
   image_url: "", duration_min: 0, premium: false, published: true,
-  narration_script: "",
+  narration_script: "", day_guides: [] as { title: string; body: string }[],
 };
 
 function Content() {
@@ -484,9 +484,20 @@ function Content() {
       symbol: item.symbol || "sparkles", image_url: item.image_url || "",
       duration_min: item.duration_min || 0, premium: item.premium, published: item.published,
       narration_script: item.narration_script || "",
+      day_guides: (item.day_guides || []).map((g: any) => ({ title: g.title || "", body: g.body || "" })),
     });
     setEditId(item.id);
     setShowForm(true);
+  }
+  function setGuide(i: number, k: "title" | "body", v: string) {
+    setForm((f: any) => ({
+      ...f,
+      day_guides: f.day_guides.map((g: any, idx: number) => (idx === i ? { ...g, [k]: v } : g)),
+    }));
+  }
+  function addGuide() { setForm((f: any) => ({ ...f, day_guides: [...f.day_guides, { title: "", body: "" }] })); }
+  function removeGuide(i: number) {
+    setForm((f: any) => ({ ...f, day_guides: f.day_guides.filter((_: any, idx: number) => idx !== i) }));
   }
 
   async function save(e: React.FormEvent) {
@@ -494,7 +505,13 @@ function Content() {
     if (!form.title.trim()) return;
     setBusy(true);
     try {
-      const body = JSON.stringify({ ...form, duration_min: Number(form.duration_min) || 0 });
+      // No guide rows ⇒ explicit null (clears them server-side): NULL, not [],
+      // marks a non-program row per the W15 contract.
+      const body = JSON.stringify({
+        ...form,
+        duration_min: Number(form.duration_min) || 0,
+        day_guides: form.day_guides.length ? form.day_guides : null,
+      });
       if (editId) await api(`/admin/content/${editId}`, { method: "PATCH", body });
       else await api("/admin/content", { method: "POST", body });
       closeForm();
@@ -576,6 +593,38 @@ function Content() {
               placeholder="Read aloud by the narrator voice — keep it calm and non-clinical. Leave empty for ambient-only items."
               style={{ width: "100%", resize: "vertical" }}
             />
+          </div>
+          <div className="full">
+            <label>Day guides (programs)</label>
+            <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 8 }}>
+              One guide per program day — day N of an enrollment reads guide N. Leave empty for non-programs.
+            </div>
+            {form.day_guides.map((g: any, i: number) => (
+              <div key={i} className="card" style={{ padding: 12, marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span className="tag muted">Day {i + 1}</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeGuide(i)}>Remove</button>
+                </div>
+                <label>Title</label>
+                <input
+                  type="text"
+                  value={g.title}
+                  onChange={(e) => setGuide(i, "title", e.target.value)}
+                  placeholder="Day title"
+                  required
+                  maxLength={160}
+                />
+                <label style={{ marginTop: 8, display: "block" }}>Body</label>
+                <textarea
+                  rows={3}
+                  value={g.body}
+                  onChange={(e) => setGuide(i, "body", e.target.value)}
+                  placeholder="What this day asks of the user — calm, one focus."
+                  style={{ width: "100%", resize: "vertical" }}
+                />
+              </div>
+            ))}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={addGuide}>+ Add day</button>
           </div>
           <label className="check">
             <input type="checkbox" checked={form.premium} onChange={(e) => set("premium", e.target.checked)} /> Premium

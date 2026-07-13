@@ -7,6 +7,8 @@ import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -53,30 +55,36 @@ class CloudVoice(private val context: Context) {
      * reactive orb and the trailing-silence auto-endpoint. */
     fun maxAmplitude(): Int = recorder?.let { runCatching { it.maxAmplitude }.getOrDefault(0) } ?: 0
 
-    /** Stop and return the recorded AAC clip (null if nothing usable). */
+    /** Stop and return the recorded AAC clip (null if nothing usable). The raw
+     * mic recording is deleted from disk as soon as we've read it into memory. */
     fun stopRecording(): ByteArray? {
         val r = recorder ?: return null
         recording = false
         recorder = null
         return runCatching {
             r.stop(); r.release()
-            clip.readBytes().takeIf { it.size > 1_000 }   // ignore accidental blips
+            val bytes = clip.readBytes()
+            clip.delete()   // don't leave the user's voice on disk
+            bytes.takeIf { it.size > 1_000 }   // ignore accidental blips
         }.getOrNull()
     }
 
-    /** Play an MP3 reply; [onDone] fires on natural end or interruption. */
-    fun play(mp3: ByteArray, onDone: () -> Unit = {}) {
+    /** Play an MP3 reply; [onDone] fires on natural end or interruption. The disk
+     * write and prepare run off the main thread (this is called from a coroutine),
+     * but the MediaPlayer is created on the caller's Looper so completion callbacks
+     * still fire. The reply file is deleted once played. */
+    suspend fun play(mp3: ByteArray, onDone: () -> Unit = {}) {
         stopPlayback()
         runCatching {
-            reply.writeBytes(mp3)
+            withContext(Dispatchers.IO) { reply.writeBytes(mp3) }
             val p = MediaPlayer()
             p.setDataSource(reply.absolutePath)
-            p.setOnCompletionListener { speaking = false; onDone() }
-            p.prepare()
+            p.setOnCompletionListener { speaking = false; reply.delete(); onDone() }
+            withContext(Dispatchers.IO) { p.prepare() }   // the blocking step
             player = p
             speaking = true
             p.start()
-        }.onFailure { speaking = false; onDone() }
+        }.onFailure { speaking = false; reply.delete(); onDone() }
     }
 
     /** Tap-to-interrupt (mirrors the iOS barge-in affordance). */
@@ -90,5 +98,8 @@ class CloudVoice(private val context: Context) {
         recorder?.let { runCatching { it.stop(); it.release() } }
         recorder = null
         stopPlayback()
+        // Leave no voice audio behind on disk.
+        runCatching { clip.delete() }
+        runCatching { reply.delete() }
     }
 }

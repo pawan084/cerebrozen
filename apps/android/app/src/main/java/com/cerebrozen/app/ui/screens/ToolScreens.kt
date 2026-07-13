@@ -1,160 +1,73 @@
 package com.cerebrozen.app.ui.screens
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.SelfImprovement
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.cerebro.app.R
+import androidx.compose.ui.res.stringResource
+import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
-import com.cerebrozen.app.ui.theme.Ink
-import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Native tools (iOS ToolsViews + MicroActivities parity): CBT reframe,
-// one good thing, intention set, DBT TIPP. Written work mirrors to the
-// journal so it feeds reflections/insights like iOS.
+// Native tools (iOS ToolsViews + MicroActivities parity): the journaling
+// breathing practice, CBT reframe, and DBT TIPP. Written work mirrors to the
+// journal so it feeds reflections/insights like iOS. The Tools hub itself
+// merged into ToolkitScreen (REDESIGN §2.2); the one-field tools (one good
+// thing, intention) became Journal quick-entry chips.
 
-@Composable
-fun ToolsScreen(onOpen: (String) -> Unit, onBack: () -> Unit) = SubPage("Small resets", "Tools", onBack) {
-    Text("Two-minute practices for the moment you're in.",
-        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-    NavRow("A minute to breathe", "Follow the orb — in for four, out for four", icon = Icons.Outlined.Air) { onOpen("breathing") }
-    NavRow("Untangle a thought", "CBT reframe — from stuck to balanced", icon = Icons.Outlined.Psychology) { onOpen("cbt") }
-    NavRow("One good thing", "Name something that went right", icon = Icons.Outlined.Star) { onOpen("onegoodthing") }
-    NavRow("Tomorrow's intention", "Set one clear point for tomorrow", icon = Icons.Outlined.WbTwilight) { onOpen("intention") }
-    NavRow("TIPP skill", "DBT reset for very intense moments", icon = Icons.Outlined.SelfImprovement) { onOpen("tipp") }
-}
-
-/** A one-minute paced-breathing exercise: a slow-pulsing orb counts you through
- * in / hold / out / hold, and you can save the practice to your journal. The orb
- * pulse honours Reduce Motion (holds a steady size), mirroring the calm-motion
- * policy elsewhere. */
+/** A guided breathing practice you can save to your journal. The pacing orb is
+ * the shared [BreatheEngine] (Box preset) — this screen adds the ambience bed
+ * and the reflection save on top. */
 @Composable
 fun BreathingScreen(onBack: () -> Unit) {
-    var elapsed by remember { mutableIntStateOf(0) }
     var saved by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val totalSeconds = 120
-    val phases = listOf("Breathe in", "Hold", "Breathe out", "Hold")
-    val phaseIndex = (elapsed / 4) % phases.size
-    val phase = phases[phaseIndex]
-    val count = 4 - (elapsed % 4)
 
-    val reduceMotion = rememberReduceMotion()
-    // The orb is driven BY the phase, not a free-running timer: it expands over the
-    // inhale, holds full, contracts over the exhale, holds empty — so the motion
-    // actually matches the "Breathe in / Hold / Breathe out" label.
-    val target = when (phaseIndex) { 0, 1 -> 1.14f; else -> 0.84f }
-    val orbScale by animateFloatAsState(
-        targetValue = if (reduceMotion) 1f else target,
-        animationSpec = tween(3800, easing = FastOutSlowInEasing),
-        label = "breathing-orb-scale",
-    )
-    // A gentle haptic on each phase change — a rhythm cue you can follow with eyes
-    // closed. Firmer on the active breaths, softer on the holds.
-    LaunchedEffect(phaseIndex) {
-        com.cerebrozen.app.ui.Haptics.soft(if (phaseIndex == 0 || phaseIndex == 2) 0.5f else 0.3f)
-    }
-
-    LaunchedEffect(Unit) {
-        while (elapsed < totalSeconds) {
-            delay(1000)
-            elapsed += 1
-        }
-    }
-
-    SubPage("A minute to breathe", "Breathing", onBack) {
+    SubPage(stringResource(R.string.breathing_eyebrow), stringResource(R.string.breathing_title), onBack) {
         ToolAmbienceEffect(R.raw.drone)
-        Text("Follow the orb — in for four, hold, out for four.",
+        Text(stringResource(R.string.breathing_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AmbienceToggle()
-        Text(
-            phase,
-            style = MaterialTheme.typography.displaySmall,
-            color = TextPrimary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(Modifier.fillMaxWidth().height(236.dp), contentAlignment = Alignment.Center) {
-            repeat(3) { index ->
-                Box(
-                    Modifier
-                        .size((118 + index * 56).dp)
-                        .clip(CircleShape)
-                        .border(1.dp, LineStroke, CircleShape),
-                )
-            }
-            Box(
-                Modifier
-                    .size(144.dp)
-                    .scale(orbScale)
-                    .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(Color.White, Cyan))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = Ink)
-            }
-        }
+        BreatheEngine(BreathePreset.Box, Modifier.fillMaxWidth())
+        val journalTitle = stringResource(R.string.breathing_journal_title)
+        val journalBody = stringResource(R.string.breathing_journal_body)
+        val saveFailed = stringResource(R.string.common_save_failed)
         SectionCard(
             onClick = {
                 if (!saved) {
                     scope.launch {
-                        runCatching { Api.createJournal("Breathing", "Took a minute to breathe and settle.") }
+                        runCatching { Api.createJournal(journalTitle, journalBody) }
                             .onSuccess { saved = true; Celebrations.trigger() }
-                            .onFailure { status = it.message ?: "Couldn't save." }
+                            .onFailure { status = it.message ?: saveFailed }
                     }
                 }
             },
         ) {
-            Text(if (saved) "Reflection saved" else "Save reflection",
+            Text(if (saved) stringResource(R.string.breathing_saved) else stringResource(R.string.breathing_save),
                 style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-            Text("Add this practice to your private journal",
+            Text(stringResource(R.string.breathing_save_hint),
                 style = MaterialTheme.typography.labelSmall, color = TextSoft)
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
-        PrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth()) { onBack() }
+        PrimaryButton(text = stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth()) { onBack() }
+        WhyThisWorks(stringResource(R.string.breathe_why))
     }
 }
 
@@ -168,6 +81,7 @@ private fun JournalingTool(
     onBack: () -> Unit,
     compose: (List<String>) -> String,
     fields: List<Pair<String, String>>,   // label → placeholder-ish hint
+    provenance: String? = null,           // "why this works" footer (REDESIGN §2.4)
 ) {
     val values = remember { mutableStateOf(List(fields.size) { "" }) }
     var saved by remember { mutableStateOf(false) }
@@ -188,75 +102,57 @@ private fun JournalingTool(
                 minLines = 2,
             )
         }
+        val saveFailed = stringResource(R.string.common_save_failed)
         PrimaryButton(
-            text = if (saved) "Saved to your journal" else "Save to journal",
+            text = if (saved) stringResource(R.string.tool_saved_cta) else stringResource(R.string.tool_save_cta),
             enabled = !saved && values.value.all { it.isNotBlank() },
             modifier = Modifier.fillMaxWidth(),
         ) {
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
                     .onSuccess { saved = true; Celebrations.trigger() }
-                    .onFailure { status = it.message ?: "Couldn't save." }
+                    .onFailure { status = it.message ?: saveFailed }
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        provenance?.let { WhyThisWorks(it) }
     }
 }
 
 @Composable
-fun CbtReframeScreen(onBack: () -> Unit) = JournalingTool(
-    eyebrow = "Untangle a thought",
-    title = "From stuck to balanced",
-    intro = "Catch the thought, look at it honestly, and write the fairer version. This is the whole skill.",
-    journalTitle = "Balanced thought",
-    onBack = onBack,
-    compose = { v ->
-        "The thought: ${v[0]}\n\nWhat supports it: ${v[1]}\n\nWhat doesn't: ${v[2]}\n\nA more balanced thought: ${v[3]}"
-    },
-    fields = listOf(
-        "The thought that's looping" to "",
-        "Evidence it's true" to "",
-        "Evidence it's not the whole story" to "",
-        "A more balanced thought" to "",
-    ),
-)
-
-@Composable
-fun OneGoodThingScreen(onBack: () -> Unit) = JournalingTool(
-    eyebrow = "One good thing",
-    title = "Name a small win",
-    intro = "Anything counts — a kind word, a finished task, a decent cup of tea. Naming it makes it stick.",
-    journalTitle = "One good thing",
-    onBack = onBack,
-    compose = { v -> "One good thing today: ${v[0]}" },
-    fields = listOf("What went right?" to ""),
-)
-
-@Composable
-fun IntentionScreen(onBack: () -> Unit) = JournalingTool(
-    eyebrow = "Tomorrow's intention",
-    title = "One clear point",
-    intro = "Not a to-do list — one thing that would make tomorrow feel steadier.",
-    journalTitle = "Intention",
-    onBack = onBack,
-    compose = { v -> "Tomorrow I will: ${v[0]}" },
-    fields = listOf("Tomorrow I will…" to ""),
-)
+fun CbtReframeScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.cbt_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.cbt_eyebrow),
+        title = stringResource(R.string.cbt_title),
+        intro = stringResource(R.string.cbt_intro),
+        journalTitle = stringResource(R.string.cbt_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0], v[1], v[2], v[3]) },
+        fields = listOf(
+            stringResource(R.string.cbt_field_thought) to "",
+            stringResource(R.string.cbt_field_supports) to "",
+            stringResource(R.string.cbt_field_against) to "",
+            stringResource(R.string.cbt_field_balanced) to "",
+        ),
+        provenance = stringResource(R.string.cbt_why),
+    )
+}
 
 /** DBT TIPP — a guided walkthrough, no data collected. */
 @Composable
 fun TippScreen(onBack: () -> Unit) {
     val steps = listOf(
-        Triple("T — Temperature", "Hold something cold, splash cool water on your face, or step into cooler air.", "Cold triggers the dive reflex and slows your heart rate fast."),
-        Triple("I — Intense exercise", "60–90 seconds of anything vigorous: star jumps, fast stairs, a brisk walk.", "Burns off the adrenaline that keeps the alarm ringing."),
-        Triple("P — Paced breathing", "Exhale longer than you inhale: in for 4, out for 6–8, for a minute.", "Long exhales switch on the calming branch of your nervous system."),
-        Triple("P — Paired muscle relaxation", "Tense a muscle group as you inhale, release completely as you exhale.", "Teaches the body the difference between holding and letting go."),
+        Triple(stringResource(R.string.tipp_step1_title), stringResource(R.string.tipp_step1_how), stringResource(R.string.tipp_step1_why)),
+        Triple(stringResource(R.string.tipp_step2_title), stringResource(R.string.tipp_step2_how), stringResource(R.string.tipp_step2_why)),
+        Triple(stringResource(R.string.tipp_step3_title), stringResource(R.string.tipp_step3_how), stringResource(R.string.tipp_step3_why)),
+        Triple(stringResource(R.string.tipp_step4_title), stringResource(R.string.tipp_step4_how), stringResource(R.string.tipp_step4_why)),
     )
     var idx by remember { mutableIntStateOf(0) }
     val (heading, how, why) = steps[idx]
-    SubPage("For very intense moments", "TIPP", onBack) {
+    SubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
         Text(
-            "A DBT skill for when emotion is at a 9 or 10 and thinking feels impossible. Work the four steps in order.",
+            stringResource(R.string.tipp_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
         )
         SectionCard {
@@ -265,15 +161,16 @@ fun TippScreen(onBack: () -> Unit) {
             Text(why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = idx > 0, onClick = { idx-- }) { Text("Previous", color = TextMuted) }
-            Text("${idx + 1} of ${steps.size}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            TextButton(enabled = idx > 0, onClick = { idx-- }) { Text(stringResource(R.string.tipp_previous), color = TextMuted) }
+            Text(stringResource(R.string.tipp_progress, idx + 1, steps.size), style = MaterialTheme.typography.labelSmall, color = TextMuted)
             if (idx < steps.size - 1) {
-                TextButton(onClick = { idx++ }) { Text("Next", color = Periwinkle) }
+                TextButton(onClick = { idx++ }) { Text(stringResource(R.string.common_next), color = Periwinkle) }
             } else {
-                TextButton(onClick = onBack) { Text("Done — steadier", color = Ok) }
+                TextButton(onClick = onBack) { Text(stringResource(R.string.tipp_done), color = Ok) }
             }
         }
-        Text("If the urge to hurt yourself is present, please also reach out — Urgent support lives in the You tab.",
+        Text(stringResource(R.string.tipp_urge_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        WhyThisWorks(stringResource(R.string.tipp_why))
     }
 }
