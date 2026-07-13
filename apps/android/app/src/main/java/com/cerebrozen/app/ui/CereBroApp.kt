@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,10 +57,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.res.stringResource
 import com.cerebrozen.app.R
+import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.audio.MediaCatalog
+import com.cerebrozen.app.audio.Sfx
+import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
+import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
 import com.cerebrozen.app.ui.screens.BreatheScreen
 import com.cerebrozen.app.ui.screens.BreathingScreen
@@ -89,6 +95,7 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
+import com.cerebrozen.app.ui.screens.TalkMode
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
@@ -283,11 +290,22 @@ fun CereBroApp() {
     // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
     LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
+    // Resolve the server sound/video catalogue once per launch, then pull the
+    // one-shot assets onto disk so taps fire with no network in the path. Both
+    // steps are best-effort: with no catalogue (offline, first run, server down)
+    // every sound falls back to its synthesized tone or bundled loop, so the app
+    // is fully audible either way — this only ever upgrades what's already there.
+    val appContext = LocalContext.current.applicationContext
+    LaunchedEffect(Unit) {
+        runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
+        runCatching { Sfx.warm(appContext) }
+    }
+
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
     // Sleep contexts always keep the night palette (REDESIGN §4.1).
-    AppTheme.forceNight = current == Tab.Sleep.route
+    AppTheme.forceNight = current == Tab.Sleep.route || current.startsWith("sounds")
     val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
@@ -296,19 +314,43 @@ fun CereBroApp() {
     val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     val auroraAccent by animateColorAsState(
         targetValue = when (current) {
-            Tab.Sleep.route -> com.cerebrozen.app.ui.theme.Accent.sleep
-            Tab.Talk.route -> com.cerebrozen.app.ui.theme.Accent.talk
+            Tab.Sleep.route, "sounds", "sounds/mixer" -> com.cerebrozen.app.ui.theme.Accent.sleep
+            Tab.Talk.route, "talk/live", "talk/chat" -> com.cerebrozen.app.ui.theme.Accent.talk
             else -> com.cerebrozen.app.ui.theme.Accent.home
         },
         animationSpec = if (reduceMotion) snap() else tween(600),
         label = "aurora-accent",
     )
 
+    // The Sleep tab's scene loop, when one exists. It sits *beneath* the aurora, not
+    // instead of it: the aurora is translucent, so an uploaded scene reads through it,
+    // and with no scene uploaded (the shipping default — we hold no video we have the
+    // rights to) the aurora is simply what the user sees, exactly as before.
+    // Reduce Motion suppresses it entirely — a looping video is motion.
+    // Reading `loaded` (Compose-observable) is what re-runs this once the catalogue
+    // lands. It arrives asynchronously, after the first composition — a bare urlFor()
+    // read touches no snapshot state, so without this the scene would stay missing
+    // until some unrelated recomposition happened to occur.
+    val catalogueLoaded = MediaCatalog.loaded
+    val sceneUrl = when {
+        !catalogueLoaded || reduceMotion -> ""
+        // Sleep tab only. The pushed "sounds"/mixer screens are built on
+        // PremiumFrame, which paints its own opaque plate — a scene behind those
+        // would decode and then be covered, burning a video decoder to render
+        // nothing. Restrict it to the surface where it actually shows.
+        current == Tab.Sleep.route -> MediaCatalog.urlFor(MediaCatalog.Keys.SCENE_NIGHT_LAKE)
+        else -> ""
+    }
+
     Box(Modifier.fillMaxSize()) {
-    AuroraBackground(accent = auroraAccent)
+    SceneVideo(sceneUrl, Modifier.fillMaxSize())
+    // The aurora's plate is the app's opaque page floor; it has to go sheer over a
+    // scene, or the video under it can never be seen.
+    AuroraBackground(accent = auroraAccent, sceneBehind = sceneUrl.isNotBlank())
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
+            if (Tab.entries.any { it.route == current }) {
             // A floating lavender pill over a dark scrim — the tabs read as a lifted
             // capsule rather than a flat system bar.
             Box(
@@ -352,6 +394,7 @@ fun CereBroApp() {
                     }
                 }
             }
+            }
         },
     ) { padding ->
         NavHost(
@@ -372,6 +415,21 @@ fun CereBroApp() {
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
+            composable("talk/live") {
+                TalkScreen(
+                    onOpen = open,
+                    mode = TalkMode.Live,
+                    onBack = back,
+                    onChat = {
+                        navController.navigate("talk/chat") {
+                            popUpTo("talk/live") { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable("talk/chat") {
+                TalkScreen(onOpen = open, mode = TalkMode.Chat, onBack = back)
+            }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }

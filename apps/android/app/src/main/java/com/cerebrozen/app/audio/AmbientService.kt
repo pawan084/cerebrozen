@@ -159,13 +159,19 @@ class AmbientService : Service() {
     private val audioAttrs = AudioAttributes.Builder()
         .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
-    /** The bundled bed, looped gaplessly via REPEAT_MODE_ONE. */
+    /** The ambient bed, looped gaplessly via REPEAT_MODE_ONE. Plays the catalogue's
+     * `ambience.bed` asset when an admin has uploaded one, else the bundled loop —
+     * so an un-narrated item is never silent, with or without a server. */
     private fun createBed(): ExoPlayer? = runCatching {
+        val key = MediaCatalog.Keys.AMBIENCE_BED
+        val streaming = MediaCatalog.has(key)
         ExoPlayer.Builder(this).build().apply {
             setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
             setHandleAudioBecomingNoisy(true)
-            setWakeMode(C.WAKE_MODE_LOCAL)
-            setMediaItem(MediaItem.fromUri("android.resource://$packageName/${R.raw.ambient_bed}"))
+            // A streamed bed needs the wifi lock held overnight; a bundled one
+            // must not take one it doesn't use.
+            setWakeMode(if (streaming) C.WAKE_MODE_NETWORK else C.WAKE_MODE_LOCAL)
+            setMediaItem(MediaItem.fromUri(ambientUri(packageName, key, R.raw.ambient_bed)))
             repeatMode = Media3Player.REPEAT_MODE_ONE
             volume = 0f   // W27 §1: born silent; play() ramps it in
             prepare()

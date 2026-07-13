@@ -29,6 +29,10 @@ class ContentItem(Base):
     narration_script: Mapped[str] = mapped_column(Text, default="")
     audio_url: Mapped[str] = mapped_column(String(1024), default="")
     audio_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # An optional looping scene video played behind the item (muted, decorative).
+    # Empty = clients render their generative artwork instead — the honest default,
+    # since we ship no video until one is licensed and uploaded.
+    video_url: Mapped[str] = mapped_column(String(1024), default="")
     # Per-day program structure (W15): an ordered list of {"title", "body"}
     # guides, one per program day — day N of the enrollment reads guide N
     # (clamped to the last). NULL for non-programs and legacy rows; clients

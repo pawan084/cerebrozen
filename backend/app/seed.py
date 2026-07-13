@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.models.consent import Consent
 from app.models.content import ContentItem
+from app.models.media import MediaAsset
 from app.models.user import User
 from app.services import nudges
 
@@ -355,6 +356,65 @@ _DAY_GUIDES: dict[str, list[dict]] = {
 }
 
 
+# ── Media catalogue ─────────────────────────────────────────────────────
+# The keys every client resolves its sounds against (kind, title, loop). They ship
+# with an EMPTY url on purpose: a key with no bytes means "play your bundled loop
+# or synthesized tone", which is exactly what the apps already do well. Uploading
+# a file to a key via POST /admin/media/{id}/upload swaps that sound for every
+# user on their next launch — no app release. This list is a cross-stack contract:
+# it is mirrored in apps/android MediaCatalog.kt (see docs/ARCHITECTURE.md).
+#
+# Nothing here is sourced from another app's assets. Anything uploaded must be
+# first-party or properly licensed.
+_MEDIA: list[tuple[str, str, str, bool]] = [
+    # key, kind, title, loop
+    # Ambient beds — the soundscape mixer's four blendable layers, plus the
+    # default bed the player falls back to for un-narrated items.
+    ("ambience.rain", "ambience", "Rain", True),
+    ("ambience.ocean", "ambience", "Ocean", True),
+    ("ambience.wind", "ambience", "Wind", True),
+    ("ambience.drone", "ambience", "Drone", True),
+    ("ambience.bed", "ambience", "Ambient bed", True),
+    # Breath phase cues. Synthesized on-device today; a recorded voice or a
+    # softer instrument can be dropped in here later without touching the app.
+    ("breathe.inhale", "breathe", "Breathe in", False),
+    ("breathe.hold", "breathe", "Hold", False),
+    ("breathe.exhale", "breathe", "Breathe out", False),
+    # Toolkit activity sounds. The four pattern pads are a pentatonic set, so
+    # every sequence lands consonant — no arrangement of taps can sound wrong.
+    ("game.pad.0", "game", "Pattern pad 1", False),
+    ("game.pad.1", "game", "Pattern pad 2", False),
+    ("game.pad.2", "game", "Pattern pad 3", False),
+    ("game.pad.3", "game", "Pattern pad 4", False),
+    ("game.pattern.success", "game", "Pattern round complete", False),
+    # Deliberately not a buzzer: a missed pad resets the round with a soft,
+    # low settle. This is a mental-health app — a mistake must never scold.
+    ("game.pattern.reset", "game", "Pattern reset", False),
+    ("game.ripple", "game", "Zen ripple", False),
+    ("game.bloom", "game", "Gratitude bloom", False),
+    ("chime.timer_bell", "chime", "Session-end bell", False),
+    # Looping scene videos (muted, decorative). No bytes and no licensed source
+    # yet — clients render their generative aurora instead, which is the honest
+    # default rather than a black rectangle.
+    ("scene.night_lake", "scene", "Night lake", True),
+    ("scene.dawn", "scene", "Dawn", True),
+]
+
+
+async def _seed_media(db: AsyncSession) -> None:
+    """Additive by key: new keys reach existing DBs on boot; an admin's uploaded
+    url/title/loop on an existing key is never overwritten."""
+    existing = set((await db.scalars(select(MediaAsset.key))).all())
+    added = 0
+    for key, kind, title, loop in _MEDIA:
+        if key in existing:
+            continue
+        db.add(MediaAsset(key=key, kind=kind, title=title, loop=loop, url=""))
+        added += 1
+    if added:
+        logger.info("Seeded %d media catalogue keys", added)
+
+
 async def _ensure_user(db: AsyncSession, email: str, password: str, *, name: str, admin: bool) -> User:
     user = await db.scalar(select(User).where(User.email == email))
     if user:
@@ -369,7 +429,13 @@ async def _ensure_user(db: AsyncSession, email: str, password: str, *, name: str
 
 
 async def seed(db: AsyncSession) -> None:
+    # The media catalogue is structural, not demo data — it is the key contract the
+    # clients resolve their sounds against, and prod admins need the rows to exist
+    # before they can upload into them. So it seeds above the demo-data guard.
+    await _seed_media(db)
+
     if not settings.seed_demo_data:
+        await db.commit()
         return
 
     await _ensure_user(db, settings.admin_email, settings.admin_password, name="Admin", admin=True)

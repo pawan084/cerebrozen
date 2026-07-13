@@ -20,14 +20,15 @@ import com.cerebrozen.app.R
  * mixer. [stop] never counter-calls the other engine, so the pair can't loop.
  */
 object SoundscapeMixer {
-    /** One blendable ambient layer: display name, bundled loop, and a symbol key. */
-    data class Layer(val name: String, val rawRes: Int, val symbol: String)
+    /** One blendable ambient layer: display name, bundled loop, symbol, and the
+     * catalogue key whose server asset supersedes the bundled loop when uploaded. */
+    data class Layer(val name: String, val rawRes: Int, val symbol: String, val key: String)
 
     val layers = listOf(
-        Layer("Rain", R.raw.rain, "rain"),
-        Layer("Ocean", R.raw.ocean, "ocean"),
-        Layer("Wind", R.raw.wind, "wind"),
-        Layer("Drone", R.raw.drone, "drone"),
+        Layer("Rain", R.raw.rain, "rain", MediaCatalog.Keys.AMBIENCE_RAIN),
+        Layer("Ocean", R.raw.ocean, "ocean", MediaCatalog.Keys.AMBIENCE_OCEAN),
+        Layer("Wind", R.raw.wind, "wind", MediaCatalog.Keys.AMBIENCE_WIND),
+        Layer("Drone", R.raw.drone, "drone", MediaCatalog.Keys.AMBIENCE_DRONE),
     )
 
     /** W27 §3 (Calm study): a named one-tap volume vector over the four layers.

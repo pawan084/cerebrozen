@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, clearToken, getToken, login, setToken } from "@/lib/api";
+import { API_URL, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
-type Tab = "overview" | "analytics" | "users" | "content" | "prompts" | "nudges" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "nudges" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "analytics", label: "Analytics" },
   { key: "users", label: "Users" },
   { key: "content", label: "Content" },
+  { key: "media", label: "Media" },
   { key: "prompts", label: "Prompts" },
   { key: "nudges", label: "Nudges" },
   { key: "safety", label: "Safety" },
@@ -72,6 +73,7 @@ export default function AdminPage() {
         {tab === "analytics" && <Analytics />}
         {tab === "users" && <Users />}
         {tab === "content" && <Content />}
+        {tab === "media" && <Media />}
         {tab === "prompts" && <PromptsTab />}
         {tab === "nudges" && <NudgesTab />}
         {tab === "safety" && <Safety />}
@@ -466,6 +468,150 @@ const EMPTY_CONTENT = {
   image_url: "", duration_min: 0, premium: false, published: true,
   narration_script: "", day_guides: [] as { title: string; body: string }[],
 };
+
+// ── Media catalogue ─────────────────────────────────────────────────────
+// Every sound and video the clients can play, addressed by a stable key. The
+// clients ship with a bundled loop or a synthesized tone for each key, so a row
+// with an empty `url` is NOT broken — it means "no server asset yet, the app is
+// playing its own fallback". Uploading here replaces that sound for every user
+// on their next launch, with no app release. `scene.*` is the exception worth
+// calling out: there is no such thing as a synthesized video, so those keys are
+// genuinely silent-until-uploaded (the clients draw their generative artwork).
+const MEDIA_KIND_HELP: Record<string, string> = {
+  ambience: "Looping bed. Empty ⇒ the app plays its bundled loop.",
+  breathe: "Breath phase cue. Empty ⇒ the app plays its synthesized glide.",
+  game: "Toolkit activity sound. Empty ⇒ the app plays its synthesized tone.",
+  chime: "One-shot chime. Empty ⇒ the app plays its synthesized bell.",
+  scene: "Looping background video. Empty ⇒ no video plays (the app draws its aurora instead).",
+};
+
+const MEDIA_ACCEPT = ".mp3,.m4a,.ogg,.wav,.mp4,.webm";
+
+function Media() {
+  const { data, err, reload } = useData<any[]>(() => api("/admin/media"));
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+
+  async function onPick(asset: any, file: File | undefined) {
+    if (!file) return;
+    setBusyId(asset.id);
+    setMsg("");
+    try {
+      await upload(`/admin/media/${asset.id}/upload`, file);
+      setMsg(`Uploaded ${file.name} → ${asset.key}. Clients pick it up on next launch.`);
+      reload();
+    } catch (e: any) {
+      setMsg(String(e?.message || e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function clearAsset(asset: any) {
+    setBusyId(asset.id);
+    try {
+      // Point the key back at nothing: the clients fall straight back to their
+      // bundled/synthesized sound. (Deleting the row would remove the key itself,
+      // which is a schema change, not a content one — hence "Clear", not "Delete".)
+      await api(`/admin/media/${asset.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ url: "", mime: "" }),
+      });
+      setMsg(`Cleared ${asset.key} — the app is back on its built-in sound.`);
+      reload();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const rows = data ?? [];
+  const filled = rows.filter((a: any) => a.url).length;
+  const groups = Array.from(new Set(rows.map((a: any) => a.kind)));
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title serif">Media catalogue</h1>
+          <div className="page-sub" style={{ marginBottom: 0 }}>
+            {filled} of {rows.length} keys have an uploaded asset — the rest play the
+            app&apos;s built-in sound, which is normal.
+          </div>
+        </div>
+      </div>
+
+      {err && <div className="card">{err}</div>}
+      {msg && <div className="card" style={{ marginBottom: 12 }}>{msg}</div>}
+
+      {groups.map((kind) => (
+        <div key={String(kind)} className="card" style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 10 }}>
+            <strong className="serif" style={{ fontSize: 16, textTransform: "capitalize" }}>{String(kind)}</strong>
+            <div className="page-sub" style={{ marginBottom: 0 }}>{MEDIA_KIND_HELP[String(kind)] || ""}</div>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Title</th>
+                <th>Asset</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.filter((a: any) => a.kind === kind).map((a: any) => {
+                const busy = busyId === a.id;
+                const isVideo = String(a.mime).startsWith("video/");
+                return (
+                  <tr key={a.id}>
+                    <td><code>{a.key}</code></td>
+                    <td>{a.title}</td>
+                    <td>
+                      {a.url ? (
+                        isVideo ? (
+                          <video src={`${API_URL}${a.url}`} muted loop playsInline controls style={{ maxWidth: 200, borderRadius: 6 }} />
+                        ) : (
+                          <audio src={`${API_URL}${a.url}`} controls preload="none" style={{ maxWidth: 220 }} />
+                        )
+                      ) : (
+                        <span className="page-sub">
+                          {kind === "scene" ? "No video — the app draws its aurora" : "Using the app's built-in sound"}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <label className="btn" style={{ cursor: busy ? "wait" : "pointer" }}>
+                        {busy ? "Uploading…" : a.url ? "Replace" : "Upload"}
+                        <input
+                          type="file"
+                          accept={MEDIA_ACCEPT}
+                          disabled={busy}
+                          style={{ display: "none" }}
+                          onChange={(e) => { onPick(a, e.target.files?.[0]); e.target.value = ""; }}
+                        />
+                      </label>
+                      {a.url && (
+                        <button className="btn" disabled={busy} onClick={() => clearAsset(a)} style={{ marginLeft: 8 }}>
+                          Clear
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {rows.length === 0 && !err && (
+        <div className="card">
+          No catalogue keys. They are seeded on backend boot — check that the API started.
+        </div>
+      )}
+    </>
+  );
+}
 
 function Content() {
   const { data, err, reload } = useData<any[]>(() => api("/admin/content"));

@@ -24,6 +24,23 @@
   2026-07-03 — investor gap #3.)
 - [ ] **Ops config:** `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APNS_*`, and `ASC_*`
   GitHub secrets (TestFlight workflow).
+- [ ] **Licensed media for the catalogue** (2026-07-13). The keyed media catalogue
+  (`GET /media/catalog` + `POST /admin/media/{id}/upload`) ships with every key
+  seeded and **every `url` empty** — the app is fully audible on its bundled loops
+  and synthesized tones, and each upload is a pure upgrade with no app release.
+  What's missing is the audio/video itself. Needed, all **first-party or licensed**:
+  - `scene.night_lake` / `scene.dawn` — no video ships at all today; clients render
+    the generative aurora instead. These are the only two keys with *no* fallback of
+    their own kind (there is no such thing as a synthesized video).
+  - `breathe.inhale` / `.hold` / `.exhale` — recorded cues would beat the synth glide.
+  - `game.*`, `chime.timer_bell` — optional; the synthesized tones are good.
+  - `ambience.*` — optional; the four bundled loops already ship.
+  ⚠️ **Do not source these from `calm/`.** That directory is a competitive teardown of
+  Calm's shipped APK (it is git-ignored for exactly this reason, and
+  `calm/extracted/TEARDOWN_NOTES.md` says so) — its 51 breathe `.ogg` files and
+  `jasper_lake.mp4` are Calm's copyrighted assets. Shipping them is infringement and a
+  store-takedown risk. Use it as a spec (phase timings, how many cues), never as a
+  source of bytes.
 
 ## Open — needs a product/legal decision (surfaced by the 2026-07-12 Android deep review)
 

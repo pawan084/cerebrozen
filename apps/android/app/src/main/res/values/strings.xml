@@ -69,7 +69,20 @@
 
     <!-- ── Talk (TalkScreen.kt) ────────────────────────────────────────── -->
     <string name="talk_eyebrow">AI voice companion</string>
-    <string name="talk_title">Talk it through</string>
+    <string name="talk_title">How are you feeling today?</string>
+    <string name="talk_good_morning">Good morning</string>
+    <string name="talk_good_afternoon">Good afternoon</string>
+    <string name="talk_good_evening">Good evening</string>
+    <string name="talk_home_subtitle">Take a breath. You can speak freely here.</string>
+    <string name="talk_tap_start">Tap to start talking</string>
+    <string name="talk_chat_cta">Continue with AI Chat</string>
+    <string name="talk_chat_eyebrow">Text fallback</string>
+    <string name="talk_chat_title">AI Chat</string>
+    <string name="talk_open_chat_cd">Open AI Chat</string>
+    <string name="talk_back">Back</string>
+    <string name="talk_landing_body">Tap the orb to start a real conversation. I\'ll listen, then talk it through with you.</string>
+    <string name="talk_send_cd">Send message</string>
+    <string name="talk_history_start">Start of this conversation</string>
     <string name="talk_offline_banner">You\'re offline — the companion needs a connection. The Toolkit below still works.</string>
     <string name="talk_offline_action">Toolkit</string>
     <string name="talk_disclosure_pill">AI companion — not a therapist or crisis service</string>
@@ -92,6 +105,7 @@
     <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>
     <string name="talk_save_journal">Save this conversation to my journal</string>
+    <string name="talk_save_journal_short">Save to Journal</string>
     <string name="talk_journal_entry_title">Talk reflection</string>
     <string name="talk_saved_status">Saved to your journal.</string>
     <string name="talk_save_failed">Couldn\'t save — try again.</string>
@@ -111,6 +125,13 @@
     <string name="talk_transcribe_failed">Couldn\'t transcribe — you can type below.</string>
     <string name="talk_mic_off">Microphone access is off — you can still type below.</string>
     <string name="talk_live_session">LIVE SESSION</string>
+    <string name="talk_status_listening">Listening…</string>
+    <string name="talk_status_thinking">Thinking…</string>
+    <string name="talk_status_speaking">Speaking…</string>
+    <string name="talk_status_ready">I’m here</string>
+    <string name="talk_companion_name">CereBro</string>
+    <string name="talk_mute">Mute</string>
+    <string name="talk_unmute">Unmute</string>
     <string name="talk_state_speaking_interrupt">Speaking — tap the orb to interrupt</string>
     <string name="talk_state_listening">Listening… tap the orb when you\'re done</string>
     <string name="talk_state_orb">Tap the orb to speak</string>
@@ -148,6 +169,16 @@
     <string name="today_rail_ambient">Ambient</string>
     <string name="today_toolkit_title">Toolkit</string>
     <string name="today_toolkit_subtitle">Small practices for right now</string>
+    <string name="today_quick_access_title">Quick Access</string>
+    <string name="today_quick_access_subtitle">A calmer moment is one tap away.</string>
+    <string name="today_quick_games_title">Games</string>
+    <string name="today_quick_games_description">Quick calming activities</string>
+    <string name="today_quick_insights_title">Insights</string>
+    <string name="today_quick_insights_description">AI wellness insights</string>
+    <string name="today_quick_programs_title">Programs</string>
+    <string name="today_quick_programs_description">Daily guided plans</string>
+    <string name="today_quick_sounds_title">Sounds</string>
+    <string name="today_quick_sounds_description">Relaxing soundscapes</string>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">
@@ -160,10 +191,14 @@
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
     <string name="sleep_eyebrow">Improve your sleep, night by night</string>
     <string name="sleep_title">Sleep</string>
+    <string name="sleep_premium_subtitle">Improve your sleep, night by night.</string>
     <string name="sleep_hero_eyebrow">Wind down</string>
     <string name="sleep_hero_title">A calmer night</string>
     <string name="sleep_hero_subtitle">A slower evening makes for a softer morning.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
+    <string name="sleep_estimated_duration">About 20 minutes</string>
+    <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
+    <string name="sleep_guides_empty">Start your first relaxing session.</string>
     <string name="sleep_play_cd">Play the ambient bed</string>
     <string name="sleep_checkin_title">Morning check-in</string>
     <string name="sleep_checkin_subtitle">How rested do you feel?</string>
@@ -365,7 +400,7 @@
     <!-- ── Toolkit hub (Extras.kt) ─────────────────────────────────────── -->
     <string name="toolkit_eyebrow">Small ways to steady</string>
     <string name="toolkit_title">Toolkit</string>
-    <string name="toolkit_intro">Pick what the moment needs — ground, breathe, reframe, settle.</string>
+    <string name="toolkit_intro">Choose a calming exercise for this moment.</string>
     <string name="toolkit_header_ground">Ground</string>
     <string name="toolkit_header_breathe">Breathe</string>
     <string name="toolkit_header_reframe">Reframe</string>
@@ -391,6 +426,28 @@
     <string name="toolkit_sounds_subtitle">Soundscapes and sleep stories</string>
     <string name="toolkit_support_title">Need support right now?</string>
     <string name="toolkit_playable_badge">PLAYABLE</string>
+    <string name="toolkit_ground_description">Reconnect with the present.</string>
+    <string name="toolkit_breathe_description">Slow your nervous system.</string>
+    <string name="toolkit_reframe_description">Change your perspective.</string>
+    <string name="toolkit_settle_description">Relax before rest.</string>
+    <string name="toolkit_header_support">Support</string>
+    <string name="toolkit_support_description">Reach trusted help when you need it.</string>
+    <string name="toolkit_ground_title">5-4-3-2-1 grounding</string>
+    <string name="toolkit_badge_ground">GROUND</string>
+    <string name="toolkit_badge_breathe">BREATHE</string>
+    <string name="toolkit_badge_reframe">REFRAME</string>
+    <string name="toolkit_badge_settle">SETTLE</string>
+    <string name="toolkit_badge_support">SUPPORT</string>
+    <string name="toolkit_duration_1">1 min</string>
+    <string name="toolkit_duration_2">2 min</string>
+    <string name="toolkit_duration_3">3 min</string>
+    <string name="toolkit_duration_5">5 min</string>
+    <string name="toolkit_duration_open">Open-ended</string>
+    <string name="toolkit_level_gentle">Gentle</string>
+    <string name="toolkit_level_easy">Easy</string>
+    <string name="toolkit_level_guided">Guided</string>
+    <string name="toolkit_featured">FEATURED EXERCISE</string>
+    <string name="toolkit_begin">Begin</string>
 
     <!-- ── Grounding stepper (Extras.kt) ───────────────────────────────── -->
     <string name="ground_counter">5 · 4 · 3 · 2 · 1</string>
@@ -426,6 +483,21 @@
     <string name="sounds_fading_out_in">Fading out in %1$s</string>
     <string name="sounds_sleep_timer_short">Sleep timer: %1$dm</string>
     <string name="mixer_intro">Blend rain, ocean, wind and a soft drone into your own calm — nudge each one to taste.</string>
+    <string name="mixer_eyebrow">Immersive ambient audio</string>
+    <string name="mixer_title">Sound Mixer</string>
+    <string name="mixer_subtitle">Create your perfect relaxing atmosphere.</string>
+    <string name="mixer_custom_mix">Your custom atmosphere</string>
+    <string name="mixer_open_ended">Open-ended session</string>
+    <string name="mixer_now_mixing">Now mixing</string>
+    <string name="mixer_all_layers">Controls every active sound</string>
+    <string name="mixer_presets">Calming presets</string>
+    <string name="mixer_layers">Sound layers</string>
+    <string name="mixer_playing">Playing</string>
+    <string name="mixer_bell_description">A gentle chime before the soundscape fades to silence.</string>
+    <string name="mixer_rain_description">Gentle rainfall for deep relaxation.</string>
+    <string name="mixer_ocean_description">Slow shoreline waves with a spacious rhythm.</string>
+    <string name="mixer_wind_description">Soft moving air to quiet a busy mind.</string>
+    <string name="mixer_drone_description">A warm low tone that grounds the whole mix.</string>
     <string name="mixer_master_volume">Master volume</string>
     <string name="mixer_fades_note">Fades out in %1$s — drift off, it stops itself.</string>
     <!-- W27 §3: one-tap mixer presets (stable keys in SoundscapeMixer.presets). -->
@@ -434,6 +506,9 @@
     <string name="mixer_preset_still_air">Still air</string>
     <!-- W27 §5: session-end bell when a sleep timer completes (default on). -->
     <string name="sounds_timer_bell">End with a soft bell</string>
+    <!-- Toolkit activity sounds (pattern pads, ripples, gratitude bloom); default on. -->
+    <string name="sounds_activity">Activity sounds</string>
+    <string name="mixer_activity_description">Soft tones as you play the calming activities.</string>
     <string name="player_eyebrow">Now playing</string>
     <string name="player_nothing">Nothing playing</string>
     <string name="player_empty_hint">Pick a soundscape or story from Sounds and it plays here.</string>
@@ -448,6 +523,7 @@
     <!-- ── Insights (Extras.kt) ────────────────────────────────────────── -->
     <string name="insights_eyebrow">Insights · this week</string>
     <string name="insights_default_headline">Your week</string>
+    <string name="insights_error_title">Your insights are taking a moment</string>
     <string name="insights_error_fallback">Couldn\'t load your week — try again shortly.</string>
     <string name="insights_loading">Reading your week…</string>
     <string name="insights_hero_eyebrow">This week</string>
@@ -456,6 +532,8 @@
     <string name="insights_baseline_recorded">" · recorded %1$s"</string>
     <string name="insights_baseline_nav_title">Set your starting point</string>
     <string name="insights_baseline_nav_subtitle">Two quick scales — see real change later</string>
+    <string name="insights_metrics_title">Weekly signals</string>
+    <string name="insights_metrics_empty_title">Your patterns will appear here</string>
     <string name="insights_metrics_empty">Log a few days and honest patterns appear here — no guesses.</string>
     <string name="insights_privacy_footer">First-party — computed on your own data, never sold or shared.</string>
 
@@ -612,6 +690,13 @@
     <string name="breathe_box_eyebrow">Steady in fours</string>
     <string name="breathe_box_title">Box breathing</string>
     <string name="breathe_box_intro">In for four, hold for four, out for four, hold for four — let the orb set the pace.</string>
+    <string name="breathe_box_detail">4-4-4-4 Guided Exercise</string>
+    <string name="breathe_reset_detail">4-4 Guided Reset</string>
+    <string name="breathe_color_detail">Guided Color Exercise</string>
+    <string name="breathe_estimated_time">Estimated time • 2 min</string>
+    <string name="breathe_pace_title">Breathing pace</string>
+    <string name="breathe_settings_title">Guidance</string>
+    <string name="breathe_seconds_remaining">seconds remaining</string>
     <string name="breathe_color_eyebrow">Follow the glow</string>
     <string name="breathe_color_title">Color breathing</string>
     <string name="breathe_color_intro">Let your breath follow the orb as the glow shifts with each phase.</string>

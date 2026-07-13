@@ -38,7 +38,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | LLM | `OPENAI_API_KEY` (`OPENAI_MODEL`) → `ANTHROPIC_API_KEY` (`AI_MODEL`) | deterministic local replies/plans/topics |
 | Oracle | `ORACLE_ENABLED` (+ an LLM key) | `/oracle` 503 → clients use `/chat` |
 | Voice | `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | `/voice/status` reports disabled; admin narration generation (`POST /admin/content/{id}/narrate`) 503s |
-| Media | `MEDIA_ROOT` (default `media`, relative to the working dir) | generated narration MP3s land here, served publicly at `/media`; prod compose mounts the named `media` volume at `/app/media` so files survive redeploys (dev bind-mount writes to git-ignored `backend/media/`) |
+| Media | `MEDIA_ROOT` (default `media`, relative to the working dir) | generated narration MP3s (`/media/narration/`) and admin-uploaded catalogue assets (`/media/assets/`) land here, served publicly at `/media`; prod compose mounts the named `media` volume at `/app/media` so files survive redeploys (dev bind-mount writes to git-ignored `backend/media/`). **Route order:** `app.include_router` must stay above `app.mount("/media", …)` — the media router owns `GET /media/catalog` under the same prefix, and a Mount registered first would swallow it (`tests/test_media_catalog.py` locks this) |
 | Sign-in | `APPLE_CLIENT_ID`, `GOOGLE_CLIENT_ID` | social sign-in 400s; email auth works |
 | Subscriptions | `APPSTORE_BUNDLE_ID`, `APPSTORE_ROOT_CERT_PATH` | unpinned chain when blank (dev); prod template pins to the bundled `app/certs/AppleRootCA-G3.pem` |
 | Nudges | `NUDGE_DISPATCH_INTERVAL_MINUTES` | default 5; 0 = external cron via `POST /admin/nudges/dispatch` |

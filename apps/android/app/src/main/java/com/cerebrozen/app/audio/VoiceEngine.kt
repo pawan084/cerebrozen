@@ -90,6 +90,15 @@ class VoiceEngine(context: Context) {
         level = 0f
     }
 
+    /** Cancel the current take without delivering a final transcript. Used by
+     * the live-call mute control; stopListening() may still produce onResults. */
+    fun cancelListening() {
+        onFinal = null
+        recognizer?.cancel()
+        listening = false
+        level = 0f
+    }
+
     /** Speak [text]; [onDone] fires once when playback finishes (or errors),
      * so the caller can resume listening for a natural turn-taking loop. */
     fun speak(text: String, onDone: () -> Unit = {}) {

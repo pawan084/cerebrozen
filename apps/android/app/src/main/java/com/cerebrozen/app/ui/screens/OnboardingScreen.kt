@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -77,6 +78,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -483,7 +485,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         stringResource(R.string.ob_reset_eyebrow), stringResource(R.string.ob_reset_title),
         stringResource(R.string.ob_reset_sub),
         stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
-        titleCentered = true,
+        compactTitle = true,
         secondary = {
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
@@ -494,7 +496,12 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
             }
         },
     ) {
-        BreatheEngine(BreathePreset.Reset, Modifier.fillMaxWidth())
+        BreatheEngine(
+            preset = BreathePreset.Reset,
+            modifier = Modifier.fillMaxWidth(),
+            chimeOn = true,
+            compact = true,
+        )
     }
 }
 
@@ -514,6 +521,7 @@ private fun Funnel(
     onBack: (() -> Unit)?,
     primaryEnabled: Boolean = true,
     titleCentered: Boolean = false,
+    compactTitle: Boolean = false,
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -535,7 +543,12 @@ private fun Funnel(
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 145.dp),
+                .padding(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = 32.dp,
+                    bottom = if (secondary == null) 145.dp else 210.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
             Text(
@@ -546,7 +559,10 @@ private fun Funnel(
             Text(
                 title,
                 modifier = if (titleCentered) Modifier.fillMaxWidth() else Modifier,
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 38.sp, lineHeight = 39.sp),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = if (compactTitle) 32.sp else 38.sp,
+                    lineHeight = if (compactTitle) 35.sp else 39.sp,
+                ),
                 color = Color.White,
                 textAlign = if (titleCentered) TextAlign.Center else TextAlign.Start,
             )
@@ -657,16 +673,27 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
     ) {
         options.forEach { opt ->
             val isSelected = selected == opt
+            val shape = RoundedCornerShape(14.dp)
             Box(
-                Modifier.height(47.dp).clip(RoundedCornerShape(14.dp))
+                Modifier.heightIn(min = 48.dp).clip(shape)
                     .background(if (isSelected) Color.White else DotUnselectedFill)
-                    .clickable { onPick(opt) }.padding(horizontal = 22.dp),
+                    .border(
+                        1.dp,
+                        if (isSelected) Color(0xFFB9C8FF) else Color.White.copy(alpha = 0.04f),
+                        shape,
+                    )
+                    .clickable(
+                        role = androidx.compose.ui.semantics.Role.RadioButton,
+                        onClickLabel = opt,
+                    ) { onPick(opt) }
+                    .padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     opt,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isSelected) PrimaryButtonInk else Color.White,
+                    color = if (isSelected) Color(0xFF17213A) else Color.White,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 )
             }
         }

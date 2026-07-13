@@ -76,7 +76,47 @@ export async function api<T = any>(
     clearToken();
     throw new Error("unauthorized");
   }
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  if (!res.ok) throw new Error(await errorDetail(res));
   if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+/** FastAPI puts the actionable message in `detail` — surface it instead of a bare
+ * status code, so "File exceeds 25 MB" reaches the admin rather than "413". */
+async function errorDetail(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string" && body.detail) return body.detail;
+  } catch {
+    /* not JSON — fall through to the status */
+  }
+  return `Request failed: ${res.status}`;
+}
+
+/**
+ * Multipart upload — a separate path from [api] because that one hardcodes
+ * `Content-Type: application/json`. A multipart body must NOT carry a
+ * caller-set Content-Type: the browser has to write it itself so it can append
+ * the boundary token, and overriding it makes the server fail to parse the body.
+ */
+export async function upload<T = any>(
+  path: string,
+  file: File,
+  allowRetry = true,
+): Promise<T> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (res.status === 401 || res.status === 403) {
+    if (allowRetry && (await tryRefresh())) return upload<T>(path, file, false);
+    clearToken();
+    throw new Error("unauthorized");
+  }
+  if (!res.ok) throw new Error(await errorDetail(res));
   return res.json();
 }

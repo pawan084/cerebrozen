@@ -42,7 +42,7 @@ fun BaselineScreen(onBack: () -> Unit) {
     var sleep by remember { mutableIntStateOf(0) }
     var saved by remember { mutableStateOf(false) }
 
-    SubPage(stringResource(R.string.baseline_eyebrow), stringResource(R.string.insights_baseline_title), onBack) {
+    PremiumSubPage(stringResource(R.string.baseline_eyebrow), stringResource(R.string.insights_baseline_title), onBack) {
         Text(
             stringResource(R.string.baseline_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,

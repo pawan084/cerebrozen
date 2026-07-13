@@ -44,8 +44,6 @@ class SoundscapeService : Service() {
         const val EXTRA_MINUTES = "minutes"
         private const val CHANNEL = "soundscape_mix"
         private const val NOTIF = 78
-        // Parallel to SoundscapeMixer.layers (rain, ocean, wind, drone).
-        private val LAYER_RES = intArrayOf(R.raw.rain, R.raw.ocean, R.raw.wind, R.raw.drone)
         private const val FADE_LEAD = 12
     }
 
@@ -117,12 +115,20 @@ class SoundscapeService : Service() {
             // the foreground service (parity with AmbientService's runCatching).
             rampFactor = 0f   // W27 §1: fresh voices are born silent
             players = runCatching {
-                LAYER_RES.map { res ->
+                // Derived from SoundscapeMixer.layers, never a parallel list — the
+                // volumes array is indexed against it, and a copy that drifted out
+                // of order would silently route rain's slider to the drone.
+                SoundscapeMixer.layers.map { layer ->
+                    // A layer streams its server asset when one is uploaded, else
+                    // its bundled loop. A streamed layer needs the network wake
+                    // mode; a bundled one must not hold a wifi lock all night.
+                    val uri = ambientUri(packageName, layer.key, layer.rawRes)
+                    val streaming = MediaCatalog.has(layer.key)
                     ExoPlayer.Builder(this).build().apply {
                         setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
                         setHandleAudioBecomingNoisy(true)
-                        setWakeMode(C.WAKE_MODE_LOCAL)
-                        setMediaItem(MediaItem.fromUri("android.resource://$packageName/$res"))
+                        setWakeMode(if (streaming) C.WAKE_MODE_NETWORK else C.WAKE_MODE_LOCAL)
+                        setMediaItem(MediaItem.fromUri(uri))
                         repeatMode = Player.REPEAT_MODE_ONE
                         volume = 0f
                         prepare()

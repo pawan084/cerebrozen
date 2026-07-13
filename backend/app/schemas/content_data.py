@@ -97,6 +97,8 @@ class ContentBase(BaseModel):
     image_url: str = ""
     # Relative "/media/..." (backend-minted) or absolute URL; empty = no narration.
     audio_url: str = ""
+    # Optional looping scene video behind the item; empty = generative artwork.
+    video_url: str = ""
     duration_min: int = 0
     premium: bool = False
     published: bool = True
@@ -115,6 +117,7 @@ class ContentUpdate(BaseModel):
     symbol: str | None = None
     image_url: str | None = None
     audio_url: str | None = None
+    video_url: str | None = None
     narration_script: str | None = None
     duration_min: int | None = None
     premium: bool | None = None

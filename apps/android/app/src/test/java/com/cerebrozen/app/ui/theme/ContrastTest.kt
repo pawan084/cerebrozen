@@ -8,23 +8,25 @@ import org.junit.Test
 import kotlin.math.pow
 
 /**
- * The token contrast gate (REDESIGN.md §4.2), parameterized over both themes
- * (§4.1 Dusk & Dawn): every text role must reach the WCAG AA 4.5:1 ratio
- * against every surface it legitimately appears on, in Night AND in Dawn.
- * Runs as a plain JVM test over the real Color tokens (which resolve through
- * AppTheme), so a palette tweak that breaks legibility fails the build
- * instead of shipping.
+ * The token contrast gate, parameterized over both themes of the "Serene" palette
+ * (Color.kt): every text role must reach WCAG AA 4.5:1 against every surface it
+ * legitimately appears on, in Navy AND in Warm White. Runs as a plain JVM test
+ * over the real Color tokens (which resolve through AppTheme), so a palette tweak
+ * that breaks legibility fails the build instead of shipping.
  *
- * Night surfaces under test: [Night] (the page backdrop), [Surface]/[CardFill]
- * (resting card fill) and [SurfaceRaised] (0xFF39355F — also the top stop of
- * `Gradients.glass`, i.e. the lightest paint a glass card actually renders,
- * and the chip fill). Passing on SurfaceRaised implies passing on everything
- * darker in the elevation ladder.
+ * This gate is why the brand palette is split in two (see the header comment in
+ * Color.kt): the owner-specified Sky #6ECBF5 and Mint #7ED9B6 measure 1.75:1 and
+ * 1.61:1 as text on the Warm White ground — unreadable. They ship verbatim as
+ * FILLS ([BrandSecondary]/[BrandAccent]); the [Cyan]/[Ok] tokens carry the
+ * text-safe siblings that these tests enforce.
  *
- * Dawn surfaces under test: [Night] (= the cream page ground 0xFFECEEFB),
- * [NightMid] (0xFFDDDBF0 — the darkest paint of the page backdrop gradient,
- * the worst case for Dawn's dark-on-light text), [CardFill] (0xFFF7F8FE) and
- * [SurfaceRaised]/[ChipFill] (0xFFE4E2F4).
+ * Night surfaces under test: [Night] (page backdrop), [Surface]/[CardFill]
+ * (resting card) and [SurfaceRaised] (chip fill + the lightest stop of
+ * `Gradients.glass`, i.e. the lightest paint a card actually renders).
+ *
+ * Dawn surfaces: [Night] (the warm-white ground), [NightMid] (the darkest paint
+ * of the page backdrop — worst case for dark-on-light text), [CardFill] (white)
+ * and [SurfaceRaised].
  */
 class ContrastTest {
 
@@ -49,8 +51,18 @@ class ContrastTest {
     private fun assertContrast(name: String, fg: Color, bg: Color, min: Double = 4.5) {
         val ratio = contrast(fg.toArgb(), bg.toArgb())
         assertTrue(
-            "$name: contrast ${"%.2f".format(ratio)}:1 is below the ${min}:1 gate",
+            "$name: contrast ${"%.2f".format(ratio)}:1 is below the $min:1 gate",
             ratio >= min,
+        )
+    }
+
+    /** Composite an alpha colour over an opaque one — how a wash actually renders. */
+    private fun composite(over: Color, under: Color): Color {
+        val a = over.alpha
+        return Color(
+            red = over.red * a + under.red * (1 - a),
+            green = over.green * a + under.green * (1 - a),
+            blue = over.blue * a + under.blue * (1 - a),
         )
     }
 
@@ -74,228 +86,153 @@ class ContrastTest {
     private fun night(block: () -> Unit) = inTheme(ThemeMode.Night, block)
     private fun dawn(block: () -> Unit) = inTheme(ThemeMode.Dawn, block)
 
-    // ── Night (the original assertions — ratios unchanged) ──────────────────
+    /** Every surface a text role can legitimately land on, per theme. */
+    private fun surfaces(light: Boolean): List<Pair<String, Color>> = buildList {
+        add("bg" to Night)
+        if (light) add("bgTop" to NightMid)   // darkest page paint — dark-text worst case
+        add("card" to Surface)
+        add("raised" to SurfaceRaised)
+    }
+
+    /** The full text ladder + every accent that is used as a label somewhere. */
+    private fun textRoles(): List<Pair<String, Color>> = listOf(
+        "TextPrimary" to TextPrimary,
+        "TextSecondary" to TextSecondary,
+        "TextMuted" to TextMuted,
+        "TextFaint" to TextFaint,
+        "EyebrowMuted" to EyebrowMuted,
+        "Periwinkle" to Periwinkle,
+        "Cyan" to Cyan,
+        "Ok" to Ok,
+        "Warm" to Warm,
+        "Danger" to Danger,
+    )
+
+    // ── The core gate: every role on every surface, in both themes ───────────
 
     @Test
-    fun night_textFaint_meetsAA_onEverySurface() = night {
-        // TextMuted2/TextFaint is the faintest legal text — the 2026-07 fix
-        // lightened it from 0xFF928CAC precisely to clear these three.
-        assertContrast("TextMuted2 on CardFill", TextMuted2, CardFill)          // 5.16:1
-        assertContrast("TextMuted2 on Night", TextMuted2, Night)                // 7.48:1
-        assertContrast("TextMuted2 on SurfaceRaised", TextMuted2, SurfaceRaised) // 4.51:1
+    fun night_everyTextRole_meetsAA_onEverySurface() = night {
+        textRoles().forEach { (role, colour) ->
+            surfaces(light = false).forEach { (name, bg) ->
+                assertContrast("$role on $name (Night)", colour, bg)
+            }
+        }
     }
 
     @Test
-    fun night_textMuted_meetsAA() = night {
-        assertContrast("TextMuted on CardFill", TextMuted, CardFill) // 6.99:1
-        assertContrast("TextMuted on Night", TextMuted, Night)       // 10.14:1
+    fun dawn_everyTextRole_meetsAA_onEverySurface() = dawn {
+        textRoles().forEach { (role, colour) ->
+            surfaces(light = true).forEach { (name, bg) ->
+                assertContrast("$role on $name (Dawn)", colour, bg)
+            }
+        }
+    }
+
+    // ── Controls ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun primaryButton_meetsAA_inBothThemes() {
+        // The CTA is one deep-lavender pill with a white label in both themes.
+        // Both gradient stops are gated; the TOP stop is the worst case.
+        // Keep these hexes in sync with Gradients.primary (Brush stops aren't
+        // readable from a plain JVM test).
+        listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
+            inTheme(mode) {
+                assertContrast("OnPrimary on pill top ($mode)", OnPrimary, LavenderPillTop)     // 4.72:1
+                assertContrast("OnPrimary on pill floor ($mode)", OnPrimary, LavenderPillFloor) // 6.46:1
+                assertContrast("Ink on ButtonDisabled ($mode)", Ink, ButtonDisabled)            // 9.13:1
+            }
+        }
     }
 
     @Test
-    fun night_textSoft_meetsAA() = night {
-        assertContrast("TextSoft on CardFill", TextSoft, CardFill) // 9.82:1
-        assertContrast("TextSoft on Night", TextSoft, Night)       // 14.25:1
-    }
-
-    @Test
-    fun night_periwinkleAsText_meetsAA_onEverySurface() = night {
-        // The last un-gated debt (TODO 2026-07-12): Periwinkle renders as text
-        // (labels like "Try another", "Try together") on cards and glass tops.
-        // Brightened 0xFF8B78F2 → 0xFFA89AF6 to clear all three grounds.
-        assertContrast("Periwinkle on CardFill", Periwinkle, CardFill)           // 5.33:1
-        assertContrast("Periwinkle on Night", Periwinkle, Night)                 // 7.73:1
-        assertContrast("Periwinkle on SurfaceRaised", Periwinkle, SurfaceRaised) // 4.66:1
-    }
-
-    @Test
-    fun night_eyebrow_meetsAA() = night {
-        // Small-caps section labels render at label size — held to normal-text 4.5:1.
-        assertContrast("EyebrowMuted on Night", EyebrowMuted, Night)       // 7.95:1
-        assertContrast("EyebrowMuted on CardFill", EyebrowMuted, CardFill) // 5.48:1
-    }
-
-    @Test
-    fun night_primaryButtonText_meetsAA() = night {
-        // PrimaryButton draws OnPrimary (= Ink on Night) over Gradients.primary
-        // (white -> 0xFFF7F5FC); 0xFFF7F5FC is the gradient's darker stop, i.e.
-        // the worst case. Keep the hex in sync with Gradients.primary in
-        // Tokens.kt (Brush stops aren't readable from a plain JVM test).
-        assertContrast("Ink on PrimaryButtonFill", Ink, PrimaryButtonFill)       // 16.36:1
-        assertContrast("OnPrimary on primary-gradient floor", OnPrimary, Color(0xFFF7F5FC)) // 15.59:1
-    }
-
-    @Test
-    fun night_textPrimary_clearsAA_withRoomToSpare() = night {
-        // Display text would only need 3.0:1; it clears full AA easily — gate at 4.5.
-        assertContrast("TextPrimary on Night", TextPrimary, Night)       // 17.29:1
-        assertContrast("TextPrimary on CardFill", TextPrimary, CardFill) // 11.91:1
-    }
-
-    @Test
-    fun night_dangerButton_meetsAA() = night {
-        // DangerButton draws the Night token over the Danger fill.
-        assertContrast("Night on Danger", Night, Danger) // 7.42:1
-    }
-
-    @Test
-    fun night_selectedChip_meetsAA() = night {
-        assertContrast("ChipSelectedInk on ChipSelectedFill", ChipSelectedInk, ChipSelectedFill) // 16.36:1
-    }
-
-    // ── Night regression: the palette must be byte-identical to pre-Dawn ────
-
-    @Test
-    fun nightPalette_isByteIdentical_toPreDawnValues() = night {
-        // "Zero visual change in Night mode" is a hard requirement of the Dawn
-        // pass: every themed token must resolve to the exact pre-Dawn value.
-        val expected = mapOf(
-            "Night" to (Night to Color(0xFF100D2B)),
-            "NightMid" to (NightMid to Color(0xFF3A3372)),
-            "NightPurple" to (NightPurple to Color(0xFF29254D)),
-            "TextPrimary" to (TextPrimary to Color(0xFFF5F4FF)),
-            "TextSoft" to (TextSoft to Color(0xFFE1DEEE)),
-            "TextMuted" to (TextMuted to Color(0xFFC0BBD4)),
-            "TextMuted2" to (TextMuted2 to Color(0xFFA5A0BA)),
-            "CardFill" to (CardFill to Color(0xFF302C55)),
-            "LineStroke" to (LineStroke to Color(0xFF514B76)),
-            "EyebrowMuted" to (EyebrowMuted to Color(0xFFAAA3D0)),
-            "ButtonDisabled" to (ButtonDisabled to Color(0xFF777486)),
-            "FieldFill" to (FieldFill to Color(0xFF302B55)),
-            "ChipFill" to (ChipFill to Color(0xFF39355F)),
-            "NavPillTop" to (NavPillTop to Color(0xFF413A70)),
-            "NavPillBottom" to (NavPillBottom to Color(0xFF28234D)),
-            "NavScrim" to (NavScrim to Color(0xFF100D2B)),
-            // Deliberate post-Dawn change (2026-07-12): brightened from 0xFF8B78F2
-            // to clear the 4.5:1 gate as text on CardFill/raised — see Color.kt.
-            "Periwinkle" to (Periwinkle to Color(0xFFA89AF6)),
-            "Cyan" to (Cyan to Color(0xFF8FE6EE)),
-            "Warm" to (Warm to Color(0xFFF0A48C)),
-            "Ok" to (Ok to Color(0xFF7EE0A8)),
-            "Danger" to (Danger to Color(0xFFE08A9A)),
+    fun brandPrimary_isNotUsedAsText_because_itCannotBe() {
+        // Documents the reason the palette is split. Brand Lavender under a white
+        // label is 3.90:1 — below AA. If someone "simplifies" Gradients.primary
+        // back to BrandPrimary, this test explains why it broke.
+        val whiteOnBrand = contrast(Color.White.toArgb(), BrandPrimary.toArgb())
+        assertTrue(
+            "BrandPrimary now passes as a text ground (%.2f:1) — the pill could be simplified"
+                .format(whiteOnBrand),
+            whiteOnBrand < 4.5,
         )
-        expected.forEach { (name, pair) ->
-            assertEquals("$name changed in Night mode", pair.second.toArgb(), pair.first.toArgb())
-        }
-        // The new component/veil tokens must reproduce the exact literals their
-        // call sites used before the Dawn pass (rendered 8-bit ARGB identical).
-        assertEquals("OnPrimary", Ink.toArgb(), OnPrimary.toArgb())
-        assertEquals("ChipSelectedFill", Color.White.toArgb(), ChipSelectedFill.toArgb())
-        assertEquals("ChipSelectedInk", Ink.toArgb(), ChipSelectedInk.toArgb())
-        assertEquals("SwitchThumbOn", Ink.toArgb(), SwitchThumbOn.toArgb())
-        assertEquals("TextBright", Color.White.toArgb(), TextBright.toArgb())
-        assertEquals("NavSelectedHi", Periwinkle.copy(alpha = 0.72f).toArgb(), NavSelectedHi.toArgb())
-        assertEquals("NavSelectedLo", Periwinkle.copy(alpha = 0.18f).toArgb(), NavSelectedLo.toArgb())
-        assertEquals("Veil", Color.White.copy(alpha = 0.07f).toArgb(), Veil.toArgb())
-        assertEquals("VeilSoft", Color.White.copy(alpha = 0.06f).toArgb(), VeilSoft.toArgb())
-        assertEquals("VeilWell", Color.White.copy(alpha = 0.10f).toArgb(), VeilWell.toArgb())
-        assertEquals("VeilStrong", Color.White.copy(alpha = 0.18f).toArgb(), VeilStrong.toArgb())
-        assertEquals("VeilLine", Color.White.copy(alpha = 0.12f).toArgb(), VeilLine.toArgb())
-        // Art constants replaced themed tokens at fixed-dark-art sites 1:1.
-        assertEquals("ArtScrim", Night.toArgb(), ArtScrim.toArgb())
-        assertEquals("ArtTextSoft", TextSoft.toArgb(), ArtTextSoft.toArgb())
-    }
-
-    // ── Dawn (REDESIGN §4.1 Phase 2) ─────────────────────────────────────────
-
-    @Test
-    fun dawn_textRoles_meetAA_onEverySurface() = dawn {
-        // Ratios measured 2026-07 (see the Dawn palette notes in Color.kt).
-        assertContrast("TextPrimary on bg", TextPrimary, Night)              // 14.60:1
-        assertContrast("TextPrimary on NightMid", TextPrimary, NightMid)     // 12.41:1
-        assertContrast("TextPrimary on CardFill", TextPrimary, CardFill)     // 15.90:1
-        assertContrast("TextPrimary on SurfaceRaised", TextPrimary, SurfaceRaised) // 13.23:1
-
-        assertContrast("TextSoft on bg", TextSoft, Night)                    // 10.22:1
-        assertContrast("TextSoft on NightMid", TextSoft, NightMid)           // 8.69:1
-        assertContrast("TextSoft on CardFill", TextSoft, CardFill)           // 11.13:1
-        assertContrast("TextSoft on SurfaceRaised", TextSoft, SurfaceRaised) // 9.26:1
-
-        assertContrast("TextMuted on bg", TextMuted, Night)                  // 7.65:1
-        assertContrast("TextMuted on NightMid", TextMuted, NightMid)         // 6.51:1
-        assertContrast("TextMuted on CardFill", TextMuted, CardFill)         // 8.34:1
-        assertContrast("TextMuted on SurfaceRaised", TextMuted, SurfaceRaised) // 6.94:1
-
-        assertContrast("TextMuted2 on bg", TextMuted2, Night)                // 5.83:1
-        assertContrast("TextMuted2 on NightMid", TextMuted2, NightMid)       // 4.96:1
-        assertContrast("TextMuted2 on CardFill", TextMuted2, CardFill)       // 6.35:1
-        assertContrast("TextMuted2 on SurfaceRaised", TextMuted2, SurfaceRaised) // 5.28:1
-
-        assertContrast("EyebrowMuted on bg", EyebrowMuted, Night)            // 5.83:1
-        assertContrast("EyebrowMuted on CardFill", EyebrowMuted, CardFill)   // 6.35:1
     }
 
     @Test
-    fun dawn_accentsAsText_meetAA() = dawn {
-        // Accents are used as text labels all over the signed-in app, so the
-        // Dawn palette darkens each until it clears 4.5:1 even on the darkest
-        // page paint (NightMid 0xFFDDDBF0) and on every card fill.
-        listOf(
-            Triple("Periwinkle", Periwinkle, doubleArrayOf(6.40, 5.44, 6.97, 5.80)),
-            Triple("Cyan", Cyan, doubleArrayOf(5.59, 4.76, 6.09, 5.07)),
-            Triple("Warm", Warm, doubleArrayOf(5.72, 4.87, 6.24, 5.19)),
-            Triple("Ok", Ok, doubleArrayOf(5.54, 4.71, 6.04, 5.02)),
-            Triple("Danger", Danger, doubleArrayOf(5.69, 4.84, 6.20, 5.16)),
-        ).forEach { (name, accent, _) ->
-            assertContrast("$name on bg", accent, Night)
-            assertContrast("$name on NightMid", accent, NightMid)
-            assertContrast("$name on CardFill", accent, CardFill)
-            assertContrast("$name on SurfaceRaised", accent, SurfaceRaised)
+    fun dangerButton_meetsAA_inBothThemes() {
+        // DangerButton draws the Night token over the Danger fill: dark ink on a
+        // soft coral in Night, warm white on a deep rose in Dawn.
+        night { assertContrast("Night on Danger", Night, Danger) }  // 7.66:1
+        dawn { assertContrast("Night on Danger", Night, Danger) }   // 6.05:1
+    }
+
+    @Test
+    fun selectedChip_meetsAA_inBothThemes() {
+        listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
+            inTheme(mode) {
+                assertContrast(
+                    "ChipSelectedInk on ChipSelectedFill ($mode)",
+                    ChipSelectedInk, ChipSelectedFill,
+                ) // 17.25:1 both
+            }
         }
     }
 
-    @Test
-    fun dawn_primaryButton_meetsAA() = dawn {
-        // Dawn's primary pill is a deep-periwinkle fill with white text (a white
-        // pill vanishes on cream — see Gradients.primary in Tokens.kt). The
-        // lighter gradient stop (0xFF5545AD) is the worst case for white text.
-        // Keep the hexes in sync with Gradients.primary.
-        assertContrast("OnPrimary on Dawn primary top", OnPrimary, Color(0xFF5545AD))   // 7.39:1
-        assertContrast("OnPrimary on Dawn primary floor", OnPrimary, Color(0xFF4A3B9C)) // 8.76:1
-        // Disabled keeps Ink text on the Dawn disabled fill.
-        assertContrast("Ink on ButtonDisabled(Dawn)", Ink, ButtonDisabled)              // 8.54:1
-    }
-
-    @Test
-    fun dawn_dangerButton_meetsAA() = dawn {
-        // DangerButton text is the Night token — cream on Dawn's deep danger fill.
-        assertContrast("Night(bg) on Danger", Night, Danger) // 5.69:1
-    }
-
-    @Test
-    fun dawn_selectedChip_meetsAA() = dawn {
-        // On Dawn the selected PickChip inverts to an Ink pill with white text.
-        assertContrast("ChipSelectedInk on ChipSelectedFill", ChipSelectedInk, ChipSelectedFill) // 16.85:1
-        assertContrast("TextBright(Ink) on bg", TextBright, Night)                               // 14.60:1
-    }
-
-    // ── W21 banner wash ──────────────────────────────────────────────────────
+    // ── Washes: colour laid over a surface at low alpha ──────────────────────
 
     @Test
     fun infoBanner_kindWash_keepsTextAA_inBothThemes() {
-        // Content banners (program strip, evening wind-down) tint SurfaceRaised
-        // with a leading 10% wash of the kind's art accent, fading to
-        // transparent by 55% width. Gate the WORST case — text sitting on the
-        // full-strength blend — even though the body copy starts further in and
-        // the trailing action label sits past the gradient on plain
-        // SurfaceRaised (already gated above in both themes).
-        fun composite(over: Color, under: Color): Color {
-            val a = over.alpha
-            return Color(
-                red = over.red * a + under.red * (1 - a),
-                green = over.green * a + under.green * (1 - a),
-                blue = over.blue * a + under.blue * (1 - a),
-            )
-        }
+        // Content banners tint SurfaceRaised with a leading 10% wash of the kind's
+        // art accent. Gate the WORST case — text sitting on the full-strength blend.
         listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
             inTheme(mode) {
-                listOf("program", "sleep").forEach { kind ->
+                listOf("program", "sleep", "meditation", "soundscape").forEach { kind ->
                     val washed = composite(
                         com.cerebrozen.app.ui.screens.artAccent(kind).copy(alpha = 0.10f),
                         SurfaceRaised,
                     )
-                    assertContrast("TextSecondary on $kind-washed banner ($mode)", TextSecondary, washed)
+                    assertContrast("TextSecondary on $kind wash ($mode)", TextSecondary, washed)
+                    assertContrast("TextFaint on $kind wash ($mode)", TextFaint, washed)
                 }
             }
+        }
+    }
+
+    @Test
+    fun focusCard_brandWash_keepsTextAA_inBothThemes() {
+        // The FocusCard (the primary daily action) lifts SurfaceRaised with a 10%
+        // BRAND-lavender wash. Mint and Sky are light hues, so on Navy a wash
+        // *raises* the ground and squeezes light text — this is the gate that
+        // caught TextFaint at 4.34:1 during the redesign.
+        listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
+            inTheme(mode) {
+                listOf(
+                    "BrandPrimary" to BrandPrimary,
+                    "BrandSecondary" to BrandSecondary,
+                    "BrandAccent" to BrandAccent,
+                ).forEach { (name, brand) ->
+                    val washed = composite(brand.copy(alpha = 0.10f), SurfaceRaised)
+                    assertContrast("TextPrimary on $name wash ($mode)", TextPrimary, washed)
+                    assertContrast("TextSecondary on $name wash ($mode)", TextSecondary, washed)
+                    assertContrast("TextFaint on $name wash ($mode)", TextFaint, washed)
+                }
+            }
+        }
+    }
+
+    // ── The palette pin: values are deliberate, not incidental ───────────────
+
+    @Test
+    fun brandFills_matchTheOwnerSpecification_exactly() {
+        // The five brand colours ship verbatim as fills. If a future pass "fixes"
+        // their contrast by changing them, the brand changes — fail loudly instead.
+        assertEquals("BrandPrimary", Color(0xFF7C6FF0).toArgb(), BrandPrimary.toArgb())
+        assertEquals("BrandSecondary", Color(0xFF6ECBF5).toArgb(), BrandSecondary.toArgb())
+        assertEquals("BrandAccent", Color(0xFF7ED9B6).toArgb(), BrandAccent.toArgb())
+        night { assertEquals("Dark background", Color(0xFF0F172A).toArgb(), Night.toArgb()) }
+        dawn {
+            assertEquals("Light background", Color(0xFFFAFAFC).toArgb(), Night.toArgb())
+            assertEquals("Light surface", Color(0xFFFFFFFF).toArgb(), Surface.toArgb())
         }
     }
 
@@ -303,7 +240,6 @@ class ContrastTest {
     fun roleAliases_trackTheirSourceTokens() {
         listOf(ThemeMode.Night, ThemeMode.Dawn).forEach { mode ->
             inTheme(mode) {
-                // The role layer must stay a true alias of the palette it documents.
                 assertTrue(Surface == CardFill)
                 assertTrue(SurfaceRaised == ChipFill)
                 assertTrue(SurfaceField == FieldFill)
@@ -325,7 +261,7 @@ class ContrastTest {
             AppTheme.mode = ThemeMode.Dawn
             AppTheme.forceNight = true   // Sleep tab / signed-out funnel / splash
             assertTrue(AppTheme.isNight)
-            assertEquals(Color(0xFF100D2B).toArgb(), Night.toArgb())
+            assertEquals(Color(0xFF0F172A).toArgb(), Night.toArgb())
         } finally {
             AppTheme.mode = prevMode
             AppTheme.forceNight = prevForce

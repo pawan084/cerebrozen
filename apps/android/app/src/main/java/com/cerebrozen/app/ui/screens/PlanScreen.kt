@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,20 +77,25 @@ fun PlanScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) { load() }
 
     val defaultTitle = stringResource(R.string.plan_default_title)
-    SubPage(
+    PremiumSubPage(
         stringResource(R.string.plan_eyebrow),
         plan?.optString("title")?.ifBlank { defaultTitle } ?: defaultTitle,
         onBack,
     ) {
         val p = plan
         if (p == null && loadError) {
-            Text(
-                stringResource(R.string.plan_load_error),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            PremiumStateCard(
+                icon = Icons.Outlined.CloudOff,
+                message = stringResource(R.string.plan_load_error),
+                accent = com.cerebrozen.app.ui.theme.Danger,
+                actionLabel = stringResource(R.string.common_try_again),
+                onAction = { load() },
             )
-            PrimaryButton(text = stringResource(R.string.common_try_again), modifier = Modifier.fillMaxWidth()) { load() }
         } else if (p == null) {
-            Text(stringResource(R.string.plan_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            PremiumStateCard(
+                icon = Icons.Outlined.AutoAwesome,
+                message = stringResource(R.string.plan_loading),
+            )
         } else {
             // Rationale hero — a photographic gradient card in the teammate's look.
             HeroCard(
@@ -109,12 +117,11 @@ fun PlanScreen(onBack: () -> Unit) {
             }
 
             if (steps.isEmpty()) {
-                SectionCard {
-                    Text(
-                        stringResource(R.string.plan_no_steps),
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                    )
-                }
+                PremiumStateCard(
+                    icon = Icons.Outlined.AutoAwesome,
+                    message = stringResource(R.string.plan_no_steps),
+                    accent = Periwinkle,
+                )
             }
 
             // One numbered gradient card per step — render ALL steps (no take()).

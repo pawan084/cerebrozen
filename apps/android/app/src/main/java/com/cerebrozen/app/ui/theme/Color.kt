@@ -2,114 +2,126 @@ package com.cerebrozen.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Brand palette. Shares the hue family with the iOS DesignSystem
-// (apps/ios/CereBro/DesignSystem/Theme.swift) and the web tokens
-// (design/tokens.css), but the 2026-07 Android "reference gradient" pass moved
-// the surfaces to solid indigo fills (see CardFill/Gradients.glass) rather than
-// the translucent white overlays the other platforms still use — so treat this
-// as the source of truth for Android, not a byte-for-byte mirror.
+// ── CereBro palette — "Serene" (2026-07-13 premium redesign) ────────────────
 //
-// ── Dusk & Dawn (REDESIGN.md §4.1) ─────────────────────────────────────────
-// The app now has two themes resolved through one set of top-level tokens:
-// every themed token below is a `get()` property that reads [AppTheme.isNight]
-// (snapshot state), so existing screens keep importing the same names and get
-// Dawn for free. [NightPalette] holds the exact pre-Dawn values — Night mode
-// renders byte-identically to before this change (gated by ContrastTest's
-// nightPalette_isByteIdentical test). [DawnPalette] is the warm light theme;
-// every Dawn text/surface pairing is contrast-gated ≥ 4.5:1 in ContrastTest.
+// Brand direction (owner-specified):
+//   Primary   Soft Lavender   #7C6FF0
+//   Secondary Soft Sky Blue   #6ECBF5
+//   Accent    Mint Green      #7ED9B6
+//   Background Warm White     #FAFAFC     Surface  White  #FFFFFF
+//   Dark      Elegant Navy    #0F172A
+//
+// Those five are the *brand fills* and appear verbatim below (see [BrandPrimary],
+// [BrandSecondary], [BrandAccent]) on every non-text surface: orbs, gradients,
+// charts, progress bars, selection washes, generative art.
+//
+// They cannot all be used as TEXT, and this app uses accents as text constantly
+// ("Try another", "PREMIUM", eyebrows, error copy, milestone lines). Measured on
+// the Warm White ground: Sky 1.75:1 and Mint 1.61:1 — far below the 4.5:1 WCAG AA
+// floor; Lavender 3.74:1. So each accent carries a *text-safe sibling of the same
+// hue* per theme — darkened on Warm White, lightened on Navy. This is the same
+// two-tier idea Material 3 uses (`primary` vs `onPrimaryContainer`), and the same
+// one the previous palette used.
+//
+// Every pairing below is machine-verified ≥ 4.5:1 in BOTH themes by ContrastTest,
+// which runs on the real tokens — so a palette tweak that breaks legibility fails
+// the build instead of shipping. Ratios in the comments are measured, not guessed.
 
-/** The original deep-indigo theme — values must never change (zero visual
- * change in Night mode is a hard requirement; see ContrastTest). */
+/** Dark — Elegant Navy. */
 internal object NightPalette {
-    val night = Color(0xFF100D2B)       // reference gradient floor
-    val nightMid = Color(0xFF3A3372)    // reference gradient top
-    val nightPurple = Color(0xFF29254D) // fields and secondary surfaces
-    val textPrimary = Color(0xFFF5F4FF) // --text (on Night 17.29:1, on CardFill 11.91:1)
-    val textSoft = Color(0xFFE1DEEE)    // --soft (on CardFill 9.82:1, on Night 14.25:1)
-    val textMuted = Color(0xFFC0BBD4)   // --muted (on CardFill 6.99:1, on Night 10.14:1)
-    // --muted-2 — lightened from 0xFF928CAC (2026-07 contrast fix, same lavender-grey
-    // hue/saturation): the old value hit only 4.06:1 on CardFill and 3.55:1 on the
-    // raised glass-top fill (0xFF39355F). Now: on CardFill 5.16:1, on Night 7.48:1,
-    // on SurfaceRaised 4.51:1 — all ≥ the 4.5:1 WCAG gate (see ContrastTest).
-    val textMuted2 = Color(0xFFA5A0BA)
-    val cardFill = Color(0xFF302C55)    // glass card fill
-    val lineStroke = Color(0xFF514B76)
-    val eyebrowMuted = Color(0xFFAAA3D0)   // small-caps section eyebrow labels
-    val buttonDisabled = Color(0xFF777486) // disabled primary-button fill
-    val fieldFill = Color(0xFF302B55)      // focused text-field container
-    val chipFill = Color(0xFF39355F)       // unselected pick-chip fill
-    // Floating bottom-nav pill — a lifted lavender-indigo capsule over a dark scrim.
-    val navPillTop = Color(0xFF413A70)
-    val navPillBottom = Color(0xFF28234D)
-    val navScrim = Color(0xFF100D2B)
-    // Accents (see the accent notes on the themed getters below).
-    // Periwinkle brightened 0xFF8B78F2 → 0xFFA89AF6 (2026-07-12, TODO contrast
-    // debt): as text it renders on CardFill 302C55 (was 3.75:1, now 5.33),
-    // Night 100D2B (7.73) and the raised/glass top 39355F (4.66) — the minimal
-    // in-family lighten clearing 4.5 on all three.
-    val periwinkle = Color(0xFFA89AF6)  // switches, focus and icon accent
-    val cyan = Color(0xFF8FE6EE)        // --cyan (breathing orb)
-    val warm = Color(0xFFF0A48C)        // --warm (coral)
-    val ok = Color(0xFF7EE0A8)          // --ok (success)
-    val danger = Color(0xFFE08A9A)      // --danger
-    // Component tokens introduced by the Dawn pass — Night values reproduce the
-    // exact colors these sites used before (so Night renders identically).
-    val onPrimary = Color(0xFF1C1740)              // = Ink: PrimaryButton text on the white pill
-    val chipSelectedFill = Color(0xFFFFFFFF)       // selected PickChip fill (was Color.White)
-    val chipSelectedInk = Color(0xFF1C1740)        // selected PickChip text (was Ink)
-    val switchThumbOn = Color(0xFF1C1740)          // checked AppSwitch thumb (was Ink)
-    val textBright = Color(0xFFFFFFFF)             // brightest chrome text (was Color.White)
-    val navSelectedHi = Color(0xB8A89AF6)          // = Periwinkle.copy(alpha = 0.72f)
-    val navSelectedLo = Color(0x2EA89AF6)          // = Periwinkle.copy(alpha = 0.18f)
-    // Structural veils (soft wells/tracks/hairlines that were White.copy(alpha=…)).
-    val veil = Color(0x12FFFFFF)        // = White 7%  (Page trailing icon well)
-    val veilSoft = Color(0x0FFFFFFF)    // = White 6%  (switch track, shimmer base)
-    val veilWell = Color(0x1AFFFFFF)    // = White 10% (SubPage back-button well)
-    val veilStrong = Color(0x2EFFFFFF)  // = White 18% (nav selected icon circle)
-    val veilLine = Color(0x1FFFFFFF)    // = White 12% (activity-panel hairlines)
+    val night = Color(0xFF0F172A)       // page floor (owner spec)
+    val nightMid = Color(0xFF1E2A47)    // backdrop gradient top (violet-lifted navy)
+    val nightPurple = Color(0xFF1A2439) // fields and secondary surfaces
+    val cardFill = Color(0xFF1B2438)    // resting card
+    val chipFill = Color(0xFF26324A)    // raised: chips, glass top edge
+    val fieldFill = Color(0xFF1B2438)
+    val lineStroke = Color(0xFF35425C)
+    // Text ladder — ratios on bg / card / raised:
+    val textPrimary = Color(0xFFF2F5FA) // 16.34 · 14.17 · 11.74
+    val textSoft = Color(0xFFDCE3EE)    // 13.83 · 11.99 ·  9.93
+    val textMuted = Color(0xFFB4BFD0)   //  9.61 ·  8.34 ·  6.90
+    val textMuted2 = Color(0xFFA1ADC1)  //  7.87 ·  6.83 ·  5.66  (faintest legal text)
+    val eyebrowMuted = Color(0xFFA9B6CB) //  8.71 ·  7.55 ·  6.25
+    val buttonDisabled = Color(0xFFB9BCCB)
+    // Accents AS TEXT on navy. Lavender is lifted #7C6FF0 → #A79BF7: the brand
+    // hue itself only reaches 3.29:1 on a raised navy card, so it stays a fill.
+    val periwinkle = Color(0xFFA79BF7)  //  7.37 ·  6.40 ·  5.30
+    val cyan = Color(0xFF6ECBF5)        //  9.80 ·  8.50 ·  7.04  (brand Sky, works as-is)
+    val ok = Color(0xFF7ED9B6)          // 10.62 ·  9.21 ·  7.63  (brand Mint, works as-is)
+    val warm = Color(0xFFF5A98F)        //  9.31 ·  8.08 ·  6.69
+    val danger = Color(0xFFF08D9E)      //  7.66 ·  6.64 ·  5.50
+    // Component tokens.
+    val onPrimary = Color(0xFFFFFFFF)          // white on the deep-lavender pill
+    val chipSelectedFill = Color(0xFFFFFFFF)   // selected chip = white pill
+    val chipSelectedInk = Color(0xFF1A1830)    // …with ink label (17.25:1)
+    val switchThumbOn = Color(0xFFFFFFFF)
+    val textBright = Color(0xFFFFFFFF)
+    val navPillTop = Color(0xFF243150)
+    val navPillBottom = Color(0xFF161F35)
+    val navScrim = Color(0xFF0F172A)
+    val navSelectedHi = Color(0xB87C6FF0)      // brand Lavender @72%
+    val navSelectedLo = Color(0x2E7C6FF0)      // brand Lavender @18%
+    // Structural veils — soft white wells/tracks/hairlines.
+    val veil = Color(0x12FFFFFF)
+    val veilSoft = Color(0x0FFFFFFF)
+    val veilWell = Color(0x1AFFFFFF)
+    val veilStrong = Color(0x2EFFFFFF)
+    val veilLine = Color(0x1FFFFFFF)
 }
 
-/** Dawn — the warm cream light theme (REDESIGN.md §4.1, Phase 2). Same hue
- * family, inverted value scale; every ratio documented in ContrastTest. */
+/** Light — Warm White. */
 internal object DawnPalette {
-    val night = Color(0xFFECEEFB)       // the page ground (--cream)
-    val nightMid = Color(0xFFDDDBF0)    // backdrop gradient top
-    val nightPurple = Color(0xFFE4E2F4) // fields and secondary surfaces
-    val textPrimary = Color(0xFF1C1740) // Ink (on bg 14.60:1, on CardFill 15.90:1)
-    val textSoft = Color(0xFF37325E)    // on bg 10.22:1, on NightMid 8.69:1
-    val textMuted = Color(0xFF4A4570)   // on bg 7.65:1, on NightMid 6.51:1
-    val textMuted2 = Color(0xFF5C5684)  // on bg 5.83:1, on NightMid 4.96:1, on chip 5.28:1
-    val cardFill = Color(0xFFF7F8FE)    // raised paper card
-    val lineStroke = Color(0xFFC9C6E4)
-    val eyebrowMuted = Color(0xFF5C5684)   // on bg 5.83:1, on CardFill 6.35:1
-    val buttonDisabled = Color(0xFFB9B6CE) // Ink on it 8.54:1
+    val night = Color(0xFFFAFAFC)       // page ground (owner spec)
+    val nightMid = Color(0xFFECEDF5)    // darkest page paint — worst case for dark text
+    val nightPurple = Color(0xFFF0F1F8)
+    val cardFill = Color(0xFFFFFFFF)    // Surface = White (owner spec)
+    val chipFill = Color(0xFFEFF0F7)
     val fieldFill = Color(0xFFFFFFFF)
-    val chipFill = Color(0xFFE4E2F4)
-    val navPillTop = Color(0xFFF7F8FE)
-    val navPillBottom = Color(0xFFE8E6F7)
-    val navScrim = Color(0xFFECEEFB)
-    // Accents darkened to survive as TEXT on the cream grounds (gated on the
-    // darkest page paint, NightMid 0xFFDDDBF0, and on CardFill/ChipFill):
-    val periwinkle = Color(0xFF5545AD)  // on NightMid 5.44:1, on chip 5.80:1
-    val cyan = Color(0xFF0B6875)        // on NightMid 4.76:1, on chip 5.07:1
-    val warm = Color(0xFF964527)        // on NightMid 4.87:1, on chip 5.19:1
-    val ok = Color(0xFF256B4A)          // on NightMid 4.71:1, on chip 5.02:1
-    val danger = Color(0xFF993F55)      // on NightMid 4.84:1; bg-on-it (DangerButton) 5.69:1
+    val lineStroke = Color(0xFFDFE1EC)
+    // Text ladder — ratios on bg / bgTop / card / raised:
+    val textPrimary = Color(0xFF1A1830) // 16.55 · 14.79 · 17.25 · 15.18
+    val textSoft = Color(0xFF45426B)    //  8.97 ·  8.02 ·  9.36 ·  8.23
+    val textMuted = Color(0xFF5A5680)   //  6.55 ·  5.85 ·  6.82 ·  6.00
+    val textMuted2 = Color(0xFF655F8A)  //  5.66 ·  5.06 ·  5.90 ·  5.19
+    val eyebrowMuted = Color(0xFF655F8A)
+    val buttonDisabled = Color(0xFFB9BCCB)
+    // Accents AS TEXT on warm white — same hues, darkened until each clears AA.
+    val periwinkle = Color(0xFF5B4BC4)  //  6.20 ·  5.54 ·  6.46 ·  5.69
+    val cyan = Color(0xFF0E6E8C)        //  5.55 ·  4.96 ·  5.79 ·  5.09
+    val ok = Color(0xFF1E7A5C)          //  5.04 ·  4.51 ·  5.26 ·  4.63
+    val warm = Color(0xFF9C4A2C)        //  5.87 ·  5.25 ·  6.12 ·  5.39
+    val danger = Color(0xFFA63F57)      //  5.81 ·  5.19 ·  6.05 ·  5.32
     // Component tokens.
-    val onPrimary = Color(0xFFFFFFFF)              // white on the PeriwinkleDeep pill (7.39:1)
-    val chipSelectedFill = Color(0xFF1C1740)       // selected chip inverts to an Ink pill
-    val chipSelectedInk = Color(0xFFFFFFFF)        // white label on it (16.85:1)
-    val switchThumbOn = Color(0xFFFFFFFF)          // white thumb on the deep-periwinkle track
-    val textBright = Color(0xFF1C1740)             // brightest chrome text is Ink on Dawn
-    val navSelectedHi = Color(0x4D5545AD)          // periwinkle wash 30% (Ink label ≈10:1 blended)
-    val navSelectedLo = Color(0x145545AD)          // periwinkle wash 8%
-    // Veils flip to soft ink so wells/tracks stay visible on cream.
-    val veil = Color(0x0F1C1740)        // Ink 6%
-    val veilSoft = Color(0x0D1C1740)    // Ink 5%
-    val veilWell = Color(0x141C1740)    // Ink 8%
-    val veilStrong = Color(0x1A1C1740)  // Ink 10%
-    val veilLine = Color(0x1F1C1740)    // Ink 12%
+    val onPrimary = Color(0xFFFFFFFF)
+    val chipSelectedFill = Color(0xFF1A1830)   // selected chip inverts to an ink pill
+    val chipSelectedInk = Color(0xFFFFFFFF)    // …with a white label (17.25:1)
+    val switchThumbOn = Color(0xFFFFFFFF)
+    val textBright = Color(0xFF1A1830)
+    val navPillTop = Color(0xFFFFFFFF)
+    val navPillBottom = Color(0xFFF1F2F9)
+    val navScrim = Color(0xFFFAFAFC)
+    val navSelectedHi = Color(0x4D7C6FF0)
+    val navSelectedLo = Color(0x147C6FF0)
+    // Veils flip to soft ink so wells/tracks stay visible on warm white.
+    val veil = Color(0x0F1A1830)
+    val veilSoft = Color(0x0D1A1830)
+    val veilWell = Color(0x141A1830)
+    val veilStrong = Color(0x1A1A1830)
+    val veilLine = Color(0x1F1A1830)
 }
+
+// ── Brand fills — theme-independent, NEVER text ─────────────────────────────
+// The owner palette verbatim. Safe anywhere colour is decoration, not language:
+// orbs, gradients, charts, progress fills, selection washes, generative art.
+val BrandPrimary = Color(0xFF7C6FF0)    // Soft Lavender
+val BrandSecondary = Color(0xFF6ECBF5)  // Soft Sky Blue
+val BrandAccent = Color(0xFF7ED9B6)     // Mint Green
+
+/** The one deep-lavender the primary pill wears in BOTH themes (white label:
+ * 4.72:1 on the top stop, 6.46:1 on the floor). Brand Lavender itself only makes
+ * 3.90:1 under white, so the CTA deepens rather than the label darkening. */
+val LavenderPillTop = Color(0xFF6D5FE8)
+val LavenderPillFloor = Color(0xFF5B4BC4)
 
 // ── Themed tokens (resolve per theme on every read) ─────────────────────────
 val Night: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPalette.night
@@ -129,121 +141,94 @@ val NavPillTop: Color get() = if (AppTheme.isNight) NightPalette.navPillTop else
 val NavPillBottom: Color get() = if (AppTheme.isNight) NightPalette.navPillBottom else DawnPalette.navPillBottom
 val NavScrim: Color get() = if (AppTheme.isNight) NightPalette.navScrim else DawnPalette.navScrim
 
-// Accents. These are used as *text* all over the signed-in app ("Try another",
-// "PREMIUM", eyebrows, error copy), so the ones that appear as text carry a
-// darker Dawn variant that passes 4.5:1 on the cream grounds. Purely
-// decorative accents (Teal/Iris/Violet/PeriwinkleDeep/PeriwinkleSoft — orb
-// art, thumbnail gradients, aurora tints) stay single-valued below.
+// Accents — the text-safe siblings. Use [BrandPrimary]/[BrandSecondary]/
+// [BrandAccent] instead when painting a fill rather than writing a word.
 val Periwinkle: Color get() = if (AppTheme.isNight) NightPalette.periwinkle else DawnPalette.periwinkle
 val Cyan: Color get() = if (AppTheme.isNight) NightPalette.cyan else DawnPalette.cyan
 val Warm: Color get() = if (AppTheme.isNight) NightPalette.warm else DawnPalette.warm
 val Ok: Color get() = if (AppTheme.isNight) NightPalette.ok else DawnPalette.ok
 val Danger: Color get() = if (AppTheme.isNight) NightPalette.danger else DawnPalette.danger
 
-// Component tokens introduced by the Dawn pass (Night values byte-identical to
-// the literals the components used before — see NightPalette).
-/** PrimaryButton label — Ink on the Night white pill, white on the Dawn deep-periwinkle pill. */
 val OnPrimary: Color get() = if (AppTheme.isNight) NightPalette.onPrimary else DawnPalette.onPrimary
 val ChipSelectedFill: Color get() = if (AppTheme.isNight) NightPalette.chipSelectedFill else DawnPalette.chipSelectedFill
 val ChipSelectedInk: Color get() = if (AppTheme.isNight) NightPalette.chipSelectedInk else DawnPalette.chipSelectedInk
 val SwitchThumbOn: Color get() = if (AppTheme.isNight) NightPalette.switchThumbOn else DawnPalette.switchThumbOn
-/** Brightest chrome text (SubPage titles, ContentRow titles) — pure white on Night, Ink on Dawn. */
 val TextBright: Color get() = if (AppTheme.isNight) NightPalette.textBright else DawnPalette.textBright
-/** Bottom-nav selected-cell radial stops (Periwinkle wash tuned per theme). */
 val NavSelectedHi: Color get() = if (AppTheme.isNight) NightPalette.navSelectedHi else DawnPalette.navSelectedHi
 val NavSelectedLo: Color get() = if (AppTheme.isNight) NightPalette.navSelectedLo else DawnPalette.navSelectedLo
 
-// Structural veils — the soft white-on-Night wells/tracks/hairlines that would
-// vanish on cream; they flip to soft ink on Dawn.
 val Veil: Color get() = if (AppTheme.isNight) NightPalette.veil else DawnPalette.veil
 val VeilSoft: Color get() = if (AppTheme.isNight) NightPalette.veilSoft else DawnPalette.veilSoft
 val VeilWell: Color get() = if (AppTheme.isNight) NightPalette.veilWell else DawnPalette.veilWell
 val VeilStrong: Color get() = if (AppTheme.isNight) NightPalette.veilStrong else DawnPalette.veilStrong
 val VeilLine: Color get() = if (AppTheme.isNight) NightPalette.veilLine else DawnPalette.veilLine
 
-// ── Theme-independent colors ────────────────────────────────────────────────
-// Decorative accents: never used as text on themed surfaces (verified 2026-07:
-// orb/lotus art, thumbnail gradients, aurora tints, title-glow shadows only).
-val PeriwinkleDeep = Color(0xFF5545AD)
-val PeriwinkleSoft = Color(0xFFC5BDF3)
-val Iris = Color(0xFF9A87F5)
-val Violet = Color(0xFF7665D4)
-val Teal = Color(0xFF6FE0E6)        // --teal (lotus / breathe accent, matches iOS)
+// ── Decorative constants (fills only, never text) ───────────────────────────
+val PeriwinkleDeep = LavenderPillFloor
+val PeriwinkleSoft = Color(0xFFC7C1F8)   // soft lavender wash / on-art eyebrow
+val Iris = Color(0xFF9A8FF4)
+val Violet = Color(0xFF6D5FE8)
+val Teal = BrandAccent                    // mint is the breathe/lotus accent
 
-// Cream/Ink stay constants: every Cream consumer is light text/fills on
-// always-dark art (GradientHero panels, HeroCard photo scrims, game tiles, the
-// Sleep tab which is force-Night) and every Ink consumer is dark ink on
-// light/white art (breathe-orb count, celebration check, funnel pills) — all
-// grounds that do not change with the theme (verified per-usage, 2026-07).
-val Cream = Color(0xFFECEEFB)       // --cream
-val Ink = Color(0xFF1C1740)         // --ink
+// Cream/Ink: light text on always-dark art, dark ink on always-light art.
+val Cream = Color(0xFFF2F5FA)
+val Ink = Color(0xFF1A1830)
 
-// Constants for text/scrims over always-dark art (photo heroes, gradient game
-// tiles): these panels keep their night art in both themes, so their overlay
-// colors must NOT follow the theme. Values = the Night-theme backdrop floor
-// and TextSoft, so Night renders identically.
-val ArtScrim = Color(0xFF100D2B)
-val ArtTextSoft = Color(0xFFE1DEEE)
+// Text/scrims over always-dark art (photo heroes, gradient game tiles): these
+// panels keep their night art in BOTH themes, so their overlay colours must not
+// follow the theme.
+val ArtScrim = Color(0xFF0F172A)
+val ArtTextSoft = Color(0xFFDCE3EE)
 
-// List-thumbnail gradient floors (UI chrome for content-row artwork). The tops
-// reuse the brand accents (Periwinkle/Cyan/Warm/Iris); these are the darker
-// gradient partners that don't map to an existing palette token.
-val ThumbBlue = Color(0xFF5B8FD0)   // cyan thumbnail floor
-val ThumbRose = Color(0xFFB86B8F)   // coral thumbnail floor
-val ThumbIndigo = Color(0xFF6F7BF7) // iris thumbnail floor
+// List-thumbnail gradient floors — the darker partners for the art gradients.
+val ThumbBlue = Color(0xFF3E8FC4)
+val ThumbRose = Color(0xFFC4738F)
+val ThumbIndigo = Color(0xFF6257DA)
 
-// W21 generative-artwork accents (ContentArt.kt). Constants, not themed
-// getters: content art keeps its deep night base in BOTH themes (like the
-// hero/game panels above), so its hues must not follow the theme. Values =
-// the Night accents these families are named after.
-val ArtPeriwinkle = Color(0xFFA89AF6)  // = NightPalette.periwinkle
-val ArtCyan = Color(0xFF8FE6EE)        // = NightPalette.cyan
-val ArtWarm = Color(0xFFF0A48C)        // = NightPalette.warm
+// Generative-artwork accents (ContentArt.kt). Constants, not themed getters:
+// content art keeps its deep navy base in both themes, so its hues must not
+// follow the theme. These are the brand fills.
+val ArtPeriwinkle = BrandPrimary
+val ArtCyan = BrandSecondary
+val ArtWarm = Color(0xFFF5A98F)
 
-// ---------------------------------------------------------------------------
-// Semantic roles (REDESIGN.md §4.2) — screens should prefer these over the raw
-// palette constants above. They are aliases of the themed getters, so both
-// themes flow through them. Every text role is contrast-gated ≥ 4.5:1 on its
-// surfaces in both themes (ContrastTest).
-// ---------------------------------------------------------------------------
-val Surface: Color get() = CardFill             // resting card fill
-val SurfaceRaised: Color get() = ChipFill       // lifted fill (chips, glass-card top edge)
-val SurfaceField: Color get() = FieldFill       // text-field container
-val Line: Color get() = LineStroke              // hairline dividers/strokes
-val TextSecondary: Color get() = TextSoft       // supporting copy
-val TextFaint: Color get() = TextMuted2         // faintest legal text (≥4.5:1 everywhere)
-val AccentSoft: Color get() = PeriwinkleSoft    // soft accent (tints, selected-state washes)
+// ── Semantic roles — screens should prefer these over the raw palette ───────
+val Surface: Color get() = CardFill              // resting card fill
+val SurfaceRaised: Color get() = ChipFill        // lifted fill (chips, glass top edge)
+val SurfaceField: Color get() = FieldFill        // text-field container
+val Line: Color get() = LineStroke               // hairline dividers/strokes
+val TextSecondary: Color get() = TextSoft        // supporting copy
+val TextFaint: Color get() = TextMuted2          // faintest legal text (≥4.5:1 everywhere)
+val AccentSoft: Color get() = PeriwinkleSoft     // soft accent (tints, selection washes)
 
-// Onboarding / Auth surface tokens (bespoke funnel art — promoted from inline
-// hex). The signed-out funnel is ALWAYS Night (AppTheme.forceNight), so these
-// stay single-valued constants.
-val GratitudeCardFill = Color(0xFF493453)
-val GratitudeAvatarFill = Color(0xFF5A547F)
-val GratitudeCaption = Color(0xFFC9C5DA)
-val InfoCardFill = Color(0xFF302D54)
-val InfoCardStroke = Color(0xFF514C73)
-val InfoCardHint = Color(0xFFCBC7D8)
-val InfoCardDivider = Color(0xFF464166)
-val WelcomeGradientTop = Color(0xFF3B3474)
-val WelcomeGradientBottom = Color(0xFF12102F)
-val WelcomeTitleText = Color(0xFFD8D5E5)
-val WelcomeSubtitleText = Color(0xFFBDB8D0)
-val WelcomeSecondaryText = Color(0xFFE4E1EC)
-val WelcomeOrbMid = Color(0xFFF4F1FF)
-val WelcomeOrbEdge = Color(0xFFC9C3FF)
-val PrimaryButtonFill = Color(0xFFFCFBFF)
-val PrimaryButtonInk = Color(0xFF211C50)
-val PrimaryButtonDisabledFill = Color(0xFF9998A7)
-val ResetDoneFill = Color(0xFF302D50)
-val FunnelHeaderTop = Color(0xFF393270)
-val FunnelHeaderBottom = Color(0xFF11102E)
-val FunnelBodyText = Color(0xFFD0CCDE)
-val ProgressTrack = Color(0xFF484361)
-val PickRowSelectedFill = Color(0xFF4A456F)
-val PickRowFill = Color(0xFF302C56)
-val PickRowStroke = Color(0xFF504B74)
-val PickRowChevron = Color(0xFF9993B4)
-val PickCardStroke = Color(0xFF575178)
-val DotUnselectedFill = Color(0xFF3B3766)
-val AuthEyebrow = Color(0xFFB5AEE1)
-val AuthFieldLabel = Color(0xFFE0DDEE)
+// ── Signed-out funnel surfaces (always Night — bespoke navy art) ────────────
+val GratitudeCardFill = Color(0xFF2A3A55)
+val GratitudeAvatarFill = Color(0xFF3D4E6B)
+val GratitudeCaption = Color(0xFFC2CCDA)
+val InfoCardFill = Color(0xFF1B2438)
+val InfoCardStroke = Color(0xFF35425C)
+val InfoCardHint = Color(0xFFC4CDDA)
+val InfoCardDivider = Color(0xFF2C3950)
+val WelcomeGradientTop = Color(0xFF233051)
+val WelcomeGradientBottom = Color(0xFF0F172A)
+val WelcomeTitleText = Color(0xFFE8ECF4)
+val WelcomeSubtitleText = Color(0xFFC4CDDA)
+val WelcomeSecondaryText = Color(0xFFE8ECF4)
+val WelcomeOrbMid = Color(0xFFEFEDFF)
+val WelcomeOrbEdge = Color(0xFFB6ACF7)
+val PrimaryButtonFill = Color(0xFF6D5FE8)
+val PrimaryButtonInk = Color(0xFFFFFFFF)
+val PrimaryButtonDisabledFill = Color(0xFF6B7183)
+val ResetDoneFill = Color(0xFF1B2438)
+val FunnelHeaderTop = Color(0xFF233051)
+val FunnelHeaderBottom = Color(0xFF0F172A)
+val FunnelBodyText = Color(0xFFC4CDDA)
+val ProgressTrack = Color(0xFF35425C)
+val PickRowSelectedFill = Color(0xFF2F3E5C)
+val PickRowFill = Color(0xFF1B2438)
+val PickRowStroke = Color(0xFF35425C)
+val PickRowChevron = Color(0xFF8E9BB0)
+val PickCardStroke = Color(0xFF3D4A66)
+val DotUnselectedFill = Color(0xFF26324A)
+val AuthEyebrow = Color(0xFFB6ACF7)
+val AuthFieldLabel = Color(0xFFDCE3EE)

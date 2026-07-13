@@ -40,7 +40,7 @@ fun BreathingScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    SubPage(stringResource(R.string.breathing_eyebrow), stringResource(R.string.breathing_title), onBack) {
+    PremiumSubPage(stringResource(R.string.breathing_eyebrow), stringResource(R.string.breathing_title), onBack) {
         ToolAmbienceEffect(R.raw.drone)
         Text(stringResource(R.string.breathing_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -87,7 +87,7 @@ private fun JournalingTool(
     var saved by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    SubPage(eyebrow, title, onBack) {
+    PremiumSubPage(eyebrow, title, onBack) {
         ToolAmbienceEffect(R.raw.rain)
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AmbienceToggle()
@@ -150,7 +150,7 @@ fun TippScreen(onBack: () -> Unit) {
     )
     var idx by remember { mutableIntStateOf(0) }
     val (heading, how, why) = steps[idx]
-    SubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
+    PremiumSubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
         Text(
             stringResource(R.string.tipp_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,

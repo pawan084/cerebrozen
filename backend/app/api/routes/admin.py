@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from app.models.chat import ChatMessage
 from app.models.consent import Consent
 from app.models.content import ContentItem
 from app.models.journal import JournalEntry
+from app.models.media import MediaAsset
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
 from app.models.prompt import PromptTemplate
@@ -26,6 +28,12 @@ from app.schemas.content_data import (
     ContentCreate,
     ContentUpdate,
     SafetyEventOut,
+)
+from app.schemas.media import (
+    MEDIA_KINDS,
+    MediaAssetCreate,
+    MediaAssetOut,
+    MediaAssetUpdate,
 )
 from app.schemas.user import UserOut
 from app.services import media, metrics, nudges, voice
@@ -237,6 +245,102 @@ async def narrate_content(
     await db.commit()
     await db.refresh(item)
     return item
+
+
+# ── Media catalogue (the sounds/videos clients resolve by key) ───────────
+# Uploads are held in memory before being written, so cap them. Ambient loops
+# are the big ones (~700 KB/minute at our bitrate) and scene videos larger
+# still; 25 MB fits a few minutes of either with room to spare.
+_MAX_ASSET_BYTES = 25 * 1024 * 1024
+
+
+@router.get("/media", response_model=list[MediaAssetOut])
+async def admin_list_media(db: AsyncSession = Depends(get_db)):
+    rows = await db.scalars(select(MediaAsset).order_by(MediaAsset.key))
+    return rows.all()
+
+
+@router.post("/media", response_model=MediaAssetOut, status_code=201)
+async def create_media(payload: MediaAssetCreate, db: AsyncSession = Depends(get_db)):
+    if not media.valid_key(payload.key):
+        raise HTTPException(
+            status_code=422,
+            detail="Key must be a dotted lowercase slug, e.g. 'ambience.rain'",
+        )
+    if payload.kind not in MEDIA_KINDS:
+        raise HTTPException(status_code=422, detail=f"Kind must be one of {', '.join(MEDIA_KINDS)}")
+    existing = await db.scalar(select(MediaAsset).where(MediaAsset.key == payload.key))
+    if existing is not None:
+        raise HTTPException(status_code=409, detail=f"Key '{payload.key}' already exists")
+    asset = MediaAsset(**payload.model_dump())
+    db.add(asset)
+    await db.commit()
+    await db.refresh(asset)
+    return asset
+
+
+@router.patch("/media/{asset_id}", response_model=MediaAssetOut)
+async def update_media(asset_id: uuid.UUID, payload: MediaAssetUpdate, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+    fields = payload.model_dump(exclude_unset=True)
+    if "kind" in fields and fields["kind"] not in MEDIA_KINDS:
+        raise HTTPException(status_code=422, detail=f"Kind must be one of {', '.join(MEDIA_KINDS)}")
+    for field, value in fields.items():
+        setattr(asset, field, value)
+    await db.commit()
+    await db.refresh(asset)
+    return asset
+
+
+@router.delete("/media/{asset_id}", status_code=204)
+async def delete_media(asset_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+    if asset.url.startswith("/media/assets/"):
+        media.delete_asset(asset.key)
+    await db.delete(asset)
+    await db.commit()
+
+
+@router.post("/media/{asset_id}/upload", response_model=MediaAssetOut)
+async def upload_media(
+    asset_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Attach real bytes to a catalogue key — the whole point of the catalogue.
+
+    Until this runs, the row's `url` is empty and every client plays its bundled
+    or synthesized fallback. Uploading swaps the sound for everyone on next launch,
+    with no app release. Re-uploading overwrites in place.
+    """
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in media.ASSET_MIME_BY_EXT:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported format '{ext or 'none'}' — use {', '.join(media.ASSET_MIME_BY_EXT)}",
+        )
+    data = await file.read(_MAX_ASSET_BYTES + 1)
+    if not data:
+        raise HTTPException(status_code=400, detail="File is empty")
+    if len(data) > _MAX_ASSET_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds {_MAX_ASSET_BYTES // (1024 * 1024)} MB",
+        )
+
+    asset.url = media.save_asset(asset.key, ext, data)
+    asset.mime = media.ASSET_MIME_BY_EXT[ext]
+    await db.commit()
+    await db.refresh(asset)
+    return asset
 
 
 # ── Safety review queue ─────────────────────────────────────────────────

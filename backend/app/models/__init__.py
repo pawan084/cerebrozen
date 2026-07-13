@@ -13,6 +13,7 @@ from app.models.safety import SafetyEvent
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.login_code import LoginCode
+from app.models.media import MediaAsset
 from app.models.product_event import ProductEvent
 from app.models.program import ProgramEnrollment
 from app.models.prompt import PromptTemplate
@@ -35,6 +36,7 @@ __all__ = [
     "SleepLog",
     "TrustedContact",
     "LoginCode",
+    "MediaAsset",
     "ProductEvent",
     "ProgramEnrollment",
     "PromptTemplate",
