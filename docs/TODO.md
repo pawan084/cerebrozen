@@ -223,6 +223,22 @@ dated notes, grouped by priority; items needing an owner decision are marked
       still ships EMPTY (no licensed audio/video — the reference's
       copyright rule holds; synthesized tones/bundled loops until licensed
       media exists).
+- [ ] Calm-parity slice (owner ask 2026-07-14; source:
+      `ref/Zen/docs/CALM_AUDIO_STUDY.md` §3 ranked recommendations). At
+      parity already: sleep timers + graceful fades, one-audio-surface
+      exclusivity, hero-art motion restraint, background playback. To add:
+      (1) scene↔audio coupling — aurora tint + soundscape selected together;
+      (2) breathe upgrades — pace options (4/6/8), user-toggleable haptics,
+      optional chime guidance; (3) launch ambience (consent-gated, never
+      auto-play on first run); (4) session-end bell + settling moment;
+      (5) crossfade on engine switches; (6) user-facing scene-vs-content
+      mix slider; (7) remove the EqBars decorative equalizer (the one thing
+      Calm would never do). Respect §4 "do not copy": no autoplay without
+      consent, no paywall onboarding, no listening streaks/badges, no video
+      scene asset model. Content library (guided sessions / sleep stories)
+      needs the platform media+content endpoints (ops upload, licensed
+      audio only) — the app's ContentList/MediaCatalog already consume that
+      API shape.
 - [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
       ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).
