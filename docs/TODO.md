@@ -87,8 +87,14 @@ dated notes, grouped by priority; items needing an owner decision are marked
       `user.username` claims) accepted by the real engine (200); tokenless
       request 401. Deviations noted in `services/platform/README.md`
       (PBKDF2 not bcrypt; Alembic deferred while greenfield).
-- [ ] `docker-compose.yml`: postgres + redis + engine + platform + web;
-      clean-clone boot with zero keys (mock provider).
+- [x] 2026-07-14 — Root `docker-compose.yml`: pgvector db (two databases
+      via initdb script) + redis + engine + platform + web + admin, zero
+      keys (mock provider, fixed DEV shared JWT secret so tokens work
+      across services — prod injects real ones). Dockerfiles added for
+      web/admin. Verified: config valid, all four images build, engine +
+      platform images boot to healthy on offset ports. Full `up` not
+      switched to yet — the host dev stack occupies the ports and holds
+      the walkthrough data the owner's device is using.
 - [x] 2026-07-14 — Prompt workbook forked to
       `services/engine/agent_prompts.xlsx`: 15 live agents (legacy sheets
       dropped), sheet names normalized, rebrand sweep verified (zero
@@ -129,8 +135,11 @@ dated notes, grouped by priority; items needing an owner decision are marked
       skeleton; add before production exposure.
 - [ ] Ops tabs, remaining: Prompt workbook (engine `/v1/prompts` API),
       Safety queue (engine escalations).
-- [ ] Wire marketing `/api/demo` → platform demo-requests table (email
-      delivery stays as fallback).
+- [x] 2026-07-14 — Marketing `/api/demo` → platform pipeline wired:
+      the form posts to `POST /demo-requests` first (PLATFORM_API_URL,
+      5s timeout, best-effort), and succeeds if EITHER pipeline or email
+      lands — a lead is never lost to one channel being down. Verified
+      live: site form submission → row visible in the ops Demo tab.
 - [x] 2026-07-14 — HR analytics with the k-anonymity floor: first-party
       activity ingest (`POST /events/coaching`, kind whitelist = the content
       firewall; members report with their own JWT), aggregates at
@@ -264,7 +273,9 @@ dated notes, grouped by priority; items needing an owner decision are marked
       and replies where learning_aid ran show "Grounded in reviewed
       material — guidance, not diagnosis" (+ stage-capture test);
       (6) TypingDots pre-first-token (Reduce Motion static). Still open
-      from this slice: skeleton shimmers. (4) pre-permission BUILT
+      from this slice: NONE — skeleton shimmers done 2026-07-14 (ShimmerBox
+      already existed; the Journeys tab's bare loading line was the last
+      gap, now layout-preserving skeletons). (4) pre-permission BUILT
       2026-07-14: NotifGate — one-time post-sign-in gate (Android 13+,
       ungranted only) showing the REAL check-in notification (commitment
       follow-up copy) before the one-shot OS prompt; Maybe-later never

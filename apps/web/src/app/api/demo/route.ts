@@ -34,8 +34,26 @@ export async function POST(request: Request) {
     );
   }
 
+  // Primary destination: the platform's demo pipeline (the ops-admin tab).
+  // Best-effort — the pipeline being down must not lose a lead while email
+  // still works, and vice versa.
+  let piped = false;
+  const platformUrl = process.env.PLATFORM_API_URL || "http://localhost:8100";
+  try {
+    const r = await fetch(`${platformUrl}/demo-requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, company, size, message }),
+      signal: AbortSignal.timeout(5000),
+    });
+    piped = r.ok;
+  } catch (err) {
+    console.error("Demo pipeline unreachable:", err);
+  }
+
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    if (piped) return Response.json({ ok: true }); // pipeline has the lead
     console.error("Demo request received but SMTP is not configured.");
     return Response.json(
       { error: "Email delivery is not configured." },
@@ -68,6 +86,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("Failed to send demo request email:", err);
+    if (piped) return Response.json({ ok: true }); // pipeline has the lead
     return Response.json(
       { error: "We couldn't send your request." },
       { status: 502 }

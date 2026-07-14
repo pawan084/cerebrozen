@@ -1,0 +1,74 @@
+# The whole stack from a clean clone, zero API keys (docs/ENGINEERING.md):
+# the engine runs its mock LLM provider, the platform seeds a dev admin, and
+# every service degrades gracefully. `docker compose up` then:
+#   web http://localhost:3000 · admin http://localhost:3001
+#   platform http://localhost:8100 · engine http://localhost:8000
+# DEV ONLY: the shared JWT secret below is a fixed development value so
+# platform-issued tokens work against the engine; production injects real
+# secrets (see each service's .env.example and the boot-guards).
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: pg
+      POSTGRES_DB: cerebrozen
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./deploy/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+  engine:
+    build: services/engine
+    ports:
+      - "8000:8000"
+    environment:
+      ENV: local
+      POSTGRES_URL: postgresql://postgres:pg@db:5432/cerebrozen
+      REDIS_URL: redis://redis:6379/0
+      PROMPT_SOURCE: codebase
+      JWT_SECRET: ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q= # dev only
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    volumes:
+      - ./services/engine/agent_prompts.xlsx:/app/agent_prompts.xlsx
+
+  platform:
+    build: services/platform
+    ports:
+      - "8100:8100"
+    environment:
+      ENV: local
+      DATABASE_URL: postgresql+asyncpg://postgres:pg@db:5432/cerebrozen_platform
+      JWT_SECRET: ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q= # dev only, same as engine
+      CEREBROZEN_CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:3002
+      CEREBROZEN_ADMIN_BASE_URL: http://localhost:3001
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: apps/web
+    ports:
+      - "3000:3000"
+    environment:
+      PLATFORM_API_URL: http://platform:8100
+
+  admin:
+    build: apps/admin
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8100
+
+volumes:
+  pg-data:
