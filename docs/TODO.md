@@ -9,11 +9,14 @@ dated notes, grouped by priority; items needing an owner decision are marked
 - [ ] **Rotate the OpenAI key found in `ref/Agent/.env`** (and any other
       credentials in `ref/**/.env*`). Treat all committed reference secrets
       as compromised. Never load a `ref/` env file.
-- [ ] **[decision] Repo consolidation**: one git repo at `CerBroZen/` root;
-      absorb `apps/web`'s nested repo (preserve its history via subtree or
-      accept a fresh start). Add root `.gitignore` covering `ref/` env/db
-      files. `ref/` stays read-only reference material — decide whether it
-      is committed (space/history cost) or kept local-only.
+- [x] 2026-07-14 — Repo consolidated: `git init` at root, initial commit
+      `52dd2ba` (348 files, clean tree; secrets audit passed — only
+      `.env.example`/`.env.offline`/`.env.demo` placeholders tracked).
+      `apps/web`'s pre-monorepo history preserved locally at
+      `apps/web/.git.pre-monorepo-backup`. `ref/` is UNTRACKED pending the
+      licensing decision below — flip the `.gitignore` entry if it clears.
+      Also purged 2.7MB of dead soundscape audio the Android strip left in
+      res/raw. Next: add a remote + push; then the CI skeleton.
 - [x] 2026-07-14 — Root scaffolding: `.gitignore`, `README.md`, `CLAUDE.md`,
       `design/tokens.css` seeded from `apps/web` globals, `scripts/sync-tokens.mjs`
       with `--check` (passing, 17 tokens), full directory skeleton
