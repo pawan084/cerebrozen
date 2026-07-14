@@ -123,6 +123,22 @@ fun TodayHome(onOpen: (String) -> Unit) {
                 color = TextMuted,
             )
         }
+        SectionCard(onClick = { onOpen("toolkit") }) {
+            Text("Reset toolkit", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(
+                "Two minutes between meetings: breathe, ground, or play something calm.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextMuted,
+            )
+        }
+        SectionCard(onClick = { onOpen("sleep") }) {
+            Text("Rest & recovery", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(
+                "Sleep scenes, soundscapes, and the mixer — sustainable performance is rested performance.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextMuted,
+            )
+        }
         SectionCard(onClick = { onOpen("humansupport") }) {
             Text("Need a human?", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(

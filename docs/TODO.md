@@ -212,6 +212,17 @@ dated notes, grouped by priority; items needing an owner decision are marked
       reinstalled on device. Also: auth screen is email+password only
       (Google/OTP/signup/forgot hidden — no platform endpoints; found
       on-device), debug builds prefill the walkthrough user.
+- [x] 2026-07-14 — Well-being suite RESTORED (owner reversal of the v1
+      strip): audio/ (14 files incl. mixer/soundscapes/Sfx), sleep screen +
+      scene video, breathe engine (incl. onboarding demo), reset tools
+      (grounding/CBT/TIPP/baseline), games (BubblePop/PatternGlow/
+      ZenRipples/Gratitude), Health Connect prefill, res/raw loops,
+      manifest services, coverage-gate scope + 9 test files. Entry points:
+      Today's "Reset toolkit" + "Rest & recovery" cards (tabs stay the five
+      coaching tabs). check green; installed on device. Media catalogue
+      still ships EMPTY (no licensed audio/video — the reference's
+      copyright rule holds; synthesized tones/bundled loops until licensed
+      media exists).
 - [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
       ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).

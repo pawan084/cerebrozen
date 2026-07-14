@@ -145,7 +145,15 @@ tasks.withType<Test>().configureEach {
 // The measured scope: the app's logic layer. Everything here runs hermetically
 // in JVM/Robolectric unit tests (CI needs no emulator and no keys).
 val coverageIncludes = listOf(
-    "com/cerebrozen/app/net/**",                  // Session/Api/Coach/Analytics — auth, cache, SSE, engine client
+    "com/cerebrozen/app/net/**",                  // Session/Api/Coach/Events/Analytics — auth, cache, SSE, engine client
+    "com/cerebrozen/app/audio/MediaUrls*",        // pure URL registry/resolution
+    "com/cerebrozen/app/audio/MediaCatalog*",     // pure key→url catalogue + the empty-url fallback contract
+    "com/cerebrozen/app/audio/AmbientSource*",    // pure "uploaded asset else bundled loop" resolution
+    "com/cerebrozen/app/audio/SfxTones*",         // pure tone table
+    "com/cerebrozen/app/audio/Player*",           // controller state (service intents recorded by Robolectric)
+    "com/cerebrozen/app/audio/SoundscapeMixer*",  // mixer state machine + timer/volume/preset logic
+    "com/cerebrozen/app/audio/VolumeRamp*",       // shared crossfade stepper (Robolectric drives its Handler)
+    "com/cerebrozen/app/health/**",               // Health Connect sleep prefill (SDK-status seam short-circuits off-device)
     "com/cerebrozen/app/notify/**",               // Reminders + BootReceiver (Robolectric shadows AlarmManager/NotificationManager)
     "com/cerebrozen/app/ui/theme/**",             // palette objects, AppTheme mode logic, typography, CereBroTheme
     // Screen *Kt classes measured individually (2026-07 baseline): only these two

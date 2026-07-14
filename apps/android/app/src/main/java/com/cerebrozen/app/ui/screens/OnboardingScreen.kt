@@ -496,13 +496,11 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
             }
         },
     ) {
-        // The interactive breathe demo left with the B2C strip; a quiet line
-        // holds the funnel beat until a coaching-specific moment replaces it.
-        Text(
-            stringResource(R.string.ob_reset_skip),
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+        BreatheEngine(
+            preset = BreathePreset.Reset,
             modifier = Modifier.fillMaxWidth(),
+            chimeOn = true,
+            compact = true,
         )
     }
 }

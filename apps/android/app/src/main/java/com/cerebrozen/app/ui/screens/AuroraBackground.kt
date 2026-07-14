@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Gradients
@@ -72,8 +73,9 @@ internal fun AuroraBackground(
     sceneBehind: Boolean = false,
 ) {
     val reduceMotion = rememberReduceMotion()
+    val playingKind = Player.audibleKind()
     val primaryTint by animateColorAsState(
-        targetValue = accent,
+        targetValue = playingKind?.let { artAccent(it) } ?: accent,
         animationSpec = if (reduceMotion) snap() else tween(1200, easing = FastOutSlowInEasing),
         label = "aurora-playing-tint",
     )

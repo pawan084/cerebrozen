@@ -58,6 +58,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.res.stringResource
 import com.cerebrozen.app.R
 import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.audio.MediaCatalog
+import com.cerebrozen.app.audio.Sfx
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
@@ -78,6 +80,20 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.TodayHome
 import com.cerebrozen.app.ui.screens.ActionsScreen
 import com.cerebrozen.app.ui.screens.CoachScreen
+import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.BreathePreset
+import com.cerebrozen.app.ui.screens.BreatheScreen
+import com.cerebrozen.app.ui.screens.BreathingScreen
+import com.cerebrozen.app.ui.screens.BubblePopScreen
+import com.cerebrozen.app.ui.screens.CbtReframeScreen
+import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
+import com.cerebrozen.app.ui.screens.PatternGlowScreen
+import com.cerebrozen.app.ui.screens.PlayerScreen
+import com.cerebrozen.app.ui.screens.SleepScreen
+import com.cerebrozen.app.ui.screens.SoundsScreen
+import com.cerebrozen.app.ui.screens.TippScreen
+import com.cerebrozen.app.ui.screens.ToolkitScreen
+import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.screens.AppearanceScreen
 import com.cerebrozen.app.ui.theme.AppTheme
@@ -268,6 +284,15 @@ fun CereBroApp() {
     // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
     LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
+    // Resolve the served sound/scene catalogue once per launch and pre-warm the
+    // one-shot assets; best-effort — with no catalogue every sound falls back to
+    // its synthesized tone or bundled loop (fully audible offline).
+    val appContext = LocalContext.current.applicationContext
+    LaunchedEffect(Unit) {
+        runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
+        runCatching { Sfx.warm(appContext) }
+    }
+
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Today.route
@@ -362,9 +387,28 @@ fun CereBroApp() {
             // with the B2C sweep): the old Home/Sleep/Journal surfaces.
             composable("home") { TodayHome(onOpen = open) }
             composable("talk") { CoachScreen(onOpen = open) }
+            composable("sleep") { SleepScreen(onOpen = open) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
+            // Well-being suite (owner call, 2026-07-14: wellness returns to the
+            // coaching app — sounds, sleep scenes, breathe, reset tools, games).
+            composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
+            composable("sounds/mixer") { SoundsScreen(onBack = back, onOpen = open, startInMixer = true) }
+            composable("player") { PlayerScreen(onBack = back) }
+            composable("toolkit") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("games") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("tools") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("breathe/box") { BreatheScreen(BreathePreset.Box, onBack = back) }
+            composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
+            composable("bubblepop") { BubblePopScreen(onBack = back) }
+            composable("patternglow") { PatternGlowScreen(onBack = back) }
+            composable("zenripples") { ZenRipplesScreen(onBack = back) }
+            composable("gratitude") { GratitudeGardenScreen(onBack = back) }
+            composable("baseline") { BaselineScreen(onBack = back) }
+            composable("breathing") { BreathingScreen(onBack = back) }
+            composable("cbt") { CbtReframeScreen(onBack = back) }
+            composable("tipp") { TippScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }

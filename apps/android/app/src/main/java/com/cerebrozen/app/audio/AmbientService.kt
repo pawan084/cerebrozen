@@ -1,0 +1,311 @@
+package com.cerebrozen.app.audio
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.os.IBinder
+import androidx.core.app.ServiceCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player as Media3Player
+import androidx.media3.exoplayer.ExoPlayer
+import com.cerebrozen.app.MainActivity
+import com.cerebrozen.app.R
+
+/**
+ * Plays the looping ambient bed as a foreground service with a MediaStyle
+ * notification (play / pause / stop + lock-screen transport), so calm audio
+ * keeps going when the app is backgrounded. The [Player] object is the thin
+ * controller; this service owns the actual ExoPlayer + MediaSession. ExoPlayer's
+ * REPEAT_MODE_ONE loops the bundled bed gaplessly (no seam-tick), and it also
+ * streams narrated tracks — falling back to the bed on any stream error.
+ */
+class AmbientService : Service() {
+    companion object {
+        const val ACTION_PLAY = "com.cerebrozen.app.PLAY"
+        const val ACTION_PAUSE = "com.cerebrozen.app.PAUSE"
+        const val ACTION_STOP = "com.cerebrozen.app.STOP"
+        const val ACTION_TIMER = "com.cerebrozen.app.TIMER"
+        const val ACTION_VOLUME = "com.cerebrozen.app.VOLUME"
+        const val ACTION_DUCK = "com.cerebrozen.app.DUCK"
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_URL = "url"
+        const val EXTRA_MINUTES = "minutes"
+        const val EXTRA_VOLUME = "volume"
+        const val EXTRA_DUCK = "duck"
+        private const val CHANNEL = "ambient_playback"
+        private const val NOTIF = 77
+    }
+
+    private var mp: ExoPlayer? = null
+    private var session: MediaSession? = null
+    private var title = "Ambient bed"
+    private var volume = 1f
+    /** 1f normally; drops while the voice companion speaks so the bed ducks under it. */
+    private var duckFactor = 1f
+    /** Current audio source: "" = bundled ambient bed, else a narration URL. */
+    private var currentSrc = ""
+    // Sleep auto-stop timer (mirrors the iOS player): fades ~10 s, then stops.
+    private val timerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    // W27 §1: shared ~600ms crossfade — play ramps in from silence, pause/stop
+    // ramp out before the player actually pauses/releases, so engine handoffs
+    // (Player↔Mixer exclusivity) and narration→bed fallbacks never hard-cut.
+    private val ramp = VolumeRamp()
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        ensureChannel()
+        session = MediaSession(this, "cerebro-ambient").apply { isActive = true }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_PLAY -> {
+                intent.getStringExtra(EXTRA_TITLE)?.let { title = it }
+                // No extra (notification resume) keeps the current source;
+                // an explicit "" means this title has no narration → bed.
+                play(intent.getStringExtra(EXTRA_URL) ?: currentSrc)
+            }
+            ACTION_PAUSE -> pause()
+            ACTION_STOP -> stopWithRamp()
+            ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
+            ACTION_VOLUME -> {
+                volume = intent.getFloatExtra(EXTRA_VOLUME, 1f).coerceIn(0f, 1f)
+                applyVolume()
+                Player.setVolumeState(volume)
+            }
+            ACTION_DUCK -> {
+                duckFactor = if (intent.getBooleanExtra(EXTRA_DUCK, false)) 0.28f else 1f
+                applyVolume()
+            }
+        }
+        return START_STICKY
+    }
+
+    private fun targetVolume() = volume * duckFactor
+
+    /** Direct set for user intents (volume slider, voice duck) — a crossfade
+     * here would lag the slider, so any ramp in flight yields to the hand. */
+    private fun applyVolume() {
+        ramp.cancel()
+        mp?.volume = targetVolume()
+    }
+
+    private fun setTimer(minutes: Int) {
+        timerHandler.removeCallbacksAndMessages(null)
+        applyVolume()   // undo any half-finished timer fade
+        Player.setTimerState(minutes)
+        if (minutes > 0) {
+            val untilFade = (minutes * 60_000L - 10_000L).coerceAtLeast(1_000L)
+            timerHandler.postDelayed({ ramp.cancel(); fadeOut(10) }, untilFade)
+        }
+    }
+
+    private fun fadeOut(stepsLeft: Int) {
+        val player = mp
+        if (stepsLeft <= 0 || player == null) {
+            // W27 §5: session-end ritual — after the fade completes, one soft
+            // bell (user-toggleable, default on), then silence. No ceremony.
+            Chime.playTimerBell()
+            stopAll()
+            return
+        }
+        player.volume = targetVolume() * stepsLeft / 10f
+        timerHandler.postDelayed({ fadeOut(stepsLeft - 1) }, 1_000L)
+    }
+
+    private fun play(url: String = currentSrc) {
+        // startForegroundService() was used to reach here, so we MUST call
+        // startForeground() within ~5s or the OS kills us with
+        // ForegroundServiceDidNotStartInTimeException. Satisfy that contract FIRST,
+        // before any player construction that could throw or return null.
+        Player.setState(title, true)
+        updateSession(true)
+        ServiceCompat.startForeground(
+            this, NOTIF, buildNotification(true),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+        )
+
+        if (mp != null && url != currentSrc) { mp?.release(); mp = null }
+        if (mp == null) {
+            currentSrc = url
+            mp = if (url.isBlank()) createBed() else createStream(url)
+        }
+        val player = mp
+        if (player == null) {
+            // Source creation failed — we're already foreground, so tear down cleanly.
+            stopAll()
+            return
+        }
+        // W27 §1: ramp in from wherever the player sits (0 on a fresh source or
+        // after a pause tail-out) to the user's level — never a hard start.
+        player.playWhenReady = true   // ExoPlayer starts once prepared
+        ramp.ramp(from = player.volume, to = targetVolume(), onStep = { mp?.volume = it })
+    }
+
+    /** Media focus + auto-pause on headphone unplug — applied to every player so
+     * CereBro ducks for calls/other apps and doesn't blast through the speaker. */
+    private val audioAttrs = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
+
+    /** The ambient bed, looped gaplessly via REPEAT_MODE_ONE. Plays the catalogue's
+     * `ambience.bed` asset when an admin has uploaded one, else the bundled loop —
+     * so an un-narrated item is never silent, with or without a server. */
+    private fun createBed(): ExoPlayer? = runCatching {
+        val key = MediaCatalog.Keys.AMBIENCE_BED
+        val streaming = MediaCatalog.has(key)
+        ExoPlayer.Builder(this).build().apply {
+            setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
+            setHandleAudioBecomingNoisy(true)
+            // A streamed bed needs the wifi lock held overnight; a bundled one
+            // must not take one it doesn't use.
+            setWakeMode(if (streaming) C.WAKE_MODE_NETWORK else C.WAKE_MODE_LOCAL)
+            setMediaItem(MediaItem.fromUri(ambientUri(packageName, key, R.raw.ambient_bed)))
+            repeatMode = Media3Player.REPEAT_MODE_ONE
+            volume = 0f   // W27 §1: born silent; play() ramps it in
+            prepare()
+        }
+    }.getOrNull()
+
+    /** Stream a narrated track over HTTP(S); any failure falls back to the bed. */
+    private fun createStream(url: String): ExoPlayer? = runCatching {
+        ExoPlayer.Builder(this).build().apply {
+            setAudioAttributes(audioAttrs, /* handleAudioFocus = */ true)
+            setHandleAudioBecomingNoisy(true)
+            setWakeMode(C.WAKE_MODE_NETWORK)   // hold a wifi+wake lock for long narration
+            setMediaItem(MediaItem.fromUri(url))
+            repeatMode = Media3Player.REPEAT_MODE_OFF   // narration ends; never loops
+            volume = 0f   // W27 §1: born silent; play() ramps it in
+            addListener(object : Media3Player.Listener {
+                // Don't release the player synchronously from inside its own error
+                // callback (re-entrant) — hop to the main handler first.
+                override fun onPlayerError(error: PlaybackException) {
+                    timerHandler.post { fallBackToBed() }
+                }
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Media3Player.STATE_ENDED) stopAll()
+                }
+            })
+            prepare()
+        }
+    }.getOrNull()
+
+    private fun fallBackToBed() {
+        // W27 §1: the errored narration made no sound to fade; the replacement
+        // bed still ramps in from silence via play("") — the fallback is soft.
+        mp?.release(); mp = null
+        currentSrc = ""
+        play("")
+    }
+
+    private fun pause() {
+        // W27 §1: publish the paused state immediately (UI + notification stay
+        // honest), then let the audio tail out ~600ms before actually pausing.
+        Player.setState(title, false)
+        updateSession(false)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+        getSystemService(NotificationManager::class.java).notify(NOTIF, buildNotification(false))
+        val player = mp ?: return
+        ramp.ramp(from = player.volume, to = 0f, onStep = { mp?.volume = it }) {
+            mp?.playWhenReady = false
+        }
+    }
+
+    /** W27 §1: stop = ramp the audio out (~600ms), then tear down. State is
+     * published immediately, so an exclusivity handoff (the mixer starting)
+     * overlaps this tail-out with its own ramp-in — a true crossfade. The
+     * cross-stop contract is unchanged: controllers stay synchronous. */
+    private fun stopWithRamp() {
+        timerHandler.removeCallbacksAndMessages(null)
+        val player = mp
+        if (player == null || !player.playWhenReady) { stopAll(); return }
+        Player.setState(null, false)
+        Player.setTimerState(0)
+        ramp.ramp(from = player.volume, to = 0f, onStep = { mp?.volume = it }) { stopAll() }
+    }
+
+    private fun stopAll() {
+        ramp.cancel()
+        timerHandler.removeCallbacksAndMessages(null)
+        Player.setTimerState(0)
+        mp?.release(); mp = null
+        Player.setState(null, false)
+        session?.isActive = false; session?.release(); session = null
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    override fun onDestroy() {
+        ramp.cancel()
+        mp?.release(); mp = null
+        session?.release(); session = null
+        super.onDestroy()
+    }
+
+    private fun updateSession(playing: Boolean) {
+        val state = if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+        session?.setPlaybackState(
+            PlaybackState.Builder()
+                .setActions(PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP)
+                .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .build(),
+        )
+    }
+
+    private fun action(label: String, action: String, icon: Int): Notification.Action {
+        val pi = PendingIntent.getService(
+            this, action.hashCode(),
+            Intent(this, AmbientService::class.java).setAction(action),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return Notification.Action.Builder(Icon.createWithResource(this, icon), label, pi).build()
+    }
+
+    private fun buildNotification(playing: Boolean): Notification {
+        val toggle =
+            if (playing) action("Pause", ACTION_PAUSE, android.R.drawable.ic_media_pause)
+            else action("Play", ACTION_PLAY, android.R.drawable.ic_media_play)
+        val open = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_orb)
+            .setContentTitle(title)
+            .setContentText(if (currentSrc.isBlank()) "CereBro · ambient bed" else "CereBro · narration")
+            .setContentIntent(open)
+            .setOngoing(playing)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .addAction(toggle)
+            .addAction(action("Stop", ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel))
+            .setStyle(
+                Notification.MediaStyle()
+                    .setMediaSession(session?.sessionToken)
+                    .setShowActionsInCompactView(0),
+            )
+            .build()
+    }
+
+    private fun ensureChannel() {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(CHANNEL) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(CHANNEL, "Ambient playback", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Controls for the calming ambient bed."
+                    setShowBadge(false)
+                },
+            )
+        }
+    }
+}

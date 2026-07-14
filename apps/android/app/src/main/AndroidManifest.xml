@@ -62,6 +62,18 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+    
+    <!-- Background ambient audio as a foreground media service. -->
+
+        <service
+            android:name=".audio.AmbientService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".audio.SoundscapeService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 
 </manifest>

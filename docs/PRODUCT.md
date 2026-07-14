@@ -102,6 +102,11 @@ The HR portal and ops admin are one Next.js app with role-gated tabs (the
   reference (private reflections attached to sessions; learning-aid content
   the `learning_aid` agent can already draw on).
 
+Note (2026-07-14): the well-being suite (sounds/sleep/breathe/games) was
+originally cut here as "wellness-app scope" and RESTORED the same day by
+owner decision — it lives behind Today's "Reset toolkit" and "Rest &
+recovery" doors, not as tabs, keeping the five coaching tabs primary.
+
 ## Feature coverage matrix (sources → plan)
 
 | Feature | Source | v1 | Later | Dropped |
@@ -124,8 +129,8 @@ The HR portal and ops admin are one Next.js app with role-gated tabs (the
 | Micro-content / resources library | Zen content + Sherlock Resources | | v2 | |
 | Web employee app | Zen `apps/app` | | Phase 5 | |
 | Gamification coins | Sherlock | | | ✔ deliberate |
-| Soundscapes/audio mixer, games toolkit | Zen | | | ✔ wellness-app scope |
-| Sleep/Health Connect | Zen | | | ✔ wellness-app scope |
+| Well-being suite: soundscapes/mixer, sleep scenes, breathe, reset tools, games | Zen | ✔ (owner call 2026-07-14 — reversed the v1 strip; supports the site's Well-Being pillar) | | |
+| Health Connect sleep prefill | Zen | ✔ (restored with the sleep surface) | | |
 | Consumer billing/premium | Zen | | | ✔ seats instead |
 
 ## Success metrics (the ones the HR portal must eventually prove)
