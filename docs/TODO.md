@@ -23,7 +23,13 @@ dated notes, grouped by priority; items needing an owner decision are marked
       (`apps/{web,android,admin}`, `services/{engine,platform}`, `design`,
       `scripts`, `e2e`, `deploy` — placeholders carry READMEs), and the
       `Apps`→`apps` case normalization (Linux CI safety).
-      Still open from this item: CI skeleton (needs the git repo first).
+- [x] 2026-07-14 — CI skeleton: `.github/workflows/ci.yml`, six hermetic
+      jobs — engine (pytest + 96% branch gate, pgvector service container),
+      platform (pytest + 95% gate), web (lint + build), admin (build),
+      android (assemble + `check`: tests, JaCoCo 95%, lint), hygiene
+      (token-drift check + gitleaks over full history). All commands mirror
+      what was verified locally; `gradlew`'s executable bit fixed in the
+      index (Windows checkout trap). Goes live on first push to a remote.
 - [ ] **[decision] Engine licensing/provenance**: confirm we have the right
       to reuse `ref/Agent` and `ref/Zen` **code** for this product (both
       carry another project's history; `ref/Agent` docs reference an
