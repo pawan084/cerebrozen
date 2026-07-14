@@ -98,7 +98,7 @@ function Invite() {
         method: "POST",
         body: JSON.stringify({ email: data.get("email"), role: data.get("role") }),
       });
-      setToken(out.invitation_token);
+      setToken(`${window.location.origin}/accept?token=${out.invitation_token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed");
     }
@@ -120,7 +120,7 @@ function Invite() {
       {token && (
         <>
           <p className="hint" style={{ marginTop: 12 }}>
-            Share this token with them — it is shown once and holds a seat until it expires. (Email delivery is a Phase 2 wiring.)
+            Share this link with them — shown once; the seat is held until it expires. (Email delivery is a Phase 2 wiring.)
           </p>
           <p className="token-reveal">{token}</p>
         </>
@@ -206,7 +206,7 @@ function InviteFirstAdmin({ orgs }: { orgs: Org[] }) {
         `/orgs/${data.get("org")}/invitations`,
         { method: "POST", body: JSON.stringify({ email: data.get("email"), role: "org_admin" }) },
       );
-      setToken(out.invitation_token);
+      setToken(`${window.location.origin}/accept?token=${out.invitation_token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed");
     }
@@ -228,7 +228,7 @@ function InviteFirstAdmin({ orgs }: { orgs: Org[] }) {
       {token && (
         <>
           <p className="hint" style={{ marginTop: 12 }}>
-            Share this token once — they accept via POST /auth/accept-invitation (name + password) and land in the HR view.
+            Share this link once — they set a name + password and land in the HR view.
           </p>
           <p className="token-reveal">{token}</p>
         </>

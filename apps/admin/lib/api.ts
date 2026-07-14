@@ -37,6 +37,16 @@ export async function logout(): Promise<void> {
   setTokens(null);
 }
 
+export async function acceptInvitation(token: string, name: string, password: string): Promise<void> {
+  const r = await fetch(`${BASE}/auth/accept-invitation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, name, password }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? "invitation failed");
+  setTokens(await r.json());
+}
+
 async function refresh(): Promise<boolean> {
   if (!refreshing) {
     refreshing = (async () => {
