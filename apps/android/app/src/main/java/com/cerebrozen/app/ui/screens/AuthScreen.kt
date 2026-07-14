@@ -100,9 +100,10 @@ internal suspend fun signUpThenPersonalize(
     withContext(NonCancellable) { personalize() }
 }
 
-/** Sign in / create account — email+password, passwordless email code (OTP), or
- * Google. Same backend flows as iOS and the web app; Google degrades gracefully
- * until a web client id is configured. */
+/** Sign in — email + password only. Accounts are invitation-based (the
+ * platform has no self-signup/OTP/Google endpoints); the inherited paths are
+ * hidden rather than left as dead buttons. Debug builds prefill the
+ * walkthrough account. */
 @Composable
 fun AuthScreen(
     onBack: (() -> Unit)? = null,
@@ -114,8 +115,10 @@ fun AuthScreen(
     // Identifiers survive rotation so they aren't re-typed. Password is deliberately
     // NOT saved — persisting a secret into instance state is an anti-pattern.
     var name by rememberSaveable { mutableStateOf("") }
-    var email by rememberSaveable { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    // Debug convenience: the walkthrough account, so a dev build signs in
+    // with one tap. Never compiled into release (BuildConfig.DEBUG).
+    var email by rememberSaveable { mutableStateOf(if (BuildConfig.DEBUG) "worker@acme-test.example" else "") }
+    var password by remember { mutableStateOf(if (BuildConfig.DEBUG) "walkthrough123" else "") }
     var code by rememberSaveable { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -179,23 +182,6 @@ fun AuthScreen(
             modifier = Modifier.appear(2),
         )
 
-        AuthWhiteButton(
-            text = stringResource(R.string.auth_google_cta),
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().appear(3),
-        ) {
-            run {
-                val result = googleIdToken(context, clientId)
-                if (result == null) {
-                    error = googleNotSetup
-                } else {
-                    Session.signInWithGoogle(result.first, result.second)
-                }
-            }
-        }
-
-        AuthDivider(if (mode == AuthMode.Password) stringResource(R.string.auth_divider_email) else stringResource(R.string.auth_divider_otp))
-
         when (mode) {
             AuthMode.Password -> {
                 val pwReady = !busy && email.isNotBlank() && password.isNotBlank()
@@ -256,26 +242,15 @@ fun AuthScreen(
                         Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleMedium, color = Color.White)
                     }
                 } else {
-                    // Reset completes via the emailed web link (same as iOS);
-                    // the server always answers 200 — no account enumeration.
-                    TextButton(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        enabled = !busy && email.isNotBlank(),
-                        onClick = {
-                            run {
-                                Session.forgotPassword(email.trim())
-                                info = resetSent
-                            }
-                        },
-                    ) {
-                        Text(stringResource(R.string.auth_forgot), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    }
-                    TextButton(
-                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 24.dp),
-                        onClick = { creating = true; error = null; info = null },
-                    ) {
-                        Text(stringResource(R.string.auth_new_here), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    }
+                    // Password reset and self-signup are hidden until the
+                    // platform grows those endpoints (accounts are
+                    // invitation-based; docs/TODO.md).
+                    Text(
+                        "Your account comes from your organization's invitation. Ask your admin if you need one.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted,
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 18.dp),
+                    )
                 }
             }
 
