@@ -46,6 +46,18 @@ DEV_ADMIN_PASSWORD = "admin12345"
 
 INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
 
+# Browser origins allowed to call this API (the admin/app frontends). In prod
+# Caddy serves everything under one apex, but the admin still runs on its own
+# subdomain — set this explicitly there.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "CEREBROZEN_CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:3001,http://localhost:3002",
+    ).split(",")
+    if o.strip()
+]
+
 
 def guard_production() -> None:
     """Refuse to boot a production deployment on development defaults.

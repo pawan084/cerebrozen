@@ -10,6 +10,17 @@ from app.security import decode_access_token, hash_password, verify_password
 # ── health & auth basics ─────────────────────────────────────────────────────
 
 
+async def test_cors_preflight_allows_the_admin_origin(client):
+    r = await client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:3001",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:3001"
+
+
 async def test_health(client):
     r = await client.get("/health")
     assert r.status_code == 200 and r.json()["status"] == "ok"

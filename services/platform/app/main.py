@@ -8,6 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app import config
@@ -53,6 +54,12 @@ async def _lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="CereBroZen Platform", lifespan=_lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ORIGINS,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(auth.router)
     app.include_router(orgs.router)
     app.include_router(users.router)
