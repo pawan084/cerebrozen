@@ -226,6 +226,48 @@ async def test_seats_are_a_hard_limit_and_invitations_count(client, org_with_adm
     assert r.status_code == 409 and "seats" in r.json()["detail"]
 
 
+async def test_internal_admin_bootstraps_the_first_org_admin(client, internal):
+    """The ops path: create tenant -> invite its first org_admin -> they accept
+    and land in the HR view. Without this, a new tenant is a locked room."""
+    headers, _ = internal
+    org = (
+        await client.post(
+            "/orgs", json={"name": "Globex", "slug": "globex"}, headers=headers
+        )
+    ).json()
+    r = await client.post(
+        f"/orgs/{org['id']}/invitations",
+        json={"email": "first@globex.example", "role": "org_admin"},
+        headers=headers,
+    )
+    assert r.status_code == 201, r.text
+    token = r.json()["invitation_token"]
+    r = await client.post(
+        "/auth/accept-invitation",
+        json={"token": token, "name": "First Admin", "password": "hunter2hunter2"},
+    )
+    assert r.status_code == 201
+    me = await client.get(
+        "/orgs/me", headers={"Authorization": f"Bearer {r.json()['access_token']}"}
+    )
+    assert me.status_code == 200 and me.json()["slug"] == "globex"
+    assert (
+        await client.post(
+            f"/orgs/{org['id']}/invitations",
+            json={"email": "x@globex.example"},
+        )
+    ).status_code == 401, "the ops invite path must not be open"
+
+
+async def test_org_admins_cannot_use_the_ops_invite_path(client, org_with_admin):
+    r = await client.post(
+        f"/orgs/{org_with_admin['org']['id']}/invitations",
+        json={"email": "y@acme.example"},
+        headers=org_with_admin["admin_headers"],
+    )
+    assert r.status_code == 403
+
+
 async def test_inviting_an_existing_email_is_409(client, org_with_admin):
     r = await client.post(
         "/orgs/me/invitations",

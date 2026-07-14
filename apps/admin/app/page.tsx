@@ -189,7 +189,51 @@ function Tenants() {
         </form>
         <p className="hint" style={{ marginTop: 10 }}>New tenants start with regulated mode ON — turning it off is a contract-level decision (SECURITY.md).</p>
       </div>
+      <InviteFirstAdmin orgs={orgs ?? []} />
     </>
+  );
+}
+
+function InviteFirstAdmin({ orgs }: { orgs: Org[] }) {
+  const [token, setToken] = useState("");
+  const [error, setError] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    setError(""); setToken("");
+    try {
+      const out = await apiJson<{ invitation_token: string }>(
+        `/orgs/${data.get("org")}/invitations`,
+        { method: "POST", body: JSON.stringify({ email: data.get("email"), role: "org_admin" }) },
+      );
+      setToken(out.invitation_token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "failed");
+    }
+  }
+  return (
+    <div className="card">
+      <h2>First org admin</h2>
+      <p className="hint">A new tenant is a locked room until its first org admin accepts an invitation.</p>
+      <form className="stack" onSubmit={submit} style={{ marginTop: 10 }}>
+        <label>Tenant
+          <select name="org" required>
+            {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </label>
+        <label>Admin email<input name="email" type="email" required /></label>
+        <button className="primary">Create admin invitation</button>
+        {error && <p className="error">{error}</p>}
+      </form>
+      {token && (
+        <>
+          <p className="hint" style={{ marginTop: 12 }}>
+            Share this token once — they accept via POST /auth/accept-invitation (name + password) and land in the HR view.
+          </p>
+          <p className="token-reveal">{token}</p>
+        </>
+      )}
+    </div>
   );
 }
 

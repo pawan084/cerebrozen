@@ -143,16 +143,16 @@ class InvitationCreate(BaseModel):
     role: str = ROLE_USER
 
 
-@router.post("/me/invitations", status_code=201)
-async def invite(
-    body: InvitationCreate,
-    user: User = Depends(require_org_admin),
-    session: AsyncSession = Depends(get_session),
-):
-    org_id = _own_org_id(user)
+async def _create_invitation(
+    session: AsyncSession, org_id: str, body: InvitationCreate
+) -> dict:
     if body.role not in (ROLE_USER, ROLE_ORG_ADMIN):
         raise HTTPException(400, "role must be user or org_admin")
-    org = (await session.execute(select(Org).where(Org.id == org_id))).scalar_one()
+    org = (
+        await session.execute(select(Org).where(Org.id == org_id))
+    ).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(404, "no such org")
     if await _seats_used(session, org_id) >= org.seats_total:
         raise HTTPException(409, "no seats left")
     email = body.email.lower().strip()
@@ -175,3 +175,25 @@ async def invite(
     await session.commit()
     # The raw token is returned ONCE; email delivery is a Phase 2 wiring task.
     return {"email": email, "role": body.role, "invitation_token": raw}
+
+
+@router.post("/me/invitations", status_code=201)
+async def invite(
+    body: InvitationCreate,
+    user: User = Depends(require_org_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    return await _create_invitation(session, _own_org_id(user), body)
+
+
+@router.post(
+    "/{org_id}/invitations",
+    status_code=201,
+    dependencies=[Depends(require_internal_admin)],
+)
+async def invite_into_org(
+    org_id: str, body: InvitationCreate, session: AsyncSession = Depends(get_session)
+):
+    """Ops path: how a freshly-created tenant gets its FIRST org admin —
+    an org-less internal admin cannot use /orgs/me/invitations."""
+    return await _create_invitation(session, org_id, body)
