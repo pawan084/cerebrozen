@@ -178,3 +178,55 @@ def test_the_boot_guard_lists_only_real_problems(monkeypatch):
         assert "JWT_SECRET" not in str(err)
     monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
     cfg.guard_production()  # fully configured production boots
+
+
+async def test_invitation_email_carries_the_accept_link(client, org_with_admin, monkeypatch):
+    from app import config as cfg
+    from app import emailer
+
+    sent = []
+    monkeypatch.setattr(cfg, "SMTP_HOST", "smtp.example")
+    monkeypatch.setattr(cfg, "SMTP_USER", "hello@cerebrozen.in")
+    monkeypatch.setattr(cfg, "SMTP_PASS", "x")
+    monkeypatch.setattr(emailer, "deliver", lambda msg: sent.append(msg))
+
+    r = await client.post(
+        "/orgs/me/invitations",
+        json={"email": "mail@acme.example"},
+        headers=org_with_admin["admin_headers"],
+    )
+    body = r.json()
+    assert body["emailed"] is True
+    (msg,) = sent
+    assert msg["To"] == "mail@acme.example"
+    assert body["invitation_token"] in msg.get_content()
+    assert "/accept?token=" in body["invite_link"]
+
+
+async def test_unconfigured_smtp_still_creates_the_invitation(client, org_with_admin):
+    r = await client.post(
+        "/orgs/me/invitations",
+        json={"email": "manual@acme.example"},
+        headers=org_with_admin["admin_headers"],
+    )
+    assert r.status_code == 201
+    assert r.json()["emailed"] is False, "no SMTP -> manual sharing, never an error"
+
+
+async def test_a_delivery_failure_never_breaks_creation(client, org_with_admin, monkeypatch):
+    from app import config as cfg
+    from app import emailer
+
+    monkeypatch.setattr(cfg, "SMTP_HOST", "smtp.example")
+    monkeypatch.setattr(cfg, "SMTP_USER", "hello@cerebrozen.in")
+    monkeypatch.setattr(cfg, "SMTP_PASS", "x")
+    def _boom(msg):
+        raise OSError("mailbox on fire")
+    monkeypatch.setattr(emailer, "deliver", _boom)
+
+    r = await client.post(
+        "/orgs/me/invitations",
+        json={"email": "unlucky@acme.example"},
+        headers=org_with_admin["admin_headers"],
+    )
+    assert r.status_code == 201 and r.json()["emailed"] is False

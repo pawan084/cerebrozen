@@ -88,17 +88,19 @@ function People() {
 
 function Invite() {
   const [token, setToken] = useState("");
+  const [emailed, setEmailed] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setError(""); setToken("");
     try {
-      const out = await apiJson<{ invitation_token: string }>("/orgs/me/invitations", {
+      const out = await apiJson<{ invite_link: string; emailed: boolean }>("/orgs/me/invitations", {
         method: "POST",
         body: JSON.stringify({ email: data.get("email"), role: data.get("role") }),
       });
-      setToken(`${window.location.origin}/accept?token=${out.invitation_token}`);
+      setToken(out.invite_link);
+      setEmailed(out.emailed);
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed");
     }
@@ -120,7 +122,7 @@ function Invite() {
       {token && (
         <>
           <p className="hint" style={{ marginTop: 12 }}>
-            Share this link with them — shown once; the seat is held until it expires. (Email delivery is a Phase 2 wiring.)
+            {emailed ? "Invitation emailed — here's the link too, in case it lands in spam:" : "Email isn't configured (SMTP env vars) — share this link manually; shown once, the seat is held until it expires:"}
           </p>
           <p className="token-reveal">{token}</p>
         </>
@@ -196,17 +198,19 @@ function Tenants() {
 
 function InviteFirstAdmin({ orgs }: { orgs: Org[] }) {
   const [token, setToken] = useState("");
+  const [emailed, setEmailed] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setError(""); setToken("");
     try {
-      const out = await apiJson<{ invitation_token: string }>(
+      const out = await apiJson<{ invite_link: string; emailed: boolean }>(
         `/orgs/${data.get("org")}/invitations`,
         { method: "POST", body: JSON.stringify({ email: data.get("email"), role: "org_admin" }) },
       );
-      setToken(`${window.location.origin}/accept?token=${out.invitation_token}`);
+      setToken(out.invite_link);
+      setEmailed(out.emailed);
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed");
     }
@@ -228,7 +232,7 @@ function InviteFirstAdmin({ orgs }: { orgs: Org[] }) {
       {token && (
         <>
           <p className="hint" style={{ marginTop: 12 }}>
-            Share this link once — they set a name + password and land in the HR view.
+            {emailed ? "Invitation emailed — here's the link too:" : "Email isn't configured — share this link manually; they set a name + password and land in the HR view:"}
           </p>
           <p className="token-reveal">{token}</p>
         </>

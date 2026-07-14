@@ -6,11 +6,12 @@ IS a seat commitment, or an org could oversubscribe by inviting."""
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import config
+from app import config, emailer
 from app.db import get_session
 from app.deps import require_internal_admin, require_org_admin
 from app.models import ROLE_ORG_ADMIN, ROLE_USER, Invitation, Org, User
@@ -173,8 +174,19 @@ async def _create_invitation(
         )
     )
     await session.commit()
-    # The raw token is returned ONCE; email delivery is a Phase 2 wiring task.
-    return {"email": email, "role": body.role, "invitation_token": raw}
+    # The raw token/link is revealed ONCE. Email delivery is best-effort:
+    # `emailed` tells the UI whether manual sharing is still needed.
+    link = f"{config.ADMIN_BASE_URL}/accept?token={raw}"
+    emailed = await run_in_threadpool(
+        emailer.send_invitation, email, org.name, body.role, link
+    )
+    return {
+        "email": email,
+        "role": body.role,
+        "invitation_token": raw,
+        "invite_link": link,
+        "emailed": emailed,
+    }
 
 
 @router.post("/me/invitations", status_code=201)

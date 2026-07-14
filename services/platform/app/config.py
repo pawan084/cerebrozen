@@ -46,6 +46,17 @@ DEV_ADMIN_PASSWORD = "admin12345"
 
 INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
 
+# Invitation email delivery — same SMTP variables as the marketing demo form,
+# so one mailbox serves both. Unset => invitations are shared manually.
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "465") or "465")
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASS = os.environ.get("SMTP_PASS", "").strip()
+# Where accept links point (the admin app's public URL).
+ADMIN_BASE_URL = os.environ.get(
+    "CEREBROZEN_ADMIN_BASE_URL", "http://localhost:3001"
+).strip().rstrip("/")
+
 # Browser origins allowed to call this API (the admin/app frontends). In prod
 # Caddy serves everything under one apex, but the admin still runs on its own
 # subdomain — set this explicitly there.
