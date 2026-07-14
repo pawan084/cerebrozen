@@ -198,9 +198,15 @@ dated notes, grouped by priority; items needing an owner decision are marked
       exercising tests lived in the half-B2C ScreenLogicTest — so the
       keep-half (DPDP notice language routing, six-categories invariant,
       reduce-motion rule) was recovered as `KeptLogicTest.kt`.
-- [ ] Android tail: emulator smoke run against live platform+engine;
-      coaching tab icons; Play readiness runbook (adapt ANDROID_RELEASE +
-      PRIVACY_LABELS from the reference docs).
+- [x] 2026-07-14 — REAL-DEVICE smoke run (OPPO CPH2681, Android 14):
+      installed via `installDebug -PapiBaseUrl/-PengineBaseUrl=localhost` +
+      `adb reverse` tunnels; owner-verified live — sign-in against the
+      platform, Coach tab STREAMING from the engine (mock provider) over
+      SSE on the device. The debug manifest's blanket cleartext covers
+      localhost; release stays HTTPS-only.
+- [ ] Android tail: coaching tab icons; Android event wiring for HR
+      analytics (Coach/ActionsStore fire the activity beats); Play
+      readiness runbook (adapt ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).
 - [ ] Coach tab: session UI over engine SSE (`status/node/token/done`),
       phase cards, action-card save/skip, commit gate UX, mood capture.
