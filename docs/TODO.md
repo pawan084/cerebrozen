@@ -265,7 +265,12 @@ dated notes, grouped by priority; items needing an owner decision are marked
       material — guidance, not diagnosis" (+ stage-capture test);
       (6) TypingDots pre-first-token (Reduce Motion static). Still open
       from this slice: (4) pre-permission notification screen in
-      onboarding; (5) wind-down 4-step routine; skeleton shimmers.
+      onboarding; skeleton shimmers. (5) wind-down BUILT 2026-07-14:
+      WindDownScreen — intro with the four steps listed, then one
+      unhurried card per step (name tomorrow's first thing / dim the
+      world / one minute with the real compact BreatheEngine / settle
+      into sound via the mixer or straight to sleep), progress dots,
+      nothing timed. Route 'winddown'; Today surfaces it 20:00-03:00.
       REFERENCE LATER: voice-mode screen (rings/wave/transcript/stop) for
       the parked VoiceEngine wiring; Discover layout (hero + tile rows +
       durations) for the future content library; crisis sheet polish.

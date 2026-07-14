@@ -238,6 +238,16 @@ fun TodayHome(onOpen: (String) -> Unit) {
                 color = TextMuted,
             )
         }
+        if (hour >= 20 || hour < 3) {
+            SectionCard(onClick = { onOpen("winddown") }) {
+                Text("Wind down for tonight", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(
+                    "Four small steps to close the day — a few unhurried minutes.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted,
+                )
+            }
+        }
         SectionCard(onClick = { onOpen("humansupport") }) {
             Text("Need a human?", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(

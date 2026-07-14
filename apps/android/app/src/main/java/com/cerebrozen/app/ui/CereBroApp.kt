@@ -90,6 +90,7 @@ import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
+import com.cerebrozen.app.ui.screens.WindDownScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
@@ -388,6 +389,7 @@ fun CereBroApp() {
             composable("home") { TodayHome(onOpen = open) }
             composable("talk") { CoachScreen(onOpen = open) }
             composable("sleep") { SleepScreen(onOpen = open) }
+            composable("winddown") { WindDownScreen(onBack = back, onOpen = open) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
