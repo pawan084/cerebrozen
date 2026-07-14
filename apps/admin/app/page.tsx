@@ -10,6 +10,12 @@ import { api, apiJson, getTokens, login, logout } from "@/lib/api";
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
 type Org = { id: string; name: string; slug: string; seats_total: number; seats_used: number; regulated_mode: boolean; crisis_region: string; is_active: boolean };
 type Person = { id: string; email: string; name: string; role: string; is_active: boolean };
+type Metric = { value: number | null; suppressed: boolean };
+type Analytics = {
+  window_days: number; cohort_floor: number;
+  seats: { total: number; active_members: number };
+  metrics: Record<string, Metric>;
+};
 type Demo = { id: string; name: string; email: string; company: string; size: string; message: string; status: string; created_at: string };
 
 function Login({ onDone }: { onDone: () => void }) {
@@ -58,6 +64,60 @@ function OrgOverview() {
         Analytics land in Phase 2 — aggregates only, with cohort floors. This portal never shows coaching content.
       </p>
     </div>
+  );
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  active_coaching_users: "active coaching users",
+  sessions_started: "sessions started",
+  sessions_completed: "sessions completed",
+  session_completion_rate: "session completion",
+  actions_saved: "commitments made",
+  actions_completed: "commitments kept",
+  action_completion_rate: "follow-through",
+};
+
+function OrgAnalytics() {
+  const [data, setData] = useState<Analytics | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    apiJson<Analytics>("/orgs/me/analytics").then(setData).catch((e) => setError(e.message));
+  }, []);
+  if (error) return <p className="error">{error}</p>;
+  if (!data) return <p className="hint">Loading…</p>;
+  const anySuppressed = Object.values(data.metrics).some((m) => m.suppressed);
+  const fmt = (name: string, m: Metric) =>
+    m.suppressed ? "—" : name.includes("rate") ? `${Math.round((m.value ?? 0) * 100)}%` : String(m.value);
+  return (
+    <>
+      <div className="card">
+        <h2>Last {data.window_days} days</h2>
+        <div className="stats">
+          {Object.entries(data.metrics).map(([name, m]) => (
+            <div className="stat" key={name}>
+              <b>{fmt(name, m)}</b>
+              <span>{METRIC_LABELS[name] ?? name}</span>
+            </div>
+          ))}
+        </div>
+        {anySuppressed && (
+          <p className="hint" style={{ marginTop: 14 }}>
+            &ldquo;—&rdquo; means fewer than {data.cohort_floor} people contributed to that
+            metric, so it is suppressed — aggregates never describe groups small enough
+            to identify anyone. It fills in as adoption grows.
+          </p>
+        )}
+        <p className="hint" style={{ marginTop: 8 }}>
+          Counts and trends only — no transcripts, no individual records, ever.
+        </p>
+      </div>
+      <div className="card">
+        <h2>Seats</h2>
+        <div className="stats">
+          <div className="stat"><b>{data.seats.active_members} / {data.seats.total}</b><span>active members</span></div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -303,7 +363,7 @@ export default function Admin() {
   const tabs =
     me.role === "internal_admin"
       ? [["tenants", "Tenants"], ["demos", "Demo requests"]]
-      : [["overview", "Overview"], ["people", "People"], ["invite", "Invite"]];
+      : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
     <div className="shell">
@@ -320,6 +380,7 @@ export default function Admin() {
         ))}
       </nav>
       {tab === "overview" && <OrgOverview />}
+      {tab === "analytics" && <OrgAnalytics />}
       {tab === "people" && <People />}
       {tab === "invite" && <Invite />}
       {tab === "tenants" && <Tenants />}

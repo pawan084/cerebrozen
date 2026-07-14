@@ -46,6 +46,12 @@ DEV_ADMIN_PASSWORD = "admin12345"
 
 INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
 
+# k-anonymity floor for HR analytics: a behavioral metric computed from fewer
+# distinct people than this is SUPPRESSED (returned as null). Contract-level;
+# 8 is the documented default (docs/SECURITY.md). Enforced in the aggregation
+# layer, never left to the UI.
+COHORT_FLOOR = int(os.environ.get("CEREBROZEN_COHORT_FLOOR", "8"))
+
 # Invitation email delivery — same SMTP variables as the marketing demo form,
 # so one mailbox serves both. Unset => invitations are shared manually.
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()

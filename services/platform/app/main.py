@@ -14,7 +14,7 @@ from sqlalchemy import select
 from app import config
 from app.db import SessionLocal, create_all
 from app.models import ROLE_INTERNAL_ADMIN, User
-from app.routers import auth, demo, orgs, users
+from app.routers import analytics, auth, demo, orgs, users
 from app.security import hash_password
 
 logger = logging.getLogger("cerebrozen.platform")
@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(orgs.router)
     app.include_router(users.router)
     app.include_router(demo.router)
+    app.include_router(analytics.router)
 
     @app.get("/health")
     async def health() -> dict:

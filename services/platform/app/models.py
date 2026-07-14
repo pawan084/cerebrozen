@@ -93,6 +93,23 @@ class DemoRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+EVENT_KINDS = {"session_started", "session_completed", "action_saved", "action_completed"}
+
+
+class ActivityEvent(Base):
+    """One coaching-activity beat — KIND ONLY, never content. This table is
+    the entire substrate of HR analytics; keeping content out of it is what
+    makes "counts never content" a schema property rather than a promise."""
+
+    __tablename__ = "activity_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    org_id: Mapped[str] = mapped_column(String(32), index=True)
+    user_id: Mapped[str] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class DeletionLedger(Base):
     """Proof a deletion happened, holding no PII: the email survives only as a
     salted hash so a later 'did you really delete me?' can be answered."""

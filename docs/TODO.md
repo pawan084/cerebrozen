@@ -131,8 +131,17 @@ dated notes, grouped by priority; items needing an owner decision are marked
       Safety queue (engine escalations).
 - [ ] Wire marketing `/api/demo` → platform demo-requests table (email
       delivery stays as fallback).
-- [ ] HR portal tabs: Overview, Analytics (aggregates with k-floor in SQL),
-      Programs, People (counts never content), Rollout (invitations/CSV).
+- [x] 2026-07-14 — HR analytics with the k-anonymity floor: first-party
+      activity ingest (`POST /events/coaching`, kind whitelist = the content
+      firewall; members report with their own JWT), aggregates at
+      `GET /orgs/me/analytics` — active users, sessions started/completed,
+      commitments made/kept, rates — with every behavioral metric suppressed
+      below `CEREBROZEN_COHORT_FLOOR` (default 8) in the aggregation layer.
+      Rates inherit their weakest component's cohort (a rate over a
+      suppressed count would leak it). Admin gains the Analytics tab with a
+      suppression explainer. 6 tests incl. the rate-leak case; 53 passing.
+      Still open: Android event wiring (Coach/ActionsStore fire the beats);
+      Programs tab; Rollout/CSV.
 - [ ] Ops: per-org knowledge base (CSKB) management — curated upload +
       reindex + health view ("Tuned to Your Culture" mechanism); self-serve
       customer upload stays gated behind injection framing (SECURITY.md).
