@@ -296,12 +296,11 @@ dated notes, grouped by priority; items needing an owner decision are marked
       (ours is the five coaching tabs), account sign-in providers.
       Note: Mira's palette (peach glow #F1B27A/#E98D7C on deep plum) is
       near our coral family — controls re-skin naturally.
-- [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
-      ANDROID_RELEASE + PRIVACY_LABELS).
-- [ ] Auth screens: email/password + OTP (SSO later).
-- [ ] Coach tab: session UI over engine SSE (`status/node/token/done`),
-      phase cards, action-card save/skip, commit gate UX, mood capture.
-- [ ] Today tab: check-in entry, open actions, next nudge.
+- [x] 2026-07-14 — Coaching tab icons (compass/check-circle, 2dp line set).
+- [ ] Play readiness runbook (adapt ANDROID_RELEASE + PRIVACY_LABELS).
+- [x] Auth screens: email/password (OTP/SSO deliberately hidden — no endpoints; see 2026-07-14 auth cleanup).
+- [x] Coach tab: engine SSE streaming, action cards → ActionsStore, memory chip, grounded marker, typing dots, voice. (Phase-card/mood-capture UX polish remains with prompt adaptation.)
+- [x] Today tab: presence orb + state-aware greeting, open commitments, journeys, toolkit/rest doors, evening wind-down.
 - [ ] Actions tab: commitment lifecycle, 7-day follow-through prompts.
 - [ ] Journeys tab: program list/enrollment/day view (platform-served).
 - [ ] You tab: profile, my-insights view (patterns, session history with
