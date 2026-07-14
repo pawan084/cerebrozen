@@ -8,21 +8,46 @@ package com.cerebrozen.app.ui.screens
  * coach turn wiring appends cards here; the engine remains the source of
  * truth and re-syncs on session close. */
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
+import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Events
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.theme.BrandPrimary
+import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -91,19 +116,93 @@ object ActionsStore {
 
 // ── Today: the coaching home ─────────────────────────────────────────────────
 
+/** The living presence orb (Mira reference, coral-skinned): a slow breathing
+ * core with a soft aura. Reduce Motion holds it steady at full size. */
+@Composable
+private fun PresenceOrb(modifier: Modifier = Modifier) {
+    val reduceMotion = rememberReduceMotion()
+    val scale = if (reduceMotion) 1f else {
+        val breathe = rememberInfiniteTransition(label = "presence-orb")
+        val s by breathe.animateFloat(
+            initialValue = 0.94f, targetValue = 1.06f,
+            animationSpec = infiniteRepeatable(
+                tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "orb-scale",
+        )
+        s
+    }
+    Box(modifier.size(96.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(96.dp).scale(scale * 1.18f).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(BrandPrimary.copy(alpha = 0.35f), BrandPrimary.copy(alpha = 0f)))),
+        )
+        Box(
+            Modifier.size(72.dp).scale(scale).clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(androidx.compose.ui.graphics.Color(0xFFFCD9D4), BrandPrimary, androidx.compose.ui.graphics.Color(0xFFB03A3A)),
+                    ),
+                ),
+        )
+    }
+}
+
+/** Time- and state-aware presence copy: one greeting, one line, two actions. */
+private fun presenceLines(name: String?, openActions: Int, hour: Int): Pair<String, String> {
+    val who = name?.takeIf { it.isNotBlank() }?.split(" ")?.first()
+    val greeting = when {
+        hour < 5 -> if (who != null) "Still up, $who?" else "Still up?"
+        hour < 12 -> if (who != null) "Good morning, $who" else "Good morning"
+        hour < 17 -> if (who != null) "Good afternoon, $who" else "Good afternoon"
+        else -> if (who != null) "Good evening, $who" else "Good evening"
+    }
+    val say = when {
+        openActions == 1 -> "One commitment is still open — want to check it off, or talk through what's in the way?"
+        openActions > 1 -> "$openActions commitments are open. Want to talk one through, or take a minute to reset first?"
+        hour < 5 -> "Whatever has you up — we can think it through, or just breathe for a minute."
+        hour >= 17 -> "Anything from today worth a few minutes before tomorrow?"
+        else -> "What's the moment in front of you? Two minutes of prep changes how it goes."
+    }
+    return greeting to say
+}
+
 @Composable
 fun TodayHome(onOpen: (String) -> Unit) {
     ActionsStore.load()
     val open = ActionsStore.openCount()
-    Page(eyebrow = "CereBroZen", title = "Today") {
+    var userName by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        runCatching { userName = Api.me().optString("name") }
+    }
+    val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
+    val (greeting, say) = presenceLines(userName, open, hour)
+    Page(eyebrow = "CereBroZen", title = greeting) {
         FocusCard {
-            Text("Coached in the moments that matter", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
-            Text(
-                "Two minutes before the conversation you keep postponing changes how it goes.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSoft,
-            )
-            PrimaryButton("Start a session") { onOpen("coach") }
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PresenceOrb()
+                Text(
+                    say,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.weight(1f)) { PrimaryButton("Talk it through") { onOpen("coach") } }
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(999.dp))
+                            .background(ChipFill)
+                            .clickable { onOpen("breathe/reset") }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Breathe", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                    }
+                }
+            }
         }
         SectionCard(onClick = { onOpen("actions") }) {
             Text("Commitments", style = MaterialTheme.typography.titleMedium, color = TextPrimary)

@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,19 +33,49 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Coach
 import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import kotlinx.coroutines.launch
 
-private data class CoachMsg(val who: String, var text: String)
+private data class CoachMsg(val who: String, var text: String, val grounded: Boolean = false)
+
+/** Pre-first-token typing indicator (Mira reference): three quiet pulsing
+ * dots. Reduce Motion shows a static ellipsis. */
+@Composable
+private fun TypingDots() {
+    val reduceMotion = rememberReduceMotion()
+    if (reduceMotion) {
+        Text("…", style = MaterialTheme.typography.bodyLarge, color = TextMuted)
+        return
+    }
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "typing")
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(3) { i ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.25f, targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(600, delayMillis = i * 180),
+                    androidx.compose.animation.core.RepeatMode.Reverse,
+                ),
+                label = "dot$i",
+            )
+            Box(
+                Modifier.size(7.dp)
+                    .background(TextMuted.copy(alpha = alpha), androidx.compose.foundation.shape.CircleShape),
+            )
+        }
+    }
+}
 
 @Composable
 fun CoachScreen(onOpen: (String) -> Unit) {
@@ -79,6 +112,11 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                     )
                 }
                 statusLine = ""
+                // The grounded line: shown only when the engine actually served
+                // retrieved, reviewed material this turn (learning_aid stage ran).
+                if ("learning_aid" in done.stages) {
+                    messages[replyIndex] = messages[replyIndex].copy(grounded = true)
+                }
                 // The commit gate's product half: cards the session saved land
                 // on the Actions tab and the Today count immediately.
                 done.payload.optJSONArray("actions")?.let { arr ->
@@ -111,6 +149,27 @@ fun CoachScreen(onOpen: (String) -> Unit) {
     Column(Modifier.fillMaxSize().imePadding()) {
         Box(Modifier.padding(horizontal = pageHorizontalPadding()).padding(top = 28.dp)) {
             PageHeader(eyebrow = "Your coach", title = "Coach", accent = Accent.talk)
+        }
+        // The transparency chip (Mira reference): what the coach is carrying
+        // for you, from on-device state — tap to manage it on the Actions tab.
+        val openActions = ActionsStore.openCount()
+        Row(
+            Modifier.padding(horizontal = pageHorizontalPadding()).padding(top = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(CardFill)
+                .clickable { onOpen("actions") }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (openActions > 0)
+                    "Your coach remembers · $openActions open commitment" + (if (openActions > 1) "s" else "")
+                else "Your coach remembers what you commit to — sessions stay private to you",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextMuted,
+                modifier = Modifier.weight(1f),
+            )
+            Text("View", style = MaterialTheme.typography.labelMedium, color = Accent.talk)
         }
         LazyColumn(
             state = listState,
@@ -149,11 +208,24 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                             )
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                     ) {
-                        Text(
-                            m.text.ifBlank { if (busy) "…" else m.text },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (m.text.isBlank() && busy) {
+                                TypingDots()
+                            } else {
+                                Text(
+                                    m.text,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextPrimary,
+                                )
+                            }
+                            if (m.grounded) {
+                                Text(
+                                    "Grounded in reviewed material — guidance, not diagnosis",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Ok,
+                                )
+                            }
+                        }
                     }
                 }
             }

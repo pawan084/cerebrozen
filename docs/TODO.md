@@ -241,6 +241,7 @@ dated notes, grouped by priority; items needing an owner decision are marked
 - [ ] Mira screen-reference slice (owner-shared prototype, artifact
       0376c052 "mira_app" — the sibling companion app; full HTML saved in
       session tool-results). Reviewed 2026-07-14, verdicts:
+      PROGRESS 2026-07-14: adapt items 1/2/3/6 BUILT (see below), 4/5 open.
       ADAPT (high value, backend already exists):
       (1) Today presence moment — living hero orb + context-aware greeting
       + one "say" line proposing two actions (Talk/Breathe); coral-tinted.
@@ -254,6 +255,17 @@ dated notes, grouped by priority; items needing an owner decision are marked
       (5) Wind-down: guided 4-step pre-sleep routine (sleep suite gap).
       (6) Typing indicator pre-first-token in CoachScreen; loading
       skeleton shimmer for list screens.
+      BUILT 2026-07-14 (check green, on device): (1) Today presence — the
+      breathing coral PresenceOrb + time/state-aware greeting (name from
+      /users/me, commitment-aware say line) + Talk/Breathe action row;
+      (2) Coach memory chip from on-device state ("Your coach remembers ·
+      N open commitments" → Actions tab; privacy line when empty);
+      (3) grounded marker — Coach.turn now captures SSE `node` stages,
+      and replies where learning_aid ran show "Grounded in reviewed
+      material — guidance, not diagnosis" (+ stage-capture test);
+      (6) TypingDots pre-first-token (Reduce Motion static). Still open
+      from this slice: (4) pre-permission notification screen in
+      onboarding; (5) wind-down 4-step routine; skeleton shimmers.
       REFERENCE LATER: voice-mode screen (rings/wave/transcript/stop) for
       the parked VoiceEngine wiring; Discover layout (hero + tile rows +
       durations) for the future content library; crisis sheet polish.

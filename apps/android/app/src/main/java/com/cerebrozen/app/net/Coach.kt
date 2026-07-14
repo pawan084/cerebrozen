@@ -20,7 +20,13 @@ object Coach {
     @Volatile var sessionId: String? = null
         private set
 
-    data class DoneResult(val payload: JSONObject)
+    data class DoneResult(
+        val payload: JSONObject,
+        /** Engine stages that ran this turn (from SSE `node` events) — e.g.
+         * "learning_aid" present means retrieved, reviewed material was served,
+         * which the UI marks with the grounded line. */
+        val stages: Set<String> = emptySet(),
+    )
 
     /** Run one coaching turn (starting the session if needed), streaming tokens. */
     suspend fun turn(
@@ -32,10 +38,12 @@ object Coach {
         val path = sessionId?.let { "/v1/sessions/$it/turn?stream=true" }
             ?: "/v1/sessions/start?stream=true"
         var done = JSONObject()
+        val stages = mutableSetOf<String>()
         Session.sse(path, JSONObject().put("text", text), base = BuildConfig.ENGINE_BASE_URL) { ev ->
             when (ev.optString("type")) {
                 "token" -> onToken(ev.optString("text"))
                 "status" -> onStatus(ev.optString("msg"))
+                "node" -> ev.optString("stage").takeIf { it.isNotBlank() }?.let { stages.add(it) }
                 "done" -> {
                     done = ev
                     ev.optString("session_id").takeIf { it.isNotBlank() }?.let { sessionId = it }
@@ -46,7 +54,7 @@ object Coach {
         // began, and a session the commit gate allowed to close.
         if (starting && sessionId != null) Events.report(Events.SESSION_STARTED)
         if (done.optString("stage") == "close") Events.report(Events.SESSION_COMPLETED)
-        return DoneResult(done)
+        return DoneResult(done, stages)
     }
 
     /** End the current session client-side (the engine's commit gate governs

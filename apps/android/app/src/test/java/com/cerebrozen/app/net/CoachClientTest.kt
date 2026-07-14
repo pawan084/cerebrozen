@@ -76,6 +76,19 @@ class CoachClientTest {
     }
 
     @Test
+    fun node_stages_are_captured_for_the_grounded_marker() = runBlocking {
+        install(
+            "data: {\"type\":\"node\",\"stage\":\"challenge_context_agent\"}\n\n" +
+                "data: {\"type\":\"node\",\"stage\":\"learning_aid\"}\n\n" +
+                "data: {\"type\":\"token\",\"text\":\"here\"}\n\n" +
+                "data: {\"type\":\"done\",\"session_id\":\"s-g\"}\n\n",
+        )
+        val done = Coach.turn("teach me") { }
+        assertTrue("learning_aid" in done.stages)
+        assertTrue("challenge_context_agent" in done.stages)
+    }
+
+    @Test
     fun reset_clears_the_session_pointer() = runBlocking {
         install("data: {\"type\":\"done\",\"session_id\":\"s-9\"}\n\n")
         Coach.turn("hi") { }
