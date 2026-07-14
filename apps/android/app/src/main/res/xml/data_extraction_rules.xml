@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Privacy-first: keep everything the app stores locally — the auth refresh token
+  and the offline read-cache of personal data (moods, journal, sleep) — out of
+  both Google cloud backup and device-to-device transfer. All of it re-syncs
+  from the server on the next sign-in, so nothing of value is lost.
+  (allowBackup="false" already disables cloud backup on all versions; these
+  rules also cover the Android 12+ device-transfer channel.)
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+    </device-transfer>
+</data-extraction-rules>

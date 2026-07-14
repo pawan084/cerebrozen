@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kept in sync with the iOS DesignSystem (apps/ios/CereBro/DesignSystem/Theme.swift). -->
+    <color name="night">#FF080B22</color>
+</resources>

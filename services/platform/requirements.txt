@@ -1,0 +1,22 @@
+# --- Core serving ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+python-multipart==0.0.20
+
+# --- Persistence ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+aiosqlite==0.20.0
+
+# --- Auth ---
+# Passwords: stdlib PBKDF2-HMAC (no bcrypt/argon2 — native wheels are blocked
+# by some managed Windows dev machines; see docs/FORK_NOTES in the engine).
+pyjwt==2.10.1
+
+# --- Dev / test ---
+pytest==8.3.4
+pytest-asyncio==0.25.1
+pytest-cov>=7.0
+httpx==0.28.1
+email-validator==2.2.0

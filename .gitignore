@@ -1,0 +1,46 @@
+# --- secrets: never committed, anywhere ---
+.env
+.env.*
+!.env.example
+!.env.offline
+!.env.demo
+!.env.production.example
+
+# --- reference material: local artifacts that must never enter history ---
+ref/**/.env*
+ref/**/*.db
+ref/**/*.db-shm
+ref/**/*.db-wal
+ref/**/.venv/
+ref/**/logs/
+ref/**/.pytest_cache/
+ref/**/.ruff_cache/
+ref/**/.coverage
+
+# --- dependencies & builds ---
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+.venv/
+__pycache__/
+*.pyc
+.gradle/
+*.apk
+*.aab
+
+# --- tooling & OS noise ---
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+.claude/settings.local.json
+
+# reference codebases: local-only until the licensing check (docs/TODO.md P0) clears
+ref/
+
+# machine-specific
+local.properties
+.git.pre-monorepo-backup/

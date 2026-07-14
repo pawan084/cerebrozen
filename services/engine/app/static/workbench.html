@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CereBroZen — Agent Workbench</title>
+<link rel="stylesheet" href="/static/cerebrozen.css" />
+<style>
+  /* Supplements to CereBroZen's design system: chat bubbles + absolute flow nodes + svg edges */
+  .view { display: none; }
+  .view.on { display: grid; }
+  .view.on.flex { display: flex; flex-direction: column; }
+
+  /* chat */
+  .chat-ws { grid-template-columns: 256px 1fr; overflow: hidden; }
+  .chatlog { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .cbub { padding: 11px 14px; border-radius: var(--r-lg); line-height: 1.6; white-space: pre-wrap; max-width: 74%; font-size: 13.5px; }
+  .cbub.me { background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: var(--accent-ink); align-self: flex-end; border-bottom-right-radius: 3px; font-weight: 500; }
+  .cbub.coach { background: var(--glass); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 3px; }
+  .cbub.status { align-self: flex-start; color: var(--muted); font-size: 11px; font-family: var(--mono); font-style: italic; background: none; padding: 1px 4px; }
+  .chat-composer { display: flex; align-items: center; gap: 9px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg); }
+  .chat-composer input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md); padding: 9px 12px; color: var(--text); font-size: 13px; }
+  .chat-composer input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* flow canvas — absolute-positioned glass nodes + svg bezier edges */
+  #canvas { position: absolute; inset: 0; overflow: auto; z-index: 1; }
+  #canvas-inner { position: relative; width: 1520px; height: 940px; }
+  #edges { position: absolute; inset: 0; width: 1520px; height: 940px; z-index: 0; pointer-events: none; overflow: visible; }
+  #edges path { stroke: var(--border-strong); stroke-width: 1.8; fill: none; transition: stroke .2s var(--ease); }
+  #edges path.hot { stroke: var(--accent); stroke-width: 2.6; filter: drop-shadow(0 0 5px var(--accent-ring)); }
+  #canvas .fnode { position: absolute; z-index: 2; cursor: default; }
+  .edge-lbl { position: absolute; z-index: 1; pointer-events: none; font-size: 10px; font-weight: 600; color: var(--muted); background: color-mix(in srgb, var(--bg-2) 82%, transparent); padding: 1px 6px; border-radius: 5px; white-space: nowrap; }
+
+  .console-out { white-space: pre-wrap; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; word-break: break-word; }
+  .pr-model { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 5px; padding: 3px 8px; font-family: var(--mono); font-size: 11px; width: 128px; }
+  .as-head { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; }
+  .as-head .lbl { font-size: 12.5px; font-weight: 500; color: var(--text); }
+  .as-head .add { margin-left: auto; }
+  .as-empty { color: var(--faint); font-size: 12px; padding: 12px; text-align: center; border: 1px dashed var(--border); border-radius: var(--r-md); }
+</style>
+</head>
+<body>
+<div class="app" style="grid-template-rows:auto 1fr;">
+  <!-- ===== TOP BAR ===== -->
+  <div class="topbar">
+    <div class="brand"><span class="logo">◇</span>CereBroZen<b> Workbench</b></div>
+    <nav class="topnav">
+      <a class="tn-link on" data-view="console">Console</a>
+      <a class="tn-link" data-view="flows">Flows</a>
+      <a class="tn-link" data-view="prompts">Prompts</a>
+      <a class="tn-link" data-view="chat">Chat</a>
+    </nav>
+    <div class="env-picker">
+      <span class="tb-hint">env</span>
+      <select id="envsel" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;font-size:12.5px;"></select>
+      <button class="btn btn-ghost btn-sm" id="envmanage" title="Manage environments">⚙</button>
+    </div>
+  </div>
+
+  <!-- ===== CONSOLE ===== -->
+  <section class="view on workspace" id="view-console" style="grid-template-columns:256px 1fr 1fr;">
+    <aside class="sidebar">
+      <div class="side-tabs">
+        <button class="on" data-stab="agents">Agents</button>
+        <button data-stab="history">History</button>
+      </div>
+      <div class="side-scroll">
+        <div id="agentlist" data-pane="agents"></div>
+        <div id="runhistory" data-pane="history" style="display:none;"></div>
+      </div>
+    </aside>
+
+    <section class="request-pane">
+      <div class="type-tabs">
+        <button class="type-tab prompt" data-type="prompt">Prompt</button>
+        <button class="type-tab agent on" data-type="agent">Agent</button>
+        <button class="type-tab" data-type="tool" disabled title="Not applicable — the graph defines its own tools">Tool</button>
+      </div>
+      <div class="editor-scroll">
+        <!-- AGENT form -->
+        <div data-form="agent">
+          <div class="field"><label>Agent <span class="hint" id="a-model"></span></label>
+            <select id="a-agent"></select></div>
+          <div class="field"><label>Model</label><div class="meta-pill" id="a-modelpill" style="width:fit-content;">—</div></div>
+          <div class="field"><label>Input <span class="hint">sent as the user message</span></label>
+            <textarea id="a-input" style="min-height:120px;">Hi, I want to work on giving better feedback.</textarea></div>
+          <div class="field"><label>Active env <span class="hint">injected as user_context</span></label>
+            <div class="meta-pill" id="a-env" style="width:fit-content;">none</div></div>
+        </div>
+
+        <!-- PROMPT form -->
+        <div data-form="prompt" style="display:none;">
+          <div class="field"><label>Model</label>
+            <input id="p-model" value="gpt-4o-mini" placeholder="model id" /></div>
+          <div class="field"><label>System <span class="hint">supports {{variables}}</span></label>
+            <textarea id="p-system" class="mono" rows="3" placeholder="You are a helpful assistant…">You are a helpful, concise assistant.</textarea></div>
+          <div class="field"><label>User</label>
+            <textarea id="p-user" rows="5" placeholder="Your prompt…">What is an AI agent?</textarea></div>
+        </div>
+
+        <!-- shared row2 (visual parity) -->
+        <div class="row2">
+          <div class="field"><label>Temperature</label><input type="number" step="0.1" min="0" max="2" value="0.7" /></div>
+          <div class="field"><label>Max tokens</label><input type="number" value="1024" /></div>
+        </div>
+
+        <!-- assertions (visual only) -->
+        <div class="as-head"><span class="lbl">Assertions</span><button class="btn btn-ghost btn-sm add" onclick="return false;">+ add</button></div>
+        <div class="as-empty">No assertions. Add one to turn this into a test.</div>
+      </div>
+      <div class="runbar">
+        <button class="btn btn-run" id="crun">▶ Run</button>
+        <button class="btn btn-ghost btn-sm" onclick="return false;">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="return false;">Dataset</button>
+        <button class="btn btn-ghost btn-sm" id="cmp-btn" onclick="return false;">Compare</button>
+        <span class="tb-hint" id="c-hint" style="margin-left:auto;">agent · CereBroZen</span>
+      </div>
+    </section>
+
+    <section class="response-pane">
+      <div class="resp-head">
+        <span class="resp-status" id="cstatus"><span class="sdot"></span>IDLE</span>
+        <div class="resp-meta" id="cmeta"></div>
+      </div>
+      <div class="resp-tabs">
+        <button class="on" data-ct="output">Output</button>
+        <button data-ct="raw">Raw</button>
+      </div>
+      <div class="resp-body">
+        <div id="cout">
+          <div class="resp-welcome">
+            <div class="rw-icon">◇</div>
+            <h3>Test any agent in seconds</h3>
+            <p>Pick an agent or write a raw prompt on the left, then run it. Agents build the same system prompt a live graph turn would.</p>
+            <div class="rw-actions">
+              <button class="btn btn-sm" id="rw-example">Insert example</button>
+              <button class="btn btn-run btn-sm" id="rw-run">▶ Run</button>
+            </div>
+            <div class="rw-tips"><span><b>agent</b> live model</span><span><b>{{var}}</b> env context</span><span><b>Raw</b> full envelope</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===== FLOWS ===== -->
+  <section class="view" id="view-flows" style="padding:0;overflow:hidden;">
+    <!-- The Flow Studio is the full-fidelity view (live run, animated path, node inspector,
+         collapsible panels). It is a standalone page so it can own its own layout + SSE run
+         loop; embedding it here keeps the workbench tab UX without maintaining two copies. -->
+    <iframe id="flowframe" src="/flow" title="Flow Studio"
+            style="width:100%;height:100%;border:0;display:block;background:var(--bg);"></iframe>
+  </section>
+
+  <!-- ===== PROMPTS ===== -->
+  <section class="view flex" id="view-prompts">
+    <div class="page">
+      <div class="page-inner">
+        <div class="page-head">
+          <div>
+            <div class="page-eyebrow">Registry</div>
+            <h1>Prompt Registry</h1>
+            <p>Editable agent prompts from the workbook — edits save and hot-reload. Prompts are workbook-driven, so there's no manual "new prompt".</p>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn btn-run btn-sm" id="pReload">↻ Reload workbook</button>
+        </div>
+        <div id="prcards"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CHAT ===== -->
+  <section class="view chat-ws" id="view-chat">
+    <aside class="sidebar">
+      <div class="side-tabs"><button class="on">Sessions</button></div>
+      <div class="side-scroll">
+        <div class="side-head"><span>Recent sessions</span><button id="chatnew" title="New session">＋</button></div>
+        <div id="chatsessions"></div>
+      </div>
+    </aside>
+    <div class="request-pane">
+      <div class="resp-head">
+        <span class="resp-status" id="chatstatus"><span class="sdot"></span>CereBroZen coach</span>
+        <div class="resp-meta" id="chatmeta"></div>
+      </div>
+      <div class="chatlog" id="chatlog"><div class="resp-empty"><div class="big">🧭</div>Start a coaching session — type below.</div></div>
+      <div class="chat-composer">
+        <input id="chatinput" placeholder="Message your coach…" autocomplete="off" />
+        <button class="btn btn-run" id="chatsend">▶ Send</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- env modal -->
+<div class="overlay" id="envOverlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">Environments<button id="envClose">×</button></div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:12.5px;margin:0 0 14px;">Named variable sets injected as <code style="color:var(--accent-2);font-family:var(--mono);">user_context</code> into Console Agent runs. One <code>KEY=value</code> per line.</p>
+      <div class="field"><label>Environment</label>
+        <div style="display:flex;gap:8px;"><select id="envEdit" style="flex:1;"></select>
+          <button class="btn btn-sm" id="envNew">+ New</button><button class="btn btn-sm" id="envDel">Delete</button></div></div>
+      <div class="field"><label>Name</label><input type="text" id="envName" placeholder="e.g. repeat-EM" /></div>
+      <div class="field"><label>Variables</label><textarea id="envVars" class="mono" style="min-height:170px;" placeholder="userName=Alex&#10;userRoleContext=Engineering Manager&#10;userRepeatFresh=repeat&#10;organizationName=Acme"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-run" id="envSave">Save &amp; activate</button></div>
+  </div>
+</div>
+
+<div id="toastwrap"></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+function toast(m, err){ const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=m; $('#toastwrap').appendChild(t); setTimeout(()=>t.remove(),2400); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ================= NAV ================= */
+$$('.tn-link').forEach(l => l.onclick = () => switchView(l.dataset.view));
+function switchView(v){
+  $$('.tn-link').forEach(n => n.classList.toggle('on', n.dataset.view === v));
+  $$('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
+  if (v === 'prompts') loadPrompts();
+  if (v === 'console'){ loadAgents(); syncEnvPill(); }
+  if (v === 'chat') renderChatSessions();
+}
+
+/* ================= SESSIONS (localStorage) ================= */
+function sessions(){ try { return JSON.parse(localStorage.getItem('cerebrozen_sessions') || '[]'); } catch { return []; } }
+function pushSession(id){ let s = sessions().filter(x => x.id !== id); s.unshift({ id, at: Date.now() }); s = s.slice(0, 14); localStorage.setItem('cerebrozen_sessions', JSON.stringify(s)); renderChatSessions(); }
+function renderChatSessions(){ const el = $('#chatsessions'); if(!el) return; el.innerHTML='';
+  const list = sessions();
+  if(!list.length){ el.innerHTML='<div class="side-empty"><div class="se-ic">◷</div>No sessions yet.<br>Send a message to begin.</div>'; return; }
+  for(const s of list){ const d=document.createElement('div'); d.className='conn-item'+(s.id===sessionId?' on':'');
+    d.innerHTML=`<span class="dot agent"></span><div class="ci-main"><div class="ci-name">${esc(s.id.slice(0,14))}…</div><div class="ci-sub">${new Date(s.at).toLocaleTimeString()}</div></div>`;
+    d.onclick=()=>{ sessionId=s.id; renderChatSessions(); toast('Session '+s.id.slice(0,8)+' — new messages continue it'); };
+    el.appendChild(d); } }
+
+/* ================= CONSOLE ================= */
+let curType = 'agent', agentsLoaded = false, cLastRaw = '', cLastReply = '', cTab = 'output';
+let runLog = []; try { runLog = JSON.parse(localStorage.getItem('cerebrozen_runs')||'[]'); } catch {}
+
+/* sidebar tabs */
+$$('#view-console .side-tabs button').forEach(b => b.onclick = () => {
+  $$('#view-console .side-tabs button').forEach(x => x.classList.toggle('on', x === b));
+  const t = b.dataset.stab;
+  $('#agentlist').style.display = t === 'agents' ? '' : 'none';
+  $('#runhistory').style.display = t === 'history' ? '' : 'none';
+  if (t === 'history') renderRuns();
+});
+
+/* type tabs */
+$$('.type-tab[data-type]').forEach(b => b.onclick = () => {
+  if (b.disabled) return;
+  curType = b.dataset.type;
+  $$('.type-tab[data-type]').forEach(x => x.classList.toggle('on', x === b));
+  $('[data-form="agent"]').style.display = curType === 'agent' ? '' : 'none';
+  $('[data-form="prompt"]').style.display = curType === 'prompt' ? '' : 'none';
+  $('#cmp-btn').style.display = curType === 'prompt' ? '' : '';
+  updateHint();
+});
+function updateHint(){ $('#c-hint').textContent = curType + ' · CereBroZen'; }
+
+async function loadAgents(){ if (agentsLoaded) return;
+  const d = await (await fetch('/v1/agents')).json();
+  const sel = $('#a-agent'); sel.innerHTML=''; const list=$('#agentlist'); list.innerHTML='';
+  for (const a of d.agents){
+    const o=document.createElement('option'); o.value=a.stage; o.textContent=a.stage; o.dataset.model=a.model; sel.appendChild(o);
+    const it=document.createElement('div'); it.className='conn-item';
+    it.innerHTML=`<span class="dot agent"></span><div class="ci-main"><div class="ci-name">${esc(a.stage)}</div><div class="ci-sub">${esc(a.model)}</div></div>`;
+    it.onclick=()=>{ sel.value=a.stage; onAgentChange(); $$('#agentlist .conn-item').forEach(x=>x.classList.remove('on')); it.classList.add('on'); };
+    list.appendChild(it);
+  }
+  sel.onchange = onAgentChange;
+  if (sel.options.length){ onAgentChange(); $('#agentlist .conn-item')?.classList.add('on'); }
+  agentsLoaded = true;
+}
+function onAgentChange(){ const m = $('#a-agent').selectedOptions[0]?.dataset.model || '—';
+  $('#a-model').textContent = m; $('#a-modelpill').textContent = m; }
+
+function setStatus(cls, txt){ const st=$('#cstatus'); st.className='resp-status'+(cls?' '+cls:''); st.innerHTML='<span class="sdot"></span>'+txt; }
+function renderConsole(){
+  const el=$('#cout');
+  if (cTab === 'raw'){ el.innerHTML=`<div class="console-out">${esc(cLastRaw||'(no raw envelope)')}</div>`; }
+  else { el.innerHTML = cLastReply ? `<div class="stream-text">${esc(cLastReply)}</div>` : `<div class="jv-empty">No output.</div>`; }
+}
+$$('.resp-tabs [data-ct]').forEach(b => b.onclick = () => {
+  cTab = b.dataset.ct; $$('.resp-tabs [data-ct]').forEach(x=>x.classList.toggle('on',x===b)); renderConsole();
+});
+
+function renderRuns(){ const el=$('#runhistory'); if(!el) return; el.innerHTML='';
+  if(!runLog.length){ el.innerHTML='<div class="side-empty"><div class="se-ic">↻</div>No runs yet.<br>Run a request to see it here.</div>'; return; }
+  for(const r of runLog){ const d=document.createElement('div'); d.className='run-item';
+    d.innerHTML=`<span class="rn-label">${esc(r.label)}</span><span class="rn-meta"><span class="tag ${r.type}">${r.type}</span><span class="tag ${r.ok?'ok':'error'}">${r.ok?'ok':'err'}</span></span>`;
+    el.appendChild(d); } }
+function pushRun(type, label, ok){ runLog.unshift({type,label,ok,at:Date.now()}); runLog=runLog.slice(0,16); localStorage.setItem('cerebrozen_runs',JSON.stringify(runLog)); }
+
+async function doRun(){
+  const btn=$('#crun'); btn.disabled=true; btn.textContent='Running…';
+  setStatus('running','RUNNING'); $('#cmeta').innerHTML=''; cLastRaw=''; cLastReply='';
+  try {
+    let d, label;
+    if (curType === 'agent'){
+      const stage=$('#a-agent').value; const ctx=activeEnvVars();
+      d = await (await fetch(`/v1/agents/${encodeURIComponent(stage)}/run`,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:$('#a-input').value, user_context:ctx})})).json();
+      if (d.detail) throw new Error(d.detail);
+      cLastReply = d.reply || '(no user-facing text — see Raw)';
+      cLastRaw = d.raw || JSON.stringify(d,null,2);
+      $('#cmeta').innerHTML=`<span class="meta-pill">${esc(d.model)}</span><span class="meta-pill">${d.prompt_tokens}→${d.completion_tokens} tok</span><span class="meta-pill">$${d.cost_usd}</span>${Object.keys(ctx).length?'<span class="meta-pill pass">env</span>':''}`;
+      label = stage;
+    } else {
+      d = await (await fetch('/v1/console/run',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({system:$('#p-system').value, user:$('#p-user').value, model:$('#p-model').value.trim()})})).json();
+      if (d.detail) throw new Error(d.detail);
+      cLastReply = d.reply || d.text || '(no output)';
+      cLastRaw = JSON.stringify(d,null,2);
+      $('#cmeta').innerHTML=`<span class="meta-pill">${esc(d.model)}</span><span class="meta-pill">${d.prompt_tokens}→${d.completion_tokens} tok</span><span class="meta-pill">$${d.cost_usd}</span>`;
+      label = ($('#p-user').value||'prompt').slice(0,26);
+    }
+    setStatus('completed','COMPLETED'); renderConsole(); pushRun(curType, label, true);
+  } catch(e){
+    cLastReply=''; cLastRaw=''; $('#cout').innerHTML=`<div class="resp-error">${esc(e.message)}</div>`;
+    setStatus('failed','FAILED'); pushRun(curType, 'error', false);
+  } finally { btn.disabled=false; btn.textContent='▶ Run'; }
+}
+$('#crun').onclick = doRun;
+$('#rw-run').onclick = doRun;
+$('#rw-example').onclick = () => {
+  if (curType === 'prompt'){ $('#p-system').value='You are a helpful, concise assistant.'; $('#p-user').value='What is an AI agent?'; }
+  else { $('#a-input').value='Hi, I want to work on giving better feedback.'; }
+  toast('Example loaded — hit Run');
+};
+
+/* ================= FLOWS — glass node canvas ================= */
+/* ================= FLOWS =================
+   The Flows tab embeds /flow (the Flow Studio) in an iframe — it owns the live SSE run,
+   the animated path, the node inspector and the collapsible panels. The old poll-and-
+   highlight code that used to live here is gone; there is one flow view, not two. */
+
+/* ================= PROMPTS ================= */
+let promptsEditable = true;
+async function loadPrompts(){
+  const d = await (await fetch('/v1/prompts')).json();
+  promptsEditable = d.editable;
+  const wrap = $('#prcards'); wrap.innerHTML='';
+  for (const a of d.agents){
+    const card=document.createElement('div'); card.className='pr-card';
+    const meta = a.always_on ? 'always-on' : (a.size||0).toLocaleString()+' chars';
+    card.innerHTML =
+      `<div class="pr-top"><span class="pr-key">${esc(a.sheet)}</span><span class="pr-updated">${meta}</span></div>`+
+      `<div style="display:flex;align-items:center;gap:12px;margin:2px 0 4px;">`+
+        `<label class="tb-hint" style="display:flex;gap:6px;align-items:center;">enabled<input type="checkbox" ${a.enabled?'checked':''} ${a.always_on?'disabled':''} data-en></label>`+
+        `<input class="pr-model" value="${esc(a.model)}" data-model placeholder="model"/></div>`+
+      `<div class="pr-name">${esc(a.stage)}</div>`+
+      `<textarea spellcheck="false" ${promptsEditable?'':'readonly'}>${esc(a.prompt)}</textarea>`+
+      `<div class="pr-actions"><button class="btn btn-run btn-sm" data-save>Save &amp; reload</button><span class="pr-dirty" style="display:none;">● unsaved</span></div>`;
+    const ta=card.querySelector('textarea'), dirty=card.querySelector('.pr-dirty');
+    card.querySelectorAll('textarea,[data-en],[data-model]').forEach(el=>el.addEventListener('input',()=>dirty.style.display='inline'));
+    card.querySelector('[data-save]').onclick = async () => {
+      const btn=card.querySelector('[data-save]'); btn.disabled=true; btn.textContent='Saving…';
+      try {
+        const res = await fetch('/v1/prompts/'+encodeURIComponent(a.stage),{method:'PUT',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({prompt:ta.value, enabled:card.querySelector('[data-en]').checked, model:card.querySelector('[data-model]').value.trim()})});
+        if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.detail||res.status); }
+        toast('Saved & reloaded ✓'); dirty.style.display='none';
+      } catch(e){ toast('Error: '+e.message, true); }
+      finally { btn.disabled=false; btn.textContent='Save & reload'; }
+    };
+    wrap.appendChild(card);
+  }
+}
+$('#pReload').onclick = async () => { await fetch('/v1/prompts/reload',{method:'POST'}); toast('Workbook reloaded'); loadPrompts(); };
+
+/* ================= CHAT ================= */
+let sessionId = null;
+const chatlog = () => $('#chatlog');
+function bubble(cls, txt=''){ const cl=chatlog(); if(cl.querySelector('.resp-empty'))cl.innerHTML=''; const e=document.createElement('div'); e.className='cbub '+cls; e.textContent=txt; cl.appendChild(e); cl.scrollTop=cl.scrollHeight; return e; }
+$('#chatnew').onclick = () => { sessionId=null; chatlog().innerHTML='<div class="resp-empty"><div class="big">🧭</div>New session — type below.</div>'; $('#chatmeta').innerHTML=''; renderChatSessions(); };
+async function sendChat(){
+  const msg=$('#chatinput').value.trim(); if(!msg)return; $('#chatinput').value=''; $('#chatsend').disabled=true;
+  bubble('me', msg); const st=$('#chatstatus'); st.className='resp-status running';
+  const url=(sessionId?`/v1/sessions/${sessionId}/turn`:'/v1/sessions/start')+'?stream=true';
+  const coach=bubble('coach','');
+  try {
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:'workbench',text:msg})});
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='';
+    while(true){ const {value,done}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
+      const parts=buf.split('\n\n'); buf=parts.pop();
+      for(const b of parts){ const dl=b.split('\n').find(l=>l.startsWith('data:')); if(!dl)continue;
+        let ev; try{ ev=JSON.parse(dl.slice(5).trim()); }catch{ continue; }
+        if(ev.type==='token'){ coach.textContent+=ev.text; chatlog().scrollTop=chatlog().scrollHeight; }
+        else if(ev.type==='status'){ bubble('status','· '+ev.msg); }
+        else if(ev.type==='error'){ coach.textContent+=' [error: '+ev.detail+']'; }
+        else if(ev.type==='done'){ sessionId=ev.session_id; pushSession(sessionId);
+          if(!coach.textContent && ev.response_to_user) coach.textContent=ev.response_to_user;
+          $('#chatmeta').innerHTML=`<span class="meta-pill">${esc(ev.stage||'?')}</span><span class="meta-pill">${esc(ev.coaching_path||'—')}</span><span class="meta-pill">${ev.prompt_tokens||0}→${ev.completion_tokens||0} tok</span><span class="meta-pill">$${ev.cost_usd||0}</span>`; }
+      }
+    }
+    st.className='resp-status completed';
+  } catch(e){ coach.textContent+=' [error: '+e.message+']'; st.className='resp-status failed'; }
+  finally { $('#chatsend').disabled=false; $('#chatinput').focus(); }
+}
+$('#chatsend').onclick = sendChat;
+$('#chatinput').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+
+/* ================= ENVIRONMENTS ================= */
+function envs(){ try{ return JSON.parse(localStorage.getItem('cerebrozen_envs')||'[]'); }catch{ return []; } }
+function saveEnvs(l){ localStorage.setItem('cerebrozen_envs', JSON.stringify(l)); }
+function activeEnvName(){ return localStorage.getItem('cerebrozen_active_env')||''; }
+function activeEnvVars(){ const e=envs().find(x=>x.name===activeEnvName()); return e?e.vars:{}; }
+function parseVars(t){ const o={}; for(const line of (t||'').split('\n')){ const i=line.indexOf('='); if(i>0)o[line.slice(0,i).trim()]=line.slice(i+1).trim(); } return o; }
+function varsToText(v){ return Object.entries(v||{}).map(([k,val])=>`${k}=${val}`).join('\n'); }
+function renderEnvSelect(){ const sel=$('#envsel'); const cur=activeEnvName(); sel.innerHTML='<option value="">No environment</option>';
+  for(const e of envs()){ const o=document.createElement('option'); o.value=e.name; o.textContent=e.name; if(e.name===cur)o.selected=true; sel.appendChild(o); } syncEnvPill(); }
+function syncEnvPill(){ const p=$('#a-env'); if(p)p.textContent=activeEnvName()?activeEnvName()+' ('+Object.keys(activeEnvVars()).length+' vars)':'none'; }
+$('#envsel').onchange = e => { localStorage.setItem('cerebrozen_active_env', e.target.value); syncEnvPill(); toast(e.target.value?('env: '+e.target.value):'no environment'); };
+$('#envmanage').onclick = () => { renderEnvEdit(); $('#envOverlay').style.display='grid'; };
+$('#envClose').onclick = () => $('#envOverlay').style.display='none';
+$('#envOverlay').onclick = e => { if(e.target.id==='envOverlay') $('#envOverlay').style.display='none'; };
+function renderEnvEdit(){ const sel=$('#envEdit'); sel.innerHTML=''; const list=envs();
+  for(const e of list){ const o=document.createElement('option'); o.value=e.name; o.textContent=e.name; sel.appendChild(o); }
+  if(list.length) selectEnvEdit(list[0].name); else { $('#envName').value=''; $('#envVars').value=''; } }
+function selectEnvEdit(name){ const e=envs().find(x=>x.name===name); if(!e)return; $('#envEdit').value=name; $('#envName').value=e.name; $('#envVars').value=varsToText(e.vars); }
+$('#envEdit').onchange = e => selectEnvEdit(e.target.value);
+$('#envNew').onclick = () => { $('#envName').value='repeat-EM'; $('#envVars').value='userName=Alex\nuserRoleContext=Engineering Manager\nuserRepeatFresh=repeat\norganizationName=Acme'; };
+$('#envDel').onclick = () => { const n=$('#envEdit').value; saveEnvs(envs().filter(x=>x.name!==n)); if(activeEnvName()===n)localStorage.removeItem('cerebrozen_active_env'); renderEnvEdit(); renderEnvSelect(); toast('deleted'); };
+$('#envSave').onclick = () => { const n=$('#envName').value.trim(); if(!n){ toast('name required',true); return; }
+  let l=envs().filter(x=>x.name!==n); l.push({name:n, vars:parseVars($('#envVars').value)}); saveEnvs(l); localStorage.setItem('cerebrozen_active_env',n);
+  renderEnvSelect(); renderEnvEdit(); $('#envOverlay').style.display='none'; toast('saved & active: '+n); };
+
+/* ================= INIT ================= */
+renderEnvSelect();
+loadAgents();
+renderChatSessions();
+updateHint();
+</script>
+</body>
+</html>

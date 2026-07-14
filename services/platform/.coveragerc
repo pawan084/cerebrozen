@@ -1,0 +1,13 @@
+[run]
+source = app
+branch = True
+# SQLAlchemy asyncio bridges via greenlet: without this, every line after the
+# first awaited DB call is invisible to coverage (measured: 73% -> real).
+concurrency = thread,greenlet
+omit =
+    */__pycache__/*
+
+[report]
+fail_under = 95
+precision = 1
+show_missing = True

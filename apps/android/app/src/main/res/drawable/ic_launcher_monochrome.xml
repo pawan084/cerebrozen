@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W24: Android 13+ themed-icon layer — the mark reduced to a single-colour
+     silhouette (the system tints it): the open C-ring plus the solid orb.
+     Slightly bolder strokes than the full-colour mark so it survives the
+     launcher's monochrome scaling. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Open C-ring (gap on the right). -->
+    <path
+        android:pathData="M65.7,68.97 A19,19 0 1 1 65.7,39.03"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round" />
+
+    <!-- The orb. -->
+    <path
+        android:pathData="M54,54 m-10.5,0 a10.5,10.5 0 1,0 21,0 a10.5,10.5 0 1,0 -21,0"
+        android:fillColor="#FFFFFFFF" />
+</vector>

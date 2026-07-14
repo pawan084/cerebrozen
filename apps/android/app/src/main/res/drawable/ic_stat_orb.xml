@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W24: status-bar icon — the brand mark as a pure white alpha silhouette
+     (Android renders small icons as an alpha mask): the open C-ring with the
+     orb dot inside, matching ic_launcher_monochrome / ui/Brand.kt BrandMark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- Open C-ring (gap on the right): arc from 52° to 308°. -->
+    <path
+        android:pathData="M16.49,17.75 A7.3,7.3 0 1 1 16.49,6.25"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+
+    <!-- The orb. -->
+    <path
+        android:pathData="M12,12 m-3.1,0 a3.1,3.1 0 1,0 6.2,0 a3.1,3.1 0 1,0 -6.2,0"
+        android:fillColor="#FFFFFFFF" />
+</vector>

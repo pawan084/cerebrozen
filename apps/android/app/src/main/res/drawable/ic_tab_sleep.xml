@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W24 tab icon: crescent moon with one star — thin rounded-line style
+     (2dp stroke on a 24dp grid, shared across the whole tab set). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Crescent: outer circle (12,12) r7.5 minus a bite circle (16,8) r7. -->
+    <path
+        android:pathData="M9.75,4.85 A7.5,7.5 0 1 0 19.16,14.25 A7,7 0 0 1 9.75,4.85 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- One small four-point star in the crescent's opening. -->
+    <path
+        android:pathData="M17.6,3.4 Q17.6,5.2 19.4,5.2 Q17.6,5.2 17.6,7 Q17.6,5.2 15.8,5.2 Q17.6,5.2 17.6,3.4 Z"
+        android:fillColor="#FFFFFFFF" />
+</vector>

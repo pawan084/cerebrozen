@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CereBroZen — Flow Studio</title>
+<link rel="stylesheet" href="/static/cerebrozen.css" />
+<style>
+  /* ── shell ─────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; font-family:var(--sans); background:var(--bg); color:var(--text);
+         display:flex; flex-direction:column; overflow:hidden; }
+
+  header { display:flex; align-items:center; gap:12px; padding:10px 14px;
+           border-bottom:1px solid var(--border); background:var(--panel);
+           box-shadow:var(--sh-1); z-index:20; flex-wrap:wrap; }
+  .brand { font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .brand .dot { width:8px; height:8px; border-radius:50%; background:var(--accent);
+                box-shadow:0 0 10px var(--accent-ring); }
+  .brand small { color:var(--muted); font-weight:500; }
+  nav a { color:var(--muted); text-decoration:none; font-size:12.5px; padding:5px 9px;
+          border-radius:var(--r-sm); transition:.15s var(--ease); }
+  nav a:hover { color:var(--text); background:var(--panel-2); }
+  nav a.on { color:var(--accent); background:var(--accent-soft); }
+  .grow { flex:1; }
+
+  select, input[type=text] {
+    background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--r-sm); padding:7px 10px; font-size:12.5px; font-family:var(--sans);
+    transition:.15s var(--ease);
+  }
+  select:focus, input:focus { outline:none; border-color:var(--accent-ring); box-shadow:0 0 0 3px var(--accent-soft); }
+  #msg { width:min(330px, 32vw); }
+
+  button {
+    display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border:1px solid transparent;
+    border-radius:var(--r-sm); background:var(--panel-2); color:var(--text-dim);
+    font-size:12.5px; font-weight:600; cursor:pointer; transition:.15s var(--ease); font-family:var(--sans);
+  }
+  button:hover:not(:disabled) { background:var(--panel-3); color:var(--text); transform:translateY(-1px); }
+  button:disabled { opacity:.42; cursor:not-allowed; }
+  button.primary { background:linear-gradient(180deg, var(--accent-2), var(--accent));
+                   color:var(--accent-ink); box-shadow:0 2px 12px rgba(216,180,95,.25); }
+  button.primary:hover:not(:disabled) { box-shadow:0 4px 18px rgba(216,180,95,.4); }
+  button.primary.running { background:var(--panel-3); color:var(--muted); box-shadow:none; }
+
+  /* ── workspace: left | canvas | right ──────────────────────────────────── */
+  .ws { flex:1; display:grid; grid-template-columns:var(--lw, 236px) 1fr var(--rw, 326px);
+        min-height:0; transition:grid-template-columns .28s var(--ease); }
+  .ws.l-collapsed { --lw: 0px; }
+  .ws.r-collapsed { --rw: 0px; }
+
+  aside { background:var(--panel); overflow-y:auto; overflow-x:hidden; min-width:0;
+          transition:opacity .18s var(--ease); }
+  aside.left  { border-right:1px solid var(--border); }
+  aside.right { border-left:1px solid var(--border); }
+  /* Collapsed = the grid column goes to 0. Fade the contents so text can't smear
+     mid-transition, and kill pointer events so a hidden panel isn't clickable. */
+  .ws.l-collapsed .left, .ws.r-collapsed .right { opacity:0; pointer-events:none; }
+
+  .pane-head { display:flex; align-items:center; padding:11px 13px;
+               border-bottom:1px solid var(--border); position:sticky; top:0;
+               background:var(--panel); z-index:2; }
+  .pane-head h2 { margin:0; font-size:11px; font-weight:700; letter-spacing:.9px;
+                  text-transform:uppercase; color:var(--faint); }
+  .pane-body { padding:12px 13px; }
+
+  /* the collapse CTAs */
+  .handle { position:absolute; top:50%; transform:translateY(-50%); z-index:30;
+            width:20px; height:52px; display:flex; align-items:center; justify-content:center;
+            background:var(--panel-2); border:1px solid var(--border); color:var(--muted);
+            cursor:pointer; font-size:11px; padding:0; transition:.18s var(--ease); }
+  .handle:hover { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-ring); }
+  .handle.l { left:0; border-radius:0 var(--r-sm) var(--r-sm) 0; }
+  .handle.r { right:0; border-radius:var(--r-sm) 0 0 var(--r-sm); }
+
+  /* ── demo users / legend ───────────────────────────────────────────────── */
+  .du { display:flex; flex-direction:column; gap:5px; }
+  .du-item { padding:8px 10px; border-radius:var(--r-sm); border:1px solid var(--border);
+             background:var(--bg-2); cursor:pointer; transition:.15s var(--ease); }
+  .du-item:hover { border-color:var(--border-strong); transform:translateX(2px); }
+  .du-item.on { border-color:var(--accent-ring); background:var(--accent-soft); }
+  .du-id { font-size:12px; font-weight:600; font-family:var(--mono); }
+  .du-hint { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.35; }
+
+  .legend { display:flex; flex-direction:column; gap:6px; }
+  .lg { display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); }
+  .lg i { width:11px; height:11px; border-radius:3px; flex:none; }
+
+  /* ── canvas ────────────────────────────────────────────────────────────── */
+  .canvas-wrap { position:relative; overflow:hidden; background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,.045) 1px, transparent 0) 0 0/22px 22px, var(--bg); }
+  #canvas { position:absolute; transform-origin:0 0; will-change:transform; }
+  #edges { position:absolute; inset:0; overflow:visible; pointer-events:none; }
+
+  .zoom { position:absolute; right:12px; bottom:12px; z-index:15; display:flex; gap:5px; }
+  .zoom button { padding:6px 10px; background:var(--glass); backdrop-filter:blur(8px);
+                 border:1px solid var(--border); }
+
+  .runbar { position:absolute; left:12px; bottom:12px; z-index:15; display:flex; align-items:center;
+            gap:10px; padding:8px 12px; border-radius:var(--r-md); background:var(--glass);
+            backdrop-filter:blur(10px); border:1px solid var(--border); box-shadow:var(--sh-2);
+            font-size:11.5px; color:var(--muted); font-family:var(--mono); max-width:min(620px,54vw); }
+  .runbar b { color:var(--text); font-weight:600; }
+  .pill { padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700;
+          letter-spacing:.5px; text-transform:uppercase; flex:none; }
+  .pill.idle { background:var(--panel-3); color:var(--muted); }
+  .pill.running { background:rgba(238,178,63,.16); color:var(--amber); animation:breathe 1.4s ease-in-out infinite; }
+  .pill.done { background:rgba(86,204,136,.16); color:var(--green); }
+  .pill.error { background:rgba(240,115,111,.16); color:var(--red); }
+  @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+  /* ── nodes ─────────────────────────────────────────────────────────────── */
+  .node { position:absolute; width:182px; padding:9px 11px; border-radius:var(--r-md);
+          background:var(--panel); border:1px solid var(--border); cursor:pointer;
+          transition:transform .2s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease),
+                     opacity .2s var(--ease);
+          box-shadow:var(--sh-1); }
+  .node:hover { transform:translateY(-2px); border-color:var(--border-strong); box-shadow:var(--sh-2); }
+  .node.sel { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft), var(--sh-2); }
+  .n-top { display:flex; align-items:center; gap:6px; }
+  .n-ic { font-size:12px; line-height:1; }
+  .n-t { font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .n-s { font-size:10px; color:var(--faint); margin-top:3px; font-family:var(--mono);
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .n-pip { width:6px; height:6px; border-radius:50%; margin-left:auto; flex:none; background:var(--panel-3); }
+
+  .node::before { content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px;
+                  border-radius:0 3px 3px 0; background:var(--nc, var(--border-strong)); transition:.2s var(--ease); }
+  .node.t-llm    { --nc: var(--agent); }
+  .node.t-system { --nc: var(--tool); }
+  .node.t-gate   { --nc: var(--purple); }
+  .node.t-term   { --nc: var(--muted); }
+  .node.t-safety { --nc: var(--red); }
+
+  .node.running { border-color:var(--amber); box-shadow:0 0 0 3px rgba(238,178,63,.14), 0 0 22px rgba(238,178,63,.22); }
+  .node.running .n-pip { background:var(--amber); animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{ transform:scale(1); opacity:1 } 50%{ transform:scale(1.9); opacity:.45 } }
+  .node.done { border-color:rgba(86,204,136,.5); }
+  .node.done .n-pip { background:var(--green); }
+  .node.done::before { background:var(--green); }
+
+  .n-run { display:flex; align-items:center; gap:6px; margin-top:7px; padding-top:6px;
+           border-top:1px solid var(--hairline); font-family:var(--mono); font-size:9.5px;
+           color:var(--muted); animation:slidein .25s var(--ease); }
+  @keyframes slidein { from { opacity:0; transform:translateY(-3px) } to { opacity:1; transform:none } }
+  .n-run .ms { color:var(--text-dim); font-weight:700; }
+  .n-run .tok { margin-left:auto; }
+  .n-badge { display:inline-block; padding:1px 5px; border-radius:4px; font-size:9px; font-weight:700;
+             background:var(--accent-soft); color:var(--accent); letter-spacing:.3px; }
+
+  /* ── edges ─────────────────────────────────────────────────────────────── */
+  .edge { fill:none; stroke:var(--border-strong); stroke-width:1.6; transition:stroke .25s var(--ease); }
+  .edge.cond { stroke-dasharray:5 4; }
+  .edge.hot  { stroke:var(--accent); stroke-width:2.2; filter:drop-shadow(0 0 5px var(--accent-ring)); }
+  /* the flowing dash = the path this run actually took */
+  .edge.flow { stroke:var(--accent); stroke-width:2.4; stroke-dasharray:7 6;
+               animation:dash .7s linear infinite; filter:drop-shadow(0 0 6px var(--accent-ring)); }
+  @keyframes dash { to { stroke-dashoffset:-26; } }
+  .elabel { font-size:9px; fill:var(--muted); font-family:var(--mono); }
+  .elabel-bg { fill:var(--bg); stroke:var(--border); stroke-width:1; }
+
+  /* ── inspector ─────────────────────────────────────────────────────────── */
+  .insp-empty { padding:26px 16px; color:var(--faint); font-size:12px; text-align:center; line-height:1.6; }
+  .kv { display:flex; justify-content:space-between; gap:10px; padding:6px 0;
+        border-bottom:1px solid var(--hairline); font-size:11.5px; }
+  .kv span { color:var(--muted); }
+  .kv b { color:var(--text); font-weight:600; font-family:var(--mono); font-size:11px;
+          text-align:right; word-break:break-word; }
+  .tag { display:inline-block; padding:2px 7px; border-radius:99px; font-size:9.5px; font-weight:700;
+         letter-spacing:.4px; text-transform:uppercase; }
+  .tag.on  { background:rgba(86,204,136,.15); color:var(--green); }
+  .tag.off { background:rgba(240,115,111,.15); color:var(--red); }
+  .sec { margin-top:15px; }
+  .sec h3 { margin:0 0 7px; font-size:10px; letter-spacing:.9px; text-transform:uppercase; color:var(--faint); }
+  pre.prompt { margin:0; padding:10px; border-radius:var(--r-sm); background:var(--bg-2);
+               border:1px solid var(--border); font-family:var(--mono); font-size:10.5px;
+               line-height:1.55; color:var(--text-dim); max-height:230px; overflow:auto;
+               white-space:pre-wrap; word-break:break-word; }
+  .note { font-size:11px; color:var(--muted); line-height:1.55; margin:0; }
+
+  /* ── reply console ─────────────────────────────────────────────────────── */
+  .reply { position:absolute; right:12px; top:12px; z-index:15; width:min(340px, 32vw);
+           max-height:44vh; overflow:auto; padding:12px 13px; border-radius:var(--r-md);
+           background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--border);
+           box-shadow:var(--sh-2); font-size:12.5px; line-height:1.6; color:var(--text-dim);
+           animation:slidein .3s var(--ease); }
+  .reply h4 { margin:0 0 7px; font-size:10px; letter-spacing:.8px; text-transform:uppercase;
+              color:var(--faint); display:flex; align-items:center; gap:6px; }
+  .caret { display:inline-block; width:7px; height:13px; background:var(--accent);
+           animation:blink .9s step-end infinite; }
+  @keyframes blink { 50% { opacity:0 } }
+
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%) translateY(14px);
+           background:var(--panel-2); border:1px solid var(--border-strong); color:var(--text);
+           padding:9px 16px; border-radius:var(--r-md); font-size:12.5px; box-shadow:var(--sh-3);
+           opacity:0; pointer-events:none; transition:.25s var(--ease); z-index:100; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ══ MOTION ═══════════════════════════════════════════════════════════════
+     Every animation below is here to answer a question the static graph cannot:
+     WHERE is control right now, HOW LONG is this node taking, and WHERE did the
+     five seconds go. Nothing here is decoration — an LLM node blocks for 3-17s,
+     and a frozen box with no feedback is indistinguishable from a hang.        */
+
+  /* Nodes rise in on load, staggered — reads as the graph assembling itself,
+     and stops 17 boxes appearing at once as an undifferentiated wall. */
+  @keyframes nodeIn { from { opacity:0; transform:translateY(6px) scale(.985) } to { opacity:1; transform:none } }
+  .node { animation:nodeIn .34s var(--ease) both; }
+
+  /* A RUNNING node sweeps a light across itself. Indeterminate on purpose: we do
+     not know how long the model will take, and a fake progress bar that lies about
+     it is worse than an honest "still working". */
+  .node.running::after {
+    content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    background:linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--accent) 22%, transparent) 50%, transparent 80%);
+    background-size:220% 100%; animation:sweep 1.15s linear infinite;
+  }
+  @keyframes sweep { from { background-position:180% 0 } to { background-position:-80% 0 } }
+
+  /* The live elapsed counter — the single most useful thing on screen while a turn
+     runs. It converts dead waiting into a number that is visibly moving. */
+  .n-live { font-family:var(--mono); font-size:9.5px; color:var(--accent); font-weight:700;
+            font-variant-numeric:tabular-nums; }
+
+  /* The control-flow PACKET: a dot that physically travels the edge from the node
+     that finished to the node that starts. This is the whole thesis of the page —
+     routing is a state machine, and you can watch the token move through it. */
+  .packet { fill:var(--accent); filter:drop-shadow(0 0 6px var(--accent)); }
+  .packet-trail { fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linecap:round;
+                  opacity:.55; filter:drop-shadow(0 0 4px var(--accent)); }
+
+  /* The flame chart. After a turn, this is where the latency actually went — and it
+     is always a surprise: profile_read is 7ms, one LLM node is 90% of the bar. */
+  .timeline { position:absolute; left:12px; right:12px; bottom:52px; z-index:14;
+              display:none; gap:2px; align-items:stretch; height:26px;
+              background:var(--panel-2); border:1px solid var(--border-strong);
+              border-radius:var(--r-md); padding:3px; box-shadow:var(--sh-3); }
+  .timeline.show { display:flex; animation:nodeIn .3s var(--ease) both; }
+  .tl { position:relative; min-width:3px; border-radius:3px; overflow:hidden;
+        display:flex; align-items:center; justify-content:center; cursor:pointer;
+        transition:filter .18s var(--ease); }
+  .tl:hover { filter:brightness(1.35); }
+  .tl-lbl { font-family:var(--mono); font-size:9px; font-weight:700; color:#0b0b0b;
+            white-space:nowrap; overflow:hidden; padding:0 4px; opacity:.9; }
+  .tl-head { font-family:var(--mono); font-size:9px; color:var(--muted); align-self:center;
+             padding:0 6px; white-space:nowrap; }
+
+  /* Camera follow: the graph is taller than the viewport, so without this the action
+     happens off-screen and the user is scrolling to find it. */
+  #canvas { transition:transform .5s cubic-bezier(.22,.61,.36,1); }
+  #canvas.dragging { transition:none; }
+  .zoom button.on { background:var(--accent); color:#0b0b0b; border-color:var(--accent); }
+
+  /* The idle START node breathes, so an untouched page shows you where to look. */
+  .node.idle-hint { animation:nodeIn .34s var(--ease) both, hint 2.4s ease-in-out 1s infinite; }
+  @keyframes hint { 0%,100% { box-shadow:0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent) }
+                    50%     { box-shadow:0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent) } }
+
+  /* Cost/token odometers roll rather than snap, so a value that CHANGED is visible. */
+  .rolling { animation:roll .45s var(--ease); }
+  @keyframes roll { from { opacity:.35; transform:translateY(-3px) } to { opacity:1; transform:none } }
+
+  /* Motion is information here, but it is never the ONLY carrier of it: every state
+     above is also a class, a number, or a colour. So this switch costs nothing. */
+  @media (prefers-reduced-motion: reduce) {
+    .node, .timeline.show, .rolling { animation:none !important; }
+    .node.running::after, .node.idle-hint { animation:none !important; }
+    #canvas { transition:none; }
+    .packet, .packet-trail { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span> CereBroZen <small>Flow Studio</small></div>
+  <nav>
+    <a href="/">Workbench</a><a href="/chat">Chat</a><a href="/prompts">Prompts</a><a href="/flow" class="on">Flow</a>
+  </nav>
+  <div class="grow"></div>
+  <select id="user" title="Each demo user enters the graph down a different path"></select>
+  <input id="msg" type="text" placeholder="Say something to the coach…" />
+  <button id="run" class="primary">▶ Run turn</button>
+  <button id="newsess" title="Start a fresh session for this user">✚ New session</button>
+  <button id="reset" title="Clear the run overlay">↺ Reset</button>
+</header>
+
+<div class="ws" id="ws">
+  <aside class="left">
+    <div class="pane-head"><h2>Demo users</h2></div>
+    <div class="pane-body">
+      <div class="du" id="demousers"></div>
+
+      <div class="sec">
+        <h3>Node types</h3>
+        <div class="legend">
+          <div class="lg"><i style="background:var(--agent)"></i> LLM agent</div>
+          <div class="lg"><i style="background:var(--tool)"></i> System · no LLM</div>
+          <div class="lg"><i style="background:var(--purple)"></i> Gate / branch</div>
+          <div class="lg"><i style="background:var(--red)"></i> Safety</div>
+          <div class="lg"><i style="background:var(--muted)"></i> Terminal</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Session</h3>
+        <div class="kv"><span>id</span><b id="sid-out">—</b></div>
+        <div class="kv"><span>stage</span><b id="stage-out">—</b></div>
+        <div class="kv"><span>path</span><b id="path-out">—</b></div>
+        <div class="kv"><span>turns</span><b id="turns-out">0</b></div>
+        <div class="kv"><span>cost</span><b id="cost-out">$0.0000</b></div>
+      </div>
+
+      <div class="sec">
+        <p class="note">Routing is deterministic — every edge is a code predicate over typed
+        state. What lights up is the real path the graph took, not a mock.</p>
+      </div>
+    </div>
+  </aside>
+
+  <div class="canvas-wrap" id="wrap">
+    <button class="handle l" id="tog-l" title="Collapse panel">◀</button>
+    <button class="handle r" id="tog-r" title="Collapse panel">▶</button>
+
+    <div id="canvas"><svg id="edges"></svg></div>
+
+    <div class="runbar">
+      <span class="pill idle" id="pill">idle</span>
+      <span id="runinfo">Pick a demo user, type a message, hit <b>Run turn</b>.</span>
+    </div>
+
+    <!-- Where the turn's latency actually went. Built from the same per-node timings the
+         inspector shows, laid out proportionally — so "the model took 5s" stops being an
+         abstraction and becomes one bar swallowing the strip. -->
+    <div class="timeline" id="timeline"></div>
+
+    <div class="zoom">
+      <button id="follow" class="on" title="Keep the camera on the node that is running">◎</button>
+      <button id="zout">−</button><button id="zfit">Fit</button><button id="zin">+</button>
+    </div>
+  </div>
+
+  <aside class="right">
+    <div class="pane-head"><h2>Node inspector</h2></div>
+    <div id="insp">
+      <div class="insp-empty">Click any node to inspect it —<br />its prompt, model, gate state and last run.</div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Topology mirrors app/graph/build_graph.py:STAGE_NODE. The graph is fixed in code
+// (deterministic by design — users can't add nodes), so a hand-authored layout is
+// honest, and unlike a rendered mermaid diagram it gives us nodes we can click,
+// animate and hang live metrics off.
+// ─────────────────────────────────────────────────────────────────────────────
+const NODES = [
+  { id:'__start__',           t:'START',              type:'term',   x:330, y:0,   ic:'◉' },
+  { id:'safety',              t:'safety',             type:'safety', x:330, y:70,  ic:'🛡', sub:'crisis screen' },
+  { id:'safe_response',       t:'safe_response',      type:'safety', x:590, y:70,  ic:'🆘', sub:'scripted → END' },
+  { id:'profile_read',        t:'profile_read',       type:'system', x:330, y:152, ic:'👤', sub:'Mongo read' },
+  { id:'intake',              t:'intake',             type:'llm',    x:88, y:244, ic:'📋', stage:'coaching_intake_agent',          sub:'Coachable Index' },
+  { id:'checkin',             t:'checkin',            type:'llm',    x:330, y:244, ic:'🔁', stage:'repeat_user_checkin_agent',      sub:'gated · 7-day' },
+  { id:'challenge',           t:'challenge',          type:'llm',    x:572, y:244, ic:'🎯', stage:'challenge_context_agent',        sub:'decides the path' },
+  { id:'core',                t:'core',               type:'llm',    x:180, y:346, ic:'🧠', stage:'core_coaching_agent',            sub:'CIM + CBT' },
+  { id:'capability',          t:'capability',         type:'llm',    x:480, y:346, ic:'🪜', stage:'CH_coaching_agent',              sub:'CH · 3 phases' },
+  { id:'dynamic_actions',     t:'dynamic_actions',    type:'llm',    x:330, y:448, ic:'✅', stage:'dynamic_actions_insights_agent', sub:'action cards' },
+  { id:'simulation_decision', t:'simulation_decision',type:'gate',   x:330, y:540, ic:'🎲', stage:'simulation_decision_agent',      sub:'gated · offer' },
+  { id:'role_play',           t:'role_play',          type:'llm',    x:88, y:632, ic:'🎭', stage:'role_play_agent',                sub:'gated · persona' },
+  { id:'sjt',                 t:'sjt',                type:'llm',    x:572, y:632, ic:'⚖️', stage:'SJT_simulation_agent',           sub:'gated · scenario' },
+  { id:'pattern',             t:'pattern',            type:'llm',    x:330, y:632, ic:'🪞', stage:'pattern_agent',                  sub:'reflect beat' },
+  { id:'learning_aid',        t:'learning_aid',       type:'llm',    x:330, y:724, ic:'📚', stage:'learning_aid_agent',             sub:'gated · one aid' },
+  { id:'final_action_check',  t:'final_action_check', type:'gate',   x:330, y:816, ic:'🚧', stage:'final_action_check',             sub:'≥1 action saved?' },
+  { id:'feedback',            t:'feedback',           type:'llm',    x:330, y:908, ic:'💬', stage:'feedback_mood_capture_agent',    sub:'closing · always on' },
+  { id:'session_complete',    t:'session_complete',   type:'term',   x:330, y:1000,ic:'🏁', sub:'terminal close' },
+  // The standalone check-in gets its OWN right-hand lane. Sharing the spine forced its two
+  // edges to swoop across the whole canvas and cut through half the graph.
+  { id:'action_checkin',      t:'action_checkin',     type:'llm',    x:800, y:152, ic:'📌', stage:'action_checkin_agent',           sub:'standalone · 15 steps' },
+];
+
+// Right-hand gutter the action_checkin lane routes down. Kept clear of every node so the
+// long edge can run straight down it instead of crossing the graph.
+const RIGHT_LANE = 800 + 90;   // centre of the action_checkin column
+
+const EDGES = [
+  ['__start__','safety'],
+  ['safety','safe_response','crisis',1], ['safety','profile_read','ok',1],
+  ['profile_read','intake','fresh',1], ['profile_read','checkin','due',1], ['profile_read','challenge','',1],
+  ['profile_read','action_checkin','tapped',1],
+  ['intake','checkin'], ['intake','challenge'], ['checkin','challenge'],
+  ['challenge','core','CIM/CBT',1], ['challenge','capability','CH',1],
+  ['core','dynamic_actions'], ['capability','dynamic_actions'],
+  ['dynamic_actions','simulation_decision'],
+  ['simulation_decision','role_play','person',1], ['simulation_decision','sjt','else',1],
+  ['simulation_decision','pattern','skip',1],
+  ['role_play','pattern'], ['sjt','pattern'],
+  ['pattern','learning_aid'],
+  ['learning_aid','final_action_check'],
+  ['final_action_check','feedback','passed',1],
+  ['feedback','session_complete'],
+  ['action_checkin','session_complete','',1],
+];
+
+const DEMO_USERS = [
+  { id:'demo-fresh',   hint:'Brand-new — runs intake from scratch' },
+  { id:'demo-repeat',  hint:'Prior session 2d ago — skips intake' },
+  { id:'demo-checkin', hint:'Actions 9d old — check-in is DUE' },
+  { id:'demo-ch',      hint:'Capability goal — should route CH' },
+];
+
+const $ = s => document.querySelector(s);
+const canvas = $('#canvas'), svg = $('#edges');
+const NW = 182, NH = 52;
+
+let selected = null, sessionId = '', turns = 0, totalCost = 0, running = false, lastNode = null;
+const runState = {};
+let stageToNode = {};
+
+const nodeEl = id => document.getElementById('n-' + id);
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+// ── render ──────────────────────────────────────────────────────────────────
+function drawNodes() {
+  NODES.forEach((n, i) => {
+    const d = document.createElement('div');
+    d.className = `node t-${n.type}`;
+    d.id = 'n-' + n.id;
+    d.style.left = n.x + 'px'; d.style.top = n.y + 'px';
+    d.innerHTML = `
+      <div class="n-top">
+        <span class="n-ic">${n.ic}</span>
+        <span class="n-t">${n.t}</span>
+        <span class="n-pip"></span>
+      </div>
+      ${n.sub ? `<div class="n-s">${n.sub}</div>` : ''}
+      <div class="n-runslot"></div>`;
+    d.onclick = () => select(n.id);
+    d.style.animationDelay = (i * 22) + 'ms';   // the graph assembles, top-down
+    canvas.appendChild(d);
+  });
+  // An untouched page should tell you where to look.
+  nodeEl('start')?.classList.add('idle-hint');
+}
+
+// Orthogonal routing with rounded elbows — what real flow tools do, and what keeps the
+// graph readable. The old bezier curves swooped diagonally, so any edge between distant
+// nodes cut straight through whatever sat between them.
+const R = 9;  // elbow radius
+
+function elbow(x1, y1, x2, y2) {
+  if (Math.abs(x1 - x2) < 2) return `M ${x1} ${y1} L ${x2} ${y2}`;   // straight drop
+  const my = (y1 + y2) / 2;                                          // turn halfway down
+  const sx = x2 > x1 ? 1 : -1;
+  return [
+    `M ${x1} ${y1}`,
+    `L ${x1} ${my - R}`,
+    `Q ${x1} ${my} ${x1 + sx * R} ${my}`,   // corner into the horizontal run
+    `L ${x2 - sx * R} ${my}`,
+    `Q ${x2} ${my} ${x2} ${my + R}`,        // corner back down
+    `L ${x2} ${y2}`,
+  ].join(' ');
+}
+
+// The one edge that can't take the direct route: action_checkin → session_complete would
+// cut diagonally across the entire graph. Send it down the clear right-hand gutter instead.
+function laneRoute(x1, y1, x2, y2) {
+  const lane = RIGHT_LANE, floor = y2 - 40;
+  return [
+    `M ${x1} ${y1}`,
+    `L ${lane - R} ${y1}`, `Q ${lane} ${y1} ${lane} ${y1 + R}`,
+    `L ${lane} ${floor - R}`, `Q ${lane} ${floor} ${lane - R} ${floor}`,
+    `L ${x2 + R} ${floor}`, `Q ${x2} ${floor} ${x2} ${floor + R}`,
+    `L ${x2} ${y2}`,
+  ].join(' ');
+}
+
+function path(a, b) {
+  const A = NODES.find(n => n.id === a), B = NODES.find(n => n.id === b);
+  const ah = nodeEl(a)?.offsetHeight || NH;
+  const x1 = A.x + NW / 2, y1 = A.y + ah;
+  const x2 = B.x + NW / 2, y2 = B.y;
+  if (a === 'action_checkin') return laneRoute(A.x + NW, A.y + ah / 2, x2, y2);
+  return elbow(x1, y1, x2, y2);
+}
+
+function drawEdges() {
+  svg.innerHTML = '';
+  EDGES.forEach(([a, b, label, cond]) => {
+    const d = path(a, b);
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('class', 'edge' + (cond ? ' cond' : ''));
+    p.id = `e-${a}-${b}`;
+    svg.appendChild(p);
+
+    if (label) {
+      // Sit the label ON the path (at its midpoint) with a chip behind it, instead of
+      // guessing a coordinate between two nodes and landing on top of one of them.
+      const mid = p.getPointAtLength(p.getTotalLength() / 2);
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('class', 'elabel');
+      t.setAttribute('x', mid.x); t.setAttribute('y', mid.y + 3);
+      t.setAttribute('text-anchor', 'middle');
+      t.textContent = label;
+      const w = label.length * 5.4 + 10;
+      rect.setAttribute('class', 'elabel-bg');
+      rect.setAttribute('x', mid.x - w / 2); rect.setAttribute('y', mid.y - 8);
+      rect.setAttribute('width', w); rect.setAttribute('height', 15);
+      rect.setAttribute('rx', 4);
+      g.appendChild(rect); g.appendChild(t);
+      svg.appendChild(g);
+    }
+  });
+  const w = Math.max(...NODES.map(n => n.x)) + NW + 60;
+  const h = Math.max(...NODES.map(n => n.y)) + 120;
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+}
+
+// ── pan / zoom ──────────────────────────────────────────────────────────────
+let zoom = 1, panX = 0, panY = 0;
+const applyView = () => canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+function fit() {
+  const w = $('#wrap').clientWidth, h = $('#wrap').clientHeight;
+  const gw = parseFloat(canvas.style.width), gh = parseFloat(canvas.style.height);
+  if (!gw || !gh) return;
+  zoom = Math.min(w / (gw + 60), h / (gh + 40), 1);
+  panX = (w - gw * zoom) / 2; panY = 14;
+  applyView();
+}
+$('#follow').onclick = () => {
+  // Following is right while a turn runs and wrong the moment you want to look around,
+  // so it is a toggle and not a behaviour. Panning by hand turns it off for you.
+  follow = !follow;
+  $('#follow').classList.toggle('on', follow);
+  toast(follow ? 'Camera follows the running node' : 'Camera stays put');
+};
+$('#zin').onclick  = () => { zoom = Math.min(2, zoom * 1.18); applyView(); };
+$('#zout').onclick = () => { zoom = Math.max(.25, zoom / 1.18); applyView(); };
+$('#zfit').onclick = fit;
+
+(function drag() {
+  let on = false, sx = 0, sy = 0;
+  const wrap = $('#wrap');
+  wrap.addEventListener('mousedown', e => {
+    if (e.target.closest('.node, button, .runbar, .reply')) return;
+    on = true; sx = e.clientX - panX; sy = e.clientY - panY; wrap.style.cursor = 'grabbing';
+    canvas.classList.add('dragging');   // no easing while dragging, or it trails the cursor
+    if (follow) { follow = false; $('#follow').classList.remove('on'); }
+  });
+  addEventListener('mousemove', e => { if (on) { panX = e.clientX - sx; panY = e.clientY - sy; applyView(); } });
+  addEventListener('mouseup', () => { on = false; wrap.style.cursor = ''; canvas.classList.remove('dragging'); });
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = wrap.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    const nz = Math.max(.25, Math.min(2, zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    panX = mx - (mx - panX) * (nz / zoom); panY = my - (my - panY) * (nz / zoom);
+    zoom = nz;
+    canvas.classList.add('dragging'); applyView();
+    clearTimeout(canvas._zt);
+    canvas._zt = setTimeout(() => canvas.classList.remove('dragging'), 120);
+  }, { passive: false });
+})();
+
+// ── collapsible panels ──────────────────────────────────────────────────────
+const ws = $('#ws');
+$('#tog-l').onclick = () => {
+  ws.classList.toggle('l-collapsed');
+  $('#tog-l').textContent = ws.classList.contains('l-collapsed') ? '▶' : '◀';
+  setTimeout(fit, 300);
+};
+$('#tog-r').onclick = () => {
+  ws.classList.toggle('r-collapsed');
+  $('#tog-r').textContent = ws.classList.contains('r-collapsed') ? '◀' : '▶';
+  setTimeout(fit, 300);
+};
+
+// ── inspector ───────────────────────────────────────────────────────────────
+async function select(id) {
+  selected = id;
+  document.querySelectorAll('.node').forEach(e => e.classList.remove('sel'));
+  nodeEl(id)?.classList.add('sel');
+
+  const n = NODES.find(x => x.id === id);
+  const r = runState[id];
+  const box = $('#insp');
+
+  const runBlock = r ? `
+    <div class="sec">
+      <h3>Last run</h3>
+      <div class="kv"><span>status</span><b>${r.status}</b></div>
+      ${r.ms != null ? `<div class="kv"><span>duration</span><b>${r.ms} ms</b></div>` : ''}
+      ${r.tokens ? `<div class="kv"><span>prompt tokens</span><b>${r.tokens.toLocaleString()}</b></div>` : ''}
+      ${r.completion ? `<div class="kv"><span>completion</span><b>${r.completion}</b></div>` : ''}
+      ${r.cost ? `<div class="kv"><span>cost</span><b>$${r.cost.toFixed(5)}</b></div>` : ''}
+      ${r.stage ? `<div class="kv"><span>→ next stage</span><b>${esc(r.stage)}</b></div>` : ''}
+      <div class="kv"><span>handed off</span><b>${r.handoff ? 'yes' : 'no'}</b></div>
+    </div>` : '';
+
+  if (!n.stage) {
+    box.innerHTML = `<div class="pane-body">
+      <div class="kv"><span>node</span><b>${n.t}</b></div>
+      <div class="kv"><span>type</span><b>${n.type}</b></div>
+      <div class="kv"><span>LLM</span><b>no</b></div>
+      ${runBlock}
+      <div class="sec"><p class="note">A deterministic node — no prompt, no model, no LLM call.
+      It is code, so it cannot drift.</p></div>
+    </div>`;
+    return;
+  }
+
+  box.innerHTML = `<div class="pane-body"><p class="note">Loading ${esc(n.stage)}…</p></div>`;
+  let p = {};
+  try {
+    const res = await fetch('/v1/prompts/' + encodeURIComponent(n.stage));
+    if (res.ok) p = await res.json();
+  } catch (e) { /* registry unreachable — still show the run data */ }
+
+  box.innerHTML = `<div class="pane-body">
+    <div class="kv"><span>node</span><b>${n.t}</b></div>
+    <div class="kv"><span>sheet</span><b>${esc(n.stage)}</b></div>
+    <div class="kv"><span>model</span><b>${esc(p.model || '—')}</b></div>
+    <div class="kv"><span>enabled</span><b>${
+      p.enabled === undefined ? '—'
+        : `<span class="tag ${p.enabled ? 'on' : 'off'}">${p.enabled ? 'on' : 'off'}</span>` +
+          (p.always_on ? ' <span class="tag on">always</span>' : '')}</b></div>
+    <div class="kv"><span>prompt size</span><b>${p.size ? p.size.toLocaleString() + ' ch' : '—'}</b></div>
+    ${runBlock}
+    <div class="sec">
+      <h3>System prompt <span class="n-badge">cell B7</span></h3>
+      <pre class="prompt">${esc((p.prompt || 'not authored yet').slice(0, 4000))}</pre>
+    </div>
+    <div class="sec"><p class="note">Edit in <a href="/prompts" style="color:var(--accent)">Prompts</a> —
+    it hot-reloads, no deploy. Structure stays in code.</p></div>
+  </div>`;
+}
+
+// ── motion ──────────────────────────────────────────────────────────────────
+// Everything here answers a question the static graph cannot: where is control NOW,
+// how long is this node taking, and where did the five seconds go.
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SVGNS = 'http://www.w3.org/2000/svg';
+let follow = true;
+let turnTape = [];      // [{id, ms, type}] for the flame chart
+
+/** Send a dot ALONG the edge from `a` to `b`. Control flow you can actually watch —
+ *  this is the page's whole argument, that routing is a machine and not a vibe. */
+function flyPacket(a, b, ms = 520) {
+  if (REDUCED) return;
+  const edge = document.getElementById(`e-${a}-${b}`);
+  if (!edge) return;
+  const len = edge.getTotalLength();
+  if (!len) return;
+
+  const dot = document.createElementNS(SVGNS, 'circle');
+  dot.setAttribute('class', 'packet'); dot.setAttribute('r', '3.5');
+  const trail = document.createElementNS(SVGNS, 'path');
+  trail.setAttribute('class', 'packet-trail');
+  svg.appendChild(trail); svg.appendChild(dot);
+
+  const t0 = performance.now();
+  (function step(now) {
+    // ease-out: leaves the finished node fast, settles into the next one — reads like
+    // a handoff rather than a constant-speed conveyor belt.
+    const t = Math.min(1, (now - t0) / ms);
+    const e = 1 - Math.pow(1 - t, 3);
+    const p = edge.getPointAtLength(e * len);
+    dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+    // A short comet tail, so direction is legible even at speed.
+    const tailStart = Math.max(0, e * len - 26);
+    trail.setAttribute('d', subPath(edge, tailStart, e * len));
+    trail.style.opacity = String(0.55 * (1 - t));
+    if (t < 1) requestAnimationFrame(step);
+    else { dot.remove(); trail.remove(); }
+  })(t0);
+}
+
+/** The slice of `edge` between two lengths, as its own path — the comet tail. */
+function subPath(edge, from, to) {
+  const pts = [];
+  const n = 8;
+  for (let i = 0; i <= n; i++) {
+    const p = edge.getPointAtLength(from + ((to - from) * i) / n);
+    pts.push(`${i ? 'L' : 'M'} ${p.x} ${p.y}`);
+  }
+  return pts.join(' ');
+}
+
+/** Pan the camera onto a node. The graph is taller than the viewport, so without this
+ *  the interesting thing happens off-screen and the user hunts for it. */
+function focusNode(id) {
+  if (!follow || REDUCED) return;
+  const n = NODES.find(x => x.id === id); if (!n) return;
+  const w = $('#wrap').clientWidth, h = $('#wrap').clientHeight;
+  panX = w / 2 - (n.x + NW / 2) * zoom;
+  panY = h / 2 - (n.y + NH / 2) * zoom;
+  applyView();
+}
+
+/** Roll a number instead of snapping it, so a value that CHANGED is visible. */
+function roll(el, text) {
+  el.textContent = text;
+  el.classList.remove('rolling');
+  void el.offsetWidth;              // restart the animation
+  el.classList.add('rolling');
+}
+
+/** The flame chart: proportional time per node. Always a surprise — profile_read is 7ms
+ *  and one LLM node eats 90% of the strip. That is the latency conversation, in one bar. */
+function drawTimeline() {
+  const tl = $('#timeline');
+  const spans = turnTape.filter(s => s.ms != null && s.ms >= 0);
+  if (!spans.length) { tl.classList.remove('show'); return; }
+  const total = spans.reduce((a, s) => a + s.ms, 0) || 1;
+  const colour = { llm: 'var(--agent)', system: 'var(--tool)', gate: 'var(--purple)',
+                   safety: 'var(--red)', term: 'var(--muted)' };
+  tl.innerHTML = `<span class="tl-head">${total.toLocaleString()}ms</span>` + spans.map(s => {
+    const pct = Math.max(1.2, (s.ms / total) * 100);
+    const wide = pct > 9;
+    return `<div class="tl" style="flex:${pct} 1 0; background:${colour[s.type] || 'var(--muted)'}"
+                 title="${esc(s.id)} — ${s.ms}ms (${((s.ms / total) * 100).toFixed(1)}%)"
+                 data-node="${esc(s.id)}">
+              ${wide ? `<span class="tl-lbl">${esc(s.id)} ${s.ms}ms</span>` : ''}
+            </div>`;
+  }).join('');
+  tl.querySelectorAll('.tl').forEach(b => b.onclick = () => {
+    select(b.dataset.node); focusNode(b.dataset.node);
+  });
+  tl.classList.add('show');
+}
+
+// ── run overlay ─────────────────────────────────────────────────────────────
+function markRunning(id) {
+  const el = nodeEl(id); if (!el) return;
+  el.classList.remove('done'); el.classList.add('running');
+  runState[id] = { ...(runState[id] || {}), status: 'running', _t0: performance.now() };
+  $('#runinfo').innerHTML = `running <b>${esc(id)}</b>…`;
+  focusNode(id);
+
+  // Tick the elapsed time INTO the node while it works. An LLM node blocks for 3-17s;
+  // a frozen box with no feedback is indistinguishable from a hang, and this is the
+  // cheapest possible way to say "still alive, and here is how long you have waited".
+  const slot = el.querySelector('.n-runslot');
+  if (slot) slot.innerHTML = `<div class="n-run"><span class="n-live">0ms</span></div>`;
+  const live = slot?.querySelector('.n-live');
+  clearInterval(el._tick);
+  el._tick = setInterval(() => {
+    if (!live) return;
+    const ms = Math.round(performance.now() - runState[id]._t0);
+    live.textContent = ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+  }, 60);
+}
+
+function markDone(id, ev) {
+  const el = nodeEl(id); if (!el) return;
+  clearInterval(el._tick);                       // stop the live counter
+  const prev = runState[id] || {};
+  const ms = prev._t0 ? Math.round(performance.now() - prev._t0) : null;
+  el.classList.remove('running'); el.classList.add('done');
+  runState[id] = {
+    status: 'done', ms, tokens: ev.prompt_tokens, completion: ev.completion_tokens,
+    cost: ev.cost_usd, stage: ev.stage, handoff: ev.handoff_ready,
+  };
+  const slot = el.querySelector('.n-runslot');
+  if (slot) slot.innerHTML = `<div class="n-run">
+    ${ms != null ? `<span class="ms">${ms}ms</span>` : ''}
+    ${ev.handoff_ready ? '<span class="n-badge">handoff</span>' : ''}
+    ${ev.prompt_tokens ? `<span class="tok">${ev.prompt_tokens} tok</span>` : ''}
+  </div>`;
+
+  // Feed the flame chart. `type` colours the bar, so at a glance you can see that the
+  // time is going to the LLM agents and not to the deterministic plumbing.
+  const meta = NODES.find(n => n.id === id);
+  turnTape.push({ id, ms: ms ?? 0, type: meta?.type || 'system' });
+  // NOT drawn here: a proportion of an unfinished total is not information. Rendered once
+  // the turn completes (see the `done` event), when the denominator is real.
+
+  totalCost += (ev.cost_usd || 0);
+  roll($('#cost-out'), '$' + totalCost.toFixed(4));
+  if (selected === id) select(id);   // keep the open inspector live
+}
+
+function lightEdge(to) {
+  if (lastNode) {
+    const e = document.getElementById(`e-${lastNode}-${to}`);
+    if (e) {
+      e.classList.add('flow');
+      setTimeout(() => { e.classList.remove('flow'); e.classList.add('hot'); }, 1100);
+    }
+    // Send the packet down the edge that was just taken. The dot IS the routing
+    // decision: it only ever travels an edge the graph actually chose.
+    flyPacket(lastNode, to);
+  }
+  lastNode = to;
+}
+
+function resetRun() {
+  Object.keys(runState).forEach(k => delete runState[k]);
+  document.querySelectorAll('.node').forEach(e => {
+    clearInterval(e._tick);                       // or a dead node keeps ticking forever
+    e.classList.remove('running', 'done');
+    const s = e.querySelector('.n-runslot'); if (s) s.innerHTML = '';
+  });
+  document.querySelectorAll('.edge').forEach(e => e.classList.remove('flow', 'hot'));
+  turnTape = [];
+  $('#timeline').classList.remove('show');
+  lastNode = null; totalCost = 0;
+  $('#cost-out').textContent = '$0.0000';
+  $('#pill').className = 'pill idle'; $('#pill').textContent = 'idle';
+  $('#runinfo').textContent = 'Overlay cleared.';
+  document.querySelector('.reply')?.remove();
+  drawEdges();
+}
+$('#reset').onclick = resetRun;
+
+$('#newsess').onclick = () => {
+  sessionId = ''; turns = 0;
+  $('#sid-out').textContent = '—'; $('#turns-out').textContent = '0';
+  $('#stage-out').textContent = '—'; $('#path-out').textContent = '—';
+  resetRun();
+};
+
+// ── the run (SSE) ───────────────────────────────────────────────────────────
+async function run() {
+  if (running) return;
+  const user = $('#user').value;
+  const text = $('#msg').value.trim() || 'I keep avoiding a hard conversation with my manager.';
+  running = true; lastNode = null;
+  turnTape = [];                       // the flame chart is per TURN, not cumulative
+  $('#timeline').classList.remove('show');
+  nodeEl('start')?.classList.remove('idle-hint');
+  $('#run').disabled = true; $('#run').classList.add('running'); $('#run').textContent = '● Running';
+  $('#pill').className = 'pill running'; $('#pill').textContent = 'running';
+  document.querySelector('.reply')?.remove();
+
+  const url = sessionId ? `/v1/sessions/${sessionId}/turn?stream=true` : '/v1/sessions/start?stream=true';
+
+  const reply = document.createElement('div');
+  reply.className = 'reply';
+  reply.innerHTML = `<h4>Coach <span class="caret"></span></h4><div class="reply-body"></div>`;
+  $('#wrap').appendChild(reply);
+  const body = reply.querySelector('.reply-body');
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user, text }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();                       // keep the partial line
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let ev; try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (ev.type === 'node') {
+          if (ev.phase === 'start') markRunning(stageToNode[ev.key] || ev.key);
+          else {
+            markDone(ev.node, ev);
+            lightEdge(ev.node);
+            if (ev.coaching_path) $('#path-out').textContent = ev.coaching_path;
+          }
+        } else if (ev.type === 'token') {
+          body.textContent += ev.text;
+          reply.scrollTop = reply.scrollHeight;
+        } else if (ev.type === 'done') {
+          sessionId = ev.session_id || sessionId;
+          turns += 1;
+          $('#sid-out').textContent = sessionId.slice(0, 10) + '…';
+          $('#turns-out').textContent = turns;
+          $('#stage-out').textContent = ev.stage || '—';
+          if (ev.coaching_path) $('#path-out').textContent = ev.coaching_path;
+          if (!body.textContent.trim() && ev.response_to_user) body.textContent = ev.response_to_user;
+          $('#pill').className = 'pill done'; $('#pill').textContent = 'done';
+          $('#runinfo').innerHTML = `turn <b>${turns}</b> · stage <b>${esc(ev.stage || '—')}</b> · $${(ev.cost_usd || 0).toFixed(5)}`;
+          drawTimeline();          // now the denominator is real
+          if (follow) fit();       // pull back so the whole traversed path is visible
+        } else if (ev.type === 'error') {
+          throw new Error(ev.detail || 'stream error');
+        }
+      }
+    }
+    $('#msg').value = '';
+  } catch (e) {
+    $('#pill').className = 'pill error'; $('#pill').textContent = 'error';
+    $('#runinfo').textContent = String(e.message || e);
+    toast('Run failed: ' + (e.message || e));
+  } finally {
+    running = false;
+    $('#run').disabled = false; $('#run').classList.remove('running'); $('#run').textContent = '▶ Run turn';
+    reply.querySelector('.caret')?.remove();
+    document.querySelectorAll('.node.running').forEach(e => e.classList.remove('running'));
+  }
+}
+$('#run').onclick = run;
+$('#msg').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ── boot ────────────────────────────────────────────────────────────────────
+function drawDemoUsers() {
+  const sel = $('#user'), list = $('#demousers');
+  DEMO_USERS.forEach((u, i) => {
+    sel.add(new Option(u.id, u.id));
+    const d = document.createElement('div');
+    d.className = 'du-item' + (i === 0 ? ' on' : '');
+    d.innerHTML = `<div class="du-id">${u.id}</div><div class="du-hint">${u.hint}</div>`;
+    d.onclick = () => {
+      sel.value = u.id;
+      document.querySelectorAll('.du-item').forEach(x => x.classList.remove('on'));
+      d.classList.add('on');
+      $('#newsess').click();
+      toast(u.id + ' — ' + u.hint);
+    };
+    list.appendChild(d);
+  });
+  sel.onchange = () => {
+    document.querySelectorAll('.du-item').forEach((x, i) =>
+      x.classList.toggle('on', DEMO_USERS[i].id === sel.value));
+    $('#newsess').click();
+  };
+}
+
+async function boot() {
+  drawDemoUsers();
+  drawNodes();
+  drawEdges();
+  fit();
+  // stage → node id, straight from the compiled graph, so this can't drift from code.
+  try {
+    const r = await fetch('/v1/graph/mermaid');
+    if (r.ok) stageToNode = (await r.json()).stage_to_node || {};
+  } catch (e) { /* fall back to the raw key */ }
+  stageToNode['profile_read'] = 'profile_read';
+  stageToNode['safe_response'] = 'safe_response';
+}
+boot();
+addEventListener('resize', () => setTimeout(fit, 60));
+</script>
+
+<script>
+// White-label: brand comes from the server (CEREBROZEN_BRAND_NAME), never hardcoded here.
+fetch('/health').then(r => r.json()).then(d => {
+  const b = d.brand; if (!b || b === 'CereBroZen') return;
+  document.title = document.title.replace(/CereBroZen/g, b);
+  document.querySelectorAll('.brand').forEach(el => {
+    el.childNodes.forEach(n => {
+      if (n.nodeType === 3 && n.textContent.includes('CereBroZen'))
+        n.textContent = n.textContent.replace(/CereBroZen/g, b);
+    });
+  });
+}).catch(() => {});
+</script>
+</body>
+</html>

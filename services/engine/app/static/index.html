@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CereBroZen — Coaching</title>
+<link rel="stylesheet" href="/static/cerebrozen.css" />
+<style>
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font-family:var(--sans); background:var(--bg); color:var(--text);
+         display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ── shell (identical to Flow Studio — one product, one language) ──────── */
+  header { display:flex; align-items:center; gap:12px; padding:10px 14px;
+           border-bottom:1px solid var(--border); background:var(--panel);
+           box-shadow:var(--sh-1); z-index:20; }
+  .brand { font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .brand .dot { width:8px; height:8px; border-radius:50%; background:var(--accent);
+                box-shadow:0 0 10px var(--accent-ring); }
+  .brand small { color:var(--muted); font-weight:500; }
+  nav a { color:var(--muted); text-decoration:none; font-size:12.5px; padding:5px 9px;
+          border-radius:var(--r-sm); transition:.15s var(--ease); }
+  nav a:hover { color:var(--text); background:var(--panel-2); }
+  nav a.on { color:var(--accent); background:var(--accent-soft); }
+  .grow { flex:1; }
+
+  select { background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+           border-radius:var(--r-sm); padding:7px 10px; font-size:12.5px; font-family:var(--sans); }
+  button { display:inline-flex; align-items:center; gap:6px; padding:7px 13px;
+           border:1px solid transparent; border-radius:var(--r-sm); background:var(--panel-2);
+           color:var(--text-dim); font-size:12.5px; font-weight:600; cursor:pointer;
+           font-family:var(--sans); transition:.15s var(--ease); }
+  button:hover:not(:disabled) { background:var(--panel-3); color:var(--text); }
+  button:disabled { opacity:.42; cursor:not-allowed; }
+  button.primary { background:linear-gradient(180deg,var(--accent-2),var(--accent));
+                   color:var(--accent-ink); box-shadow:0 2px 12px rgba(216,180,95,.25); }
+  button.primary:hover:not(:disabled) { box-shadow:0 4px 18px rgba(216,180,95,.4); }
+  :focus-visible { outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
+
+  /* ── layout ────────────────────────────────────────────────────────────── */
+  .ws { flex:1; display:grid; grid-template-columns:var(--lw,246px) 1fr; min-height:0;
+        transition:grid-template-columns .28s var(--ease); }
+  .ws.l-collapsed { --lw:0px; }
+  aside { background:var(--panel); border-right:1px solid var(--border); overflow-y:auto;
+          min-width:0; transition:opacity .18s var(--ease); }
+  .ws.l-collapsed aside { opacity:0; pointer-events:none; }
+  .pane-head { display:flex; align-items:center; padding:11px 13px; border-bottom:1px solid var(--border); }
+  .pane-head h2 { margin:0; font-size:11px; font-weight:700; letter-spacing:.9px;
+                  text-transform:uppercase; color:var(--faint); }
+  .pane-body { padding:12px 13px; }
+  .sec { margin-top:15px; }
+  .sec h3 { margin:0 0 7px; font-size:10px; letter-spacing:.9px; text-transform:uppercase; color:var(--faint); }
+
+  .du-item { padding:8px 10px; border-radius:var(--r-sm); border:1px solid var(--border);
+             background:var(--bg-2); cursor:pointer; margin-bottom:5px; transition:.15s var(--ease); }
+  .du-item:hover { border-color:var(--border-strong); transform:translateX(2px); }
+  .du-item.on { border-color:var(--accent-ring); background:var(--accent-soft); }
+  .du-id { font-size:12px; font-weight:600; font-family:var(--mono); }
+  .du-hint { font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.35; }
+  .kv { display:flex; justify-content:space-between; gap:10px; padding:6px 0;
+        border-bottom:1px solid var(--hairline); font-size:11.5px; }
+  .kv span { color:var(--muted); }
+  .kv b { color:var(--text); font-weight:600; font-family:var(--mono); font-size:11px; }
+  .note { font-size:11px; color:var(--muted); line-height:1.6; margin:0; }
+
+  /* ── conversation ──────────────────────────────────────────────────────── */
+  .chat { position:relative; display:flex; flex-direction:column; min-height:0;
+          background:radial-gradient(circle at 1px 1px, rgba(255,255,255,.03) 1px, transparent 0) 0 0/24px 24px, var(--bg); }
+  .handle { position:absolute; left:0; top:50%; transform:translateY(-50%); z-index:30;
+            width:20px; height:52px; display:flex; align-items:center; justify-content:center;
+            background:var(--panel-2); border:1px solid var(--border); border-radius:0 var(--r-sm) var(--r-sm) 0;
+            color:var(--muted); cursor:pointer; font-size:11px; padding:0; transition:.18s var(--ease); }
+  .handle:hover { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-ring); }
+
+  .thread { flex:1; overflow-y:auto; padding:26px 24px 10px; }
+  .inner { max-width:760px; margin:0 auto; }
+
+  .msg { display:flex; gap:11px; margin-bottom:18px; animation:rise .28s var(--ease); }
+  @keyframes rise { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+  .av { width:28px; height:28px; border-radius:50%; flex:none; display:flex; align-items:center;
+        justify-content:center; font-size:12px; border:1px solid var(--border); background:var(--panel-2); }
+  .msg.bot .av { background:linear-gradient(180deg,var(--accent-2),var(--accent));
+                 border-color:transparent; color:var(--accent-ink); font-weight:700; }
+  .bub { flex:1; min-width:0; }
+  .who { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+  .who b { font-size:12px; font-weight:650; }
+  .agent-chip { font-family:var(--mono); font-size:9.5px; padding:2px 6px; border-radius:99px;
+                background:var(--accent-soft); color:var(--accent); }
+  .body { font-size:14px; line-height:1.65; color:var(--text-dim); white-space:pre-wrap; word-break:break-word; }
+  .msg.me .body { color:var(--text); }
+  .caret { display:inline-block; width:7px; height:14px; background:var(--accent);
+           animation:blink .9s step-end infinite; vertical-align:text-bottom; }
+  @keyframes blink { 50% { opacity:0 } }
+
+  .cards { margin-top:11px; display:flex; flex-direction:column; gap:7px; }
+  .card { padding:10px 12px; border-radius:var(--r-md); border:1px solid var(--border);
+          background:var(--panel); display:flex; gap:10px; align-items:flex-start;
+          animation:rise .3s var(--ease); }
+  .card .tick { color:var(--accent); font-size:11px; margin-top:2px; }
+  .card .ct { font-size:12.5px; line-height:1.5; }
+  .card .co { font-size:11px; color:var(--muted); margin-top:3px; }
+
+  /* which agent is actually working — real data, not a spinner */
+  .thinking { display:flex; align-items:center; gap:9px; padding:9px 12px; margin-bottom:18px;
+              border-radius:var(--r-md); border:1px solid var(--border); background:var(--panel);
+              width:fit-content; font-size:11.5px; color:var(--muted); font-family:var(--mono); }
+  .dots i { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--accent);
+            margin-right:3px; animation:bounce 1.2s infinite; }
+  .dots i:nth-child(2){ animation-delay:.16s } .dots i:nth-child(3){ animation-delay:.32s }
+  @keyframes bounce { 0%,60%,100%{ transform:translateY(0); opacity:.45 } 30%{ transform:translateY(-4px); opacity:1 } }
+
+  /* ── empty state (this page used to be a black void) ───────────────────── */
+  .empty { padding:56px 20px; text-align:center; animation:rise .4s var(--ease); }
+  .empty .mark { width:46px; height:46px; margin:0 auto 16px; border-radius:12px;
+                 display:flex; align-items:center; justify-content:center; font-size:19px;
+                 background:var(--accent-soft); border:1px solid var(--accent-ring); color:var(--accent); }
+  .empty h1 { margin:0 0 8px; font-size:19px; font-weight:650; }
+  .empty p { margin:0 auto 22px; max-width:440px; font-size:13px; color:var(--muted); line-height:1.65; }
+  .starters { display:grid; grid-template-columns:1fr 1fr; gap:9px; max-width:560px; margin:0 auto; }
+  .starter { display:block; text-align:left; padding:12px 14px; border-radius:var(--r-md);
+             border:1px solid var(--border); background:var(--panel); cursor:pointer;
+             transition:.16s var(--ease); font-family:var(--sans); }
+  .starter:hover { border-color:var(--accent-ring); background:var(--panel-2); transform:translateY(-2px); }
+  .starter b { display:block; font-size:12.5px; margin-bottom:3px; color:var(--text); font-weight:650; }
+  .starter span { font-size:11px; color:var(--muted); line-height:1.5; font-weight:400; }
+  @media (max-width: 720px) { .starters { grid-template-columns:1fr; } }
+
+  /* ── composer ──────────────────────────────────────────────────────────── */
+  .composer { border-top:1px solid var(--border); background:var(--panel); padding:12px 24px 14px; }
+  .cwrap { max-width:760px; margin:0 auto; display:flex; gap:9px; align-items:flex-end; }
+  textarea { flex:1; resize:none; background:var(--bg-2); border:1px solid var(--border);
+             color:var(--text); border-radius:var(--r-md); padding:11px 13px; font-size:13.5px;
+             line-height:1.55; font-family:var(--sans); max-height:160px; transition:.15s var(--ease); }
+  textarea:focus { outline:none; border-color:var(--accent-ring); box-shadow:0 0 0 3px var(--accent-soft); }
+  .hint { max-width:760px; margin:7px auto 0; font-size:10.5px; color:var(--faint);
+          display:flex; gap:12px; font-family:var(--mono); }
+  .err { max-width:760px; margin:0 auto 9px; padding:8px 11px; border-radius:var(--r-sm);
+         background:rgba(240,115,111,.1); border:1px solid rgba(240,115,111,.3);
+         color:var(--red); font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span> CereBroZen <small>Coaching</small></div>
+  <nav>
+    <a href="/">Workbench</a><a href="/chat" class="on">Chat</a><a href="/prompts">Prompts</a><a href="/flow">Flow</a>
+  </nav>
+  <div class="grow"></div>
+  <select id="user" title="Who you are coaching as"></select>
+  <button id="newsess">✚ New session</button>
+</header>
+
+<div class="ws" id="ws">
+  <aside>
+    <div class="pane-head"><h2>Coach as</h2></div>
+    <div class="pane-body">
+      <div id="users"></div>
+      <div class="sec">
+        <h3>Session</h3>
+        <div class="kv"><span>id</span><b id="sid">—</b></div>
+        <div class="kv"><span>stage</span><b id="stage">—</b></div>
+        <div class="kv"><span>path</span><b id="path">—</b></div>
+        <div class="kv"><span>turns</span><b id="turns">0</b></div>
+      </div>
+      <div class="sec">
+        <h3>Watch it run</h3>
+        <p class="note">Open the <a href="/flow" style="color:var(--accent)">Flow Studio</a> to see
+        which agent handles each turn, live.</p>
+      </div>
+    </div>
+  </aside>
+
+  <div class="chat">
+    <button class="handle" id="tog" title="Collapse panel">◀</button>
+    <div class="thread" id="thread"><div class="inner" id="inner"></div></div>
+
+    <div class="composer">
+      <div id="errbox"></div>
+      <div class="cwrap">
+        <textarea id="msg" rows="1" placeholder="Tell your coach what's going on…"></textarea>
+        <button class="primary" id="send">Send</button>
+      </div>
+      <div class="hint"><span>⏎ send</span><span>⇧⏎ newline</span><span id="whoami">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const USERS = [
+  { id:'demo-fresh',   hint:'Brand-new — runs intake from scratch' },
+  { id:'demo-repeat',  hint:'Prior session 2d ago — skips intake' },
+  { id:'demo-checkin', hint:'Actions 9d old — check-in is due' },
+  { id:'demo-ch',      hint:'Capability goal — routes CH' },
+];
+const STARTERS = [
+  ['I keep avoiding a hard conversation', 'with my manager about my workload.'],
+  ['I want to delegate more', "but I can't let go of control."],
+  ['I freeze in senior meetings', 'and never say what I came to say.'],
+  ['I want to build strategic influence', 'as a capability, over months.'],
+];
+
+let sessionId = '', turns = 0, busy = false;
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+function bubble(role, text, agent) {
+  $('#empty')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg ' + (role === 'me' ? 'me' : 'bot');
+  d.innerHTML = `<div class="av">${role === 'me' ? '🧑' : '◇'}</div>
+    <div class="bub">
+      <div class="who"><b>${role === 'me' ? 'You' : 'Coach'}</b>
+      ${agent ? `<span class="agent-chip">${esc(agent)}</span>` : ''}</div>
+      <div class="body"></div><div class="cards"></div>
+    </div>`;
+  d.querySelector('.body').textContent = text;
+  $('#inner').appendChild(d);
+  $('#thread').scrollTop = $('#thread').scrollHeight;
+  return d;
+}
+
+function thinking(label) {
+  const d = document.createElement('div');
+  d.className = 'thinking'; d.id = 'thinking';
+  d.innerHTML = `<span class="dots"><i></i><i></i><i></i></span><span class="tlabel">${esc(label)}</span>`;
+  $('#inner').appendChild(d);
+  $('#thread').scrollTop = $('#thread').scrollHeight;
+}
+
+function renderCards(host, actions) {
+  if (!actions?.length) return;
+  const c = host.querySelector('.cards');
+  actions.forEach(a => {
+    const t = a.full_text || a.text || a.action || '';
+    if (!t) return;
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `<span class="tick">◆</span><div>
+      <div class="ct">${esc(t)}</div>
+      ${a.expected_outcome ? `<div class="co">${esc(a.expected_outcome)}</div>` : ''}</div>`;
+    c.appendChild(el);
+  });
+}
+
+async function send(text) {
+  if (busy) return;
+  text = (text ?? $('#msg').value).trim();
+  if (!text) return;
+  busy = true; $('#send').disabled = true;
+  $('#msg').value = ''; $('#msg').style.height = 'auto';
+  $('#errbox').innerHTML = '';
+  bubble('me', text);
+
+  const url = sessionId ? `/v1/sessions/${sessionId}/turn?stream=true` : '/v1/sessions/start?stream=true';
+  thinking('thinking…');
+  let host = null, body = null, agent = '';
+
+  try {
+    const res = await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: $('#user').value, text }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream:true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let ev; try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (ev.type === 'node' && ev.phase === 'start') {
+          agent = ev.key;                                   // the agent really handling this turn
+          const t = $('#thinking .tlabel'); if (t) t.textContent = agent;
+        } else if (ev.type === 'token') {
+          if (!host) {
+            $('#thinking')?.remove();
+            host = bubble('bot', '', agent);
+            body = host.querySelector('.body');
+            body.innerHTML = '<span class="caret"></span>';
+            body.textContent = '';
+          }
+          body.textContent += ev.text;
+          $('#thread').scrollTop = $('#thread').scrollHeight;
+        } else if (ev.type === 'done') {
+          $('#thinking')?.remove();
+          if (!host) host = bubble('bot', ev.response_to_user || '', ev.active_node || agent);
+          const b = host.querySelector('.body');
+          if (!b.textContent.trim() && ev.response_to_user) b.textContent = ev.response_to_user;
+          host.querySelector('.caret')?.remove();
+          const chip = host.querySelector('.agent-chip');
+          if (chip && ev.active_node) chip.textContent = ev.active_node;
+          renderCards(host, ev.actions);
+
+          sessionId = ev.session_id || sessionId;
+          turns += 1;
+          $('#sid').textContent = sessionId.slice(0, 10) + '…';
+          $('#stage').textContent = ev.stage || '—';
+          $('#path').textContent = ev.coaching_path || '—';
+          $('#turns').textContent = turns;
+        } else if (ev.type === 'error') {
+          throw new Error(ev.detail || 'stream error');
+        }
+      }
+    }
+  } catch (e) {
+    $('#thinking')?.remove();
+    $('#errbox').innerHTML = `<div class="err">Couldn't reach the coach — ${esc(e.message || e)}</div>`;
+  } finally {
+    busy = false; $('#send').disabled = false; $('#msg').focus();
+  }
+}
+
+$('#send').onclick = () => send();
+$('#msg').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$('#msg').addEventListener('input', e => {
+  e.target.style.height = 'auto';
+  e.target.style.height = Math.min(160, e.target.scrollHeight) + 'px';
+});
+$('#tog').onclick = () => {
+  $('#ws').classList.toggle('l-collapsed');
+  $('#tog').textContent = $('#ws').classList.contains('l-collapsed') ? '▶' : '◀';
+};
+
+function reset() {
+  sessionId = ''; turns = 0;
+  ['sid','stage','path'].forEach(k => $('#' + k).textContent = '—');
+  $('#turns').textContent = '0';
+  $('#inner').innerHTML = `<div class="empty" id="empty">
+    <div class="mark">◇</div>
+    <h1>What's on your mind?</h1>
+    <p>A coach that asks rather than tells. It remembers what you committed to last time, and
+       every reply comes from a specific agent in a deterministic graph.</p>
+    <div class="starters" id="starters"></div></div>`;
+  drawStarters();
+}
+$('#newsess').onclick = reset;
+
+function drawStarters() {
+  const el = $('#starters'); if (!el) return;
+  STARTERS.forEach(([a, b]) => {
+    const d = document.createElement('button');
+    d.className = 'starter';
+    d.innerHTML = `<b>${esc(a)}</b><span>${esc(b)}</span>`;
+    d.onclick = () => send(a + ' ' + b);
+    el.appendChild(d);
+  });
+}
+
+function drawUsers() {
+  const sel = $('#user'), list = $('#users');
+  USERS.forEach((u, i) => {
+    sel.add(new Option(u.id, u.id));
+    const d = document.createElement('div');
+    d.className = 'du-item' + (i === 0 ? ' on' : '');
+    d.innerHTML = `<div class="du-id">${u.id}</div><div class="du-hint">${u.hint}</div>`;
+    d.onclick = () => { sel.value = u.id; sync(); reset(); };
+    list.appendChild(d);
+  });
+  sel.onchange = () => { sync(); reset(); };
+  sync();
+}
+function sync() {
+  const v = $('#user').value;
+  document.querySelectorAll('.du-item').forEach((x, i) => x.classList.toggle('on', USERS[i].id === v));
+  $('#whoami').textContent = 'as ' + v;
+}
+
+drawUsers();
+reset();
+$('#msg').focus();
+</script>
+
+<script>
+// White-label: brand comes from the server (CEREBROZEN_BRAND_NAME), never hardcoded here.
+fetch('/health').then(r => r.json()).then(d => {
+  const b = d.brand; if (!b || b === 'CereBroZen') return;
+  document.title = document.title.replace(/CereBroZen/g, b);
+  document.querySelectorAll('.brand').forEach(el => {
+    el.childNodes.forEach(n => {
+      if (n.nodeType === 3 && n.textContent.includes('CereBroZen'))
+        n.textContent = n.textContent.replace(/CereBroZen/g, b);
+    });
+  });
+}).catch(() => {});
+</script>
+</body>
+</html>

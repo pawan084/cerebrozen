@@ -1,0 +1,50 @@
+# Coverage config.
+#
+# The gate is 96% — but a gate is only honest if what it EXCLUDES is stated out loud,
+# because the easiest way to hit any coverage number is to quietly stop measuring the hard
+# parts. So: exactly one production package is excluded, the reason is below, and it is
+# repeated in docs/TESTING.md rather than left to be discovered in this file.
+
+[run]
+source = app
+branch = True
+
+omit =
+    # app/voice/* — EXCLUDED, and this is the only exclusion.
+    #
+    # Not "hard to test": impossible to import. It is built on `livekit`, which is not an
+    # installed dependency of this service — the voice agent is a SEPARATE DEPLOYABLE that
+    # joins a LiveKit room. `import app.voice.agent` raises ModuleNotFoundError, so there
+    # is no test that can execute a single line of it in this suite.
+    #
+    # The honest alternative would be to install the LiveKit SDK and write tests that mock
+    # the room, the track, and the realtime session — which would exercise our mocks, score
+    # ~200 statements of coverage, and prove nothing about whether voice works. That is
+    # metric-gaming, so it is not done.
+    #
+    # WHAT THIS COSTS: ~231 statements of real, shipped, UNTESTED code. The voice path has
+    # never been exercised by anything in CI. That is a genuine gap and it is tracked in
+    # docs/TODO.md, not papered over here. If voice becomes a supported surface, it needs
+    # its own suite against a real LiveKit server — an integration suite, not a unit one.
+    app/voice/*
+
+    # Not application code.
+    app/__init__.py
+    */__pycache__/*
+
+[report]
+# The gate. `pytest --cov` exits non-zero below this, so CI fails on a coverage regression.
+fail_under = 96
+precision = 1
+show_missing = True
+skip_covered = False
+
+exclude_lines =
+    pragma: no cover
+    # Defensive re-raises and impossible branches: `if TYPE_CHECKING:` blocks, abstract
+    # method bodies, and the `if __name__ == "__main__":` entry points of scripts.
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod

@@ -1,0 +1,49 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Postgres-first: the pg shim serves the document stores, the LangGraph
+      # checkpointer runs on Postgres, and pgvector is the default RAG backend.
+      - POSTGRES_URL=postgresql://postgres:pg@db:5432/cerebrozen
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the workbook the app ACTUALLY loads (config.PROMPT_WORKBOOK, default
+      # ./agent_prompts.xlsx). This used to mount a ./prompts directory that nothing
+      # read, so prompt edits made in the container had no effect.
+      - ./agent_prompts.xlsx:/app/agent_prompts.xlsx
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_PASSWORD=pg
+      - POSTGRES_DB=cerebrozen
+    ports:
+      - "55432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Legacy document store — only for deployments that still run Mongo.
+  # Start with: docker compose --profile mongo up
+  mongo:
+    image: mongo:7
+    profiles: ["mongo"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  pg-data:
+  mongo-data:

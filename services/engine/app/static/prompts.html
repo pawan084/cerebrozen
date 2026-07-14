@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CereBroZen — Prompt Registry</title>
+<link rel="stylesheet" href="/static/cerebrozen.css" />
+<style>
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font-family:var(--sans); background:var(--bg); color:var(--text);
+         display:flex; flex-direction:column; overflow:hidden; }
+
+  header { display:flex; align-items:center; gap:12px; padding:10px 14px;
+           border-bottom:1px solid var(--border); background:var(--panel);
+           box-shadow:var(--sh-1); z-index:20; }
+  .brand { font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .brand .dot { width:8px; height:8px; border-radius:50%; background:var(--accent);
+                box-shadow:0 0 10px var(--accent-ring); }
+  .brand small { color:var(--muted); font-weight:500; }
+  nav a { color:var(--muted); text-decoration:none; font-size:12.5px; padding:5px 9px;
+          border-radius:var(--r-sm); transition:.15s var(--ease); }
+  nav a:hover { color:var(--text); background:var(--panel-2); }
+  nav a.on { color:var(--accent); background:var(--accent-soft); }
+  .grow { flex:1; }
+
+  .ver { font-family:var(--mono); font-size:10.5px; color:var(--muted);
+         padding:4px 9px; border-radius:99px; background:var(--bg-2); border:1px solid var(--border); }
+  .ver b { color:var(--accent); }
+
+  button { display:inline-flex; align-items:center; gap:6px; padding:7px 13px;
+           border:1px solid transparent; border-radius:var(--r-sm); background:var(--panel-2);
+           color:var(--text-dim); font-size:12.5px; font-weight:600; cursor:pointer;
+           font-family:var(--sans); transition:.15s var(--ease); }
+  button:hover:not(:disabled) { background:var(--panel-3); color:var(--text); }
+  button:disabled { opacity:.42; cursor:not-allowed; }
+  button.primary { background:linear-gradient(180deg,var(--accent-2),var(--accent));
+                   color:var(--accent-ink); box-shadow:0 2px 12px rgba(216,180,95,.25); }
+  :focus-visible { outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
+
+  /* degraded / validation banner — the backend reports these; the old UI ignored them */
+  .banner { padding:9px 14px; font-size:12px; display:flex; align-items:center; gap:9px;
+            border-bottom:1px solid var(--border); }
+  .banner.warn { background:rgba(238,178,63,.09); color:var(--amber); border-color:rgba(238,178,63,.28); }
+  .banner.bad  { background:rgba(240,115,111,.1); color:var(--red);  border-color:rgba(240,115,111,.3); }
+  .banner a { color:inherit; text-decoration:underline; cursor:pointer; }
+
+  .ws { flex:1; display:grid; grid-template-columns:var(--lw,290px) 1fr; min-height:0;
+        transition:grid-template-columns .28s var(--ease); }
+  .ws.l-collapsed { --lw:0px; }
+  aside { background:var(--panel); border-right:1px solid var(--border); overflow-y:auto;
+          min-width:0; display:flex; flex-direction:column; transition:opacity .18s var(--ease); }
+  .ws.l-collapsed aside { opacity:0; pointer-events:none; }
+
+  .search { padding:11px 12px; border-bottom:1px solid var(--border); position:sticky; top:0;
+            background:var(--panel); z-index:2; }
+  .search input { width:100%; background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+                  border-radius:var(--r-sm); padding:8px 11px; font-size:12.5px; font-family:var(--sans); }
+  .search input:focus { outline:none; border-color:var(--accent-ring); box-shadow:0 0 0 3px var(--accent-soft); }
+
+  .list { padding:7px; }
+  .item { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:var(--r-sm);
+          cursor:pointer; transition:.14s var(--ease); border:1px solid transparent; }
+  .item:hover { background:var(--panel-2); }
+  .item.on { background:var(--accent-soft); border-color:var(--accent-ring); }
+  .pip { width:6px; height:6px; border-radius:50%; flex:none; }
+  .pip.on { background:var(--green); box-shadow:0 0 7px rgba(86,204,136,.5); }
+  .pip.off { background:var(--faint); }
+  /* the row is a flex column — as inline spans these wrapped INTO each other */
+  .it { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .it-n { display:block; font-size:12px; font-weight:600; white-space:nowrap;
+          overflow:hidden; text-overflow:ellipsis; }
+  .it-m { display:block; font-size:10px; color:var(--faint); font-family:var(--mono);
+          margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .it-sz { font-size:10px; color:var(--muted); font-family:var(--mono); flex:none; }
+  .it-sz.big { color:var(--amber); }     /* past the size budget */
+  .flag { font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700; flex:none;
+          background:rgba(238,178,63,.16); color:var(--amber); }
+
+  /* ── editor ────────────────────────────────────────────────────────────── */
+  .main { position:relative; display:flex; flex-direction:column; min-height:0; }
+  .handle { position:absolute; left:0; top:50%; transform:translateY(-50%); z-index:30;
+            width:20px; height:52px; display:flex; align-items:center; justify-content:center;
+            background:var(--panel-2); border:1px solid var(--border); border-radius:0 var(--r-sm) var(--r-sm) 0;
+            color:var(--muted); cursor:pointer; font-size:11px; padding:0; }
+  .handle:hover { background:var(--accent-soft); color:var(--accent); }
+
+  .ed-head { display:flex; align-items:center; gap:12px; padding:12px 18px;
+             border-bottom:1px solid var(--border); background:var(--panel); flex-wrap:wrap; }
+  .ed-head h1 { margin:0; font-size:14px; font-weight:650; font-family:var(--mono); }
+  .toggle { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); cursor:pointer; }
+  .toggle input { accent-color:var(--accent); }
+  .model { background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+           border-radius:var(--r-sm); padding:6px 9px; font-size:11.5px; font-family:var(--mono); width:120px; }
+
+  .ed-body { flex:1; overflow-y:auto; padding:18px; }
+  .ed-inner { max-width:1000px; margin:0 auto; }
+  textarea { width:100%; min-height:56vh; background:var(--bg-2); border:1px solid var(--border);
+             color:var(--text-dim); border-radius:var(--r-md); padding:14px 15px;
+             font-family:var(--mono); font-size:12px; line-height:1.65; resize:vertical; }
+  textarea:focus { outline:none; border-color:var(--accent-ring); box-shadow:0 0 0 3px var(--accent-soft); }
+
+  .ed-foot { display:flex; align-items:center; gap:10px; padding:11px 18px;
+             border-top:1px solid var(--border); background:var(--panel); }
+  .meta { font-size:11px; color:var(--muted); font-family:var(--mono); }
+  .meta b { color:var(--text); }
+
+  .warns { margin-top:11px; display:flex; flex-direction:column; gap:6px; }
+  .warn-row { padding:8px 11px; border-radius:var(--r-sm); font-size:11.5px; line-height:1.5;
+              background:rgba(238,178,63,.09); border:1px solid rgba(238,178,63,.26); color:var(--amber); }
+  .err-row { padding:8px 11px; border-radius:var(--r-sm); font-size:11.5px;
+             background:rgba(240,115,111,.1); border:1px solid rgba(240,115,111,.3); color:var(--red); }
+
+  .empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+           height:100%; color:var(--faint); gap:9px; }
+  .empty .mark { width:44px; height:44px; border-radius:12px; display:flex; align-items:center;
+                 justify-content:center; font-size:18px; background:var(--accent-soft);
+                 border:1px solid var(--accent-ring); color:var(--accent); }
+  .empty p { margin:0; font-size:12.5px; }
+
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%) translateY(14px);
+           background:var(--panel-2); border:1px solid var(--border-strong); color:var(--text);
+           padding:9px 16px; border-radius:var(--r-md); font-size:12.5px; box-shadow:var(--sh-3);
+           opacity:0; pointer-events:none; transition:.25s var(--ease); z-index:100; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span> CereBroZen <small>Prompt Registry</small></div>
+  <nav>
+    <a href="/">Workbench</a><a href="/chat">Chat</a><a href="/prompts" class="on">Prompts</a><a href="/flow">Flow</a>
+  </nav>
+  <div class="grow"></div>
+  <span class="ver" id="ver">—</span>
+  <button id="reload">↻ Reload workbook</button>
+</header>
+
+<div id="banners"></div>
+
+<div class="ws" id="ws">
+  <aside>
+    <div class="search"><input id="q" type="text" placeholder="Search agents…" /></div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <div class="main">
+    <button class="handle" id="tog" title="Collapse panel">◀</button>
+    <div id="pane" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+      <div class="empty">
+        <div class="mark">◇</div>
+        <p>Select an agent to read or edit its prompt.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const SIZE_WARN = 24000;      // matches prompts.PROMPT_SIZE_WARN_CHARS
+
+let agents = [], current = null, editable = true, validation = {};
+
+function toast(m) {
+  const t = $('#toast'); t.textContent = m; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function load() {
+  const [reg, val] = await Promise.all([
+    fetch('/v1/prompts').then(r => r.json()),
+    fetch('/v1/prompts/validate').then(r => r.json()).catch(() => ({})),
+  ]);
+  agents = reg.agents || [];
+  editable = reg.editable !== false;
+  validation = val.validation || {};
+
+  $('#ver').innerHTML = `${esc(reg.source || '')} · <b>${esc(reg.version || '')}</b>`;
+  drawBanners(reg, val);
+  drawList();
+  if (current) select(current);
+}
+
+function drawBanners(reg, val) {
+  const b = $('#banners'); b.innerHTML = '';
+  if (reg.degraded) {
+    b.innerHTML += `<div class="banner bad">⚠ Registry is <b>degraded</b> — serving a fallback,
+      not what it was configured to serve. ${esc(reg.degraded_reason || '')}</div>`;
+  }
+  const n = (val.validation || {}).issue_count || 0;
+  if (n) {
+    b.innerHTML += `<div class="banner warn">⚠ ${n} validation issue${n > 1 ? 's' : ''} in the
+      workbook — oversize prompts, unresolvable placeholders or missing models.
+      Agents flagged below.</div>`;
+  }
+}
+
+function flagsFor(stage) {
+  const f = [];
+  if ((validation.oversize || {})[stage]) f.push('big');
+  if ((validation.unknown_placeholders || {})[stage]) f.push('vars');
+  if ((validation.enabled_no_model || []).includes(stage)) f.push('no model');
+  if ((validation.orphaned_continuation || {})[stage]) f.push('orphan');
+  return f;
+}
+
+function drawList() {
+  const q = ($('#q').value || '').toLowerCase();
+  const el = $('#list'); el.innerHTML = '';
+  agents.filter(a => a.stage.toLowerCase().includes(q)).forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'item' + (a.stage === current ? ' on' : '');
+    const flags = flagsFor(a.stage);
+    d.innerHTML = `
+      <span class="pip ${a.enabled ? 'on' : 'off'}" title="${a.enabled ? 'enabled' : 'disabled'}"></span>
+      <span class="it">
+        <span class="it-n">${esc(a.stage)}</span>
+        <span class="it-m">${esc(a.model || 'no model')}</span>
+      </span>
+      ${flags.map(f => `<span class="flag">${f}</span>`).join('')}
+      <span class="it-sz ${a.size > SIZE_WARN ? 'big' : ''}">${a.size.toLocaleString()}</span>`;
+    d.onclick = () => select(a.stage);
+    el.appendChild(d);
+  });
+  if (!el.children.length) el.innerHTML = `<div style="padding:16px;color:var(--faint);font-size:12px;">No match.</div>`;
+}
+$('#q').addEventListener('input', drawList);
+
+function select(stage) {
+  current = stage;
+  drawList();
+  const a = agents.find(x => x.stage === stage);
+  if (!a) return;
+  const unknown = (validation.unknown_placeholders || {})[stage] || [];
+  const oversize = (validation.oversize || {})[stage];
+
+  $('#pane').innerHTML = `
+    <div class="ed-head">
+      <h1>${esc(a.stage)}</h1>
+      ${a.always_on ? '<span class="flag" style="background:rgba(86,204,136,.15);color:var(--green)">always on</span>' : ''}
+      <label class="toggle"><input type="checkbox" id="f_en" ${a.enabled ? 'checked' : ''}
+        ${a.always_on ? 'disabled' : ''}> enabled</label>
+      <input class="model" id="f_model" value="${esc(a.model || '')}" placeholder="model" />
+      <div class="grow"></div>
+      <span class="meta">cell <b>B7</b> · sheet <b>${esc(a.sheet)}</b></span>
+    </div>
+
+    <div class="ed-body"><div class="ed-inner">
+      <textarea id="f_prompt" spellcheck="false">${esc(a.prompt || '')}</textarea>
+      <div class="warns" id="warns">
+        ${oversize ? `<div class="warn-row">This prompt is <b>${oversize.toLocaleString()}</b> chars
+          (~${Math.round(oversize / 4).toLocaleString()} tokens). Past the ${SIZE_WARN.toLocaleString()}-char
+          budget it is a latency, cost and quality smell — consider splitting shared blocks into
+          the environment layer.</div>` : ''}
+        ${unknown.length ? `<div class="warn-row">Placeholders nothing can resolve — they are
+          <b>blanked at runtime</b>: ${unknown.map(t => '{' + esc(t) + '}').join(', ')}</div>` : ''}
+      </div>
+    </div></div>
+
+    <div class="ed-foot">
+      <button class="primary" id="save" ${editable ? '' : 'disabled'}>Save &amp; reload</button>
+      <span class="meta" id="sz"><b>${(a.size || 0).toLocaleString()}</b> chars</span>
+      ${editable ? '' : '<span class="meta">read-only — S3 mode publishes via upload</span>'}
+    </div>`;
+
+  const ta = $('#f_prompt');
+  ta.addEventListener('input', () =>
+    $('#sz').innerHTML = `<b>${ta.value.length.toLocaleString()}</b> chars`);
+  $('#save').onclick = save;
+}
+
+async function save() {
+  const btn = $('#save'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/v1/prompts/' + encodeURIComponent(current), {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        prompt: $('#f_prompt').value,
+        enabled: $('#f_en').checked,
+        model: $('#f_model').value.trim(),
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      // 422 = validate-on-save blocked it. Show WHY, don't just say "error".
+      const det = d.detail || {};
+      const errs = det.errors || [String(det.message || d.detail || r.status)];
+      $('#warns').innerHTML = errs.map(e => `<div class="err-row">✕ ${esc(e)}</div>`).join('');
+      toast('Blocked — the prompt failed validation');
+      return;
+    }
+    if (d.warnings?.length) {
+      $('#warns').innerHTML = d.warnings.map(w => `<div class="warn-row">${esc(w)}</div>`).join('');
+    }
+    toast(`Saved · version ${d.version || ''}`);
+    await load();
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save & reload';
+  }
+}
+
+$('#reload').onclick = async () => {
+  await fetch('/v1/prompts/reload', { method:'POST' });
+  toast('Workbook reloaded'); await load();
+};
+$('#tog').onclick = () => {
+  $('#ws').classList.toggle('l-collapsed');
+  $('#tog').textContent = $('#ws').classList.contains('l-collapsed') ? '▶' : '◀';
+};
+
+load();
+</script>
+
+<script>
+// White-label: brand comes from the server (CEREBROZEN_BRAND_NAME), never hardcoded here.
+fetch('/health').then(r => r.json()).then(d => {
+  const b = d.brand; if (!b || b === 'CereBroZen') return;
+  document.title = document.title.replace(/CereBroZen/g, b);
+  document.querySelectorAll('.brand').forEach(el => {
+    el.childNodes.forEach(n => {
+      if (n.nodeType === 3 && n.textContent.includes('CereBroZen'))
+        n.textContent = n.textContent.replace(/CereBroZen/g, b);
+    });
+  });
+}).catch(() => {});
+</script>
+</body>
+</html>

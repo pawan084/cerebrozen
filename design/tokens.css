@@ -1,0 +1,38 @@
+/*
+ * CereBroZen design tokens — single source of truth for color.
+ * Edit HERE, then run `node scripts/sync-tokens.mjs` to propagate to
+ * consumers (CI runs `--check` and fails on drift). See docs/DESIGN.md,
+ * including the two-tier accent rule: zen-500/400 are FILL tiers (never
+ * text on light backgrounds); zen-700+ is the text-safe tier.
+ */
+:root {
+  /* Ink (near-black) — primary text & dark surfaces */
+  --color-brand-950: #0a0a0a;
+  --color-brand-900: #101010;
+  --color-brand-800: #1e1e1e;
+  --color-brand-700: #2e2e2e;
+  --color-brand-600: #4a4a4a;
+  --color-brand-500: #6b6b6b;
+  --color-brand-100: #f3ede3;
+  --color-brand-50: #faf6ef;
+
+  /* Coral accent — see two-tier rule in docs/DESIGN.md */
+  --color-zen-700: #d94f4f;
+  --color-zen-600: #ef5b5b;
+  --color-zen-500: #f56b6b;
+  --color-zen-400: #f58a8a;
+  --color-zen-100: #fcd9d4;
+  --color-zen-50: #fdf1ee;
+
+  /* Cream backgrounds */
+  --color-mist-50: #f8efe4;
+  --color-mist-100: #f3e7d7;
+  --color-mist-200: #e7d6bf;
+}
+
+/*
+ * Dark theme (app/admin Night mode; marketing site is light-only):
+ * ground = brand-950/900, text = #f5f2ec (warm white), accent text tier
+ * flips to zen-400. Formalized as a second block when the first dark-theme
+ * consumer lands (Phase 2 admin).
+ */

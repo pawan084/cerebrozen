@@ -1,0 +1,68 @@
+"""Platform configuration. Everything degrades without keys; production
+refuses insecure defaults (the boot-guard pattern from the references)."""
+
+import base64
+import logging
+import os
+import secrets
+
+logger = logging.getLogger("cerebrozen.platform.config")
+
+ENV = os.environ.get("ENV", "local").strip().lower()
+_DEV_ENVS = {"local", "dev", "development", "test", "ci"}
+
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "sqlite+aiosqlite:///./platform.db"
+).strip()
+
+# JWT secret is base64-encoded — the same convention the coaching engine uses,
+# so both services can share one HS512 secret and the engine accepts our tokens.
+_JWT_SECRET_B64 = os.environ.get("JWT_SECRET", "").strip()
+
+
+def decode_secret(b64: str) -> bytes:
+    try:
+        return base64.b64decode(b64) if b64 else b""
+    except Exception:  # noqa: BLE001 — malformed secret -> treat as unset
+        return b""
+
+
+JWT_SECRET: bytes = decode_secret(_JWT_SECRET_B64)
+if not JWT_SECRET:
+    # Dev convenience: a per-process random secret. Tokens die with the process,
+    # which is exactly right for a secret nobody configured.
+    JWT_SECRET = secrets.token_bytes(64)
+    logger.info("config.jwt_secret_generated (dev only — set JWT_SECRET in prod)")
+
+JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS512").strip()
+ACCESS_TTL_MIN = int(os.environ.get("CEREBROZEN_ACCESS_TTL_MIN", "15"))
+REFRESH_TTL_DAYS = int(os.environ.get("CEREBROZEN_REFRESH_TTL_DAYS", "30"))
+PBKDF2_ITERATIONS = int(os.environ.get("CEREBROZEN_PBKDF2_ITERATIONS", "600000"))
+
+# Dev seed: an internal admin so a fresh checkout is usable immediately.
+SEED_DEV_ADMIN = os.environ.get("CEREBROZEN_SEED_DEV_ADMIN", "true").strip().lower() != "false"
+DEV_ADMIN_EMAIL = "admin@cerebrozen.in"
+DEV_ADMIN_PASSWORD = "admin12345"
+
+INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
+
+
+def guard_production() -> None:
+    """Refuse to boot a production deployment on development defaults.
+
+    The failure mode of a missed env var must be "it will not start", never
+    "it started wide open" (reference boot-guard rule).
+    """
+    if ENV in _DEV_ENVS:
+        return
+    problems = []
+    if not _JWT_SECRET_B64:
+        problems.append("JWT_SECRET is unset (tokens would use a process-random secret)")
+    if DATABASE_URL.startswith("sqlite"):
+        problems.append("DATABASE_URL is sqlite (production needs Postgres)")
+    if SEED_DEV_ADMIN:
+        problems.append("CEREBROZEN_SEED_DEV_ADMIN must be false in production")
+    if problems:
+        raise RuntimeError(
+            "refusing to start in production with insecure defaults: " + "; ".join(problems)
+        )
