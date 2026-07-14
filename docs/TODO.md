@@ -264,8 +264,12 @@ dated notes, grouped by priority; items needing an owner decision are marked
       and replies where learning_aid ran show "Grounded in reviewed
       material — guidance, not diagnosis" (+ stage-capture test);
       (6) TypingDots pre-first-token (Reduce Motion static). Still open
-      from this slice: (4) pre-permission notification screen in
-      onboarding; skeleton shimmers. (5) wind-down BUILT 2026-07-14:
+      from this slice: skeleton shimmers. (4) pre-permission BUILT
+      2026-07-14: NotifGate — one-time post-sign-in gate (Android 13+,
+      ungranted only) showing the REAL check-in notification (commitment
+      follow-up copy) before the one-shot OS prompt; Maybe-later never
+      burns the prompt. The funnel's bare launch remains for the
+      reminder-picker path (context already given there). (5) wind-down BUILT 2026-07-14:
       WindDownScreen — intro with the four steps listed, then one
       unhurried card per step (name tomorrow's first thing / dim the
       world / one minute with the real compact BreatheEngine / settle

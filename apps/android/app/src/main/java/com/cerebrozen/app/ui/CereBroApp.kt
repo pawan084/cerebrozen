@@ -80,6 +80,7 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.TodayHome
 import com.cerebrozen.app.ui.screens.ActionsScreen
 import com.cerebrozen.app.ui.screens.CoachScreen
+import com.cerebrozen.app.ui.screens.NotificationPrePermission
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.BreathePreset
 import com.cerebrozen.app.ui.screens.BreatheScreen
@@ -277,6 +278,26 @@ fun CereBroApp() {
             AuroraBackground()
             Onboarding()
         }
+        return
+    }
+
+    // Pre-permission notification gate (Mira reference): once per install,
+    // Android 13+ only, and only while the permission is ungranted — the OS
+    // prompt is shown after the user has seen the actual notification.
+    val gateCtx = LocalContext.current
+    var notifGateDone by remember {
+        mutableStateOf(
+            Session.prefGet("notif_preperm_done") != null ||
+                android.os.Build.VERSION.SDK_INT < 33 ||
+                gateCtx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    if (!notifGateDone) {
+        NotificationPrePermission(onDone = {
+            Session.prefPut("notif_preperm_done", "1")
+            notifGateDone = true
+        })
         return
     }
 
