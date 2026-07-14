@@ -28,6 +28,7 @@ object Coach {
         onStatus: (String) -> Unit = {},
         onToken: (String) -> Unit,
     ): DoneResult {
+        val starting = sessionId == null
         val path = sessionId?.let { "/v1/sessions/$it/turn?stream=true" }
             ?: "/v1/sessions/start?stream=true"
         var done = JSONObject()
@@ -41,6 +42,10 @@ object Coach {
                 }
             }
         }
+        // HR-analytics beats (kind only — docs/SECURITY.md): a session that
+        // began, and a session the commit gate allowed to close.
+        if (starting && sessionId != null) Events.report(Events.SESSION_STARTED)
+        if (done.optString("stage") == "close") Events.report(Events.SESSION_COMPLETED)
         return DoneResult(done)
     }
 

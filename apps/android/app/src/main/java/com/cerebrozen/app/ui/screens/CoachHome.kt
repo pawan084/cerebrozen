@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
+import com.cerebrozen.app.net.Events
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Ok
@@ -61,6 +62,7 @@ object ActionsStore {
         if (text.isBlank() || items.any { it.id == id }) return
         items.add(0, ActionItem(id, text, "active"))
         persist()
+        Events.report(Events.ACTION_SAVED)
     }
 
     fun setStatus(id: String, status: String) {
@@ -69,6 +71,7 @@ object ActionsStore {
         if (i >= 0) {
             items[i] = items[i].copy(status = status)
             persist()
+            if (status == "done") Events.report(Events.ACTION_COMPLETED)
         }
     }
 

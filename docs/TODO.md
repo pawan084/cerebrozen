@@ -204,9 +204,16 @@ dated notes, grouped by priority; items needing an owner decision are marked
       platform, Coach tab STREAMING from the engine (mock provider) over
       SSE on the device. The debug manifest's blanket cleartext covers
       localhost; release stays HTTPS-only.
-- [ ] Android tail: coaching tab icons; Android event wiring for HR
-      analytics (Coach/ActionsStore fire the activity beats); Play
-      readiness runbook (adapt ANDROID_RELEASE + PRIVACY_LABELS).
+- [x] 2026-07-14 — Android HR-analytics beats wired (`net/Events.kt`,
+      fire-and-forget, kind-only): first turn → session_started; done
+      payload stage=close → session_completed; ActionsStore add →
+      action_saved, done → action_completed (reopen ≠ completion). 3 tests
+      incl. failing-beat-never-breaks-the-caller; coverage gate green;
+      reinstalled on device. Also: auth screen is email+password only
+      (Google/OTP/signup/forgot hidden — no platform endpoints; found
+      on-device), debug builds prefill the walkthrough user.
+- [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
+      ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).
 - [ ] Coach tab: session UI over engine SSE (`status/node/token/done`),
       phase cards, action-card save/skip, commit gate UX, mood capture.
