@@ -977,7 +977,9 @@ private fun MixerHeroCard(
                     Text(session, style = MaterialTheme.typography.labelMedium, color = Color(0xFFC5CEE0))
                 }
             }
-            MixerWaveform(active = playing)
+            Box(Modifier.fillMaxWidth().height(24.dp), contentAlignment = Alignment.Center) {
+                BreathingDot(playing = playing, dotSize = 12.dp)
+            }
             val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val pressed by interaction.collectIsPressedAsState()
             Row(
@@ -997,31 +999,6 @@ private fun MixerHeroCard(
                     color = Color.White,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun MixerWaveform(active: Boolean, bars: Int = 17) {
-    val reduceMotion = rememberReduceMotion()
-    val transition = rememberInfiniteTransition(label = "mixerWave")
-    Row(
-        Modifier.fillMaxWidth().height(38.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(bars) { i ->
-            val wave by transition.animateFloat(
-                5f,
-                13f + (i % 5) * 4f,
-                infiniteRepeatable(tween(650 + i * 35, delayMillis = i * 35), RepeatMode.Reverse),
-                label = "mixBar$i",
-            )
-            Box(
-                Modifier.size(3.dp, (if (!active || reduceMotion) 6f else wave).dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF)))),
-            )
         }
     }
 }
@@ -1087,7 +1064,7 @@ private fun MixerLayerCard(
             }
             PremiumMixerSwitch(active, title, onToggle)
         }
-        if (playing) MixerWaveform(active = true, bars = 12)
+        if (playing) BreathingDot(playing = true, modifier = Modifier.align(Alignment.CenterHorizontally))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Color(0xFF4ADE80) else Color(0xFF8993AA))
             Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Color(0xFFB18CFF))
@@ -1526,6 +1503,17 @@ fun PlayerScreen(onBack: () -> Unit) {
     val title = Player.nowPlaying
     val reduceMotion = rememberReduceMotion()
     val playing = title != null && Player.isPlaying
+    // W27 §5 completion (Calm study): the settling moment. When playback ends
+    // while this screen is open — timer fade, narration completion, or a
+    // deliberate stop — a quiet line replaces the abrupt silence. It clears
+    // the moment anything plays again.
+    var wasPlaying by remember { mutableStateOf(playing) }
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(playing) {
+        if (wasPlaying && !playing) settled = true
+        if (playing) settled = false
+        wasPlaying = playing
+    }
     SubPage(stringResource(R.string.player_eyebrow), title ?: stringResource(R.string.player_nothing), onBack) {
         // Centered art + transport (teammate player look), our tokens throughout.
         Column(
@@ -1627,6 +1615,15 @@ fun PlayerScreen(onBack: () -> Unit) {
             )
             Text(stringResource(R.string.player_fade_note),
                 style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            if (settled) {
+                Text(
+                    stringResource(R.string.player_settled),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSoft,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                )
+            }
         }
     }
 }

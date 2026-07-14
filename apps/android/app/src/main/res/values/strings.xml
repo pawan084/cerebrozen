@@ -821,4 +821,5 @@
     <string name="ambience_mute_cd">Mute ambience</string>
     <string name="ambience_sound_off">Sound off</string>
     <string name="ambience_label">Ambience</string>
+    <string name="player_settled">Notice how you feel.</string>
 </resources>

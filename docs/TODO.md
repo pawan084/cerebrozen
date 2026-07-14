@@ -223,22 +223,21 @@ dated notes, grouped by priority; items needing an owner decision are marked
       still ships EMPTY (no licensed audio/video — the reference's
       copyright rule holds; synthesized tones/bundled loops until licensed
       media exists).
-- [ ] Calm-parity slice (owner ask 2026-07-14; source:
-      `ref/Zen/docs/CALM_AUDIO_STUDY.md` §3 ranked recommendations). At
-      parity already: sleep timers + graceful fades, one-audio-surface
-      exclusivity, hero-art motion restraint, background playback. To add:
-      (1) scene↔audio coupling — aurora tint + soundscape selected together;
-      (2) breathe upgrades — pace options (4/6/8), user-toggleable haptics,
-      optional chime guidance; (3) launch ambience (consent-gated, never
-      auto-play on first run); (4) session-end bell + settling moment;
-      (5) crossfade on engine switches; (6) user-facing scene-vs-content
-      mix slider; (7) remove the EqBars decorative equalizer (the one thing
-      Calm would never do). Respect §4 "do not copy": no autoplay without
-      consent, no paywall onboarding, no listening streaks/badges, no video
-      scene asset model. Content library (guided sessions / sleep stories)
-      needs the platform media+content endpoints (ops upload, licensed
-      audio only) — the app's ContentList/MediaCatalog already consume that
-      API shape.
+- [x] 2026-07-14 — Calm-parity slice DONE (source: the reference's Calm
+      teardown §3). Verification-first finding: the restored W27 code had
+      already shipped most of it — crossfades (VolumeRamp in both audio
+      services), playing-aware aurora tint, mixer presets (monsoon night /
+      shoreline / still air), breathe pace choice + persisted haptics
+      toggle + off-by-default chime, timer bell. Closed the two real gaps
+      today: (a) demoted the fake-reactive MixerWaveform bars (both sites)
+      to the honest BreathingDot and deleted the component — "the one
+      element Calm would cut"; (b) the session-end settling moment — when
+      playback ends on the player, a quiet "Notice how you feel." replaces
+      the abrupt silence. Per §4/§6: ambient-welcome autoplay deliberately
+      NOT built (default-off evaluate; Calm's own top support complaint).
+      check green; on device. Content library (guided sessions / sleep
+      stories) remains its own item: platform media+content endpoints +
+      LICENSED audio only.
 - [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
       ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).
