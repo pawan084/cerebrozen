@@ -115,8 +115,8 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
     Today("today", R.string.tab_today, R.drawable.ic_tab_home),
     Coach("coach", R.string.tab_coach, R.drawable.ic_tab_talk),
-    Journeys("journeys", R.string.tab_journeys, R.drawable.ic_tab_sleep),
-    Actions("actions", R.string.tab_actions, R.drawable.ic_tab_journal),
+    Journeys("journeys", R.string.tab_journeys, R.drawable.ic_tab_journeys),
+    Actions("actions", R.string.tab_actions, R.drawable.ic_tab_actions),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 

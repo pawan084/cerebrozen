@@ -25,7 +25,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -38,7 +43,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.cerebrozen.app.audio.VoiceEngine
 import com.cerebrozen.app.net.Coach
+import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.theme.BrandPrimary
+import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.ChipFill
@@ -86,6 +100,24 @@ fun CoachScreen(onOpen: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
+    // On-device voice (keyless): mic dictates into the composer; replies can
+    // be read aloud. The cloud-quality loop stays the tracked v2 item.
+    val voiceCtx = LocalContext.current
+    val voice = remember { VoiceEngine(voiceCtx) }
+    DisposableEffect(Unit) { onDispose { voice.dispose() } }
+    var speakReplies by remember { mutableStateOf(Session.prefGet("coach_speak_replies") == "1") }
+    val micPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) voice.startListening { draft = it } }
+    fun micTap() {
+        if (voice.listening) { voice.stopListening(); return }
+        if (voiceCtx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voice.startListening { draft = it }
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
     }
@@ -116,6 +148,9 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 // retrieved, reviewed material this turn (learning_aid stage ran).
                 if ("learning_aid" in done.stages) {
                     messages[replyIndex] = messages[replyIndex].copy(grounded = true)
+                }
+                if (speakReplies && messages[replyIndex].text.isNotBlank()) {
+                    voice.speak(messages[replyIndex].text)
                 }
                 // The commit gate's product half: cards the session saved land
                 // on the Actions tab and the Today count immediately.
@@ -170,6 +205,25 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             Text("View", style = MaterialTheme.typography.labelMedium, color = Accent.talk)
+        }
+        if (voice.available) {
+            Row(
+                Modifier.padding(horizontal = pageHorizontalPadding()).padding(top = 6.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable {
+                        speakReplies = !speakReplies
+                        Session.prefPut("coach_speak_replies", if (speakReplies) "1" else "0")
+                        if (!speakReplies) voice.dispose()
+                    }
+                    .background(if (speakReplies) ChipFill else androidx.compose.ui.graphics.Color.Transparent)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    if (speakReplies) "Replies aloud · on" else "Replies aloud · off",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (speakReplies) TextPrimary else TextMuted,
+                )
+            }
         }
         LazyColumn(
             state = listState,
@@ -241,6 +295,21 @@ fun CoachScreen(onOpen: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
+            if (voice.available) {
+                Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(999.dp))
+                        .background(if (voice.listening) BrandPrimary else ChipFill)
+                        .clickable { micTap() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (voice.listening) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                        contentDescription = if (voice.listening) "Stop listening" else "Dictate",
+                        tint = if (voice.listening) OnPrimary else TextMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },

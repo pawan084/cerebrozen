@@ -663,7 +663,16 @@ fun ProgramsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
 
         if (loading) {
-            Text(stringResource(R.string.programs_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Skeletons preserve the final layout (hero + program rows) so the
+            // load never causes a jump — Mira reference, same as Insights.
+            val loadingLabel = stringResource(R.string.programs_loading)
+            Column(
+                Modifier.fillMaxWidth().semantics { contentDescription = loadingLabel },
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ShimmerBox(Modifier.fillMaxWidth().height(120.dp), RoundedCornerShape(Radius.hero))
+                repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(64.dp), RoundedCornerShape(Radius.card)) }
+            }
             return@SubPage
         }
         error?.let {
