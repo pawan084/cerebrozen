@@ -238,6 +238,32 @@ dated notes, grouped by priority; items needing an owner decision are marked
       check green; on device. Content library (guided sessions / sleep
       stories) remains its own item: platform media+content endpoints +
       LICENSED audio only.
+- [ ] Mira screen-reference slice (owner-shared prototype, artifact
+      0376c052 "mira_app" — the sibling companion app; full HTML saved in
+      session tool-results). Reviewed 2026-07-14, verdicts:
+      ADAPT (high value, backend already exists):
+      (1) Today presence moment — living hero orb + context-aware greeting
+      + one "say" line proposing two actions (Talk/Breathe); coral-tinted.
+      (2) Coach "memory chip" — "Your coach remembers: …" above the thread
+      from the engine's agentic context (previousUserActions / patterns);
+      view first, edit needs an engine endpoint. Transparency win.
+      (3) "Grounded" marker under coach bubbles when RAG/learning-aid
+      content is served ("grounded in reviewed material · not diagnosis").
+      (4) Pre-permission notification screen (shows a sample notification
+      BEFORE the OS prompt) in onboarding.
+      (5) Wind-down: guided 4-step pre-sleep routine (sleep suite gap).
+      (6) Typing indicator pre-first-token in CoachScreen; loading
+      skeleton shimmer for list screens.
+      REFERENCE LATER: voice-mode screen (rings/wave/transcript/stop) for
+      the parked VoiceEngine wiring; Discover layout (hero + tile rows +
+      durations) for the future content library; crisis sheet polish.
+      EVALUATE WITH CARE: standalone mood check-in + morning sleep
+      check-in — conflicts with regulated-mode default (no emotion
+      persistence); device-local-only variant or skip.
+      REJECT: paywall/Mira+ subscription screens (B2B seats), their tabbar
+      (ours is the five coaching tabs), account sign-in providers.
+      Note: Mira's palette (peach glow #F1B27A/#E98D7C on deep plum) is
+      near our coral family — controls re-skin naturally.
 - [ ] Android tail: coaching tab icons; Play readiness runbook (adapt
       ANDROID_RELEASE + PRIVACY_LABELS).
 - [ ] Auth screens: email/password + OTP (SSO later).
