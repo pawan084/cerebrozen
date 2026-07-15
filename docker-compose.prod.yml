@@ -94,6 +94,17 @@ services:
         NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
     restart: unless-stopped
 
+  # Employee web app — the coaching experience in a browser (app.cerebrozen.in).
+  app:
+    build:
+      context: apps/app
+      args:
+        # Baked into the browser bundle at BUILD time — the public URLs the
+        # member's browser reaches (auth on the platform, coaching on the engine).
+        NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
+        NEXT_PUBLIC_ENGINE_URL: https://api.cerebrozen.in/engine
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -108,6 +119,7 @@ services:
     depends_on:
       - web
       - admin
+      - app
       - platform
       - engine
 

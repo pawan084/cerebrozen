@@ -39,6 +39,13 @@ admin.cerebrozen.in {
 	reverse_proxy admin:3000
 }
 
+# Employee web app — the coaching experience in a browser (apps/app — Next.js)
+app.cerebrozen.in {
+	import security_headers
+	encode gzip zstd
+	reverse_proxy app:3000
+}
+
 # API host — ONE domain in front of BOTH backends, matching the Android release
 # contract (API_BASE_URL=https://api.cerebrozen.in, ENGINE_BASE_URL=.../engine):
 #   /engine/*  → coaching engine   (prefix stripped; the engine serves /v1/…)
@@ -59,6 +66,4 @@ api.cerebrozen.in {
 	}
 }
 
-# app.cerebrozen.in is RESERVED for the web employee app (Phase 5, not built).
-# Deliberately not proxied and with no DNS record yet — a subdomain pointing at
-# nothing is a takeover invitation. Add a block here only when that app ships.
+# (app.cerebrozen.in now ships the employee web app — block above.)
