@@ -1,0 +1,112 @@
+# CereBroZen — PRODUCTION stack. Caddy terminates TLS on 80/443; every other
+# service is internal to the compose network (no published ports). Secrets come
+# from .env.production (never committed) via ${VAR} interpolation — a missing
+# required secret fails the boot with a clear message, never a silent default.
+#
+#   cp .env.production.example .env.production   # then fill in real values
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# ENV=production turns the guards ON: the engine refuses wildcard CORS, the
+# platform's guard_production refuses the dev seed and demands real secrets, and
+# auth is enforced everywhere. Set the domains in CEREBROZEN_CORS_ORIGINS or the
+# browser apps can't reach the API.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.production}
+      POSTGRES_DB: cerebrozen
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      # Creates the separate cerebrozen_platform database the platform uses.
+      - ./deploy/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  engine:
+    build: services/engine
+    restart: unless-stopped
+    environment:
+      ENV: production
+      POSTGRES_URL: postgresql://postgres:${DB_PASSWORD:?}@db:5432/cerebrozen
+      REDIS_URL: redis://redis:6379/0
+      PROMPT_SOURCE: codebase
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (base64) in .env.production}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env.production}
+      CEREBROZEN_MODEL_OVERRIDE: ${CEREBROZEN_MODEL_OVERRIDE:-gpt-5-mini}
+      # The engine's CORS boot-guard refuses "*" under ENV=production, so this is
+      # required. Only the browser apps that call the API cross-origin belong here.
+      CEREBROZEN_CORS_ORIGINS: https://admin.cerebrozen.in,https://app.cerebrozen.in
+      # Regulated-workplace mode stays ON by default (do NOT set it false without counsel).
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    volumes:
+      - ./services/engine/agent_prompts.xlsx:/app/agent_prompts.xlsx:ro
+
+  platform:
+    build: services/platform
+    restart: unless-stopped
+    environment:
+      ENV: production
+      DATABASE_URL: postgresql+asyncpg://postgres:${DB_PASSWORD:?}@db:5432/cerebrozen_platform
+      JWT_SECRET: ${JWT_SECRET:?}   # MUST match the engine's — one shared HS512 secret
+      CEREBROZEN_CORS_ORIGINS: https://admin.cerebrozen.in,https://app.cerebrozen.in
+      CEREBROZEN_ADMIN_BASE_URL: https://admin.cerebrozen.in
+      # guard_production() refuses the dev admin seed in prod; leave it unset/false.
+      CEREBROZEN_SEED_DEV_ADMIN: "false"
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: apps/web
+    restart: unless-stopped
+    environment:
+      # Server-side call from the marketing form into the platform (not browser).
+      PLATFORM_API_URL: http://platform:8100
+      # SMTP for the demo-request email fallback (optional; the pipeline is primary).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      DEMO_REQUEST_TO: ${DEMO_REQUEST_TO:-hello@cerebrozen.in}
+
+  admin:
+    build:
+      context: apps/admin
+      args:
+        # Baked into the browser bundle at BUILD time — must be the public API URL
+        # the HR admin's browser reaches, i.e. the real domain, not a container name.
+        NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # certs + ACME account — MUST persist across restarts
+      - caddy-config:/config
+    depends_on:
+      - web
+      - admin
+      - platform
+      - engine
+
+volumes:
+  pg-data:
+  caddy-data:
+  caddy-config:

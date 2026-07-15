@@ -317,6 +317,20 @@ dated notes, grouped by priority; items needing an owner decision are marked
       dark + consistent across Today, Coach, Actions, Journeys, You, Privacy,
       Crisis region, Companion, Appearance. Android check + 95.80% JaCoCo, theme
       + contrast tests green.
+- [x] 2026-07-15 — **Production deploy config built** (Phase 4 deploy slice).
+      `deploy/Caddyfile` (auto-HTTPS, security headers) + `docker-compose.prod.yml`
+      (all services internal, only Caddy on 80/443, ENV=production, restart
+      policies, persistent caddy-data/pg-data volumes) + `.env.production.example`
+      (documented placeholders; real file git-ignored). Topology matches the
+      Android release contract and the cerebroSG reference: cerebrozen.in→web,
+      admin.→admin, api.cerebrozen.in/engine/*→engine (prefix stripped),
+      api./*→platform; app. reserved (not proxied). Secrets are ${VAR:?}
+      fail-fast — a missing DB_PASSWORD/JWT_SECRET/OPENAI_API_KEY stops the boot
+      with a named error. ENV=production activates the guards (engine CORS,
+      platform guard_production/no-dev-seed, enforced auth). Compose validated.
+      deploy/README updated with topology + steps + the human-owned go-live items
+      (key rotation, counsel sign-off, SMTP). NOT reused: any reference-project
+      secret — all generated fresh per the compromised-ref rule.
 - [x] 2026-07-15 — **Content-aware banners + engine CORS prod boot-guard.**
       (1) Banners: the user asked to lift sounds/banners from a `calm/extracted`
       teardown of Calm/BetterHelp/Rosebud/Youper — DECLINED (proprietary,

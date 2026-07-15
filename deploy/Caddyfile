@@ -1,0 +1,64 @@
+# CereBroZen production reverse proxy + automatic HTTPS (Let's Encrypt).
+#
+# Caddy provisions and renews a TLS cert for every domain below automatically,
+# as long as ports 80/443 are open and each domain's DNS A-record points at this
+# host. NO secrets live in this file — the services read their own from the
+# environment (see docker-compose.prod.yml + .env.production.example).
+#
+# Bring it up with:  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+
+{
+	email admin@cerebrozen.in
+}
+
+# Shared security headers for every site. The per-request script NONCE / CSP for
+# the Next.js apps comes from each app's own middleware and passes through here;
+# only the JSON API sets a CSP below (it serves no HTML of its own).
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+# Marketing site (apps/web — Next.js)
+cerebrozen.in, www.cerebrozen.in {
+	import security_headers
+	encode gzip zstd
+	reverse_proxy web:3000
+}
+
+# HR portal + ops admin (apps/admin — Next.js)
+admin.cerebrozen.in {
+	import security_headers
+	encode gzip zstd
+	reverse_proxy admin:3000
+}
+
+# API host — ONE domain in front of BOTH backends, matching the Android release
+# contract (API_BASE_URL=https://api.cerebrozen.in, ENGINE_BASE_URL=.../engine):
+#   /engine/*  → coaching engine   (prefix stripped; the engine serves /v1/…)
+#   /*         → platform          (accounts, orgs, wellness, catalog, analytics)
+api.cerebrozen.in {
+	import security_headers
+	# JSON-only origin: a locked CSP as defense-in-depth against content-type
+	# confusion — nothing here renders as a document. (CORS is set by the
+	# services themselves, gated to the app domains.)
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+	encode gzip zstd
+
+	handle_path /engine/* {
+		reverse_proxy engine:8000
+	}
+	handle {
+		reverse_proxy platform:8100
+	}
+}
+
+# app.cerebrozen.in is RESERVED for the web employee app (Phase 5, not built).
+# Deliberately not proxied and with no DNS record yet — a subdomain pointing at
+# nothing is a takeover invitation. Add a block here only when that app ships.
