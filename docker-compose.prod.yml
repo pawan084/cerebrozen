@@ -92,6 +92,8 @@ services:
         # Baked into the browser bundle at BUILD time — must be the public API URL
         # the HR admin's browser reaches, i.e. the real domain, not a container name.
         NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
+        # Engine URL for the internal-admin Prompts + Agent-flow tabs.
+        NEXT_PUBLIC_ENGINE_URL: https://api.cerebrozen.in/engine
     restart: unless-stopped
 
   # Employee web app — the coaching experience in a browser (app.cerebrozen.in).

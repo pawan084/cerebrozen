@@ -4,6 +4,9 @@
    and revokes every session (that is a feature; don't fight it). */
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8100";
+// The coaching engine (prompt registry + agent flow live here). Prod:
+// https://api.cerebrozen.in/engine
+const ENGINE = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
 
 let refreshing: Promise<boolean> | null = null;
 
@@ -82,6 +85,23 @@ export async function api(path: string, init: RequestInit = {}, retried = false)
 
 export async function apiJson<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const r = await api(path, init);
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
+  return (await r.json()) as T;
+}
+
+/* Engine calls (same bearer token; the engine trusts the shared HS512 JWT). Used
+   by the internal-admin Prompts and Agent-flow tabs. */
+export async function engineApi(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
+  const t = getTokens();
+  const headers = new Headers(init.headers);
+  if (t) headers.set("Authorization", `Bearer ${t.access_token}`);
+  const r = await fetch(`${ENGINE}${path}`, { ...init, headers });
+  if (r.status === 401 && !retried && (await refresh())) return engineApi(path, init, true);
+  return r;
+}
+
+export async function engineJson<T = unknown>(path: string): Promise<T> {
+  const r = await engineApi(path);
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
   return (await r.json()) as T;
 }

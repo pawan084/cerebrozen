@@ -5,7 +5,7 @@
    internal_admin → Tenants · Demo requests  */
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api, apiJson, getTokens, login, logout } from "@/lib/api";
+import { api, apiJson, engineJson, getTokens, login, logout } from "@/lib/api";
 
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
 type Org = { id: string; name: string; slug: string; seats_total: number; seats_used: number; regulated_mode: boolean; crisis_region: string; is_active: boolean };
@@ -339,6 +339,88 @@ function Demos() {
   );
 }
 
+type AgentRow = { stage: string; model: string; enabled: boolean; size: number };
+type AgentsResp = { agents: AgentRow[] };
+type PromptDetail = { stage?: string; prompt: string; version?: string; size?: number };
+
+// Prompt registry — READ-ONLY. Prompts are codebase-sourced in production ("safety
+// is code, not content"), so this shows them; it never edits them.
+function Prompts() {
+  const [agents, setAgents] = useState<AgentRow[] | null>(null);
+  const [sel, setSel] = useState("");
+  const [detail, setDetail] = useState<PromptDetail | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
+    if (!sel) return;
+    setDetail(null);
+    engineJson<PromptDetail>(`/v1/prompts/${sel}`).then(setDetail).catch((e) => setError(e.message));
+  }, [sel]);
+  if (error) return <div className="card"><p className="error">{error}</p></div>;
+  if (!agents) return <div className="card"><p className="hint">Loading registry…</p></div>;
+  return (
+    <div className="card">
+      <h2>Prompt registry <span className="hint">source: codebase · read-only · {agents.length} agents</span></h2>
+      <table className="table">
+        <thead><tr><th>Agent</th><th>Model</th><th>Prompt size</th><th>Enabled</th><th></th></tr></thead>
+        <tbody>
+          {agents.map((a) => (
+            <tr key={a.stage}>
+              <td>{a.stage}</td><td>{a.model}</td><td>{a.size.toLocaleString()} ch</td>
+              <td>{a.enabled ? "yes" : "no"}</td>
+              <td><button className="ghost" onClick={() => setSel(a.stage)}>view</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {sel && (
+        <div className="promptview">
+          <h3>{sel}{detail?.version ? <span className="hint"> · v{detail.version}</span> : null}</h3>
+          {!detail ? <p className="hint">Loading…</p> : <pre className="prompt">{detail.prompt}</pre>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Agent flow — the governed coaching arc. Agents rendered as a pipeline; the full
+// branching topology is the Mermaid graph the engine generates.
+function AgentFlow() {
+  const [agents, setAgents] = useState<AgentRow[] | null>(null);
+  const [mermaid, setMermaid] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => {
+    engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
+    engineJson<{ mermaid: string }>("/v1/graph/mermaid").then((r) => setMermaid(r.mermaid)).catch(() => {});
+  }, []);
+  if (error) return <div className="card"><p className="error">{error}</p></div>;
+  if (!agents) return <div className="card"><p className="hint">Loading flow…</p></div>;
+  return (
+    <div className="card">
+      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents</span></h2>
+      <div className="pipeline">
+        {agents.map((a, i) => (
+          <div key={a.stage} className="pnode">
+            <div className={`nodebox${a.enabled ? "" : " off"}`}>
+              <b>{a.stage.replace(/_agent$/, "")}</b>
+              <span>{a.model}</span>
+            </div>
+            {i < agents.length - 1 && <div className="arrow">↓</div>}
+          </div>
+        ))}
+      </div>
+      {mermaid && (
+        <details className="mermaidsrc">
+          <summary>Full branching graph (Mermaid source)</summary>
+          <pre className="prompt">{mermaid}</pre>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const [me, setMe] = useState<Me | null>(null);
   const [ready, setReady] = useState(false);
@@ -362,7 +444,7 @@ export default function Admin() {
 
   const tabs =
     me.role === "internal_admin"
-      ? [["tenants", "Tenants"], ["demos", "Demo requests"]]
+      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompts"], ["flow", "Agent flow"]]
       : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
@@ -385,6 +467,8 @@ export default function Admin() {
       {tab === "invite" && <Invite />}
       {tab === "tenants" && <Tenants />}
       {tab === "demos" && <Demos />}
+      {tab === "prompts" && <Prompts />}
+      {tab === "flow" && <AgentFlow />}
     </div>
   );
 }
