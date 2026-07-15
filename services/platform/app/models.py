@@ -39,6 +39,24 @@ class Org(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+# The six DPDP consent categories. The ORDER is the client's render order and the keys
+# are a cross-stack contract (apps/android ConsentNotice.CONSENT_KEY_ORDER, iOS, web) —
+# renaming one silently unticks a box somebody consented to, so they only ever get added.
+#
+# The first three govern STORAGE, and the engine enforces them: a category the person has
+# not consented to is not written down (see the `consent` claim below, and the engine's
+# routers/wellness.py). The last three are honoured by an absence rather than a check:
+# there is no voice recording to store and no model being trained on anyone's data.
+CONSENT_KEYS = (
+    "mood_history",
+    "ai_memory",
+    "journal_memory",
+    "sleep_history",
+    "voice_storage",
+    "model_training",
+)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -52,6 +70,56 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default=ROLE_USER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    # ── profile (the app's You tab / Settings) ───────────────────────────────
+    companion: Mapped[str] = mapped_column(String(40), default="")
+    language: Mapped[str] = mapped_column(String(40), default="")
+    region: Mapped[str] = mapped_column(String(8), default="")   # crisis helpline region
+    goals: Mapped[str] = mapped_column(Text, default="")         # JSON array, from onboarding
+    motivations: Mapped[str] = mapped_column(Text, default="")   # JSON array, from onboarding
+
+    # ── consent (DPDP) ───────────────────────────────────────────────────────
+    # DEFAULT FALSE, every one of them. Consent is an act, not an inheritance: a row that
+    # nobody has ticked must not read as six yeses, and a person who never saw the notice
+    # has not agreed to anything. The app's Privacy & memory screen is where they say yes.
+    consent_mood_history: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_ai_memory: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_journal_memory: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_sleep_history: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_voice_storage: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_model_training: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # The 18+ attestation from onboarding. DPDP treats a child's data differently, and the
+    # product's answer is that it is not for children — so the moment they said so is
+    # worth having. It is a date, not a birthday: we ask whether, never how old.
+    adult_attested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # ── program enrolment (multi-day journeys) ───────────────────────────────
+    # Which program they're on, and when they started it. The current day is DERIVED
+    # from the date (catalog.program_payload), not stored — so it cannot drift. Benign
+    # preference state, not content: it names an app catalog id, holds nothing personal.
+    active_program_id: Mapped[str] = mapped_column(String(40), default="")
+    program_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # ── trusted contact (crisis) ─────────────────────────────────────────────
+    # A THIRD PARTY's details, given by someone else. It is never shown to the org, never
+    # exported to HR, and never contacted automatically — the app shows it to the person
+    # in a crisis so THEY can reach out. Storing it is a favour to them, not a capability
+    # we hold over them.
+    trusted_contact_name: Mapped[str] = mapped_column(String(120), default="")
+    trusted_contact_method: Mapped[str] = mapped_column(String(20), default="")
+    trusted_contact_value: Mapped[str] = mapped_column(String(200), default="")
+    trusted_contact_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    def consents(self) -> dict[str, bool]:
+        """The six flags as the client's dict — also the JWT `consent` claim."""
+        return {key: bool(getattr(self, f"consent_{key}")) for key in CONSENT_KEYS}
 
 
 class RefreshToken(Base):
@@ -94,6 +162,26 @@ class DemoRequest(Base):
 
 
 EVENT_KINDS = {"session_started", "session_completed", "action_saved", "action_completed"}
+
+# Pre-auth product-funnel beats (the app's anonymous /events contract). Names
+# not in this set are dropped on ingest, never stored.
+FUNNEL_EVENTS = {"onboarding_step", "onboarding_done"}
+
+
+class FunnelEvent(Base):
+    """One anonymous funnel beat. Deliberately has NO org/user columns — the
+    client sends a random install id and no auth header, so these rows can
+    never join accounts. That is a schema property, same as ActivityEvent's
+    kind-only rule."""
+
+    __tablename__ = "funnel_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    anon_id: Mapped[str] = mapped_column(String(64), index=True)
+    source: Mapped[str] = mapped_column(String(16), default="")
+    name: Mapped[str] = mapped_column(String(32), index=True)
+    step: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class ActivityEvent(Base):

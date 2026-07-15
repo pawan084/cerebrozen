@@ -9,6 +9,7 @@ leaves the transcript sitting in another database:
     backend DB      users_agentic_conversation_context   actions, insights, moods, intake, patterns
     backend DB      dynamic_vars                         captured session variables
     backend DB      crisis_escalations                   a record that they were in crisis
+    backend DB      users_wellness                       THEIR JOURNAL, sleep log, check-ins
     rasa DB         user_conversations                   THE TRANSCRIPT
     checkpoint DB   checkpoints                          THE ENTIRE CONVERSATION STATE
     checkpoint DB   checkpoint_writes                    ...and its write-ahead log
@@ -67,6 +68,8 @@ def _locations() -> List[Location]:
                  "user_id", "captured session variables"),
         Location("crisis_escalations", config.MONGO_BACKEND_DB, "crisis_escalations",
                  "user_id", "the record that they were once in crisis"),
+        Location("wellness", config.MONGO_BACKEND_DB, config.MONGO_WELLNESS_COLLECTION,
+                 "user_id", "their journal, sleep log, and mood check-ins"),
         Location("transcripts", config.MONGO_RASA_DB, config.MONGO_USER_CONVERSATIONS_COLLECTION,
                  "user_id", "the conversation itself"),
         # The two nobody remembers. LangGraph keys these by thread_id, which IS the

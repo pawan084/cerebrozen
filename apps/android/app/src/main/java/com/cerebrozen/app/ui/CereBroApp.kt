@@ -257,7 +257,9 @@ fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
     // restore the persisted preference once, and keep the bar icons in step.
     AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    remember { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")); true }
+    // Night is the default (AppTheme.mode). Only an EXPLICIT saved choice overrides it —
+    // an absent pref must NOT reset to System, or the dark default never takes effect.
+    remember { Session.prefGet("theme_mode")?.let { AppTheme.mode = themeModeFromPref(it) }; true }
     SyncSystemBarIcons()
 
     // A brief branded splash on cold launch — always Night (brand moment).
@@ -311,6 +313,9 @@ fun CereBroApp() {
     // its synthesized tone or bundled loop (fully audible offline).
     val appContext = LocalContext.current.applicationContext
     LaunchedEffect(Unit) {
+        // A consent captured in onboarding but never delivered (a dropped first request)
+        // is owed to the server. Replay it before anything else touches the account.
+        runCatching { com.cerebrozen.app.net.Session.flushPendingConsent() }
         runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
         runCatching { Sfx.warm(appContext) }
     }
@@ -409,7 +414,7 @@ fun CereBroApp() {
             // with the B2C sweep): the old Home/Sleep/Journal surfaces.
             composable("home") { TodayHome(onOpen = open) }
             composable("talk") { CoachScreen(onOpen = open) }
-            composable("sleep") { SleepScreen(onOpen = open) }
+            composable("sleep") { SleepScreen(onOpen = open, onBack = back) }
             composable("winddown") { WindDownScreen(onBack = back, onOpen = open) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }

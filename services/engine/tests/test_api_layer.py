@@ -2211,6 +2211,51 @@ def test_a_sessions_turns_can_be_replayed_from_the_checkpoint(client):
 
 
 @pytest.mark.parametrize("path", ["stage", "transcript"])
+def test_another_users_session_is_invisible_to_the_flow_view(authed_client, mongo, path):
+    """Transcripts (and stage/safety flags) are content. Org tenancy alone must not
+    be enough: a colleague in the same org who guesses a session id gets a 404,
+    exactly like the delete endpoint — while the owner still reads it fine."""
+    client, token_for = authed_client
+    _seed_turn("s-flow-owned", "owner")
+
+    denied = client.get(f"/v1/sessions/s-flow-owned/{path}", headers=token_for("colleague"))
+    allowed = client.get(f"/v1/sessions/s-flow-owned/{path}", headers=token_for("owner"))
+
+    assert denied.status_code == 404
+    assert allowed.status_code == 200
+    assert allowed.json()["session_id"] == "s-flow-owned"
+
+
+@pytest.mark.parametrize("path", ["stage", "transcript"])
+def test_an_unknown_session_is_a_404_when_auth_is_enforced(authed_client, mongo, path):
+    """Under enforced auth the flow view must not distinguish "no such session" from
+    "not your session" — both are the same 404, so ids cannot be probed."""
+    client, token_for = authed_client
+
+    response = client.get(f"/v1/sessions/ghost/{path}", headers=token_for("owner"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("path", ["stage", "transcript"])
+def test_reading_the_flow_view_needs_a_user_in_the_token(authed_client, mongo, path):
+    """Same rule as delete: the user id comes ONLY from the JWT. A token that names
+    no user reads nothing."""
+    import jwt as pyjwt
+
+    client, _ = authed_client
+    _seed_turn("s-flow-owned", "owner")
+    userless = pyjwt.encode({"org_id": "default"}, "s3cret", algorithm=config.JWT_ALGORITHM)
+
+    response = client.get(
+        f"/v1/sessions/s-flow-owned/{path}", headers={"Authorization": f"Bearer {userless}"}
+    )
+
+    assert response.status_code == 400
+    assert "JWT" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("path", ["stage", "transcript"])
 def test_a_checkpointer_outage_degrades_the_flow_view_rather_than_erroring(
     client, monkeypatch, path
 ):

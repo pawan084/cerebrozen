@@ -15,6 +15,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Diversity3
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.NightsStay
+import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,13 +55,19 @@ import org.json.JSONObject
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Events
 import com.cerebrozen.app.net.Session
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.cerebrozen.app.ui.theme.BrandPrimary
 import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
 
 // ── the on-device commitments store ─────────────────────────────────────────
 
@@ -204,57 +219,78 @@ fun TodayHome(onOpen: (String) -> Unit) {
                 }
             }
         }
-        SectionCard(onClick = { onOpen("actions") }) {
-            Text("Commitments", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(
-                if (open == 0) "Nothing open — your next session ends with one concrete step."
-                else if (open == 1) "1 open commitment waiting on you."
-                else "$open open commitments waiting on you.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-            )
-        }
-        SectionCard(onClick = { onOpen("journeys") }) {
-            Text("Journeys", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(
-                "Multi-week practice for the skills that used to take a decade: feedback, delegation, influence.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-            )
-        }
-        SectionCard(onClick = { onOpen("toolkit") }) {
-            Text("Reset toolkit", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(
-                "Two minutes between meetings: breathe, ground, or play something calm.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-            )
-        }
-        SectionCard(onClick = { onOpen("sleep") }) {
-            Text("Rest & recovery", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(
-                "Sleep scenes, soundscapes, and the mixer — sustainable performance is rested performance.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-            )
-        }
+        DoorCard(
+            icon = Icons.Outlined.TaskAlt,
+            title = "Commitments",
+            desc = if (open == 0) "Nothing open — your next session ends with one concrete step."
+            else if (open == 1) "1 open commitment waiting on you."
+            else "$open open commitments waiting on you.",
+            accent = BrandPrimary,
+        ) { onOpen("actions") }
+        DoorCard(
+            icon = Icons.Outlined.Explore,
+            title = "Journeys",
+            desc = "Multi-week practice for the skills that used to take a decade: feedback, delegation, influence.",
+            accent = Periwinkle,
+        ) { onOpen("journeys") }
+        DoorCard(
+            icon = Icons.Outlined.SelfImprovement,
+            title = "Reset toolkit",
+            desc = "Two minutes between meetings: breathe, ground, or play something calm.",
+            accent = Cyan,
+        ) { onOpen("toolkit") }
+        DoorCard(
+            icon = Icons.Outlined.Bedtime,
+            title = "Rest & recovery",
+            desc = "Sleep scenes, soundscapes, and the mixer — sustainable performance is rested performance.",
+            accent = Cyan,
+        ) { onOpen("sleep") }
         if (hour >= 20 || hour < 3) {
-            SectionCard(onClick = { onOpen("winddown") }) {
-                Text("Wind down for tonight", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                Text(
-                    "Four small steps to close the day — a few unhurried minutes.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextMuted,
-                )
-            }
+            DoorCard(
+                icon = Icons.Outlined.NightsStay,
+                title = "Wind down for tonight",
+                desc = "Four small steps to close the day — a few unhurried minutes.",
+                accent = Periwinkle,
+            ) { onOpen("winddown") }
         }
-        SectionCard(onClick = { onOpen("humansupport") }) {
-            Text("Need a human?", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(
-                "Talking to a person is always an option — support paths live here.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
-            )
+        DoorCard(
+            icon = Icons.Outlined.Diversity3,
+            title = "Need a human?",
+            desc = "Talking to a person is always an option — support paths live here.",
+            accent = Warm,
+        ) { onOpen("humansupport") }
+    }
+}
+
+/** A Today "door": a leading icon in a tinted circle, the title + line, and a chevron —
+ * so the home cards read as tappable and carry the same icon language as the You tab,
+ * instead of being bare text blocks. */
+@Composable
+private fun DoorCard(
+    icon: ImageVector,
+    title: String,
+    desc: String,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    SectionCard(onClick = onClick) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(46.dp)
+                    .background(accent.copy(alpha = 0.13f), CircleShape)
+                    .border(1.dp, accent.copy(alpha = 0.28f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(desc, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
+            Text("›", style = MaterialTheme.typography.titleLarge, color = TextMuted2)
         }
     }
 }

@@ -120,8 +120,9 @@ object Session {
         body: String?,
         contentType: String?,
         authed: Boolean,
+        base: String = BuildConfig.API_BASE_URL,
     ): String {
-        val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
+        val (code, text) = http(base + path, method, body, contentType, if (authed) access else null)
         logApiResponse(method, path, code, text)
         if (code !in 200..299) {
             val detail = runCatching { JSONObject(text).optString("detail") }
@@ -453,21 +454,30 @@ object Session {
     /** Authenticated call with the fresh-launch refresh + one rotation retry.
      * GET responses are cached; a network failure falls back to the last copy so
      * read screens work offline (the store is cleared on sign-out for privacy). */
-    suspend fun api(path: String, method: String = "GET", json: JSONObject? = null): String {
+    suspend fun api(
+        path: String,
+        method: String = "GET",
+        json: JSONObject? = null,
+        base: String = BuildConfig.API_BASE_URL,
+    ): String {
         val isGet = method == "GET"
         return try {
             ensureAccess()
             val result = try {
-                raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
+                raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true, base = base)
             } catch (e: ApiException) {
-                if ((e.code == 401 || e.code == 403) && refresh()) {
-                    raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
+                // A 401 is a stale token. A 403 from the ENGINE is a consent refusal —
+                // a real answer, not an auth problem — and rotating the token would not
+                // change it, so don't burn a refresh on it.
+                val staleToken = e.code == 401 || (e.code == 403 && base == BuildConfig.API_BASE_URL)
+                if (staleToken && refresh()) {
+                    raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true, base = base)
                 } else {
                     throw e
                 }
             }
             if (isGet) {
-                cachePut(path, result)
+                cachePut(base, path, result)
                 servedStale = false   // a live network read — we're online again
             }
             result
@@ -477,7 +487,7 @@ object Session {
             // not-found, forbidden) and must not be masked behind stale data.
             val serveStale = e !is ApiException || e.code >= 500
             if (isGet && serveStale) {
-                cacheGet(path)?.let {
+                cacheGet(base, path)?.let {
                     servedStale = true   // honest signal: this is the last copy
                     return it
                 }
@@ -486,11 +496,52 @@ object Session {
         }
     }
 
-    private fun cacheKey(path: String) = "cache:$path"
-    private fun cachePut(path: String, body: String) {
-        runCatching { storage.putString(cacheKey(path), body) }
+    /** Adopt a token pair the server handed back mid-session (a consent change rotates
+     * the session so the new claim takes effect on the very next request — see the
+     * platform's PATCH /users/me/consent). Without this the app would keep using a token
+     * that still says "yes" to something the person just switched off. */
+    internal fun adoptTokens(json: JSONObject) {
+        val newAccess = json.optString("access_token")
+        val newRefresh = json.optString("refresh_token")
+        if (newAccess.isBlank() || newRefresh.isBlank()) return
+        access = newAccess
+        storage.putString(REFRESH_KEY, newRefresh)
+        signedIn = true
     }
-    private fun cacheGet(path: String): String? = storage.getString(cacheKey(path))
+
+    // ── consent that survives a dropped packet ───────────────────────────────
+    //
+    // Onboarding captures six DPDP answers moments after the account exists, on a network
+    // that has just been used for the first time. If that one request fails, the answers
+    // are gone — and the app carries on as though it had them. So a failed write is kept
+    // and replayed. This is the record of a consent; losing it is not a UI blemish.
+    private const val PENDING_CONSENT_KEY = "pending_consent"
+
+    internal fun queueConsent(patch: JSONObject) {
+        runCatching { storage.putString(PENDING_CONSENT_KEY, patch.toString()) }
+    }
+
+    /** Replay a queued consent. Called on launch; a no-op when there is nothing owed. */
+    internal suspend fun flushPendingConsent(): Boolean {
+        val raw = storage.getString(PENDING_CONSENT_KEY) ?: return false
+        val patch = runCatching { JSONObject(raw) }.getOrNull()
+        if (patch == null) {
+            storage.remove(PENDING_CONSENT_KEY)   // unreadable: not worth retrying forever
+            return false
+        }
+        return runCatching { Api.updateConsent(patch) }
+            .onSuccess { storage.remove(PENDING_CONSENT_KEY) }
+            .isSuccess
+    }
+
+    // The cache is keyed by BASE + path: the platform and the engine both serve paths of
+    // our choosing, and two identical paths on different services must not collide (one
+    // service's body would be served as the other's last-known copy).
+    private fun cacheKey(base: String, path: String) = "cache:$base$path"
+    private fun cachePut(base: String, path: String, body: String) {
+        runCatching { storage.putString(cacheKey(base, path), body) }
+    }
+    private fun cacheGet(base: String, path: String): String? = storage.getString(cacheKey(base, path))
     private fun clearCache() {
         storage.keys().filter { it.startsWith("cache:") }.forEach { storage.remove(it) }
     }
@@ -506,36 +557,53 @@ object Session {
 
 /** Typed-ish endpoint helpers over the raw session. */
 object Api {
+    // WHICH SERVICE SERVES WHAT (cross-stack contract — docs/ARCHITECTURE.md):
+    //
+    //   platform (API_BASE_URL)  the account: identity, profile, consent, trusted
+    //                            contact, streak. An HR admin's token reaches this
+    //                            service, so it holds NO content — that is what makes
+    //                            "counts, never content" a property of the schema.
+    //   engine (ENGINE_BASE_URL) the content: coaching turns, and the person's own
+    //                            journal / sleep log / check-ins. Same bearer token
+    //                            (shared HS512 secret); the engine reads the subject and
+    //                            the six consent flags from its claims.
+    private val ENGINE = BuildConfig.ENGINE_BASE_URL
+
     suspend fun me(): JSONObject = JSONObject(Session.api("/users/me"))
     suspend fun streak(): JSONObject = JSONObject(Session.api("/users/me/streak"))
-    suspend fun moods(): JSONArray = JSONArray(Session.api("/moods"))
+
+    suspend fun moods(): JSONArray = JSONArray(Session.api("/v1/wellness/moods", base = ENGINE))
     suspend fun checkIn(mood: String, note: String, symbol: String, intensity: Int): JSONObject =
         JSONObject(
             Session.api(
-                "/moods", "POST",
+                "/v1/wellness/moods", "POST",
                 JSONObject().put("mood", mood).put("note", note)
                     .put("symbol", symbol).put("intensity", intensity),
+                base = ENGINE,
             ),
         )
 
-    suspend fun journal(): JSONArray = JSONArray(Session.api("/journal"))
+    suspend fun journal(): JSONArray = JSONArray(Session.api("/v1/wellness/journal", base = ENGINE))
     suspend fun createJournal(title: String, body: String): JSONObject =
         JSONObject(
             Session.api(
-                "/journal", "POST",
+                "/v1/wellness/journal", "POST",
                 JSONObject().put("title", title).put("body", body)
                     .put("tags", JSONArray()).put("symbol", "book"),
+                base = ENGINE,
             ),
         )
 
-    suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/sleep"))
-    suspend fun sleepSummary(): JSONObject = JSONObject(Session.api("/sleep/summary"))
+    suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/v1/wellness/sleep", base = ENGINE))
+    suspend fun sleepSummary(): JSONObject =
+        JSONObject(Session.api("/v1/wellness/sleep/summary", base = ENGINE))
     suspend fun logSleep(date: String, bedtime: String, wakeTime: String, quality: Int): JSONObject =
         JSONObject(
             Session.api(
-                "/sleep", "POST",
+                "/v1/wellness/sleep", "POST",
                 JSONObject().put("date", date).put("bedtime", bedtime)
                     .put("wake_time", wakeTime).put("quality", quality).put("awakenings", 0),
+                base = ENGINE,
             ),
         )
 
@@ -557,7 +625,8 @@ object Api {
      * dropping every sound back to its bundled fallback. */
     suspend fun mediaCatalog(): JSONArray = JSONArray(Session.api("/media/catalog"))
 
-    suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
+    suspend fun insightsWeekly(): JSONObject =
+        JSONObject(Session.api("/v1/wellness/insights/weekly", base = ENGINE))
 
     /** Transparent AI memory: honest learned statements + their data basis. */
     suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))
@@ -572,7 +641,11 @@ object Api {
     suspend fun enrollProgram(contentId: String): JSONObject =
         JSONObject(Session.api("/programs/enroll", "POST", JSONObject().put("content_id", contentId)))
 
-    suspend fun leaveProgram() { Session.api("/programs/active", "DELETE") }
+    /** Result-typed: the caller must decide what a failure means. Returning Unit here let
+     * every caller "succeed" by ignoring it — and the enrolled hero disappears on refresh
+     * regardless, so a dropped request looked exactly like a successful one. */
+    suspend fun leaveProgram(): Result<Unit> =
+        runCatching { Session.api("/programs/active", "DELETE"); Unit }
 
     /** Toggle one plan step; returns the refreshed plan (server reconciles). */
     suspend fun togglePlanStep(stepId: String, done: Boolean): JSONObject =
@@ -590,8 +663,15 @@ object Api {
         JSONObject(Session.api("/users/me", "PATCH", patch))
 
     suspend fun consent(): JSONObject = JSONObject(Session.api("/users/me/consent"))
+
+    /** Change consent, then ADOPT the token pair the platform hands back.
+     *
+     * The engine enforces the six flags from the signed claim in our token. Keep the old
+     * token and the app would go on being allowed to store what the person just switched
+     * off, for as long as it stays valid. Swapping in the rotated pair makes a withdrawal
+     * effective on the very next request. */
     suspend fun updateConsent(patch: JSONObject): JSONObject =
-        JSONObject(Session.api("/users/me/consent", "PATCH", patch))
+        JSONObject(Session.api("/users/me/consent", "PATCH", patch)).also { Session.adoptTokens(it) }
 
     /** 18+ attestation captured during onboarding (best-effort; never blocks). */
     suspend fun attest() { Session.api("/users/me/attest", "POST", JSONObject().put("adult", true)) }

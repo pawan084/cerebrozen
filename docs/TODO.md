@@ -297,6 +297,263 @@ dated notes, grouped by priority; items needing an owner decision are marked
       Note: Mira's palette (peach glow #F1B27A/#E98D7C on deep plum) is
       near our coral family — controls re-skin naturally.
 - [x] 2026-07-14 — Coaching tab icons (compass/check-circle, 2dp line set).
+- [x] 2026-07-15 — **App is now DARK-ONLY (theme consistency fix).** The report:
+      some screens were light (Today/Coach/Actions/Journeys — they FOLLOW the
+      theme, which resolved to light because the default was System + a
+      light-set phone) while others were dark (You/Sleep/Sounds hardcode a night
+      bg; Privacy was even MIXED — dark header, white consent cards). Root cause
+      was NOT hardcoded-light screens (a parallel audit confirmed the coaching
+      screens are fully token-based and adapt correctly) — it was the theme
+      DEFAULT. Fix: `AppTheme.mode` default System → **Night**, and CereBroApp
+      only overrides from an EXPLICIT saved pref (absent pref must not reset to
+      System). One switch flipped every theme-following screen dark AND fixed
+      the mixed Privacy cards (themed `CardFill` resolves dark). Then closed the
+      re-introduction hole: the Appearance picker could still select System/Dawn
+      and rebuild the exact split (worse — several premium/sleep screens paint a
+      FIXED night bg, so "Dawn" was already half-broken). Made Appearance
+      dark-only (single "Always night", updated copy + the You-row subtitle).
+      The Dawn/System palettes still exist in the theme layer and ContrastTest
+      still tests both — they're just no longer selectable. Device-verified
+      dark + consistent across Today, Coach, Actions, Journeys, You, Privacy,
+      Crisis region, Companion, Appearance. Android check + 95.80% JaCoCo, theme
+      + contrast tests green.
+- [x] 2026-07-15 — **Content-aware banners + engine CORS prod boot-guard.**
+      (1) Banners: the user asked to lift sounds/banners from a `calm/extracted`
+      teardown of Calm/BetterHelp/Rosebud/Youper — DECLINED (proprietary,
+      copyright, the project's own rule; would expose a commercial B2B product).
+      Did it legitimately instead: the generative art system (ContentArt.kt,
+      pure Canvas) already gives every sleep tile a per-title moon, but they all
+      looked the same. Added content-aware overlays keyed off the scene's OWN
+      words — "Gentle Rain" → slanted rain streaks, "Distant Thunder" → storm
+      cloud + rain, "Snowfall" → scattered flakes, "Deep Forest" → fir
+      silhouettes — same soft translucent house style, deterministic, zero
+      licensed assets. Device-verified all render distinctly on the Sleep
+      stories list. (2) Engine CORS: defaulted to `*` with no prod guard (the
+      platform had one, the engine didn't) — added a boot guard that refuses to
+      start with wildcard CORS outside a dev-class ENV (mirrors
+      guard_production + the AUTH_DEV_BYPASS refusal). +3 tests; the reload_config
+      fixture now defaults CEREBROZEN_CORS_ORIGINS so unrelated deployed-ENV
+      reloads don't trip it (same pattern it already uses for STRICT_TENANT).
+      Engine 1,510 / 98.62%; Android check + 95.80% JaCoCo green.
+- [x] 2026-07-15 — **Today home cards: added relevant icons (were bare text).**
+      The five home "doors" (Commitments, Journeys, Reset toolkit, Rest &
+      recovery, Need a human) were `SectionCard { Text; Text }` — title +
+      description with NO icon and no chevron, while every You-tab row already
+      carried a leading icon. Added a `DoorCard(icon, title, desc, accent)`
+      composable: leading icon in a tinted circle + title/desc + a chevron, same
+      icon language as the rest of the app. Content-relevant icons: Commitments
+      = TaskAlt (check), Journeys = Explore (compass), Reset toolkit =
+      SelfImprovement (meditation), Rest & recovery = Bedtime (moon), Wind-down
+      = NightsStay, Need a human = Diversity3 (people). Accent-coded warm
+      (action/social) vs cyan (calm/rest). Device-verified all five render.
+      Android check + 95.80% JaCoCo green.
+- [x] 2026-07-15 — **Audited EVERY pushed screen for the back-button dead-end;
+      found + fixed a second one (Wind-down).** Code-classified all pushed
+      routes by frame: 11 use SubPage/PremiumSubPage (auto back button); Toolkit
+      + Breathe render their own ArrowBackIosNew back; the rest safe. The one
+      other trap besides Sleep: `WindDownScreen` used `Page` (the TAB frame, no
+      back) — `onBack` only fired from the final "Good night" CTA, so a user
+      mid-routine had system-gesture only. Switched it to `SubPage(onBack)` (a
+      drop-in that renders the back button; back leaves the routine, matching
+      system-back and every other sub-screen). Device-verified a working back
+      button across ALL frame types: PremiumFrames (Crisis region / Companion /
+      Appearance), SubPage (Sounds), PremiumSubPage games (Zen Ripples), custom
+      ToolkitHeroHeader (Toolkit), custom BreatheCompactHeader (Two-minute
+      reset), Sleep — and confirmed back navigation works. Android check +
+      95.80% JaCoCo green. Net: no pushed screen can be a dead-end anymore.
+- [x] 2026-07-15 — **Fixed the Sleep screen dead-end (no back button).**
+      Reported as "features/tab bar gone, only Sleep shows" — nothing was
+      removed; the app had been left on the Sleep pushed sub-screen (no tab bar
+      by design) and Android restored it on resume. Root gap: `SleepScreen` was
+      the ONE pushed screen with no `onBack` — NavHost called it without one, so
+      it rendered no back affordance (system-gesture only), reading as a
+      trap. Added `onBack` param + a circular back button in `SleepPremiumHeader`
+      (same pattern as the ~20 PremiumFrames screens), wired `back` in the
+      NavHost. Verified on device: back button present, tapping it returns to
+      Today with the full tab bar. (`home`/`talk` alias routes checked — never
+      navigated as pushed pages, so no trap there.) Android check + 95.80%
+      JaCoCo green.
+- [x] 2026-07-15 — **Converted the last 4 theme-blind screens to the theme
+      token.** PremiumFrames (`PremiumBackground` const, ~20 sub-screens),
+      SleepScreen, ToolkitScreen (Extras), BreatheScreen each hardcoded a
+      `#0D1424→#182447→#241A4A` night gradient (plum-tinted bottom). Swapped all
+      four to `Gradients.night` (the themed `NightMid #1E2A47 → Night #0F172A`
+      navy — the same base the aurora/coaching screens use), keeping each
+      screen's own ambient layer (PremiumFrameAmbience, ToolkitAmbientLayer, the
+      Breathe canvas) on top. Now EVERY screen shares one themed dark canvas and
+      follows the theme; the bespoke plum bottom is gone in favour of the
+      consistent navy. Device-verified You (PremiumFrames) + Sleep look clean
+      and consistent with Today; ambient glows still read. Android check +
+      95.80% JaCoCo green.
+- [x] 2026-07-15 — **Three more programs — the ones the Journeys tab already
+      promised.** The tab card advertises "feedback, delegation, influence" but
+      only two wellness programs existed (Better Sleep, Steadier Focus). Added
+      The Feedback Conversation (5d), Delegation That Sticks (5d), Quiet
+      Influence (5d) — workplace coaching, NOT therapy: each day is one concrete
+      rehearsal in the CereBroZen voice. Pure catalog data (app/catalog.py), no
+      rebuild. New hygiene test asserts EVERY program is well-formed (>=3 days,
+      non-blank guides >=20 chars, last day resolves + completes) so a future
+      malformed program fails the build. Platform content tests 17 green.
+      Device-verified: all 5 in "Start something new"; enrolling The Feedback
+      Conversation → day 1 "Name the one thing" with the guide. (Minor existing
+      copy nit noticed, not fixed: the Programs screen intro still says "calmer
+      baseline / sleep-science" while the tab card says feedback/delegation/
+      influence — the two entry points frame the same list differently.)
+- [x] 2026-07-15 — **More sleep stories + soundscapes.** Sleep scenes 5 → 11
+      (Snowfall, Cabin in the Rain, Meadow at Dusk, Harbour at Night, Riverbank,
+      Before First Light) — pure catalog additions (app/catalog.py), no rebuild,
+      live on device. For soundscapes, the HONEST constraint drove the design:
+      every catalog list item plays the ONE bundled `ambient_bed` (Player →
+      MediaUrls.urlFor → blank → bed), so naming new "soundscape" scenes would
+      imply sounds the app can't make. The genuinely-distinct audio is the four
+      real bundled loops (rain/ocean/wind/drone) in the mixer — so I added three
+      new mixer PRESETS (Rainforest [0.65,0.15,0.4,0], Deep current [0,0.6,0,0.5],
+      Thunderhead [0.85,0,0.55,0.35]): real distinct blends over the four loops,
+      no new audio files. +EN/HI strings, presetLabel arms, presets test extended
+      (6 keys, distinct-blend + distinct-label assertions). Android check +
+      95.80% JaCoCo; platform content tests green. Device-verified: 11 stories
+      list; tapping Thunderhead set Rain 85 / Wind 55 / Drone on / Ocean off —
+      the authored blend, audibly. Truly-new soundscape TEXTURES (beyond the 4
+      loops) still need new audio assets (licensing) — flagged, not faked.
+- [x] 2026-07-15 — **Physical-device connection fixed + rest-and-recovery
+      catalog built.** Two things this session:
+      (1) The device couldn't reach the backend — my wellness-work rebuilds
+      dropped the `-PapiBaseUrl` flag, so the debug APK fell back to `10.0.2.2`
+      (the EMULATOR's host alias, meaningless on a real phone). Every auth call
+      failed, so the app showed fallback state everywhere (no name, consent all
+      OFF, screens stuck loading). Fix: wrote the host LAN IP into
+      `apps/android/local.properties` (`apiBaseUrl`/`engineBaseUrl`) so every
+      build picks it up — can't regress the way the flag did. Verified on device:
+      login, real name, and consent screen all show true server state (Mood ON,
+      Sleep ON, matching the DB). Note: the phone had ALSO been signed out
+      because an earlier sweep withdrew consent (revokes tokens across devices —
+      by design); fresh login recovered it.
+      (2) Sleep stories / soundscapes / programs showed the raw "Not Found"
+      because `/content`, `/media/catalog`, `/programs/*` were never built (the
+      404 error path prints the FastAPI detail). Built them on the PLATFORM
+      (matches the app's existing base): `app/catalog.py` — a static, curated
+      catalog of sleep scenes, soundscapes, wind-down, and two authored CBT-I /
+      focus programs, all serving the phone's OWN bundled beds / synth tones
+      (`audio_url` blank → MediaUrls bundled fallback), so lists populate and
+      PLAY with zero licensed media. Program enrolment is per-user (id + start
+      date, day DERIVED so it can't drift). `+2 User columns` (dev.db migrated
+      in place, 3 accounts kept). Platform 93 tests / 97.48%. Live-verified on
+      the device: Programs screen shows "Better Sleep in 7 Days · Day 1 of 7"
+      with the real day-1 guide; Sleep screen shows "Night Lake"/"Gentle Rain"
+      as playable Sleep stories; tapping Play started the bundled bed (NOW
+      PLAYING bar appeared). GAMES were never broken — they're on-device in the
+      Reset toolkit (Today → Reset toolkit), just nested. ARCHITECTURE contract
+      table updated (JWT `consent` + wellness-in-engine + catalog rows).
+      Deliberately still not built: licensed narrated audio/video (copyright
+      rule) — the catalog entries carry blank urls until rights exist.
+- [x] 2026-07-14 — **Wellness backend slice BUILT** (the review's "backend-less
+      screens" decision, resolved). Split on the content firewall: **content in
+      the engine, account in the platform.**
+      *Engine* — `stores/wellness.py` + `routers/wellness.py`: journal, sleep,
+      mood check-ins, personal weekly insights at `/v1/wellness/*`. Subject
+      comes from the token and NOWHERE else (no `user_id` param exists — the
+      privacy-router rule; a diary must not be addressable). One doc per user,
+      `$push`/`$each`/`$slice` capped at 2000 (an unbounded push is a 16MB
+      document years later). Registered for erasure + export (the store-scan
+      guard in test_privacy.py fails the build otherwise). Field names are the
+      CLIENT's (`duration_min`, `wake_time`) — the sleep duration crosses
+      midnight correctly (23:30→07:00 = 450min, not −960).
+      *Platform* — consent (6 DPDP keys), profile, trusted contact, 18+
+      attestation, streak. New columns; `dev.db` migrated in place by hand
+      (17 ALTERs, 3 accounts preserved) — **the no-Alembic gap, biting exactly
+      as predicted; Alembic is now a real Phase-2 item, not a doc nit.**
+      *Consent is ENFORCED, not recorded.* The platform signs the six flags into
+      the access token; the engine refuses (403) to store a category the person
+      declined. A withdrawal ROTATES the token pair (returned from the PATCH;
+      the app adopts it) so it bites on the next request instead of at token
+      expiry — otherwise we'd go on storing what they just switched off for up
+      to ACCESS_TTL_MIN.
+      *Self-report is not inference* — regulated mode turns off the SYSTEM
+      reading emotions off a worker; it does not confiscate the worker's own
+      diary. Both paths pinned in one test so they don't get "simplified" into
+      one flag. `CEREBROZEN_SELF_REPORT_WELLNESS=false` for the tenant who wants
+      none of it stored.
+      *Android* — `Session.api(base=)` seam (cache key is now base+path, or two
+      services' identical paths would collide); wellness calls repointed at the
+      engine with the same bearer token; **consent survives a dropped packet**
+      (onboarding queues a failed consent write and replays it on next launch —
+      it used to be a bare runCatching, so six DPDP answers could vanish while
+      the app carried on as though it had them); mood check-in only fires if
+      they consented to it; `leaveProgram` is Result-typed (it used to look like
+      it worked whether or not the server heard).
+      Corrections to the review: the journal did NOT show a false "Saved" (it
+      honestly printed "Not Found"). The real false-success surfaces were
+      onboarding's silently-discarded consent/mood/goals, `leaveProgram`, and —
+      worst — `GET /users/me/consent` 404ing so all six DPDP toggles rendered
+      OFF as though authoritative. All fixed.
+      Gates: engine 1,503 tests / 98.62%; platform 76; Android check + 95.79%
+      JaCoCo. Live E2E 18/18 (scratchpad/wellness_sweep.py): consent refusal →
+      grant → token rotation → writes land → withdrawal bites next request →
+      entries already written stay readable → HR surfaces leak nothing → an HR
+      admin's token reads zero journals. Docs: ARCHITECTURE contract table (3
+      rows), SECURITY privacy model (self-report vs inference, consent
+      enforcement, structural content firewall, k-floor wording corrected).
+      NOT built, deliberately: `/content`, `/media/catalog`, `/programs/*` —
+      they need licensed media and authored program content, and the copyright
+      rule holds. Those screens still degrade to bundled/synth audio.
+      Follow-up: `ai_memory` consent is stored and signed but not yet enforced
+      in the engine's memory path (profile_read/prior transcripts) — the other
+      five are honoured or refused for real; this one is recorded only.
+- [x] 2026-07-14 — **Live E2E sweep (14/14) — and it found what the 1,468 unit
+      tests could not.** Driving the REAL stack with a REAL platform token (not
+      the dev bypass) exposed a silent data-loss bug that only appears once auth
+      is enforced with real org claims — i.e. only in production:
+      `dispatch_title_generation` and the 7 `builders.py` background writes ran
+      on bare `ThreadPoolExecutor`s, which do NOT copy ContextVars, so
+      `current_org()` fell back to the DEFAULT org in those workers. The title
+      writer created the session doc under org `default`; the foreground
+      `record_turn` (correct org) then hit the pg shim's cross-tenant guard
+      (`pg.py:325` — refuses a row that doesn't match the whole filter) and its
+      write was DROPPED — silently, while still logging `conversation.recorded`.
+      Net: **coaching messages were never persisted**; transcripts, history,
+      "your coach remembers", and check-in context were all dead the moment auth
+      went on. Hidden in dev because auth-off ⇒ org == `default` everywhere ⇒
+      consistent. Fixes: (a) `ContextThreadPoolExecutor` (request_context.py) —
+      per-task `copy_context()`, the pattern rag/placeholders.py already used —
+      now backs both pools; (b) a refused write logs `conversation.record_dropped`
+      at ERROR and never reports success (`_write_landed`, backend-agnostic:
+      pymongo signals an insert via `upserted_id`, the pg shim via
+      `modified_count`); (c) +4 tenancy/regression tests, verified RED without
+      the fix. Live proof: old doc = org `default`, titled, **0 messages**; new
+      doc = real org, titled, 2 messages, transcript reads back.
+      **Also fixed the hermeticity hole this exposed** (CLAUDE.md rule 3): the
+      suite's offline guarantee rested on `os.environ[X] = ""`, but the loader
+      deliberately treats an empty var as overridable — so the day `.env` gained
+      a `POSTGRES_URL`, 38 "offline" store tests silently swung onto the live
+      database. `CEREBROZEN_SKIP_DOTENV` now makes the suite refuse the .env
+      outright (+1 test). Engine 1,468 tests / 98.68%; platform 56 / 96.93%;
+      Android check + 95.87% JaCoCo; web + admin build. Sweep script:
+      scratchpad/live_sweep.py (login → me → events → funnel → k-floor 403 →
+      export → demo pipeline → real billed coaching turn → stage/transcript as
+      owner → IDOR denial as colleague → sessions list).
+- [x] 2026-07-14 — Full-repo review (3 parallel reviewers: backend, web+admin,
+      Android) + all 6 criticals fixed the same day: (1) engine flow-view
+      IDOR — `/v1/sessions/{id}/stage|transcript` were org-scoped but not
+      user-scoped; now 404 for a colleague's session id, same JWT-only
+      pattern as delete (+6 tests); (2) Android You-tab crashes — "patterns"
+      and "premium" rows navigated to unregistered routes (both removed;
+      premium was B2C leftover); (3) evidence page numbers refreshed from a
+      live run (1,457 tests / 98.7% — page previously OVERstated coverage);
+      (4) admin `NEXT_PUBLIC_API_URL` is build-time — Dockerfile build-arg +
+      compose args + `.env.example` added (runtime env alone never reached
+      the browser bundle); (5) dev SQLite DBs were tracked in git —
+      gitignored + untracked (scrub history before first push); (6) Android
+      anonymous funnel beacon posted to `/events` which didn't exist —
+      platform now serves it (FunnelEvent table: NO user/org columns by
+      schema, `FUNNEL_EVENTS` allowlist, batch/length caps; +3 tests,
+      ARCHITECTURE contract row updated). Review backlog kept (NOT
+      criticals): backend-less wellness screens decision (journal "Saved"
+      is a false confirmation today), SECURITY.md "floor in SQL" wording,
+      no-Alembic claim, deletion keeps ActivityEvent rows, engine CORS `*`
+      default needs a prod boot-guard, admin tabs shown to plain `user`
+      role, missing admin loading/error states, footer placeholder socials,
+      `resolve_user_id` payload-wins design (documented service-to-service
+      decision; revisiting it = cross-stack contract change).
 - [ ] Play readiness runbook (adapt ANDROID_RELEASE + PRIVACY_LABELS).
 - [x] Auth screens: email/password (OTP/SSO deliberately hidden — no endpoints; see 2026-07-14 auth cleanup).
 - [x] Coach tab: engine SSE streaming, action cards → ActionsStore, memory chip, grounded marker, typing dots, voice. (Phase-card/mood-capture UX polish remains with prompt adaptation.)

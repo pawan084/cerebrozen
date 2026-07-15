@@ -17,19 +17,22 @@ from __future__ import annotations
 
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
 
 from app import config, trace
 from app.graph.runtime import get_client, get_registry
 from app.graph.tools import _safe_json
 from app.llm.responses_client import reasoning_effort_for
+from app.request_context import ContextThreadPoolExecutor
 from app.stores import agentic
 
 logger = logging.getLogger("cerebrozen.builders")
 
-# Small daemon pool: builders are I/O+LLM bound and off the hot path.
-_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="builder")
+# Small daemon pool: builders are I/O+LLM bound and off the hot path. Context-
+# propagating, because every one of these workers WRITES to a tenant-scoped store
+# (intake vars, check-in state, user context, patterns) — see
+# ContextThreadPoolExecutor for what a bare pool silently does to those writes.
+_EXECUTOR = ContextThreadPoolExecutor(max_workers=2, thread_name_prefix="builder")
 
 ACTIONS_INSIGHTS_AGENT = "dynamic_actions_insights_agent"
 USER_CONTEXT_AGENT = "user_context_builder_agent"

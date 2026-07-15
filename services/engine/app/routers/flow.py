@@ -11,8 +11,10 @@ import logging
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
-from app.auth import require_auth
+from app.auth import auth_enabled, require_auth
 from app.service import get_service
+from app.session import user_id_from_claims
+from app.stores import conversation
 from app.graph.state import (
     STAGE_ACTION_CHECKIN,
     STAGE_CH,
@@ -69,9 +71,28 @@ async def graph_mermaid(_claims: dict = Depends(require_auth)) -> dict:
     return {"mermaid": _mermaid_cache, "stage_to_node": STAGE_TO_NODE}
 
 
+def _assert_owner(session_id: str, claims: dict) -> None:
+    """404 unless the session exists AND belongs to the caller.
+
+    Org tenancy alone is not enough here: transcripts (and stage/safety
+    flags) are content, and a colleague in the same org must not be able to
+    read them by enumerating session ids. Same pattern and detail strings as
+    sessions.py — user id ONLY from the JWT, ownership checked against the
+    (already org-scoped) conversation doc."""
+    if not auth_enabled():
+        return  # tokenless dev mode: there is no identity to scope by
+    user_id = user_id_from_claims(claims)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id not found in JWT.")
+    doc = conversation.get_session(session_id)
+    if not doc or (doc.get("user_id") and doc.get("user_id") != user_id):
+        raise HTTPException(status_code=404, detail="Session not found for this user.")
+
+
 @router.get("/v1/sessions/{session_id}/stage")
-async def session_stage(session_id: str, _claims: dict = Depends(require_auth)) -> dict:
+async def session_stage(session_id: str, claims: dict = Depends(require_auth)) -> dict:
     """Current stage / active node / path for a session (from the checkpointer)."""
+    _assert_owner(session_id, claims)
     try:
         state = get_service().engine.session_state(session_id) or {}
     except Exception as exc:  # noqa: BLE001
@@ -90,8 +111,9 @@ async def session_stage(session_id: str, _claims: dict = Depends(require_auth)) 
 
 
 @router.get("/v1/sessions/{session_id}/transcript")
-async def session_transcript(session_id: str, _claims: dict = Depends(require_auth)) -> dict:
+async def session_transcript(session_id: str, claims: dict = Depends(require_auth)) -> dict:
     """Replay a session's turns from the checkpointed graph state (for the history panel)."""
+    _assert_owner(session_id, claims)
     try:
         state = get_service().engine.session_state(session_id) or {}
     except Exception as exc:  # noqa: BLE001

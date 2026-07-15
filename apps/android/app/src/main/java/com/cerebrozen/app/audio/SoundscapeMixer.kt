@@ -41,6 +41,11 @@ object SoundscapeMixer {
         Preset("monsoon_night", listOf(0.8f, 0f, 0.35f, 0.2f)),
         Preset("shoreline", listOf(0f, 0.8f, 0.3f, 0f)),
         Preset("still_air", listOf(0f, 0f, 0.25f, 0.5f)),
+        // More named blends over the SAME four real loops — distinct experiences, no new
+        // audio. Volumes are [rain, ocean, wind, drone], parallel to `layers`.
+        Preset("rainforest", listOf(0.65f, 0.15f, 0.4f, 0f)),
+        Preset("deep_current", listOf(0f, 0.6f, 0f, 0.5f)),
+        Preset("thunderhead", listOf(0.85f, 0f, 0.55f, 0.35f)),
     )
 
     /** Apply a preset's blend through the existing per-layer path (so a live

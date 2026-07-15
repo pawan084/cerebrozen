@@ -30,10 +30,22 @@ class ApiEndpointsTest {
 
     private data class Req(val path: String, val method: String, val body: String?, val auth: String?)
 
-    /** Signed-in session over a router keyed by "METHOD /path". */
+    /** Signed-in session over a router keyed by "METHOD /path".
+     *
+     * Engine-served paths are keyed "METHOD engine:/path" — WHICH SERVICE answers is now
+     * part of the contract, not an implementation detail. The account lives on the
+     * platform; the content (journal, sleep, check-ins) lives on the engine, because the
+     * platform is the database an HR admin's token can reach and it must hold nothing to
+     * read. A test that could not tell the two apart could not catch a journal drifting
+     * back into the org database. */
     private fun script(routes: Map<String, String>, log: MutableList<Req> = mutableListOf()): MutableList<Req> {
         Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, method, body, _, auth ->
-            val path = url.removePrefix(com.cerebrozen.app.BuildConfig.API_BASE_URL)
+            val engineBase = com.cerebrozen.app.BuildConfig.ENGINE_BASE_URL
+            val path = if (url.startsWith(engineBase)) {
+                "engine:" + url.removePrefix(engineBase)
+            } else {
+                url.removePrefix(com.cerebrozen.app.BuildConfig.API_BASE_URL)
+            }
             log.add(Req(path, method, body, auth))
             if (path == "/auth/refresh") return@resetForTest 200 to tokens
             val hit = routes["$method $path"] ?: throw AssertionError("unscripted: $method $path")
@@ -176,15 +188,15 @@ class ApiEndpointsTest {
             mapOf(
                 "GET /users/me" to """{"email":"e@x.com"}""",
                 "GET /users/me/streak" to """{"current":3}""",
-                "GET /moods" to """[{"mood":"calm"}]""",
-                "GET /journal" to "[]",
-                "GET /sleep" to "[]",
-                "GET /sleep/summary" to """{"avg_hours":7.5}""",
+                "GET engine:/v1/wellness/moods" to """[{"mood":"calm"}]""",
+                "GET engine:/v1/wellness/journal" to "[]",
+                "GET engine:/v1/wellness/sleep" to "[]",
+                "GET engine:/v1/wellness/sleep/summary" to """{"avg_duration_min":450}""",
                 "GET /chat" to "[]",
                 "GET /content?kind=meditation" to "[]",
-                "GET /insights/weekly" to """{"summary":"ok"}""",
+                "GET engine:/v1/wellness/insights/weekly" to """{"summary":"ok"}""",
                 "GET /insights/patterns" to """{"patterns":[]}""",
-                "GET /users/me/consent" to """{"share_data":false}""",
+                "GET /users/me/consent" to """{"journal_memory":false}""",
                 "GET /users/me/export" to """{"everything":true}""",
                 "GET /voice/status" to """{"stt":false,"tts":false}""",
             ),
@@ -194,12 +206,12 @@ class ApiEndpointsTest {
         assertEquals(1, Api.moods().length())
         assertEquals(0, Api.journal().length())
         assertEquals(0, Api.sleepLogs().length())
-        assertEquals(7.5, Api.sleepSummary().getDouble("avg_hours"), 0.0)
+        assertEquals(450, Api.sleepSummary().getInt("avg_duration_min"))
         assertEquals(0, Api.chat().length())
         assertEquals(0, Api.content("meditation").length())
         assertEquals("ok", Api.insightsWeekly().getString("summary"))
         assertEquals(0, Api.patterns().getJSONArray("patterns").length())
-        assertFalse(Api.consent().getBoolean("share_data"))
+        assertFalse(Api.consent().getBoolean("journal_memory"))
         assertTrue(Api.exportData().contains("everything"))
         assertFalse(Api.voiceStatus().getBoolean("stt"))
         assertTrue("every read used GET + a bearer token",
@@ -207,12 +219,40 @@ class ApiEndpointsTest {
     }
 
     @Test
+    fun the_persons_own_content_goes_to_the_engine_never_the_org_database() = runTest {
+        // The firewall, from the client's side. The platform is the service an HR admin's
+        // token reaches; a journal entry posted there would be a journal in the org
+        // database. If someone "simplifies" these helpers back onto the platform, this
+        // fails — which is the only way a rule like this survives contact with a hurry.
+        val log = script(
+            mapOf(
+                "GET engine:/v1/wellness/journal" to "[]",
+                "GET engine:/v1/wellness/sleep" to "[]",
+                "GET engine:/v1/wellness/moods" to "[]",
+                "GET engine:/v1/wellness/insights/weekly" to "{}",
+                "POST engine:/v1/wellness/journal" to """{"id":"j1"}""",
+                "POST engine:/v1/wellness/sleep" to """{"id":"s1"}""",
+                "POST engine:/v1/wellness/moods" to """{"id":"m1"}""",
+            ),
+        )
+        Api.journal(); Api.sleepLogs(); Api.moods(); Api.insightsWeekly()
+        Api.createJournal("t", "b")
+        Api.logSleep("2026-07-14", "23:00", "07:00", 4)
+        Api.checkIn("calm", "", "sun.max", 3)
+
+        val content = log.filter { it.path != "/auth/refresh" }
+        assertTrue("every wellness call must go to the ENGINE",
+            content.all { it.path.startsWith("engine:/v1/wellness/") })
+        assertTrue("the engine gets the same bearer token", content.all { it.auth == "a1" })
+    }
+
+    @Test
     fun write_helpers_post_the_documented_payloads() = runTest {
         val log = script(
             mapOf(
-                "POST /moods" to """{"id":"m1"}""",
-                "POST /journal" to """{"id":"j1"}""",
-                "POST /sleep" to """{"id":"s1"}""",
+                "POST engine:/v1/wellness/moods" to """{"id":"m1"}""",
+                "POST engine:/v1/wellness/journal" to """{"id":"j1"}""",
+                "POST engine:/v1/wellness/sleep" to """{"id":"s1"}""",
                 "POST /chat/messages" to """{"reply":"hi"}""",
                 "POST /assessment/topics" to """{"topics":[]}""",
                 "POST /users/me/attest" to """{"ok":true}""",
@@ -226,15 +266,15 @@ class ApiEndpointsTest {
         Api.attest()
 
         val byPath = log.filter { it.path != "/auth/refresh" }.associateBy { it.path }
-        JSONObject(byPath.getValue("/moods").body!!).let {
+        JSONObject(byPath.getValue("engine:/v1/wellness/moods").body!!).let {
             assertEquals("calm", it.getString("mood"))
             assertEquals(3, it.getInt("intensity"))
         }
-        JSONObject(byPath.getValue("/journal").body!!).let {
+        JSONObject(byPath.getValue("engine:/v1/wellness/journal").body!!).let {
             assertEquals("Title", it.getString("title"))
             assertEquals("book", it.getString("symbol"))
         }
-        JSONObject(byPath.getValue("/sleep").body!!).let {
+        JSONObject(byPath.getValue("engine:/v1/wellness/sleep").body!!).let {
             assertEquals("23:00", it.getString("bedtime"))
             assertEquals(0, it.getInt("awakenings"))
         }
@@ -253,19 +293,19 @@ class ApiEndpointsTest {
                 "POST /plans/generate" to """{"steps":[]}""",
                 "GET /plans/active" to """{"steps":[]}""",
                 "PATCH /users/me" to """{"name":"Pia"}""",
-                "PATCH /users/me/consent" to """{"share_data":true}""",
+                "PATCH /users/me/consent" to """{"journal_memory":true}""",
                 "DELETE /users/me/memory" to """{"cleared":true}""",
                 "DELETE /users/me" to "{}",
             ),
         )
         assertEquals(2, Api.activeProgram()!!.getInt("day"))
         Api.enrollProgram("c1")
-        Api.leaveProgram()
+        assertTrue(Api.leaveProgram().isSuccess)
         assertNotNull(Api.togglePlanStep("st1", true))
         Api.regeneratePlan()
         assertNotNull(Api.activePlan())
         assertEquals("Pia", Api.updateProfile(JSONObject().put("name", "Pia")).getString("name"))
-        assertTrue(Api.updateConsent(JSONObject().put("share_data", true)).getBoolean("share_data"))
+        assertTrue(Api.updateConsent(JSONObject().put("journal_memory", true)).getBoolean("journal_memory"))
         assertTrue(Api.deleteMemory().getBoolean("cleared"))
         Api.deleteAccount()
 
@@ -322,5 +362,81 @@ class ApiEndpointsTest {
             if (url.endsWith("/auth/refresh")) 200 to tokens else throw IOException("offline")
         }
         assertFalse("no network → Oracle treated as unavailable", Api.oracleAvailable())
+    }
+
+    // ── consent: the token must stop saying yes ──────────────────────────
+
+    @Test
+    fun changing_consent_adopts_the_rotated_token() = runTest {
+        // The engine enforces the six flags from the signed claim in our token. Keep the
+        // old one and the app goes on being ALLOWED to store what the person just
+        // switched off — for as long as it stays valid. The platform rotates the pair on
+        // every consent change; adopting it is what makes a withdrawal bite immediately.
+        val store = FakeStore("refresh_token" to "old-refresh")
+        val seen = mutableListOf<String?>()
+        Session.resetForTest(store) { url, _, _, _, auth ->
+            seen.add(auth)
+            if (url.endsWith("/auth/refresh")) return@resetForTest 200 to tokens
+            200 to """{"journal_memory":false,"access_token":"new-access","refresh_token":"new-refresh"}"""
+        }
+
+        Api.updateConsent(JSONObject().put("journal_memory", false))
+        Api.me()   // the very next request
+
+        assertEquals("the rotated refresh token was not persisted",
+            "new-refresh", store.getString("refresh_token"))
+        assertEquals("the next request still carried the old token",
+            "new-access", seen.last())
+    }
+
+    @Test
+    fun a_consent_the_server_never_heard_is_replayed_on_the_next_launch() = runTest {
+        // Onboarding captures six DPDP answers on a network being used for the first
+        // time. If that request fails the answers used to be gone, silently, with the app
+        // carrying on as though it had them. A failed write is now owed, and paid.
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens else throw IOException("offline")
+        }
+        val given = JSONObject().put("mood_history", true).put("journal_memory", false)
+
+        assertTrue(runCatching { Api.updateConsent(given) }.isFailure)
+        Session.queueConsent(given)
+        assertFalse("nothing was delivered, so nothing may be forgotten",
+            Session.flushPendingConsent())
+
+        val delivered = mutableListOf<String?>()
+        Session.resetForTest(store) { url, _, body, _, _ ->
+            if (url.endsWith("/auth/refresh")) return@resetForTest 200 to tokens
+            delivered.add(body)
+            200 to """{"mood_history":true,"journal_memory":false}"""
+        }
+        assertTrue("the queued consent was not replayed", Session.flushPendingConsent())
+        assertTrue(JSONObject(delivered.single()).getBoolean("mood_history"))
+        assertFalse("replaying twice would be a second, unasked-for write",
+            Session.flushPendingConsent())
+    }
+
+    @Test
+    fun a_consent_refusal_from_the_engine_is_not_retried_as_an_auth_failure() = runTest {
+        // The engine answers 403 when the person has not consented to keeping this. That
+        // is a real answer, not a stale token — refreshing would burn a round trip and
+        // change nothing, and the message belongs in front of the user.
+        var refreshes = 0
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) {
+                refreshes++
+                return@resetForTest 200 to tokens
+            }
+            403 to """{"detail":"You haven't consented to CereBroZen keeping this (journal memory)."}"""
+        }
+
+        val failure = runCatching { Api.createJournal("t", "b") }.exceptionOrNull()
+
+        assertTrue(failure is Session.ApiException)
+        assertEquals(403, (failure as Session.ApiException).code)
+        assertTrue("the refusal must reach the user, not a generic error",
+            failure.message!!.contains("consented"))
+        assertEquals("a consent refusal is not an auth problem", 1, refreshes)  // the launch refresh only
     }
 }

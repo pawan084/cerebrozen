@@ -64,11 +64,14 @@ services:
       PLATFORM_API_URL: http://platform:8100
 
   admin:
-    build: apps/admin
+    build:
+      context: apps/admin
+      args:
+        # Baked into the client bundle at build time (browser-side URL, so it
+        # must be reachable from the END USER's machine, not the container).
+        NEXT_PUBLIC_API_URL: http://localhost:8100
     ports:
       - "3001:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8100
 
 volumes:
   pg-data:

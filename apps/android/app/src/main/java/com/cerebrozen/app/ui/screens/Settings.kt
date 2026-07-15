@@ -145,24 +145,22 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     }
 }
 
-/** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
- * The choice persists as `theme_mode`; Sleep always keeps the night palette. */
+/** You → Appearance. CereBroZen is DARK-ONLY (owner decision 2026-07-15): one calm
+ * indigo theme on every screen, so nothing is half-light and half-dark. The Dawn/System
+ * palettes still exist in the theme layer (and their contrast is still tested), but they
+ * are no longer selectable — a light option can only reintroduce the very inconsistency
+ * we removed, because several premium/sleep surfaces paint a fixed night background. */
 @Composable
 fun AppearanceScreen(onBack: () -> Unit) {
-    val themeChoices = listOf(
-        Triple(ThemeMode.System, stringResource(R.string.theme_system_title), stringResource(R.string.theme_system_hint)),
-        Triple(ThemeMode.Night, stringResource(R.string.theme_night_title), stringResource(R.string.theme_night_hint)),
-        Triple(ThemeMode.Dawn, stringResource(R.string.theme_dawn_title), stringResource(R.string.theme_dawn_hint)),
-    )
     PremiumSubPage(stringResource(R.string.appearance_eyebrow), stringResource(R.string.appearance_title), onBack) {
         Text(stringResource(R.string.appearance_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        themeChoices.forEach { (mode, title, subtitle) ->
-            SelectableRow(title, subtitle, selected = AppTheme.mode == mode) {
-                AppTheme.mode = mode
-                Session.prefPut("theme_mode", mode.prefValue())
-            }
-        }
+        // The one theme, shown selected — informational, not a choice.
+        SelectableRow(
+            stringResource(R.string.theme_night_title),
+            stringResource(R.string.theme_night_hint),
+            selected = true,
+        ) { AppTheme.mode = ThemeMode.Night; Session.prefPut("theme_mode", ThemeMode.Night.prefValue()) }
     }
 }
 

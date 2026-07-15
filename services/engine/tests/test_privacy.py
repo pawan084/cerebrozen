@@ -230,7 +230,7 @@ def _db_attr(value: str) -> str:
 
 def _coll_attr(value: str) -> str:
     for attr in ("MONGO_AGENTIC_COLLECTION", "MONGO_DYNAMIC_VARS_COLLECTION",
-                 "MONGO_USER_CONVERSATIONS_COLLECTION"):
+                 "MONGO_USER_CONVERSATIONS_COLLECTION", "MONGO_WELLNESS_COLLECTION"):
         if getattr(config, attr, None) == value:
             return attr
     return value

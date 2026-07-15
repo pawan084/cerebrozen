@@ -6,6 +6,11 @@
 !.env.demo
 !.env.production.example
 
+# --- local dev databases: hold real walkthrough data, never committed ---
+services/**/*.db
+services/**/*.db-shm
+services/**/*.db-wal
+
 # --- reference material: local artifacts that must never enter history ---
 ref/**/.env*
 ref/**/*.db
@@ -30,6 +35,11 @@ __pycache__/
 .gradle/
 *.apk
 *.aab
+
+# --- service logs: may contain prompts, coaching content, PII — NEVER commit ---
+logs/
+*.log
+*.log.*
 
 # --- tooling & OS noise ---
 .DS_Store

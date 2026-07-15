@@ -44,6 +44,25 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _write_landed(result: Any) -> bool:
+    """Did an ``update_one(..., upsert=True)`` actually write anything?
+
+    Backend-agnostic: real pymongo reports an insert via ``upserted_id`` (with
+    both counts 0), while the pg shim reports it as ``modified_count=1``. A write
+    the store REFUSED reports zero on all three. Anything we cannot interrogate is
+    assumed to have landed — this guard exists to catch silent data loss, never to
+    invent it.
+    """
+    upserted = getattr(result, "upserted_id", None)
+    if upserted is not None:
+        return True
+    matched = getattr(result, "matched_count", None)
+    modified = getattr(result, "modified_count", None)
+    if matched is None and modified is None:
+        return True
+    return bool(matched) or bool(modified)
+
+
 def _collection():
     """Return the user_conversations collection, or None if Mongo is unavailable."""
     client = _mongo_seam.get_client()
@@ -275,7 +294,7 @@ def record_turn(
 
         # Upsert by the `session_id` field (NOT _id) so Mongo assigns an ObjectId
         # `_id`; `session_id` stays a normal, uniquely-indexed business key.
-        coll.update_one(
+        result = coll.update_one(
             scoped({"session_id": session_id}),
             {
                 "$set": set_fields,
@@ -284,6 +303,20 @@ def record_turn(
             },
             upsert=True,
         )
+        # An upsert that neither matched nor inserted means the write was DROPPED —
+        # the row exists under a key we resolved but does not satisfy the whole
+        # filter (a different org), so the store's cross-tenant guard refused it.
+        # Silence here is how a transcript goes unpersisted with no error anywhere:
+        # say so, loudly, rather than log "recorded" over a write that never landed.
+        if not _write_landed(result):
+            logger.error(
+                "conversation.record_dropped",
+                extra={"session_id": session_id, "user_id": user_id,
+                       "org_id": current_org(),
+                       "reason": "upsert matched no document and inserted none — "
+                                 "an existing row for this session belongs to another tenant"},
+            )
+            return
         logger.info(
             "conversation.recorded",
             extra={"session_id": session_id, "user_id": user_id,

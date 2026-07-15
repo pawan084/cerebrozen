@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -72,6 +73,7 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleSoft
@@ -163,7 +165,7 @@ internal fun spreadLabel(min: Int): String = if (min < 60) "${min}m" else minute
 /** Sleep: morning check-in + honest weekly summary + diary, with a CBT-I-informed
  * layer on top — the job is improving sleep night by night, not measuring it. */
 @Composable
-fun SleepScreen(onOpen: (String) -> Unit = {}) {
+fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: () -> Unit = {}) {
     var quality by remember { mutableIntStateOf(0) }
     var bed by remember { mutableIntStateOf(23 * 60) }
     var wake by remember { mutableIntStateOf(7 * 60) }
@@ -201,11 +203,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF0D1424), Color(0xFF172447), Color(0xFF241A4A)),
-                ),
-            ),
+            .background(Gradients.night),
     ) {
         SleepBackgroundGlow()
         Column(
@@ -215,7 +213,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-        SleepPremiumHeader()
+        SleepPremiumHeader(onBack)
         // The hero title doubles as the ambient bed's now-playing title, so both
         // read from the same resource and stay consistent.
         val calmerNight = stringResource(R.string.sleep_hero_title)
@@ -460,15 +458,26 @@ private fun SleepBackgroundGlow() {
 }
 
 @Composable
-private fun SleepPremiumHeader() {
+private fun SleepPremiumHeader(onBack: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
     val transition = rememberInfiniteTransition(label = "sleepMoon")
     val floatY by transition.animateFloat(-4f, 5f, infiniteRepeatable(tween(2600), RepeatMode.Reverse), label = "moonFloat")
+    val backLabel = stringResource(R.string.common_back)
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Sleep is a pushed screen with no tab bar — without this a user has no visible
+        // way back (system-gesture only), and it reads as a dead-end.
+        Box(
+            Modifier.size(40.dp).background(Color.White.copy(alpha = 0.07f), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.13f), CircleShape)
+                .clickable(onClickLabel = backLabel, onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = Color.White, modifier = Modifier.size(16.dp))
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.displayLarge, color = Color.White)
             Text(stringResource(R.string.sleep_premium_subtitle), style = MaterialTheme.typography.bodyMedium, color = Color(0xFFB7C2DC))

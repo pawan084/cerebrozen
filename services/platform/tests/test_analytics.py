@@ -32,6 +32,65 @@ async def _seed_events(org_id: str, people: int, kinds: dict[str, int]) -> None:
         await session.commit()
 
 
+async def test_funnel_events_need_no_token_and_store_allowlisted_names(client):
+    """The pre-auth funnel (the app's /events contract): anonymous by design —
+    a random install id, no auth header — and allowlisted names only, so the
+    table can never hold anything but counts."""
+    from sqlalchemy import select
+
+    from app.models import FunnelEvent
+
+    r = await client.post(
+        "/events",
+        json={
+            "anon_id": "install-abc",
+            "source": "android",
+            "events": [
+                {"name": "onboarding_step", "step": "welcome"},
+                {"name": "onboarding_done"},
+                {"name": "keystrokes_per_minute", "step": "nope"},
+            ],
+        },
+    )
+
+    assert r.status_code == 202
+    assert r.json() == {"accepted": 2}, "unknown names are dropped, not stored"
+    async with SessionLocal() as session:
+        rows = (await session.execute(select(FunnelEvent))).scalars().all()
+    assert sorted(row.name for row in rows) == ["onboarding_done", "onboarding_step"]
+    assert all(row.anon_id == "install-abc" for row in rows)
+
+
+async def test_a_funnel_batch_of_only_unknown_names_stores_nothing(client):
+    from sqlalchemy import select
+
+    from app.models import FunnelEvent
+
+    r = await client.post(
+        "/events",
+        json={"anon_id": "install-abc", "events": [{"name": "paywall_view"}]},
+    )
+
+    assert r.status_code == 202
+    assert r.json() == {"accepted": 0}
+    async with SessionLocal() as session:
+        rows = (await session.execute(select(FunnelEvent))).scalars().all()
+    assert rows == []
+
+
+async def test_funnel_field_caps_are_enforced_by_the_schema(client):
+    """Anonymous ingest is a spam surface: batch size and field lengths are
+    validation errors, not silently-truncated writes."""
+    too_many = [{"name": "onboarding_step"}] * 21
+    r = await client.post("/events", json={"anon_id": "a", "events": too_many})
+    assert r.status_code == 422
+
+    r = await client.post(
+        "/events", json={"anon_id": "x" * 65, "events": [{"name": "onboarding_done"}]}
+    )
+    assert r.status_code == 422
+
+
 async def test_members_report_their_own_beats(client, org_with_admin):
     r = await client.post(
         "/events/coaching",

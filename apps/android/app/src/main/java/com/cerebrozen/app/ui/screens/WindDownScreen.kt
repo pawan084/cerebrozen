@@ -66,7 +66,15 @@ private val STEPS = listOf(
 @Composable
 fun WindDownScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var step by remember { mutableIntStateOf(-1) }  // -1 = intro
-    Page(eyebrow = "Wind-down", title = if (step < 0) "Close the day gently" else STEPS[step].title) {
+    // SubPage (not Page): this is a pushed screen with no tab bar, so it needs a visible
+    // back button — otherwise a user mid-routine can only leave by finishing or by the
+    // system gesture, and it reads as a dead-end. Back leaves the routine, matching the
+    // system-back gesture and every other sub-screen.
+    SubPage(
+        eyebrow = "Wind-down",
+        title = if (step < 0) "Close the day gently" else STEPS[step].title,
+        onBack = onBack,
+    ) {
         if (step < 0) {
             SectionCard {
                 Text(

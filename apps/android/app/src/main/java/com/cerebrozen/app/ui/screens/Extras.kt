@@ -130,6 +130,7 @@ import com.cerebrozen.app.ui.theme.ArtScrim
 import com.cerebrozen.app.ui.theme.ArtTextSoft
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cream
+import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.TextBright
 import com.cerebrozen.app.ui.theme.VeilWell
@@ -708,7 +709,14 @@ fun ProgramsScreen(onBack: () -> Unit) {
                     }
                 }
                 TextButton(onClick = {
-                    scope.launch { runCatching { Api.leaveProgram() }; refresh() }
+                    // Report the failure. Swallowing it here read as success, because the
+                    // hero vanishes on refresh whether or not the server ever heard us —
+                    // the one shape of lie the UI can tell without saying a word.
+                    scope.launch {
+                        Api.leaveProgram()
+                            .onSuccess { refresh() }
+                            .onFailure { error = it.message }
+                    }
                 }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
                 }
@@ -1478,6 +1486,9 @@ private fun LegacyMixerSectionUnused() {
 private fun presetLabel(key: String): String = when (key) {
     "monsoon_night" -> stringResource(R.string.mixer_preset_monsoon)
     "shoreline" -> stringResource(R.string.mixer_preset_shoreline)
+    "rainforest" -> stringResource(R.string.mixer_preset_rainforest)
+    "deep_current" -> stringResource(R.string.mixer_preset_deep_current)
+    "thunderhead" -> stringResource(R.string.mixer_preset_thunderhead)
     else -> stringResource(R.string.mixer_preset_still_air)
 }
 
@@ -1789,9 +1800,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         label = "toolkitGlowY",
     )
     Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))),
-        ),
+        Modifier.fillMaxSize().background(Gradients.night),
     ) {
         ToolkitAmbientLayer(if (reduceMotion) 0f else glowY)
         Column(

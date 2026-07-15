@@ -170,11 +170,14 @@ contracts that must be changed in lockstep across surfaces
 
 | Contract | Owner | Consumers | Rule |
 |---|---|---|---|
-| JWT claims (`user_id`, `org_id`, `role`) | Platform | Engine, Android, admin | Additive changes only; engine validates same secret |
+| JWT claims (`sub`, `org_id`, `role`, `user.username`, `consent`) | Platform | Engine, Android, admin | Additive changes only; engine validates same secret. `consent` carries the six DPDP flags so the engine can enforce them without calling back — a consent change **rotates the token pair** (PATCH `/users/me/consent` returns a new pair; the app adopts it) so a withdrawal bites on the next request rather than at token expiry |
+| Wellness content lives in the **engine**, never the platform | Engine | Android | Journal / sleep / check-ins are content: they are served from `/v1/wellness/*` on the engine, because the platform is the database an HR admin's token reaches and it must hold nothing to read. Pinned by tests on both sides (`test_wellness.py`, `test_wellness_account.py`, `ApiEndpointsTest`) |
+| Rest-and-recovery catalog (`/content`, `/media/catalog`, `/programs/*`) | Platform (`app/catalog.py`) | Android | Static app configuration, NOT user content nor licensed media — a curated list of scene titles that play through the phone's own bundled beds / synth tones (`audio_url` blank → MediaUrls bundled fallback). Program enrolment is per-user preference (program id + start date; the day is DERIVED, never stored). When real narration is licensed, its URLs drop into the same entries |
+| Consent keys (`mood_history`, `ai_memory`, `journal_memory`, `sleep_history`, `voice_storage`, `model_training`) | Platform (`models.CONSENT_KEYS`) | Android `ConsentNotice`, engine `_CONSENT_FOR_KIND` | Append-only. Renaming one silently unticks a box somebody consented to |
 | SSE event vocabulary (`status`/`node`/`token`/`done`) | Engine | Android, web app | Renames require simultaneous client release |
 | Action status lifecycle (`active/saved/skipped/deleted/completed`) | Engine | Platform mirror, Android, HR analytics | Enum is append-only |
 | Design tokens | `design/tokens.css` | web, admin, Android `Color.kt` | `sync-tokens` script + CI drift check |
-| Analytics event vocabulary | Platform | Android, admin dashboards | Documented enum, no free-text event names |
+| Analytics event vocabulary | Platform | Android, admin dashboards | Documented enums (`EVENT_KINDS` authed coaching beats via `/events/coaching`; `FUNNEL_EVENTS` anonymous pre-auth beats via `/events`), no free-text event names |
 | Crisis regions/helplines config | Engine | Android crisis screen, ops admin | Config file, never hardcoded in clients |
 
 ## Repo layout (target)

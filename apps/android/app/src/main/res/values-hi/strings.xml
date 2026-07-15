@@ -245,10 +245,6 @@
     <string name="you_insights_subtitle">आपकी प्रगति और पैटर्न</string>
     <string name="you_privacy_title">निजता और मेमोरी</string>
     <string name="privacy_control_line">तय करें कि CereBro क्या याद रखे</string>
-    <string name="you_patterns_title">पैटर्न डैशबोर्ड</string>
-    <string name="you_patterns_subtitle">AI ने जो सीखा · कभी भी मिटाएँ</string>
-    <string name="you_premium_title">प्रीमियम प्लान</string>
-    <string name="you_premium_subtitle">पूरी लाइब्रेरी खोलें</string>
     <string name="you_legal_header">कानूनी और खाता</string>
     <string name="you_export_subtitle">पूरी कॉपी डाउनलोड करें</string>
     <string name="you_delete_subtitle">सब कुछ स्थायी रूप से मिटाएँ</string>
@@ -382,6 +378,9 @@
     <string name="mixer_preset_monsoon">मानसून की रात</string>
     <string name="mixer_preset_shoreline">समुद्र किनारा</string>
     <string name="mixer_preset_still_air">ठहरी हवा</string>
+    <string name="mixer_preset_rainforest">वर्षावन</string>
+    <string name="mixer_preset_deep_current">गहरी धारा</string>
+    <string name="mixer_preset_thunderhead">घनगर्जन</string>
     <string name="sounds_timer_bell">अंत में एक हल्की घंटी</string>
     <string name="sounds_activity">गतिविधि की ध्वनियाँ</string>
     <string name="mixer_activity_description">शांत करने वाली गतिविधियों में हल्की ध्वनियाँ।</string>

@@ -368,7 +368,16 @@ fun Onboarding() {
             onAccountCreated = {
                 Analytics.track("onboarding_done")
                 runCatching { Api.attest() }
-                runCatching { Api.updateConsent(JSONObject().apply { consent.forEach { (k, v) -> put(k, v) } }) }
+
+                // The consent the person just gave is the one thing here we must not lose.
+                // It used to be a bare runCatching: a flaky first request and their six
+                // answers were gone, with the app cheerfully carrying on as though it had
+                // them. Now a failure is QUEUED and replayed on the next launch — the
+                // record of a consent survives a dropped packet.
+                val given = JSONObject().apply { consent.forEach { (k, v) -> put(k, v) } }
+                val stored = runCatching { Api.updateConsent(given) }.isSuccess
+                if (!stored) Session.queueConsent(given)
+
                 val selectedState = state
                 if (selectedState != null) {
                     runCatching {
@@ -378,7 +387,12 @@ fun Onboarding() {
                                 .put("motivations", org.json.JSONArray().put(selectedState.motivation)),
                         )
                     }
-                    runCatching { Api.checkIn(selectedState.mood, "From onboarding", "sparkles", 3) }
+                    // Only if they said we could keep it. The engine would refuse the
+                    // write anyway (it enforces the same flag from the signed token) —
+                    // asking at all when the answer was no is the app not listening.
+                    if (stored && consent["mood_history"] == true) {
+                        runCatching { Api.checkIn(selectedState.mood, "From onboarding", "sparkles", 3) }
+                    }
                 }
             },
         )

@@ -27,6 +27,12 @@ os.environ["CEREBROZEN_REGULATED_WORKPLACE"] = "false"
 # guarantee built on "we removed the credential" fails the moment anything puts the
 # credential back. Build it on "the network client is not the one we use."
 os.environ["CEREBROZEN_LLM_PROVIDER"] = "mock"
+# ...and the same lesson, generalised: the loader treats an EMPTY var as unset and
+# overridable, so every `os.environ[X] = ""` below is only as good as the repo's
+# .env not mentioning X. It did mention POSTGRES_URL the day the engine was pointed
+# at Postgres, and 38 store tests silently swung onto the developer's live database.
+# Don't read the .env at all. Offline is a property of the suite, not of the file.
+os.environ["CEREBROZEN_SKIP_DOTENV"] = "1"
 os.environ["MONGO_DB_URL"] = ""
 os.environ["REDIS_URL"] = ""
 # POSTGRES_URL is the SEAM that switches the whole app from Mongo to the Postgres shim

@@ -305,17 +305,13 @@
     <string name="you_companion_title">Companion style</string>
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
     <string name="you_appearance_title">Appearance</string>
-    <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
+    <string name="you_appearance_subtitle">One calm dark theme, everywhere</string>
     <string name="you_reminder_title">Daily reminder</string>
     <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>
     <string name="you_insights_subtitle">Your progress and patterns</string>
     <string name="you_privacy_title">Privacy &amp; memory</string>
     <string name="privacy_control_line">Control what CereBro remembers</string>
-    <string name="you_patterns_title">Pattern dashboard</string>
-    <string name="you_patterns_subtitle">What the AI has learned · delete anytime</string>
-    <string name="you_premium_title">Premium plan</string>
-    <string name="you_premium_subtitle">Unlock the full library</string>
     <string name="you_crisisregion_title">Crisis region</string>
     <string name="you_crisisregion_subtitle">Which helplines to show</string>
     <string name="you_humansupport_subtitle">Coach or therapist handoff</string>
@@ -508,6 +504,9 @@
     <string name="mixer_preset_monsoon">Monsoon night</string>
     <string name="mixer_preset_shoreline">Shoreline</string>
     <string name="mixer_preset_still_air">Still air</string>
+    <string name="mixer_preset_rainforest">Rainforest</string>
+    <string name="mixer_preset_deep_current">Deep current</string>
+    <string name="mixer_preset_thunderhead">Thunderhead</string>
     <!-- W27 §5: session-end bell when a sleep timer completes (default on). -->
     <string name="sounds_timer_bell">End with a soft bell</string>
     <!-- Toolkit activity sounds (pattern pads, ripples, gratitude bloom); default on. -->
@@ -567,9 +566,9 @@
     <string name="companion_eyebrow">How CereBro talks with you</string>
     <string name="companion_title">Companion style</string>
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
-    <string name="appearance_eyebrow">Night or dawn</string>
+    <string name="appearance_eyebrow">Dark theme</string>
     <string name="appearance_title">Appearance</string>
-    <string name="appearance_intro">Dawn is a light, warm look that\'s easier to read in daylight. Sleep always stays night — it\'s a wind-down space.</string>
+    <string name="appearance_intro">CereBroZen uses one calm, dark theme on every screen — easier on the eyes, and the same wherever you are in the app.</string>
     <string name="theme_system_title">System default</string>
     <string name="theme_system_hint">Follows your phone\'s light/dark setting</string>
     <string name="theme_night_title">Always night</string>

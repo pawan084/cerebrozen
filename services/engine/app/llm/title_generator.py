@@ -21,18 +21,19 @@ Excel workbook. A chat title is a small, code-owned utility prompt — edit the
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 from app import config
 from app.graph.runtime import get_client
 from app.llm.responses_client import reasoning_effort_for
+from app.request_context import ContextThreadPoolExecutor
 from app.stores import conversation
 
 logger = logging.getLogger("cerebrozen.title_generator")
 
 # Small daemon pool, mirroring app/graph/builders.py's _EXECUTOR: title generation
-# is LLM-bound and must never sit on the request path.
-_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="title")
+# is LLM-bound and must never sit on the request path. Context-propagating, because
+# this worker WRITES the session doc — see ContextThreadPoolExecutor.
+_EXECUTOR = ContextThreadPoolExecutor(max_workers=2, thread_name_prefix="title")
 
 STAGE_NAME = "chat_title_agent"
 

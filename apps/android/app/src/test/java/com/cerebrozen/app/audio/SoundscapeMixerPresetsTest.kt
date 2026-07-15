@@ -43,17 +43,53 @@ class SoundscapeMixerPresetsTest {
     }
 
     @Test
-    fun three_presets_carry_the_approved_blends_over_the_four_layers() {
-        assertEquals(listOf("monsoon_night", "shoreline", "still_air"), SoundscapeMixer.presets.map { it.key })
-        SoundscapeMixer.presets.forEach { assertEquals(SoundscapeMixer.layers.size, it.volumes.size) }
+    fun presets_carry_the_approved_blends_over_the_four_layers() {
+        assertEquals(
+            listOf("monsoon_night", "shoreline", "still_air", "rainforest", "deep_current", "thunderhead"),
+            SoundscapeMixer.presets.map { it.key },
+        )
+        // Every preset is a vector over EXACTLY the four layers, in [0,1] — a preset that
+        // named a fifth source or ran hot would blow past the sliders it drives.
+        SoundscapeMixer.presets.forEach { preset ->
+            assertEquals(SoundscapeMixer.layers.size, preset.volumes.size)
+            preset.volumes.forEach { assertTrue("$preset out of range", it in 0f..1f) }
+        }
         assertEquals(listOf(0.8f, 0f, 0.35f, 0.2f), SoundscapeMixer.presets[0].volumes)
         assertEquals(listOf(0f, 0.8f, 0.3f, 0f), SoundscapeMixer.presets[1].volumes)
         assertEquals(listOf(0f, 0f, 0.25f, 0.5f), SoundscapeMixer.presets[2].volumes)
+        assertEquals(listOf(0.65f, 0.15f, 0.4f, 0f), SoundscapeMixer.presets[3].volumes)
+        assertEquals(listOf(0f, 0.6f, 0f, 0.5f), SoundscapeMixer.presets[4].volumes)
+        assertEquals(listOf(0.85f, 0f, 0.55f, 0.35f), SoundscapeMixer.presets[5].volumes)
+        // Every preset must be a DISTINCT blend — a duplicate vector is a dead chip.
+        assertEquals(
+            "presets must be distinct blends",
+            SoundscapeMixer.presets.size,
+            SoundscapeMixer.presets.map { it.volumes }.toSet().size,
+        )
         // Value semantics (the UI compares/copies presets as plain data).
         val copy = SoundscapeMixer.presets[0].copy()
         assertEquals(SoundscapeMixer.presets[0], copy)
         assertEquals(SoundscapeMixer.presets[0].hashCode(), copy.hashCode())
         assertTrue(copy.toString().contains("monsoon_night"))
+    }
+
+    @Test
+    fun every_preset_key_resolves_to_a_distinct_label() {
+        // presetLabel maps each stable key to a string; a new preset with no `when` arm
+        // would silently fall through to the "still air" else and mislabel the chip.
+        val labels = SoundscapeMixer.presets.map { preset ->
+            when (preset.key) {
+                "monsoon_night" -> "Monsoon night"
+                "shoreline" -> "Shoreline"
+                "still_air" -> "Still air"
+                "rainforest" -> "Rainforest"
+                "deep_current" -> "Deep current"
+                "thunderhead" -> "Thunderhead"
+                else -> "UNMAPPED:${preset.key}"
+            }
+        }
+        assertTrue("a preset key has no label arm: $labels", labels.none { it.startsWith("UNMAPPED") })
+        assertEquals("labels must be distinct", labels.size, labels.toSet().size)
     }
 
     @Test

@@ -211,3 +211,90 @@ def test_org_enforcement_can_be_consciously_disabled(org_auth_app, monkeypatch):
     monkeypatch.setattr(config, "REQUIRE_ORG_CLAIM", False)
     response = client.get("/v1/sessions?user_id=u1", headers=token_for("u1", None))
     assert response.status_code == 200
+
+
+# ── background writes must stay in the caller's tenant ───────────────────────
+#
+# The class of bug these cover was found in live testing, not by the suite: the
+# background pools (title generator, context/pattern builders) are plain
+# ThreadPoolExecutors, and a bare pool does NOT copy ContextVars — so a worker
+# ran with no org and wrote to the DEFAULT tenant. The store's own cross-tenant
+# guard then refused the foreground transcript write to that same session,
+# silently, and the coaching messages were never persisted at all. Auth being off
+# in dev (org == default everywhere) is what hid it.
+
+
+def test_a_background_worker_inherits_the_callers_org(as_org):
+    """The executor itself: a task submitted from tenant acme must SEE acme."""
+    from app.request_context import ContextThreadPoolExecutor
+
+    as_org("acme")
+    with ContextThreadPoolExecutor(max_workers=1) as pool:
+        seen = pool.submit(current_org).result()
+
+    assert seen == "acme", "a background write would have landed in the wrong tenant"
+
+
+def test_a_background_title_write_does_not_orphan_the_transcript(mongo, as_org):
+    """End-to-end shape of the live failure: the title is written from the
+    background pool and the turn is recorded on the request path. Both must land
+    on ONE document, in the caller's org — and the transcript must be readable."""
+    from app.llm import title_generator
+
+    as_org("acme")
+    # The real dispatch path, minus the LLM call (the title text is not the point).
+    title_generator._EXECUTOR.submit(
+        conversation.set_session_title, "s-bg", "u1", "Running better standups"
+    ).result()
+    _seed_turn("s-bg", "u1", "I want to get better at running standups")
+
+    doc = conversation.get_session("s-bg")
+    assert doc is not None, "the transcript was written to another tenant and is unreadable"
+    assert doc["org_id"] == "acme"
+    assert doc["title"] == "Running better standups"
+    assert [m["text"] for m in doc["messages"] if m["role"] == "user"] == [
+        "I want to get better at running standups"
+    ], "the turn was silently dropped — the classic symptom of the org mismatch"
+
+
+def test_a_refused_write_is_never_logged_as_recorded(mongo, as_org, caplog, monkeypatch):
+    """Defence in depth: if the store ever REFUSES a write, it must be loud.
+
+    The original bug survived precisely because a dropped write still logged
+    `conversation.recorded`. The refusal itself is the pg shim's cross-tenant
+    guard (it resolves a row by key, then rejects it for not matching the whole
+    filter, returning zeros), so we drive record_turn with exactly that result.
+    """
+    import logging
+
+    class _RefusedResult:
+        matched_count = 0
+        modified_count = 0
+        upserted_id = None
+
+    coll = conversation._collection()
+    monkeypatch.setattr(coll, "update_one", lambda *a, **k: _RefusedResult())
+
+    as_org("acme")
+    with caplog.at_level(logging.INFO, logger="cerebrozen.conversation"):
+        _seed_turn("s-refused", "u1", "this write will be refused")
+
+    events = [r.msg for r in caplog.records]
+    assert "conversation.record_dropped" in events, "silent data loss: nothing was logged"
+    assert "conversation.recorded" not in events, "a refused write was reported as recorded"
+
+
+def test_a_landed_write_is_recognised_on_either_backend():
+    """`_write_landed` reads results from BOTH backends: real pymongo signals an
+    insert with `upserted_id` (both counts 0), while the pg shim signals it with
+    `modified_count`. Only an all-zero result means the write was refused."""
+
+    class _R:
+        def __init__(self, matched=0, modified=0, upserted=None):
+            self.matched_count, self.modified_count, self.upserted_id = matched, modified, upserted
+
+    assert conversation._write_landed(_R(upserted="abc")), "pymongo insert"
+    assert conversation._write_landed(_R(modified=1)), "pg-shim insert"
+    assert conversation._write_landed(_R(matched=1, modified=1)), "update"
+    assert not conversation._write_landed(_R()), "refused write"
+    assert conversation._write_landed(object()), "an uninterrogable result is assumed fine"

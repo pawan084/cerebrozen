@@ -48,6 +48,10 @@ def reload_config():
 
     def _reload(**env):
         env.setdefault("CEREBROZEN_STRICT_TENANT", None)
+        # Same reason as STRICT_TENANT: an unrelated reload under a deployed ENV must not
+        # trip the wildcard-CORS boot guard. Tests that exercise the guard pass their own
+        # CEREBROZEN_CORS_ORIGINS, which setdefault leaves untouched.
+        env.setdefault("CEREBROZEN_CORS_ORIGINS", "https://app.example.com")
         for key, value in env.items():
             if value is None:
                 os.environ.pop(key, None)
@@ -1288,6 +1292,33 @@ def test_an_explicit_payload_user_id_wins_over_the_token(reload_config):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# CORS — production must never run with a wildcard origin
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+def test_wildcard_cors_refuses_to_boot_in_production(reload_config):
+    """"*" lets any origin call the coaching API from a browser with a token. In a
+    dev-class env that is a convenience; in production it is a hole, so a forgotten
+    CEREBROZEN_CORS_ORIGINS must fail loudly at boot rather than run wide open."""
+    with pytest.raises(RuntimeError, match="CORS"):
+        reload_config(ENV="production", CEREBROZEN_CORS_ORIGINS="*")
+
+
+@pytest.mark.parametrize("env", ["local", "dev", "development", "test", "ci"])
+def test_wildcard_cors_is_allowed_in_dev_environments(reload_config, env):
+    cfg = reload_config(ENV=env, CEREBROZEN_CORS_ORIGINS="*")
+    assert cfg.CORS_ALLOW_ORIGINS == ["*"]
+
+
+def test_production_boots_with_an_explicit_cors_allowlist(reload_config):
+    cfg = reload_config(
+        ENV="production",
+        CEREBROZEN_CORS_ORIGINS="https://app.cerebrozen.in,https://admin.cerebrozen.in",
+    )
+    assert cfg.CORS_ALLOW_ORIGINS == ["https://app.cerebrozen.in", "https://admin.cerebrozen.in"]
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # app/env_loader.py — a local file must never outrank the deployed environment
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -1336,6 +1367,36 @@ def test_a_local_env_file_never_overrides_a_var_the_environment_already_set(tmp_
         os.environ.update(saved)
 
 
+def test_the_suite_can_refuse_the_dotenv_outright(tmp_path, caplog, monkeypatch):
+    """`CEREBROZEN_SKIP_DOTENV` — the guarantee the offline suite actually rests on.
+
+    Blanking a var is not enough: `load_dotenv_file` treats an empty var as
+    overridable (see the test above — deliberately, so uvicorn's inherited blanks
+    don't mask real values). So the moment the repo's own .env named POSTGRES_URL,
+    every "offline" store test swung onto a live database, and 38 of them failed
+    for reasons that had nothing to do with the code. Offline has to mean the file
+    is not read at all. conftest sets this; without it the suite is hostage to
+    whatever a developer put in .env.
+    """
+    import logging
+
+    from app import env_loader
+
+    monkeypatch.setenv("CEREBROZEN_SKIP_DOTENV", "1")
+    monkeypatch.delenv("CEREBROZEN_FROM_DOTENV", raising=False)
+    monkeypatch.setattr(env_loader, "load_dotenv_file", lambda *_a, **_k: pytest.fail(
+        "the .env was read despite CEREBROZEN_SKIP_DOTENV"
+    ))
+    monkeypatch.setattr(env_loader, "load_env_file", lambda *_a, **_k: pytest.fail(
+        "env-dev.ps1 was read despite CEREBROZEN_SKIP_DOTENV"
+    ))
+
+    with caplog.at_level(logging.INFO, logger="cerebrozen.env"):
+        env_loader.load_local_env()
+
+    assert any(r.msg == "env.skipped" for r in caplog.records)
+
+
 def test_load_local_env_reports_what_it_loaded_and_what_it_skipped(caplog):
     """The log line is the only way to answer "why does this box have a different
     OPENAI_API_KEY than I set?". `env.loaded` naming the file it came from, or
@@ -1356,6 +1417,10 @@ def test_load_local_env_reports_what_it_loaded_and_what_it_skipped(caplog):
     saved = dict(os.environ)
     created_ps1 = False
     try:
+        # conftest turns the loader OFF for the whole suite (CEREBROZEN_SKIP_DOTENV).
+        # This test is the one place that exercises the loading path itself, so it
+        # opts back in — and restores the flag with the rest of the env below.
+        os.environ.pop("CEREBROZEN_SKIP_DOTENV", None)
         # ── nothing to load: every name in the real .env is already in the environment,
         #    and there is no env-dev.ps1 → the module must say so, not stay silent.
         if dotenv.exists():

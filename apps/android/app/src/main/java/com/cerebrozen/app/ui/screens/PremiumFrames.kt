@@ -51,8 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
-
-private val PremiumBackground = listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))
+import com.cerebrozen.app.ui.theme.Gradients
 
 /** Opt-in frame for non-protected pushed screens. It owns only presentation:
  * navigation callbacks and screen content stay with the caller. */
@@ -194,7 +193,7 @@ private fun PremiumFrame(
         animationSpec = infiniteRepeatable(tween(7_500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "premiumFrameDrift",
     )
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(PremiumBackground))) {
+    Box(Modifier.fillMaxSize().background(Gradients.night)) {
         PremiumFrameAmbience(if (reduceMotion) 0f else drift)
         Column(
             Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 840.dp)

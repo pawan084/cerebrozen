@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 const stats = [
-  { n: "1,416", l: "Tests. Offline, deterministic — run them yourself.", bad: false },
-  { n: "99.2%", l: "Branch coverage. Both sides of every decision.", bad: false },
+  { n: "1,468", l: "Tests. Offline, deterministic — run them yourself.", bad: false },
+  { n: "98.7%", l: "Branch coverage. Both sides of every decision.", bad: false },
   { n: "0", l: "Cloud dependencies required. It runs air-gapped.", bad: false },
   { n: "~5¢", l: "Model cost per full coaching session.", bad: false },
   { n: "15", l: "Agents in one governed arc.", bad: false },

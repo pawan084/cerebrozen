@@ -8,20 +8,57 @@ contributed — enforced HERE, so no UI can render a small-cohort number."""
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.db import get_session
 from app.deps import current_user, require_org_admin
-from app.models import EVENT_KINDS, ActivityEvent, Org, User
+from app.models import EVENT_KINDS, FUNNEL_EVENTS, ActivityEvent, FunnelEvent, Org, User
 
 router = APIRouter(tags=["analytics"])
 
 
 class EventIn(BaseModel):
     kind: str
+
+
+class FunnelEventIn(BaseModel):
+    name: str = Field(max_length=32)
+    step: str | None = Field(default=None, max_length=64)
+
+
+class FunnelBatchIn(BaseModel):
+    anon_id: str = Field(min_length=1, max_length=64)
+    source: str = Field(default="", max_length=16)
+    events: list[FunnelEventIn] = Field(max_length=20)
+
+
+@router.post("/events", status_code=202)
+async def report_funnel(
+    body: FunnelBatchIn,
+    session: AsyncSession = Depends(get_session),
+):
+    """Anonymous pre-auth funnel ingest (the app's /events contract).
+
+    Deliberately unauthenticated: the client sends a random install id and no
+    token, so funnel rows can never join accounts. Allowlisted names only —
+    anything else is dropped, not stored. Fire-and-forget on the client, so
+    the response body is never read; 202 either way."""
+    kept = [e for e in body.events if e.name in FUNNEL_EVENTS]
+    for event in kept:
+        session.add(
+            FunnelEvent(
+                anon_id=body.anon_id,
+                source=body.source,
+                name=event.name,
+                step=event.step or "",
+            )
+        )
+    if kept:
+        await session.commit()
+    return {"accepted": len(kept)}
 
 
 @router.post("/events/coaching", status_code=202)

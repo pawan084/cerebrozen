@@ -50,6 +50,14 @@ def issue_access_token(user: User) -> str:
         "org_id": user.org_id or "internal",
         "role": user.role,
         "user": {"username": user.id},  # the engine's user identity claim
+        # Consent travels IN THE SIGNED TOKEN. The engine holds the content and must
+        # enforce the person's choices, but it cannot read this database — and a
+        # per-request call back to us would put an outage between someone and their own
+        # journal. A signed claim is enforceable offline, and it cannot be forged by the
+        # client. The trade is staleness: a revoked consent takes effect when the access
+        # token next rotates (ACCESS_TTL_MIN, 15 minutes) rather than instantly, which is
+        # why the PLATFORM stops serving the data immediately too.
+        "consent": user.consents(),
         "iat": now,
         "exp": now + timedelta(minutes=config.ACCESS_TTL_MIN),
     }

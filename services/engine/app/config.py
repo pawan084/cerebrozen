@@ -213,6 +213,12 @@ MONGO_AGENTIC_COLLECTION = os.environ.get(
     "MONGO_AGENTIC_COLLECTION", "users_agentic_conversation_context"
 ).strip()
 MONGO_USERS_COLLECTION = os.environ.get("MONGO_DB_USERS_COLLECTION", "users").strip()
+# Self-reported wellness content (journal entries, sleep logs, mood check-ins). It lives
+# in the ENGINE, not the platform, because the platform's schema is the "counts, never
+# content" firewall — a journal in the org database is a journal an HR query can reach.
+MONGO_WELLNESS_COLLECTION = os.environ.get(
+    "MONGO_WELLNESS_COLLECTION", "users_wellness"
+).strip()
 # Whole Brain (NBI) thinking-preference report + DISC behavioral scores. Both live
 # in the backend (cerebrozen) db, keyed by `userId` (the user_id string), and feed
 # the userThinkingPreference / userBehavioralPreference placeholders in profile_read.
@@ -430,6 +436,18 @@ CORS_ALLOW_ORIGINS = [
 # services, so tokens validate across services). Enforced whenever a secret is
 # configured; running local (ENV=local) with no secret skips auth for dev.
 ENV = os.environ.get("ENV", "local").strip().lower()
+
+# Production must never run with wildcard CORS. In a dev-class env "*" is a convenience;
+# anywhere else it lets ANY origin call the coaching API from a browser with a token, so a
+# forgotten CEREBROZEN_CORS_ORIGINS becomes a silent hole. Refuse to boot instead — the
+# failure mode of the mistake is "won't start", not "wide open" (same posture as the
+# platform's guard_production and the AUTH_DEV_BYPASS refusal in auth/dependencies.py).
+_CORS_DEV_ENVS = {"local", "dev", "development", "test", "ci"}
+if ENV not in _CORS_DEV_ENVS and CORS_ALLOW_ORIGINS == ["*"]:
+    raise RuntimeError(
+        f"CEREBROZEN_CORS_ORIGINS is '*' (any origin) but ENV={ENV!r} is not a dev "
+        "environment. Set an explicit comma-separated allowlist of origins for production."
+    )
 
 # The tenant-defaults guard lives at the BOTTOM of this module — it has to inspect values
 # (RAG_S3_BUCKET) that are not defined until much further down. See "TENANT-SPECIFIC
@@ -814,6 +832,29 @@ def _feature_on(name: str) -> bool:
 
 EMOTION_CAPTURE_ENABLED = _feature_on("CEREBROZEN_EMOTION_CAPTURE")
 PERSON_SCORING_ENABLED = _feature_on("CEREBROZEN_PERSON_SCORING")
+
+# ── SELF-REPORT IS NOT INFERENCE ─────────────────────────────────────────────
+#
+# The two flags above govern what the SYSTEM does TO a person: it reads their emotions
+# from what they wrote, and it scores them. That is the prohibited/high-risk direction,
+# and regulated mode turns it off.
+#
+# A journal entry, a sleep log, a mood slider the person moved themselves is the opposite
+# direction: the person's own record, written by them, for them. Nobody inferred anything
+# and nobody is scored. Storing a diary for its author is not emotion recognition, and a
+# regulated tenant does not lose their diary — so this does NOT hang off _REGULATED.
+#
+# It is still a separate switch, because a tenant whose counsel wants NO affect-adjacent
+# data on the vendor's disks at all must be able to say so in one line, and have a test
+# prove it. Default ON: the feature exists, and the person owns what it holds.
+#
+# The invariant that makes this safe is not this flag, it is the storage location: wellness
+# content lives in the ENGINE, and no HR/admin surface in the platform can reach it. See
+# tests/test_wellness.py — "counts, never content" (docs/SECURITY.md).
+SELF_REPORT_WELLNESS_ENABLED = (
+    os.environ.get("CEREBROZEN_SELF_REPORT_WELLNESS", "").strip().lower()
+    not in ("0", "false", "no")
+)
 
 if not (EMOTION_CAPTURE_ENABLED and PERSON_SCORING_ENABLED):
     import logging as _reg_log

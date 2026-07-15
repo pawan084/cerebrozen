@@ -15,8 +15,12 @@ enum class ThemeMode { System, Night, Dawn }
  * recomposes automatically when the theme flips.
  */
 object AppTheme {
-    /** User preference; initialised from `Session.prefGet("theme_mode")` in CereBroApp. */
-    var mode by mutableStateOf(ThemeMode.System)
+    /** User preference. **Dark is the product default** (owner decision 2026-07-15:
+     * one theme, and it's Night) — a fresh install with no saved `theme_mode` is Night,
+     * not "whatever the phone is set to". CereBroApp only overrides this from an
+     * EXPLICIT saved choice, so System/Dawn remain available in You → Appearance for
+     * anyone who deliberately picks them. */
+    var mode by mutableStateOf(ThemeMode.Night)
 
     /** Fed by `isSystemInDarkTheme()` at the top of CereBroApp. */
     var systemDark by mutableStateOf(true)

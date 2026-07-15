@@ -178,7 +178,10 @@ private fun DrawScope.drawContentArt(title: String, kind: String, motifScale: Fl
     )
     val seed = artSeed(title)
     when (kind) {
-        "sleep" -> drawMoonMotif(seed, motifScale, phase)
+        "sleep" -> {
+            drawMoonMotif(seed, motifScale, phase)
+            drawSceneOverlay(title, seed)   // content-aware character on the night base
+        }
         "soundscape" -> drawWaveMotif(seed, motifScale, phase)
         "meditation", "wind_down" -> drawRingsMotif(seed, motifScale, phase)
         "program" -> drawDayDotsMotif(seed, motifScale, phase)
@@ -321,4 +324,91 @@ private fun DrawScope.drawOrbMotif(seed: Float, m: Float, phase: Float? = null) 
         Color.White.copy(alpha = 0.18f), radius = size.minDimension * 0.30f * m * 0.62f, center = c,
         style = Stroke(width = (size.minDimension * 0.012f * m).coerceAtLeast(1f)),
     )
+}
+
+// ── Scene overlays: content-aware character on top of the night/moon base, keyed
+// off the scene's OWN words, so "Gentle Rain" reads as rain and "Snowfall" as snow
+// instead of every sleep tile being an identical moon. Same house style: soft,
+// translucent white, abstract — never clip-art. Deterministic (seed-placed), static.
+
+private enum class Scene { RAIN, SNOW, STORM, FOREST, NONE }
+
+private fun sceneOf(title: String): Scene {
+    val t = title.lowercase()
+    return when {
+        "snow" in t -> Scene.SNOW
+        "thunder" in t || "storm" in t -> Scene.STORM
+        "rain" in t || "cabin" in t -> Scene.RAIN
+        "forest" in t || "meadow" in t -> Scene.FOREST
+        else -> Scene.NONE
+    }
+}
+
+/** Deterministic 0..1 stream from a seed + index — abstract particle placement. */
+private fun jitter(seed: Float, i: Int, salt: Float): Float =
+    ((seed * salt + i * 0.61803398f) % 1f).let { if (it < 0f) it + 1f else it }
+
+private fun DrawScope.drawSceneOverlay(title: String, seed: Float) {
+    when (sceneOf(title)) {
+        Scene.RAIN -> drawRain(seed, 0.16f)
+        Scene.STORM -> { drawCloud(seed); drawRain(seed, 0.13f) }
+        Scene.SNOW -> drawSnow(seed)
+        Scene.FOREST -> drawForest(seed)
+        Scene.NONE -> Unit
+    }
+}
+
+/** Thin slanted streaks scattered across the tile. */
+private fun DrawScope.drawRain(seed: Float, alpha: Float) {
+    val len = size.height * 0.11f
+    val slant = size.width * 0.045f
+    val w = (size.minDimension * 0.006f).coerceAtLeast(1f)
+    for (i in 0 until 24) {
+        val x = size.width * jitter(seed, i, 37f)
+        val y = size.height * jitter(seed, i, 53f) * 0.9f
+        drawLine(Color.White.copy(alpha = alpha), Offset(x, y), Offset(x - slant, y + len), strokeWidth = w)
+    }
+}
+
+/** Soft scattered flakes of a couple of sizes. */
+private fun DrawScope.drawSnow(seed: Float) {
+    for (i in 0 until 28) {
+        val r = size.minDimension * (0.006f + 0.008f * (i % 5) / 4f)
+        drawCircle(
+            Color.White.copy(alpha = 0.18f + 0.16f * (i % 4) / 3f),
+            radius = r,
+            center = Offset(size.width * jitter(seed, i, 41f), size.height * jitter(seed, i, 59f)),
+        )
+    }
+}
+
+/** A low row of soft triangle firs along the foot of the tile. */
+private fun DrawScope.drawForest(seed: Float) {
+    val n = 6
+    val baseY = size.height * 0.94f
+    val halfW = size.width * 0.06f
+    for (i in 0 until n) {
+        val cx = size.width * ((i + 0.5f) / n) + size.width * 0.05f * (seed - 0.5f)
+        val h = size.height * (0.13f + 0.07f * ((i * 5 + (seed * 10).toInt()) % 3) / 2f)
+        drawPath(
+            Path().apply {
+                moveTo(cx, baseY - h); lineTo(cx - halfW, baseY); lineTo(cx + halfW, baseY); close()
+            },
+            Color.White.copy(alpha = 0.12f),
+        )
+    }
+}
+
+/** A soft cloud (overlapping puffs) for storm scenes; rain is drawn beneath it. */
+private fun DrawScope.drawCloud(seed: Float) {
+    val cx = size.width * (0.30f + 0.12f * seed)
+    val cy = size.height * 0.26f
+    val r = size.minDimension * 0.11f
+    listOf(-1f to 0f, 0f to -0.42f, 1f to 0f, 0.45f to 0.16f, -0.45f to 0.16f).forEach { (dx, dy) ->
+        drawCircle(
+            Color.White.copy(alpha = 0.13f),
+            radius = r * (0.72f + 0.28f * (1f - kotlin.math.abs(dx))),
+            center = Offset(cx + dx * r, cy + dy * r),
+        )
+    }
 }

@@ -71,7 +71,19 @@ def load_dotenv_file(path: str | Path) -> int:
 
 
 def load_local_env() -> None:
-    """Load env-dev.ps1 and/or a plain .env (next to this repo) if present."""
+    """Load env-dev.ps1 and/or a plain .env (next to this repo) if present.
+
+    ``CEREBROZEN_SKIP_DOTENV`` disables the whole thing. The test suite sets it,
+    and it must: a suite whose offline guarantee rests on "the variable is empty"
+    is not offline at all, because `load_dotenv_file` deliberately treats an empty
+    var as overridable (uvicorn inherits empty vars — see there). That is how a
+    developer's own POSTGRES_URL silently redirected every store test at a real
+    database. The guarantee has to be "the .env is not read", not "the value we
+    care about happens to be missing from it".
+    """
+    if os.environ.get("CEREBROZEN_SKIP_DOTENV", "").strip().lower() in ("1", "true", "yes"):
+        logger.info("env.skipped", extra={"reason": "CEREBROZEN_SKIP_DOTENV"})
+        return
     repo_root = Path(__file__).resolve().parent.parent
     ps1 = repo_root / "env-dev.ps1"
     n = load_env_file(ps1)

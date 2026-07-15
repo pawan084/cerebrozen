@@ -19,11 +19,9 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -122,10 +120,6 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Insights) { onOpen("insights") }
         PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
-        PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
-            icon = Icons.Outlined.Psychology) { onOpen("patterns") }
-        PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
-            icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
         PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
         PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),

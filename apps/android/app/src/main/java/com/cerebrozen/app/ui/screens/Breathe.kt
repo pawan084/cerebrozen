@@ -86,6 +86,7 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -404,9 +405,7 @@ private fun ImmersiveBreatheFrame(
         label = "breatheBackgroundDrift",
     )
     Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))),
-        ),
+        Modifier.fillMaxSize().background(Gradients.night),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
