@@ -1,0 +1,51 @@
+name: Deploy (prod)
+
+# One-click production deploy to the cloud VPS. Manual-dispatch only, so a
+# release ships when you choose. Prerequisites (see deploy/README.md):
+#   - the repo is already cloned on the host at DEPLOY_PATH
+#   - $DEPLOY_PATH/.env.production is filled in (git-ignored, on the host)
+#   - the deploy key's public half is in the host's ~/.ssh/authorized_keys
+#
+# Repo secrets required (values in the ops vault, NOT in this public repo):
+#   DEPLOY_HOST     production VPS address
+#   DEPLOY_USER     ssh user
+#   DEPLOY_SSH_KEY  private half of the cerebrozen-deploy key
+# Optional repo variable:
+#   DEPLOY_PATH     checkout path on the host
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Pull, rebuild, health-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ vars.DEPLOY_PATH }}"
+            git fetch --all --prune
+            git reset --hard origin/main
+            # Build first (old containers keep serving), then swap — minimal downtime.
+            docker compose -f docker-compose.prod.yml --env-file .env.production build
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+            docker image prune -f
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS https://api.cerebrozen.in/health | grep -q '"status":"ok"'; then
+              echo "API healthy"; exit 0
+            fi
+            echo "waiting for API… ($i/10)"; sleep 6
+          done
+          echo "API did not become healthy"; exit 1

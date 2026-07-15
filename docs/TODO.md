@@ -592,10 +592,16 @@ dated notes, grouped by priority; items needing an owner decision are marked
       cohort floors, ops workbook flow, cross-tenant denial.
 - [ ] Evals harness adopted + nightly; crisis red-team wired as release gate;
       publish the real catch-rate (with classifier) on the Evidence page.
-- [ ] Prod deploy: Caddyfile (web/app/admin/api subdomains, security
-      headers), `docker-compose.prod.yml` (no host-published DB, expose-only
-      services), backup/restore for Postgres, OTel + Prometheus dashboards,
-      breach runbook adapted and rehearsed.
+- [x] 2026-07-15 — **LIVE in production** at `cerebrozen.in` (Cloud VPS; host
+      details in the ops vault, not this public repo). The full 7-service stack
+      (web/admin/engine/platform + db/redis/caddy) runs from the host checkout
+      via `docker-compose.prod.yml`;
+      Caddy terminates real Let's Encrypt TLS on the four subdomains. Replaced
+      the prior `cerebroSG` deployment (checkout at the same path, same repo).
+      Deploy runbook + the SSH/secret specifics live in `deploy/README.md`.
+- [ ] Prod deploy — remaining ops hardening: backup/restore for Postgres,
+      OTel + Prometheus dashboards, breach runbook adapted and rehearsed,
+      root-password rotation + key-only SSH, real `OPENAI_API_KEY` on the host.
 - [ ] Marketing site truth pass: every number/claim re-checked against what
       the product now actually measures (PRODUCT.md success-metrics rule).
 

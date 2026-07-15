@@ -1,8 +1,26 @@
 # deploy — Production deployment
 
-Caddy terminates TLS (auto-HTTPS via Let's Encrypt) and reverse-proxies the
-`cerebrozen.in` subdomains to the app/service containers; every service except
-Caddy is internal to the compose network (no published ports).
+**Status: LIVE.** CerBroZen runs in production on a cloud VPS, reachable at
+`https://cerebrozen.in` (+ `www`, `admin`, `api` subdomains). Caddy terminates
+TLS (auto-HTTPS via Let's Encrypt) and reverse-proxies to the app/service
+containers; every service except Caddy is internal to the compose network.
+
+## Live environment
+
+Concrete host, IP, and access credentials are **not published here** (this repo
+is public) — they live in the private ops vault / password manager.
+
+| Fact | Value |
+|---|---|
+| Host | Cloud VPS (Ubuntu 24.04) — address in the ops vault |
+| Checkout | `$DEPLOY_PATH` (git clone of this repo, tracks `origin/main`) |
+| Stack | `docker compose -f docker-compose.prod.yml --env-file .env.production` |
+| Secrets | `$DEPLOY_PATH/.env.production` (git-ignored, `chmod 600`) |
+| Project | compose project `cerebrozen` (7 services) |
+
+`.env.production` on the host holds `DB_PASSWORD` + `JWT_SECRET` (generated on
+the host, never reused) and `OPENAI_API_KEY`. The coaching engine boots but
+stays LLM-degraded until a **real** OpenAI key is set there.
 
 ## Topology
 
@@ -16,21 +34,40 @@ Caddy is internal to the compose network (no published ports).
 `app.cerebrozen.in` is reserved for the future web employee app (Phase 5) and is
 deliberately not proxied — no dangling subdomain until a service ships there.
 
-The two-backends-behind-one-domain split matches the Android release contract:
+The API split matches the Android release contract:
 `API_BASE_URL=https://api.cerebrozen.in`, `ENGINE_BASE_URL=https://api.cerebrozen.in/engine`.
 
-## Deploy
+## Redeploy (ship a new `main`)
 
-1. **DNS** — point A-records for `cerebrozen.in`, `www`, `admin`, `api` at the host.
-   Open ports **80** and **443** (Caddy needs 80 for the ACME HTTP challenge).
-2. **Secrets** — `cp .env.production.example .env.production` and fill in real,
-   freshly-generated values (see the comments in that file). Never reuse a dev or
-   reference-project secret. `.env.production` is git-ignored.
-3. **Up:**
-   ```
-   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-   ```
-4. Caddy provisions certs on first request to each domain (needs DNS + 80/443 live).
+SSH to the host, then:
+
+```
+cd "$DEPLOY_PATH"
+git fetch origin && git reset --hard origin/main
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+docker image prune -f
+```
+
+To minimise downtime, `... build` first (old containers keep serving), then
+`... up -d` swaps them. Verify: `curl -fsS https://api.cerebrozen.in/health`.
+
+## SSH access & the deploy key
+
+Access is over SSH using a dedicated deploy key (`cerebrozen-deploy`, ed25519,
+no passphrase); host, user, and password live in the ops vault. Install the
+key's **public** half on the host once, then disable password login
+(`PasswordAuthentication no`):
+
+```
+# on the host (paste the deploy public key):
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo 'ssh-ed25519 AAAA... cerebrozen-deploy' >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Optional one-click deploys: store the deploy **private** key as the repo secret
+`DEPLOY_SSH_KEY` (+ `DEPLOY_HOST`, `DEPLOY_USER`, var `DEPLOY_PATH`) and run the
+`Deploy (prod)` GitHub Action (`.github/workflows/deploy.yml`).
 
 ## What `ENV=production` turns on (fail-fast guards)
 
@@ -50,8 +87,11 @@ The two-backends-behind-one-domain split matches the Android release contract:
 - Regulated-workplace mode stays ON by default; turning it off is a contract-level
   decision with counsel, not an env flag flipped in a hurry.
 
-## Still owned by a human before go-live
+## Still owned by a human
 
-Rotate any OpenAI key ever pasted in chat or committed; get counsel to sign off
-the terms/privacy pages and the EU AI Act regulated-mode posture; add real SMTP
-for the demo form if email delivery is wanted.
+- **Rotate the root password** and move to key-only SSH (`PasswordAuthentication no`).
+- Set a **real `OPENAI_API_KEY`** in the host's `.env.production`, then
+  `docker compose ... up -d engine`.
+- Rotate any OpenAI key / GitHub token ever pasted in chat or committed.
+- Counsel sign-off on the terms/privacy pages and EU AI Act regulated-mode posture.
+- Add real SMTP for the demo form if email delivery is wanted.
