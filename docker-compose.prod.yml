@@ -68,7 +68,12 @@ services:
       db: { condition: service_healthy }
 
   web:
-    build: apps/web
+    build:
+      context: apps/web
+      args:
+        # Baked into the client bundle at BUILD time — the header "Sign in" link.
+        # Must be the public admin domain the visitor's browser reaches.
+        NEXT_PUBLIC_ADMIN_URL: https://admin.cerebrozen.in
     restart: unless-stopped
     environment:
       # Server-side call from the marketing form into the platform (not browser).

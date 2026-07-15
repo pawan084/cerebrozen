@@ -47,6 +47,12 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={site.adminUrl}
+            className="text-[13.5px] font-semibold text-brand-900 transition-colors hover:text-zen-600"
+          >
+            Sign in
+          </a>
           <Link
             href="/contact"
             className="rounded-full border-2 border-zen-500 px-6 py-2.5 text-[13.5px] font-semibold text-zen-600 transition hover:bg-zen-500 hover:text-white"
@@ -82,6 +88,13 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={site.adminUrl}
+            className="block py-3 text-base font-semibold text-brand-900"
+            onClick={() => setOpen(false)}
+          >
+            Sign in
+          </a>
           <Link
             href="/contact"
             className="mt-3 block rounded-full border-2 border-zen-500 px-5 py-3 text-center text-sm font-semibold text-zen-600"
