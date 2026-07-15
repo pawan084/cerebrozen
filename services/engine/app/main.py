@@ -133,16 +133,20 @@ def create_app() -> FastAPI:
         except FileNotFoundError:
             return HTMLResponse(fallback)
 
-    @app.get("/", response_class=HTMLResponse)
+    # These serve browser UI pages, not API endpoints — kept out of the OpenAPI
+    # schema (include_in_schema=False). Besides being correct, it avoids FastAPI
+    # trying to build a response model from the HTMLResponse return annotation,
+    # which raises PydanticUserError and 500s /openapi.json and /docs.
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def _root() -> HTMLResponse:
         # The unified workbench shell (Chat / Flows / Prompts / Console).
         return _serve("workbench.html", "<h1>CereBroZen Workbench</h1><p>UI not found.</p>")
 
-    @app.get("/chat", response_class=HTMLResponse)
+    @app.get("/chat", response_class=HTMLResponse, include_in_schema=False)
     async def _chat_ui() -> HTMLResponse:
         return _serve("index.html", "<h1>CereBroZen Chat</h1><p>UI not found.</p>")
 
-    @app.get("/prompts", response_class=HTMLResponse)
+    @app.get("/prompts", response_class=HTMLResponse, include_in_schema=False)
     async def _prompts_ui() -> HTMLResponse:
         _p = _os.path.join(_static_dir, "prompts.html")
         try:
@@ -151,7 +155,7 @@ def create_app() -> FastAPI:
         except FileNotFoundError:
             return HTMLResponse("<h1>Prompt Registry</h1><p>UI not found.</p>")
 
-    @app.get("/flow", response_class=HTMLResponse)
+    @app.get("/flow", response_class=HTMLResponse, include_in_schema=False)
     async def _flow_ui() -> HTMLResponse:
         _p = _os.path.join(_static_dir, "flow.html")
         try:

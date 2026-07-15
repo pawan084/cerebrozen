@@ -572,6 +572,25 @@ def test_the_literal_prompt_routes_are_not_shadowed_by_the_stage_catch_all(clien
         assert "unknown stage" not in body.text
 
 
+def test_openapi_schema_builds_and_docs_serve(client):
+    """The auto-generated schema and docs must not 500. Regression: the browser-UI
+    routes ("/", "/chat", "/prompts", "/flow") return HTMLResponse; when they were
+    left in the schema, FastAPI tried to build a response model from that annotation
+    and raised PydanticUserError, 500-ing /openapi.json and /docs. They are now
+    include_in_schema=False — served, but absent from the API schema."""
+    schema = client.get("/openapi.json")
+    assert schema.status_code == 200, schema.text
+    paths = schema.json()["paths"]
+    for ui in ("/", "/chat", "/prompts", "/flow"):
+        assert ui not in paths, f"{ui} is a UI page and must not appear in the API schema"
+    assert client.get("/docs").status_code == 200
+    # The pages themselves still serve HTML (they were excluded from the schema, not removed).
+    for ui in ("/", "/chat", "/prompts", "/flow"):
+        r = client.get(ui)
+        assert r.status_code == 200, ui
+        assert "text/html" in r.headers["content-type"]
+
+
 def test_checksum_says_so_when_there_is_no_s3_to_compare_against(client):
     """In codebase mode there is no canonical S3 object — the endpoint says that
     rather than pretending the cache matches."""
