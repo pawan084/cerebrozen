@@ -60,8 +60,35 @@ import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Diversity3
+import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.cerebrozen.app.coach.Suggestion
+import com.cerebrozen.app.coach.detectIntent
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.Warm
 
-private data class CoachMsg(val who: String, var text: String, val grounded: Boolean = false)
+// A chat entry is either text (a bubble) or a CARD the coach surfaced in line —
+// an engine-suggested commitment, or an intent-matched tool (see coach/Intent.kt).
+private sealed interface ChatCard
+private data class SuggestChatCard(val s: Suggestion) : ChatCard
+private data class ActionChatCard(val body: String) : ChatCard
+
+private data class CoachMsg(
+    val who: String,
+    var text: String = "",
+    val grounded: Boolean = false,
+    val card: ChatCard? = null,
+)
 
 /** Pre-first-token typing indicator (Mira reference): three quiet pulsing
  * dots. Reduce Motion shows a static ellipsis. */
@@ -91,9 +118,87 @@ private fun TypingDots() {
     }
 }
 
+// Suggestion.icon / .accent are string keys (Intent.kt is pure Kotlin, no Compose) —
+// resolved to real icons and theme colours here.
+private fun iconFor(key: String): ImageVector = when (key) {
+    "bedtime" -> Icons.Outlined.Bedtime
+    "air" -> Icons.Outlined.Air
+    "spa" -> Icons.Outlined.Spa
+    "psychology" -> Icons.Outlined.Psychology
+    "diversity" -> Icons.Outlined.Diversity3
+    else -> Icons.Outlined.AutoAwesome
+}
+
+private fun accentFor(key: String): Color = when (key) {
+    "peri" -> Periwinkle
+    "warm" -> Warm
+    else -> Cyan
+}
+
+/** An intent-matched tool the coach offers in line — tap anywhere to open it. */
+@Composable
+private fun SuggestionCardView(s: Suggestion, onOpen: (String) -> Unit) {
+    val accent = accentFor(s.accent)
+    Row(
+        Modifier.fillMaxWidth(0.92f)
+            .clip(RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
+            .background(CardFill)
+            .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
+            .clickable { onOpen(s.route) }
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(42.dp).clip(CircleShape)
+                .background(accent.copy(alpha = 0.14f))
+                .border(1.dp, accent.copy(alpha = 0.30f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(iconFor(s.icon), contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(s.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text(s.subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
+        Text(
+            s.cta,
+            style = MaterialTheme.typography.labelMedium,
+            color = accent,
+            modifier = Modifier.clip(RoundedCornerShape(999.dp))
+                .background(accent.copy(alpha = 0.12f))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
+}
+
+/** A commitment the session captured this turn — mirrored in line, tap to manage it. */
+@Composable
+private fun ActionCardView(body: String, onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(0.92f)
+            .clip(RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
+            .background(CardFill)
+            .border(1.dp, Ok.copy(alpha = 0.35f), RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
+            .clickable { onOpen() }
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = Ok, modifier = Modifier.size(22.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Saved to your Actions", style = MaterialTheme.typography.labelMedium, color = Ok)
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+        }
+        Text("View", style = MaterialTheme.typography.labelMedium, color = Accent.talk)
+    }
+}
+
 @Composable
 fun CoachScreen(onOpen: (String) -> Unit) {
     val messages = remember { mutableStateListOf<CoachMsg>() }
+    // A tool card is an offer, not a nag — show each intent at most once a session.
+    val shownIntents = remember { mutableSetOf<String>() }
     var draft by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var statusLine by remember { mutableStateOf("") }
@@ -161,7 +266,12 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                             .ifBlank { a.optString("action_body") }
                             .ifBlank { a.optString("text") }
                         val id = a.optString("action_id").ifBlank { cardText.hashCode().toString() }
-                        if (cardText.isNotBlank()) ActionsStore.add(id, cardText)
+                        if (cardText.isNotBlank()) {
+                            ActionsStore.add(id, cardText)
+                            // Mirror the saved commitment in line, so the gate is visible
+                            // in the conversation, not only on the Actions tab.
+                            messages.add(CoachMsg("coach", card = ActionChatCard(cardText)))
+                        }
                     }
                 }
                 if (messages[replyIndex].text.isBlank()) {
@@ -177,6 +287,16 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 )
             } finally {
                 busy = false
+                // Intent → inline tool card. When the turn clearly maps to a tool the app
+                // already has (sleep, a racing mind, an overthought fear…), offer it one tap
+                // away — at most once per intent per session. Runs even when the coach was
+                // unreachable, since that's exactly when the offline tools matter most.
+                // Crisis is never a card here; that stays the engine's deterministic takeover.
+                detectIntent(text, messages.getOrNull(replyIndex)?.text ?: "")?.let { s ->
+                    if (shownIntents.add(s.id)) {
+                        messages.add(CoachMsg("coach", card = SuggestChatCard(s)))
+                    }
+                }
             }
         }
     }
@@ -245,6 +365,16 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 }
             }
             items(messages) { m ->
+                val card = m.card
+                if (card != null) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                        when (card) {
+                            is SuggestChatCard -> SuggestionCardView(card.s) { onOpen(it) }
+                            is ActionChatCard -> ActionCardView(card.body) { onOpen("actions") }
+                        }
+                    }
+                    return@items
+                }
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = if (m.who == "you") Arrangement.End else Arrangement.Start,
