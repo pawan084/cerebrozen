@@ -5,7 +5,7 @@
    internal_admin → Tenants · Demo requests  */
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api, apiJson, engineJson, getTokens, login, logout } from "@/lib/api";
+import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
 
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
 type Org = { id: string; name: string; slug: string; seats_total: number; seats_used: number; regulated_mode: boolean; crisis_region: string; is_active: boolean };
@@ -385,37 +385,100 @@ function Prompts() {
   );
 }
 
-// Agent flow — the governed coaching arc. Agents rendered as a pipeline; the full
-// branching topology is the Mermaid graph the engine generates.
+// Agent flow — the governed coaching arc, rendered as the engine's real branching
+// graph (Mermaid → SVG), with the agents table below.
 function AgentFlow() {
   const [agents, setAgents] = useState<AgentRow[] | null>(null);
-  const [mermaid, setMermaid] = useState("");
+  const [src, setSrc] = useState("");
+  const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
     engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
-    engineJson<{ mermaid: string }>("/v1/graph/mermaid").then((r) => setMermaid(r.mermaid)).catch(() => {});
+    engineJson<{ mermaid: string }>("/v1/graph/mermaid").then((r) => setSrc(r.mermaid)).catch(() => {});
   }, []);
+  useEffect(() => {
+    if (!src) return;
+    let alive = true;
+    (async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+        const { svg } = await mermaid.render("agentgraph", src);
+        if (alive) setSvg(svg);
+      } catch {
+        /* fall back to the source <pre> below */
+      }
+    })();
+    return () => { alive = false; };
+  }, [src]);
   if (error) return <div className="card"><p className="error">{error}</p></div>;
   if (!agents) return <div className="card"><p className="hint">Loading flow…</p></div>;
   return (
     <div className="card">
-      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents</span></h2>
-      <div className="pipeline">
-        {agents.map((a, i) => (
-          <div key={a.stage} className="pnode">
-            <div className={`nodebox${a.enabled ? "" : " off"}`}>
-              <b>{a.stage.replace(/_agent$/, "")}</b>
-              <span>{a.model}</span>
-            </div>
-            {i < agents.length - 1 && <div className="arrow">↓</div>}
-          </div>
-        ))}
-      </div>
-      {mermaid && (
-        <details className="mermaidsrc">
-          <summary>Full branching graph (Mermaid source)</summary>
-          <pre className="prompt">{mermaid}</pre>
-        </details>
+      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents · routing is deterministic (code predicates over typed state)</span></h2>
+      {svg
+        ? <div className="graph" dangerouslySetInnerHTML={{ __html: svg }} />
+        : src
+          ? <pre className="prompt">{src}</pre>
+          : <p className="hint">Rendering graph…</p>}
+      <details className="mermaidsrc" style={{ marginTop: 16 }}>
+        <summary>Agents in the arc ({agents.length})</summary>
+        <table className="table">
+          <thead><tr><th>Agent</th><th>Model</th><th>Enabled</th></tr></thead>
+          <tbody>
+            {agents.map((a) => (
+              <tr key={a.stage}><td>{a.stage}</td><td>{a.model}</td><td>{a.enabled ? "yes" : "no"}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </div>
+  );
+}
+
+// Console — test any prompt against the live model (the ref app's Console).
+function Console() {
+  const [system, setSystem] = useState("You are a helpful assistant.");
+  const [user, setUser] = useState("");
+  const [model, setModel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [out, setOut] = useState<{ reply?: string; text?: string; model?: string; prompt_tokens?: number; completion_tokens?: number; cost_usd?: number } | null>(null);
+  const [error, setError] = useState("");
+  async function run() {
+    if (!user.trim() || busy) return;
+    setBusy(true); setError(""); setOut(null);
+    try {
+      const r = await engineApi("/v1/console/run", {
+        method: "POST",
+        body: JSON.stringify({ system, user, model: model || undefined }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
+      setOut(await r.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "run failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="card">
+      <h2>Console <span className="hint">test any prompt against the live model</span></h2>
+      <label className="fld">System <span className="hint">supports {"{{variables}}"}</span>
+        <textarea value={system} onChange={(e) => setSystem(e.target.value)} rows={3} />
+      </label>
+      <label className="fld">User
+        <textarea value={user} onChange={(e) => setUser(e.target.value)} rows={5} placeholder="Your prompt…" />
+      </label>
+      <label className="fld">Model <span className="hint">optional — defaults to the configured cascade</span>
+        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-5-mini" />
+      </label>
+      <button className="primary" disabled={busy || !user.trim()} onClick={run}>{busy ? "Running…" : "Run"}</button>
+      {error && <p className="error">{error}</p>}
+      {out && (
+        <div className="output">
+          <div className="hint">{out.model} · {out.prompt_tokens}→{out.completion_tokens} tok · ${out.cost_usd}</div>
+          <pre className="prompt">{out.reply || out.text}</pre>
+        </div>
       )}
     </div>
   );
@@ -444,7 +507,7 @@ export default function Admin() {
 
   const tabs =
     me.role === "internal_admin"
-      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompts"], ["flow", "Agent flow"]]
+      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompts"], ["flow", "Agent flow"], ["console", "Console"]]
       : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
@@ -469,6 +532,7 @@ export default function Admin() {
       {tab === "demos" && <Demos />}
       {tab === "prompts" && <Prompts />}
       {tab === "flow" && <AgentFlow />}
+      {tab === "console" && <Console />}
     </div>
   );
 }
