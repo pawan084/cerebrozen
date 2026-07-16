@@ -43,7 +43,7 @@ tested; only a client calls it into being.
 | 7 | ~~**Daily check-in + calm progress on Today**~~ **DONE 2026-07-16** | `apps/android` | `TodayScreen.kt:241,341,385` | `Api.streak()` / `Api.moods()` orphaned; `Api.checkIn` has **exactly one caller — onboarding**. One write at signup, never again. PRODUCT.md ships check-ins v1 and promises "progress shown calmly"; the affordance has no surface. (A week-ring is not a coin — not the Dropped item.) | Wiring |
 | 8 | ~~**Tenant seat / crisis_region editing**~~ **DONE 2026-07-16** | `apps/admin` | `page.tsx` Users tab | Seats + crisis region are now editable inline (regions fetched from the engine, so a region it cannot localise cannot be picked). **`regulated_mode` deliberately stays read-only** — SECURITY.md calls its opt-out "a contract-level decision with counsel sign-off, not an admin toggle", so exposing the switch this row originally implied would have contradicted our own policy. | Trivial |
 | 9 | ~~**Access token in memory, not localStorage**~~ **DONE 2026-07-16** | `apps/app` | `lib/api.ts:5-23` | The ref keeps **access in memory**, refresh in localStorage — "XSS can't lift it from storage". We persist both. SECURITY.md names the "Zen pattern" as our auth commitment; we took the coalesced-refresh half and not this one. | Small |
-| 10 | **Coach thread survives app kill** | `apps/android` | `TalkScreen.kt:150` | `Api.chat()` / `Api.starters()` orphaned; our `CoachScreen` is in-memory only. A coaching session spans a commute; losing it to a process death is a credibility problem. | Wiring |
+| 10 | ~~**Coach thread survives app kill**~~ **DONE 2026-07-17** | `apps/android` | `TalkScreen.kt:150` | Another mislabelled "Wiring": `Api.chat()` pointed at `/chat` on the PLATFORM, which never existed there. Repointed at the engine's real `/v1/sessions/resumable` + `/{id}/history`. **Uncovered three server bugs that made session history impossible for every tenant** — see the warts section. (`Api.starters()` is also mislabelled here: it calls `/assessment/topics`, not starters.) | Wiring + 3 engine bugs |
 | 11 | **In-conversation AI disclosure pill** | `apps/android` | `TalkScreen.kt:1056` | The strings **already ship** (`strings.xml:84` `talk_disclosure_pill`) and nothing renders them. We disclose once, at onboarding. | Trivial |
 | 12 | **Journal read view on Android** | `apps/android` | `JournalScreen.kt` | `Api.createJournal` fires from the breathing tools, but `Api.journal()` has no caller — **you cannot read your journal on the phone** — and `BiometricGate.kt` gates nothing. | Wiring |
 | 13 | **Roster search + pagination** | `apps/admin` | `page.tsx:364-425` | `/orgs/me/people` returns every row unbounded. A 2,000-seat tenant renders 2,000 rows. B2B rosters dwarf a B2C ops list. | Small |
@@ -112,6 +112,31 @@ groups go live again if items 3/11/12 are built.
 - **`api/demo/route.ts`**: dual delivery, honeypot, field caps, honest 503.
 
 ---
+
+## Server bugs found while building, and fixed
+
+Item 10 could not be built until these were. All three were **silent** — the writes
+succeeded, the reads simply returned nothing, and no error surfaced anywhere:
+
+1. **The SSE worker dropped the tenancy key.** `_sse_response` re-stamps the correlation
+   ids into its worker thread (`request_id`, `user_id`, `session_id`) but not
+   `ctx_org_id` — which is not a correlation id but the key every store writes with. So
+   `current_org()` fell back to `DEFAULT_ORG` and **every streamed turn recorded its
+   conversation under org "default"** instead of the caller's. Reads use the real org, so
+   nothing could ever find them. SECURITY.md calls tenancy "the sharpest inherited edge"
+   and says it is "tested with cross-tenant access tests" — those tested the STORES, not
+   the SSE path (`test_sse_tenancy.py`).
+2. **`PgCollection.find_one()` did not accept `sort=`.** Three live callers pass it
+   (`latest_resumable`, and the NBI/DISC profile reads); every one raised TypeError into a
+   broad `except` and was logged as a warning. Postgres is the DEFAULT store.
+3. **`find_one`'s primary-key guess turned a miss into "absent".** `_key` guesses `_id`,
+   else `user_id`, else `session_id`, because collections key differently. Conversations
+   key on `session_id`, so `find_one({"user_id": ...})` looked up `_id = <user_id>`, found
+   nothing, and reported a document that plainly exists as absent. Writes filter on
+   `session_id`, so they were fine — which is exactly why it hid.
+
+Net effect before the fix: `/v1/sessions`, `/v1/sessions/resumable` and the transcript were
+empty for every real tenant. PRODUCT.md ships "session history with generated titles" as v1.
 
 ## Warts found while building, not yet fixed
 

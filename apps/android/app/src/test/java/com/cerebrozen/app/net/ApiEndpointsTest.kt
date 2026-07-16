@@ -192,7 +192,8 @@ class ApiEndpointsTest {
                 "GET engine:/v1/wellness/journal" to "[]",
                 "GET engine:/v1/wellness/sleep" to "[]",
                 "GET engine:/v1/wellness/sleep/summary" to """{"avg_duration_min":450}""",
-                "GET /chat" to "[]",
+                "GET engine:/v1/sessions/resumable" to """{"resumable":true,"session_id":"s1"}""",
+                "GET engine:/v1/sessions/s1/history" to """{"chat_history":[]}""",
                 "GET /content?kind=meditation" to "[]",
                 "GET engine:/v1/wellness/insights/weekly" to """{"summary":"ok"}""",
                 "GET engine:/v1/wellness/patterns" to """{"patterns":[]}""",
@@ -207,7 +208,11 @@ class ApiEndpointsTest {
         assertEquals(0, Api.journal().length())
         assertEquals(0, Api.sleepLogs().length())
         assertEquals(450, Api.sleepSummary().getInt("avg_duration_min"))
-        assertEquals(0, Api.chat().length())
+        // The engine, not the platform: the transcript IS coaching content. Api.chat()
+        // pointed at /chat on the platform, which never existed there — it was orphaned,
+        // so nothing ever found out.
+        assertTrue(Api.resumableSession().getBoolean("resumable"))
+        assertEquals(0, Api.sessionHistory("s1").getJSONArray("chat_history").length())
         assertEquals(0, Api.content("meditation").length())
         assertEquals("ok", Api.insightsWeekly().getString("summary"))
         assertEquals(0, Api.patterns().getJSONArray("patterns").length())

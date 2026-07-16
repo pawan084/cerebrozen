@@ -49,6 +49,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import com.cerebrozen.app.audio.VoiceEngine
+import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Coach
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.BrandPrimary
@@ -76,12 +77,42 @@ import com.cerebrozen.app.coach.detectIntent
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.Warm
+import org.json.JSONObject
 
 // A chat entry is either text (a bubble) or a CARD the coach surfaced in line —
 // an engine-suggested commitment, or an intent-matched tool (see coach/Intent.kt).
 private sealed interface ChatCard
 private data class SuggestChatCard(val s: Suggestion) : ChatCard
 private data class ActionChatCard(val body: String) : ChatCard
+
+/**
+ * The engine's transcript, turned back into the thread.
+ *
+ * `chat_history` is a list of one-key objects: `{"user": {...}}` or `{"bot": {...}}`, each
+ * with a `text`. Pure and separate from the composable because it is a WIRE CONTRACT — and
+ * because the app previously kept the thread in memory only, so a process death lost the
+ * conversation an employee was mid-way through. A coaching session spans a commute.
+ *
+ * `hidden` messages are the engine's own plumbing (system nudges the person never saw);
+ * replaying them would show someone a conversation they did not have.
+ */
+internal fun parseHistory(body: JSONObject): List<Pair<String, String>> {
+    val rows = body.optJSONArray("chat_history") ?: return emptyList()
+    val out = mutableListOf<Pair<String, String>>()
+    for (i in 0 until rows.length()) {
+        val row = rows.optJSONObject(i) ?: continue
+        val who = when {
+            row.has("user") -> "you"
+            row.has("bot") -> "coach"
+            else -> continue
+        }
+        val entry = row.optJSONObject(if (who == "you") "user" else "bot") ?: continue
+        if (entry.optBoolean("hidden", false)) continue
+        val text = entry.optString("text").trim()
+        if (text.isNotEmpty()) out.add(who to text)
+    }
+    return out
+}
 
 private data class CoachMsg(
     val who: String,
@@ -204,6 +235,26 @@ fun CoachScreen(onOpen: (String) -> Unit) {
     var statusLine by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    /* Pick the thread back up after a process death.
+     *
+     * The engine is asked, not a local cache: it knows which session is still open, its
+     * answer survives a reinstall, and a cached id can be stale in a way the server's
+     * answer never is (the session may have ended on another device). Best-effort by
+     * design — a failure here leaves an empty composer, which is the old behaviour, not a
+     * broken screen. */
+    LaunchedEffect(Unit) {
+        if (messages.isNotEmpty() || Coach.sessionId != null) return@LaunchedEffect
+        runCatching {
+            val open = Api.resumableSession()
+            if (!open.optBoolean("resumable")) return@runCatching
+            val id = open.optString("session_id").takeIf { it.isNotBlank() } ?: return@runCatching
+            val restored = parseHistory(Api.sessionHistory(id))
+            if (restored.isEmpty()) return@runCatching
+            Coach.adopt(id)
+            restored.forEach { (who, text) -> messages.add(CoachMsg(who = who, text = text)) }
+        }
+    }
 
     // On-device voice (keyless): mic dictates into the composer; replies can
     // be read aloud. The cloud-quality loop stays the tracked v2 item.

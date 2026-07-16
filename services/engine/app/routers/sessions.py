@@ -59,11 +59,21 @@ def _sse_response(run: Callable[..., Dict[str, Any]]) -> StreamingResponse:
     # Capture correlation IDs now, in the async context where the router already
     # set them.  We re-stamp them inside the worker thread because
     # BaseHTTPMiddleware may reset the ContextVars before the stream body runs.
+    #
+    # ctx_org_id IS ONE OF THEM, and it was the one missing. It is not a correlation id —
+    # it is the tenancy key every store writes with — and losing it meant `current_org()`
+    # fell back to DEFAULT_ORG inside the worker, so EVERY streamed turn recorded its
+    # conversation under org "default" instead of the caller's. Reads run in the request
+    # context with the real org, so nothing could ever find them again: /v1/sessions,
+    # /v1/sessions/resumable and the history all came back empty for every real tenant, and
+    # the Resume pill could not appear. Silent, because the writes succeeded.
     from app.request_context import ctx_session_id, ctx_user_id
     from app.request_context import request_id as _req_id_var
+    from app.tenancy import ctx_org_id as _org_var
     _snap_rid = _req_id_var.get()
     _snap_uid = ctx_user_id.get()
     _snap_sid = ctx_session_id.get()
+    _snap_org = _org_var.get()
 
     async def _gen() -> AsyncGenerator[str, None]:
         queue: asyncio.Queue = asyncio.Queue()
@@ -76,12 +86,16 @@ def _sse_response(run: Callable[..., Dict[str, Any]]) -> StreamingResponse:
             # Re-stamp correlation IDs in this thread's copy of the context.
             from app.request_context import ctx_session_id as _cs, ctx_user_id as _cu
             from app.request_context import request_id as _ri
+            from app.tenancy import ctx_org_id as _co
             if _snap_rid:
                 _ri.set(_snap_rid)
             if _snap_uid:
                 _cu.set(_snap_uid)
             if _snap_sid:
                 _cs.set(_snap_sid)
+            # The tenancy key. Without it every store in this thread writes to DEFAULT_ORG.
+            if _snap_org:
+                _co.set(_snap_org)
             try:
                 result = run(
                     on_status=lambda msg: _put({"type": "status", "msg": msg}),

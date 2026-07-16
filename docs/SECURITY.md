@@ -19,7 +19,13 @@ trap. Our position:
 - `org_id` is a first-class column/key on every engine store, every platform
   table, and every checkpointer thread id. Enforced in code, tested with
   cross-tenant access tests (tenant A token can never read tenant B rows —
-  a dedicated test class, not an assumption).
+  a dedicated test class, not an assumption). **Including across threads**: the
+  SSE turn runs the graph in a worker, and until 2026-07-17 that worker did not
+  carry `ctx_org_id`, so every streamed conversation was recorded under
+  `DEFAULT_ORG` rather than the caller's tenant. Nothing leaked (reads scope to the
+  real org, so they simply found nothing), but the data landed in the wrong tenant
+  and session history was empty for everyone. The store tests could not see it;
+  `test_sse_tenancy.py` now pins the restamp.
 - JWTs carry `org_id`; the engine rejects tokens without it.
 - `STRICT_TENANT` boot-guard behavior is default-on: refusing to boot in
   prod with placeholder/foreign resource names.

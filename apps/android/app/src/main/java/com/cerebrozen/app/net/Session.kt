@@ -614,7 +614,17 @@ object Api {
             ),
         )
 
-    suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
+    /** The most recent session that has not ended, so a killed app can pick the thread back
+     *  up. `{resumable, session_id, title, updated_at}`. Served by the ENGINE — the
+     *  conversation is coaching content and lives there, not on the platform. */
+    suspend fun resumableSession(): JSONObject =
+        JSONObject(Session.api("/v1/sessions/resumable", base = ENGINE))
+
+    /** One session's transcript, oldest first: `{converstation_status, chat_history}`.
+     *  (The typo is the engine's field name — it is the wire contract, not ours to fix
+     *  quietly.) Used to restore the thread after a process death. */
+    suspend fun sessionHistory(sessionId: String): JSONObject =
+        JSONObject(Session.api("/v1/sessions/$sessionId/history", base = ENGINE))
     suspend fun sendChat(text: String): JSONObject =
         JSONObject(Session.api("/chat/messages", "POST", JSONObject().put("text", text)))
 

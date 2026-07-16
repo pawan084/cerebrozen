@@ -269,19 +269,59 @@ class PgCollection:
 
     # -- pymongo surface ------------------------------------------------------
 
-    def find_one(self, flt: Dict[str, Any], projection: Optional[Dict[str, Any]] = None):
+    def find_one(
+        self,
+        flt: Dict[str, Any],
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[List[Any]] = None,
+        **_kwargs: Any,
+    ):
+        """pymongo's find_one, including `sort=` — which it did NOT support.
+
+        Three live callers pass it: `conversation.latest_resumable` (`updated_at`, -1) and
+        the NBI/DISC profile reads in `mongo.py`. Every one raised TypeError, every one was
+        swallowed by a broad `except` and logged as a warning, and each degraded silently:
+        `/v1/sessions/resumable` always answered `resumable: false`, so the app's Resume
+        pill could never appear, and profile_read got an empty thinking-style profile for
+        everyone. Nothing looked broken — that is what made it survive.
+
+        Exactly the bug `count_documents` below already carries a scar from ("without it
+        this raised TypeError, the store swallowed it, and every repeat user silently read
+        back as FRESH"). That one was patched with `**kwargs` for `limit=` alone; this
+        class of failure needs the KWARG IMPLEMENTED, not absorbed — `**_kwargs` here only
+        catches pymongo's remaining niceties (`hint`, `max_time_ms`) that change no result.
+        """
         pool = get_pool()
         if pool is None:
             return None
+        # `_key` GUESSES the primary key from the filter (_id, else user_id, else
+        # session_id) because different collections key on different fields. When the guess
+        # is right this is a fast indexed hit. When it is wrong the row is simply not at
+        # that `_id`, and the old code returned None — a document that plainly exists,
+        # reported absent.
+        #
+        # That is not hypothetical: conversations key on session_id, so
+        # `find_one({"user_id": u, ...})` looked up `_id = <user_id>`, matched nothing, and
+        # `/v1/sessions/resumable` answered `resumable: false` for every user who had a live
+        # session. Writes were unaffected (they filter on `scoped({"session_id": ...})`, so
+        # the guess is right), which is exactly why it stayed hidden — the data was there.
+        #
+        # So: keep the fast path, and fall back to a scan when it comes up empty. A miss
+        # costs a scan; a wrong guess no longer costs the truth.
         key = self._key(flt)
         with pool.connection() as conn:
+            docs: List[Dict[str, Any]] = []
             if key:
                 row = conn.execute(
                     f'SELECT doc FROM "{self.name}" WHERE _id = %s', (key,)
                 ).fetchone()
                 docs = [row[0]] if row else []
-            else:
+            if not docs:
                 docs = [r[0] for r in conn.execute(f'SELECT doc FROM "{self.name}"').fetchall()]
+        if sort:
+            # Reuse the cursor's ordering so find() and find_one() cannot disagree about
+            # what "sorted" means — two orderings would be a bug nobody could reproduce.
+            docs = PgCursor([d for d in docs if _matches(d, flt)]).sort(sort)._docs
         for d in docs:
             if _matches(d, flt):
                 return _project(d, projection)

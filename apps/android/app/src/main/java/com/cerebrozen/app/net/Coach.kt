@@ -15,10 +15,21 @@ import com.cerebrozen.app.BuildConfig
 import org.json.JSONObject
 
 object Coach {
-    /** The active engine session, if any. Survives tab switches, not process death
-     * — the engine's own resumable-session list covers reconnection later. */
+    /** The active engine session, if any.
+     *
+     * Memory only, and deliberately so: the engine already knows which session is live
+     * (`GET /v1/sessions/resumable`), and asking it is both authoritative and survives a
+     * reinstall — a locally cached id can be stale (the session may have ended on another
+     * device) in a way the server's answer never is. CoachScreen resumes through
+     * [adopt] on launch, which is what "reconnection later" meant here. */
     @Volatile var sessionId: String? = null
         private set
+
+    /** Re-enter a session the engine says is still open, so a process death does not lose
+     *  the thread. Only for resuming: a NEW session id arrives on the `done` frame. */
+    fun adopt(id: String) {
+        if (id.isNotBlank()) sessionId = id
+    }
 
     data class DoneResult(
         val payload: JSONObject,

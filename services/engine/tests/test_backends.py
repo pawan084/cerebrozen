@@ -234,3 +234,158 @@ def test_cache_key_is_shared_across_users_not_per_user():
     v = current_workbook_version()
     if v:
         assert v in k1
+
+
+# ── find_one(sort=) — a silent, default-path degradation ─────────────────────
+#
+# Postgres is the DEFAULT store (docs/ARCHITECTURE.md "Storage consolidation:
+# Postgres-first"), and the shim's find_one did not accept pymongo's `sort=`. Three live
+# callers pass it, every one raised TypeError, and every one was swallowed by a broad
+# `except` and logged as a warning:
+#
+#   conversation.latest_resumable   -> /v1/sessions/resumable always answered
+#                                      resumable:false, so the Resume pill could never
+#                                      appear for anyone
+#   mongo.read_user_context (NBI)   -> an empty thinking-style profile for everyone
+#   mongo.read_user_context (DISC)  -> ditto
+#
+# Nothing looked broken. That is what let it survive, and it is why these tests assert the
+# ORDER rather than merely that the call returns.
+
+
+def _sortable_docs():
+    return [
+        {"_id": "a", "user_id": "u1", "session_id": "s-old", "updated_at": "2026-07-01T00:00:00"},
+        {"_id": "b", "user_id": "u1", "session_id": "s-new", "updated_at": "2026-07-14T00:00:00"},
+        {"_id": "c", "user_id": "u1", "session_id": "s-mid", "updated_at": "2026-07-07T00:00:00"},
+        {"_id": "d", "user_id": "u2", "session_id": "s-other", "updated_at": "2026-07-20T00:00:00"},
+    ]
+
+
+def test_find_one_accepts_the_sort_kwarg_the_stores_actually_pass():
+    # The regression itself: `sort=` used to raise TypeError here.
+    from app.stores.pg import PgCursor
+
+    ordered = PgCursor(_sortable_docs()).sort([("updated_at", -1)])._docs
+    assert ordered[0]["session_id"] == "s-other"
+
+
+def test_the_cursor_and_find_one_agree_on_what_sorted_means():
+    """find_one(sort=) reuses PgCursor.sort rather than reimplementing it — two orderings
+    would be a bug nobody could reproduce."""
+    import inspect
+
+    from app.stores.pg import PgCollection
+
+    src = inspect.getsource(PgCollection.find_one)
+    assert "PgCursor(" in src, "find_one must reuse the cursor's ordering, not roll its own"
+
+
+def test_find_one_signature_carries_sort():
+    import inspect
+
+    from app.stores.pg import PgCollection
+
+    params = inspect.signature(PgCollection.find_one).parameters
+    assert "sort" in params, "the kwarg the stores pass must be IMPLEMENTED, not absorbed"
+    assert params["sort"].default is None
+
+
+def test_find_one_still_absorbs_the_harmless_pymongo_kwargs():
+    """`hint`/`max_time_ms` change no result, so they may be swallowed — unlike `sort`,
+    which changes WHICH DOCUMENT you get and must never be silently ignored."""
+    import inspect
+
+    from app.stores.pg import PgCollection
+
+    params = inspect.signature(PgCollection.find_one).parameters
+    assert any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
+def test_descending_sort_picks_the_newest_not_the_first_inserted():
+    from app.stores.pg import PgCursor
+
+    docs = PgCursor([d for d in _sortable_docs() if d["user_id"] == "u1"])
+    newest = docs.sort([("updated_at", -1)])._docs[0]
+    assert newest["session_id"] == "s-new", "the Resume pill would offer the wrong session"
+
+
+# ── _key guesses, and a wrong guess used to mean "not found" ─────────────────
+#
+# `_key` derives a primary key from the filter (_id, else user_id, else session_id) because
+# different collections key on different fields. agentic_context keys on user_id;
+# user_conversations keys on session_id. So find_one({"user_id": u, ...}) on conversations
+# looked up `_id = <user_id>`, matched nothing, and reported a document that plainly exists
+# as absent — /v1/sessions/resumable answered `resumable:false` for every user with a live
+# session. Writes were unaffected (they filter on session_id, so the guess is right), which
+# is exactly why it survived: the data was all there.
+
+
+def test_key_guesses_user_id_when_the_filter_has_no_id():
+    from app.stores.pg import PgCollection
+
+    assert PgCollection._key({"user_id": "u1", "ended": {"$ne": True}}) == "u1"
+
+
+def test_key_prefers_an_explicit_id():
+    from app.stores.pg import PgCollection
+
+    assert PgCollection._key({"_id": "s1", "user_id": "u1"}) == "s1"
+
+
+def test_find_one_falls_back_to_a_scan_when_the_key_guess_misses(monkeypatch):
+    """The regression. A collection keyed by session_id, queried by user_id: the fast path
+    finds nothing at `_id = <user_id>` and MUST NOT conclude the document is absent."""
+    from app.stores import pg
+
+    stored = [{"_id": "s-1", "session_id": "s-1", "user_id": "u1", "org_id": "acme", "ended": False}]
+
+    class FakeConn:
+        def execute(self, sql, params=None):
+            class R:
+                def fetchone(_self):
+                    # The fast path: nothing lives at _id = "u1".
+                    return None
+                def fetchall(_self):
+                    return [(d,) for d in stored]
+            return R()
+
+    class FakePool:
+        def connection(self):
+            from contextlib import contextmanager
+
+            @contextmanager
+            def cm():
+                yield FakeConn()
+            return cm()
+
+    monkeypatch.setattr(pg, "get_pool", lambda: FakePool())
+    coll = pg.PgCollection("user_conversations")
+    got = coll.find_one({"user_id": "u1", "org_id": "acme", "ended": {"$ne": True}})
+    assert got is not None, "a document that exists was reported absent — the Resume pill dies here"
+    assert got["session_id"] == "s-1"
+
+
+def test_a_genuine_miss_still_returns_none(monkeypatch):
+    from app.stores import pg
+
+    class FakeConn:
+        def execute(self, sql, params=None):
+            class R:
+                def fetchone(_self):
+                    return None
+                def fetchall(_self):
+                    return []
+            return R()
+
+    class FakePool:
+        def connection(self):
+            from contextlib import contextmanager
+
+            @contextmanager
+            def cm():
+                yield FakeConn()
+            return cm()
+
+    monkeypatch.setattr(pg, "get_pool", lambda: FakePool())
+    assert pg.PgCollection("user_conversations").find_one({"user_id": "nobody"}) is None
