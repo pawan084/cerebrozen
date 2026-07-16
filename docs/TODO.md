@@ -104,6 +104,15 @@ dated notes, grouped by priority; items needing an owner decision are marked
       Still open from this item:
   - [ ] Content adaptation of the big agents (CH 70.9K, core 39K → ≤8K
         target per `docs/PROMPTS_SPEC.md`) — coach-review release condition.
+        **Shrink strategy drafted (2026-07-16, `docs/prompts/PROMPT_SHRINK_DRAFT.md`):**
+        the size is real methodology, not padding, so the reduction must come
+        from EXTERNALIZING the M1–M6 module playbooks (core) and the per-step
+        phase scripts (CH) into retrieved SSKB playbooks + code-side tables,
+        leaving only identity + output-contract + selection logic inline (~6.5K).
+        Includes an illustrative slimmed `core_coaching_agent` skeleton. NOT
+        applied to the live workbook — needs a coach to author the playbooks and
+        sign off on quality (the loadability gate + eval smoke verify structure,
+        not coaching quality).
   - [x] 2026-07-16 — Evals golden cases confirmed ported (identical to the
         reference's routing/reply/leak sets); added the workbook-loadability
         CI gate + eval-harness smoke (`tests/test_workbook_loadable.py`, runs
