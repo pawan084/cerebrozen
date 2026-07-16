@@ -14,6 +14,7 @@ const TOKENS = resolve(root, "design/tokens.css");
 const CONSUMERS = [
   resolve(root, "apps/web/src/app/globals.css"),
   resolve(root, "apps/admin/app/globals.css"),
+  resolve(root, "apps/app/app/globals.css"),
   // Phase 3+: Android Color.kt via its own generator
 ];
 
