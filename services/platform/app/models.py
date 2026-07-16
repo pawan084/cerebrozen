@@ -57,6 +57,17 @@ CONSENT_KEYS = (
 )
 
 
+#: The domain a deleted account's email is scrubbed to (`routers/users.py::delete_me`).
+#: The row survives as a tombstone so foreign keys stay valid, which means every query over
+#: users has to decide whether it means "people" or "rows" — see `is_tombstone`.
+DELETED_EMAIL_DOMAIN = "@deleted.invalid"
+
+
+def is_tombstone(user: "User") -> bool:
+    """A scrubbed row left behind by an erasure, not a person."""
+    return (user.email or "").endswith(DELETED_EMAIL_DOMAIN)
+
+
 class User(Base):
     __tablename__ = "users"
 

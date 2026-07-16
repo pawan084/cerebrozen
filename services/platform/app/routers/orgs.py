@@ -3,19 +3,31 @@
 Seat accounting counts active users plus pending invitations — an invitation
 IS a seat commitment, or an org could oversubscribe by inviting."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config, emailer
 from app.db import get_session
 from app.deps import require_internal_admin, require_org_admin
-from app.models import ROLE_ORG_ADMIN, ROLE_USER, Invitation, Org, User
+from app.models import (
+    DELETED_EMAIL_DOMAIN,
+    ROLE_ORG_ADMIN,
+    ROLE_USER,
+    Invitation,
+    Org,
+    RefreshToken,
+    User,
+    is_tombstone,
+)
 from app.security import new_opaque_token
+
+logger = logging.getLogger("cerebrozen.platform")
 
 router = APIRouter(prefix="/orgs", tags=["orgs"])
 
@@ -127,16 +139,99 @@ async def my_org(
 async def my_people(
     user: User = Depends(require_org_admin), session: AsyncSession = Depends(get_session)
 ):
-    """Seat roster: identity and status only — never coaching content."""
+    """Seat roster: identity and status only — never coaching content.
+
+    Excludes deleted accounts. A deletion scrubs the row in place and leaves a tombstone so
+    foreign keys stay valid (`users.py::delete_me`) — but a tombstone is not a person, and
+    listing one invited an org_admin to press "reactivate" on it, which would have set
+    is_active=True and burned a seat forever on an account with no usable password. Found by
+    clicking through the roster after an erasure, not by reading it.
+    """
     people = (
         await session.execute(
-            select(User).where(User.org_id == _own_org_id(user)).order_by(User.created_at)
+            select(User)
+            .where(User.org_id == _own_org_id(user), User.email.notlike(f"%{DELETED_EMAIL_DOMAIN}"))
+            .order_by(User.created_at)
         )
     ).scalars().all()
     return [
         {"id": p.id, "email": p.email, "name": p.name, "role": p.role, "is_active": p.is_active}
         for p in people
     ]
+
+
+class PersonPatch(BaseModel):
+    """Deliberately one field. A roster row is identity + status, and status is the only
+    thing an employer gets to change about a person here — not their name, not their role,
+    and certainly nothing about their coaching."""
+
+    is_active: bool
+
+
+@router.patch("/me/people/{user_id}")
+async def set_person_active(
+    user_id: str,
+    body: PersonPatch,
+    user: User = Depends(require_org_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Offboard a leaver, or bring someone back.
+
+    The core B2B operation, and it was missing: this roster was GET-only, so an org_admin
+    could see a leaver and do nothing about them, and the seat they no longer use stayed
+    counted against the org (`_seats_used` gates invitations).
+
+    Deactivating cuts access everywhere it can:
+      * login and refresh both check `is_active` (`routers/auth.py`), and so does every
+        authenticated request (`deps.current_user`);
+      * their refresh tokens are revoked here, so nothing survives on the old session.
+
+    The one gap is honest and bounded: the ENGINE validates the signed token by itself and
+    never calls this service, so an access token already in flight keeps working against
+    the engine until it expires (ACCESS_TTL_MIN, 15 minutes). Same trade the consent claim
+    documents, for the same reason — a per-request callback would put an outage between a
+    person and their own coach. If a tenant needs instant engine cutoff, that is a token-TTL
+    decision, not a reason to make this route lie.
+
+    Nothing here touches coaching content: deactivation is not deletion. A leaver's own
+    export and erasure stay theirs (`DELETE /users/me`), because their diary is not the
+    employer's to destroy.
+    """
+    org_id = _own_org_id(user)
+    target = (
+        await session.execute(select(User).where(User.id == user_id, User.org_id == org_id))
+    ).scalar_one_or_none()
+    # 404 rather than 403 for someone else's employee: an org_admin should not be able to
+    # probe another tenant's user ids by watching which ones answer differently.
+    if target is None or is_tombstone(target):
+        # A tombstone answers 404 like anyone else who is not there: they are not a person,
+        # and reactivating one would consume a seat that nobody could ever use.
+        raise HTTPException(404, "no such person in your organisation")
+
+    if target.id == user.id and not body.is_active:
+        # Locking yourself out of the console you administer helps nobody, and with one
+        # org_admin it locks the whole tenant out with no self-service way back.
+        raise HTTPException(400, "you cannot deactivate your own account")
+
+    target.is_active = body.is_active
+    if not body.is_active:
+        # Without this they keep a working refresh token: auth.py would refuse it, but
+        # revoking is the belt to that braces — the session is over, say so in the data.
+        await session.execute(
+            update(RefreshToken).where(RefreshToken.user_id == target.id).values(revoked=True)
+        )
+    await session.commit()
+    logger.info(
+        "org.person_active_changed",
+        extra={"actor": user.id, "target": target.id, "org_id": org_id, "is_active": body.is_active},
+    )
+    return {
+        "id": target.id, "email": target.email, "name": target.name,
+        "role": target.role, "is_active": target.is_active,
+        # The seat count is the reason this route exists — hand it back so the UI does not
+        # have to refetch the org to show the effect of the click.
+        "seats_used": await _seats_used(session, org_id),
+    }
 
 
 class InvitationCreate(BaseModel):

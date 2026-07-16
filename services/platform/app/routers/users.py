@@ -21,7 +21,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.deps import current_user
-from app.models import CONSENT_KEYS, ActivityEvent, DeletionLedger, Org, RefreshToken, User
+from app.models import (
+    CONSENT_KEYS,
+    DELETED_EMAIL_DOMAIN,
+    ActivityEvent,
+    DeletionLedger,
+    Org,
+    RefreshToken,
+    User,
+)
 from app.routers.auth import _issue_pair  # one code path mints tokens, here and at login
 from app.security import hash_email
 
@@ -346,7 +354,7 @@ async def delete_me(
     )
     # Scrub in place: the row survives as a tombstone so foreign keys stay
     # valid, but no PII remains and the account can never log in again.
-    user.email = f"deleted-{user.id}@deleted.invalid"
+    user.email = f"deleted-{user.id}{DELETED_EMAIL_DOMAIN}"
     user.name = ""
     user.password_hash = "deleted"
     user.is_active = False

@@ -33,6 +33,43 @@ test.describe("HR aggregates", () => {
     }
   });
 
+  test("an HR admin can offboard a leaver, and it frees the seat", async ({ request }) => {
+    /* The core B2B operation, and the roster was GET-only until 2026-07-16 — an org_admin
+       could see a leaver and do nothing, while the seat they no longer used stayed counted
+       against the org (_seats_used gates every invitation). Pinned across the wire because
+       "does it actually cut access" spans the platform's auth path, not just this route. */
+    const hr = await token(request, "hr");
+    const member = await token(request, "member");
+    const me = await (await request.get(`${urls.platform}/users/me`, { headers: auth(member) })).json();
+    const before = (await (await request.get(`${urls.platform}/orgs/me`, { headers: auth(hr) })).json()).seats_used;
+
+    const off = await request.patch(`${urls.platform}/orgs/me/people/${me.id}`, {
+      headers: auth(hr), data: { is_active: false },
+    });
+    expect(off.ok(), await off.text()).toBeTruthy();
+    expect((await off.json()).seats_used, "the seat was not freed").toBe(before - 1);
+
+    // Offboarding theatre check: the leaver must actually be out.
+    const still = await request.get(`${urls.platform}/users/me`, { headers: auth(member) });
+    expect(still.status(), "a deactivated leaver still had access").toBe(401);
+
+    // Put them back — the shared stack's seeded member must survive for later specs.
+    const on = await request.patch(`${urls.platform}/orgs/me/people/${me.id}`, {
+      headers: auth(hr), data: { is_active: true },
+    });
+    expect(on.ok()).toBeTruthy();
+  });
+
+  test("an org_admin cannot deactivate themselves", async ({ request }) => {
+    // With one org_admin this locks the whole tenant out of its own console.
+    const hr = await token(request, "hr");
+    const me = await (await request.get(`${urls.platform}/users/me`, { headers: auth(hr) })).json();
+    const r = await request.patch(`${urls.platform}/orgs/me/people/${me.id}`, {
+      headers: auth(hr), data: { is_active: false },
+    });
+    expect(r.status()).toBe(400);
+  });
+
   test("the HR console never exposes coaching content", async ({ request }) => {
     // "Counts, never content" is structural: the platform is the database this token
     // reaches, and it holds no content column and no content route.

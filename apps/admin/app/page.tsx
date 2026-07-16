@@ -183,25 +183,61 @@ function OrgAnalytics() {
   );
 }
 
-function People() {
+function People({ me }: { me: Me }) {
   const { data: people, error, loading, reload } = useLoad<Person[]>(() => apiJson<Person[]>("/orgs/me/people"));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState("");
+
+  /* Offboarding was the hole here: this roster showed a leaver and offered nothing to do
+     about them, and the seat they no longer used stayed counted against the org. */
+  async function toggle(p: Person) {
+    const msg = p.is_active
+      ? `Deactivate ${p.email}? They lose access immediately and their seat is freed. Their own coaching content is untouched — it is theirs, not the company's.`
+      : `Reactivate ${p.email}? They can sign in again and this uses a seat.`;
+    if (!window.confirm(msg)) return;
+    setBusy(p.id); setFailed("");
+    try {
+      await api(`/orgs/me/people/${p.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !p.is_active }) });
+      reload();
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : "Couldn't change their status.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (loading) return <div className="card"><Skeleton /></div>;
   if (error) return <Failed msg={error} onRetry={reload} />;
   return (
     <div className="card">
       <h2>People</h2>
       <table>
-        <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th></tr></thead>
+        <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th /></tr></thead>
         <tbody>
           {(people ?? []).map((p) => (
             <tr key={p.id}>
               <td>{p.email}</td><td>{p.name}</td><td>{p.role}</td>
               <td><span className={`pill ${p.is_active ? "ok" : "off"}`}>{p.is_active ? "active" : "disabled"}</span></td>
+              <td>
+                {/* No self-deactivation: with one org_admin it locks the whole tenant out
+                    of its own console. The server refuses it too — this only saves the
+                    round trip and the confusing error. */}
+                {p.id === me.id ? <span className="hint">you</span> : (
+                  <button className="ghost" disabled={busy === p.id} onClick={() => toggle(p)}>
+                    {busy === p.id ? "…" : p.is_active ? "deactivate" : "reactivate"}
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {failed && <p className="error">{failed}</p>}
       {people?.length === 0 && <p className="empty-state">No members yet — invite someone from the Invite tab.</p>}
+      <p className="hint" style={{ marginTop: 12 }}>
+        Deactivating ends someone&rsquo;s access and frees their seat. It is not deletion:
+        their coaching content is theirs, and only they can export or erase it.
+      </p>
     </div>
   );
 }
@@ -844,7 +880,7 @@ export default function Admin() {
       </nav>
       {tab === "overview" && <OrgOverview />}
       {tab === "analytics" && <OrgAnalytics />}
-      {tab === "people" && <People />}
+      {tab === "people" && <People me={me} />}
       {tab === "invite" && <Invite />}
       {tab === "tenants" && <Tenants />}
       {tab === "demos" && <Demos />}
