@@ -194,4 +194,76 @@ test.describe("ops console", () => {
       expect(text.toLowerCase(), `the safety queue leaked "${forbidden}"`).not.toContain(`"${forbidden}"`);
     }
   });
+
+  /* Acknowledging is what makes the queue a queue rather than an ever-growing log. These
+     run against the composed stack because the engine unit suite runs on mongomock while
+     Postgres is the default store — a divergence that has now produced four bugs that
+     passed a green suite (see services/engine/tests/conftest.py). */
+
+  test("an escalation can be acknowledged, and that drains the open queue", async ({ request }) => {
+    const ops = await token(request, "ops");
+    const open = async (status = "open") =>
+      (await (await request.get(`${urls.engine}/v1/safety/escalations?status=${status}`,
+        { headers: auth(ops) })).json());
+
+    const before = await open();
+    test.skip(before.count === 0, "no escalation in the shared stack's queue to acknowledge");
+
+    const row = before.escalations[0];
+    expect(row.id, "an empty id would leave the Resolve button nothing to send").toBeTruthy();
+
+    const r = await request.post(
+      `${urls.engine}/v1/safety/escalations/${encodeURIComponent(row.id)}/ack`,
+      { headers: auth(ops) },
+    );
+    expect(r.ok()).toBeTruthy();
+
+    const resolved = (await open("resolved")).escalations.find((e: any) => e.id === row.id);
+    expect(resolved, "an acknowledged row left the resolved view").toBeTruthy();
+    expect(resolved.acknowledged_by, "the ack recorded nobody").toBeTruthy();
+    // Who and when — never what. There is no note/reason/outcome field by design.
+    expect(Object.keys(resolved).sort()).toEqual([
+      "acknowledged_at", "acknowledged_by", "at", "delivered", "detected_by",
+      "id", "org_id", "session_id", "user_id",
+    ]);
+    expect((await open()).escalations.some((e: any) => e.id === row.id),
+      "a handled escalation stayed in the open queue").toBeFalsy();
+  });
+
+  test("acking a record that is not yours is a 404, not a 403", async ({ request }) => {
+    /* The same answer as an unknown id, deliberately: a 403 would confirm the record
+       exists, so an operator could enumerate another tenant's ids by watching the code. */
+    const ops = await token(request, "ops");
+    const r = await request.post(`${urls.engine}/v1/safety/escalations/no-such-id/ack`,
+      { headers: auth(ops) });
+    expect(r.status()).toBe(404);
+  });
+
+  test("an HR admin cannot reach the ack route", async ({ request }) => {
+    /* The queue names which *employees* hit the crisis screen, so their own HR must not
+       reach it — that is not "counts, never content", it is worse, because the count is a
+       person. The read is already gated; the write must be too. */
+    const hr = await token(request, "hr");
+    const r = await request.post(`${urls.engine}/v1/safety/escalations/anything/ack`,
+      { headers: auth(hr) });
+    expect(r.status(), "an org_admin could resolve their employees' crisis records").toBe(403);
+  });
+
+  test("the console renders the queue and its open/resolved filter", async ({ page }) => {
+    await signIn(page, urls.admin, "ops");
+    await page.getByRole("button", { name: "Safety", exact: true }).click();
+
+    await expect(page.getByRole("heading", { name: /Safety queue/ })).toBeVisible();
+    // The filter must actually be a control, not three unstyled buttons: `.seg` was
+    // referenced by the markup before it existed in globals.css.
+    const seg = page.locator(".seg");
+    await expect(seg).toBeVisible();
+    await expect(seg.getByRole("button", { name: "open", exact: true })).toHaveClass(/active/);
+
+    await seg.getByRole("button", { name: "all", exact: true }).click();
+    await expect(seg.getByRole("button", { name: "all", exact: true })).toHaveClass(/active/);
+
+    // The one column that must never exist here (CLAUDE.md rule 5).
+    await expect(page.getByRole("columnheader", { name: /excerpt|message|content/i })).toHaveCount(0);
+  });
 });

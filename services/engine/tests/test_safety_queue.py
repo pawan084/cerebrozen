@@ -125,3 +125,60 @@ def test_endpoint_never_leaks_content(mongo):
 def test_endpoint_rejects_an_out_of_range_limit():
     r = _client().get("/v1/safety/escalations?limit=9999")
     assert r.status_code == 422  # Query(le=500) guards it
+
+
+def test_endpoint_rejects_an_unknown_status():
+    r = _client().get("/v1/safety/escalations?status=whatever")
+    assert r.status_code == 422  # Query(pattern=...) guards it
+
+
+def test_the_open_queue_is_the_default_view(mongo):
+    """A queue whose default view includes everything ever handled is a queue nobody
+    reads, and this is the one an operator must actually read."""
+    escalation.escalate(user_id="u1", session_id="s1", detected_by="lexicon")
+    escalation.escalate(user_id="u2", session_id="s2", detected_by="lexicon")
+    client = _client()
+    rid = client.get("/v1/safety/escalations").json()["escalations"][0]["id"]
+
+    assert client.post(f"/v1/safety/escalations/{rid}/ack").status_code == 200
+    assert client.get("/v1/safety/escalations").json()["count"] == 1
+    assert client.get("/v1/safety/escalations?status=resolved").json()["count"] == 1
+    assert client.get("/v1/safety/escalations?status=all").json()["count"] == 2
+
+
+def test_ack_records_the_caller_not_a_free_text_note(mongo):
+    """Who and when. There is deliberately no note/reason/outcome field: the reference's
+    admin renders an "Excerpt" column with the flagged text, and a "what happened" box is
+    that same leak wearing a different hat (CLAUDE.md rule 5)."""
+    escalation.escalate(user_id="u1", session_id="s1", detected_by="lexicon")
+    client = _client()
+    rid = client.get("/v1/safety/escalations").json()["escalations"][0]["id"]
+    client.post(f"/v1/safety/escalations/{rid}/ack")
+
+    row = client.get("/v1/safety/escalations?status=resolved").json()["escalations"][0]
+    assert row["acknowledged_by"]  # the dev-bypass caller's sub
+    assert row["acknowledged_at"]
+    assert set(row) == {"id", "org_id", "user_id", "session_id", "detected_by", "at",
+                        "delivered", "acknowledged_at", "acknowledged_by"}
+
+
+def test_acking_an_unknown_record_is_404(mongo):
+    r = _client().post("/v1/safety/escalations/no-such-id/ack")
+    assert r.status_code == 404
+
+
+def test_acking_another_orgs_record_is_404_not_403(mongo):
+    """The SAME answer as an unknown id, deliberately: a 403 would confirm the record
+    exists, so an operator could enumerate another tenant's escalation ids by watching the
+    status code change."""
+    tok = ctx_org_id.set("acme")
+    try:
+        escalation.escalate(user_id="u1", session_id="s1", detected_by="lexicon")
+        rid = escalation.list_escalations()[0]["id"]
+    finally:
+        ctx_org_id.reset(tok)
+
+    # The request runs as the default org, which must not see acme's row at all.
+    r = _client().post(f"/v1/safety/escalations/{rid}/ack")
+    assert r.status_code == 404
+    assert "acme" not in r.text

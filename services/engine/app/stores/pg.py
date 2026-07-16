@@ -30,6 +30,7 @@ from __future__ import annotations
 import copy
 import logging
 import os
+import uuid
 import threading
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -37,6 +38,24 @@ logger = logging.getLogger("cerebrozen.stores.pg")
 
 _pool = None
 _pool_lock = threading.Lock()
+#: Serialises table creation within this process — see PgCollection._ensure.
+_ensure_lock = threading.RLock()
+
+
+def _is_concurrent_create(exc: BaseException) -> bool:
+    """Did this DDL fail only because someone else won the race to create the same object?
+
+    Postgres reports the loser of a concurrent `CREATE TABLE IF NOT EXISTS` as a
+    UniqueViolation on the `pg_type` catalog (23505) rather than DuplicateTable, and the
+    matching index race as DuplicateTable/DuplicateObject. Matched by SQLSTATE rather than
+    message text so it does not depend on the server's locale.
+    """
+    code = getattr(exc, "sqlstate", None) or getattr(exc, "pgcode", None)
+    return code in {
+        "23505",  # unique_violation — the pg_type catalog row for the new table
+        "42P07",  # duplicate_table (also duplicate index)
+        "42710",  # duplicate_object
+    }
 _ensured: set = set()
 
 
@@ -164,13 +183,29 @@ def _apply_update(doc: Dict[str, Any], update: Dict[str, Any], *, inserted: bool
 
 def _project(doc: Dict[str, Any], projection: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Inclusion projection, plus the one exotic form the stores use:
-    `{"messages": {"$slice": 4}}` (first N) and `{"$slice": -10}` (last N)."""
+    `{"messages": {"$slice": 4}}` (first N) and `{"$slice": -10}` (last N).
+
+    `_id` semantics, and the ONE divergence from Mongo that is left deliberately:
+
+    * `{"_id": 1, ...}` — asked for explicitly, so it is returned. This used to be dropped
+      on the floor: `_id` was filtered out of the projection and never put back, so a caller
+      that asked for it got a row without one. mongomock returns it, the shim did not, and a
+      store keyed on it (the safety queue, which needs an id to acknowledge a record) would
+      have shipped an empty id on Postgres — the DEFAULT backend — while passing its tests.
+    * `{"_id": 0, ...}` — excluded, as Mongo does.
+    * absent — NOT returned. Mongo would include it by default. Left as-is on purpose:
+      every existing caller either says `_id: 0` or ignores the field, and quietly adding a
+      key to every projected row is a wider change than this file should make on its own.
+    """
     if not projection:
         return doc
+    want_id = bool(projection.get("_id"))
     include = {k: v for k, v in projection.items() if k != "_id"}
     if not any(v for v in include.values()):        # exclusion-only → return whole doc
         return doc
     out: Dict[str, Any] = {}
+    if want_id and "_id" in doc:
+        out["_id"] = doc["_id"]
     for key, spec in include.items():
         if isinstance(spec, dict) and "$slice" in spec:
             n = spec["$slice"]
@@ -235,21 +270,48 @@ class PgCollection:
         self._ensure()
 
     def _ensure(self) -> None:
+        """Create this collection's table, once, tolerating a concurrent creator.
+
+        `CREATE TABLE IF NOT EXISTS` is NOT atomic in Postgres: the existence check and the
+        create are separate, so two creators racing on the same new table both pass the
+        check and the loser dies with a UniqueViolation on `pg_type` — not on anything that
+        names the table, which is why it reads as a mystery. It only bites on a table's
+        FIRST use, so it is invisible in any database that already has the schema and
+        arrives exactly once — on a cold start, against the empty database of a fresh
+        deployment, under the first concurrent requests. That is the worst time to find it.
+        (It surfaced here on a wiped dev volume; a real first deploy is the same shape.)
+
+        The lock serialises threads in THIS process; the except clause covers what a lock
+        cannot — uvicorn workers and engine replicas are separate processes racing on the
+        same database. Both are needed. After either path the table exists, which is all
+        the caller wanted, so `_ensured` is stamped regardless.
+        """
         if self.name in _ensured:
             return
         pool = get_pool()
         if pool is None:
             return
-        with pool.connection() as conn:
-            conn.execute(
-                f'CREATE TABLE IF NOT EXISTS "{self.name}" '
-                f'(_id TEXT PRIMARY KEY, doc JSONB NOT NULL)'
-            )
-            conn.execute(
-                f'CREATE INDEX IF NOT EXISTS "{self.name}_doc_gin" '
-                f'ON "{self.name}" USING GIN (doc)'
-            )
-        _ensured.add(self.name)
+        with _ensure_lock:
+            if self.name in _ensured:  # another thread did it while we waited
+                return
+            try:
+                with pool.connection() as conn:
+                    conn.execute(
+                        f'CREATE TABLE IF NOT EXISTS "{self.name}" '
+                        f'(_id TEXT PRIMARY KEY, doc JSONB NOT NULL)'
+                    )
+                    conn.execute(
+                        f'CREATE INDEX IF NOT EXISTS "{self.name}_doc_gin" '
+                        f'ON "{self.name}" USING GIN (doc)'
+                    )
+            except Exception as exc:  # noqa: BLE001
+                # Narrow on purpose: only the "someone else created it" races are benign.
+                # A real DDL failure (no permission, disk full) must still raise, or the
+                # first query would fail with something far less legible.
+                if not _is_concurrent_create(exc):
+                    raise
+                logger.info("pg.table_created_concurrently", extra={"table": self.name})
+            _ensured.add(self.name)
 
     # -- the identity of a document. Mongo lets any field be the key; the stores key on
     #    user_id or session_id, so derive a stable primary key from the filter.
@@ -354,22 +416,31 @@ class PgCollection:
         returned None, and the feature was a silent no-op on Postgres — the DEFAULT backend
         — while passing its tests against mongomock, which has insert_one.
 
-        `_id` comes from the doc, else the same key guess the rest of the shim uses.
+        INSERT MEANS INSERT. `_id` comes from the doc, and when it is absent we MINT one —
+        we do NOT reach for `_key`'s guess, and we do NOT upsert.
+
+        That distinction is not pedantry, it is a safety record. `_key` walks
+        `_id → user_id → session_id`, so an escalation `{user_id, session_id, at}` would key
+        on the USER: two crisis escalations for the same person would collide, and the
+        second would silently overwrite the first. `escalate` even carries a scar from the
+        missing method — `insert_one(...) if hasattr(coll, "insert_one") else update_one(...)`
+        with an explicit unique `_id` — so adding the method naively would have started
+        destroying exactly the records an incident review needs. pymongo mints an ObjectId
+        here; a uuid is the same promise: a new document is a new row.
         """
         pool = get_pool()
         if pool is None:
             return _Result()
         self._ensure()
-        key = doc.get("_id") or self._key({}, doc)
-        if not key:
-            return _Result()
+        key = doc.get("_id") or uuid.uuid4().hex
         body = {**doc, "_id": key}
         with pool.connection() as conn:
             from psycopg.types.json import Jsonb
 
+            # No ON CONFLICT: a duplicate _id is a caller error, not something to paper
+            # over by overwriting whatever was already there.
             conn.execute(
-                f'INSERT INTO "{self.name}" (_id, doc) VALUES (%s, %s) '
-                f'ON CONFLICT (_id) DO UPDATE SET doc = EXCLUDED.doc',
+                f'INSERT INTO "{self.name}" (_id, doc) VALUES (%s, %s)',
                 (key, Jsonb(body)),
             )
         return _Result(inserted_id=key)

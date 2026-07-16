@@ -160,23 +160,110 @@ def _persist(record: dict, *, delivered: bool) -> None:
             logger.error("safety.escalation_not_recorded", extra={"reason": "no store"})
             return
         coll = client[config.MONGO_BACKEND_DB]["crisis_escalations"]
-        coll.insert_one({**record, "delivered": delivered}) if hasattr(coll, "insert_one") \
-            else coll.update_one(
-                {"_id": f"{record['session_id']}:{record['at']}"},
-                {"$set": {**record, "delivered": delivered}},
-                upsert=True,
-            )
+        # An explicit, unique, DETERMINISTIC id: session + instant. One crisis, one record.
+        #
+        # This used to read `insert_one(...) if hasattr(coll, "insert_one") else
+        # update_one({"_id": f"{session_id}:{at}"}, ...)` — a workaround for the Postgres
+        # shim not having insert_one. The hasattr branch is what protected us: when the
+        # shim gained the method, a naive insert_one would have fallen back to its key
+        # GUESS (_id -> user_id -> session_id), keyed every escalation on the USER, and
+        # silently overwritten a person's previous crisis with their next one. The id is
+        # named here rather than left to any store's guess.
+        coll.insert_one({
+            **record,
+            "_id": f"{record['session_id']}:{record['at']}",
+            "delivered": delivered,
+            # Open until an operator says otherwise. The queue was read-only, so it never
+            # drained: a handled escalation stayed open forever and kept re-notifying.
+            "acknowledged_at": None,
+            "acknowledged_by": "",
+        })
     except Exception as exc:  # noqa: BLE001
         logger.error("safety.escalation_not_recorded", extra={"error": str(exc)})
 
 
-def list_escalations(limit: int = 100) -> list:
+def _record_key(record_id: str):
+    """Turn the id the console sends back into the `_id` the store actually holds.
+
+    `list_escalations` stringifies `_id`, because records written before `_persist` named
+    its own carry a Mongo ObjectId. That round-trip has to survive: an ObjectId row would
+    otherwise render in the queue and be impossible to resolve — the operator would click
+    Resolve, get a 404, and the row would sit there forever, which is the exact failure
+    acknowledgement exists to end.
+
+    A 24-hex string is only ever an ObjectId here (ours are `session_id:at` or a uuid4
+    hex, which is 32), so this cannot shadow a real id. Postgres `_id`s are always text,
+    and bson ships with pymongo, but neither is worth an exception on a safety path.
+    """
+    if len(record_id) != 24:
+        return record_id
+    try:
+        from bson import ObjectId
+
+        return ObjectId(record_id)
+    except Exception:  # noqa: BLE001
+        return record_id
+
+
+def acknowledge(record_id: str, *, actor: str) -> bool:
+    """Mark an escalation handled. Returns True only if this call did it.
+
+    A STATUS and a NAME — never a note, never a reason, never a summary. The reference's
+    admin has an "Excerpt" column showing the flagged text; this queue exists precisely so
+    that column can never be built (CLAUDE.md rule 5), and an "outcome" free-text field
+    would be the same leak wearing a different hat.
+
+    Idempotent, and the FIRST responder wins: two operators clicking Resolve must not fight,
+    and an incident review asks who actually handled it — not who clicked last.
+
+    Org-scoped like the read, so one tenant's operator cannot resolve another's.
+    """
+    if not record_id:
+        return False
+    try:
+        from app import config
+        from app.stores.mongo import get_client
+        from app.tenancy import scoped
+
+        client = get_client()
+        if client is None:
+            logger.error("safety.escalation_ack_failed", extra={"reason": "no store"})
+            return False
+        coll = client[config.MONGO_BACKEND_DB]["crisis_escalations"]
+        key = _record_key(record_id)
+        row = coll.find_one(scoped({"_id": key}))
+        if not row:
+            return False
+        if row.get("acknowledged_at"):
+            return True  # already handled; the first responder stands
+        coll.update_one(
+            scoped({"_id": key}),
+            {"$set": {
+                "acknowledged_at": datetime.now(timezone.utc).isoformat(),
+                "acknowledged_by": actor or "unknown",
+            }},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("safety.escalation_ack_failed", extra={"error": str(exc)})
+        return False
+    logger.warning(
+        "safety.escalation_acknowledged",
+        extra={"record_id": record_id, "actor": actor or "unknown"},
+    )
+    return True
+
+
+def list_escalations(limit: int = 100, status: str = "open") -> list:
     """The safety queue: escalation records for the active org, newest first.
 
     Signal-only by construction. The stored record never held the disclosure — only
     that the screen fired, for whom, in which session, and whether the contact was
     reached (see ``escalate``/``_persist``). This is "counts, never content" at the
     storage layer, not merely a projection over sensitive data.
+
+    ``status``: "open" (the default — unacknowledged), "resolved", or "all". Open by
+    default because a queue whose default view includes everything ever handled is a queue
+    nobody reads, and this is the one an operator must actually read.
 
     Scoped to the active org via ``scoped()``; the default org also sees legacy
     records written before org stamping. Best-effort: a store problem returns an
@@ -191,16 +278,44 @@ def list_escalations(limit: int = 100) -> list:
         if client is None:
             return []
         coll = client[config.MONGO_BACKEND_DB]["crisis_escalations"]
+        # `_id` is now RETURNED (as `id`): the console has to name a record to acknowledge
+        # it. It is `session_id:at` — signal, the same two facts already in the row, so
+        # exposing it discloses nothing new.
         projection = {
-            "_id": 0, "org_id": 1, "user_id": 1, "session_id": 1,
+            "_id": 1, "org_id": 1, "user_id": 1, "session_id": 1,
             "detected_by": 1, "at": 1, "delivered": 1,
+            "acknowledged_at": 1, "acknowledged_by": 1,
         }
         rows = list(coll.find(scoped({}), projection))
     except Exception as exc:  # noqa: BLE001
         logger.error("safety.escalation_list_failed", extra={"error": str(exc)})
         return []
-    rows.sort(key=lambda r: r.get("at") or "", reverse=True)
-    return rows[: max(0, limit)]
+
+    out = []
+    for r in rows:
+        # Records written before acknowledgement existed have neither field; they are open.
+        acked = r.get("acknowledged_at")
+        if status == "open" and acked:
+            continue
+        if status == "resolved" and not acked:
+            continue
+        out.append({
+            # str(): records written before `_persist` named its own `_id` carry a Mongo
+            # ObjectId, which is not JSON-serialisable — returning it raw 500s the whole
+            # queue for exactly the deployments that have the most history in it. The id is
+            # an opaque handle to `ack`; its type is not part of the contract.
+            "id": str(r.get("_id", "")),
+            "org_id": r.get("org_id", ""),
+            "user_id": r.get("user_id", ""),
+            "session_id": r.get("session_id", ""),
+            "detected_by": r.get("detected_by", ""),
+            "at": r.get("at", ""),
+            "delivered": r.get("delivered", False),
+            "acknowledged_at": acked,
+            "acknowledged_by": r.get("acknowledged_by", ""),
+        })
+    out.sort(key=lambda r: r.get("at") or "", reverse=True)
+    return out[: max(0, limit)]
 
 
 def health() -> dict:

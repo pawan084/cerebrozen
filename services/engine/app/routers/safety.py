@@ -20,11 +20,11 @@ easiest to get wrong, and the cost of getting it wrong runs in one direction onl
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 
 from app.auth import require_auth, require_internal_admin
-from app.safety.escalation import health, list_escalations
+from app.safety.escalation import acknowledge, health, list_escalations
 from app.safety.helplines import for_region, regions
 
 router = APIRouter()
@@ -65,19 +65,50 @@ async def helplines(
 @router.get("/v1/safety/escalations")
 async def escalations(
     limit: int = Query(100, ge=1, le=500),
+    status: str = Query("open", pattern="^(open|resolved|all)$"),
     _claims: dict = Depends(require_internal_admin),
 ) -> dict:
     """The crisis-escalation queue for the caller's org, newest first (signal-only).
+
+    `status` defaults to **open**: a queue whose default view includes everything ever
+    handled is a queue nobody reads, and this is the one an operator must actually read.
 
     Also returns whether escalation is *armed* (a contact endpoint is configured) and
     whether the crisis classifier is on — a safety feature that is silently off must be
     visible to the operator, not just at ``/health``.
     """
-    rows = await run_in_threadpool(list_escalations, limit)
+    rows = await run_in_threadpool(list_escalations, limit, status)
     h = health()
     return {
         "armed": h["crisis_escalation_armed"],
         "classifier_enabled": h["crisis_classifier_enabled"],
+        "status": status,
         "count": len(rows),
         "escalations": rows,
     }
+
+
+@router.post("/v1/safety/escalations/{record_id}/ack")
+async def acknowledge_escalation(
+    record_id: str,
+    claims: dict = Depends(require_internal_admin),
+) -> dict:
+    """Mark an escalation handled.
+
+    The queue was read-only, so it never drained: an operator who had already reached
+    someone had no way to say so, and the row stayed open forever.
+
+    A STATUS and a NAME. There is deliberately no note, no reason and no outcome field: the
+    reference's admin renders an "Excerpt" column with the flagged text, and a free-text
+    "what happened" box is that same leak wearing a different hat. What was said stays
+    between the person and their coach (CLAUDE.md rule 5).
+
+    404 for an unknown record OR one belonging to another tenant — the same answer, so an
+    operator cannot probe another org's ids by watching the status change.
+    """
+    ok = await run_in_threadpool(
+        acknowledge, record_id, actor=(claims or {}).get("sub", "unknown"),
+    )
+    if not ok:
+        raise HTTPException(404, "no such escalation in your queue")
+    return {"status": "acknowledged", "id": record_id}

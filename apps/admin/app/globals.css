@@ -52,6 +52,18 @@ a.wordmark.home:hover em { opacity: 0.7; }
 }
 .tabs button.active { background: var(--color-brand-900); color: #fff; border-color: var(--color-brand-900); }
 
+/* A compact segmented filter that lives INSIDE a card (the safety queue's open/resolved/
+   all). Deliberately not `.tabs`: those are the page's top-level navigation, and reusing
+   them here would give a filter the same visual weight as "which section am I in". */
+.seg { display: inline-flex; border: 1px solid var(--color-mist-200); border-radius: 999px;
+  padding: 2px; gap: 2px; background: var(--color-mist-100); }
+.seg button {
+  border: 0; background: none; border-radius: 999px; padding: 4px 12px;
+  font: inherit; font-weight: 600; font-size: 12px; color: var(--color-brand-600);
+  cursor: pointer; text-transform: capitalize;
+}
+.seg button.active { background: #fff; color: var(--color-brand-900); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+
 .card { background: #fff; border: 1px solid var(--color-mist-200); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
 .card h2 { font-size: 16px; margin-bottom: 12px; }
 .stats { display: flex; gap: 24px; flex-wrap: wrap; }

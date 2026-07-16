@@ -144,6 +144,77 @@ succeeded, the reads simply returned nothing, and no error surfaced anywhere:
 Net effect before the fix: `/v1/sessions`, `/v1/sessions/resumable` and the transcript were
 empty for every real tenant. PRODUCT.md ships "session history with generated titles" as v1.
 
+Found later, while building item 15 (the escalation ack) — same root, the shim:
+
+5. **`_project` dropped `_id` even when asked for it.** mongomock returns `_id` by default;
+   the shim filtered it out of the projection and never put it back. The safety queue has
+   to NAME a record to acknowledge it, so every row would have carried an empty id on
+   Postgres and the Resolve button would have had nothing to send.
+6. **`insert_one` would have destroyed a safety record.** Fixing (3) flipped the
+   `hasattr(coll, "insert_one")` branch in `escalate()`, whose `update_one` fallback had
+   carefully built a unique `_id`. The naive `insert_one` reached for `_key`'s guess, which
+   resolves an escalation to its **`user_id`** — so a person's second crisis would have
+   overwritten their first, silently, destroying exactly the record an incident review
+   needs. `_persist` now names its own `_id` and `insert_one` mints a uuid rather than
+   guessing; a duplicate `_id` raises instead of upserting.
+7. **A cold start crashed under concurrent first use.** `CREATE TABLE IF NOT EXISTS` is not
+   atomic in Postgres: two creators racing on a NEW table both pass the existence check and
+   the loser dies with `UniqueViolation` on `pg_type_typname_nsp_index` — an error naming
+   the catalog, not the table. Only possible on a table's first use, so it is invisible
+   against any database that already has its schema and arrives exactly once: on a fresh
+   deployment's first concurrent requests. Found by wiping the dev volume and sending one
+   crisis turn — which 500'd. `_ensure` now locks within the process and tolerates the
+   cross-process race by SQLSTATE.
+8. **A legacy `_id` could render but never resolve.** Escalations written before `_persist`
+   named its own `_id` carry a Mongo ObjectId: it is not JSON-serialisable (500s the whole
+   queue) and it never matches the string the console sends back (Resolve 404s forever).
+   The rows an operator most needs to clear are the oldest ones.
+
+The through-line in 2, 3, 5, 6: **Postgres is the default store and essentially nothing
+tested it** — the whole engine suite runs on mongomock. Every one of these passed a green
+suite while being broken on the backend that ships. `tests/conftest.py` now carries the
+`pgdb` fixture and `requires_pg` marker so store-behaviour tests can run against the real
+thing; CI should run the suite with a Postgres available.
+
+## Blocked on a decision — both ops queues are permanently empty
+
+**The safety queue and the nudge queue can never show a row, for anyone.** Not a
+regression; true since the ops queues were org-scoped. Measured against the composed
+stack, not reasoned about:
+
+- `escalate()` stamps the record with the **customer's** org (`_org_id()` → the JWT's
+  `org_id`). A demo member's crisis wrote `org_id = 6da49ab5…` ("Demo Co").
+- `GET /v1/safety/escalations` requires **`internal_admin`** — CereBroZen's own operators,
+  whose platform-issued token carries `org_id = "internal"`, because they belong to no
+  customer org.
+- `list_escalations` reads through `scoped({})`, which filters to `current_org()` =
+  `"internal"`. It matches nothing, ever. Verified: one row in `crisis_escalations`, and
+  `GET /v1/safety/escalations` returns `count: 0` for the only role allowed to call it.
+- `notifications.py:166` scopes the nudge queue identically — same result.
+
+Unit tests miss it because they set `ctx_org_id` to the same org `escalate()` stamped, or
+run as the default org, where `_LEGACY_DEFAULT` matches. Only a real platform-issued
+operator token exposes it.
+
+This is the failure `escalation.py` argues against in its own docstring — "a
+silently-unconfigured safety feature is worse than an absent one" — one level up: the
+feature is configured, the record is written, and the queue that exists so a human gets
+involved shows nothing. The `armed`/`classifier_enabled` pills still read healthy.
+
+The fix is a **tenancy-contract decision, not a bug fix**, so it is parked here rather
+than made unilaterally (CLAUDE.md rule 7; the answer changes who can see which employees
+are in crisis):
+
+1. **`internal_admin` reads across tenants.** The queue works; each row already carries
+   `org_id`. But it means the vendor's operators see which employees at which customer hit
+   the crisis screen — a real privacy expansion that SECURITY.md would have to state.
+2. **An org selector in the ops console.** The operator picks a tenant and the engine
+   scopes to it: deliberate and auditable, and it keeps "no cross-tenant read by default".
+   More work: the engine must accept a target org and verify the role for it.
+3. **The queue belongs to the customer, not the vendor** — a designated responder role
+   inside the org. Closest to "the client's programme, not our feature" (escalation.py),
+   and the largest change: a new role, and HR must still not be it.
+
 ## Warts found while building, not yet fixed
 
 - **A missing store reports "disabled for this tenant" (409).** `wellness.add_mood`

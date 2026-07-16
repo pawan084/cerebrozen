@@ -6,6 +6,7 @@ PROMPT_SOURCE=codebase pins the bundled workbook so no test touches S3.
 """
 import os
 import uuid
+from functools import lru_cache
 
 os.environ.setdefault("OPENAI_API_KEY", "")
 # Regulated-workplace mode is the PRODUCT default (config.py). The suite pins it OFF so
@@ -149,6 +150,88 @@ def agentic_coll(mongo):
     from app import config as _config
 
     return mongo[_config.MONGO_BACKEND_DB][_config.MONGO_AGENTIC_COLLECTION]
+
+
+# ── a real Postgres ──────────────────────────────────────────────────────────
+# Postgres is the DEFAULT store (ARCHITECTURE.md §Storage consolidation), but `mongo`
+# above is mongomock, so essentially the whole suite exercises a backend that does not
+# ship. That gap has now produced four bugs that passed a green suite and were broken in
+# production: `find_one(sort=)` raised TypeError, `insert_one` did not exist, `_project`
+# dropped `_id`, and the shim's `_key` guess would have overwritten a person's previous
+# crisis record with their next one.
+#
+# So these live in conftest rather than in one test file: anything asserting on store
+# BEHAVIOUR (as opposed to business logic that merely needs a store) should be reachable
+# by `pgdb` too. The `mongo` fixture stays the default because it is fast and needs no
+# server — this is the escape hatch for when the shim itself is what is under test.
+#
+# Note PG_URL resolves to the default below: POSTGRES_URL is blanked at the top of this
+# file so the suite never depends on the developer's shell.
+
+PG_URL = os.environ.get("POSTGRES_URL") or "postgresql://postgres:pg@localhost:55432/cerebrozen"
+
+
+@lru_cache(maxsize=1)
+def _pg_ready() -> bool:
+    """Is a Postgres with pgvector reachable? The suite must still pass without one."""
+    try:
+        import psycopg
+
+        with psycopg.connect(PG_URL, connect_timeout=3) as conn:
+            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+requires_pg = pytest.mark.skipif(
+    not _pg_ready(), reason=f"no Postgres/pgvector reachable at {PG_URL}"
+)
+
+
+class _PgHarness:
+    """Hands out uniquely-named collections and drops their tables afterwards, so tests
+    can never see each other's rows. It holds its OWN pool reference, so a test that
+    re-points `pg._pool` (to simulate an unconfigured Postgres) can still be cleaned up."""
+
+    def __init__(self, pg, pool):
+        self.pg, self.pool = pg, pool
+        self.tables: list[str] = []
+
+    def collection(self, prefix: str = "t"):
+        name = f"{prefix}_{uuid.uuid4().hex[:10]}"
+        self.tables.append(name)
+        return self.pg.collection(name)
+
+    def rows(self, table: str) -> list[dict]:
+        """Read a table straight from Postgres — never through the shim under test."""
+        with self.pool.connection() as conn:
+            return [r[0] for r in conn.execute(f'SELECT doc FROM "{table}"').fetchall()]
+
+    def sql(self, statement: str, args=()):
+        with self.pool.connection() as conn:
+            return conn.execute(statement, args).fetchall()
+
+
+@pytest.fixture
+def pgdb(monkeypatch):
+    """A live Postgres, wired into app.stores.pg through its own env/globals."""
+    from app.stores import pg
+
+    monkeypatch.setenv("POSTGRES_URL", PG_URL)
+    monkeypatch.setattr(pg, "_pool", None)
+    monkeypatch.setattr(pg, "_ensured", set())
+    monkeypatch.setattr(pg, "_collections", {})
+
+    pool = pg.get_pool()
+    assert pool is not None, "the fixture is guarded by requires_pg — this cannot be None"
+    harness = _PgHarness(pg, pool)
+    yield harness
+
+    with pool.connection() as conn:
+        for table in harness.tables:
+            conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+    pool.close()
 
 
 @pytest.fixture

@@ -28,14 +28,12 @@ import os
 import re
 import sys
 import threading
-import uuid
 import zipfile
-from functools import lru_cache
 from pathlib import Path
 
 import pytest
 
-PG_URL = os.environ.get("POSTGRES_URL") or "postgresql://postgres:pg@localhost:55432/cerebrozen"
+from tests.conftest import PG_URL, requires_pg  # noqa: F401  (PG_URL used by the fixtures below)
 
 
 # ── the deterministic fake embedder ──────────────────────────────────────────
@@ -95,69 +93,8 @@ def _rec(rec_id: str, text: str, **extra) -> dict:
 
 
 # ── a real Postgres ──────────────────────────────────────────────────────────
-
-
-@lru_cache(maxsize=1)
-def _pg_ready() -> bool:
-    """Is a Postgres with pgvector reachable? The suite must still pass without one."""
-    try:
-        import psycopg
-
-        with psycopg.connect(PG_URL, connect_timeout=3) as conn:
-            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
-requires_pg = pytest.mark.skipif(
-    not _pg_ready(), reason=f"no Postgres/pgvector reachable at {PG_URL}"
-)
-
-
-class _PgHarness:
-    """Hands out uniquely-named collections and drops their tables afterwards, so tests
-    can never see each other's rows. It holds its OWN pool reference, so a test that
-    re-points `pg._pool` (to simulate an unconfigured Postgres) can still be cleaned up."""
-
-    def __init__(self, pg, pool):
-        self.pg, self.pool = pg, pool
-        self.tables: list[str] = []
-
-    def collection(self, prefix: str = "t"):
-        name = f"{prefix}_{uuid.uuid4().hex[:10]}"
-        self.tables.append(name)
-        return self.pg.collection(name)
-
-    def rows(self, table: str) -> list[dict]:
-        """Read a table straight from Postgres — never through the shim under test."""
-        with self.pool.connection() as conn:
-            return [r[0] for r in conn.execute(f'SELECT doc FROM "{table}"').fetchall()]
-
-    def sql(self, statement: str, args=()):
-        with self.pool.connection() as conn:
-            return conn.execute(statement, args).fetchall()
-
-
-@pytest.fixture
-def pgdb(monkeypatch):
-    """A live Postgres, wired into app.stores.pg through its own env/globals."""
-    from app.stores import pg
-
-    monkeypatch.setenv("POSTGRES_URL", PG_URL)
-    monkeypatch.setattr(pg, "_pool", None)
-    monkeypatch.setattr(pg, "_ensured", set())
-    monkeypatch.setattr(pg, "_collections", {})
-
-    pool = pg.get_pool()
-    assert pool is not None, "the fixture is guarded by requires_pg — this cannot be None"
-    harness = _PgHarness(pg, pool)
-    yield harness
-
-    with pool.connection() as conn:
-        for table in harness.tables:
-            conn.execute(f'DROP TABLE IF EXISTS "{table}"')
-    pool.close()
+# `requires_pg`, `PG_URL` and the `pgdb` fixture moved to conftest.py — the shim's own
+# behaviour needs testing from more than one file (see test_escalation_records.py).
 
 
 @pytest.fixture

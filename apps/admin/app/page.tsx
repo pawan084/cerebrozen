@@ -856,24 +856,58 @@ function PromptWorkbook() {
   );
 }
 
-type Escalation = { org_id?: string; user_id: string; session_id: string; detected_by?: string; at?: string; delivered?: boolean };
-type SafetyResp = { armed: boolean; classifier_enabled: boolean; count: number; escalations: Escalation[] };
+type Escalation = {
+  id: string; org_id?: string; user_id: string; session_id: string;
+  detected_by?: string; at?: string; delivered?: boolean;
+  acknowledged_at?: string | null; acknowledged_by?: string;
+};
+type SafetyResp = { armed: boolean; classifier_enabled: boolean; status: string; count: number; escalations: Escalation[] };
 
 // Safety queue — crisis escalations. Signal only, never content: who tripped the screen,
 // in which session, and whether the designated contact was reached. The disclosure itself
 // is never stored or shown (docs/SECURITY.md — "counts, never content").
 function SafetyQueue() {
   const [data, setData] = useState<SafetyResp | null>(null);
+  const [status, setStatus] = useState<"open" | "resolved" | "all">("open");
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(() => {
-    engineJson<SafetyResp>("/v1/safety/escalations").then(setData).catch((e) => setError(e.message));
-  }, []);
+    engineJson<SafetyResp>(`/v1/safety/escalations?status=${status}`).then(setData).catch((e) => setError(e.message));
+  }, [status]);
   useEffect(load, [load]);
-  if (error) return <Failed msg={error} onRetry={load} />;
+
+  /* The queue was read-only, so it never drained: an operator who had already reached
+     someone had no way to say so, and the row stayed open forever. */
+  async function ack(e: Escalation) {
+    if (!window.confirm(
+      "Mark this escalation handled?\n\nIt records that you handled it, and when — nothing about what was said.",
+    )) return;
+    setBusy(e.id); setError("");
+    try {
+      const r = await engineApi(`/v1/safety/escalations/${encodeURIComponent(e.id)}/ack`, { method: "POST" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't acknowledge.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (error && !data) return <Failed msg={error} onRetry={load} />;
   if (!data) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
-      <h2>Safety queue <span className="hint">crisis escalations · signal only, never content · {data.count}</span></h2>
+      <div className="people-head">
+        <h2>Safety queue <span className="hint">crisis escalations · signal only, never content · {data.count}</span></h2>
+        {/* Open by default: a queue whose default view includes everything ever handled is
+            a queue nobody reads, and this is the one an operator must read. */}
+        <div className="seg">
+          {(["open", "resolved", "all"] as const).map((s) => (
+            <button key={s} className={status === s ? "active" : ""} onClick={() => setStatus(s)}>{s}</button>
+          ))}
+        </div>
+      </div>
       <div className="stats" style={{ marginBottom: 12 }}>
         <div className="stat"><b><span className={`pill ${data.armed ? "ok" : "off"}`}>{data.armed ? "armed" : "not armed"}</span></b><span>escalation contact</span></div>
         <div className="stat"><b><span className={`pill ${data.classifier_enabled ? "ok" : "off"}`}>{data.classifier_enabled ? "on" : "off"}</span></b><span>crisis classifier</span></div>
@@ -881,24 +915,54 @@ function SafetyQueue() {
       {!data.armed && (
         <p className="hint">No designated contact is configured (CEREBROZEN_CRISIS_ESCALATION_URL). A person in crisis still receives their helpline reply — but no human is notified. A silently-unconfigured safety net is worse than an absent one.</p>
       )}
+      {/* NOTE FOR ANYONE EXTENDING THIS TABLE: the reference's admin has an "Excerpt"
+          column here showing the flagged journal/chat text. Do not port it, and do not add
+          a "notes"/"outcome" free-text box either — that is the same leak wearing a
+          different hat. The row is: who tripped the screen, in which session, whether the
+          contact was reached, and now whether a human has picked it up. Never what was
+          said (CLAUDE.md rule 5; test_escalation_records.py asserts the field set). */}
       <table className="table">
-        <thead><tr><th>When</th><th>User</th><th>Session</th><th>Detected by</th><th>Contact reached</th><th>Org</th></tr></thead>
+        <thead><tr><th>When</th><th>User</th><th>Session</th><th>Detected by</th><th>Contact reached</th><th>Handled</th><th /></tr></thead>
         <tbody>
           {data.escalations.map((e, i) => (
-            <tr key={`${e.session_id}:${e.at ?? ""}:${i}`}>
+            <tr key={`${e.id}:${i}`}>
               <td>{e.at ? new Date(e.at).toLocaleString() : "—"}</td>
               <td>{e.user_id}</td>
               <td>{e.session_id}</td>
               <td>{e.detected_by ?? "—"}</td>
               <td><span className={`pill ${e.delivered ? "ok" : "off"}`}>{e.delivered ? "yes" : "no"}</span></td>
-              <td>{e.org_id ?? "—"}</td>
+              <td>
+                {e.acknowledged_at
+                  ? <span className="pill ok" title={`by ${e.acknowledged_by} · ${new Date(e.acknowledged_at).toLocaleString()}`}>
+                      {e.acknowledged_by?.slice(0, 8) || "yes"}
+                    </span>
+                  : <span className="pill off">open</span>}
+              </td>
+              <td>
+                {!e.acknowledged_at && (
+                  <button className="ghost" disabled={busy === e.id} onClick={() => ack(e)}>
+                    {busy === e.id ? "…" : "resolve"}
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {data.count === 0 && <p className="hint">No escalations — nothing has tripped the crisis screen.</p>}
+      {data.count === 0 && (
+        <p className="hint">
+          {status === "open"
+            ? "Nothing open — every escalation has been picked up."
+            : status === "resolved"
+              ? "Nothing has been marked handled yet."
+              : "No escalations — nothing has tripped the crisis screen."}
+        </p>
+      )}
+      {error && <p className="error">{error}</p>}
       <p className="hint" style={{ marginTop: 10 }}>
-        This is a signal, not a record of what anyone said. Who responds, how they are trained, and how fast they act is the deployment&rsquo;s programme — not this feature.
+        This is a signal, not a record of what anyone said — and &ldquo;handled&rdquo; records
+        only who picked it up and when. Who responds, how they are trained, and how fast they
+        act is the deployment&rsquo;s programme — not this feature.
       </p>
     </div>
   );
