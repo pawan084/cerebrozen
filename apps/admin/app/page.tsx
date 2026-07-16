@@ -655,9 +655,10 @@ function Nudges() {
   );
 }
 
-// Agent flow — the engine's real compiled arc on a React Flow canvas (read-only:
-// the graph is compiled in build_graph.py and routing is code predicates over typed
-// state). Click a node to inspect its agent; the Prompt workbook stays the source of truth.
+// Agent flow — the engine's real compiled arc as a full-viewport canvas workspace
+// (agents rail · canvas · node inspector), read-only: the graph is compiled in
+// build_graph.py and routing is code predicates over typed state. The Prompt workbook
+// stays the source of truth for what any node actually says.
 function AgentFlow() {
   const [agents, setAgents] = useState<AgentRow[] | null>(null);
   const [error, setError] = useState("");
@@ -676,12 +677,39 @@ function AgentFlow() {
   if (error) return <Failed msg={error} />;
   if (!agents) return <div className="card"><Skeleton rows={4} /></div>;
   return (
-    <div className="card">
-      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents in the arc · routing is deterministic (code predicates over typed state)</span></h2>
-      <div className="flow-wrap">
+    <div className="flow-page">
+      <div className="flow-head">
+        <h2>Agent flow</h2>
+        <span className="hint">
+          the governed coaching arc · {agents.length} agents in the arc · routing is
+          deterministic (code predicates over typed state) · read-only
+        </span>
+      </div>
+
+      <div className="flow-3">
+        <aside className="flow-rail">
+          <div className="rail-lbl">Agents in the arc · {agents.length}</div>
+          {agents.map((a) => (
+            <button key={a.stage} className={`rail-item ${stage === a.stage ? "active" : ""}`}
+              onClick={() => setStage(a.stage)}>
+              <span className="ri-name">{a.stage}</span>
+              <span className="ri-meta">
+                {a.model || "—"} · {(a.size / 1000).toFixed(1)}k
+                {!a.enabled && <span className="ri-off">off</span>}
+              </span>
+            </button>
+          ))}
+          <p className="rail-note">
+            <b>environment</b> (guardrail wrapper, composed into every prompt) and{" "}
+            <b>user_context_builder_agent</b> (off-path) are in the workbook but are not
+            nodes, so they aren&rsquo;t on the canvas.
+          </p>
+        </aside>
+
         <div className="flow-main">
-          <AgentFlowCanvas agents={agents} onInspect={setStage} />
+          <AgentFlowCanvas agents={agents} focusStage={stage} onInspect={setStage} />
         </div>
+
         {stage && (
           <aside className="node-insp">
             <div className="ni-head">
@@ -708,24 +736,6 @@ function AgentFlow() {
           </aside>
         )}
       </div>
-      <details className="mermaidsrc" style={{ marginTop: 16 }}>
-        <summary>Agents in the arc ({agents.length})</summary>
-        <p className="hint" style={{ margin: "8px 0" }}>
-          The workbook holds two more that are deliberately <b>not nodes</b>, so they don&rsquo;t
-          appear here or on the canvas: <b>environment</b> (the always-on guardrail wrapper —
-          composed into every prompt rather than called on its own) and{" "}
-          <b>user_context_builder_agent</b> (an off-path builder that runs after a turn, not in
-          the arc). The Prompt workbook lists the full set.
-        </p>
-        <table className="table">
-          <thead><tr><th>Agent</th><th>Model</th><th>Enabled</th></tr></thead>
-          <tbody>
-            {agents.map((a) => (
-              <tr key={a.stage}><td>{a.stage}</td><td>{a.model}</td><td>{a.enabled ? "yes" : "no"}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
     </div>
   );
 }
@@ -805,7 +815,9 @@ export default function Admin() {
       : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
-    <div className="shell">
+    // The agent flow is a canvas workspace, not a document — it gets the full
+    // viewport width instead of the 1080px reading column every other tab wants.
+    <div className={`shell ${tab === "flow" ? "wide" : ""}`}>
       <header className="topbar">
         <span className="wordmark">CereBr<em>o</em>Zen · admin</span>
         <span className="who">

@@ -11,9 +11,9 @@
    next stage). Rendering all of them is the hairball the mermaid view was. So we draw
    the SPINE by default and reveal a node's true outgoing routes when it's selected. */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Background, Controls, Handle, Position, ReactFlow,
+  Background, Controls, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow,
   type Edge, type Node, type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -43,12 +43,20 @@ const SUB: Record<string, string> = {
 /** Nodes that run in CODE — no model call. The rest map to a workbook agent. */
 const CODE = new Set(["safety", "safe_response", "profile_read", "final_action_check", "session_complete"]);
 const TERMINAL = new Set(["__start__", "__end__"]);
-/** Off-spine nodes: placed beside the node they branch from, not in the column. */
+/** Off-spine nodes: they hang below the node they branch from, not on the spine. */
 const PAIR: Record<string, string> = {
   safe_response: "safety", action_checkin: "profile_read", capability: "core", sjt: "role_play",
 };
-const COL_W = 268;
-const ROW_H = 96;
+/* The arc runs LEFT → RIGHT (the axis the nodes' Left/Right handles already assume) and
+   WRAPS into rows of PER_ROW, like text. 16 steps in one row is ~4000px — three times the
+   canvas, so both ends were always off-screen. Wrapped, the whole governed arc is legible
+   at once and spends both axes instead of leaving one of them empty. Branches drop under
+   their step; each row is as tall as its deepest branch. */
+const PER_ROW = 6;
+const COL_W = 252;
+const ROW_H = 128;
+const ROW_GAP = 66;
+const NODE_W = 218;
 
 type NodeData = {
   title: string; emoji: string; sub: string;
@@ -80,15 +88,37 @@ function ArcNode({ data, selected }: NodeProps) {
 }
 const nodeTypes = { arc: ArcNode };
 
-export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onInspect: (stage: string | null) => void }) {
+type CanvasProps = {
+  agents: AgentRow[];
+  /** Stage selected elsewhere (the agents rail) — the canvas pans to it. */
+  focusStage: string | null;
+  onInspect: (stage: string | null) => void;
+};
+
+function Canvas({ agents, focusStage, onInspect }: CanvasProps) {
   const [graph, setGraph] = useState<GraphResp | null>(null);
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const rf = useReactFlow();
+  /** The stage this canvas itself just selected — so a click doesn't re-pan the view
+      out from under the cursor. Only selections from the rail move the viewport. */
+  const fromCanvas = useRef<string | null>(null);
 
   useEffect(() => {
     engineJson<GraphResp>("/v1/graph").then(setGraph).catch((e) => setError(e.message));
   }, []);
+
+  // Rail → canvas: select the node and bring it into view.
+  useEffect(() => {
+    if (fromCanvas.current === focusStage) { fromCanvas.current = null; return; }
+    if (!graph || !focusStage) return;
+    const id = graph.stage_to_node[focusStage];
+    if (!id) return;
+    setSel(id);
+    const n = rf.getNode(id);
+    if (n) rf.setCenter(n.position.x + NODE_W / 2, n.position.y + 36, { zoom: Math.max(rf.getZoom(), 0.9), duration: 400 });
+  }, [focusStage, graph, rf]);
 
   const { nodes, edges, hiddenCount } = useMemo(() => {
     if (!graph) return { nodes: [] as Node[], edges: [] as Edge[], hiddenCount: 0 };
@@ -97,15 +127,24 @@ export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onI
     for (const [stage, node] of Object.entries(graph.stage_to_node)) nodeToStage[node] = stage;
     const byStage = new Map(agents.map((a) => [a.stage, a]));
 
-    // Layout: the engine returns nodes in arc order; paired nodes sit beside their branch.
-    const row: Record<string, number> = {};
-    const col: Record<string, number> = {};
-    let r = 0;
+    // Layout. The engine returns nodes in arc order, so a node's index is its step along
+    // the spine; a paired node shares its partner's step and drops one branch deep.
+    const step: Record<string, number> = {};
+    const branch: Record<string, number> = {};
+    let n = 0;
     for (const { id } of graph.nodes) {
       const partner = PAIR[id];
-      if (partner && row[partner] != null) { row[id] = row[partner]; col[id] = (col[partner] ?? 0) + 1; }
-      else { row[id] = r++; col[id] = 0; }
+      if (partner && step[partner] != null) { step[id] = step[partner]; branch[id] = (branch[partner] ?? 0) + 1; }
+      else { step[id] = n++; branch[id] = 0; }
     }
+    // Wrap the spine into rows, each sized to its own deepest branch (a row of plain
+    // spine steps must not reserve empty space for a branch that only row 1 has).
+    const rowOf = (id: string) => Math.floor(step[id] / PER_ROW);
+    const depth: number[] = [];
+    for (const { id } of graph.nodes) depth[rowOf(id)] = Math.max(depth[rowOf(id)] ?? 0, branch[id]);
+    const rowY: number[] = [];
+    let y = 0;
+    for (let r = 0; r < depth.length; r++) { rowY[r] = y; y += (depth[r] + 1) * ROW_H + ROW_GAP; }
 
     const rfNodes: Node[] = graph.nodes.map(({ id }) => {
       const stage = nodeToStage[id];
@@ -113,7 +152,7 @@ export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onI
       const kind: NodeData["kind"] = TERMINAL.has(id) ? "terminal" : CODE.has(id) ? "code" : "llm";
       return {
         id, type: "arc",
-        position: { x: col[id] * COL_W, y: row[id] * ROW_H },
+        position: { x: (step[id] % PER_ROW) * COL_W, y: rowY[rowOf(id)] + branch[id] * ROW_H },
         data: {
           title: id, emoji: EMOJI[id] || "●", sub: SUB[id] || "", kind,
           model: agent?.model, enabled: agent?.enabled, size: agent?.size,
@@ -125,17 +164,21 @@ export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onI
     // The spine: unconditional edges, labelled forks, and consecutive arc steps. Everything
     // else is the conditional fan-out — shown when its source is selected, or via "all routes".
     const isSpine = (e: GEdge) =>
-      !e.conditional || !!e.label || (row[e.target] === row[e.source] + 1 && col[e.target] === 0);
+      !e.conditional || !!e.label || (step[e.target] === step[e.source] + 1 && branch[e.target] === 0);
     const shown = graph.edges.filter((e) => showAll || isSpine(e) || e.source === sel);
     const rfEdges: Edge[] = shown.map((e, i) => {
       const hot = e.source === sel;
       const spine = isSpine(e);
+      // The step that continues onto the next row: routed orthogonally so it runs back
+      // through the gap between rows instead of slicing diagonally across the nodes.
+      const wrap = spine && rowOf(e.target) > rowOf(e.source);
       return {
         id: `${e.source}->${e.target}:${i}`,
         source: e.source, target: e.target,
         label: e.label || undefined,
         animated: hot,
-        className: `aedge ${hot ? "hot" : spine ? "spine" : "faint"}`,
+        type: wrap ? "smoothstep" : undefined,
+        className: `aedge ${hot ? "hot" : spine ? "spine" : "faint"}${wrap ? " wrap" : ""}`,
       };
     });
     return { nodes: rfNodes, edges: rfEdges, hiddenCount: graph.edges.length - shown.length };
@@ -157,17 +200,18 @@ export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onI
       <div className="canvas">
         <ReactFlow
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-          // The arc is tall; letting fitView shrink to fit made every node unreadable.
-          // Clamp it to a legible zoom and let the operator pan (minimap + fit button).
-          fitView fitViewOptions={{ padding: 0.1, minZoom: 0.72, maxZoom: 1 }}
+          // Wrapped, the whole arc fits — so let fitView actually fit it, with a floor
+          // that keeps nodes legible (below ~0.62 the model/size line stops reading).
+          fitView fitViewOptions={{ padding: 0.08, minZoom: 0.62, maxZoom: 1 }}
           minZoom={0.2} maxZoom={1.8}
           nodesConnectable={false} edgesFocusable={false} deleteKeyCode={null}
           onNodeClick={(_, n) => {
             setSel(n.id);
-            const stage = Object.entries(graph.stage_to_node).find(([, node]) => node === n.id)?.[0];
-            onInspect(stage ?? null);
+            const stage = Object.entries(graph.stage_to_node).find(([, node]) => node === n.id)?.[0] ?? null;
+            fromCanvas.current = stage;
+            onInspect(stage);
           }}
-          onPaneClick={() => { setSel(null); onInspect(null); }}
+          onPaneClick={() => { setSel(null); fromCanvas.current = null; onInspect(null); }}
           proOptions={{ hideAttribution: false }}
         >
           <Background gap={18} size={1} />
@@ -177,5 +221,15 @@ export function AgentFlowCanvas({ agents, onInspect }: { agents: AgentRow[]; onI
         </ReactFlow>
       </div>
     </>
+  );
+}
+
+/** React Flow's viewport hooks (useReactFlow) need a provider above them, and the
+    rail-driven pan uses setCenter — so the provider lives here, one per canvas. */
+export function AgentFlowCanvas(props: CanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <Canvas {...props} />
+    </ReactFlowProvider>
   );
 }

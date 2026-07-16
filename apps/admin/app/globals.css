@@ -27,6 +27,9 @@ body {
   color: var(--color-brand-900);
 }
 .shell { max-width: 1080px; margin: 0 auto; padding: 24px; }
+/* The agent flow is a canvas workspace, not a document — it gets the whole viewport
+   instead of the reading column every other tab wants. */
+.shell.wide { max-width: none; }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 .wordmark em { color: var(--color-zen-700); font-style: normal; }
@@ -93,10 +96,38 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
 .arrow { color: var(--color-brand-500); font-size: 15px; line-height: 1.2; }
 .mermaidsrc { margin-top: 14px; }
 .mermaidsrc summary { cursor: pointer; font-size: 13px; color: var(--color-brand-700); }
-/* ── Agent flow canvas (React Flow) — read-only view of the compiled arc ── */
-.flow-wrap { display: flex; gap: 14px; align-items: stretch; }
-.flow-main { flex: 1; min-width: 0; }
-.canvas { height: 68vh; min-height: 460px; border: 1px solid var(--color-mist-200); border-radius: 12px;
+/* ── Agent flow: a full-viewport workspace — agents rail | canvas | inspector ── */
+.flow-page { display: flex; flex-direction: column; gap: 12px;
+  /* fill what's left under the topbar + tabs, so the canvas gets the real estate */
+  height: calc(100vh - 170px); min-height: 520px; }
+.flow-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.flow-head h2 { margin: 0; }
+.flow-3 { display: flex; gap: 12px; align-items: stretch; flex: 1; min-height: 0; }
+
+/* left rail: every agent in the arc — click to select + pan the canvas to it */
+.flow-rail { width: 238px; flex: none; display: flex; flex-direction: column; gap: 3px;
+  border: 1px solid var(--color-mist-200); border-radius: 12px; background: #fff;
+  padding: 10px; overflow: auto; }
+.rail-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--color-brand-500); padding: 2px 6px 6px; }
+.rail-item { display: flex; flex-direction: column; gap: 1px; text-align: left; border: 0;
+  background: none; border-radius: 8px; padding: 6px 8px; cursor: pointer; font: inherit; }
+.rail-item:hover { background: var(--color-mist-50); }
+.rail-item.active { background: var(--color-brand-900); }
+.rail-item.active .ri-name { color: #fff; }
+.rail-item.active .ri-meta { color: var(--color-mist-200); }
+.ri-name { font-size: 12.5px; font-weight: 600; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ri-meta { font-size: 10.5px; color: var(--color-brand-500); display: flex; gap: 5px; align-items: center; }
+.ri-off { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--color-zen-700);
+  background: var(--color-zen-50); border-radius: 999px; padding: 0 5px; }
+.rail-note { font-size: 10.5px; line-height: 1.45; color: var(--color-brand-500);
+  margin: 10px 6px 0; padding-top: 10px; border-top: 1px solid var(--color-mist-100); }
+.rail-note b { color: var(--color-brand-700); font-weight: 600; }
+
+/* centre: the canvas fills whatever the rail and inspector leave */
+.flow-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.canvas { flex: 1; min-height: 0; border: 1px solid var(--color-mist-200); border-radius: 12px;
   background: #fbfaf8; overflow: hidden; }
 .allroutes { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;
   color: var(--color-brand-700); cursor: pointer; }
@@ -128,24 +159,34 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
 .react-flow__edge.spine .react-flow__edge-path { stroke: var(--color-brand-600); stroke-width: 1.6; }
 .react-flow__edge.faint .react-flow__edge-path { stroke: var(--color-mist-200); stroke-width: 1; }
 .react-flow__edge.hot .react-flow__edge-path { stroke: var(--color-zen-600); stroke-width: 2.2; }
+/* the row-wrap connector: same spine, drawn dashed so a long run backwards reads as
+   "continues on the next row" rather than as a real jump in the arc */
+.react-flow__edge.wrap .react-flow__edge-path { stroke-dasharray: 5 4; }
 .react-flow__edge-text { font-size: 10px; font-weight: 700; fill: var(--color-brand-700); }
 
 /* node inspector */
-.node-insp { width: 380px; flex: none; border: 1px solid var(--color-mist-200); border-radius: 12px;
-  background: #fff; display: flex; flex-direction: column; max-height: 68vh; }
+.node-insp { width: 372px; flex: none; border: 1px solid var(--color-mist-200); border-radius: 12px;
+  background: #fff; display: flex; flex-direction: column; min-height: 0; }
 .ni-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   padding: 12px 14px; border-bottom: 1px solid var(--color-mist-100); }
 .ni-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-brand-500); }
 .ni-title { font-size: 14px; font-weight: 700; }
 .ni-x { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--color-brand-500); }
 .ni-x:hover { color: var(--color-brand-900); }
-.ni-body { padding: 12px 14px; overflow: auto; }
+.ni-body { padding: 12px 14px; overflow: auto; flex: 1; min-height: 0; }
 .ni-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.ni-prompt { max-height: 40vh; }
+.ni-prompt { max-height: none; }
 
-@media (max-width: 980px) {
-  .flow-wrap { flex-direction: column; }
-  .node-insp { width: auto; max-height: none; }
+/* Narrow: the three panes can't coexist — drop the rail (the canvas is still the
+   whole arc) and let the inspector stack underneath at a readable width. */
+@media (max-width: 1180px) {
+  .flow-rail { display: none; }
+}
+@media (max-width: 900px) {
+  .flow-page { height: auto; }
+  .flow-3 { flex-direction: column; }
+  .canvas { height: 62vh; flex: none; }
+  .node-insp { width: auto; max-height: 60vh; }
 }
 
 .graphbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
