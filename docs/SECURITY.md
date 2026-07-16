@@ -113,6 +113,19 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
   it backs a crisis screen) and a person's own session stage/transcript, which
   are scoped by *ownership*, the correct control for their own content
   (`test_role_gate.py` pins both halves).
+- **Every web surface sends a CSP** (all three, 2026-07-16). The reference ships one on
+  each of its three web apps; we had it only on the admin, because docs/TODO.md said
+  "Admin: nonce-CSP" and under-specified it — so the app holding the transcripts went
+  unprotected for longer than the console, purely because a checklist named the wrong
+  surface. The two authenticated tools (`apps/admin`, `apps/app`) use the per-request
+  nonce described below. **`apps/web` deliberately does not**: a nonce forces dynamic
+  rendering, every route there is static, and the site has no auth, no tokens and no
+  user-generated content rendered back — so it takes a static CSP with `'unsafe-inline'`
+  on scripts plus SRI (build-time bundle hashes, so a compromised CDN cannot serve
+  modified JS). Note for anyone revisiting: SRI does **not** let `script-src` go strict on
+  a static page — upstream's guide implies it does, but integrity covers only external
+  `<script src>`, and Next's inline RSC bootstrap still needs a nonce or `'unsafe-inline'`
+  (measured: strict + SRI blocked hydration outright).
 - **Admin CSP**: the console sets a per-request nonce CSP in
   `apps/admin/proxy.ts` (Next 16 renamed the `middleware` convention to
   `proxy`). `script-src` carries no `'unsafe-inline'`, so an injected script
