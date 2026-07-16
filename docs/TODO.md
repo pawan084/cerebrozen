@@ -297,10 +297,12 @@ dated notes, grouped by priority; items needing an owner decision are marked
       check green; on device. Content library (guided sessions / sleep
       stories) remains its own item: platform media+content endpoints +
       LICENSED audio only.
-- [ ] Mira screen-reference slice (owner-shared prototype, artifact
+- [x] 2026-07-16 — Mira screen-reference slice (owner-shared prototype, artifact
       0376c052 "mira_app" — the sibling companion app; full HTML saved in
       session tool-results). Reviewed 2026-07-14, verdicts:
-      PROGRESS 2026-07-14: adapt items 1/2/3/6 BUILT (see below), 4/5 open.
+      PROGRESS 2026-07-16: adapt items 1/2/3/6 BUILT, and 4/5 are now BUILT too —
+      `NotifGate.kt` (NotificationPrePermission) and `WindDownScreen.kt`, both
+      wired into CereBroApp.kt's NavHost. Slice complete; checkbox was stale.
       ADAPT (high value, backend already exists):
       (1) Today presence moment — living hero orb + context-aware greeting
       + one "say" line proposing two actions (Talk/Breathe); coral-tinted.
@@ -623,10 +625,18 @@ dated notes, grouped by priority; items needing an owner decision are marked
 - [x] Coach tab: engine SSE streaming, action cards → ActionsStore, memory chip, grounded marker, typing dots, voice. (Phase-card/mood-capture UX polish remains with prompt adaptation.)
 - [x] Today tab: presence orb + state-aware greeting, open commitments, journeys, toolkit/rest doors, evening wind-down.
 - [ ] Actions tab: commitment lifecycle, 7-day follow-through prompts.
-- [ ] Journeys tab: program list/enrollment/day view (platform-served).
-- [ ] You tab: profile, my-insights view (patterns, session history with
-      titles — engine endpoints exist), privacy center (export/delete,
-      "what your employer sees"), appearance, reminders.
+- [x] 2026-07-16 — Journeys tab: `ProgramsScreen` (Extras.kt) wired into the
+      NavHost with list/enrollment/day view (`parseTodayGuide`, enrollment
+      `refresh()`); device-verified with 5 programs (see lines above).
+- [x] 2026-07-16 — You tab: `YouScreen` (Screens.kt) wires profile header,
+      Insights, Privacy, Appearance, Reminders, crisis region, human support,
+      privacy policy, export (`DataExportScreen`), delete
+      (`AccountDeletionScreen`).
+- [ ] You tab — remaining: the privacy centre has no "what your employer sees"
+      view. `privacy_stats_hint` says "Counts only — never your content or
+      account", which states the rule but doesn't *show* the HR-side aggregate.
+      The strongest version of the "counts, never content" promise is letting an
+      employee see exactly what their org admin sees.
 - [ ] Intake personalization: thinking-style seed questions wired to the
       engine's NBI/DISC profile stores.
 - [ ] Crisis + HumanSupport screens (ported nearly unchanged); regional
@@ -686,8 +696,11 @@ dated notes, grouped by priority; items needing an owner decision are marked
       `ref/Zen/docs/DPDP_COMPLIANCE.md`; DPIA template for EU customers.
 - [ ] Air-gapped profile: prompt-size reduction, quality eval vs cloud model
       (with the design partner, per the Evidence page's honest framing).
-- [ ] Web app (`apps/app`) for desktop employees — the Zen reference proves
-      the pattern; Android contract makes it mostly a port.
+- [x] 2026-07-16 — Web app (`apps/app`) for desktop employees. Built ahead of
+      this phase: `/` (dashboard + mood check-in), `/coach` (SSE streaming chat,
+      commitment cards, session history), `/journal`, `/insights`, `/settings`
+      (6 DPDP consent toggles), behind a real auth gate (`components/shell.tsx`).
+      Linked from the site's "Sign in" menu (see ARCHITECTURE.md link table).
 - [ ] Voice coaching: bring the engine's voice stack (LiveKit/STT/TTS) under
       test coverage, then ship as a differentiator (v2 — see PRODUCT.md
       feature matrix).

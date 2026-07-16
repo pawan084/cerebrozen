@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-07-14
+Last updated: 2026-07-16
 
 ## System shape
 
@@ -10,7 +10,7 @@ Two backend services, three client surfaces, one reverse proxy.
                         ┌────────────────────────────────────────────┐
                         │                Caddy (TLS)                 │
                         │  cerebrozen.in        → web  (marketing)   │
-                        │  app.cerebrozen.in    → app  (web client)† │
+                        │  app.cerebrozen.in    → app  (web client)  │
                         │  admin.cerebrozen.in  → admin              │
                         │  api.cerebrozen.in    → platform API       │
                         └───────┬──────────────────────┬─────────────┘
@@ -27,7 +27,7 @@ Two backend services, three client surfaces, one reverse proxy.
                         ┌───────▼──────────────────────▼───────┐
                         │   Postgres 16 (+ Redis, pgvector)    │
                         └──────────────────────────────────────┘
-   † later phase
+```
 
 **How the surfaces link to each other.** Each is a separate deployment on its own
 host, so every link between them is a real navigation — never a `next/link` route.
@@ -43,7 +43,6 @@ production domains.
 
 The clients link **out** to the site's Privacy and Terms rather than hosting their
 own copy — one set of published terms, one place to change them.
-```
 
 **Why two services.** The references are two different backends with
 different strengths. `ref/Agent` (AgentMan) is the coaching engine — the

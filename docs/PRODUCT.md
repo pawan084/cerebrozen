@@ -27,7 +27,7 @@ aggregated, anonymized behavioral analytics — never transcripts.
 |---|---|---|---|
 | Marketing site (`apps/web`) | Prospects | Positioning, evidence, demo requests | **Built** |
 | Android app (`apps/android`) | Employees | The coach: sessions, actions, journeys, check-ins | To build |
-| Web app (later) | Employees | Browser client at `app.cerebrozen.in`, same API | Later phase |
+| Web app (`apps/app`) | Employees | Browser client at `app.cerebrozen.in`, same API | **Built** |
 | HR portal (`apps/admin`, org role) | Customer HR/L&D | Aggregate analytics, program management, rollout tools | To build |
 | Ops admin (`apps/admin`, internal role) | CereBroZen staff | Tenant management, prompt workbook, safety queue, demo pipeline | To build |
 
@@ -125,9 +125,9 @@ recovery" doors, not as tabs, keeping the five coaching tabs primary.
 | Safety review queue | Zen admin | ✔ | | |
 | Session time-travel edit/fork | Agent (`?edit=`) | | v2 power feature | |
 | Voice coaching | Agent voice stack + Zen voice loop | | v2 (after tests) | |
-| Journaling (biometric-locked) | Zen | | v2 | |
+| Journaling | Zen | ✔ (engine `stores/wellness.py`, Android wellness, `apps/app/journal`) — biometric lock remains v2 | biometric lock | |
 | Micro-content / resources library | Zen content + Sherlock Resources | | v2 | |
-| Web employee app | Zen `apps/app` | | Phase 5 | |
+| Web employee app | Zen `apps/app` | ✔ (built 2026-07-16, ahead of Phase 5) | | |
 | Gamification coins | Sherlock | | | ✔ deliberate |
 | Well-being suite: soundscapes/mixer, sleep scenes, breathe, reset tools, games | Zen | ✔ (owner call 2026-07-14 — reversed the v1 strip; supports the site's Well-Being pillar) | | |
 | Health Connect sleep prefill | Zen | ✔ (restored with the sleep surface) | | |

@@ -1,6 +1,6 @@
 # Security, Privacy & Safety
 
-Last updated: 2026-07-14
+Last updated: 2026-07-16
 
 The marketing site already sells a specific security story (air-gapped
 deployment, regulated workplace mode, routing an auditor can read, tests run
