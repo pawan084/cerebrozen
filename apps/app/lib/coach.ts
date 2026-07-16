@@ -24,7 +24,19 @@ export type CoachEvent =
   | { type: "status"; msg: string }
   | { type: "token"; text: string }
   | { type: "node"; [k: string]: unknown }
-  | { type: "done"; response_to_user?: string; session_id?: string; actions?: CoachAction[]; ended?: boolean; [k: string]: unknown }
+  | {
+      type: "done";
+      response_to_user?: string;
+      session_id?: string;
+      actions?: CoachAction[];
+      ended?: boolean;
+      /** "ok" | "crisis". The engine screens BEFORE any model call and, on a crisis,
+       *  takes over deterministically: the reply is a scripted, zero-token safety
+       *  message, not coaching. The client must not render that as ordinary chat —
+       *  see the crisis panel in app/coach/page.tsx. */
+      safety_flag?: string;
+      [k: string]: unknown;
+    }
   | { type: "error"; detail: string };
 
 export class AuthExpired extends Error {}

@@ -75,6 +75,41 @@ test.describe("employee journey", () => {
     }
   });
 
+  test("a crisis turn surfaces helplines in the UI, not just an ordinary reply", async ({ page, request }) => {
+    /* The gap this closes: the engine screens every turn before any model call and, on a
+       crisis, takes over deterministically — but this client rendered the scripted safety
+       message as an ordinary chat bubble, with no way to reach anyone. Pinned end-to-end
+       because it spans three services: engine detects -> platform resolves the region ->
+       engine serves that region's helplines -> client renders them. */
+    const t = await token(request, "member");
+    // Put this person in GB so the assertion below is about a REAL region resolution,
+    // not the neutral fallback (which would pass even if the wiring were broken).
+    await request.patch(`${urls.platform}/users/me`, { headers: auth(t), data: { region: "GB" } });
+
+    await signIn(page, urls.app, "member");
+    await page.waitForSelector(".sidebar", { timeout: 30_000 });
+    await page.goto(`${urls.app}/coach`, { waitUntil: "domcontentloaded" });
+
+    // An ordinary turn must NOT cry wolf.
+    await page.locator("textarea").fill("I keep putting off a hard conversation with my manager.");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".coach .bubble, .row.coach .bubble").first()).toBeVisible({ timeout: 40_000 });
+    await expect(page.locator(".crisis"), "an ordinary turn raised the crisis panel").toHaveCount(0);
+
+    await page.locator("textarea").fill("I want to kill myself");
+    await page.keyboard.press("Enter");
+    const panel = page.locator(".crisis");
+    await expect(panel, "the crisis screen fired and the UI said nothing").toBeVisible({ timeout: 40_000 });
+    // role=alert: a screen reader must announce this the moment it appears.
+    await expect(panel).toHaveAttribute("role", "alert");
+
+    const hrefs = await page.locator(".crisis-lines a").evaluateAll((els) =>
+      els.map((e) => e.getAttribute("href") ?? ""));
+    expect(hrefs, "GB got no local line — the region never reached the engine").toContain("tel:116123");
+    expect(hrefs).toContain("https://findahelpline.com");
+    expect(hrefs.join(","), "another country's number reached a GB user").not.toContain("14416");
+  });
+
   test("crisis helplines come from the engine and are region-neutral when unknown", async ({ request }) => {
     // The client must never hold a country's numbers (ARCHITECTURE.md §Cross-stack
     // contracts). Pinned here because it is a *cross-service* promise: the engine owns the

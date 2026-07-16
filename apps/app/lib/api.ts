@@ -70,7 +70,14 @@ export async function accessToken(force = false): Promise<string | null> {
   return t.access_token;
 }
 
-export type Me = { id: string; email: string; name: string; role: string; org_id: string | null };
+export type Me = {
+  id: string; email: string; name: string; role: string; org_id: string | null;
+  /** The platform's RESOLVED crisis region: the person's own choice, else their org's
+   *  default, else "" = unknown (which the engine answers with an international
+   *  directory rather than a guess). The crisis panel asks the engine for this region's
+   *  helplines — the client never holds a country's numbers. */
+  crisis_region?: string;
+};
 
 export async function me(): Promise<Me | null> {
   const t = getTokens();

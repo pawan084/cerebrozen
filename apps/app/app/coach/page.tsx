@@ -5,6 +5,7 @@ import { logout } from "@/lib/api";
 import { coachTurn, setActionStatus, listSessions, loadHistory, AuthExpired, type CoachAction, type SessionMeta } from "@/lib/coach";
 import { firstName, useMe } from "@/components/shell";
 import { Markdown } from "@/components/markdown";
+import { CrisisPanel } from "@/components/crisis";
 
 type Msg = { who: "you" | "coach"; text: string };
 type Card = CoachAction & { local?: "saving" | "saved" | "dismissed" };
@@ -18,6 +19,11 @@ export default function CoachPage() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
+  /* Sticky for the session, deliberately. The engine flags the turn that tripped the
+     screen; clearing it on the next ordinary turn would yank a helpline out from under
+     someone who is mid-crisis and just said "ok". It clears when they start a new
+     session. */
+  const [crisis, setCrisis] = useState(false);
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
   const [showRecents, setShowRecents] = useState(false);
   const sessionId = useRef<string | null>(null);
@@ -67,6 +73,10 @@ export default function CoachPage() {
         } else if (ev.type === "done") {
           if (ev.session_id) sessionId.current = ev.session_id;
           if (ev.actions) setActions(ev.actions as Card[]);
+          // The deterministic crisis takeover fired: what streamed back is a scripted
+          // safety message, not coaching. Surface the helplines rather than letting it
+          // read as an ordinary reply.
+          if (ev.safety_flag === "crisis") setCrisis(true);
           setStatus("");
           setMessages((m) => {
             const next = [...m];
@@ -171,6 +181,10 @@ export default function CoachPage() {
             </div>
           ))}
           {status && <div className="status">{status}</div>}
+
+          {/* Above the commitments on purpose: when the screen has fired, a phone number
+              outranks a coaching commitment. */}
+          {crisis && <CrisisPanel region={me?.crisis_region ?? ""} />}
 
           {visible.length > 0 && (
             <div className="commitments">

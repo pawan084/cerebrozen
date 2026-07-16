@@ -61,6 +61,14 @@ dialable without naming a country we haven't confirmed. The region comes from
 the platform's resolved `crisis_region` (the person's own choice first, then
 their org's default); it is never inferred from an IP or a SIM.
 
+The **clients render it**. Until 2026-07-16 the web app had no crisis surface at
+all: the engine took over, streamed the scripted reply, and `apps/app` painted it
+as an ordinary chat bubble — the takeover fired and the person saw a normal-looking
+message with no way to reach anyone. `components/crisis.tsx` now renders a
+`role="alert"` panel on `safety_flag == "crisis"`, seeded from the neutral floor so
+it paints something dialable before any fetch resolves, then filled from
+`/v1/safety/helplines` for the person's resolved region.
+
 Inherited **weakness** (public on our own Evidence page): the lexicon
 catches ~1 in 22 realistic implicit disclosures. Commitments:
 
