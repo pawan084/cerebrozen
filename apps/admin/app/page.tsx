@@ -287,13 +287,94 @@ function Invite() {
   );
 }
 
+/* Seats, inline. Renewals and upsells are a seat change, and until now that meant editing
+   Postgres by hand — the API has accepted `seats_total` all along. Refuses to go below the
+   seats already in use: the server would reject it anyway, and a number that silently
+   disagrees with the roster is worse than a refusal. */
+function SeatEditor({ org, onSaved }: { org: Org; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(String(org.seats_total));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!editing) {
+    return (
+      <button className="linklike" onClick={() => { setEditing(true); setValue(String(org.seats_total)); setError(""); }}>
+        {org.seats_used} / {org.seats_total}
+      </button>
+    );
+  }
+  const next = Number(value);
+  const tooFew = Number.isFinite(next) && next < org.seats_used;
+  async function save() {
+    if (!Number.isFinite(next) || next < 1 || tooFew) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/orgs/${org.id}`, { method: "PATCH", body: JSON.stringify({ seats_total: next }) });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="seat-edit">
+      <span className="hint">{org.seats_used} /</span>
+      <input type="number" min={org.seats_used || 1} value={value} disabled={busy}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }} />
+      <button className="ghost" disabled={busy || tooFew} onClick={save}>{busy ? "…" : "save"}</button>
+      <button className="ghost" disabled={busy} onClick={() => setEditing(false)}>cancel</button>
+      {tooFew && <span className="error">{org.seats_used} in use</span>}
+      {error && <span className="error">{error}</span>}
+    </span>
+  );
+}
+
+/* The crisis region drives which helplines this tenant's employees are shown
+   (engine app/safety/helplines.py). It is a safety setting, so the options come from the
+   ENGINE rather than a list retyped here — a region the engine cannot localise would
+   silently fall back to the international finder, and the operator would never know they
+   had picked something that does nothing. */
+function RegionEditor({ org, regions, onSaved }: { org: Org; regions: string[]; onSaved: () => void }) {
+  const [busy, setBusy] = useState(false);
+  async function set(next: string) {
+    if (next === org.crisis_region) return;
+    setBusy(true);
+    try {
+      await api(`/orgs/${org.id}`, { method: "PATCH", body: JSON.stringify({ crisis_region: next }) });
+      onSaved();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <select className="mini" value={org.crisis_region} disabled={busy || regions.length === 0}
+      onChange={(e) => set(e.target.value)} aria-label={`Crisis region for ${org.name}`}>
+      {/* "" is a real choice, not a placeholder: it means the engine serves an
+          international directory rather than guessing a country. */}
+      <option value="">international</option>
+      {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+    </select>
+  );
+}
+
 function Tenants() {
   const [orgs, setOrgs] = useState<Org[] | null>(null);
+  const [regions, setRegions] = useState<string[]>([]);
   const [error, setError] = useState("");
   const load = useCallback(() => {
     apiJson<Org[]>("/orgs").then(setOrgs).catch((e) => setError(e.message));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => {
+    // One source of truth for which regions are real — the engine that serves the numbers.
+    engineJson<{ regions: string[] }>("/v1/safety/helplines")
+      .then((r) => setRegions(r.regions))
+      .catch(() => setRegions([]));
+  }, []);
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -331,11 +412,19 @@ function Tenants() {
         ) : (
           <>
             <table>
-              <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Regulated</th><th>Status</th><th /></tr></thead>
+              <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Crisis region</th><th>Regulated</th><th>Status</th><th /></tr></thead>
               <tbody>
                 {orgs.map((o) => (
                   <tr key={o.id}>
-                    <td>{o.name}</td><td>{o.slug}</td><td>{o.seats_used} / {o.seats_total}</td>
+                    <td>{o.name}</td><td>{o.slug}</td>
+                    <td><SeatEditor org={o} onSaved={load} /></td>
+                    <td><RegionEditor org={o} regions={regions} onSaved={load} /></td>
+                    {/* Read-only, deliberately. SECURITY.md: regulated-mode opt-out is "a
+                        contract-level decision with counsel sign-off, NOT an admin toggle"
+                        — EU AI Act Art. 5 sits behind it. The API accepts the field for an
+                        operator acting on a signed contract; a switch in a console that
+                        anyone with the tab can flick is a different thing entirely, and
+                        this page already tells the reader so. */}
                     <td><span className={`pill ${o.regulated_mode ? "ok" : "off"}`}>{o.regulated_mode ? "on" : "off"}</span></td>
                     <td><span className={`pill ${o.is_active ? "ok" : "off"}`}>{o.is_active ? "active" : "inactive"}</span></td>
                     <td><button className="ghost" onClick={() => toggle(o)}>{o.is_active ? "deactivate" : "activate"}</button></td>
@@ -344,6 +433,12 @@ function Tenants() {
               </tbody>
             </table>
             {orgs.length === 0 && <p className="empty-state">No tenants yet — create one below.</p>}
+            <p className="hint" style={{ marginTop: 12 }}>
+              Seats and crisis region are editable here. <b>Regulated mode is not</b> — turning
+              it off is a contract-level decision with counsel sign-off, not a switch
+              (docs/SECURITY.md). The crisis region decides which helplines this tenant&rsquo;s
+              people see; &ldquo;international&rdquo; is a real answer, not a missing one.
+            </p>
           </>
         )}
       </div>

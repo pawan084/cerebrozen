@@ -105,6 +105,17 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
 .arrow { color: var(--color-brand-500); font-size: 15px; line-height: 1.2; }
 .mermaidsrc { margin-top: 14px; }
 .mermaidsrc summary { cursor: pointer; font-size: 13px; color: var(--color-brand-700); }
+/* ── Tenants: inline seat + region editors ─────────────────────────────────── */
+.linklike { border: 0; background: none; padding: 0; font: inherit; color: var(--color-brand-900);
+  cursor: pointer; border-bottom: 1px dashed var(--color-mist-200); }
+.linklike:hover { border-bottom-color: var(--color-brand-900); }
+.seat-edit { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.seat-edit input { width: 78px; padding: 5px 8px; font-size: 13px; }
+.seat-edit .ghost { padding: 4px 10px; font-size: 12px; }
+.seat-edit .error { font-size: 12px; margin: 0; }
+select.mini { padding: 5px 8px; font-size: 13px; border: 1px solid var(--color-mist-200);
+  border-radius: 8px; background: #fff; font-family: inherit; }
+
 /* ── Agent flow: a full-viewport workspace — agents rail | canvas | inspector ── */
 .flow-page { display: flex; flex-direction: column; gap: 12px;
   /* fill what's left under the topbar + tabs, so the canvas gets the real estate */

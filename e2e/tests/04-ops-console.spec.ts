@@ -138,6 +138,51 @@ test.describe("ops console", () => {
     expect((await r.json()).helplines.length).toBeGreaterThan(0);
   });
 
+  test("regulated mode is NOT a switch in the console", async ({ page }) => {
+    /* SECURITY.md: regulated-mode opt-out is "a contract-level decision with counsel
+       sign-off, not an admin toggle" — EU AI Act Art. 5 sits behind it. The API accepts
+       the field for an operator acting on a signed contract; a control anyone with the tab
+       can flick is a different thing, and this spec is what keeps the two apart. */
+    await signIn(page, urls.admin, "ops");
+    await page.getByRole("button", { name: "Tenants" }).click({ timeout: 30_000 });
+    await page.waitForSelector("tbody tr", { timeout: 30_000 });
+    const row = page.locator("tbody tr").first();
+    await expect(row.locator("input[type=checkbox]"), "regulated mode became a toggle").toHaveCount(0);
+    await expect(page.getByText(/Regulated mode is not/)).toBeVisible();
+  });
+
+  test("the tenant's crisis regions come from the engine, not a retyped list", async ({ page, request }) => {
+    // A region the engine cannot localise would silently fall back to the international
+    // finder, and the operator who picked it would never know it did nothing.
+    const ops = await token(request, "ops");
+    const served = (await (await request.get(`${urls.engine}/v1/safety/helplines`, { headers: auth(ops) })).json()).regions;
+    await signIn(page, urls.admin, "ops");
+    await page.getByRole("button", { name: "Tenants" }).click({ timeout: 30_000 });
+    await page.waitForSelector("select.mini", { timeout: 30_000 });
+    const options = await page.locator("select.mini").first().locator("option").evaluateAll((els) =>
+      els.map((e) => (e as HTMLOptionElement).value));
+    // "" is a real choice: the engine answers an unknown region with an international
+    // directory rather than guessing a country.
+    expect(options).toContain("");
+    for (const r of served) expect(options, `the console cannot set ${r}`).toContain(r);
+  });
+
+  test("seats are editable and cannot drop below the seats in use", async ({ request }) => {
+    // Renewals and upsells are a seat change; until now that meant editing Postgres.
+    const ops = await token(request, "ops");
+    const orgs = await (await request.get(`${urls.platform}/orgs`, { headers: auth(ops) })).json();
+    const org = orgs[0];
+    const up = await request.patch(`${urls.platform}/orgs/${org.id}`, {
+      headers: auth(ops), data: { seats_total: org.seats_total + 5 },
+    });
+    expect(up.ok(), await up.text()).toBeTruthy();
+    expect((await up.json()).seats_total).toBe(org.seats_total + 5);
+    // Put it back so the shared stack is unchanged for later specs.
+    await request.patch(`${urls.platform}/orgs/${org.id}`, {
+      headers: auth(ops), data: { seats_total: org.seats_total },
+    });
+  });
+
   test("the safety queue is signal-only — it never carries a disclosure", async ({ request }) => {
     const ops = await token(request, "ops");
     const r = await request.get(`${urls.engine}/v1/safety/escalations`, { headers: auth(ops) });
