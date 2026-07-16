@@ -4,7 +4,7 @@
    org_admin  → Overview · People · Invite
    internal_admin → Tenants · Demo requests  */
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
 
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
@@ -17,6 +17,32 @@ type Analytics = {
   metrics: Record<string, Metric>;
 };
 type Demo = { id: string; name: string; email: string; company: string; size: string; message: string; status: string; created_at: string };
+
+/* ── shared data-loading: skeleton while loading, retry on error ── */
+function useLoad<T>(loader: () => Promise<T>) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const ref = useRef(loader);
+  ref.current = loader;
+  const reload = useCallback(() => {
+    setLoading(true); setError("");
+    ref.current().then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
+  return { data, error, loading, reload };
+}
+function Skeleton({ rows = 3 }: { rows?: number }) {
+  return <div className="skeleton">{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton-row" />)}</div>;
+}
+function Failed({ msg, onRetry }: { msg: string; onRetry?: () => void }) {
+  return (
+    <div className="card"><div className="failed">
+      <p className="error">{msg}</p>
+      {onRetry && <button className="ghost" onClick={onRetry}>Retry</button>}
+    </div></div>
+  );
+}
 
 function Login({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState("");
@@ -44,13 +70,10 @@ function Login({ onDone }: { onDone: () => void }) {
 }
 
 function OrgOverview() {
-  const [org, setOrg] = useState<Org | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    apiJson<Org>("/orgs/me").then(setOrg).catch((e) => setError(e.message));
-  }, []);
-  if (error) return <p className="error">{error}</p>;
-  if (!org) return <p className="hint">Loading…</p>;
+  const { data: org, error, loading, reload } = useLoad<Org>(() => apiJson<Org>("/orgs/me"));
+  if (loading) return <div className="card"><Skeleton rows={2} /></div>;
+  if (error) return <Failed msg={error} onRetry={reload} />;
+  if (!org) return null;
   return (
     <div className="card">
       <h2>{org.name}</h2>
@@ -78,13 +101,10 @@ const METRIC_LABELS: Record<string, string> = {
 };
 
 function OrgAnalytics() {
-  const [data, setData] = useState<Analytics | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    apiJson<Analytics>("/orgs/me/analytics").then(setData).catch((e) => setError(e.message));
-  }, []);
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p className="hint">Loading…</p>;
+  const { data, error, loading, reload } = useLoad<Analytics>(() => apiJson<Analytics>("/orgs/me/analytics"));
+  if (loading) return <div className="card"><Skeleton rows={3} /></div>;
+  if (error) return <Failed msg={error} onRetry={reload} />;
+  if (!data) return null;
   const anySuppressed = Object.values(data.metrics).some((m) => m.suppressed);
   const fmt = (name: string, m: Metric) =>
     m.suppressed ? "—" : name.includes("rate") ? `${Math.round((m.value ?? 0) * 100)}%` : String(m.value);
@@ -122,12 +142,9 @@ function OrgAnalytics() {
 }
 
 function People() {
-  const [people, setPeople] = useState<Person[] | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    apiJson<Person[]>("/orgs/me/people").then(setPeople).catch((e) => setError(e.message));
-  }, []);
-  if (error) return <p className="error">{error}</p>;
+  const { data: people, error, loading, reload } = useLoad<Person[]>(() => apiJson<Person[]>("/orgs/me/people"));
+  if (loading) return <div className="card"><Skeleton /></div>;
+  if (error) return <Failed msg={error} onRetry={reload} />;
   return (
     <div className="card">
       <h2>People</h2>
@@ -142,6 +159,7 @@ function People() {
           ))}
         </tbody>
       </table>
+      {people?.length === 0 && <p className="empty-state">No members yet — invite someone from the Invite tab.</p>}
     </div>
   );
 }
@@ -219,6 +237,10 @@ function Tenants() {
     }
   }
   async function toggle(org: Org) {
+    const msg = org.is_active
+      ? `Deactivate ${org.name}? Its members lose access until it's reactivated.`
+      : `Activate ${org.name}?`;
+    if (!window.confirm(msg)) return;
     await api(`/orgs/${org.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !org.is_active }) });
     load();
   }
@@ -226,19 +248,26 @@ function Tenants() {
     <>
       <div className="card">
         <h2>Tenants</h2>
-        <table>
-          <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Regulated</th><th>Status</th><th /></tr></thead>
-          <tbody>
-            {(orgs ?? []).map((o) => (
-              <tr key={o.id}>
-                <td>{o.name}</td><td>{o.slug}</td><td>{o.seats_used} / {o.seats_total}</td>
-                <td><span className={`pill ${o.regulated_mode ? "ok" : "off"}`}>{o.regulated_mode ? "on" : "off"}</span></td>
-                <td><span className={`pill ${o.is_active ? "ok" : "off"}`}>{o.is_active ? "active" : "inactive"}</span></td>
-                <td><button className="ghost" onClick={() => toggle(o)}>{o.is_active ? "deactivate" : "activate"}</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {orgs === null ? (
+          error ? <div className="failed"><p className="error">{error}</p><button className="ghost" onClick={load}>Retry</button></div> : <Skeleton />
+        ) : (
+          <>
+            <table>
+              <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Regulated</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {orgs.map((o) => (
+                  <tr key={o.id}>
+                    <td>{o.name}</td><td>{o.slug}</td><td>{o.seats_used} / {o.seats_total}</td>
+                    <td><span className={`pill ${o.regulated_mode ? "ok" : "off"}`}>{o.regulated_mode ? "on" : "off"}</span></td>
+                    <td><span className={`pill ${o.is_active ? "ok" : "off"}`}>{o.is_active ? "active" : "inactive"}</span></td>
+                    <td><button className="ghost" onClick={() => toggle(o)}>{o.is_active ? "deactivate" : "activate"}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {orgs.length === 0 && <p className="empty-state">No tenants yet — create one below.</p>}
+          </>
+        )}
       </div>
       <div className="card">
         <h2>New tenant</h2>
@@ -312,7 +341,8 @@ function Demos() {
     await api(`/admin/demo-requests/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
     load();
   }
-  if (error) return <p className="error">{error}</p>;
+  if (error) return <Failed msg={error} onRetry={load} />;
+  if (rows === null) return <div className="card"><Skeleton /></div>;
   return (
     <div className="card">
       <h2>Demo requests</h2>
@@ -334,7 +364,7 @@ function Demos() {
           ))}
         </tbody>
       </table>
-      {rows?.length === 0 && <p className="hint">No demo requests yet.</p>}
+      {rows.length === 0 && <p className="empty-state">No demo requests yet.</p>}
     </div>
   );
 }
@@ -408,7 +438,7 @@ function PromptWorkbook() {
   }
 
   if (error && !data) return <div className="card"><p className="error">{error}</p></div>;
-  if (!data) return <div className="card"><p className="hint">Loading workbook…</p></div>;
+  if (!data) return <div className="card"><Skeleton rows={5} /></div>;
   const editable = data.editable;
   const issues = data.validation?.issue_count ?? 0;
   const dirty = !!(agent && draft && (draft.prompt !== agent.prompt || draft.model !== agent.model || draft.enabled !== agent.enabled));
@@ -494,8 +524,8 @@ function SafetyQueue() {
     engineJson<SafetyResp>("/v1/safety/escalations").then(setData).catch((e) => setError(e.message));
   }, []);
   useEffect(load, [load]);
-  if (error) return <div className="card"><p className="error">{error}</p></div>;
-  if (!data) return <div className="card"><p className="hint">Loading safety queue…</p></div>;
+  if (error) return <Failed msg={error} onRetry={load} />;
+  if (!data) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
       <h2>Safety queue <span className="hint">crisis escalations · signal only, never content · {data.count}</span></h2>
@@ -525,6 +555,49 @@ function SafetyQueue() {
       <p className="hint" style={{ marginTop: 10 }}>
         This is a signal, not a record of what anyone said. Who responds, how they are trained, and how fast they act is the deployment&rsquo;s programme — not this feature.
       </p>
+    </div>
+  );
+}
+
+type Nudge = { org_id?: string; user_id: string; due_count?: number; session_ids?: string[]; at?: string; delivered?: boolean };
+type NudgesResp = { armed: boolean; count: number; nudges: Nudge[] };
+
+// Nudges — check-in reminder deliveries. Signal only (who has commitments due to check
+// in on, and whether the reminder was delivered), never a commitment body.
+function Nudges() {
+  const [data, setData] = useState<NudgesResp | null>(null);
+  const [error, setError] = useState("");
+  const load = useCallback(() => {
+    engineJson<NudgesResp>("/v1/nudges").then(setData).catch((e) => setError(e.message));
+  }, []);
+  useEffect(load, [load]);
+  if (error) return <Failed msg={error} onRetry={load} />;
+  if (!data) return <div className="card"><Skeleton rows={4} /></div>;
+  return (
+    <div className="card">
+      <h2>Nudges <span className="hint">check-in reminders · signal only · {data.count}</span></h2>
+      <div className="stats" style={{ marginBottom: 12 }}>
+        <div className="stat"><b><span className={`pill ${data.armed ? "ok" : "off"}`}>{data.armed ? "armed" : "not armed"}</span></b><span>delivery channel</span></div>
+      </div>
+      {!data.armed && (
+        <p className="hint">No delivery endpoint is configured (CEREBROZEN_NUDGE_DELIVERY_URL). The scheduler still computes who&rsquo;s due, but no reminder is sent until a channel is wired.</p>
+      )}
+      <table className="table">
+        <thead><tr><th>When</th><th>User</th><th>Commitments due</th><th>Sessions</th><th>Delivered</th><th>Org</th></tr></thead>
+        <tbody>
+          {data.nudges.map((n, i) => (
+            <tr key={`${n.user_id}:${n.at ?? ""}:${i}`}>
+              <td>{n.at ? new Date(n.at).toLocaleString() : "—"}</td>
+              <td>{n.user_id}</td>
+              <td>{n.due_count ?? "—"}</td>
+              <td>{n.session_ids?.length ?? 0}</td>
+              <td><span className={`pill ${n.delivered ? "ok" : "off"}`}>{n.delivered ? "yes" : "no"}</span></td>
+              <td>{n.org_id ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {data.count === 0 && <p className="empty-state">No nudges yet — nothing is due for a check-in.</p>}
     </div>
   );
 }
@@ -564,7 +637,7 @@ function AgentFlow() {
     return () => { alive = false; };
   }, [src]);
   if (error) return <div className="card"><p className="error">{error}</p></div>;
-  if (!agents) return <div className="card"><p className="hint">Loading flow…</p></div>;
+  if (!agents) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
       <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents · routing is deterministic (code predicates over typed state)</span></h2>
@@ -671,7 +744,7 @@ export default function Admin() {
 
   const tabs =
     me.role === "internal_admin"
-      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompt workbook"], ["flow", "Agent flow"], ["safety", "Safety queue"], ["console", "Console"]]
+      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompt workbook"], ["flow", "Agent flow"], ["safety", "Safety queue"], ["nudges", "Nudges"], ["console", "Console"]]
       : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
@@ -697,6 +770,7 @@ export default function Admin() {
       {tab === "prompts" && <PromptWorkbook />}
       {tab === "flow" && <AgentFlow />}
       {tab === "safety" && <SafetyQueue />}
+      {tab === "nudges" && <Nudges />}
       {tab === "console" && <Console />}
     </div>
   );
