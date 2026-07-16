@@ -205,7 +205,7 @@ def _record_key(record_id: str):
         return record_id
 
 
-def acknowledge(record_id: str, *, actor: str) -> bool:
+def acknowledge(record_id: str, *, actor: str, all_orgs: bool = False) -> bool:
     """Mark an escalation handled. Returns True only if this call did it.
 
     A STATUS and a NAME — never a note, never a reason, never a summary. The reference's
@@ -216,7 +216,9 @@ def acknowledge(record_id: str, *, actor: str) -> bool:
     Idempotent, and the FIRST responder wins: two operators clicking Resolve must not fight,
     and an incident review asks who actually handled it — not who clicked last.
 
-    Org-scoped like the read, so one tenant's operator cannot resolve another's.
+    ``all_orgs`` reaches across tenants — see ``list_escalations``. Same rule: only a caller
+    that has already proven ``internal_admin`` may pass it. Scoped by default so the reach
+    is never something a caller gets by forgetting an argument.
     """
     if not record_id:
         return False
@@ -231,13 +233,14 @@ def acknowledge(record_id: str, *, actor: str) -> bool:
             return False
         coll = client[config.MONGO_BACKEND_DB]["crisis_escalations"]
         key = _record_key(record_id)
-        row = coll.find_one(scoped({"_id": key}))
+        flt = {"_id": key} if all_orgs else scoped({"_id": key})
+        row = coll.find_one(flt)
         if not row:
             return False
         if row.get("acknowledged_at"):
             return True  # already handled; the first responder stands
         coll.update_one(
-            scoped({"_id": key}),
+            flt,
             {"$set": {
                 "acknowledged_at": datetime.now(timezone.utc).isoformat(),
                 "acknowledged_by": actor or "unknown",
@@ -253,8 +256,8 @@ def acknowledge(record_id: str, *, actor: str) -> bool:
     return True
 
 
-def list_escalations(limit: int = 100, status: str = "open") -> list:
-    """The safety queue: escalation records for the active org, newest first.
+def list_escalations(limit: int = 100, status: str = "open", all_orgs: bool = False) -> list:
+    """The safety queue: escalation records, newest first.
 
     Signal-only by construction. The stored record never held the disclosure — only
     that the screen fired, for whom, in which session, and whether the contact was
@@ -265,9 +268,23 @@ def list_escalations(limit: int = 100, status: str = "open") -> list:
     default because a queue whose default view includes everything ever handled is a queue
     nobody reads, and this is the one an operator must actually read.
 
-    Scoped to the active org via ``scoped()``; the default org also sees legacy
-    records written before org stamping. Best-effort: a store problem returns an
-    empty queue, never an exception into the admin surface.
+    ``all_orgs`` READS ACROSS TENANTS. It exists because this queue was otherwise dead:
+    ``escalate`` stamps the record with the CUSTOMER's org, while the only role allowed to
+    read it — ``internal_admin``, CereBroZen's own operators — carries ``org_id="internal"``
+    and belongs to no customer org, so ``scoped()`` matched nothing, ever. A record was
+    written for every crisis and the queue showed zero, while the `armed` pill read healthy.
+    Measured against the composed stack; unit tests missed it because they set the same org
+    they stamped.
+
+    Only a caller that has ALREADY proven ``internal_admin`` may pass it — today that is
+    ``routers/safety.py``, whose dependency does exactly that. It is an argument rather than
+    a role check in here because this module is also called from a crisis turn, where the
+    active identity is the person in crisis, not an operator.
+
+    Scoped by default, so cross-tenant reach is never something a caller gets by forgetting
+    an argument. The default org also sees legacy records written before org stamping.
+    Best-effort: a store problem returns an empty queue, never an exception into the admin
+    surface.
     """
     try:
         from app import config
@@ -286,7 +303,7 @@ def list_escalations(limit: int = 100, status: str = "open") -> list:
             "detected_by": 1, "at": 1, "delivered": 1,
             "acknowledged_at": 1, "acknowledged_by": 1,
         }
-        rows = list(coll.find(scoped({}), projection))
+        rows = list(coll.find({} if all_orgs else scoped({}), projection))
     except Exception as exc:  # noqa: BLE001
         logger.error("safety.escalation_list_failed", extra={"error": str(exc)})
         return []

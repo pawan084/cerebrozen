@@ -315,8 +315,14 @@ def test_the_queue_still_carries_no_disclosure(mongo):
     assert set(row) <= allowed, f"the queue grew a field: {set(row) - allowed}"
 
 
-def test_acknowledging_cannot_cross_a_tenant(mongo):
-    """An operator's ack is org-scoped like the read — the queue is per-tenant."""
+def test_the_store_is_scoped_unless_a_caller_asks_otherwise(mongo):
+    """Cross-tenant reach must never be what a caller gets by forgetting an argument.
+
+    `all_orgs` is opt-in, and only `routers/safety.py` opts in — after
+    `require_internal_admin` has already run. The default stays strict so that a future
+    caller from a crisis turn (where the active identity is the person in crisis, not an
+    operator) cannot reach another tenant by accident.
+    """
     from app.tenancy import ctx_org_id
 
     token = ctx_org_id.set("acme")
@@ -328,7 +334,37 @@ def test_acknowledging_cannot_cross_a_tenant(mongo):
 
     other = ctx_org_id.set("other-co")
     try:
+        assert escalation.list_escalations() == [], "the default read left its tenant"
         assert escalation.acknowledge(rid, actor="them") is False, \
-            "one tenant's operator resolved another tenant's escalation"
+            "the default ack left its tenant"
     finally:
         ctx_org_id.reset(other)
+
+
+def test_all_orgs_is_what_makes_the_queue_non_empty(mongo):
+    """The whole feature was dead without this.
+
+    `escalate` stamps the CUSTOMER's org; the only role allowed to read the queue is
+    internal_admin, whose token carries org_id="internal" and belongs to no customer org.
+    So the scoped read matched nothing, ever — a record written for every crisis, and a
+    queue showing zero, with the `armed` pill still reading healthy.
+    """
+    from app.tenancy import ctx_org_id
+
+    token = ctx_org_id.set("acme")
+    try:
+        escalation.escalate(user_id="u1", session_id="s1", detected_by="lexicon")
+    finally:
+        ctx_org_id.reset(token)
+
+    operator = ctx_org_id.set("internal")  # what the platform actually issues an operator
+    try:
+        assert escalation.list_escalations() == [], \
+            "this is the bug: the operator's own org holds no escalations, ever"
+        rows = escalation.list_escalations(all_orgs=True)
+        assert len(rows) == 1, "the operator queue is still empty"
+        assert rows[0]["org_id"] == "acme", "a row must name whose tenant it is"
+        assert escalation.acknowledge(rows[0]["id"], actor="ops", all_orgs=True) is True
+        assert escalation.list_escalations(all_orgs=True) == [], "resolving did not drain it"
+    finally:
+        ctx_org_id.reset(operator)

@@ -68,16 +68,28 @@ async def escalations(
     status: str = Query("open", pattern="^(open|resolved|all)$"),
     _claims: dict = Depends(require_internal_admin),
 ) -> dict:
-    """The crisis-escalation queue for the caller's org, newest first (signal-only).
+    """The crisis-escalation queue, newest first (signal-only), across all tenants.
 
     `status` defaults to **open**: a queue whose default view includes everything ever
     handled is a queue nobody reads, and this is the one an operator must actually read.
+
+    CROSS-TENANT, deliberately. `escalate` stamps each record with the CUSTOMER's org,
+    while this route's callers are CereBroZen's own operators, whose token carries
+    `org_id="internal"` because they belong to no customer org. Scoping the read to the
+    caller's org therefore matched nothing, ever: a record was written for every crisis and
+    the queue showed zero, with the `armed` pill still reading healthy. The operators on
+    this route are the people who respond, so they see every tenant's rows; each row carries
+    `org_id` so they can tell whose it is.
+
+    That reach is the reason `require_internal_admin` above is load-bearing rather than
+    decorative: an org_admin reaching this would now see OTHER customers' employees. It is
+    still signal-only — who tripped the screen, never what they said.
 
     Also returns whether escalation is *armed* (a contact endpoint is configured) and
     whether the crisis classifier is on — a safety feature that is silently off must be
     visible to the operator, not just at ``/health``.
     """
-    rows = await run_in_threadpool(list_escalations, limit, status)
+    rows = await run_in_threadpool(list_escalations, limit, status, True)
     h = health()
     return {
         "armed": h["crisis_escalation_armed"],
@@ -103,12 +115,15 @@ async def acknowledge_escalation(
     "what happened" box is that same leak wearing a different hat. What was said stays
     between the person and their coach (CLAUDE.md rule 5).
 
-    404 for an unknown record OR one belonging to another tenant — the same answer, so an
-    operator cannot probe another org's ids by watching the status change.
+    Cross-tenant like the read above, and for the same reason: an operator who can see a
+    row must be able to clear it, or the queue never drains.
+
+    404 for an unknown record — an operator only ever reaches this route having read an id
+    out of the queue, so there is nothing to probe for.
     """
     ok = await run_in_threadpool(
-        acknowledge, record_id, actor=(claims or {}).get("sub", "unknown"),
+        acknowledge, record_id, actor=(claims or {}).get("sub", "unknown"), all_orgs=True,
     )
     if not ok:
-        raise HTTPException(404, "no such escalation in your queue")
+        raise HTTPException(404, "no such escalation")
     return {"status": "acknowledged", "id": record_id}

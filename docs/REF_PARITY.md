@@ -176,7 +176,7 @@ suite while being broken on the backend that ships. `tests/conftest.py` now carr
 `pgdb` fixture and `requires_pg` marker so store-behaviour tests can run against the real
 thing; CI should run the suite with a Postgres available.
 
-## Blocked on a decision — both ops queues are permanently empty
+## Both ops queues were permanently empty — FIXED 2026-07-17
 
 **The safety queue and the nudge queue can never show a row, for anyone.** Not a
 regression; true since the ops queues were org-scoped. Measured against the composed
@@ -201,19 +201,24 @@ silently-unconfigured safety feature is worse than an absent one" — one level 
 feature is configured, the record is written, and the queue that exists so a human gets
 involved shows nothing. The `armed`/`classifier_enabled` pills still read healthy.
 
-The fix is a **tenancy-contract decision, not a bug fix**, so it is parked here rather
-than made unilaterally (CLAUDE.md rule 7; the answer changes who can see which employees
-are in crisis):
+The fix was a **tenancy-contract decision, not a bug fix** (CLAUDE.md rule 7 — the answer
+changes who can see which employees are in crisis), so it was put to the owner rather than
+made unilaterally. Two alternatives were declined: an **org selector** in the console
+(deliberate and auditable per view, but a queue you must go looking for per-tenant is a
+queue nobody watches — the wrong shape for crisis response), and a **customer-owned
+responder role** (closest to escalation.py's own "the client's programme, not our feature",
+but nobody responds until a customer staffs it).
 
-1. **`internal_admin` reads across tenants.** The queue works; each row already carries
-   `org_id`. But it means the vendor's operators see which employees at which customer hit
-   the crisis screen — a real privacy expansion that SECURITY.md would have to state.
-2. **An org selector in the ops console.** The operator picks a tenant and the engine
-   scopes to it: deliberate and auditable, and it keeps "no cross-tenant read by default".
-   More work: the engine must accept a target org and verify the role for it.
-3. **The queue belongs to the customer, not the vendor** — a designated responder role
-   inside the org. Closest to "the client's programme, not our feature" (escalation.py),
-   and the largest change: a new role, and HR must still not be it.
+**Chosen: `internal_admin` reads across tenants.** Our operators are the responders, so
+they see every tenant's rows; each row carries `org_id` and the console shows a Tenant
+column. Opt-in per call (`all_orgs=True`), passed only by a route that has already run
+`require_internal_admin` — which is what makes that dependency load-bearing rather than
+decorative. No other engine read may do it. Still signal-only.
+
+The cost, stated rather than buried: **CereBroZen's own operators can see which employees
+at which customer tripped the crisis screen.** No customer role can — an `org_admin` (their
+HR) gets 403 on both the read and the ack, verified against the composed stack. Recorded in
+SECURITY.md (the tenancy claim now names its exception) and ARCHITECTURE.md.
 
 ## Warts found while building, not yet fixed
 

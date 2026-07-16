@@ -167,18 +167,24 @@ def test_acking_an_unknown_record_is_404(mongo):
     assert r.status_code == 404
 
 
-def test_acking_another_orgs_record_is_404_not_403(mongo):
-    """The SAME answer as an unknown id, deliberately: a 403 would confirm the record
-    exists, so an operator could enumerate another tenant's escalation ids by watching the
-    status code change."""
+def test_the_operator_route_reaches_every_tenant(mongo):
+    """The operator queue is cross-tenant on purpose — without it, it is always empty.
+
+    `escalate` stamps the customer's org; the route requires internal_admin, whose token
+    carries org_id="internal". A scoped read matched nothing, ever. Our operators are the
+    ones who respond to a crisis, so they see every tenant's rows; each row names its org.
+    """
     tok = ctx_org_id.set("acme")
     try:
         escalation.escalate(user_id="u1", session_id="s1", detected_by="lexicon")
-        rid = escalation.list_escalations()[0]["id"]
     finally:
         ctx_org_id.reset(tok)
 
-    # The request runs as the default org, which must not see acme's row at all.
-    r = _client().post(f"/v1/safety/escalations/{rid}/ack")
-    assert r.status_code == 404
-    assert "acme" not in r.text
+    client = _client()  # runs as the default org, NOT acme
+    body = client.get("/v1/safety/escalations").json()
+    assert body["count"] == 1, "the operator queue is empty again"
+    row = body["escalations"][0]
+    assert row["org_id"] == "acme", "a row must say whose tenant it belongs to"
+
+    assert client.post(f"/v1/safety/escalations/{row['id']}/ack").status_code == 200
+    assert client.get("/v1/safety/escalations").json()["count"] == 0

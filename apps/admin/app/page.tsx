@@ -922,11 +922,15 @@ function SafetyQueue() {
           contact was reached, and now whether a human has picked it up. Never what was
           said (CLAUDE.md rule 5; test_escalation_records.py asserts the field set). */}
       <table className="table">
-        <thead><tr><th>When</th><th>User</th><th>Session</th><th>Detected by</th><th>Contact reached</th><th>Handled</th><th /></tr></thead>
+        <thead><tr><th>When</th><th>Tenant</th><th>User</th><th>Session</th><th>Detected by</th><th>Contact reached</th><th>Handled</th><th /></tr></thead>
         <tbody>
           {data.escalations.map((e, i) => (
             <tr key={`${e.id}:${i}`}>
               <td>{e.at ? new Date(e.at).toLocaleString() : "—"}</td>
+              {/* The queue spans tenants (the engine's operators are the responders), so a
+                  row has to say whose it is — otherwise a user id is unattributable and an
+                  operator cannot tell which client's programme to follow. */}
+              <td>{e.org_id ? <code>{e.org_id.slice(0, 8)}</code> : "—"}</td>
               <td>{e.user_id}</td>
               <td>{e.session_id}</td>
               <td>{e.detected_by ?? "—"}</td>

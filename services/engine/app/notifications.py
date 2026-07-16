@@ -144,11 +144,18 @@ def dispatch(today: Optional[date] = None) -> dict:
     return summary
 
 
-def list_nudges(limit: int = 100) -> list:
-    """Recent nudge deliveries for the active org, newest first (signal-only).
+def list_nudges(limit: int = 100, all_orgs: bool = False) -> list:
+    """Recent nudge deliveries, newest first (signal-only).
 
     The observability read behind an admin "nudges" view — same shape as the
     delivered record. Best-effort; a store problem returns an empty list.
+
+    ``all_orgs`` reads across tenants, and the route passes it for the same reason the
+    safety queue does: each nudge is stamped with the USER's own org (see ``run_nudges``,
+    which sweeps every tenant), while the only role allowed to read this is
+    ``internal_admin``, whose token carries ``org_id="internal"``. Scoped to the caller's
+    org it matched nothing, ever — the queue was dead. Scoped by default so the reach is
+    always something a caller asked for.
     """
     try:
         from app import config
@@ -163,7 +170,7 @@ def list_nudges(limit: int = 100) -> list:
             "_id": 0, "org_id": 1, "user_id": 1, "due_count": 1,
             "session_ids": 1, "at": 1, "delivered": 1,
         }
-        rows = list(coll.find(scoped({}), projection))
+        rows = list(coll.find({} if all_orgs else scoped({}), projection))
     except Exception as exc:  # noqa: BLE001
         logger.error("nudge.list_failed", extra={"error": str(exc)})
         return []

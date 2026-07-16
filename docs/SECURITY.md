@@ -26,6 +26,25 @@ trap. Our position:
   real org, so they simply found nothing), but the data landed in the wrong tenant
   and session history was empty for everyone. The store tests could not see it;
   `test_sse_tenancy.py` now pins the restamp.
+- **One exception, and it is ours, not a customer's:** the two operator queues —
+  `GET /v1/safety/escalations` (+ `/ack`) and `GET /v1/nudges` — read across
+  tenants, so **CereBroZen's own operators (`internal_admin`) can see which
+  employees at which customer tripped the crisis screen**. No customer role can:
+  an `org_admin` (their HR) gets 403 on both, which matters more here than
+  anywhere else in the product — the rows name individuals, so this is not
+  "counts, never content", it is worse, because the count *is* a person.
+  The queues are still signal-only: who, which session, whether the designated
+  contact was reached, and now who resolved it — never what was said, at the
+  storage layer rather than by projection.
+  Not a design flourish: until 2026-07-17 both queues were **permanently empty**
+  for the only role allowed to read them. `escalate()` stamps the customer's
+  `org_id`, `internal_admin` carries `org_id="internal"` (they belong to no
+  customer org), and `scoped()` matched nothing — a record written for every
+  crisis, and a queue showing zero, with `armed` still reading healthy. Only a
+  real platform-issued operator token against the composed stack exposed it; the
+  unit tests set the same org they stamped. The reach is opt-in per call
+  (`all_orgs=True`), passed only by a route that has already run
+  `require_internal_admin`, and is refused to every other engine read.
 - JWTs carry `org_id`; the engine rejects tokens without it.
 - `STRICT_TENANT` boot-guard behavior is default-on: refusing to boot in
   prod with placeholder/foreign resource names.

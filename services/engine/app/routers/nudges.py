@@ -31,6 +31,13 @@ async def nudges(
     limit: int = Query(100, ge=1, le=500),
     _claims: dict = Depends(require_internal_admin),
 ) -> dict:
-    """Recent check-in nudge deliveries for the caller's org, newest first."""
-    rows = await run_in_threadpool(notifications.list_nudges, limit)
+    """Recent check-in nudge deliveries, newest first, across all tenants.
+
+    Cross-tenant for the same reason as the safety queue (``routers/safety.py``): the
+    sweep stamps each nudge with the USER's org, while this route's callers are our own
+    operators, whose token carries ``org_id="internal"`` — so scoping to the caller's org
+    showed an empty queue no matter how many nudges went out. Signal-only: ids and counts,
+    never a body.
+    """
+    rows = await run_in_threadpool(notifications.list_nudges, limit, True)
     return {"armed": notifications.armed(), "count": len(rows), "nudges": rows}

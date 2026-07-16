@@ -91,6 +91,19 @@ Change (the known sharp edges — details in SECURITY.md and TODO.md):
    first-class key on every store read/write and on checkpointer thread ids.
    The reference's per-deploy DB-name isolation (and hard-coded incumbent
    resource names) is the documented sharpest edge; we fix it in code.
+
+   **The one exception, named rather than implicit:** the two *operator* queues —
+   `GET /v1/safety/escalations` (+ its `/ack`) and `GET /v1/nudges` — read across
+   tenants. They have to. Records are stamped with the **customer's** `org_id`,
+   while the only role that may read them (`internal_admin`, our own operators,
+   who belong to no customer org) carries `org_id="internal"` — so `scoped()`
+   matched nothing and both queues were **permanently empty**, silently, while
+   their health pills read armed. The reach is opt-in at the call site
+   (`all_orgs=True`), never a default, and passed only after
+   `require_internal_admin` has run — which is what makes that dependency
+   load-bearing rather than decorative. Both queues stay signal-only: who tripped
+   the crisis screen, never what they said. Every row carries `org_id` so an
+   operator can tell whose it is. No other engine read may do this.
 2. **Storage consolidation: Postgres-first.** The reference's Mongo→Postgres
    shim and pgvector RAG path (`app/stores/pg.py`, `app/rag/pgvector_store.py`)
    already exist — we make them the default and drop Mongo/LanceDB/S3 from
