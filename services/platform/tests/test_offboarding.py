@@ -115,7 +115,7 @@ async def test_reactivating_brings_them_back(client, member):
 async def test_the_roster_shows_the_new_status(client, member):
     await client.patch(f"/orgs/me/people/{member['member_id']}", json={"is_active": False},
                        headers=member["admin_headers"])
-    people = (await client.get("/orgs/me/people", headers=member["admin_headers"])).json()
+    people = (await client.get("/orgs/me/people", headers=member["admin_headers"])).json()["people"]
     row = next(p for p in people if p["id"] == member["member_id"])
     assert row["is_active"] is False
 
@@ -233,7 +233,7 @@ async def deleted_member(client, member):
 
 
 async def test_a_deleted_account_disappears_from_the_roster(client, deleted_member):
-    people = (await client.get("/orgs/me/people", headers=deleted_member["admin_headers"])).json()
+    people = (await client.get("/orgs/me/people", headers=deleted_member["admin_headers"])).json()["people"]
     assert deleted_member["member_id"] not in [p["id"] for p in people]
     assert not any(p["email"].endswith("@deleted.invalid") for p in people), "a tombstone is listed as a person"
 
@@ -266,3 +266,75 @@ async def test_the_tombstone_marker_is_written_and_read_from_one_place():
     assert is_tombstone(User(email=f"deleted-abc{DELETED_EMAIL_DOMAIN}"))
     assert not is_tombstone(User(email="real@acme.example"))
     assert not is_tombstone(User(email=""))
+
+
+# ── the roster is paged and searchable, server-side ──────────────────────────
+#
+# It returned every row unbounded. A B2B roster is not a B2C ops list: a 2,000-seat tenant
+# shipped 2,000 rows on every visit. Filtering in the client would still send them all.
+
+
+async def test_the_roster_is_paged(client, member):
+    for i in range(4):
+        await _join(client, member["org"]["id"], f"p{i}@acme.example")
+    body = (await client.get("/orgs/me/people?limit=2", headers=member["admin_headers"])).json()
+    assert len(body["people"]) == 2
+    assert body["total"] >= 6, "total must count the whole match, not the page"
+
+
+async def test_the_page_walks_without_repeating_or_skipping(client, member):
+    for i in range(4):
+        await _join(client, member["org"]["id"], f"w{i}@acme.example")
+    seen = []
+    for offset in (0, 2, 4, 6):
+        page = (await client.get(f"/orgs/me/people?limit=2&offset={offset}",
+                                 headers=member["admin_headers"])).json()["people"]
+        seen.extend(p["id"] for p in page)
+    assert len(seen) == len(set(seen)), "a page boundary repeated somebody"
+    total = (await client.get("/orgs/me/people?limit=200", headers=member["admin_headers"])).json()["total"]
+    assert len(seen) == total, "walking the pages missed somebody"
+
+
+async def test_search_matches_email_or_name(client, member):
+    await _join(client, member["org"]["id"], "findme@acme.example")
+    by_email = (await client.get("/orgs/me/people?q=findme", headers=member["admin_headers"])).json()
+    assert [p["email"] for p in by_email["people"]] == ["findme@acme.example"]
+    # An admin hunting a leaver has their email OR their name, rarely both.
+    by_name = (await client.get("/orgs/me/people?q=A%20Member", headers=member["admin_headers"])).json()
+    assert by_name["total"] >= 1
+
+
+async def test_search_is_case_insensitive(client, member):
+    await _join(client, member["org"]["id"], "MixedCase@acme.example")
+    got = (await client.get("/orgs/me/people?q=mixedcase", headers=member["admin_headers"])).json()
+    assert got["total"] == 1
+
+
+async def test_total_reports_the_filtered_count_not_the_seat_count(client, member):
+    """A search must say how many it FOUND, not how many seats the org has — otherwise
+    "1 of 340" reads as a broken filter."""
+    for i in range(3):
+        await _join(client, member["org"]["id"], f"other{i}@acme.example")
+    got = (await client.get("/orgs/me/people?q=leaver", headers=member["admin_headers"])).json()
+    assert got["total"] == 1
+    assert len(got["people"]) == 1
+
+
+async def test_search_stays_inside_the_tenant(client, member, internal):
+    """The search must not become a way to look up other tenants' employees."""
+    headers, _ = internal
+    other = (await client.post("/orgs", json={"name": "Other", "slug": "other-s", "seats_total": 3},
+                               headers=headers)).json()["id"]
+    await _join(client, other, "secret@other.example")
+    got = (await client.get("/orgs/me/people?q=secret", headers=member["admin_headers"])).json()
+    assert got["total"] == 0, "one tenant's admin searched up another tenant's employee"
+
+
+async def test_a_deleted_account_is_not_searchable_either(client, deleted_member):
+    got = (await client.get("/orgs/me/people?q=leaver", headers=deleted_member["admin_headers"])).json()
+    assert got["total"] == 0, "a tombstone came back through search"
+
+
+async def test_an_absurd_limit_is_refused(client, member):
+    # An unbounded limit would hand the whole roster back, which is the bug being fixed.
+    assert (await client.get("/orgs/me/people?limit=100000", headers=member["admin_headers"])).status_code == 422

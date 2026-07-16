@@ -6,7 +6,7 @@ IS a seat commitment, or an org could oversubscribe by inviting."""
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select, update
@@ -137,27 +137,52 @@ async def my_org(
 
 @router.get("/me/people")
 async def my_people(
-    user: User = Depends(require_org_admin), session: AsyncSession = Depends(get_session)
+    q: str = Query("", max_length=200, description="Filter by email or name (case-insensitive)."),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(require_org_admin),
+    session: AsyncSession = Depends(get_session),
 ):
     """Seat roster: identity and status only — never coaching content.
+
+    Paged and searchable SERVER-side, because a B2B roster is not a B2C ops list: this
+    returned every row unbounded, so a 2,000-seat tenant shipped 2,000 rows on every visit
+    and the console rendered them all. Filtering in the client would still send them.
 
     Excludes deleted accounts. A deletion scrubs the row in place and leaves a tombstone so
     foreign keys stay valid (`users.py::delete_me`) — but a tombstone is not a person, and
     listing one invited an org_admin to press "reactivate" on it, which would have set
     is_active=True and burned a seat forever on an account with no usable password. Found by
     clicking through the roster after an erasure, not by reading it.
+
+    `total` counts the WHOLE match, not this page — the UI needs to say "12 of 340" and to
+    know whether another page exists. It is the filtered total, so a search says how many it
+    found rather than how many seats the org has.
     """
+    org_id = _own_org_id(user)
+    base = select(User).where(
+        User.org_id == org_id, User.email.notlike(f"%{DELETED_EMAIL_DOMAIN}")
+    )
+    term = q.strip()
+    if term:
+        # ilike on both fields: an admin looking for a leaver has their email OR their
+        # name, rarely both, and never their user id.
+        like = f"%{term}%"
+        base = base.where(User.email.ilike(like) | User.name.ilike(like))
+
+    total = (
+        await session.execute(select(func.count()).select_from(base.subquery()))
+    ).scalar_one()
     people = (
-        await session.execute(
-            select(User)
-            .where(User.org_id == _own_org_id(user), User.email.notlike(f"%{DELETED_EMAIL_DOMAIN}"))
-            .order_by(User.created_at)
-        )
+        await session.execute(base.order_by(User.created_at).limit(limit).offset(offset))
     ).scalars().all()
-    return [
-        {"id": p.id, "email": p.email, "name": p.name, "role": p.role, "is_active": p.is_active}
-        for p in people
-    ]
+    return {
+        "total": total,
+        "people": [
+            {"id": p.id, "email": p.email, "name": p.name, "role": p.role, "is_active": p.is_active}
+            for p in people
+        ],
+    }
 
 
 class PersonPatch(BaseModel):

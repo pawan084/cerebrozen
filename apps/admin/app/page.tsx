@@ -183,10 +183,54 @@ function OrgAnalytics() {
   );
 }
 
+const PAGE = 25;
+
 function People({ me }: { me: Me }) {
-  const { data: people, error, loading, reload } = useLoad<Person[]>(() => apiJson<Person[]>("/orgs/me/people"));
+  /* Search and paging are SERVER-side. This roster used to fetch every row and render
+     them all: a 2,000-seat tenant shipped 2,000 rows on every visit, and filtering in the
+     browser would still have sent them. */
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<Person[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState("");
+
+  const fetchPage = useCallback(async (term: string, offset: number) => {
+    const url = `/orgs/me/people?limit=${PAGE}&offset=${offset}${term ? `&q=${encodeURIComponent(term)}` : ""}`;
+    return apiJson<{ total: number; people: Person[] }>(url);
+  }, []);
+
+  const load = useCallback((term: string) => {
+    setError("");
+    fetchPage(term, 0)
+      .then((r) => { setRows(r.people); setTotal(r.total); })
+      .catch((e) => setError(e.message));
+  }, [fetchPage]);
+
+  // Debounced: a keystroke per request would hammer the roster of a big tenant.
+  useEffect(() => {
+    const t = setTimeout(() => load(q), q ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [q, load]);
+
+  async function more() {
+    if (!rows) return;
+    setLoadingMore(true);
+    try {
+      const r = await fetchPage(q, rows.length);
+      setRows([...rows, ...r.people]);
+      setTotal(r.total);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load more.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+  const reload = () => load(q);
+  const people = rows;
+  const loading = rows === null && !error;
 
   /* Offboarding was the hole here: this roster showed a leaver and offered nothing to do
      about them, and the seat they no longer used stayed counted against the org. */
@@ -206,11 +250,16 @@ function People({ me }: { me: Me }) {
     }
   }
 
-  if (loading) return <div className="card"><Skeleton /></div>;
-  if (error) return <Failed msg={error} onRetry={reload} />;
+  if (error && !rows) return <Failed msg={error} onRetry={reload} />;
   return (
     <div className="card">
-      <h2>People</h2>
+      <div className="people-head">
+        <h2>People</h2>
+        <input className="wb-search" type="search" placeholder="Search by name or email"
+          aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      {loading ? <Skeleton /> : (
+      <>
       <table>
         <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th /></tr></thead>
         <tbody>
@@ -233,7 +282,25 @@ function People({ me }: { me: Me }) {
         </tbody>
       </table>
       {failed && <p className="error">{failed}</p>}
-      {people?.length === 0 && <p className="empty-state">No members yet — invite someone from the Invite tab.</p>}
+      {people?.length === 0 && (
+        <p className="empty-state">
+          {q ? `No one matches “${q}”.` : "No members yet — invite someone from the Invite tab."}
+        </p>
+      )}
+      {(people?.length ?? 0) > 0 && (
+        <div className="people-foot">
+          {/* The filtered total, so a search says how many it FOUND — "1 of 340" would
+              read as a broken filter. */}
+          <span className="hint">Showing {people!.length} of {total}</span>
+          {people!.length < total && (
+            <button className="ghost" disabled={loadingMore} onClick={more}>
+              {loadingMore ? "…" : "Load more"}
+            </button>
+          )}
+        </div>
+      )}
+      </>
+      )}
       <p className="hint" style={{ marginTop: 12 }}>
         Deactivating ends someone&rsquo;s access and frees their seat. It is not deletion:
         their coaching content is theirs, and only they can export or erase it.

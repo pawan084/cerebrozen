@@ -70,6 +70,28 @@ test.describe("HR aggregates", () => {
     expect(r.status()).toBe(400);
   });
 
+  test("the roster pages and searches server-side", async ({ request }) => {
+    /* It returned every row unbounded — a 2,000-seat tenant shipped 2,000 rows on every
+       visit, and filtering in the browser would still have sent them all. */
+    const hr = await token(request, "hr");
+    const page1 = await (await request.get(`${urls.platform}/orgs/me/people?limit=1`, { headers: auth(hr) })).json();
+    expect(page1.people.length).toBe(1);
+    // `total` is the whole match, not the page — the UI needs to know another page exists.
+    expect(page1.total).toBeGreaterThanOrEqual(1);
+
+    const found = await (await request.get(`${urls.platform}/orgs/me/people?q=demo`, { headers: auth(hr) })).json();
+    expect(found.people.every((p: { email: string }) => p.email.includes("demo"))).toBeTruthy();
+  });
+
+  test("a roster row is identity and status — never content", async ({ request }) => {
+    // Exhaustive on purpose: this is what stops content arriving one convenient field at
+    // a time. The envelope gained `total` when paging landed; the ROW must not change.
+    const hr = await token(request, "hr");
+    const body = await (await request.get(`${urls.platform}/orgs/me/people?limit=1`, { headers: auth(hr) })).json();
+    expect(Object.keys(body).sort()).toEqual(["people", "total"]);
+    expect(Object.keys(body.people[0]).sort()).toEqual(["email", "id", "is_active", "name", "role"]);
+  });
+
   test("the HR console never exposes coaching content", async ({ request }) => {
     // "Counts, never content" is structural: the platform is the database this token
     // reaches, and it holds no content column and no content route.

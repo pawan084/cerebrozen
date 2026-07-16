@@ -124,9 +124,14 @@ async def test_org_admin_sees_their_org_and_seat_usage(client, org_with_admin):
 
 
 async def test_the_people_roster_shows_identity_never_content(client, org_with_admin):
+    """The field set is exact on purpose — a roster row is identity + status, and an
+    exhaustive assertion is what stops content arriving one convenient field at a time.
+    (The envelope gained `total` when the roster became paged; the ROW must not.)"""
     r = await client.get("/orgs/me/people", headers=org_with_admin["admin_headers"])
     assert r.status_code == 200
-    (person,) = r.json()
+    body = r.json()
+    assert set(body) == {"total", "people"}
+    (person,) = body["people"]
     assert set(person) == {"id", "email", "name", "role", "is_active"}
 
 
