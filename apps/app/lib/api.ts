@@ -81,3 +81,40 @@ export async function me(): Promise<Me | null> {
   }
   return r.ok ? ((await r.json()) as Me) : null;
 }
+
+/* ── DPDP consent ─────────────────────────────────────────────────────────── */
+
+export type Consent = {
+  mood_history: boolean; ai_memory: boolean; journal_memory: boolean;
+  sleep_history: boolean; voice_storage: boolean; model_training: boolean;
+};
+
+export async function getConsent(): Promise<Consent | null> {
+  const t = getTokens();
+  if (!t) return null;
+  let r = await fetch(`${BASE}/users/me/consent`, { headers: { Authorization: `Bearer ${t.access_token}` } });
+  if (r.status === 401 && (await refresh())) {
+    r = await fetch(`${BASE}/users/me/consent`, { headers: { Authorization: `Bearer ${getTokens()!.access_token}` } });
+  }
+  return r.ok ? ((await r.json()) as Consent) : null;
+}
+
+/** Change one consent. The platform ROTATES the session — every old refresh token is
+ *  revoked and a fresh pair comes back carrying the new claim, so a withdrawal bites on
+ *  the very next request instead of 15 minutes later. We MUST adopt those tokens (or the
+ *  user would be silently signed out for having touched a switch). */
+export async function updateConsent(patch: Partial<Consent>): Promise<Consent> {
+  const t = getTokens();
+  if (!t) throw new Error("not signed in");
+  const r = await fetch(`${BASE}/users/me/consent`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t.access_token}` },
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
+  const body = (await r.json()) as Consent & Partial<Tokens>;
+  if (body.access_token && body.refresh_token) {
+    setTokens({ access_token: body.access_token, refresh_token: body.refresh_token });
+  }
+  return body as Consent;
+}

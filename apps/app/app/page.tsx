@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon, firstName, useMe } from "@/components/shell";
+import { addMood, Unavailable } from "@/lib/wellness";
 
 const MOODS = ["😣", "😔", "😐", "🙂", "😌"];
 const MOOD_LABELS = ["struggling", "low", "okay", "good", "great"];
@@ -36,6 +37,23 @@ export default function Home() {
   const me = useMe();
   const router = useRouter();
   const [mood, setMood] = useState<number | null>(null);
+  const [moodNote, setMoodNote] = useState("");
+
+  // Persist the check-in (consent-gated on the engine). A refusal is said plainly
+  // rather than faked as saved.
+  async function pickMood(i: number) {
+    setMood(i);
+    setMoodNote("Noted — thanks for checking in. This stays private to you.");
+    try {
+      await addMood(MOOD_LABELS[i], MOODS[i], i + 1);
+    } catch (e) {
+      if (e instanceof Unavailable) {
+        setMoodNote(e.reason === "consent"
+          ? "Noted — turn on Mood history in Settings to keep a trend."
+          : "Noted — not saved: wellness storage isn't enabled for your workspace.");
+      }
+    }
+  }
   const today = weekIndex();
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
@@ -63,14 +81,12 @@ export default function Home() {
             <div className="moods">
               {MOODS.map((m, i) => (
                 <button key={i} className={`mood ${mood === i ? "sel" : ""}`}
-                  onClick={() => setMood(i)} aria-label={`I'm feeling ${MOOD_LABELS[i]}`}
+                  onClick={() => pickMood(i)} aria-label={`I'm feeling ${MOOD_LABELS[i]}`}
                   aria-pressed={mood === i}><span aria-hidden="true">{m}</span></button>
               ))}
             </div>
             <p className="hint">
-              {mood === null
-                ? "Tap how you're feeling — there's no wrong answer."
-                : "Noted — thanks for checking in. This stays private to you."}
+              {mood === null ? "Tap how you're feeling — there's no wrong answer." : moodNote}
             </p>
           </section>
 
