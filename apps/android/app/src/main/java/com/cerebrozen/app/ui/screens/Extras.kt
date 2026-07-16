@@ -1783,7 +1783,7 @@ private fun LegacyToolkitScreenUnused(onOpen: (String) -> Unit, onBack: () -> Un
 
     // The quiet, always-there door (REDESIGN §2.3) — support belongs in the
     // toolkit too, two taps from anywhere.
-    NavRow(stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
+    NavRow(stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_support_line),
         icon = Icons.Outlined.HealthAndSafety) { onOpen("crisis") }
 }
 
@@ -1859,7 +1859,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
             ) { onOpen("sounds") }
             ToolkitExerciseCard(
-                stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
+                stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_support_line),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_support), Icons.Outlined.HealthAndSafety, Color(0xFFFF6B81), 10, true,
             ) { onOpen("crisis") }

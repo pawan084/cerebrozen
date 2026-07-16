@@ -102,7 +102,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     tint = Warm, modifier = Modifier.size(24.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.you_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text(stringResource(R.string.crisis_telemanas_line),
+                    Text(stringResource(R.string.crisis_support_line),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)

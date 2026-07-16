@@ -639,8 +639,18 @@ dated notes, grouped by priority; items needing an owner decision are marked
       employee see exactly what their org admin sees.
 - [ ] Intake personalization: thinking-style seed questions wired to the
       engine's NBI/DISC profile stores.
-- [ ] Crisis + HumanSupport screens (ported nearly unchanged); regional
-      helpline config from engine, never hardcoded.
+- [x] 2026-07-16 — Crisis + HumanSupport screens serve **regional** helplines from
+      the engine. The contract (ARCHITECTURE.md) already said "never hardcoded in
+      clients" and the clients broke it: Tele-MANAS 14416 / 112 / 1800-599-0019 /
+      iCall were literals in Crisis.kt, Settings.kt and strings.xml, shown to every
+      user, while Settings offered a region picker whose answer only the picker read
+      — a placebo control. Now: engine `app/safety/helplines.py` owns the directory
+      (safety is code), `GET /v1/safety/helplines?region=` serves it and is total (no
+      input returns an empty list); the platform resolves `crisis_region` on
+      `/users/me` (person's choice > org default > unknown); Android renders it and
+      falls back to a region-**neutral** finder offline, never a country's numbers.
+      47 engine tests, 5 platform, 16 Android; `data/**` added to the JaCoCo gate at
+      100% (total 95.39% → 95.89%).
 - [ ] Notifications: reminder + nudge channels. **Backend delivery built
       (2026-07-16):** engine `POST /v1/nudges/dispatch` scans every tenant's
       due check-ins (`checkin_scheduler`) and emits a **content-free** nudge

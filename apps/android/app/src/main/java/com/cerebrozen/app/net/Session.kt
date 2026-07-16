@@ -570,6 +570,13 @@ object Api {
     private val ENGINE = BuildConfig.ENGINE_BASE_URL
 
     suspend fun me(): JSONObject = JSONObject(Session.api("/users/me"))
+
+    /** Crisis helplines for [region], from the ENGINE — safety code lives there and is
+     *  never hardcoded in a client (ARCHITECTURE.md §Cross-stack contracts). Returns the
+     *  raw body; `data.Helplines` parses it and owns the offline floor. Session caches
+     *  every GET, so a later network failure serves the last copy rather than nothing. */
+    suspend fun helplinesRaw(region: String): String =
+        Session.api("/v1/safety/helplines?region=" + java.net.URLEncoder.encode(region, "UTF-8"), base = ENGINE)
     suspend fun streak(): JSONObject = JSONObject(Session.api("/users/me/streak"))
 
     suspend fun moods(): JSONArray = JSONArray(Session.api("/v1/wellness/moods", base = ENGINE))

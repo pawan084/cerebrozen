@@ -146,6 +146,8 @@ tasks.withType<Test>().configureEach {
 // in JVM/Robolectric unit tests (CI needs no emulator and no keys).
 val coverageIncludes = listOf(
     "com/cerebrozen/app/net/**",                  // Session/Api/Coach/Events/Analytics — auth, cache, SSE, engine client
+    "com/cerebrozen/app/data/**",                 // Helplines — crisis directory parse + the offline floor. Gated deliberately: this is safety code
+
     "com/cerebrozen/app/audio/MediaUrls*",        // pure URL registry/resolution
     "com/cerebrozen/app/audio/MediaCatalog*",     // pure key→url catalogue + the empty-url fallback contract
     "com/cerebrozen/app/audio/AmbientSource*",    // pure "uploaded asset else bundled loop" resolution

@@ -48,26 +48,18 @@
     <string name="crisis_title">Urgent support</string>
     <string name="crisis_hero_eyebrow">You deserve support</string>
     <string name="crisis_hero_title">If you\'re in immediate danger, please reach out now.</string>
-    <string name="crisis_line_telemanas">Tele-MANAS — real people, 24/7</string>
-    <string name="crisis_line_emergency">Emergency services</string>
-    <string name="crisis_line_kiran">KIRAN mental-health helpline</string>
-    <string name="crisis_line_find_helpline">Find a helpline</string>
     <string name="crisis_trusted_contact_title">Trusted contact</string>
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
-    <string name="crisis_telemanas_line">Tele-MANAS 14416 · real people, 24/7</string>
+    <!-- Nav-row subtitle only. Names NO number: the numbers are per-region and come
+         from the engine (data/Helplines.kt). -->
+    <string name="crisis_support_line">Real people, any time — helplines for your region</string>
 
     <!-- ── Human support (Settings.kt) ─────────────────────────────────── -->
     <string name="humansupport_eyebrow">Beyond the app</string>
     <string name="humansupport_title">Human support</string>
     <string name="humansupport_intro">CereBro is a companion, not a clinician. When you want a real person, these connect you with one.</string>
-    <string name="humansupport_telemanas_title">Tele-MANAS — call 14416</string>
-    <string name="humansupport_telemanas_detail">Free government mental-health line · 24/7</string>
-    <string name="humansupport_icall_title">iCall — talk to a counsellor</string>
-    <string name="humansupport_icall_detail">Trained counsellors by phone · 9152987821</string>
-    <string name="humansupport_find_title">Find a therapist</string>
-    <string name="humansupport_find_detail">Directories of professional help near you</string>
     <string name="humansupport_coach_title">Talk to a coach</string>
     <string name="humansupport_coach_body">A vetted coach directory for India is on our roadmap. Until it\'s real, the lines above reach real people today.</string>
 
@@ -286,7 +278,7 @@
     <string name="journal_lock_hint">Require your screen lock to open</string>
     <string name="journal_private_body_title">Your entries stay private</string>
     <string name="journal_private_body">Journal entries are yours. Safety scanning quietly surfaces support when something sounds heavy — it never blocks or shares your writing.</string>
-    <string name="journal_telemanas">In India, Tele-MANAS is available any time — call 14416, free, day or night.</string>
+    <string name="journal_telemanas">If you want to talk to someone, a helpline for your country is a tap away in Support.</string>
     <string name="journal_hero_subtitle">A gentle starting point — or write about anything.</string>
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing, safety-aware</string>
@@ -294,7 +286,7 @@
     <string name="journal_private_mode">Private mode</string>
     <string name="journal_private_subtitle">Lock the journal, manage privacy</string>
     <string name="journal_support_title">You don\'t have to carry this alone</string>
-    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now — in India, call Tele-MANAS at 14416, or dial your local emergency number.</string>
+    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now — open Support for a helpline in your country, or dial your local emergency number.</string>
     <string name="journal_support_badge">Support</string>
 
     <!-- ── You (Screens.kt) ────────────────────────────────────────────── -->

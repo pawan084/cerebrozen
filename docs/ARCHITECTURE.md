@@ -192,7 +192,7 @@ contracts that must be changed in lockstep across surfaces
 | Action status lifecycle (`active/saved/skipped/deleted/completed`) | Engine | Platform mirror, Android, HR analytics | Enum is append-only |
 | Design tokens | `design/tokens.css` | web, admin, Android `Color.kt` | `sync-tokens` script + CI drift check |
 | Analytics event vocabulary | Platform | Android, admin dashboards | Documented enums (`EVENT_KINDS` authed coaching beats via `/events/coaching`; `FUNNEL_EVENTS` anonymous pre-auth beats via `/events`), no free-text event names |
-| Crisis regions/helplines config | Engine | Android crisis screen, ops admin | Config file, never hardcoded in clients |
+| Crisis regions/helplines (`app/safety/helplines.py`) | Engine | Android crisis + human-support screens | Never hardcoded in clients — this was violated: India's numbers were literals in the Android screens and shown to everyone, while Settings offered a region picker nothing read. Clients GET `/v1/safety/helplines?region=` and render what comes back. `region` is the platform's resolved `crisis_region` on `/users/me` (the person's `User.region`, else their `Org.crisis_region`, else `""` = unknown) — deliberately NOT a JWT claim: a directory lookup is not an authorisation decision. The endpoint is total (no input yields an empty list) and clients keep a region-**neutral** offline floor identical to the engine's unknown-region answer — never a country's numbers (`data/Helplines.kt`, `test_helplines.py`, `HelplinesTest.kt`) |
 
 ## Repo layout (target)
 

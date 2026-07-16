@@ -406,3 +406,55 @@ async def test_no_activity_is_a_zero_not_a_crash(client, org_with_admin):
     assert (await client.get("/users/me/streak", headers=headers)).json() == {
         "current": 0, "longest": 0
     }
+
+
+# ── the crisis region actually reaches the crisis screen ─────────────────────
+#
+# The app shipped a region picker that wrote User.region and nothing read it back —
+# every user saw one country's helplines regardless of what they picked. These pin the
+# resolution, so a placebo control cannot come back silently.
+
+
+async def test_the_person_choice_beats_the_org_default(client, org_with_admin):
+    from app.models import Org, User
+    from app.routers.users import effective_crisis_region
+
+    org = Org(name="Acme", slug="acme-x", crisis_region="IN")
+    user = User(email="a@b.c", name="A", role="user", password_hash="x", region="GB")
+    assert effective_crisis_region(user, org) == "GB", "the person knows where they are"
+
+
+async def test_the_org_default_applies_when_the_person_has_not_chosen():
+    from app.models import Org, User
+    from app.routers.users import effective_crisis_region
+
+    org = Org(name="Acme", slug="acme-y", crisis_region="IN")
+    user = User(email="a@b.c", name="A", role="user", password_hash="x", region="")
+    assert effective_crisis_region(user, org) == "IN"
+
+
+async def test_an_org_less_user_with_no_choice_resolves_to_unknown_not_a_guess():
+    """"" means the engine serves the international directory. An org-less user must not
+    inherit some other tenant's country."""
+    from app.models import User
+    from app.routers.users import effective_crisis_region
+
+    user = User(email="a@b.c", name="A", role="user", password_hash="x", region="")
+    assert effective_crisis_region(user, None) == ""
+
+
+async def test_whitespace_is_not_a_choice():
+    from app.models import Org, User
+    from app.routers.users import effective_crisis_region
+
+    org = Org(name="Acme", slug="acme-z", crisis_region="IN")
+    user = User(email="a@b.c", name="A", role="user", password_hash="x", region="   ")
+    assert effective_crisis_region(user, org) == "IN", "blanks must fall through, not win"
+
+
+async def test_me_exposes_the_resolved_region_the_client_should_ask_for(client, org_with_admin):
+    headers, _ = await _member(client, org_with_admin)
+    await client.patch("/users/me", json={"region": "AU"}, headers=headers)
+    me = (await client.get("/users/me", headers=headers)).json()
+    assert me["region"] == "AU", "the raw choice stays visible for the picker"
+    assert me["crisis_region"] == "AU", "and the resolved value is what the crisis screen uses"

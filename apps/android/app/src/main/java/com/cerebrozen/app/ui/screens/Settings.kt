@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
+import com.cerebrozen.app.data.Helplines
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.AppTheme
@@ -321,13 +322,17 @@ private fun PlanCard(name: String, price: String, note: String, featured: Boolea
 fun HumanSupportScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.humansupport_eyebrow), stringResource(R.string.humansupport_title), onBack) {
     Text(stringResource(R.string.humansupport_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
-    // The dial/URL targets are contracts and stay literal.
-    SupportLinkRow(stringResource(R.string.humansupport_telemanas_title), stringResource(R.string.humansupport_telemanas_detail), "14416")
-    // W25: the WhatsApp row was removed — no official national Tele-MANAS
-    // WhatsApp exists (wa.me/9114416 was an invalid target). Voice line stays.
-    SupportLinkRow(stringResource(R.string.humansupport_icall_title), stringResource(R.string.humansupport_icall_detail), "9152987821")
-    SupportLinkRow(stringResource(R.string.humansupport_find_title), stringResource(R.string.humansupport_find_detail), "https://www.findahelpline.com/in")
+    // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors. The doors are
+    // this person's REGION's, served by the engine: these rows used to be India's numbers
+    // as literals (Tele-MANAS, iCall, and a findahelpline.com/in deep-link that pinned the
+    // international finder to India too). Renders from NEUTRAL on the first frame and
+    // stays there if the network never answers — see data/Helplines.kt.
+    var lines by remember { mutableStateOf(Helplines.NEUTRAL) }
+    LaunchedEffect(Unit) {
+        val region = runCatching { Api.me().optString("crisis_region") }.getOrDefault("")
+        lines = Helplines.load(region)
+    }
+    lines.forEach { line -> SupportLinkRow(line.name, line.detail, line.target) }
     InfoCard(stringResource(R.string.humansupport_coach_title), stringResource(R.string.humansupport_coach_body))
 }
 

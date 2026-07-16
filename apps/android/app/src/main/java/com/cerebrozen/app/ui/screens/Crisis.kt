@@ -123,6 +123,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.R
+import com.cerebrozen.app.data.Helplines
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.ArtScrim
 import com.cerebrozen.app.ui.theme.ArtTextSoft
@@ -201,28 +202,28 @@ fun CrisisScreen(onBack: () -> Unit) {
             contact = tc?.let { "${it.optString("name")} · ${it.optString("value")}" }
         }
     }
-    // Static (offline-safe) directory — Tele-MANAS leads every crisis surface
-    // (REDESIGN §2.3), then emergency services, then an international finder.
-    // Numbers/targets are dial/URL contracts and stay literal.
-    // W25 (CTA audit): the former "Tele-MANAS on WhatsApp" row (wa.me/9114416)
-    // was removed — no official national Tele-MANAS WhatsApp number exists, and
-    // wa.me parses that target as an invalid +91-14416 account. A crisis surface
-    // must never point at a dead chat; the 14416 voice line is the real pathway
-    // (also restores parity with iOS CrisisResources + backend crisis.py).
-    val lines = listOf(
-        stringResource(R.string.crisis_line_telemanas) to "14416",
-        stringResource(R.string.crisis_line_emergency) to "112",
-        stringResource(R.string.crisis_line_kiran) to "1800-599-0019",
-        stringResource(R.string.crisis_line_find_helpline) to "findahelpline.com",
-    )
+    // The lines come from the ENGINE, for THIS person's region — they used to be India's
+    // numbers as literals here, shown to everyone, while Settings offered a region picker
+    // whose answer nothing read (ARCHITECTURE.md §Cross-stack contracts: "never hardcoded
+    // in clients"). The W25 note about the dead Tele-MANAS WhatsApp target still holds and
+    // now lives with the rest of the directory, in app/safety/helplines.py.
+    //
+    // Starting from NEUTRAL (not an empty list) is the point: this screen renders
+    // something dialable on its very first frame, before any network call resolves, and
+    // keeps doing so if every call fails. See data/Helplines.kt.
+    var lines by remember { mutableStateOf(Helplines.NEUTRAL) }
+    LaunchedEffect(Unit) {
+        val region = runCatching { Api.me().optString("crisis_region") }.getOrDefault("")
+        lines = Helplines.load(region)
+    }
     SubPage(stringResource(R.string.crisis_eyebrow), stringResource(R.string.crisis_title), onBack) {
         GradientHero(
             eyebrow = stringResource(R.string.crisis_hero_eyebrow),
             title = stringResource(R.string.crisis_hero_title),
             colors = listOf(Warm, Danger),
         )
-        lines.forEach { (name, number) ->
-            SupportLinkRow(name, number, number)
+        lines.forEach { line ->
+            SupportLinkRow(line.name, line.detail, line.target)
         }
         SectionCard {
             Text(stringResource(R.string.crisis_trusted_contact_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)

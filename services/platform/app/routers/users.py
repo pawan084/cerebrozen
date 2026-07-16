@@ -28,6 +28,26 @@ from app.security import hash_email
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def effective_crisis_region(user: User, org: Org | None) -> str:
+    """Which region's crisis helplines this person should be shown.
+
+    The platform resolves it because the platform owns both inputs; the engine owns the
+    helplines themselves (safety code — see its ``app/safety/helplines.py``) and the
+    client asks it for this region's rows. Precedence:
+
+      1. the person's own choice (``User.region``) — they know where they are, and the
+         app offers them the picker;
+      2. their org's default (``Org.crisis_region``) — an employer deploying in one
+         country shouldn't make every employee set this by hand;
+      3. "" — meaning *we don't know*, which the engine answers with an international
+         directory. That is the honest answer, and it is safe everywhere.
+
+    Never guessed from an IP or a SIM. Getting this wrong hands someone in crisis a
+    number that doesn't answer, so an explicit "unknown" beats a confident guess.
+    """
+    return (user.region or "").strip() or (org.crisis_region if org else "") or ""
+
+
 def _json_list(raw: str) -> list:
     try:
         value = json.loads(raw or "[]")
@@ -40,22 +60,22 @@ def _json_list(raw: str) -> list:
 async def me(
     user: User = Depends(current_user), session: AsyncSession = Depends(get_session)
 ):
-    org_name = None
+    org = None
     if user.org_id:
         org = (
             await session.execute(select(Org).where(Org.id == user.org_id))
         ).scalar_one_or_none()
-        org_name = org.name if org else None
     return {
         "id": user.id,
         "email": user.email,
         "name": user.name,
         "role": user.role,
         "org_id": user.org_id,
-        "org_name": org_name,
+        "org_name": org.name if org else None,
         "companion": user.companion,
         "language": user.language,
         "region": user.region,
+        "crisis_region": effective_crisis_region(user, org),
         "goals": _json_list(user.goals),
         "motivations": _json_list(user.motivations),
     }

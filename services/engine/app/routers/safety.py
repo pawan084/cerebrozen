@@ -17,8 +17,41 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.auth import require_auth
 from app.safety.escalation import health, list_escalations
+from app.safety.helplines import for_region, regions
 
 router = APIRouter()
+
+
+@router.get("/v1/safety/helplines")
+async def helplines(
+    region: str = Query("", max_length=8),
+    _claims: dict = Depends(require_auth),
+) -> dict:
+    """The crisis helplines to show, for ``region``.
+
+    The engine owns this list because it is safety code (ARCHITECTURE.md §Cross-stack
+    contracts: "never hardcoded in clients"). Clients render what this returns; they do
+    not carry a country's numbers of their own.
+
+    ``region`` is the caller's own preference (``User.region``, falling back to their
+    org's ``Org.crisis_region``) — both resolved on the platform, which owns those
+    fields. It is deliberately NOT a signed claim: this is a public directory lookup,
+    not an authorisation decision. Nothing is disclosed by asking for another country's
+    numbers, and someone travelling has a real reason to.
+
+    Never empty and never 4xx on an unknown region — see ``app/safety/helplines.py``.
+    A client that asks for nonsense still gets something dialable.
+    """
+    resolved = (region or "").strip().upper()
+    rows = for_region(resolved)
+    return {
+        "requested": resolved,
+        # Whether we had anything local, so a client can say "showing international"
+        # rather than implying these numbers are the person's own country's.
+        "localized": resolved in regions(),
+        "regions": regions(),
+        "helplines": rows,
+    }
 
 
 @router.get("/v1/safety/escalations")

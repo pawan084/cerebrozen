@@ -47,6 +47,20 @@ before any model call, scripted zero-token crisis reply with regional
 helplines, crisis text in code not workbook, optional escalation webhook
 that sends a signal (ids + timestamp), never the disclosure content.
 
+**Helplines are per-region, and the client does not hold them** (fixed
+2026-07-16; the contract had said this all along while Android shipped India's
+numbers as literals to every user, and offered a region picker whose answer
+nothing read). The directory lives in the engine (`app/safety/helplines.py`) —
+safety code, unreachable from the prompt workbook. `GET /v1/safety/helplines`
+is **total**: no input, including junk or a blank region, can return an empty
+list, because a crisis screen with nothing on it is the worst outcome
+available. An unknown region resolves to an international finder that routes to
+the caller's own country, never to a guess — and clients' offline floor is that
+same neutral list, so a first run with no network still renders something
+dialable without naming a country we haven't confirmed. The region comes from
+the platform's resolved `crisis_region` (the person's own choice first, then
+their org's default); it is never inferred from an IP or a SIM.
+
 Inherited **weakness** (public on our own Evidence page): the lexicon
 catches ~1 in 22 realistic implicit disclosures. Commitments:
 
