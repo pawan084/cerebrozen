@@ -78,6 +78,12 @@ import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.Warm
 import org.json.JSONObject
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import com.cerebrozen.app.R
 
 // A chat entry is either text (a bubble) or a CARD the coach surfaced in line —
 // an engine-suggested commitment, or an intent-matched tool (see coach/Intent.kt).
@@ -222,6 +228,67 @@ private fun ActionCardView(body: String, onOpen: () -> Unit) {
             Text(body, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
         }
         Text("View", style = MaterialTheme.typography.labelMedium, color = Accent.talk)
+    }
+}
+
+/**
+ * The standing AI disclosure.
+ *
+ * Every string here already shipped (`talk_disclosure_*`) — the screen that rendered them
+ * was deleted in the B2C strip and nothing replaced it, so the app disclosed once, during
+ * onboarding, and never again. An employee is being asked to talk candidly inside software
+ * their employer pays for; "this is AI, it is not a clinician, and it is not for
+ * emergencies" belongs where they are typing, not in a screen they saw once on day one.
+ *
+ * The dialog carries a route to crisis support, because the moment someone reads "not for
+ * emergencies" is exactly the moment they might need the thing it is not.
+ */
+@Composable
+private fun DisclosurePill(onOpen: (String) -> Unit) {
+    var showing by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = pageHorizontalPadding())
+            // 44dp: a disclosure nobody can tap is decoration.
+            .heightIn(min = 44.dp)
+            .clip(shape)
+            .background(ChipFill)
+            .clickable(role = Role.Button) { showing = true }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.talk_disclosure_pill),
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            stringResource(R.string.talk_disclosure_details),
+            style = MaterialTheme.typography.labelSmall,
+            color = Cyan,
+        )
+    }
+    if (showing) {
+        AlertDialog(
+            onDismissRequest = { showing = false },
+            title = { Text(stringResource(R.string.talk_disclosure_dialog_title)) },
+            text = { Text(stringResource(R.string.talk_disclosure_dialog_body)) },
+            confirmButton = {
+                TextButton(onClick = { showing = false }) {
+                    Text(stringResource(R.string.talk_disclosure_ok))
+                }
+            },
+            // Reading "it isn't for emergencies" is exactly when someone might need one.
+            dismissButton = {
+                TextButton(onClick = { showing = false; onOpen("crisis") }) {
+                    Text(stringResource(R.string.talk_disclosure_crisis))
+                }
+            },
+        )
     }
 }
 
@@ -470,6 +537,8 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
+        // Directly above the composer: a standing disclosure, where they are typing.
+        DisclosurePill(onOpen)
         Row(
             Modifier.fillMaxWidth()
                 .padding(horizontal = pageHorizontalPadding(), vertical = 10.dp),

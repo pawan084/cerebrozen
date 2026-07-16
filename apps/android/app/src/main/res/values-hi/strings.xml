@@ -20,6 +20,11 @@
       you_humansupport_subtitle, toolkit_support_title, journal_support_*,
       journal_telemanas, journal_private_body_title, journal_private_body,
       journal_new_subtitle, tour_stop3_body)
+    - The in-conversation AI disclosure (talk_disclosure_*), added to this list when
+      the pill went live 2026-07-17. Same rule as the crisis replies (docs/SECURITY.md):
+      safety copy is localized only with native-speaker review, and unreviewed
+      languages fall back to English. A clumsy translation of "this is not a crisis
+      service" is worse than an English one.
     - Privacy-policy clinical-positioning cards (privacypolicy_evidence_*,
       privacypolicy_not_*, privacypolicy_professional_*)
   Also omitted as language-neutral (identical to default): app_name,
