@@ -23,6 +23,7 @@ from app.routers.api import router
 from app.routers.flow import router as flow_router
 from app.routers.privacy import router as privacy_router
 from app.routers.prompts import router as prompts_router
+from app.routers.nudges import router as nudges_router
 from app.routers.rag import router as rag_router
 from app.routers.safety import router as safety_router
 from app.routers.sessions import router as sessions_router
@@ -115,6 +116,7 @@ def create_app() -> FastAPI:
     app.include_router(privacy_router)
     app.include_router(wellness_router)
     app.include_router(safety_router)
+    app.include_router(nudges_router)
     if voice_router is not None:
         app.include_router(voice_router)
     if voice_lab_router is not None:

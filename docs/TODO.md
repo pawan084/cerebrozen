@@ -591,7 +591,17 @@ dated notes, grouped by priority; items needing an owner decision are marked
       engine's NBI/DISC profile stores.
 - [ ] Crisis + HumanSupport screens (ported nearly unchanged); regional
       helpline config from engine, never hardcoded.
-- [ ] Notifications: reminder + nudge channels.
+- [ ] Notifications: reminder + nudge channels. **Backend delivery built
+      (2026-07-16):** engine `POST /v1/nudges/dispatch` scans every tenant's
+      due check-ins (`checkin_scheduler`) and emits a **content-free** nudge
+      signal per user (counts + batch ids, never a commitment body) to
+      `CEREBROZEN_NUDGE_DELIVERY_URL` — a webhook the deployment wires to
+      push/email/Slack. `GET /v1/nudges` is the observability read;
+      `/health.nudges.nudge_delivery_armed` surfaces a silently-off channel.
+      Mirrors the crisis-escalation pattern (signal only, degrades to a logged
+      no-op; `app/notifications.py`, `app/routers/nudges.py`, `test_nudges.py`).
+      Remaining: mobile device-token registration + a concrete channel
+      integration, and an external cron calling the dispatch endpoint.
 - [ ] Play readiness: adapt `ref/Zen/docs/ANDROID_RELEASE.md` +
       `PRIVACY_LABELS.md` (data-safety honesty).
 

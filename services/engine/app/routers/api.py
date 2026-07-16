@@ -43,6 +43,16 @@ def _safety_health() -> dict:
                 "crisis_classifier_enabled": None}
 
 
+def _nudge_health() -> dict:
+    """Whether the check-in nudge channel is armed. Unknown is reported as unknown."""
+    try:
+        from app.notifications import health as _h
+
+        return _h()
+    except Exception as exc:  # noqa: BLE001
+        return {"error": str(exc), "nudge_delivery_armed": None}
+
+
 @router.get("/health")
 async def health() -> dict:
     # Surface the force-handoff test flag so the UI can show an indicator (the UI
@@ -76,6 +86,10 @@ async def health() -> dict:
         # deployment believes it has a safety net and does not. It has to be answerable from
         # the outside, in one request, without reading anybody's config.
         "safety": _safety_health(),
+        # Nudge delivery, surfaced for the same reason: a check-in reminder channel
+        # that is silently off looks identical to one that is working until nobody
+        # gets reminded. One request must be able to tell them apart.
+        "nudges": _nudge_health(),
         "force_handoff": {
             "enabled": bool(stages),
             "all": "__all__" in config.FORCE_HANDOFF_STAGES,
