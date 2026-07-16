@@ -44,6 +44,19 @@ SEED_DEV_ADMIN = os.environ.get("CEREBROZEN_SEED_DEV_ADMIN", "true").strip().low
 DEV_ADMIN_EMAIL = "admin@cerebrozen.in"
 DEV_ADMIN_PASSWORD = "admin12345"
 
+# ...plus a demo tenant with an HR admin and a member, so BOTH clients have a real
+# persona to sign in as: the admin console needs an org_admin to show the HR surface at
+# all, and the employee app needs a member who actually belongs to an org (an org-less
+# internal_admin makes the engine's tenancy meaningless). Same SEED_DEV_ADMIN gate, and
+# guard_production() refuses to boot a deployed env with that flag on — so these accounts
+# cannot exist in production. The clients only offer them as one-click fill in dev
+# (NEXT_PUBLIC_DEMO_LOGIN / NODE_ENV), never in a production build.
+DEMO_ORG_NAME = "Demo Co"
+DEMO_ORG_SLUG = "demo-co"
+DEMO_HR_EMAIL = "hr@cerebrozen.in"
+DEMO_MEMBER_EMAIL = "demo@cerebrozen.in"
+DEMO_PASSWORD = "demo12345"
+
 INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
 
 # k-anonymity floor for HR analytics: a behavioral metric computed from fewer

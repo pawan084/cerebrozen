@@ -45,13 +45,28 @@ function Failed({ msg, onRetry }: { msg: string; onRetry?: () => void }) {
   );
 }
 
+/* Demo sign-in: one-click fill of the platform's dev-seeded personas. DEV ONLY.
+   Gated on NODE_ENV *alone* and nothing else: webpack constant-folds it at build time,
+   so a production build proves the branch dead and strips the block AND these
+   credential strings out of the bundle entirely. (An earlier version also allowed an
+   env-var opt-in — that made the condition runtime-unknowable, the minifier kept the
+   branch, and the credentials shipped in the public JS. Verified by grepping .next.)
+   The accounts can't exist in prod either: guard_production() refuses to boot with
+   CEREBROZEN_SEED_DEV_ADMIN on. */
+const SHOW_DEMO = process.env.NODE_ENV === "development";
+const DEMOS = [
+  { email: "admin@cerebrozen.in", password: "admin12345", who: "Dev Admin", role: "internal admin · ops" },
+  { email: "hr@cerebrozen.in", password: "demo12345", who: "Dana Okafor", role: "org admin · Demo Co" },
+];
+
 function Login({ onDone }: { onDone: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const data = new FormData(e.currentTarget);
     try {
-      await login(String(data.get("email")), String(data.get("password")));
+      await login(email, password);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "login failed");
@@ -61,11 +76,25 @@ function Login({ onDone }: { onDone: () => void }) {
     <div className="login-wrap card">
       <h2>Sign in</h2>
       <form className="stack" onSubmit={submit}>
-        <label>Email<input name="email" type="email" required autoComplete="username" /></label>
-        <label>Password<input name="password" type="password" required autoComplete="current-password" /></label>
+        <label>Email<input name="email" type="email" required autoComplete="username"
+          value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <label>Password<input name="password" type="password" required autoComplete="current-password"
+          value={password} onChange={(e) => setPassword(e.target.value)} /></label>
         <button className="primary">Sign in</button>
         {error && <p className="error">{error}</p>}
       </form>
+      {SHOW_DEMO && (
+        <div className="demo">
+          <div className="demo-lbl">Demo — development only</div>
+          {DEMOS.map((d) => (
+            <button key={d.email} type="button" className="demo-chip"
+              onClick={() => { setEmail(d.email); setPassword(d.password); setError(""); }}>
+              <span className="dc-who">{d.who}</span>
+              <span className="dc-role">{d.role}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

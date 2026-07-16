@@ -40,16 +40,28 @@ export const Icon: Record<string, ReactNode> = {
   bell: s('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
 };
 
+/* Demo sign-in: one-click fill of the platform's dev-seeded member. DEV ONLY.
+   Gated on NODE_ENV *alone* and nothing else: webpack constant-folds it at build time,
+   so a production build proves the branch dead and strips the block AND these
+   credential strings out of the bundle entirely. (An earlier version also allowed an
+   env-var opt-in — that made the condition runtime-unknowable, the minifier kept the
+   branch, and the credentials shipped in the public JS. Verified by grepping .next.)
+   The accounts can't exist in prod either: guard_production() refuses to boot with
+   CEREBROZEN_SEED_DEV_ADMIN on. */
+const SHOW_DEMO = process.env.NODE_ENV === "development";
+const DEMO = { email: "demo@cerebrozen.in", password: "demo12345", who: "Alex Rivera", role: "member · Demo Co" };
+
 /* ── Login (full-screen, unauthed) ── */
 function Login({ onDone }: { onDone: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(""); setBusy(true);
-    const data = new FormData(e.currentTarget);
     try {
-      await login(String(data.get("email")), String(data.get("password")));
+      await login(email, password);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
@@ -64,14 +76,26 @@ function Login({ onDone }: { onDone: () => void }) {
         <p className="sub">Sign in to talk with your coach.</p>
         <form onSubmit={submit}>
           <label>Work email
-            <input name="email" type="email" required autoComplete="username" placeholder="you@company.com" />
+            <input name="email" type="email" required autoComplete="username" placeholder="you@company.com"
+              value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label>Password
-            <input name="password" type="password" required autoComplete="current-password" />
+            <input name="password" type="password" required autoComplete="current-password"
+              value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           <button className="primary" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
           {error && <p className="error">{error}</p>}
         </form>
+        {SHOW_DEMO && (
+          <div className="demo">
+            <div className="demo-lbl">Demo — development only</div>
+            <button type="button" className="demo-chip"
+              onClick={() => { setEmail(DEMO.email); setPassword(DEMO.password); setError(""); }}>
+              <span className="dc-who">{DEMO.who}</span>
+              <span className="dc-role">{DEMO.role}</span>
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );
