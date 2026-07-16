@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setOpen(false); }, [pathname]);
 
-  if (!ready) return null;
+  if (!ready) return <div className="center" aria-busy="true"><div className="booting"><span className="glyph" /></div></div>;
   if (!user) return <Login onDone={load} />;
 
   async function signOut() {

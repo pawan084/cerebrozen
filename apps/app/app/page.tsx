@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon, firstName, useMe } from "@/components/shell";
 
 const MOODS = ["😣", "😔", "😐", "🙂", "😌"];
+const MOOD_LABELS = ["struggling", "low", "okay", "good", "great"];
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 function greeting(): string {
@@ -32,6 +34,7 @@ const TILES = [
 
 export default function Home() {
   const me = useMe();
+  const router = useRouter();
   const [mood, setMood] = useState<number | null>(null);
   const today = weekIndex();
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -44,7 +47,10 @@ export default function Home() {
           <h1>{greeting()}, {firstName(me) || "there"}</h1>
         </div>
         <div className="head-left">
-          <div className="search">{Icon.search}<span>Search…</span></div>
+          <form className="search" onSubmit={(e) => { e.preventDefault(); router.push("/coach"); }}>
+            {Icon.search}
+            <input aria-label="Talk to your coach" placeholder="What's on your mind?" />
+          </form>
         </div>
       </div>
 
@@ -57,7 +63,8 @@ export default function Home() {
             <div className="moods">
               {MOODS.map((m, i) => (
                 <button key={i} className={`mood ${mood === i ? "sel" : ""}`}
-                  onClick={() => setMood(i)} aria-label={`mood ${i + 1}`}>{m}</button>
+                  onClick={() => setMood(i)} aria-label={`I'm feeling ${MOOD_LABELS[i]}`}
+                  aria-pressed={mood === i}><span aria-hidden="true">{m}</span></button>
               ))}
             </div>
             <p className="hint">
