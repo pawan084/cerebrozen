@@ -204,7 +204,14 @@ dated notes, grouped by priority; items needing an owner decision are marked
       layout. **Remaining:** the admin upload/reindex/health UI, and the
       RAG-with-KB eval (R3, Phase 5). The demo corpus is placeholder — replace
       with real SSKB/CSKB before shipping.
-- [ ] Admin e2e specs (Playwright), seeded dev logins.
+- [x] 2026-07-16 — e2e suite (Playwright) against the **composed stack**, with the
+      seeded dev logins: tenancy/cross-tenant denial, employee journey (SSE
+      vocabulary read off the wire), HR aggregates + cohort floors, ops workbook +
+      CSP, surface links. 34 specs, wired into CI (`e2e` job) alongside a new
+      `app` build job — apps/app had no CI job at all. It found a real hole on its
+      first run: the engine had no role checks, so any employee could download the
+      coaching workbook and any token could rewrite it for every tenant (fixed,
+      `require_internal_admin` + `test_role_gate.py`).
 
 ## Phase 3 — Android app
 
@@ -667,9 +674,10 @@ dated notes, grouped by priority; items needing an owner decision are marked
 
 ## Phase 4 — Compose it, prove it, ship it
 
-- [ ] e2e suite: composed Docker stack, specs for the full employee journey
-      (signup → session → commit → action follow-up), HR aggregates with
-      cohort floors, ops workbook flow, cross-tenant denial.
+- [x] 2026-07-16 — e2e suite: composed Docker stack; full employee journey, HR
+      aggregates with cohort floors, ops workbook flow, cross-tenant denial — all
+      built (`e2e/`, 34 specs, CI job). Remaining for Phase 4: the evals harness +
+      nightly crisis red-team gate (separate item below).
 - [ ] Evals harness adopted + nightly; crisis red-team wired as release gate;
       publish the real catch-rate (with classifier) on the Evidence page.
 - [x] 2026-07-15 — **LIVE in production** at `cerebrozen.in` (Cloud VPS; host

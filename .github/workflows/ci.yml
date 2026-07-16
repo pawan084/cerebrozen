@@ -77,6 +77,49 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :app:assembleDebug :app:check --no-daemon
 
+  app:
+    name: employee app (build)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/app } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: apps/app/package-lock.json }
+      - run: npm ci
+      - run: npm run build
+
+  e2e:
+    name: e2e (composed stack)
+    runs-on: ubuntu-latest
+    # The gate ENGINEERING.md's cross-stack protocol names: "SSE vocabulary and JWT claims
+    # changes additionally require an e2e run against the composed stack before merge".
+    # It runs the real stack — five services, one Postgres, zero API keys (mock LLM).
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: e2e/package-lock.json }
+      - run: npm ci
+        working-directory: e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      - name: bring up the composed stack
+        # --wait blocks on the healthchecks, so a spec never races a cold container.
+        run: docker compose up --build -d --wait
+      - run: npm test
+        working-directory: e2e
+      - name: stack logs (on failure)
+        if: failure()
+        run: docker compose logs --tail=200
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: e2e/playwright-report/
+          retention-days: 7
+      - name: tear down
+        if: always()
+        run: docker compose down -v --remove-orphans
+
   hygiene:
     name: tokens drift + secret scan
     runs-on: ubuntu-latest

@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
-from app.auth import AuthorizationError  # noqa: E402
+from app.auth import AuthorizationError, ForbiddenError  # noqa: E402
 from app.config import CORS_ALLOW_ORIGINS  # noqa: E402
 from app.observability import configure_logging  # noqa: E402
 from app.routers.api import router
@@ -188,6 +188,12 @@ def create_app() -> FastAPI:
     @app.exception_handler(AuthorizationError)
     async def _auth_error(_request: Request, exc: AuthorizationError) -> JSONResponse:
         return JSONResponse(status_code=401, content={"message": exc.message})
+
+    # 403, not 401: a role refusal is final. A 401 tells a client its token is stale and
+    # invites a refresh-and-retry loop that can never succeed.
+    @app.exception_handler(ForbiddenError)
+    async def _forbidden(_request: Request, exc: ForbiddenError) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"message": exc.message})
 
     @app.on_event("startup")
     def _warm() -> None:

@@ -6,8 +6,16 @@ so an operator can see *that* escalations are happening and whether the designat
 contact was reached, without ever reading what anyone said. "Counts, never content"
 enforced at the storage layer, not by this projection.
 
-Auth is required (``require_auth``; dev bypass only when ENV=local / AUTH_DEV_BYPASS,
-same as every other engine route). The queue is scoped to the caller's org.
+Two different audiences, so two different gates — this file is where the distinction is
+easiest to get wrong, and the cost of getting it wrong runs in one direction only:
+
+* ``/v1/safety/escalations`` — INTERNAL_ADMIN. It is an operator queue. It is org-scoped,
+  but org-scoping is not the point: the rows name which *employees* hit the crisis screen,
+  so an org_admin (their HR) must not read it either. That is not "counts, never content" —
+  it is worse, because the count is a person.
+* ``/v1/safety/helplines`` — ANY authenticated user, deliberately. It backs a crisis
+  screen. Gating it behind a role would deny someone in crisis a phone number, which is
+  the single worst thing in this codebase. Do not "tidy" this into the line above.
 """
 
 from __future__ import annotations
@@ -15,7 +23,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 
-from app.auth import require_auth
+from app.auth import require_auth, require_internal_admin
 from app.safety.escalation import health, list_escalations
 from app.safety.helplines import for_region, regions
 
@@ -57,7 +65,7 @@ async def helplines(
 @router.get("/v1/safety/escalations")
 async def escalations(
     limit: int = Query(100, ge=1, le=500),
-    _claims: dict = Depends(require_auth),
+    _claims: dict = Depends(require_internal_admin),
 ) -> dict:
     """The crisis-escalation queue for the caller's org, newest first (signal-only).
 

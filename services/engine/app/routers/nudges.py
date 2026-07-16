@@ -15,13 +15,13 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 
 from app import notifications
-from app.auth import require_auth
+from app.auth import require_internal_admin
 
 router = APIRouter()
 
 
 @router.post("/v1/nudges/dispatch")
-async def dispatch(_claims: dict = Depends(require_auth)) -> dict:
+async def dispatch(_claims: dict = Depends(require_internal_admin)) -> dict:
     """Scan due check-ins and deliver a nudge for each. Returns counts only."""
     return await run_in_threadpool(notifications.dispatch)
 
@@ -29,7 +29,7 @@ async def dispatch(_claims: dict = Depends(require_auth)) -> dict:
 @router.get("/v1/nudges")
 async def nudges(
     limit: int = Query(100, ge=1, le=500),
-    _claims: dict = Depends(require_auth),
+    _claims: dict = Depends(require_internal_admin),
 ) -> dict:
     """Recent check-in nudge deliveries for the caller's org, newest first."""
     rows = await run_in_threadpool(notifications.list_nudges, limit)

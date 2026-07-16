@@ -1,6 +1,7 @@
 """Prompt-admin HTTP surface: view/edit/reload the registry + upload a workbook to S3.
 
-Every endpoint requires auth (`require_auth`; dev bypass only when ENV=local /
+Every endpoint requires the INTERNAL_ADMIN role (`require_internal_admin`; dev bypass
+only when ENV=local /
 AUTH_DEV_BYPASS). Mutations (PUT edit, POST upload) emit a `prompts.audit`
 log with the caller's JWT subject and the registry version before/after, so
 every prompt change is attributable. Upload validates the .xlsx, backs up the
@@ -21,7 +22,7 @@ from fastapi.responses import FileResponse
 from openpyxl import load_workbook
 
 from app import config
-from app.auth import require_auth
+from app.auth import require_internal_admin
 from app.graph.runtime import get_registry, reload_prompts
 from app.llm.prompt_store import (
     WORKBOOK_CACHE_PATH,
@@ -66,7 +67,7 @@ def _audit(action: str, claims: dict, **fields) -> None:
 
 
 @router.post("/v1/prompts/reload")
-async def reload_endpoint(claims: dict = Depends(require_auth)) -> dict:
+async def reload_endpoint(claims: dict = Depends(require_internal_admin)) -> dict:
     """Re-read the workbook (re-downloads from S3 in s3 mode) into the registry."""
     reg = get_registry()
     version_before = reg.version
@@ -82,7 +83,7 @@ async def reload_endpoint(claims: dict = Depends(require_auth)) -> dict:
 
 # ─────────────────────────── registry interface (view + edit) ───────────────────────────
 @router.get("/v1/prompts")
-async def list_prompts(_claims: dict = Depends(require_auth)) -> dict:
+async def list_prompts(_claims: dict = Depends(require_internal_admin)) -> dict:
     """Full registry snapshot for the admin UI: every stage agent with its enabled
     flag, model, prompt size, and prompt text."""
     reg = get_registry()
@@ -103,7 +104,7 @@ async def list_prompts(_claims: dict = Depends(require_auth)) -> dict:
 
 
 @router.get("/v1/prompts/validate")
-async def validate_endpoint(_claims: dict = Depends(require_auth)) -> dict:
+async def validate_endpoint(_claims: dict = Depends(require_internal_admin)) -> dict:
     """The registry's load-time validation report: missing sheets, enabled agents
     with no prompt/model, orphaned continuation rows (silent-truncation hazard),
     oversize prompts, and placeholders no data source can resolve. Advisory —
@@ -200,7 +201,7 @@ def _write_prompt_edit(stage: str, prompt, enabled, model) -> dict:
 async def edit_prompt(
     stage: str,
     body: dict = Body(...),
-    claims: dict = Depends(require_auth),
+    claims: dict = Depends(require_internal_admin),
 ) -> dict:
     """Edit one agent's prompt text / enabled / model in the workbook, then hot-reload.
 
@@ -250,7 +251,7 @@ async def edit_prompt(
 
 
 @router.get("/v1/prompts/checksum")
-async def checksum_endpoint(_claims: dict = Depends(require_auth)) -> dict:
+async def checksum_endpoint(_claims: dict = Depends(require_internal_admin)) -> dict:
     """Confirm the server cache matches the S3 object.
 
     Compares the MD5 of the file the registry loaded (WORKBOOK_CACHE_PATH) with
@@ -266,7 +267,7 @@ async def checksum_endpoint(_claims: dict = Depends(require_auth)) -> dict:
 
 
 @router.get("/v1/prompts/download")
-async def download_endpoint(_claims: dict = Depends(require_auth)) -> FileResponse:
+async def download_endpoint(_claims: dict = Depends(require_internal_admin)) -> FileResponse:
     """Return the workbook currently loaded in the registry.
 
     Serves from the server-side cache (the file the registry last loaded) so the
@@ -302,7 +303,7 @@ async def download_endpoint(_claims: dict = Depends(require_auth)) -> FileRespon
 @router.post("/v1/prompts/upload")
 async def upload_endpoint(
     file: UploadFile = File(...),
-    claims: dict = Depends(require_auth),
+    claims: dict = Depends(require_internal_admin),
 ) -> dict:
     """Upload a new agent_prompts.xlsx: validate -> back up current S3 object to a
     timestamped key -> replace -> reload."""
@@ -369,7 +370,7 @@ async def upload_endpoint(
 # /download, /validate and /reload (a GET /v1/prompts/checksum would resolve
 # here and 404 as "unknown stage: checksum").
 @router.get("/v1/prompts/{stage}")
-async def get_prompt(stage: str, _claims: dict = Depends(require_auth)) -> dict:
+async def get_prompt(stage: str, _claims: dict = Depends(require_internal_admin)) -> dict:
     reg = get_registry()
     if stage not in STAGE_SHEET:
         raise HTTPException(404, f"unknown stage: {stage}")

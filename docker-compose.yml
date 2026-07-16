@@ -1,8 +1,9 @@
 # The whole stack from a clean clone, zero API keys (docs/ENGINEERING.md):
 # the engine runs its mock LLM provider, the platform seeds a dev admin, and
 # every service degrades gracefully. `docker compose up` then:
-#   web http://localhost:3000 · admin http://localhost:3001
+#   web http://localhost:3000 · admin http://localhost:3001 · app http://localhost:3002
 #   platform http://localhost:8100 · engine http://localhost:8000
+# This is the stack the e2e suite runs against (`cd e2e && npm run e2e:compose`).
 # DEV ONLY: the shared JWT secret below is a fixed development value so
 # platform-issued tokens work against the engine; production injects real
 # secrets (see each service's .env.example and the boot-guards).

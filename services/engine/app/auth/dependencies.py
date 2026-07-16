@@ -15,7 +15,7 @@ from typing import Any, Dict
 from fastapi import Request
 
 from app import config
-from app.auth.errors import AuthorizationError
+from app.auth.errors import AuthorizationError, ForbiddenError
 from app.auth.jwt_validator import decode_token, extract_bearer
 from app.tenancy import DEFAULT_ORG, ctx_org_id
 
@@ -78,4 +78,37 @@ async def require_auth(request: Request) -> Dict[str, Any]:
             raise AuthorizationError("token missing required org_id claim")
         org = DEFAULT_ORG
     ctx_org_id.set(org)
+    return claims
+
+
+#: The platform's role for CereBroZen's own operators (services/platform models.py).
+#: An org's HR admin is ``org_admin`` — a customer, not an operator.
+ROLE_INTERNAL_ADMIN = "internal_admin"
+
+
+async def require_internal_admin(request: Request) -> Dict[str, Any]:
+    """Validate the JWT *and* require the internal-admin role.
+
+    The engine shipped with no role checks at all ("no role or sender checks, per
+    design") — a straight inheritance from a single-tenant reference where every caller
+    was the operator. That stopped being true when this became multi-tenant, and it was
+    not a theoretical gap: an e2e run found any authenticated employee at any customer
+    could GET /v1/prompts/download — the entire coaching workbook — and any token could
+    PUT a stage, rewriting or disabling coaching agents for EVERY tenant, because the
+    workbook is global rather than org-scoped.
+
+    Use this on operator surfaces (the workbook, the compiled arc, the ops queues).
+    Never on anything an employee legitimately needs: /v1/safety/helplines is the sharp
+    example — gating a crisis screen behind an operator role would be catastrophic.
+    """
+    claims = await require_auth(request)
+    if not auth_enabled():
+        # Dev bypass (ENV=local with no JWT_SECRET) already makes everything reachable;
+        # this dependency must not be the one thing that pretends otherwise.
+        return claims
+    role = str(claims.get("role") or "").strip()
+    if role != ROLE_INTERNAL_ADMIN:
+        # Log the refusal: an org_admin probing operator routes is worth seeing.
+        logger.warning("auth.role_refused", extra={"role": role or "(none)", "path": request.url.path})
+        raise ForbiddenError("this endpoint requires the internal_admin role")
     return claims

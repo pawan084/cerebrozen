@@ -85,6 +85,25 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
 - **Roles**: server-side dependency enforcement (`org_admin`,
   `internal_admin`, user) — 403 by default. (Roles are enforced on the
   server; the admin's CSP below is defense-in-depth, not a role gate.)
+- **Operator surfaces on the engine** require `internal_admin`
+  (`app/auth/dependencies.py::require_internal_admin`). Closed 2026-07-16: the
+  engine inherited the reference's single-tenant posture — `require_auth`'s
+  docstring said "no role or sender checks, per design" — so **any**
+  authenticated employee at **any** customer could `GET /v1/prompts/download`
+  and take the whole coaching workbook, and any token could `PUT
+  /v1/prompts/{stage}`, rewriting or disabling a coaching agent for **every**
+  tenant (the workbook is global, not org-scoped). Found by the e2e suite on
+  its first run against the composed stack, which is the only place it was
+  visible. Now gated: the workbook (read, write, upload, download, reload), the
+  compiled arc (`/v1/graph`, `/v1/agents`), the console runners (also a billing
+  hole), `/v1/nudges`, and `/v1/safety/escalations` — the escalation queue names
+  which *employees* hit the crisis screen, so an org's own HR must not read it
+  either. Role refusals are **403, not 401**: a 401 tells a client its token is
+  stale and invites a refresh-and-retry loop that can never succeed.
+  Deliberately **not** gated: `/v1/safety/helplines` (any authenticated user —
+  it backs a crisis screen) and a person's own session stage/transcript, which
+  are scoped by *ownership*, the correct control for their own content
+  (`test_role_gate.py` pins both halves).
 - **Admin CSP**: the console sets a per-request nonce CSP in
   `apps/admin/proxy.ts` (Next 16 renamed the `middleware` convention to
   `proxy`). `script-src` carries no `'unsafe-inline'`, so an injected script

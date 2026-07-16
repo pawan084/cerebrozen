@@ -11,7 +11,7 @@ import logging
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
-from app.auth import auth_enabled, require_auth
+from app.auth import auth_enabled, require_auth, require_internal_admin
 from app.service import get_service
 from app.session import user_id_from_claims
 from app.stores import conversation
@@ -59,7 +59,7 @@ _mermaid_cache: str | None = None
 
 
 @router.get("/v1/graph/mermaid")
-async def graph_mermaid(_claims: dict = Depends(require_auth)) -> dict:
+async def graph_mermaid(_claims: dict = Depends(require_internal_admin)) -> dict:
     """The compiled agent graph as a Mermaid flowchart + the stage→node id map."""
     global _mermaid_cache
     if _mermaid_cache is None:
@@ -72,7 +72,7 @@ async def graph_mermaid(_claims: dict = Depends(require_auth)) -> dict:
 
 
 @router.get("/v1/graph")
-async def graph_structure(_claims: dict = Depends(require_auth)) -> dict:
+async def graph_structure(_claims: dict = Depends(require_internal_admin)) -> dict:
     """The compiled agent graph as structured nodes + edges — the same object mermaid
     renders, handed over so a client can draw it properly instead of parsing a diagram.
 
@@ -190,7 +190,7 @@ def _parse_envelope(raw: str):
 
 
 @router.get("/v1/agents")
-async def list_agents(_claims: dict = Depends(require_auth)) -> dict:
+async def list_agents(_claims: dict = Depends(require_internal_admin)) -> dict:
     """Agents runnable in the Console (those with a non-empty prompt)."""
     from app.graph.runtime import get_registry
     from app.llm.responses_client import model_for as resolve_model
@@ -212,7 +212,7 @@ async def list_agents(_claims: dict = Depends(require_auth)) -> dict:
 
 
 @router.post("/v1/console/run")
-async def console_run(body: dict = Body(...), _claims: dict = Depends(require_auth)) -> dict:
+async def console_run(body: dict = Body(...), _claims: dict = Depends(require_internal_admin)) -> dict:
     """Free-form single prompt run (Console 'Prompt' tab): system + user → live model."""
     from app.graph.runtime import get_client
     from app.llm.responses_client import model_for as resolve_model
@@ -244,7 +244,7 @@ async def console_run(body: dict = Body(...), _claims: dict = Depends(require_au
 
 
 @router.post("/v1/agents/{stage}/run")
-async def run_agent(stage: str, body: dict = Body(...), _claims: dict = Depends(require_auth)) -> dict:
+async def run_agent(stage: str, body: dict = Body(...), _claims: dict = Depends(require_internal_admin)) -> dict:
     """Run ONE agent against the live model with a given input (Console runner).
 
     Builds the same system prompt a graph turn would (guardrail + agent prompt +

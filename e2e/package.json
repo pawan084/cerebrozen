@@ -1,0 +1,20 @@
+{
+  "name": "cerebrozen-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end suite against the composed stack (docs/ENGINEERING.md).",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "stack:up": "docker compose -f ../docker-compose.yml up --build -d --wait",
+    "stack:down": "docker compose -f ../docker-compose.yml down -v --remove-orphans",
+    "stack:logs": "docker compose -f ../docker-compose.yml logs --tail=80",
+    "e2e:compose": "npm run stack:up && npm test; rc=$?; npm run stack:down; exit $rc"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}
