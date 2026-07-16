@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 import {
   createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode,
 } from "react";
-import { getTokens, login, logout, me, type Me } from "@/lib/api";
+import { hasSession, login, logout, me, type Me } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
 
 const MeCtx = createContext<Me | null>(null);
@@ -125,7 +125,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const load = useCallback(async () => {
-    if (!getTokens()) { setUser(null); setReady(true); return; }
+    // hasSession(), not "do we hold an access token": the access token is memory-only and
+    // is therefore ALWAYS absent on a fresh load. Gating on it would sign everyone out on
+    // every refresh of the page. me() spends the refresh token to mint a new one.
+    if (!hasSession()) { setUser(null); setReady(true); return; }
     setUser(await me());
     setReady(true);
   }, []);

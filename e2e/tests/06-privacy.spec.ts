@@ -82,3 +82,57 @@ test.describe("privacy: export + delete", () => {
     expect([401, 403]).toContain(r.status());
   });
 });
+
+
+/* Where the tokens live.
+ *
+ * SECURITY.md names "the Zen pattern" as our auth commitment; we had shipped the
+ * coalesced-rotation half and not this one. The two are one mechanism, which is why the
+ * asymmetry is worth an assertion rather than a comment.
+ */
+test.describe("token storage", () => {
+  test("the access token is never written to storage", async ({ page }) => {
+    /* A stolen ACCESS token is undetectable — the engine validates it alone, so it works
+       silently until it expires. A stolen REFRESH token is single-use: spending it trips
+       the platform's reuse detection and revokes every session. Keeping access out of
+       storage means a storage-reading XSS can only take the credential whose use is
+       detectable and self-revoking. */
+    await signIn(page, urls.app, "member");
+    await page.waitForSelector(".sidebar", { timeout: 30_000 });
+
+    const store = await page.evaluate(() => JSON.stringify(localStorage));
+    // The access token is a JWT; the refresh token is opaque. If a JWT is anywhere in
+    // storage, the access token leaked.
+    expect(store, "an access token (JWT) is sitting in localStorage").not.toMatch(/eyJhbGciOi/);
+    const keys = await page.evaluate(() => Object.keys(localStorage));
+    expect(keys).toContain("cbz_app_refresh");
+    expect(keys, "the legacy both-tokens blob is back").not.toContain("cbz_app_tokens");
+  });
+
+  test("a reload resumes the session rather than signing you out", async ({ page }) => {
+    // The access token is memory-only, so it is ALWAYS absent after a reload. Gating the
+    // shell on it would sign everyone out every time they refreshed the page.
+    await signIn(page, urls.app, "member");
+    await page.waitForSelector(".sidebar", { timeout: 30_000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator(".sidebar"), "a reload signed the user out").toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('input[name="password"]')).toHaveCount(0);
+  });
+
+  test("an old both-tokens blob is migrated and its access token scrubbed", async ({ page, request }) => {
+    // Without the migration, switching keys would leave every existing user's old blob —
+    // access token included — in storage forever, untouched. The migration IS the cleanup.
+    const pair = await (await request.post(`${urls.platform}/auth/login`, {
+      form: { username: "demo@cerebrozen.in", password: "demo12345" },
+    })).json();
+    await page.goto(urls.app, { waitUntil: "domcontentloaded" });
+    await page.evaluate((t) => {
+      localStorage.clear();
+      localStorage.setItem("cbz_app_tokens", JSON.stringify(t));
+    }, pair);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator(".sidebar"), "the key change signed an existing user out").toBeVisible({ timeout: 30_000 });
+    const keys = await page.evaluate(() => Object.keys(localStorage));
+    expect(keys).toEqual(["cbz_app_refresh"]);
+  });
+});

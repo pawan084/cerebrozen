@@ -87,7 +87,16 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
 
 - **Auth**: JWT access (short-lived) + single-use refresh rotation with
   coalesced retry (Zen pattern); Android stores refresh tokens in
-  EncryptedSharedPreferences; HS512 shared secret between platform and
+  EncryptedSharedPreferences; the **web app holds the access token in memory only**
+  and persists nothing but the refresh token (2026-07-16 — we had shipped the
+  rotation half of the pattern and not this one). The asymmetry is the point, and
+  it only works *because* of the rotation: a stolen access token is undetectable
+  (the engine validates it alone, so it works silently until it expires), while a
+  stolen refresh token is single-use — spending it trips reuse detection and
+  revokes every session for that user. So a storage-reading XSS can only take the
+  credential whose use is detectable and self-revoking. Refresh tokens are opaque,
+  not JWTs, so they carry no claims and are spendable only at `/auth/refresh`. No
+  cookies anywhere → no CSRF surface; HS512 shared secret between platform and
   engine, rotated per environment; key revocation procedure documented
   before first customer (named TODO in the reference — do not inherit it
   unresolved).
