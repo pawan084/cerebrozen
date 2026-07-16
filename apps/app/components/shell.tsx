@@ -54,8 +54,11 @@ const DEMO = { email: "demo@cerebrozen.in", password: "demo12345", who: "Alex Ri
 
 /* ── Login (full-screen, unauthed) ── */
 function Login({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Pre-filled in dev so a fresh clone is one click from signed in. Same NODE_ENV-only
+  // gate as the chip below and the same strings — no new credential literal — so a
+  // production build constant-folds SHOW_DEMO to false and these become "".
+  const [email, setEmail] = useState(SHOW_DEMO ? DEMO.email : "");
+  const [password, setPassword] = useState(SHOW_DEMO ? DEMO.password : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {

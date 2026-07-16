@@ -10,14 +10,18 @@ shared with the engine, claims carry `org_id` + `user.username` (verified
 end-to-end against the engine at build time, 2026-07-14).
 
 - Run: `uvicorn app.main:app --port 8100` — boots on SQLite with zero config.
-- **Dev seed — one persona per surface** (both clients offer these as one-click
-  fill on their login screens, in `next dev` only):
+- **Dev seed — one persona per surface.** In `next dev` only, both clients
+  **pre-fill** their login form with the first persona below, so a fresh clone is
+  one click from signed in; the chips switch persona. A production build
+  constant-folds the `NODE_ENV` gate, so the fields come up empty and the
+  credentials are stripped from the bundle entirely (verified by grepping
+  `.next/static`):
 
   | Sign in as | Password | Role | Reaches |
   |---|---|---|---|
-  | `admin@cerebrozen.in` | `admin12345` | internal_admin (no org) | admin :3001 — ops tabs |
+  | `admin@cerebrozen.in` | `admin12345` | internal_admin (no org) | admin :3001 — ops tabs (**pre-filled default**) |
   | `hr@cerebrozen.in` | `demo12345` | org_admin of *Demo Co* | admin :3001 — HR tabs |
-  | `demo@cerebrozen.in` | `demo12345` | user of *Demo Co* | app :3002 — the employee client |
+  | `demo@cerebrozen.in` | `demo12345` | user of *Demo Co* | app :3002 — the employee client (**pre-filled default**) |
 
   `_seed_dev_admin()` seeds only the internal admin (the test suite's baseline —
   a seeded Org would show up in every org-listing assertion); `_seed_demo_tenant()`

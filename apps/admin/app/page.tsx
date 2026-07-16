@@ -61,8 +61,12 @@ const DEMOS = [
 ];
 
 function Login({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Pre-filled in dev so a fresh clone is one click from signed in. Same NODE_ENV-only
+  // gate as the chips below and the same strings — no new credential literal — so a
+  // production build constant-folds SHOW_DEMO to false, these become "", and the
+  // accounts leave the bundle with the chips. Chips still switch persona.
+  const [email, setEmail] = useState(SHOW_DEMO ? DEMOS[0].email : "");
+  const [password, setPassword] = useState(SHOW_DEMO ? DEMOS[0].password : "");
   const [error, setError] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
