@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getConsent, logout, updateConsent, type Consent } from "@/lib/api";
 import { useMe } from "@/components/shell";
+import { YourData } from "@/components/your-data";
 
 /* The six DPDP consents (platform models.CONSENT_KEYS). Each is OFF until the
    person turns it on; the engine enforces from the signed claim, so a change here
@@ -79,6 +80,8 @@ export default function SettingsPage() {
           )}
           {error && <p className="error">{error}</p>}
         </div>
+
+        <YourData />
       </div>
     </div>
   );

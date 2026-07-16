@@ -18,6 +18,13 @@ function setTokens(t: Tokens | null) {
   else localStorage.removeItem("cbz_app_tokens");
 }
 
+/** Drop the local copies without calling /auth/logout. For account deletion: the
+ *  platform has already revoked every refresh token server-side, and the account no
+ *  longer exists to log out of — this file owns the storage key, so nobody else has to. */
+export function clearTokens(): void {
+  if (typeof window !== "undefined") setTokens(null);
+}
+
 export async function login(email: string, password: string): Promise<void> {
   // The platform's /auth/login takes OAuth2 form fields (username, password).
   const body = new URLSearchParams({ username: email, password });
