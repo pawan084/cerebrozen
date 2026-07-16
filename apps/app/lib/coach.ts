@@ -83,6 +83,33 @@ export async function setActionStatus(
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
 }
 
+export type SessionMeta = { session_id: string; title?: string; resumable?: boolean; ended?: boolean; updated_at?: string };
+
+/** The user's past sessions, newest first (the Recents list). */
+export async function listSessions(): Promise<SessionMeta[]> {
+  const token = await accessToken();
+  if (!token) return [];
+  const r = await fetch(`${ENGINE}/v1/sessions`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) return [];
+  return ((await r.json())?.sessions ?? []) as SessionMeta[];
+}
+
+/** Load a past session's transcript, mapped to the chat's you/coach shape. */
+export async function loadHistory(sessionId: string): Promise<{ who: "you" | "coach"; text: string }[]> {
+  const token = await accessToken();
+  if (!token) return [];
+  const r = await fetch(`${ENGINE}/v1/sessions/${encodeURIComponent(sessionId)}/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return [];
+  const out: { who: "you" | "coach"; text: string }[] = [];
+  for (const e of ((await r.json())?.chat_history ?? []) as Array<{ user?: { text?: string }; bot?: { text?: string } }>) {
+    if (e.user?.text) out.push({ who: "you", text: e.user.text });
+    else if (e.bot?.text) out.push({ who: "coach", text: e.bot.text });
+  }
+  return out;
+}
+
 async function* readSse(res: Response): AsyncGenerator<CoachEvent> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { logout } from "@/lib/api";
-import { coachTurn, setActionStatus, AuthExpired, type CoachAction } from "@/lib/coach";
+import { coachTurn, setActionStatus, listSessions, loadHistory, AuthExpired, type CoachAction, type SessionMeta } from "@/lib/coach";
 import { firstName, useMe } from "@/components/shell";
 import { Markdown } from "@/components/markdown";
 
@@ -18,13 +18,30 @@ export default function CoachPage() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
+  const [sessions, setSessions] = useState<SessionMeta[]>([]);
+  const [showRecents, setShowRecents] = useState(false);
   const sessionId = useRef<string | null>(null);
   const lastUserText = useRef("");
   const streamRef = useRef<HTMLDivElement>(null);
 
+  const refreshSessions = useCallback(() => { listSessions().then(setSessions).catch(() => {}); }, []);
+  useEffect(() => { refreshSessions(); }, [refreshSessions]);
+
   useEffect(() => {
     streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status, actions]);
+
+  function newSession() {
+    sessionId.current = null; lastUserText.current = "";
+    setMessages([]); setActions([]); setStatus(""); setShowRecents(false);
+  }
+  async function openSession(s: SessionMeta) {
+    setShowRecents(false);
+    if (s.session_id === sessionId.current) return;
+    sessionId.current = s.session_id;
+    setActions([]); setStatus("");
+    setMessages(await loadHistory(s.session_id));
+  }
 
   async function runTurn(text: string, edit = false) {
     setBusy(true); setStatus("");
@@ -67,7 +84,7 @@ export default function CoachPage() {
         return next;
       });
     } finally {
-      setStatus(""); setBusy(false);
+      setStatus(""); setBusy(false); refreshSessions();
     }
   }
 
@@ -107,6 +124,26 @@ export default function CoachPage() {
         <div>
           <div className="eyebrow">Talk</div>
           <h1>Your coach</h1>
+        </div>
+        <div className="chat-actions">
+          <button className="ghost-btn" onClick={newSession} disabled={busy}>+ New</button>
+          <div className="recents-wrap">
+            <button className="ghost-btn" onClick={() => setShowRecents((v) => !v)} aria-expanded={showRecents}>Recents ▾</button>
+            {showRecents && (
+              <div className="recents" role="menu">
+                {sessions.length === 0
+                  ? <div className="recents-empty">No past sessions yet.</div>
+                  : sessions.map((s) => (
+                      <button key={s.session_id} role="menuitem"
+                        className={`recent ${s.session_id === sessionId.current ? "active" : ""}`}
+                        onClick={() => openSession(s)}>
+                        <span className="r-title">{s.title || "Untitled session"}</span>
+                        <span className="r-meta">{s.ended ? "ended" : "active"}{s.updated_at ? ` · ${new Date(s.updated_at).toLocaleDateString()}` : ""}</span>
+                      </button>
+                    ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
