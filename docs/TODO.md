@@ -655,8 +655,16 @@ dated notes, grouped by priority; items needing an owner decision are marked
 ## Phase 5 — Enterprise readiness (first real tenant gates)
 
 - [ ] SSO (OIDC/SAML) + SCIM or CSV seat provisioning.
-- [ ] App-layer encryption for transcript content at rest (closes the
-      inherited compliance gap before we claim it).
+- [x] 2026-07-16 — At-rest encryption resolved as a **datastore-layer** concern
+      (DB TDE / encrypted volume), NOT app-layer field crypto — that would add a
+      native crypto dep the project avoids and break content queryability. The
+      engine can't verify the datastore is encrypted, so it carries the operator's
+      attestation `CEREBROZEN_DATASTORE_ENCRYPTED`, surfaces it at
+      `/health.storage.encrypted` (true/false/unknown), and logs a loud boot
+      warning in a deployed env that hasn't attested true — so a deployment is
+      never *silently* assumed encrypted (`app/config.py`, `routers/api.py`,
+      `test_datastore_encryption.py`; SECURITY.md updated). Enabling the datastore
+      encryption itself stays a deploy step, not an app feature.
 - [ ] Crisis classifier measurement program; native-speaker + clinical
       review pipeline for localized safety strings.
 - [ ] Escalation-to-human end-to-end (webhook → safety queue → contact

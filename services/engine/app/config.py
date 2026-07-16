@@ -8,6 +8,7 @@ the box for local testing.
 from __future__ import annotations
 
 import base64
+import logging
 import os
 from pathlib import Path
 
@@ -447,6 +448,54 @@ if ENV not in _CORS_DEV_ENVS and CORS_ALLOW_ORIGINS == ["*"]:
     raise RuntimeError(
         f"CEREBROZEN_CORS_ORIGINS is '*' (any origin) but ENV={ENV!r} is not a dev "
         "environment. Set an explicit comma-separated allowlist of origins for production."
+    )
+
+# --- At-rest encryption (datastore-layer, attested) -----------------------------
+# At-rest encryption of transcripts/coaching content is a DATASTORE concern for this
+# stack: Postgres/Mongo transparent encryption, or an encrypted volume. It is deliberately
+# NOT app-layer field encryption — that would add a native crypto dependency the project
+# avoids (see the platform's stdlib-PBKDF2 note) and break content queryability, for
+# defense that the datastore layer already provides. The app CANNOT verify the datastore
+# is encrypted; it carries the operator's ATTESTATION so a deployment can't silently
+# believe it has at-rest encryption it never turned on. See docs/SECURITY.md.
+#   unset/unrecognized -> None ("unknown"): warned in a deployed env, surfaced at /health.
+#   "true"/"false" (and yes/no/on/off/1/0) as declared.
+def _parse_bool_attestation(raw: str):
+    """Parse an attestation flag to True / False / None(unknown). Pure — testable."""
+    return {
+        "true": True, "1": True, "yes": True, "on": True,
+        "false": False, "0": False, "no": False, "off": False,
+    }.get((raw or "").strip().lower())
+
+
+DATASTORE_ENCRYPTED = _parse_bool_attestation(
+    os.environ.get("CEREBROZEN_DATASTORE_ENCRYPTED", "")
+)
+
+
+def _datastore_attestation_warning(env: str, attested):
+    """The boot warning when a DEPLOYED env hasn't attested at-rest encryption, else None.
+
+    Not a hard refuse (unlike wildcard CORS): the app fully controls CORS but cannot turn
+    on datastore encryption — only the operator can. So an unattested deployed env gets a
+    loud boot warning + an honest /health, not a crash.
+    """
+    if env in _CORS_DEV_ENVS or attested is True:
+        return None
+    return (
+        "CEREBROZEN_DATASTORE_ENCRYPTED is not 'true' in a deployed env — transcripts and "
+        "coaching content may be at rest UNENCRYPTED. Enable datastore/volume encryption "
+        "and set CEREBROZEN_DATASTORE_ENCRYPTED=true (docs/SECURITY.md)."
+    )
+
+
+_enc_warning = _datastore_attestation_warning(ENV, DATASTORE_ENCRYPTED)
+if _enc_warning:
+    logging.getLogger("cerebrozen.config").warning(
+        "config.datastore_encryption_unattested",
+        extra={"env": ENV,
+               "declared": os.environ.get("CEREBROZEN_DATASTORE_ENCRYPTED", "").strip() or "(unset)",
+               "detail": _enc_warning},
     )
 
 # The tenant-defaults guard lives at the BOTTOM of this module — it has to inspect values

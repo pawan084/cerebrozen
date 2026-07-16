@@ -53,6 +53,16 @@ def _nudge_health() -> dict:
         return {"error": str(exc), "nudge_delivery_armed": None}
 
 
+def _storage_health() -> dict:
+    """The operator's at-rest-encryption attestation (datastore-layer). The app can't
+    verify the datastore is encrypted — it reports what was declared, and 'unknown' when
+    nothing was, so a deployment can't be quietly assumed encrypted."""
+    from app import config
+
+    enc = config.DATASTORE_ENCRYPTED
+    return {"encrypted": "true" if enc is True else "false" if enc is False else "unknown"}
+
+
 @router.get("/health")
 async def health() -> dict:
     # Surface the force-handoff test flag so the UI can show an indicator (the UI
@@ -90,6 +100,9 @@ async def health() -> dict:
         # that is silently off looks identical to one that is working until nobody
         # gets reminded. One request must be able to tell them apart.
         "nudges": _nudge_health(),
+        # At-rest encryption attestation (datastore-layer). "unknown" until an operator
+        # declares it, so a deployment is never quietly assumed encrypted.
+        "storage": _storage_health(),
         "force_handoff": {
             "enabled": bool(stages),
             "all": "__all__" in config.FORCE_HANDOFF_STAGES,

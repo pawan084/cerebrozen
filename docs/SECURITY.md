@@ -83,10 +83,19 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
 - **Secrets**: gitleaks in CI, `.env` never committed, boot-guards refuse
   default secrets in prod. Immediate action item: keys found in
   `ref/Agent/.env` are treated as compromised (TODO P0).
-- **At-rest encryption**: disk/volume encryption at minimum; app-layer
-  encryption of transcript content is a stated compliance gap in the
-  reference against its own enterprise promises — scheduled work here, not
-  a claim we make early.
+- **At-rest encryption**: a **datastore-layer** concern — Postgres/Mongo
+  transparent encryption, or an encrypted volume. This is deliberately NOT
+  app-layer field encryption: that would add a native crypto dependency the
+  project avoids (see the platform's stdlib-PBKDF2 note) and break content
+  queryability, for defense the datastore layer already provides. The engine
+  cannot *verify* the datastore is encrypted, so it carries the operator's
+  **attestation** (`CEREBROZEN_DATASTORE_ENCRYPTED`) and surfaces it at
+  `/health.storage.encrypted` (`true`/`false`/`unknown`); a deployed env that
+  hasn't attested `true` gets a loud boot warning (`app/config.py`,
+  `test_datastore_encryption.py`). A deployment is thus never *silently* assumed
+  encrypted — the claim is only as good as the operator's declaration, and the
+  declaration is visible. Turning the datastore encryption on remains a
+  deployment step (docs/DEPLOY or the infra runbook), not an app feature.
 
 ## Deployment postures
 
@@ -108,7 +117,7 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
 | "Routing an auditor can read" | Deterministic graph, mermaid export, reproducible sessions | Inherit |
 | "Deletion is a product function" | Cascade + ledger + checkpoint re-scan test | Inherit + extend |
 | "Air-gapped deployment" | Offline profile | Inherit (quality unmeasured — disclosed) |
-| "Encryption in transit and at rest" | TLS everywhere; volume encryption; app-layer transcript encryption pending | Partial — scheduled |
+| "Encryption in transit and at rest" | TLS everywhere; at-rest = datastore-layer (DB TDE / encrypted volume), **attested** via `CEREBROZEN_DATASTORE_ENCRYPTED` + surfaced at `/health.storage.encrypted`, deployed-env boot warning if unattested. App-layer field crypto deliberately not used (dependency + queryability trade-off). | Attestation surface shipped; enabling the datastore encryption is a deploy step |
 | "SOC 2 / ISO 27001 aligned" | Marketing language only ("aligned") until an actual audit engagement | Honest wording, keep |
 | GDPR / DPDP | Export/erasure/retention + DPDP checklist from `ref/Zen/docs/DPDP_COMPLIANCE.md` | Adapt checklist |
 
