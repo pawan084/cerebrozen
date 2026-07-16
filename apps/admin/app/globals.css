@@ -117,6 +117,7 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
   background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
 @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 .empty-state { color: var(--color-brand-500); font-size: 13.5px; padding: 14px 2px; }
+.wb-search { width: 190px; padding: 6px 14px; font-size: 13px; border-radius: 999px; }
 .failed { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 /* Responsive (tablet / mobile) */

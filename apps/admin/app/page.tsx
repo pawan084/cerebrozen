@@ -388,11 +388,23 @@ function PromptWorkbook() {
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [saved, setSaved] = useState("");
+  const [query, setQuery] = useState("");
 
   const load = useCallback(() => {
     engineJson<WbResp>("/v1/prompts").then(setData).catch((e) => setError(e.message));
   }, []);
   useEffect(load, [load]);
+
+  async function downloadWorkbook() {
+    try {
+      const r = await engineApi("/v1/prompts/download");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url; a.download = "agent_prompts.xlsx"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError(e instanceof Error ? e.message : "download failed"); }
+  }
 
   const agent = data?.agents.find((a) => a.stage === sel) ?? null;
   function open(stage: string) {
@@ -447,8 +459,11 @@ function PromptWorkbook() {
       <h2>Prompt workbook <span className="hint">
         source: {data.source} · {editable ? "editable" : "read-only"} · {data.count} agents{data.version ? ` · v${data.version}` : ""}
       </span></h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button className="ghost" onClick={reload} disabled={busy}>Reload from source</button>
+        <button className="ghost" onClick={downloadWorkbook}>Download .xlsx</button>
+        <input className="wb-search" placeholder="Filter agents…" value={query}
+          onChange={(e) => setQuery(e.target.value)} aria-label="Filter agents" />
         {data.degraded && <span className="pill off">degraded: {data.degraded_reason || "serving fallback"}</span>}
         <span className={`pill ${issues ? "off" : "ok"}`}>{issues ? `${issues} validation issue${issues === 1 ? "" : "s"}` : "validation clean"}</span>
       </div>
@@ -461,7 +476,7 @@ function PromptWorkbook() {
       <table className="table">
         <thead><tr><th>Agent</th><th>Model</th><th>Prompt size</th><th>Enabled</th><th></th></tr></thead>
         <tbody>
-          {data.agents.map((a) => (
+          {data.agents.filter((a) => a.stage.toLowerCase().includes(query.toLowerCase())).map((a) => (
             <tr key={a.stage} className={a.stage === sel ? "active" : ""}>
               <td>{a.stage}{a.always_on ? <span className="hint"> · always-on</span> : null}</td>
               <td>{a.model || "—"}</td><td>{a.size.toLocaleString()} ch</td>
