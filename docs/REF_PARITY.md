@@ -40,7 +40,7 @@ tested; only a client calls it into being.
 | 4 | ~~**Member deactivate / reactivate**~~ **DONE 2026-07-16** | `apps/admin` | `admin.py:160`, `page.tsx:373` | `/orgs/me/people` is **GET-only**: an org_admin cannot offboard a leaver, and the seat stays consumed (`_seats_used` gates invites). The core B2B HR operation, absent. Needs a platform route. | Small route + UI |
 | 5 | ~~**CSP on `apps/app` and `apps/web`**~~ **DONE 2026-07-16** | both | `apps/{web,admin,app}/middleware.ts` | The reference ships CSP on **all three**; we have it on admin only, because our TODO said "Admin: nonce-CSP" and under-specified it. `apps/app` holds the transcripts. **Don't copy the ref for web** — a nonce forces dynamic rendering and our marketing site is static; use `next.config.ts` `headers()` with a static CSP there, and `proxy.ts` (Next 16) for the app. | Small |
 | 6 | ~~**Security headers on the marketing site**~~ **DONE 2026-07-16** | `apps/web` | `vercel.json` | We send **zero** — no CSP, XFO, nosniff, Referrer-Policy — while hosting a 257-line `/security` page. A prospect's CISO runs securityheaders.io before the demo call. | Trivial |
-| 7 | **Daily check-in + calm progress on Today** | `apps/android` | `TodayScreen.kt:241,341,385` | `Api.streak()` / `Api.moods()` orphaned; `Api.checkIn` has **exactly one caller — onboarding**. One write at signup, never again. PRODUCT.md ships check-ins v1 and promises "progress shown calmly"; the affordance has no surface. (A week-ring is not a coin — not the Dropped item.) | Wiring |
+| 7 | ~~**Daily check-in + calm progress on Today**~~ **DONE 2026-07-16** | `apps/android` | `TodayScreen.kt:241,341,385` | `Api.streak()` / `Api.moods()` orphaned; `Api.checkIn` has **exactly one caller — onboarding**. One write at signup, never again. PRODUCT.md ships check-ins v1 and promises "progress shown calmly"; the affordance has no surface. (A week-ring is not a coin — not the Dropped item.) | Wiring |
 | 8 | **Tenant seat / regulated_mode / crisis_region editing** | `apps/admin` | `page.tsx` Users tab | `OrgPatch` already accepts all four fields; our Tenants UI only toggles `is_active`. Today a seat change is a psql edit. Cheapest high-value fix — the API exists. | Trivial |
 | 9 | **Access token in memory, not localStorage** | `apps/app` | `lib/api.ts:5-23` | The ref keeps **access in memory**, refresh in localStorage — "XSS can't lift it from storage". We persist both. SECURITY.md names the "Zen pattern" as our auth commitment; we took the coalesced-refresh half and not this one. | Small |
 | 10 | **Coach thread survives app kill** | `apps/android` | `TalkScreen.kt:150` | `Api.chat()` / `Api.starters()` orphaned; our `CoachScreen` is in-memory only. A coaching session spans a commute; losing it to a process death is a credibility problem. | Wiring |
@@ -112,6 +112,14 @@ groups go live again if items 3/11/12 are built.
 - **`api/demo/route.ts`**: dual delivery, honeypot, field caps, honest 503.
 
 ---
+
+## Warts found while building, not yet fixed
+
+- **A missing store reports "disabled for this tenant" (409).** `wellness.add_mood`
+  returns `None` both when the tenant flag is off AND when no store is reachable, and
+  `routers/wellness.py` maps that to `_REFUSED`. A developer with no `POSTGRES_URL` is
+  told their tenant configuration is wrong. Harmless in prod (a store always exists),
+  misleading everywhere else — the two cases want different answers.
 
 ## Shared gaps — in neither app, worth doing anyway
 

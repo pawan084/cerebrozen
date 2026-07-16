@@ -192,6 +192,10 @@ fun TodayHome(onOpen: (String) -> Unit) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val (greeting, say) = presenceLines(userName, open, hour)
     Page(eyebrow = "CereBroZen", title = greeting) {
+        // The daily check-in. Api.checkIn had exactly one caller — onboarding — so the app
+        // asked how you were at signup and never again, while PRODUCT.md ships check-ins as
+        // v1. Absent entirely (not disabled) if they declined mood history.
+        CheckInCard()
         FocusCard {
             Column(
                 Modifier.fillMaxWidth(),
