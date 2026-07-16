@@ -460,8 +460,13 @@ function PromptWorkbook() {
   return (
     <div className="card">
       <h2>Prompt workbook <span className="hint">
-        source: {data.source} · {editable ? "editable" : "read-only"} · {data.count} agents{data.version ? ` · v${data.version}` : ""}
+        source: {data.source} · {editable ? "editable" : "read-only"} · {data.count} agents in the workbook{data.version ? ` · v${data.version}` : ""}
       </span></h2>
+      <p className="hint" style={{ marginBottom: 10 }}>
+        Every agent whose prompt lives in the workbook. Two of them aren&rsquo;t graph nodes —
+        <b> environment</b> (the guardrail wrapper composed into every prompt) and{" "}
+        <b>user_context_builder_agent</b> (off-path) — which is why the Agent flow counts fewer.
+      </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button className="ghost" onClick={reload} disabled={busy}>Reload from source</button>
         <button className="ghost" onClick={downloadWorkbook}>Download .xlsx</button>
@@ -643,7 +648,7 @@ function AgentFlow() {
   if (!agents) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
-      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents · routing is deterministic (code predicates over typed state)</span></h2>
+      <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents in the arc · routing is deterministic (code predicates over typed state)</span></h2>
       <div className="flow-wrap">
         <div className="flow-main">
           <AgentFlowCanvas agents={agents} onInspect={setStage} />
@@ -676,6 +681,13 @@ function AgentFlow() {
       </div>
       <details className="mermaidsrc" style={{ marginTop: 16 }}>
         <summary>Agents in the arc ({agents.length})</summary>
+        <p className="hint" style={{ margin: "8px 0" }}>
+          The workbook holds two more that are deliberately <b>not nodes</b>, so they don&rsquo;t
+          appear here or on the canvas: <b>environment</b> (the always-on guardrail wrapper —
+          composed into every prompt rather than called on its own) and{" "}
+          <b>user_context_builder_agent</b> (an off-path builder that runs after a turn, not in
+          the arc). The Prompt workbook lists the full set.
+        </p>
         <table className="table">
           <thead><tr><th>Agent</th><th>Model</th><th>Enabled</th></tr></thead>
           <tbody>
