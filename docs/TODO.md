@@ -171,6 +171,17 @@ dated notes, grouped by priority; items needing an owner decision are marked
 - [ ] Ops: per-org knowledge base (CSKB) management — curated upload +
       reindex + health view ("Tuned to Your Culture" mechanism); self-serve
       customer upload stays gated behind injection framing (SECURITY.md).
+      **Foundation built (2026-07-16):** local (no-S3) corpus ingestion +
+      a bundled demo corpus so retrieval works out of the box instead of the
+      coach improvising over an empty index. `app/rag/seed_demo.py` walks a
+      directory mirroring the S3 taxonomy (`rag_seed/sskb/<type>/`,
+      `rag_seed/cskb/<orgId>/<group>/`) and ingests via the same
+      `chunk_doc`/`embed_and_upsert` primitives; `python -m scripts.seed_demo_rag`
+      seeds it. 7 tests (`test_rag_demo_seed.py`) prove ingest→search across
+      both KBs incl. CSKB org-isolation. Real content drops into the same
+      layout. **Remaining:** the admin upload/reindex/health UI, and the
+      RAG-with-KB eval (R3, Phase 5). The demo corpus is placeholder — replace
+      with real SSKB/CSKB before shipping.
 - [ ] Admin e2e specs (Playwright), seeded dev logins.
 
 ## Phase 3 — Android app
