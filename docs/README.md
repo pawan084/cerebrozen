@@ -18,6 +18,7 @@ from two reference codebases in `ref/`.
 | [DESIGN.md](DESIGN.md) | Brand palette, typography, tokens, accessibility gates, per-surface design rules. |
 | [ENGINEERING.md](ENGINEERING.md) | Standards: testing gates, CI, conventions, cross-stack contracts, repo layout. |
 | [SECURITY.md](SECURITY.md) | Threat posture, tenancy, privacy modes, crisis safety, compliance mapping. |
+| [LICENSING.md](LICENSING.md) | **What this codebase inherited and from whom** — the provenance inventory + the open questions for counsel. **Gates Phase 1 and below.** Read before promising anyone anything. |
 | [TODO.md](TODO.md) | The prioritized build plan, phase by phase, with inherited risks from the references. |
 
 ## The reference codebases (read-only)

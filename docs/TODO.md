@@ -30,15 +30,28 @@ dated notes, grouped by priority; items needing an owner decision are marked
       (token-drift check + gitleaks over full history). All commands mirror
       what was verified locally; `gradlew`'s executable bit fixed in the
       index (Windows checkout trap). Goes live on first push to a remote.
-- [ ] **[decision] Engine licensing/provenance**: confirm we have the right
-      to reuse `ref/Agent` and `ref/Zen` **code** for this product (both
-      carry another project's history; `ref/Agent` docs reference an
-      incumbent client contract under legal review). This gates everything
-      below. Prompt **content**: owner decided (2026-07-14) to use the
-      reference prompts as the working base — extracted verbatim to
-      `docs/prompts/`, adapted per `docs/PROMPTS_SPEC.md`. The provenance
-      concern is recorded there; confirming content rights is part of this
-      same legal check.
+- [ ] **[decision] Engine licensing/provenance** → **brief written for counsel:
+      [docs/LICENSING.md](LICENSING.md)** (2026-07-16). Full inventory of what was
+      inherited (engine code, the 476K-char verbatim prompt extraction, the
+      CIM/CBT/CH taxonomy, named third-party frameworks), the reference's own IP
+      assessment, and the six questions counsel must answer. **This gates
+      everything below.** Owner decided (2026-07-14) to use the reference prompts
+      as the working base — that was a product decision, **not a legal clearance**.
+      Next action: **get the prior client's engagement agreement reviewed**
+      (work product / derived IP / non-compete) — per the reference's own docs the
+      contract is "decisive, and not visible from here".
+  - [x] 2026-07-16 — **Public-exposure containment**: `pawan084/cerebrozen` was
+        PUBLIC (confirmed via the GitHub API) with `docs/prompts/` (476,154 chars,
+        extracted verbatim) and the forked `agent_prompts.xlsx` tracked. Set
+        private on discovery. Note this does NOT undo publication — forks/clones/
+        caches may exist; treat the content as having been public. `ref/` itself
+        was never tracked (`.gitignore:52`).
+  - [ ] The prior client's name still appears in **8 tracked files** (incl.
+        `docs/prompts/orchestrator.md`, `_catalog.md`, `docs/PRODUCT.md`) — the
+        938-identifier sweep covered the engine, not the extracted docs. Clean up
+        (or remove the extraction) once §6 of LICENSING.md is answered.
+  - [ ] Rotate the `OPENAI_API_KEY` found in `ref/Agent/.env` — unconditional,
+        do regardless of the licensing outcome.
 - [ ] **[decision] Coaching author**: identify who writes the coaching
       method/content (qualified coach on team, contractor, or founders +
       review). The prompt spec is ready; the words need an owner.
