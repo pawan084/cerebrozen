@@ -341,46 +341,190 @@ function Demos() {
 
 type AgentRow = { stage: string; model: string; enabled: boolean; size: number };
 type AgentsResp = { agents: AgentRow[] };
-type PromptDetail = { stage?: string; prompt: string; version?: string; size?: number };
+type WbAgent = { stage: string; sheet: string; enabled: boolean; always_on: boolean; model: string; size: number; prompt: string };
+type Validation = { issue_count?: number; ok?: boolean; issues?: unknown[] };
+type WbResp = { source: string; editable: boolean; count: number; agents: WbAgent[]; version?: string; degraded?: boolean; degraded_reason?: string; validation?: Validation };
 
-// Prompt registry — READ-ONLY. Prompts are codebase-sourced in production ("safety
-// is code, not content"), so this shows them; it never edits them.
-function Prompts() {
-  const [agents, setAgents] = useState<AgentRow[] | null>(null);
+// Prompt workbook — VIEW + EDIT. The engine owns the workbook (validate-on-save,
+// hot-reload); this is the ops surface onto it. Editable only when the engine serves
+// from an editable source. Safety is still code, not content: crisis text lives in the
+// engine, and always-on agents (environment, feedback) can't be disabled here.
+function PromptWorkbook() {
+  const [data, setData] = useState<WbResp | null>(null);
   const [sel, setSel] = useState("");
-  const [detail, setDetail] = useState<PromptDetail | null>(null);
+  const [draft, setDraft] = useState<{ prompt: string; model: string; enabled: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => {
-    engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
+  const [errors, setErrors] = useState<string[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [saved, setSaved] = useState("");
+
+  const load = useCallback(() => {
+    engineJson<WbResp>("/v1/prompts").then(setData).catch((e) => setError(e.message));
   }, []);
-  useEffect(() => {
-    if (!sel) return;
-    setDetail(null);
-    engineJson<PromptDetail>(`/v1/prompts/${sel}`).then(setDetail).catch((e) => setError(e.message));
-  }, [sel]);
-  if (error) return <div className="card"><p className="error">{error}</p></div>;
-  if (!agents) return <div className="card"><p className="hint">Loading registry…</p></div>;
+  useEffect(load, [load]);
+
+  const agent = data?.agents.find((a) => a.stage === sel) ?? null;
+  function open(stage: string) {
+    const a = data?.agents.find((x) => x.stage === stage);
+    if (!a) return;
+    setSel(stage);
+    setDraft({ prompt: a.prompt, model: a.model, enabled: a.enabled });
+    setErrors([]); setWarnings([]); setSaved(""); setError("");
+  }
+
+  async function save() {
+    if (!agent || !draft || busy) return;
+    const payload: Record<string, unknown> = {};
+    if (draft.prompt !== agent.prompt) payload.prompt = draft.prompt;
+    if (draft.model !== agent.model) payload.model = draft.model;
+    if (draft.enabled !== agent.enabled) payload.enabled = draft.enabled;
+    if (Object.keys(payload).length === 0) { setError("No changes to save."); return; }
+    setBusy(true); setError(""); setErrors([]); setWarnings([]); setSaved("");
+    try {
+      const r = await engineApi(`/v1/prompts/${agent.stage}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) {
+        const detail = body?.detail;
+        if (detail && typeof detail === "object") { setErrors(detail.errors ?? []); setError(detail.message ?? `HTTP ${r.status}`); }
+        else setError(typeof detail === "string" ? detail : `HTTP ${r.status}`);
+        return;
+      }
+      setWarnings(body?.warnings ?? []);
+      setSaved(`Saved · v${body?.version ?? "?"} · ${Number(body?.size ?? 0).toLocaleString()} ch`);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save failed");
+    } finally { setBusy(false); }
+  }
+
+  async function reload() {
+    setBusy(true); setError("");
+    try { await engineApi("/v1/prompts/reload", { method: "POST" }); load(); setSel(""); }
+    catch (e) { setError(e instanceof Error ? e.message : "reload failed"); }
+    finally { setBusy(false); }
+  }
+
+  if (error && !data) return <div className="card"><p className="error">{error}</p></div>;
+  if (!data) return <div className="card"><p className="hint">Loading workbook…</p></div>;
+  const editable = data.editable;
+  const issues = data.validation?.issue_count ?? 0;
+  const dirty = !!(agent && draft && (draft.prompt !== agent.prompt || draft.model !== agent.model || draft.enabled !== agent.enabled));
   return (
     <div className="card">
-      <h2>Prompt registry <span className="hint">source: codebase · read-only · {agents.length} agents</span></h2>
+      <h2>Prompt workbook <span className="hint">
+        source: {data.source} · {editable ? "editable" : "read-only"} · {data.count} agents{data.version ? ` · v${data.version}` : ""}
+      </span></h2>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
+        <button className="ghost" onClick={reload} disabled={busy}>Reload from source</button>
+        {data.degraded && <span className="pill off">degraded: {data.degraded_reason || "serving fallback"}</span>}
+        <span className={`pill ${issues ? "off" : "ok"}`}>{issues ? `${issues} validation issue${issues === 1 ? "" : "s"}` : "validation clean"}</span>
+      </div>
+      {!!issues && (
+        <details className="mermaidsrc" style={{ marginBottom: 12 }}>
+          <summary>Validation report</summary>
+          <pre className="prompt">{JSON.stringify(data.validation, null, 2)}</pre>
+        </details>
+      )}
       <table className="table">
         <thead><tr><th>Agent</th><th>Model</th><th>Prompt size</th><th>Enabled</th><th></th></tr></thead>
         <tbody>
-          {agents.map((a) => (
-            <tr key={a.stage}>
-              <td>{a.stage}</td><td>{a.model}</td><td>{a.size.toLocaleString()} ch</td>
-              <td>{a.enabled ? "yes" : "no"}</td>
-              <td><button className="ghost" onClick={() => setSel(a.stage)}>view</button></td>
+          {data.agents.map((a) => (
+            <tr key={a.stage} className={a.stage === sel ? "active" : ""}>
+              <td>{a.stage}{a.always_on ? <span className="hint"> · always-on</span> : null}</td>
+              <td>{a.model || "—"}</td><td>{a.size.toLocaleString()} ch</td>
+              <td><span className={`pill ${a.enabled ? "ok" : "off"}`}>{a.enabled ? "yes" : "no"}</span></td>
+              <td><button className="ghost" onClick={() => open(a.stage)}>{editable ? "edit" : "view"}</button></td>
             </tr>
           ))}
         </tbody>
       </table>
-      {sel && (
+      {agent && draft && (
         <div className="promptview">
-          <h3>{sel}{detail?.version ? <span className="hint"> · v{detail.version}</span> : null}</h3>
-          {!detail ? <p className="hint">Loading…</p> : <pre className="prompt">{detail.prompt}</pre>}
+          <h3>{agent.stage}{agent.always_on ? <span className="hint"> · always-on (cannot be disabled)</span> : null}</h3>
+          <label className="fld">Model
+            <input value={draft.model} disabled={!editable}
+              onChange={(e) => setDraft({ ...draft, model: e.target.value })} />
+          </label>
+          <label className="fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={draft.enabled} disabled={!editable || agent.always_on}
+              onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} style={{ width: "auto" }} />
+            Enabled{agent.always_on ? " (locked on)" : ""}
+          </label>
+          <label className="fld">Prompt <span className="hint">{draft.prompt.length.toLocaleString()} ch · validated on save</span>
+            <textarea value={draft.prompt} disabled={!editable} rows={16}
+              onChange={(e) => setDraft({ ...draft, prompt: e.target.value })} />
+          </label>
+          {editable && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="primary" disabled={busy || !dirty} onClick={save}>{busy ? "Saving…" : "Save"}</button>
+              <button className="ghost" disabled={busy} onClick={() => open(agent.stage)}>Revert edits</button>
+              {saved && <span className="pill ok">{saved}</span>}
+            </div>
+          )}
+          {error && <p className="error">{error}</p>}
+          {errors.length > 0 && (
+            <div className="output"><b className="error">Validation failed — not saved:</b>
+              <ul>{errors.map((x, i) => <li key={i} className="error">{x}</li>)}</ul>
+            </div>
+          )}
+          {warnings.length > 0 && (
+            <div className="output"><b className="hint">Saved with warnings:</b>
+              <ul>{warnings.map((x, i) => <li key={i} className="hint">{x}</li>)}</ul>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+type Escalation = { org_id?: string; user_id: string; session_id: string; detected_by?: string; at?: string; delivered?: boolean };
+type SafetyResp = { armed: boolean; classifier_enabled: boolean; count: number; escalations: Escalation[] };
+
+// Safety queue — crisis escalations. Signal only, never content: who tripped the screen,
+// in which session, and whether the designated contact was reached. The disclosure itself
+// is never stored or shown (docs/SECURITY.md — "counts, never content").
+function SafetyQueue() {
+  const [data, setData] = useState<SafetyResp | null>(null);
+  const [error, setError] = useState("");
+  const load = useCallback(() => {
+    engineJson<SafetyResp>("/v1/safety/escalations").then(setData).catch((e) => setError(e.message));
+  }, []);
+  useEffect(load, [load]);
+  if (error) return <div className="card"><p className="error">{error}</p></div>;
+  if (!data) return <div className="card"><p className="hint">Loading safety queue…</p></div>;
+  return (
+    <div className="card">
+      <h2>Safety queue <span className="hint">crisis escalations · signal only, never content · {data.count}</span></h2>
+      <div className="stats" style={{ marginBottom: 12 }}>
+        <div className="stat"><b><span className={`pill ${data.armed ? "ok" : "off"}`}>{data.armed ? "armed" : "not armed"}</span></b><span>escalation contact</span></div>
+        <div className="stat"><b><span className={`pill ${data.classifier_enabled ? "ok" : "off"}`}>{data.classifier_enabled ? "on" : "off"}</span></b><span>crisis classifier</span></div>
+      </div>
+      {!data.armed && (
+        <p className="hint">No designated contact is configured (CEREBROZEN_CRISIS_ESCALATION_URL). A person in crisis still receives their helpline reply — but no human is notified. A silently-unconfigured safety net is worse than an absent one.</p>
+      )}
+      <table className="table">
+        <thead><tr><th>When</th><th>User</th><th>Session</th><th>Detected by</th><th>Contact reached</th><th>Org</th></tr></thead>
+        <tbody>
+          {data.escalations.map((e, i) => (
+            <tr key={`${e.session_id}:${e.at ?? ""}:${i}`}>
+              <td>{e.at ? new Date(e.at).toLocaleString() : "—"}</td>
+              <td>{e.user_id}</td>
+              <td>{e.session_id}</td>
+              <td>{e.detected_by ?? "—"}</td>
+              <td><span className={`pill ${e.delivered ? "ok" : "off"}`}>{e.delivered ? "yes" : "no"}</span></td>
+              <td>{e.org_id ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {data.count === 0 && <p className="hint">No escalations — nothing has tripped the crisis screen.</p>}
+      <p className="hint" style={{ marginTop: 10 }}>
+        This is a signal, not a record of what anyone said. Who responds, how they are trained, and how fast they act is the deployment&rsquo;s programme — not this feature.
+      </p>
     </div>
   );
 }
@@ -507,7 +651,7 @@ export default function Admin() {
 
   const tabs =
     me.role === "internal_admin"
-      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompts"], ["flow", "Agent flow"], ["console", "Console"]]
+      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompt workbook"], ["flow", "Agent flow"], ["safety", "Safety queue"], ["console", "Console"]]
       : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
 
   return (
@@ -530,8 +674,9 @@ export default function Admin() {
       {tab === "invite" && <Invite />}
       {tab === "tenants" && <Tenants />}
       {tab === "demos" && <Demos />}
-      {tab === "prompts" && <Prompts />}
+      {tab === "prompts" && <PromptWorkbook />}
       {tab === "flow" && <AgentFlow />}
+      {tab === "safety" && <SafetyQueue />}
       {tab === "console" && <Console />}
     </div>
   );

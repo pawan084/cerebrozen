@@ -58,6 +58,20 @@ def armed() -> bool:
     return bool(endpoint())
 
 
+def _org_id() -> str:
+    """The active tenant, so an escalation is attributable to one org's safety queue.
+
+    Best-effort: the signal must never be lost to a tenancy import problem — a crisis
+    turn is the worst possible moment to raise.
+    """
+    try:
+        from app.tenancy import current_org
+
+        return current_org()
+    except Exception:  # noqa: BLE001
+        return "default"
+
+
 def _timeout_s() -> float:
     try:
         return float(os.environ.get("CEREBROZEN_CRISIS_ESCALATION_TIMEOUT_S", "5"))
@@ -73,6 +87,10 @@ def escalate(*, user_id: str, session_id: str, detected_by: str = "") -> bool:
     """
     record = {
         "event": "crisis_escalation",
+        # The tenant this belongs to, so an org sees only its own safety queue. Stamped
+        # here (not in the transport) because the record outlives the webhook call and
+        # an org-less escalation would be invisible to per-tenant scoping.
+        "org_id": _org_id(),
         "user_id": user_id,
         "session_id": session_id,
         # `detected_by` is the LAYER (lexicon / classifier), not the reason. The reason
@@ -150,6 +168,39 @@ def _persist(record: dict, *, delivered: bool) -> None:
             )
     except Exception as exc:  # noqa: BLE001
         logger.error("safety.escalation_not_recorded", extra={"error": str(exc)})
+
+
+def list_escalations(limit: int = 100) -> list:
+    """The safety queue: escalation records for the active org, newest first.
+
+    Signal-only by construction. The stored record never held the disclosure — only
+    that the screen fired, for whom, in which session, and whether the contact was
+    reached (see ``escalate``/``_persist``). This is "counts, never content" at the
+    storage layer, not merely a projection over sensitive data.
+
+    Scoped to the active org via ``scoped()``; the default org also sees legacy
+    records written before org stamping. Best-effort: a store problem returns an
+    empty queue, never an exception into the admin surface.
+    """
+    try:
+        from app import config
+        from app.stores.mongo import get_client
+        from app.tenancy import scoped
+
+        client = get_client()
+        if client is None:
+            return []
+        coll = client[config.MONGO_BACKEND_DB]["crisis_escalations"]
+        projection = {
+            "_id": 0, "org_id": 1, "user_id": 1, "session_id": 1,
+            "detected_by": 1, "at": 1, "delivered": 1,
+        }
+        rows = list(coll.find(scoped({}), projection))
+    except Exception as exc:  # noqa: BLE001
+        logger.error("safety.escalation_list_failed", extra={"error": str(exc)})
+        return []
+    rows.sort(key=lambda r: r.get("at") or "", reverse=True)
+    return rows[: max(0, limit)]
 
 
 def health() -> dict:

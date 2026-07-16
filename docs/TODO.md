@@ -133,8 +133,18 @@ dated notes, grouped by priority; items needing an owner decision are marked
       (below).
 - [ ] Admin: nonce-CSP middleware (the ref/Zen pattern) — deferred from the
       skeleton; add before production exposure.
-- [ ] Ops tabs, remaining: Prompt workbook (engine `/v1/prompts` API),
-      Safety queue (engine escalations).
+- [x] 2026-07-16 — Ops tabs wired to the engine: **Prompt workbook**
+      (view/edit prompt·model·enabled via `GET /v1/prompts` + `PUT
+      /v1/prompts/{stage}`; validate-on-save surfaces hard errors/warnings;
+      validation-report banner from the registry; reload-from-source;
+      always-on agents locked, edit gated on the engine's `editable` flag) and
+      **Safety queue** (`GET /v1/safety/escalations` — NEW engine endpoint in
+      `app/routers/safety.py`, signal-only + org-scoped, `limit` guarded).
+      Escalations now stamp `org_id` so each tenant sees only its own queue
+      (`app/safety/escalation.py::list_escalations`, 11 tests: org-scoping,
+      no-content-leak, 422 guard). Verified end-to-end: internal_admin login →
+      both tabs render against a live platform+engine; full engine suite green
+      (1491 passed), new router 100% covered.
 - [x] 2026-07-14 — Marketing `/api/demo` → platform pipeline wired:
       the form posts to `POST /demo-requests` first (PLATFORM_API_URL,
       5s timeout, best-effort), and succeeds if EITHER pipeline or email
