@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
+import { SITE_URL, siteLinks } from "@/lib/site";
 import { AgentFlowCanvas } from "@/components/flow";
 
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
@@ -74,6 +75,8 @@ function Login({ onDone }: { onDone: () => void }) {
   }
   return (
     <div className="login-wrap card">
+      {/* The site is a separate deployment — a real navigation, not a route. */}
+      <a className="wordmark home" href={SITE_URL}>CereBr<em>o</em>Zen<span className="wm-sub"> · admin</span></a>
       <h2>Sign in</h2>
       <form className="stack" onSubmit={submit}>
         <label>Email<input name="email" type="email" required autoComplete="username"
@@ -95,6 +98,11 @@ function Login({ onDone }: { onDone: () => void }) {
           ))}
         </div>
       )}
+      {/* Privacy and Terms live on the site; a login screen is where people look for
+          them, and the admin must not fork its own copy. */}
+      <nav className="login-foot">
+        {siteLinks.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}
+      </nav>
     </div>
   );
 }
@@ -819,7 +827,7 @@ export default function Admin() {
     // viewport width instead of the 1080px reading column every other tab wants.
     <div className={`shell ${tab === "flow" ? "wide" : ""}`}>
       <header className="topbar">
-        <span className="wordmark">CereBr<em>o</em>Zen · admin</span>
+        <a className="wordmark home" href={SITE_URL} title="cerebrozen.in">CereBr<em>o</em>Zen · admin</a>
         <span className="who">
           {me.email} ({me.role}{me.org_name ? ` · ${me.org_name}` : ""})
           <button className="ghost" onClick={async () => { await logout(); setMe(null); }}>Sign out</button>

@@ -57,7 +57,14 @@ services:
       db: { condition: service_healthy }
 
   web:
-    build: apps/web
+    build:
+      context: apps/web
+      args:
+        # The "Sign in" menu. Baked in at BUILD time, and the ARG defaults are the
+        # PROD domains — so without these a dev stack's Sign in silently walks the
+        # visitor off to production.
+        NEXT_PUBLIC_APP_URL: http://localhost:3002
+        NEXT_PUBLIC_ADMIN_URL: http://localhost:3001
     ports:
       - "3000:3000"
     environment:
@@ -70,8 +77,22 @@ services:
         # Baked into the client bundle at build time (browser-side URL, so it
         # must be reachable from the END USER's machine, not the container).
         NEXT_PUBLIC_API_URL: http://localhost:8100
+        NEXT_PUBLIC_ENGINE_URL: http://localhost:8000
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
     ports:
       - "3001:3000"
+
+  # Employee web app — the coaching experience in a browser. It was missing from the
+  # dev stack entirely, so the site's "Employee" sign-in had nothing to open.
+  app:
+    build:
+      context: apps/app
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8100
+        NEXT_PUBLIC_ENGINE_URL: http://localhost:8000
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    ports:
+      - "3002:3000"
 
 volumes:
   pg-data:

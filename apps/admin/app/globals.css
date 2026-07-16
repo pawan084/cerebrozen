@@ -33,6 +33,15 @@ body {
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 .wordmark em { color: var(--color-zen-700); font-style: normal; }
+a.wordmark { text-decoration: none; color: inherit; display: inline-block; }
+a.wordmark.home:hover em { opacity: 0.7; }
+.login-wrap .wordmark { display: block; margin-bottom: 18px; }
+.wm-sub { font-weight: 500; color: var(--color-brand-500); }
+/* login footer: the site hosts Privacy/Terms — the admin links out, never forks them */
+.login-foot { display: flex; justify-content: center; gap: 16px; margin-top: 20px;
+  padding-top: 16px; border-top: 1px solid var(--color-mist-100); }
+.login-foot a { font-size: 12px; color: var(--color-brand-500); text-decoration: none; }
+.login-foot a:hover { color: var(--color-brand-900); }
 .who { font-size: 13px; color: var(--color-brand-600); }
 .who button { margin-left: 12px; }
 

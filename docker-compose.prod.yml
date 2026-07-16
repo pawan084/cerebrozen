@@ -71,8 +71,9 @@ services:
     build:
       context: apps/web
       args:
-        # Baked into the client bundle at BUILD time — the header "Sign in" link.
-        # Must be the public admin domain the visitor's browser reaches.
+        # Baked into the client bundle at BUILD time — the header "Sign in" menu.
+        # Must be the public domains the visitor's browser reaches.
+        NEXT_PUBLIC_APP_URL: https://app.cerebrozen.in
         NEXT_PUBLIC_ADMIN_URL: https://admin.cerebrozen.in
     restart: unless-stopped
     environment:
@@ -94,6 +95,8 @@ services:
         NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
         # Engine URL for the internal-admin Prompts + Agent-flow tabs.
         NEXT_PUBLIC_ENGINE_URL: https://api.cerebrozen.in/engine
+        # Where the wordmark and the login footer link back to.
+        NEXT_PUBLIC_SITE_URL: https://cerebrozen.in
     restart: unless-stopped
 
   # Employee web app — the coaching experience in a browser (app.cerebrozen.in).
@@ -105,6 +108,8 @@ services:
         # member's browser reaches (auth on the platform, coaching on the engine).
         NEXT_PUBLIC_API_URL: https://api.cerebrozen.in
         NEXT_PUBLIC_ENGINE_URL: https://api.cerebrozen.in/engine
+        # Where the wordmark and the login footer link back to.
+        NEXT_PUBLIC_SITE_URL: https://cerebrozen.in
     restart: unless-stopped
 
   caddy:

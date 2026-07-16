@@ -28,6 +28,21 @@ Two backend services, three client surfaces, one reverse proxy.
                         │   Postgres 16 (+ Redis, pgvector)    │
                         └──────────────────────────────────────┘
    † later phase
+
+**How the surfaces link to each other.** Each is a separate deployment on its own
+host, so every link between them is a real navigation — never a `next/link` route.
+The hosts are `NEXT_PUBLIC_*`, which Next inlines at **build** time: setting them in
+a container's `environment:` has no effect on an already-built image, so they are
+passed as Docker **build args** (both compose files) and the `ARG` defaults are the
+production domains.
+
+| From | To | Carried by | Build arg |
+|---|---|---|---|
+| web | app · admin | "Sign in" menu — asks who you are rather than guessing; a wrong guess lands someone on a login their account can't pass | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_ADMIN_URL` |
+| app · admin | web | wordmark (login + signed-in) and a login footer to Privacy/Terms | `NEXT_PUBLIC_SITE_URL` |
+
+The clients link **out** to the site's Privacy and Terms rather than hosting their
+own copy — one set of published terms, one place to change them.
 ```
 
 **Why two services.** The references are two different backends with

@@ -10,6 +10,7 @@ import {
   createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode,
 } from "react";
 import { getTokens, login, logout, me, type Me } from "@/lib/api";
+import { SITE_URL, siteLinks } from "@/lib/site";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -71,7 +72,8 @@ function Login({ onDone }: { onDone: () => void }) {
   return (
     <main className="center">
       <div className="login-card">
-        <div className="wordmark">CereBr<span className="o">o</span>Zen</div>
+        {/* The site is a separate deployment — a real navigation, not a route. */}
+        <a className="wordmark home" href={SITE_URL}>CereBr<span className="o">o</span>Zen</a>
         <h1>Welcome back</h1>
         <p className="sub">Sign in to talk with your coach.</p>
         <form onSubmit={submit}>
@@ -96,6 +98,11 @@ function Login({ onDone }: { onDone: () => void }) {
             </button>
           </div>
         )}
+        {/* Privacy and Terms live on the site; a login screen is where people look
+            for them, and this app must not fork its own copy. */}
+        <nav className="login-foot">
+          {siteLinks.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}
+        </nav>
       </div>
     </main>
   );
@@ -137,10 +144,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app">
         <div className={`scrim ${open ? "show" : ""}`} onClick={() => setOpen(false)} />
         <aside className={`sidebar ${open ? "open" : ""}`}>
-          <div className="brand">
+          <a className="brand" href={SITE_URL} title="cerebrozen.in">
             <span className="glyph" />
             <span className="wordmark">CereBr<span className="o">o</span>Zen</span>
-          </div>
+          </a>
           <div className="nav-label">Menu</div>
           <nav className="nav">
             {MENU.map((n) => (
