@@ -69,8 +69,22 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
   before first customer (named TODO in the reference — do not inherit it
   unresolved).
 - **Roles**: server-side dependency enforcement (`org_admin`,
-  `internal_admin`, user) — 403 by default; admin surfaces additionally
-  gated by nonce-CSP middleware.
+  `internal_admin`, user) — 403 by default. (Roles are enforced on the
+  server; the admin's CSP below is defense-in-depth, not a role gate.)
+- **Admin CSP**: the console sets a per-request nonce CSP in
+  `apps/admin/proxy.ts` (Next 16 renamed the `middleware` convention to
+  `proxy`). `script-src` carries no `'unsafe-inline'`, so an injected script
+  cannot execute without that request's unguessable nonce; `'unsafe-eval'`
+  appears in dev only. This forces dynamic rendering — Next stamps the nonce
+  during SSR from the request's CSP header, and a prerendered page has no
+  request — hence `export const dynamic = "force-dynamic"` in the admin
+  layout. Two deliberate carve-outs: `connect-src` names the platform API and
+  engine origins (a browser client that cannot call its own backend is a dead
+  console), and `style-src` keeps `'unsafe-inline'` with **no** nonce, because
+  React Flow positions every agent-flow node with a `style` attribute — a
+  nonce covers `<style>` elements but never attributes, and per CSP3 a nonce
+  in `style-src` would *disable* `'unsafe-inline'` and break the canvas. XSS
+  defense lives in `script-src`; inline styles are a far smaller exposure.
 - **Transport/perimeter**: Caddy terminates TLS (auto-ACME), HSTS, nosniff,
   frame-deny, Permissions-Policy; API returns JSON-only CSP; DB and services
   never publish host ports (prod compose).
