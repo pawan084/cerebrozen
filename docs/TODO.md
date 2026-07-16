@@ -104,8 +104,15 @@ dated notes, grouped by priority; items needing an owner decision are marked
       Still open from this item:
   - [ ] Content adaptation of the big agents (CH 70.9K, core 39K → ≤8K
         target per `docs/PROMPTS_SPEC.md`) — coach-review release condition.
-  - [ ] Port evals golden cases; workbook-loadability CI gate (needs the
-        engine adopted first).
+  - [x] 2026-07-16 — Evals golden cases confirmed ported (identical to the
+        reference's routing/reply/leak sets); added the workbook-loadability
+        CI gate + eval-harness smoke (`tests/test_workbook_loadable.py`, runs
+        in the 96%-gated engine job). The gate loads the REAL `agent_prompts.xlsx`
+        and fails on any STRUCTURAL issue (missing sheet, enabled-no-prompt/model,
+        orphaned continuation) or a degraded load; oversize/unknown-placeholder
+        warnings are tolerated (the prompt-shrink item below) via
+        `issue_count == oversize + unknown_placeholders`. The routing-contract
+        cases still run nightly with a real model, off the merge path.
 - [x] 2026-07-14 — Regulated mode is now the DEFAULT (unset env → emotion
       inference and person-scoring OFF; `CEREBROZEN_REGULATED_WORKPLACE=false`
       is the conscious contract-level opt-out). Test suite pins the
