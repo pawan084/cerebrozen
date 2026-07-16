@@ -125,7 +125,7 @@ recovery" doors, not as tabs, keeping the five coaching tabs primary.
 | Safety review queue | Zen admin | ✔ | | |
 | Session time-travel edit/fork | Agent (`?edit=`) | | v2 power feature | |
 | Voice coaching | Agent voice stack + Zen voice loop | | v2 (after tests) | |
-| Journaling | Zen | ✔ engine (`stores/wellness.py`) + web (`apps/app/journal`, read+write). **Android writes only** — `Api.createJournal` fires from the breathing/reset tools; `Api.journal()` has no caller, so there is no way to *read* your journal on the phone, and `BiometricGate.kt` gates nothing | Android read view · biometric lock | |
+| Journaling | Zen | ✔ engine (`stores/wellness.py`) + web (`apps/app/journal`) + **Android read+write** (`JournalScreen.kt`, 2026-07-17 — the read view the B2C strip deleted; `BiometricGate` is attached to it again, so Settings' `journal_locked` toggle finally locks something) | | |
 | Micro-content / resources library | Zen content + Sherlock Resources | | v2 | |
 | Web employee app | Zen `apps/app` | ✔ (built 2026-07-16, ahead of Phase 5) | | |
 | Gamification coins | Sherlock | | | ✔ deliberate |

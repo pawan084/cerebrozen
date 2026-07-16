@@ -270,6 +270,11 @@
     <string name="journal_history_title">History</string>
     <string name="journal_no_entries_title">No entries yet</string>
     <string name="journal_no_entries_body">Your saved reflections will appear here — private to you.</string>
+    <!-- Consent off is NOT an empty journal. "You've written nothing" and "we're not
+         keeping it" are different sentences, and showing the first when the second is
+         true would be the app lying about the person's own choice. -->
+    <string name="journal_memory_off_title">Journal memory is off</string>
+    <string name="journal_memory_off_body">Journal memory is switched off, so nothing is being kept. You can turn it on in Privacy — only you can ever read these entries either way.</string>
     <string name="journal_search_label">Search entries</string>
     <string name="journal_no_match">No entries match \"%1$s\".</string>
     <string name="journal_private_eyebrow">Private mode</string>

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Diversity3
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -119,6 +120,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
+        // The journal you can now read. Written from the breathing/reset tools all along;
+        // until now there was no way back to it.
+        PremiumNavRow(stringResource(R.string.journal_title), stringResource(R.string.journal_eyebrow),
+            icon = Icons.Outlined.Book) { onOpen("journal") }
         // Directly above Privacy on purpose: "what it learned about me" and "what it keeps
         // about me" are one thought for the person reading them.
         PremiumNavRow(stringResource(R.string.patterns_title), stringResource(R.string.patterns_eyebrow),
