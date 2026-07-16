@@ -93,8 +93,13 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
 .arrow { color: var(--color-brand-500); font-size: 15px; line-height: 1.2; }
 .mermaidsrc { margin-top: 14px; }
 .mermaidsrc summary { cursor: pointer; font-size: 13px; color: var(--color-brand-700); }
-.graph { overflow: auto; border: 1px solid var(--color-mist-200); border-radius: 12px; padding: 12px; background: #fafbfc; }
-.graph svg { max-width: 100%; height: auto; }
+.graphbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.graphbar .z { font-size: 12.5px; color: var(--color-brand-600); min-width: 46px; text-align: center; }
+.graphbar .ghost { padding: 4px 12px; min-width: 34px; }
+.graph { overflow: auto; border: 1px solid var(--color-mist-200); border-radius: 12px; padding: 12px; background: #fafbfc; max-height: 74vh; }
+/* Natural size + container scroll (max-width:100% is what crushed the graph); the
+   inner div is CSS-zoomed so the scroll region grows with it. */
+.graph svg { max-width: none !important; height: auto; display: block; }
 .fld { display: block; margin-bottom: 14px; }
 .fld textarea, .fld input {
   width: 100%; margin-top: 6px; font: inherit; font-size: 13.5px; padding: 10px 12px;

@@ -229,7 +229,10 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
   .dash { grid-template-columns: 1fr; }
   .jump { grid-template-columns: repeat(2, 1fr); }
   .page { padding: 20px 18px 48px; }
-  .menu-btn { display: inline-grid; }
+  .menu-btn { display: inline-grid; position: fixed; top: 14px; right: 14px; z-index: 50; }
   .scrim.show { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .5); z-index: 30; }
   .search { display: none; }
+  /* Decorative orb crowds the heading on a narrow card — drop it on mobile. */
+  .checkin::after { display: none; }
+  .page-head { margin-top: 6px; }
 }

@@ -535,7 +535,15 @@ function AgentFlow() {
   const [agents, setAgents] = useState<AgentRow[] | null>(null);
   const [src, setSrc] = useState("");
   const [svg, setSvg] = useState("");
+  const [zoom, setZoom] = useState(1);
   const [error, setError] = useState("");
+  function downloadSvg() {
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "agent-flow.svg"; a.click();
+    URL.revokeObjectURL(url);
+  }
   useEffect(() => {
     engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
     engineJson<{ mermaid: string }>("/v1/graph/mermaid").then((r) => setSrc(r.mermaid)).catch(() => {});
@@ -560,11 +568,23 @@ function AgentFlow() {
   return (
     <div className="card">
       <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents · routing is deterministic (code predicates over typed state)</span></h2>
-      {svg
-        ? <div className="graph" dangerouslySetInnerHTML={{ __html: svg }} />
-        : src
-          ? <pre className="prompt">{src}</pre>
-          : <p className="hint">Rendering graph…</p>}
+      {svg ? (
+        <>
+          <div className="graphbar">
+            <button className="ghost" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}>−</button>
+            <span className="z">{Math.round(zoom * 100)}%</span>
+            <button className="ghost" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}>+</button>
+            <button className="ghost" onClick={() => setZoom(1)}>Reset</button>
+            <button className="ghost" onClick={downloadSvg}>Download SVG</button>
+            <span className="hint">scroll to pan · zoom to read</span>
+          </div>
+          <div className="graph">
+            <div style={{ zoom }} dangerouslySetInnerHTML={{ __html: svg.replace(/max-width:\s*[\d.]+px;?/g, "").replace(/\swidth="100%"/g, "") }} />
+          </div>
+        </>
+      ) : src
+        ? <pre className="prompt">{src}</pre>
+        : <p className="hint">Rendering graph…</p>}
       <details className="mermaidsrc" style={{ marginTop: 16 }}>
         <summary>Agents in the arc ({agents.length})</summary>
         <table className="table">
