@@ -635,11 +635,22 @@ object Api {
     suspend fun insightsWeekly(): JSONObject =
         JSONObject(Session.api("/v1/wellness/insights/weekly", base = ENGINE))
 
-    /** Transparent AI memory: honest learned statements + their data basis. */
-    suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))
+    /** Transparent AI memory: honest learned statements + their data basis.
+     *
+     * The ENGINE serves this, not the platform: it is derived from the person's own
+     * journal / sleep / check-ins, which live in the engine because the platform is the
+     * database an HR admin's token reaches. (These two methods pointed at the reference
+     * backend's routes — /insights/patterns and /users/me/memory on the platform — which
+     * were never ported, so every call 404'd. Nothing called them, so nobody noticed.) */
+    suspend fun patterns(): JSONObject =
+        JSONObject(Session.api("/v1/wellness/patterns", base = ENGINE))
 
-    /** Wipe the AI's memory (chat history + insights + Oracle thread state). */
-    suspend fun deleteMemory(): JSONObject = JSONObject(Session.api("/users/me/memory", "DELETE"))
+    /** Forget what the coach learned — the conversation, the derived state and the graph
+     *  checkpoints. Deliberately NOT the journal, sleep log or check-ins: those are the
+     *  person's own writing with their own controls. `?confirm=true` is required, and the
+     *  engine answers 500 if its re-scan finds anything left. */
+    suspend fun deleteMemory(): JSONObject =
+        JSONObject(Session.api("/v1/privacy/me/memory?confirm=true", "DELETE", base = ENGINE))
 
     // ── Programs (multi-day journeys — ref "DAY X OF Y" card) ──
     suspend fun activeProgram(): JSONObject? =

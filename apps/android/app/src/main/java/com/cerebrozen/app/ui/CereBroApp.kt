@@ -74,6 +74,7 @@ import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.Onboarding
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
+import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.PrivacyScreen
 import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.RemindersScreen
@@ -441,6 +442,7 @@ fun CereBroApp() {
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }
+            composable("patterns") { PatternScreen(onBack = back) }
             composable("privacy") { PrivacyScreen(onBack = back) }
             composable("crisisregion") { CrisisRegionScreen(onBack = back) }
             composable("humansupport") { HumanSupportScreen(onBack = back) }

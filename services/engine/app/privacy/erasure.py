@@ -171,6 +171,93 @@ def _clean(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── Right to erasure ─────────────────────────────────────────────────────────
 
+#: What "the coach's memory" means — a strict SUBSET of the erasure registry above.
+#:
+#: This is a different promise from the right to erasure, and conflating them would be a
+#: bug in both directions:
+#:
+#:   * `wellness` is NOT here. The journal, the sleep log and the mood check-ins are the
+#:     person's OWN writing, with their own controls and their own delete buttons. "Forget
+#:     what you learned about me" must not quietly burn their diary.
+#:   * `crisis_escalations` is NOT here. It records THAT someone was once in crisis (never
+#:     what they said) and it is an operational safety signal, not something the coach
+#:     learned. A convenience button must not be able to erase it; the statutory
+#:     `erase_user` still does, because that is a right rather than a preference.
+#:
+#: Everything else IS the memory: the derived state, the captured variables, the
+#: conversation, and the graph checkpoints that hold the message history.
+_MEMORY_LABELS = frozenset({
+    "agentic_context",
+    "dynamic_vars",
+    "transcripts",
+    "checkpoints",
+    "checkpoint_writes",
+})
+
+
+def forget_user(user_id: str) -> Dict[str, Any]:
+    """Wipe what the coach has learned, and keep what the person wrote.
+
+    Same registry as `erase_user`, filtered to `_MEMORY_LABELS` — deliberately not a
+    second list. A store added for erasure but forgotten here (or vice versa) is exactly
+    the class of bug the single registry exists to prevent, and one test pins the split.
+
+    Returns {deleted: {label: n}, kept: [label], verified: bool}. `verified` is True only
+    when a re-scan of the memory locations finds nothing: "we ran the delete" must never be
+    mistaken for "it is gone".
+    """
+    if not user_id:
+        return {"error": "no user_id", "verified": False}
+
+    # Same ordering constraint as erase_user: the transcripts map a person to their
+    # checkpoint threads, so resolve sessions BEFORE deleting anything.
+    sessions = _session_ids(user_id)
+    logger.warning("privacy.forget_started", extra={"user_id": user_id, "sessions": len(sessions)})
+
+    targets = [loc for loc in _locations() if loc.label in _MEMORY_LABELS]
+    deleted: Dict[str, int] = {}
+    for loc in targets:
+        coll = _coll(loc)
+        flt = _filter_for(loc, user_id, sessions)
+        if coll is None or flt is None:
+            deleted[loc.label] = 0
+            continue
+        try:
+            res = coll.delete_many(flt)
+            deleted[loc.label] = int(getattr(res, "deleted_count", 0) or 0)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("privacy.forget_failed", extra={"location": loc.label, "error": str(exc)})
+            deleted[loc.label] = 0
+
+    remaining: Dict[str, int] = {}
+    for loc in targets:
+        coll = _coll(loc)
+        flt = _filter_for(loc, user_id, sessions)
+        if coll is None or flt is None:
+            continue
+        try:
+            left = coll.count_documents(flt)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("privacy.forget_rescan_failed", extra={"location": loc.label, "error": str(exc)})
+            left = 0
+        if left:
+            remaining[loc.label] = int(left)
+
+    verified = not remaining
+    logger.warning(
+        "privacy.forget_finished",
+        extra={"user_id": user_id, "verified": verified, "remaining": remaining},
+    )
+    return {
+        "deleted": deleted,
+        "remaining": remaining,
+        # Named, so the answer to "what survived this?" is in the response rather than in
+        # a doc somebody has to go and find.
+        "kept": sorted(loc.label for loc in _locations() if loc.label not in _MEMORY_LABELS),
+        "verified": verified,
+    }
+
+
 def erase_user(user_id: str) -> Dict[str, Any]:
     """Delete everything, then CHECK, then report.
 

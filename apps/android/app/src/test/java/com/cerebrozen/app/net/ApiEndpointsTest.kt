@@ -195,7 +195,7 @@ class ApiEndpointsTest {
                 "GET /chat" to "[]",
                 "GET /content?kind=meditation" to "[]",
                 "GET engine:/v1/wellness/insights/weekly" to """{"summary":"ok"}""",
-                "GET /insights/patterns" to """{"patterns":[]}""",
+                "GET engine:/v1/wellness/patterns" to """{"patterns":[]}""",
                 "GET /users/me/consent" to """{"journal_memory":false}""",
                 "GET /users/me/export" to """{"everything":true}""",
                 "GET /voice/status" to """{"stt":false,"tts":false}""",
@@ -294,7 +294,7 @@ class ApiEndpointsTest {
                 "GET /plans/active" to """{"steps":[]}""",
                 "PATCH /users/me" to """{"name":"Pia"}""",
                 "PATCH /users/me/consent" to """{"journal_memory":true}""",
-                "DELETE /users/me/memory" to """{"cleared":true}""",
+                "DELETE engine:/v1/privacy/me/memory?confirm=true" to """{"cleared":true}""",
                 "DELETE /users/me" to "{}",
             ),
         )
@@ -314,7 +314,11 @@ class ApiEndpointsTest {
         assertTrue("leaveProgram is a DELETE on the same path", saw("DELETE", "/programs/active"))
         assertTrue(saw("PATCH", "/plans/steps/st1"))
         assertTrue(saw("PATCH", "/users/me"))
-        assertTrue(saw("DELETE", "/users/me/memory"))
+        // The engine, not the platform: the memory IS coaching content. And the client
+        // always sends ?confirm=true — the server refuses without it, so a helper that
+        // dropped it would 400 for every user.
+        assertTrue("the memory wipe must go to the engine, with ?confirm=true",
+            saw("DELETE", "engine:/v1/privacy/me/memory?confirm=true"))
         assertTrue(saw("DELETE", "/users/me"))
         assertTrue(JSONObject(log.first { it.path == "/plans/steps/st1" }.body!!).getBoolean("done"))
     }

@@ -100,6 +100,37 @@ async def export_me(
     )
 
 
+@router.delete("/me/memory")
+async def forget_me(
+    confirm: bool = Query(default=False, description="Must be true. This cannot be undone."),
+    claims: dict = Depends(require_auth),
+):
+    """Forget what the coach has learned — and keep what the person wrote.
+
+    A narrower promise than `DELETE /me`, and the narrowness is the feature: this wipes the
+    conversation, the derived state and the graph checkpoints, and deliberately leaves the
+    journal, sleep log and mood check-ins alone. Those are the person's own writing with
+    their own controls, and "start the coach fresh" must not burn their diary.
+
+    Same subject rule as every route in this file: the token, and nowhere else. Same
+    `?confirm=true`, for the same reason — this is irreversible.
+
+    Returns 500 with `verified: false` if the re-scan finds anything left. A partial wipe
+    reported as success would leave someone believing the coach forgot when it did not.
+    """
+    subject = _subject(claims, None)
+    if not confirm:
+        raise HTTPException(status_code=400, detail="This cannot be undone. Pass ?confirm=true.")
+
+    report = await run_in_threadpool(erasure.forget_user, subject)
+    if not report.get("verified"):
+        return JSONResponse(status_code=500, content={
+            **report,
+            "detail": "MEMORY WIPE INCOMPLETE — data remains. Do not tell the user the coach forgot.",
+        })
+    return report
+
+
 @router.delete("/me")
 async def erase_me(
     user_id: str | None = Query(default=None, description="Admins only; defaults to the token subject."),

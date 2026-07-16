@@ -306,6 +306,13 @@ def delete_entry(user_id: str, kind: str, entry_id: str) -> bool:
 # ── the person's own week ────────────────────────────────────────────────────
 
 
+def recent(user_id: str, kind: str, days: int) -> List[Dict[str, Any]]:
+    """One kind of the person's own entries, within `days`. The public read other
+    engine modules use, so nobody has to reach for the privates below (stores/patterns.py
+    is the first caller). Returns [] for an unknown kind or an unreachable store."""
+    return _within(_read(user_id, kind), days)
+
+
 def _within(entries: List[Dict[str, Any]], days: int) -> List[Dict[str, Any]]:
     cutoff = datetime.now(timezone.utc).timestamp() - days * 86400
     fresh = []

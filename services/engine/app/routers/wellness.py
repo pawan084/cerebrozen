@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import require_auth
 from app.session import user_id_from_claims
-from app.stores import wellness
+from app.stores import patterns, wellness
 
 logger = logging.getLogger("cerebrozen.wellness")
 router = APIRouter(prefix="/v1/wellness", tags=["wellness"])
@@ -203,6 +203,22 @@ async def get_weekly_insights(
     days: int = Query(7, ge=1, le=90), claims: dict = Depends(require_auth)
 ) -> dict:
     return await run_in_threadpool(wellness.weekly_insights, _subject(claims), days)
+
+
+@router.get("/patterns")
+async def get_patterns(claims: dict = Depends(require_auth)) -> dict:
+    """Transparent AI memory: every statement the coach has learned, with its basis.
+
+    Theirs and nobody else's — same firewall as the rest of this router. There is no org
+    aggregate of this and no endpoint that could build one.
+
+    Consent is an INPUT, not a filter applied afterwards: a category the person declined is
+    never read, so it cannot reach a statement. `sources` reports what was consulted, which
+    is the honest complement to the delete button (`DELETE /v1/privacy/me/memory`). No 403
+    here — declining every category is a valid state that yields `enough_data: false`, not
+    an error; refusing the whole page because one box is off would punish the choice.
+    """
+    return await run_in_threadpool(patterns.for_user, _subject(claims), claims.get("consent"))
 
 
 # ── delete one entry ─────────────────────────────────────────────────────────

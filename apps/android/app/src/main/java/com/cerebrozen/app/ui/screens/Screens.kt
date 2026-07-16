@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
@@ -118,6 +119,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
+        // Directly above Privacy on purpose: "what it learned about me" and "what it keeps
+        // about me" are one thought for the person reading them.
+        PremiumNavRow(stringResource(R.string.patterns_title), stringResource(R.string.patterns_eyebrow),
+            icon = Icons.Outlined.Psychology) { onOpen("patterns") }
         PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),

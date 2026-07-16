@@ -311,3 +311,97 @@ def test_there_is_no_user_id_in_the_path(client):
                 f"{p} takes a subject from the path — that is an erasure endpoint pointed at "
                 "other people"
             )
+
+
+# ── FORGET: the narrower promise ─────────────────────────────────────────────
+#
+# "Forget what you learned about me" is not "delete everything". The distinction is the
+# feature, and getting it wrong is a bug in both directions: burning the person's diary on
+# a convenience button, or leaving the coach's memory intact when they asked it to forget.
+
+
+def _wellness_coll(mongo):
+    return mongo[config.MONGO_BACKEND_DB][config.MONGO_WELLNESS_COLLECTION]
+
+
+@pytest.fixture
+def with_diary(populated, mongo):
+    """The populated person, plus their own writing — the thing forget must NOT touch."""
+    user_id, sessions = populated
+    _wellness_coll(mongo).insert_one({
+        "user_id": user_id,
+        "journal": [{"id": "j1", "ts": "2026-07-01T09:00:00+00:00", "body": "my own words"}],
+        "moods": [{"id": "m1", "ts": "2026-07-01T09:00:00+00:00", "mood": "anxious"}],
+    })
+    return user_id, sessions
+
+
+def test_forget_wipes_the_coach_memory(with_diary, mongo):
+    user_id, sessions = with_diary
+    report = erasure.forget_user(user_id)
+    assert report["verified"] is True
+
+    conv = mongo[config.MONGO_RASA_DB][config.MONGO_USER_CONVERSATIONS_COLLECTION]
+    assert conv.count_documents({"user_id": user_id}) == 0, "the conversation survived"
+    ag = mongo[config.MONGO_BACKEND_DB][config.MONGO_AGENTIC_COLLECTION]
+    assert ag.count_documents({"user_id": user_id}) == 0, "the derived state survived"
+    dv = mongo[config.MONGO_BACKEND_DB][config.MONGO_DYNAMIC_VARS_COLLECTION]
+    assert dv.count_documents({"user_id": user_id}) == 0, "the captured variables survived"
+    for coll in ("checkpoints", "checkpoint_writes"):
+        left = mongo[config.MONGO_CHECKPOINT_DB][coll].count_documents({"thread_id": {"$in": sessions}})
+        assert left == 0, f"{coll} survived — the graph still remembers the whole conversation"
+
+
+def test_forget_keeps_the_persons_own_writing(with_diary, mongo):
+    """THE point of the narrower promise. "Start the coach fresh" must not burn the diary —
+    the journal and mood check-ins are their content, with their own delete buttons."""
+    user_id, _ = with_diary
+    erasure.forget_user(user_id)
+    doc = _wellness_coll(mongo).find_one({"user_id": user_id}) or {}
+    assert doc.get("journal"), "the journal was destroyed by a memory wipe"
+    assert doc.get("moods"), "the mood check-ins were destroyed by a memory wipe"
+
+
+def test_forget_keeps_the_safety_record(with_diary, mongo):
+    """crisis_escalations records THAT someone was in crisis, never what they said. A
+    convenience button must not erase a safety signal; erase_user still does, because that
+    is a statutory right rather than a preference."""
+    user_id, _ = with_diary
+    erasure.forget_user(user_id)
+    esc = mongo[config.MONGO_BACKEND_DB]["crisis_escalations"]
+    assert esc.count_documents({"user_id": user_id}) == 1
+
+
+def test_forget_reports_what_it_deleted_and_what_it_kept(with_diary):
+    user_id, _ = with_diary
+    report = erasure.forget_user(user_id)
+    assert report["deleted"]["transcripts"] == 2
+    assert report["deleted"]["checkpoints"] == 2
+    assert set(report["kept"]) == {"wellness", "crisis_escalations"}
+
+
+def test_erasure_still_removes_everything_forget_spares(with_diary, mongo):
+    """The two operations must not drift: what forget keeps, erase must still take."""
+    user_id, _ = with_diary
+    report = erasure.erase_user(user_id)
+    assert report["verified"] is True
+    assert _wellness_coll(mongo).count_documents({"user_id": user_id}) == 0
+    assert mongo[config.MONGO_BACKEND_DB]["crisis_escalations"].count_documents({"user_id": user_id}) == 0
+
+
+def test_forget_survives_a_store_that_falls_over(with_diary, monkeypatch):
+    """Mid-incident, a failed wipe must report verified:false — never claim the coach
+    forgot when it did not."""
+    user_id, _ = with_diary
+
+    class Boom:
+        def delete_many(self, *_a, **_k):
+            raise RuntimeError("mongo is on fire")
+
+        def count_documents(self, *_a, **_k):
+            return 1
+
+    monkeypatch.setattr(erasure, "_coll", lambda _loc: Boom())
+    report = erasure.forget_user(user_id)
+    assert report["verified"] is False
+    assert report["remaining"], "a failed wipe reported nothing left behind"

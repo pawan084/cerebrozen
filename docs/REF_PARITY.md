@@ -17,6 +17,11 @@ Most Android "gaps" are therefore **wiring against endpoints that already work**
 not new features. The same shape holds on web: the highest-value items are
 backend-complete and client-missing.
 
+**Caveat, learned the hard way (2026-07-16).** "Orphaned method" does not imply
+"endpoint exists". Some orphans point at the *reference's* backend routes, which were
+never ported — item 3 was filed as "Wiring" and turned out to need a whole engine
+feature. Check the route exists on OUR services before trusting an Effort column here.
+
 Verdicts: **TAKE** · **ALREADY-AHEAD** (we have better) · **CORRECTLY-ABSENT**
 (deliberately dropped) · **TRAP** (copying it breaks our model).
 
@@ -31,7 +36,7 @@ tested; only a client calls it into being.
 |---|---|---|---|---|---|
 | 1 | ~~**Crisis screen in the coach**~~ **DONE 2026-07-16** | `apps/app` | `lib/oracle.ts`, `chat/page.tsx:76,146` | The engine already detects a crisis, takes over deterministically, and streams a scripted reply — and the web client renders it **as ordinary chat text**. `safety_flag` ships on the `done` frame; `crisis_region` is resolved on `/users/me`; `/v1/safety/helplines` is deliberately ungated *specifically to back this screen*. PRODUCT.md matrix: crisis takeover = v1 ✔. | Wiring |
 | 2 | ~~**Export + delete as product functions**~~ **DONE 2026-07-16** | `apps/app` | `account/page.tsx:117-131,159` | `GET /v1/privacy/me/export` and `DELETE /v1/privacy/me` are built and tested; the client never calls them. The marketing site **sells** "deletion is a product function" — a rule-6 claim with no client mechanism. | Wiring |
-| 3 | **Memory/pattern transparency + "delete what it learned"** | `apps/android` | `ui/screens/PatternScreen.kt` | `Api.patterns()` / `Api.deleteMemory()` exist and are orphaned; our own comment calls it *"Transparent AI memory: honest learned statements + their data basis."* Sits directly beside the employer-visibility story — the highest-trust artifact in a B2B rollout. | Wiring |
+| 3 | ~~**Memory/pattern transparency + "delete what it learned"**~~ **DONE 2026-07-16** | `apps/android` | `ui/screens/PatternScreen.kt` | **Was misclassified as "Wiring" here — it was not.** The orphaned `Api.patterns()`/`Api.deleteMemory()` pointed at the REFERENCE backend's routes (`/insights/patterns`, `/users/me/memory` on the platform), which were never ported: every call would have 404'd. Built for real — engine `stores/patterns.py` (4 consent-gated rules, each with its basis) + `GET /v1/wellness/patterns`, and `erasure.forget_user` + `DELETE /v1/privacy/me/memory` as a strict subset of the erasure registry. | Engine feature + screen |
 | 4 | **Member deactivate / reactivate** | `apps/admin` | `admin.py:160`, `page.tsx:373` | `/orgs/me/people` is **GET-only**: an org_admin cannot offboard a leaver, and the seat stays consumed (`_seats_used` gates invites). The core B2B HR operation, absent. Needs a platform route. | Small route + UI |
 | 5 | **CSP on `apps/app` and `apps/web`** | both | `apps/{web,admin,app}/middleware.ts` | The reference ships CSP on **all three**; we have it on admin only, because our TODO said "Admin: nonce-CSP" and under-specified it. `apps/app` holds the transcripts. **Don't copy the ref for web** — a nonce forces dynamic rendering and our marketing site is static; use `next.config.ts` `headers()` with a static CSP there, and `proxy.ts` (Next 16) for the app. | Small |
 | 6 | **Security headers on the marketing site** | `apps/web` | `vercel.json` | We send **zero** — no CSP, XFO, nosniff, Referrer-Policy — while hosting a 257-line `/security` page. A prospect's CISO runs securityheaders.io before the demo call. | Trivial |

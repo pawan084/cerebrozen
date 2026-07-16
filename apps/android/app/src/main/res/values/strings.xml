@@ -762,6 +762,9 @@
     <string name="patterns_cleared">Memory cleared — %1$d messages and %2$d insights forgotten.</string>
     <string name="patterns_delete_failed">Couldn\'t delete — try again.</string>
     <string name="patterns_confirm">Tap again to confirm</string>
+    <!-- The honest complement to the delete button: name what was actually looked at.
+         A category the person declined is never read, so it cannot reach a statement. -->
+    <string name="patterns_sources">Read from your %1$s. Anything you\'ve switched off in Privacy is never looked at.</string>
 
     <!-- ── Search (SearchScreen.kt) ────────────────────────────────────── -->
     <string name="search_eyebrow">The whole library</string>
