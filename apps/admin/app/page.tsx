@@ -621,6 +621,85 @@ type WbResp = { source: string; editable: boolean; count: number; agents: WbAgen
 // hot-reload); this is the ops surface onto it. Editable only when the engine serves
 // from an editable source. Safety is still code, not content: crisis text lives in the
 // engine, and always-on agents (environment, feedback) can't be disabled here.
+type PromptVersion = { version_id: string; size: number; actor: string; reason: string; at: string; hash: string };
+
+/* What this prompt used to say, and the way back.
+ *
+ * A save overwrote the sheet and the audit line recorded the actor and the version numbers
+ * but not the text — so a bad edit to a 39,000-character coaching prompt was unrecoverable
+ * from this console. The only copy was in git, which an operator on a running deployment
+ * does not have. */
+function PromptHistory({ stage, onRestored }: { stage: string; onRestored: () => void }) {
+  const [rows, setRows] = useState<PromptVersion[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    engineJson<{ versions: PromptVersion[] }>(`/v1/prompts/${stage}/versions`)
+      .then((r) => setRows(r.versions))
+      .catch((e) => setError(e.message));
+  }, [stage]);
+  useEffect(() => { if (open) load(); }, [open, load]);
+  useEffect(() => { setOpen(false); setRows(null); setError(""); }, [stage]);
+
+  async function restore(v: PromptVersion) {
+    if (!window.confirm(
+      `Restore the version from ${new Date(v.at).toLocaleString()} (${v.size.toLocaleString()} ch)?\n\n` +
+      "The text it replaces is saved first, so this is itself undoable.",
+    )) return;
+    setBusy(v.version_id); setError("");
+    try {
+      const r = await engineApi(`/v1/prompts/${stage}/revert/${v.version_id}`, { method: "POST" });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) {
+        // A version can rot — the validator moves. Say which rule, not "failed".
+        setError(body?.detail?.message ?? body?.detail ?? `HTTP ${r.status}`);
+        return;
+      }
+      load();
+      onRestored();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "restore failed");
+    } finally { setBusy(null); }
+  }
+
+  if (!open) {
+    return <button className="ghost" onClick={() => setOpen(true)}>History</button>;
+  }
+  return (
+    <div className="pv">
+      <div className="pv-head">
+        <b>Earlier versions</b>
+        <button className="ghost" onClick={() => setOpen(false)}>Close</button>
+      </div>
+      {error && <p className="error">{error}</p>}
+      {rows === null ? <Skeleton rows={2} /> : rows.length === 0 ? (
+        <p className="hint">No earlier versions — the first save here records what it replaces.</p>
+      ) : (
+        <table>
+          <thead><tr><th>When</th><th>Size</th><th>By</th><th>Why</th><th /></tr></thead>
+          <tbody>
+            {rows.map((v) => (
+              <tr key={v.version_id}>
+                <td>{new Date(v.at).toLocaleString()}</td>
+                <td>{v.size.toLocaleString()} ch</td>
+                <td className="hint">{v.actor.slice(0, 8)}</td>
+                <td className="hint">{v.reason}</td>
+                <td>
+                  <button className="ghost" disabled={busy === v.version_id} onClick={() => restore(v)}>
+                    {busy === v.version_id ? "…" : "restore"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function PromptWorkbook() {
   const [data, setData] = useState<WbResp | null>(null);
   const [sel, setSel] = useState("");
@@ -750,9 +829,12 @@ function PromptWorkbook() {
               onChange={(e) => setDraft({ ...draft, prompt: e.target.value })} />
           </label>
           {editable && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button className="primary" disabled={busy || !dirty} onClick={save}>{busy ? "Saving…" : "Save"}</button>
+              {/* "Revert edits" drops the unsaved draft. "History" goes back to text that
+                  was already SAVED — different buttons for different regrets. */}
               <button className="ghost" disabled={busy} onClick={() => open(agent.stage)}>Revert edits</button>
+              <PromptHistory stage={agent.stage} onRestored={() => { load(); setSaved("Restored"); }} />
               {dirty && <span className="pr-dirty">● unsaved</span>}
               {saved && <span className="pill ok">{saved}</span>}
             </div>

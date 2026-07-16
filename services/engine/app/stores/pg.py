@@ -184,10 +184,14 @@ def _project(doc: Dict[str, Any], projection: Optional[Dict[str, Any]]) -> Dict[
 
 
 class _Result:
-    def __init__(self, matched: int = 0, modified: int = 0, deleted: int = 0) -> None:
+    def __init__(
+        self, matched: int = 0, modified: int = 0, deleted: int = 0, inserted_id: Any = None
+    ) -> None:
         self.matched_count = matched
         self.modified_count = modified
         self.deleted_count = deleted
+        # pymongo's insert_one returns this; callers may read it.
+        self.inserted_id = inserted_id
 
 
 class PgCursor:
@@ -339,6 +343,36 @@ class PgCollection:
         n = sum(1 for d in self._all() if _matches(d, flt or {}))
         limit = kwargs.get("limit")
         return min(n, limit) if limit else n
+
+    def insert_one(self, doc: Dict[str, Any]):
+        """pymongo's insert_one — which this shim did not have.
+
+        Every store that predates this one writes with `update_one(..., upsert=True)`, so
+        the gap went unnoticed until a new store used the plainer call and found that the
+        shim "quacks like a MongoClient" only as far as the calls already in use. It failed
+        the way this whole class of bug fails here: the store swallowed it, the caller
+        returned None, and the feature was a silent no-op on Postgres — the DEFAULT backend
+        — while passing its tests against mongomock, which has insert_one.
+
+        `_id` comes from the doc, else the same key guess the rest of the shim uses.
+        """
+        pool = get_pool()
+        if pool is None:
+            return _Result()
+        self._ensure()
+        key = doc.get("_id") or self._key({}, doc)
+        if not key:
+            return _Result()
+        body = {**doc, "_id": key}
+        with pool.connection() as conn:
+            from psycopg.types.json import Jsonb
+
+            conn.execute(
+                f'INSERT INTO "{self.name}" (_id, doc) VALUES (%s, %s) '
+                f'ON CONFLICT (_id) DO UPDATE SET doc = EXCLUDED.doc',
+                (key, Jsonb(body)),
+            )
+        return _Result(inserted_id=key)
 
     def update_one(self, flt: Dict[str, Any], update: Dict[str, Any], upsert: bool = False):
         """Read-modify-write under a row lock. The lock is what makes concurrent turns on

@@ -47,7 +47,7 @@ tested; only a client calls it into being.
 | 11 | ~~**In-conversation AI disclosure pill**~~ **DONE 2026-07-17** | `apps/android` | `TalkScreen.kt:1056` | The strings **already ship** (`strings.xml:84` `talk_disclosure_pill`) and nothing renders them. We disclose once, at onboarding. | Trivial |
 | 12 | ~~**Journal read view on Android**~~ **DONE 2026-07-17** | `apps/android` | `JournalScreen.kt` | `Api.createJournal` fires from the breathing tools, but `Api.journal()` has no caller — **you cannot read your journal on the phone** — and `BiometricGate.kt` gates nothing. | Wiring |
 | 13 | ~~**Roster search + pagination**~~ **DONE 2026-07-17** | `apps/admin` | `page.tsx:364-425` | `/orgs/me/people` returns every row unbounded. A 2,000-seat tenant renders 2,000 rows. B2B rosters dwarf a B2C ops list. | Small |
-| 14 | **Prompt version history + rollback** | `apps/admin` | `page.tsx:837-948`, `admin.py:458-524` | We have a monotonic version counter and an audit line to stdout; no list-versions, no activate-old, no revert-to-default. **A bad prompt save is unrecoverable from the console.** | Engine route + UI |
+| 14 | ~~**Prompt version history + rollback**~~ **DONE 2026-07-17** | `apps/admin` | `page.tsx:837-948`, `admin.py:458-524` | We have a monotonic version counter and an audit line to stdout; no list-versions, no activate-old, no revert-to-default. **A bad prompt save is unrecoverable from the console.** | Engine route + UI |
 | 15 | **Safety escalation acknowledge/resolve** | `apps/admin` | `admin.py:359` | Our queue is read-only, so it never drains and re-notifies forever. Ack is a status, not content — stays inside rule 5. (Take the *ack*, never the excerpt — see TRAPS.) | Engine route + UI |
 | 16 | **Session-expiry message** | `apps/admin` | `page.tsx:145` | After a failed refresh we throw a raw 401 into a `Failed` card with a Retry that cannot work. The ref says "Session expired — reload to sign in." | Trivial |
 | 17 | **Workbook upload button** | `apps/admin` | — | `POST /v1/prompts/upload` exists; the UI only offers Download. The .xlsx round-trip is half-wired. | Trivial |
@@ -129,7 +129,13 @@ succeeded, the reads simply returned nothing, and no error surfaced anywhere:
 2. **`PgCollection.find_one()` did not accept `sort=`.** Three live callers pass it
    (`latest_resumable`, and the NBI/DISC profile reads); every one raised TypeError into a
    broad `except` and was logged as a warning. Postgres is the DEFAULT store.
-3. **`find_one`'s primary-key guess turned a miss into "absent".** `_key` guesses `_id`,
+3. **`PgCollection` had no `insert_one`.** Every store predating `prompt_versions` writes
+   with `update_one(..., upsert=True)`, so the shim quacked like a MongoClient only as far
+   as the calls already in use. A new store used the plainest write and it raised
+   AttributeError on Postgres — the DEFAULT backend — was swallowed, and the feature was a
+   silent no-op **while its own tests passed**, because they run against mongomock, which
+   has `insert_one`. A unit test against mongomock proves nothing about the shim.
+4. **`find_one`'s primary-key guess turned a miss into "absent".** `_key` guesses `_id`,
    else `user_id`, else `session_id`, because collections key differently. Conversations
    key on `session_id`, so `find_one({"user_id": ...})` looked up `_id = <user_id>`, found
    nothing, and reported a document that plainly exists as absent. Writes filter on

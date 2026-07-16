@@ -389,3 +389,39 @@ def test_a_genuine_miss_still_returns_none(monkeypatch):
 
     monkeypatch.setattr(pg, "get_pool", lambda: FakePool())
     assert pg.PgCollection("user_conversations").find_one({"user_id": "nobody"}) is None
+
+
+# ── insert_one: the shim only quacked as far as the calls already in use ─────
+#
+# Every store that predates prompt_versions writes with update_one(..., upsert=True), so
+# PgCollection never needed insert_one and never had it. A new store used the plainer call
+# and found out the hard way: on Postgres — the DEFAULT backend — the write raised
+# AttributeError, the store swallowed it, and the feature was a silent no-op. It passed its
+# own tests, because those run against mongomock, which HAS insert_one.
+#
+# That blind spot is the point of these: a unit test against mongomock proves nothing about
+# the shim.
+
+
+def test_the_shim_implements_insert_one():
+    from app.stores.pg import PgCollection
+
+    assert hasattr(PgCollection, "insert_one"), \
+        "a store using pymongo's plainest write would be a silent no-op on the default backend"
+
+
+def test_insert_one_returns_a_pymongo_shaped_result():
+    from app.stores.pg import _Result
+
+    r = _Result(inserted_id="abc")
+    assert r.inserted_id == "abc", "callers read inserted_id off insert_one's result"
+
+
+def test_every_write_method_the_stores_use_exists_on_the_shim():
+    """A guard against the next gap. If a store reaches for a pymongo call the shim lacks,
+    Postgres fails and mongomock does not — so the tests stay green and production does not."""
+    from app.stores.pg import PgCollection
+
+    for name in ("insert_one", "update_one", "delete_one", "delete_many",
+                 "find", "find_one", "count_documents"):
+        assert callable(getattr(PgCollection, name, None)), f"the shim is missing {name}"

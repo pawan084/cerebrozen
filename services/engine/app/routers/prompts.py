@@ -31,6 +31,7 @@ from app.llm.prompt_store import (
     upload_workbook_to_s3,
     workbook_checksum,
 )
+from app.stores import prompt_versions
 from app.llm.prompts import (
     _ORPHAN_SCAN_ROWS,
     ALWAYS_ENABLED,
@@ -228,6 +229,18 @@ async def edit_prompt(
     if report["errors"]:
         raise HTTPException(422, {"message": "prompt failed validation", **report})
 
+    # Snapshot the CURRENT text before overwriting it. The ordering is the whole design:
+    # snapshot-then-write means the thing you want back is already saved. Snapshot after,
+    # and the one edit you most need to undo — the one that just destroyed the text — is
+    # the one that never got recorded. Best-effort: a store that is down must not block a
+    # prompt fix, which would invert the point of an undo log.
+    version_id = None
+    if prompt is not None:
+        version_id = await run_in_threadpool(
+            prompt_versions.snapshot, stage, reg.get(stage),
+            actor=(claims or {}).get("sub", ""), reason="edit",
+        )
+
     try:
         published = await run_in_threadpool(_write_prompt_edit, stage, prompt, enabled, model)
     except HTTPException:
@@ -242,11 +255,14 @@ async def edit_prompt(
             f for f, v in (("prompt", prompt), ("enabled", enabled), ("model", model))
             if v is not None
         ],
-        warnings=report["warnings"], published=published or None,
+        warnings=report["warnings"], published=published or None, snapshot=version_id,
     )
     return {"status": "saved", "stage": stage, "enabled": reg.is_enabled(stage),
             "model": reg.model_for(stage) or "", "size": len(reg.get(stage)),
             "version": reg.version, "warnings": report["warnings"],
+            # The id of what this edit REPLACED — so a client can offer "undo" immediately
+            # rather than making the author go and find it.
+            **({"replaced_version": version_id} if version_id else {}),
             **({"published": published} if published else {})}
 
 
@@ -369,6 +385,86 @@ async def upload_endpoint(
 # registration order, so declaring this earlier would shadow /checksum,
 # /download, /validate and /reload (a GET /v1/prompts/checksum would resolve
 # here and 404 as "unknown stage: checksum").
+@router.get("/v1/prompts/{stage}/versions")
+async def list_versions(stage: str, _claims: dict = Depends(require_internal_admin)) -> dict:
+    """What this prompt used to say, newest first — metadata only.
+
+    No bodies: 60 versions of a 39,000-character prompt is 2.3MB to render a table of
+    dates. Fetch one at a time.
+    """
+    if stage not in STAGE_SHEET:
+        raise HTTPException(404, f"unknown stage: {stage}")
+    rows = await run_in_threadpool(prompt_versions.history, stage)
+    reg = get_registry()
+    return {
+        "stage": stage,
+        # So the UI can show "current" against the live text without a second call.
+        "current_hash": prompt_versions.content_hash(reg.get(stage)),
+        "current_size": len(reg.get(stage)),
+        "count": len(rows),
+        "versions": rows,
+    }
+
+
+@router.get("/v1/prompts/{stage}/versions/{version_id}")
+async def get_version(
+    stage: str, version_id: str, _claims: dict = Depends(require_internal_admin)
+) -> dict:
+    """One prior version, body included — for reading before restoring."""
+    if stage not in STAGE_SHEET:
+        raise HTTPException(404, f"unknown stage: {stage}")
+    row = await run_in_threadpool(prompt_versions.get, stage, version_id)
+    if not row:
+        raise HTTPException(404, "no such version for this stage")
+    return row
+
+
+@router.post("/v1/prompts/{stage}/revert/{version_id}")
+async def revert_prompt(
+    stage: str, version_id: str, claims: dict = Depends(require_internal_admin)
+) -> dict:
+    """Put an old version back.
+
+    A restore is an ordinary edit, and is treated as one: it snapshots the text it is
+    about to replace (so an accidental revert is itself undoable), it goes through
+    validate-on-save (a version that was valid when written may not be now — the validator
+    moves), and it hot-reloads. There is no privileged path that skips the checks just
+    because the text used to live here.
+    """
+    if stage not in STAGE_SHEET:
+        raise HTTPException(404, f"unknown stage: {stage}")
+    row = await run_in_threadpool(prompt_versions.get, stage, version_id)
+    if not row:
+        raise HTTPException(404, "no such version for this stage")
+
+    reg = get_registry()
+    text = row.get("text") or ""
+    report = validate_prompt_text(stage, text, enabled=reg.is_enabled(stage))
+    if report["errors"]:
+        # A version can rot: the validator gains rules, the workbook's contract moves.
+        # Better to refuse and say why than to restore something the graph will choke on.
+        raise HTTPException(422, {"message": "that version no longer passes validation", **report})
+
+    replaced = await run_in_threadpool(
+        prompt_versions.snapshot, stage, reg.get(stage),
+        actor=(claims or {}).get("sub", ""), reason="revert",
+    )
+    try:
+        published = await run_in_threadpool(_write_prompt_edit, stage, text, None, None)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("prompts.revert_error")
+        raise HTTPException(500, f"Failed to revert: {exc}")
+
+    _audit("revert", claims, stage=stage, restored=version_id, replaced_version=replaced,
+           version_after=reg.version)
+    return {"status": "reverted", "stage": stage, "restored": version_id,
+            "replaced_version": replaced, "size": len(reg.get(stage)),
+            "version": reg.version, "warnings": report["warnings"],
+            **({"published": published} if published else {})}
+
+
 @router.get("/v1/prompts/{stage}")
 async def get_prompt(stage: str, _claims: dict = Depends(require_internal_admin)) -> dict:
     reg = get_registry()
