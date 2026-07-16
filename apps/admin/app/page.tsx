@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
+import { AgentFlowCanvas } from "@/components/flow";
 
 type Me = { id: string; email: string; name: string; role: string; org_id: string | null; org_name: string | null };
 type Org = { id: string; name: string; slug: string; seats_total: number; seats_used: number; regulated_mode: boolean; crisis_region: string; is_active: boolean };
@@ -371,6 +372,8 @@ function Demos() {
 
 type AgentRow = { stage: string; model: string; enabled: boolean; size: number };
 type AgentsResp = { agents: AgentRow[] };
+/** One agent as GET /v1/prompts/{stage} reports it — what the flow inspector shows. */
+type NodeDetail = { stage?: string; prompt: string; model?: string; enabled?: boolean; always_on?: boolean; size?: number; version?: string };
 type WbAgent = { stage: string; sheet: string; enabled: boolean; always_on: boolean; model: string; size: number; prompt: string };
 type Validation = { issue_count?: number; ok?: boolean; issues?: unknown[] };
 type WbResp = { source: string; editable: boolean; count: number; agents: WbAgent[]; version?: string; degraded?: boolean; degraded_reason?: string; validation?: Validation };
@@ -506,6 +509,7 @@ function PromptWorkbook() {
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button className="primary" disabled={busy || !dirty} onClick={save}>{busy ? "Saving…" : "Save"}</button>
               <button className="ghost" disabled={busy} onClick={() => open(agent.stage)}>Revert edits</button>
+              {dirty && <span className="pr-dirty">● unsaved</span>}
               {saved && <span className="pill ok">{saved}</span>}
             </div>
           )}
@@ -617,62 +621,59 @@ function Nudges() {
   );
 }
 
-// Agent flow — the governed coaching arc, rendered as the engine's real branching
-// graph (Mermaid → SVG), with the agents table below.
+// Agent flow — the engine's real compiled arc on a React Flow canvas (read-only:
+// the graph is compiled in build_graph.py and routing is code predicates over typed
+// state). Click a node to inspect its agent; the Prompt workbook stays the source of truth.
 function AgentFlow() {
   const [agents, setAgents] = useState<AgentRow[] | null>(null);
-  const [src, setSrc] = useState("");
-  const [svg, setSvg] = useState("");
-  const [zoom, setZoom] = useState(1);
   const [error, setError] = useState("");
-  function downloadSvg() {
-    const blob = new Blob([svg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "agent-flow.svg"; a.click();
-    URL.revokeObjectURL(url);
-  }
+  const [stage, setStage] = useState<string | null>(null);
+  const [detail, setDetail] = useState<NodeDetail | null>(null);
+
   useEffect(() => {
     engineJson<AgentsResp>("/v1/agents").then((r) => setAgents(r.agents)).catch((e) => setError(e.message));
-    engineJson<{ mermaid: string }>("/v1/graph/mermaid").then((r) => setSrc(r.mermaid)).catch(() => {});
   }, []);
   useEffect(() => {
-    if (!src) return;
-    let alive = true;
-    (async () => {
-      try {
-        const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
-        const { svg } = await mermaid.render("agentgraph", src);
-        if (alive) setSvg(svg);
-      } catch {
-        /* fall back to the source <pre> below */
-      }
-    })();
-    return () => { alive = false; };
-  }, [src]);
-  if (error) return <div className="card"><p className="error">{error}</p></div>;
+    setDetail(null);
+    if (!stage) return;
+    engineJson<NodeDetail>(`/v1/prompts/${stage}`).then(setDetail).catch(() => setDetail(null));
+  }, [stage]);
+
+  if (error) return <Failed msg={error} />;
   if (!agents) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
       <h2>Agent flow <span className="hint">the governed coaching arc · {agents.length} agents · routing is deterministic (code predicates over typed state)</span></h2>
-      {svg ? (
-        <>
-          <div className="graphbar">
-            <button className="ghost" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}>−</button>
-            <span className="z">{Math.round(zoom * 100)}%</span>
-            <button className="ghost" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}>+</button>
-            <button className="ghost" onClick={() => setZoom(1)}>Reset</button>
-            <button className="ghost" onClick={downloadSvg}>Download SVG</button>
-            <span className="hint">scroll to pan · zoom to read</span>
-          </div>
-          <div className="graph">
-            <div style={{ zoom }} dangerouslySetInnerHTML={{ __html: svg.replace(/max-width:\s*[\d.]+px;?/g, "").replace(/\swidth="100%"/g, "") }} />
-          </div>
-        </>
-      ) : src
-        ? <pre className="prompt">{src}</pre>
-        : <p className="hint">Rendering graph…</p>}
+      <div className="flow-wrap">
+        <div className="flow-main">
+          <AgentFlowCanvas agents={agents} onInspect={setStage} />
+        </div>
+        {stage && (
+          <aside className="node-insp">
+            <div className="ni-head">
+              <div><div className="ni-eyebrow">agent</div><div className="ni-title">{stage}</div></div>
+              <button className="ni-x" onClick={() => setStage(null)} aria-label="Close inspector">×</button>
+            </div>
+            <div className="ni-body">
+              {!detail ? <Skeleton rows={3} /> : (
+                <>
+                  <div className="ni-meta">
+                    <span className="pill">{detail.model || "—"}</span>
+                    <span className={`pill ${detail.enabled ? "ok" : "off"}`}>{detail.enabled ? "enabled" : "disabled"}</span>
+                    {detail.always_on && <span className="pill">always-on</span>}
+                    {detail.size != null && <span className="hint">{detail.size.toLocaleString()} ch</span>}
+                  </div>
+                  <p className="hint" style={{ margin: "10px 0" }}>
+                    Read-only here — the <b>Prompt workbook</b> is the source of truth. Edit it there
+                    and this node uses the new content on its next run.
+                  </p>
+                  <pre className="prompt ni-prompt">{detail.prompt}</pre>
+                </>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
       <details className="mermaidsrc" style={{ marginTop: 16 }}>
         <summary>Agents in the arc ({agents.length})</summary>
         <table className="table">

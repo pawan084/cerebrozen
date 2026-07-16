@@ -93,6 +93,61 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
 .arrow { color: var(--color-brand-500); font-size: 15px; line-height: 1.2; }
 .mermaidsrc { margin-top: 14px; }
 .mermaidsrc summary { cursor: pointer; font-size: 13px; color: var(--color-brand-700); }
+/* ── Agent flow canvas (React Flow) — read-only view of the compiled arc ── */
+.flow-wrap { display: flex; gap: 14px; align-items: stretch; }
+.flow-main { flex: 1; min-width: 0; }
+.canvas { height: 68vh; min-height: 460px; border: 1px solid var(--color-mist-200); border-radius: 12px;
+  background: #fbfaf8; overflow: hidden; }
+.allroutes { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;
+  color: var(--color-brand-700); cursor: pointer; }
+.allroutes input { width: auto; }
+
+/* node */
+.anode { width: 218px; background: #fff; border: 1.5px solid var(--color-mist-200); border-radius: 12px;
+  padding: 9px 11px; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.anode.sel { border-color: var(--color-brand-900); box-shadow: 0 0 0 3px var(--color-zen-50); }
+.anode.code { background: var(--color-brand-50); border-style: dashed; }
+.anode.terminal { width: 132px; background: var(--color-brand-900); border-color: var(--color-brand-900); }
+.anode.terminal .an-t, .anode.terminal .an-s { color: #fff; }
+.an-head { display: flex; align-items: center; gap: 7px; }
+.an-ic { font-size: 13px; }
+.an-t { font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-pip { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--color-brand-500); }
+.an-pip.ok { background: #15803d; }
+.an-pip.off { background: var(--color-zen-600); }
+.an-pip.code { background: var(--color-brand-500); }
+.an-s { font-size: 10.5px; color: var(--color-brand-500); margin-top: 2px; line-height: 1.35; }
+.an-foot { margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+.an-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-brand-600); background: var(--color-mist-100); border-radius: 999px; padding: 1px 7px; }
+.an-count { font-size: 10.5px; color: var(--color-brand-500); }
+.an-count b { color: var(--color-brand-900); font-size: 11px; }
+.an-h { width: 6px !important; height: 6px !important; background: var(--color-brand-500) !important; border: 0 !important; }
+
+/* edges: spine solid, conditional fan-out faint, selected node's routes hot */
+.react-flow__edge.spine .react-flow__edge-path { stroke: var(--color-brand-600); stroke-width: 1.6; }
+.react-flow__edge.faint .react-flow__edge-path { stroke: var(--color-mist-200); stroke-width: 1; }
+.react-flow__edge.hot .react-flow__edge-path { stroke: var(--color-zen-600); stroke-width: 2.2; }
+.react-flow__edge-text { font-size: 10px; font-weight: 700; fill: var(--color-brand-700); }
+
+/* node inspector */
+.node-insp { width: 380px; flex: none; border: 1px solid var(--color-mist-200); border-radius: 12px;
+  background: #fff; display: flex; flex-direction: column; max-height: 68vh; }
+.ni-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  padding: 12px 14px; border-bottom: 1px solid var(--color-mist-100); }
+.ni-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-brand-500); }
+.ni-title { font-size: 14px; font-weight: 700; }
+.ni-x { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--color-brand-500); }
+.ni-x:hover { color: var(--color-brand-900); }
+.ni-body { padding: 12px 14px; overflow: auto; }
+.ni-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ni-prompt { max-height: 40vh; }
+
+@media (max-width: 980px) {
+  .flow-wrap { flex-direction: column; }
+  .node-insp { width: auto; max-height: none; }
+}
+
 .graphbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .graphbar .z { font-size: 12.5px; color: var(--color-brand-600); min-width: 46px; text-align: center; }
 .graphbar .ghost { padding: 4px 12px; min-width: 34px; }
@@ -130,3 +185,6 @@ button.ghost { font: inherit; font-size: 13px; border: 1px solid var(--color-mis
   form.stack { max-width: none; }
   .stats { gap: 14px; }
 }
+
+/* "unsaved" pip — an edit in flight should be visible before you look for a button. */
+.pr-dirty { color: var(--color-zen-600); font-size: 12px; font-weight: 700; }

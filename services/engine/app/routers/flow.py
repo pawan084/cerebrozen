@@ -71,6 +71,42 @@ async def graph_mermaid(_claims: dict = Depends(require_auth)) -> dict:
     return {"mermaid": _mermaid_cache, "stage_to_node": STAGE_TO_NODE}
 
 
+@router.get("/v1/graph")
+async def graph_structure(_claims: dict = Depends(require_auth)) -> dict:
+    """The compiled agent graph as structured nodes + edges — the same object mermaid
+    renders, handed over so a client can draw it properly instead of parsing a diagram.
+
+    READ-ONLY by nature: the arc is compiled in ``app/graph/build_graph.py`` and routing
+    is code predicates over typed state. There is no write side here and there must not
+    be — an operator rewiring the governed coaching arc from a canvas is exactly what the
+    safety model forbids.
+
+    Note the edge count: conditional edges fan out to EVERY possible target (profile_read
+    dispatches to every stage; every stage chains to every next stage), so this is a dense
+    graph, not a line. ``conditional`` and ``label`` let a client draw the spine and reveal
+    the rest on demand rather than rendering a hairball.
+    """
+    try:
+        g = get_service().engine.graph.get_graph()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("flow.graph_error")
+        raise HTTPException(500, f"could not read graph: {exc}")
+    return {
+        # dict order is the order nodes were added in build_graph — i.e. the arc order.
+        "nodes": [{"id": n} for n in g.nodes],
+        "edges": [
+            {
+                "source": e.source,
+                "target": e.target,
+                "label": getattr(e, "data", None) or "",
+                "conditional": bool(getattr(e, "conditional", False)),
+            }
+            for e in g.edges
+        ],
+        "stage_to_node": STAGE_TO_NODE,
+    }
+
+
 def _assert_owner(session_id: str, claims: dict) -> None:
     """404 unless the session exists AND belongs to the caller.
 
