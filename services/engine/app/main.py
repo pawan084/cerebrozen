@@ -29,6 +29,7 @@ from app.routers.rag import router as rag_router
 from app.routers.safety import router as safety_router
 from app.routers.sessions import router as sessions_router
 from app.routers.wellness import router as wellness_router
+from app.routers.governance import router as governance_router
 # Voice depends on the (heavy, optional) livekit stack. Import defensively so the
 # app boots without livekit installed; the voice routes are simply not mounted.
 try:
@@ -119,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(wellness_router)
     app.include_router(safety_router)
     app.include_router(nudges_router)
+    app.include_router(governance_router)
     if voice_router is not None:
         app.include_router(voice_router)
     if voice_lab_router is not None:
