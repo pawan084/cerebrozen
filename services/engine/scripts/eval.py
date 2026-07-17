@@ -18,6 +18,7 @@ Exit code is non-zero when the score drops below --min-score, so this can gate a
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import statistics
@@ -32,6 +33,54 @@ from app.env_loader import load_local_env
 load_local_env()
 
 PLACEHOLDER = re.compile(r"\{[A-Za-z0-9_.&\-]+\}")
+
+#: A question the USER is asked. Not every "?" is one — a quoted example ("try asking
+#: 'what would good look like?'") is coaching content, not a stacked question — so quoted
+#: spans are stripped before counting. Rhetorical "Right?" tags are still counted: the rule
+#: the prompts state is "Ask. Wait. Respond.", and a tag question invites an answer too.
+_QUOTED = re.compile(r"[\"“”'‘’](?:[^\"“”'‘’]{0,200}?)[\"“”'‘’]", re.S)
+
+
+def _user_text(stage: str, raw: str, parsed: str) -> str:
+    """The text this agent actually shows the user.
+
+    `parse_control` is not enough. It reads `_USER_TEXT_KEYS`, and `pattern_agent`
+    deliberately does not use them: its contract puts the mirror in
+    `context_update.pattern_mirror_output`, which the graph reads through
+    `builders.py`. So parse_control returns "" for a PERFECTLY correct pattern turn —
+    meaning the eval harness was blind to that agent's user-facing text entirely.
+
+    That blindness inverted a metric on its first run: the cloud model followed the
+    contract and scored FAIL (empty reply); the 8B model ignored the contract, emitted a
+    generic `response_to_user` envelope, and scored PASS. The wrong model won. Any check
+    on user-facing text has to read it where the agent's own contract puts it.
+    """
+    if parsed.strip():
+        return parsed
+    try:
+        obj = json.loads(raw)
+    except Exception:  # noqa: BLE001 — non-JSON prose already came back via parse_control
+        return parsed
+    if isinstance(obj, dict):
+        update = obj.get("context_update")
+        if isinstance(update, dict):
+            for key in ("pattern_mirror_output",):
+                val = update.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val
+    return parsed
+
+
+def _question_count(reply: str) -> int:
+    """How many questions this turn puts to the user.
+
+    The rule is the prompts' own, stated verbatim in eight of them and in the always-on
+    `environment` wrapper: "One question at a time, always. Never stack questions. Ask.
+    Wait. Respond." It is the most objectively checkable instruction in the workbook, and
+    it is user-visible — a turn that stacks three questions is a worse coaching turn by the
+    product's own definition, not by mine.
+    """
+    return _QUOTED.sub(" ", reply or "").count("?")
 
 
 def _run_case(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
@@ -60,6 +109,8 @@ def _run_case(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     latency = time.perf_counter() - t0
 
     reply, handoff, path = parse_control(resp.text)
+    # What the user actually sees — pattern_agent's mirror never crosses parse_control.
+    shown = _user_text(stage, resp.text, reply)
     exp = case["expect"]
     checks: Dict[str, bool] = {}
 
@@ -67,9 +118,11 @@ def _run_case(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
         want = exp["coaching_path"]
         checks["coaching_path"] = (path in ("CIM", "CBT", "CH")) if want == "ANY" else (path == want)
     if exp.get("non_empty_reply"):
-        checks["non_empty_reply"] = bool(reply.strip())
+        checks["non_empty_reply"] = bool(shown.strip())
     if exp.get("no_placeholder_leak"):
-        checks["no_placeholder_leak"] = not PLACEHOLDER.search(reply)
+        checks["no_placeholder_leak"] = not PLACEHOLDER.search(shown)
+    if exp.get("one_question"):
+        checks["one_question"] = _question_count(shown) <= 1
 
     return {
         "passed": all(checks.values()) if checks else False,

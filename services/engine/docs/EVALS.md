@@ -19,6 +19,45 @@ output parsed by `tools.parse_control`. A pass means what ships works, not a moc
 > real signal in this table. Do not quote this number as user-visible routing accuracy: it
 > understates the pipeline on the omission cases and is exactly right on the wrong-path ones.
 
+## The `oneq-*` family, and the metric that scored the wrong model as correct
+
+Added 2026-07-17 to test one hypothesis: **does a big prompt dilute a small model's
+attention to its own instructions?** It checks the prompts' OWN rule — *"One question at a
+time, always. Never stack questions."*, stated verbatim in eight agents and in the
+always-on `environment` wrapper — by counting "?" in the user-facing text. Objective, not
+taste. Result: **no gradient**, 22/22 on both cloud and an 8B local model, including CH's
+16.5K prompt with the rule buried at 88% depth. See `docs/PROMPTS_SPEC.md`.
+
+**This is instruction ADHERENCE, not coaching quality.** Quality is taste, it belongs to a
+qualified coach, and their sign-off is a release condition nothing here substitutes for.
+Adherence is a floor.
+
+### The near-miss, recorded because it is the whole lesson
+
+The family's first run said: cloud **FAIL 0/3**, local 8B **PASS 3/3**, on `pattern_agent`.
+The truth was the exact inverse.
+
+`parse_control` reads `_USER_TEXT_KEYS`. `pattern_agent` deliberately does not use them —
+its contract puts the mirror in `context_update.pattern_mirror_output`, which the graph
+reads via `builders.py`. So:
+
+* the cloud model followed the contract exactly → `parse_control` returned `""` → scored
+  FAIL on "empty reply";
+* the 8B model ignored the contract, invented a generic `response_to_user` envelope (and
+  emitted `coaching_path`, which is not even its field) → scored PASS.
+
+**The metric rewarded the model that was wrong.** It was caught only by reading the raw
+response instead of trusting the score — the same move that catches everything else in this
+document. It also exposed a real gap: the harness could never see `pattern_agent`'s
+user-facing text at all. `_user_text()` now reads the text where each agent's own contract
+puts it.
+
+Two rules earned the hard way: a check on user-facing text must look where the AGENT says
+it puts it, not where most agents happen to put it; and a green number from a metric nobody
+has read the raw output of is worth nothing.
+
+---
+
 ## What it tests, and what it deliberately does not
 
 This is **not** a coaching-quality benchmark. It tests the **contract**: does the agent emit the

@@ -108,11 +108,37 @@ careless, and `environment` at 45K on every call genuinely was the #1 cost bug (
 Keep ≤8K as guidance for new authoring. Do not spend a quarter retrofitting it onto content
 that measures fine.
 
-**If the cut is ever revived, revive it with a reason that survives measurement.** Candidates
-nobody has tested yet: coaching QUALITY on a small model (the eval tests the contract, never
-the coaching — a 70K prompt may well dilute an 8B model's attention in ways 16 routing cases
-cannot see), or genuinely constrained air-gapped hardware (this was measured on a remote GPU
-box; the context math holds anywhere, the prefill speed does not).
+**The last candidate — attention dilution — was tested on 2026-07-17. It is dead too.**
+
+The hypothesis: a 70K prompt dilutes a small model's attention to its own instructions, in
+ways 16 routing cases cannot see. It is testable without inventing a standard, because the
+prompts state one rule verbatim in eight agents AND in the always-on `environment` wrapper:
+*"One question at a time, always. Never stack questions. Ask. Wait. Respond."* Counting "?"
+is not taste. And the agents state that same rule at wildly different depths, which makes
+them a natural experiment with no new prompts:
+
+| agent | prompt | rule at | cloud | local 8B |
+|---|---|---|---|---|
+| `action_checkin_agent` | 2,531 tok | 9% | 3/3 | 3/3 |
+| `feedback_mood_capture_agent` | 4,156 tok | 21% | 3/3 | 3/3 |
+| `core_coaching_agent` | 8,992 tok | 26% | 3/3 | 3/3 |
+| `coaching_intake_agent` | 6,712 tok | 46% | 3/3 | 3/3 |
+| `pattern_agent` | 5,270 tok | 83% | 3/3 | 3/3 |
+| **`CH_coaching_agent`** | **16,576 tok** | **88%** | **3/3** | **3/3** |
+
+**No gradient.** An 8B model honours a rule buried at 88% depth in a 16.5K prompt as
+reliably as one at 9% depth in a 2.5K prompt. 22/22 on both providers.
+
+So every reason to shrink these prompts has now been measured and none of them exists. If
+someone revives this a third time, the burden is a NEW measured reason — not a fresh
+intuition. The one remaining candidate is genuinely constrained air-gapped hardware (this
+was measured on a remote GPU box; the context math holds anywhere, prefill speed does not),
+and the honest way to settle that is to run `scripts/eval.py` on the actual target box.
+
+Coaching quality itself remains **unmeasured and unmeasurable here** — it is taste, it is
+the coach's, and their sign-off is still a release condition. The `oneq-*` family tests
+instruction ADHERENCE, which is a floor, not a ceiling. Nothing above says the coaching is
+good.
 
 ## Adaptation priorities (per extracted prompt, largest first)
 

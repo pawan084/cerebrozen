@@ -89,7 +89,49 @@ _LEAK_CASES: List[Dict[str, Any]] = [
          expect={"no_placeholder_leak": True}),
 ]
 
-CASES: List[Dict[str, Any]] = _PATH_CASES + _REPLY_CASES + _LEAK_CASES
+# ── instruction adherence: one question at a time ───────────────────────────
+#
+# NOT a coaching-quality benchmark either — quality is taste, and PROMPTS_SPEC.md is
+# explicit that the method and the words belong to a qualified coach whose sign-off is a
+# release condition. Nothing here substitutes for that.
+#
+# What this DOES test is objective: the prompts state "One question at a time, always.
+# Never stack questions. Ask. Wait. Respond." verbatim, in eight agents AND in the
+# always-on `environment` wrapper that is composed into the top of every call. So a turn
+# that stacks three questions violates a rule the product wrote down twice. Counting "?"
+# is not taste.
+#
+# It exists to test one specific hypothesis (docs/PROMPTS_SPEC.md §"The budget, measured"):
+# **does a big prompt dilute a small model's attention to its own instructions?** The
+# agents state the same rule at very different depths, which makes them a natural
+# experiment — no new prompts needed, just the ones that ship:
+#
+#     action_checkin_agent      2,531 tok   rule at   9% depth
+#     feedback_mood_capture     4,156 tok   rule at  21%
+#     core_coaching_agent       8,992 tok   rule at  26%
+#     coaching_intake_agent     6,712 tok   rule at  46%
+#     pattern_agent             5,270 tok   rule at  83%
+#     CH_coaching_agent        16,576 tok   rule at  88%   <- deepest, in the biggest
+#
+# If size/depth dilutes attention, CH breaks the rule and action_checkin does not — and
+# the gap should widen on an 8B local model versus the cloud. If adherence is flat, the
+# ≤8K budget loses its last candidate justification (the other three are already measured
+# and dead).
+_CRAFT_CASES: List[Dict[str, Any]] = [
+    dict(id=f"oneq-{stage.split('_')[0]}", stage=stage,
+         message="I keep avoiding a hard conversation with my manager and I don't know why.",
+         expect={"one_question": True, "non_empty_reply": True})
+    for stage in (
+        "action_checkin_agent",
+        "feedback_mood_capture_agent",
+        "core_coaching_agent",
+        "coaching_intake_agent",
+        "pattern_agent",
+        "CH_coaching_agent",
+    )
+]
+
+CASES: List[Dict[str, Any]] = _PATH_CASES + _REPLY_CASES + _LEAK_CASES + _CRAFT_CASES
 
 
 def default_context() -> Dict[str, Any]:
