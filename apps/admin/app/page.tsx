@@ -581,6 +581,8 @@ function Tenants() {
   const [orgs, setOrgs] = useState<Org[] | null>(null);
   const [regions, setRegions] = useState<string[]>([]);
   const [openKb, setOpenKb] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [why, setWhy] = useState(false);
   const [error, setError] = useState("");
   const [expired, setExpired] = useState(false);
   const load = useCallback(() => {
@@ -611,6 +613,9 @@ function Tenants() {
         }),
       });
       form.reset();
+      // Close on success: the new tenant is now the thing to look at, in the table above.
+      // Leaving the form open invites a second create nobody asked for.
+      setCreating(false);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed");
@@ -627,7 +632,10 @@ function Tenants() {
   return (
     <>
       <div className="card">
-        <h2>Tenants</h2>
+        <div className="people-head">
+          <h2>Tenants</h2>
+          {!creating && <button className="ghost" onClick={() => setCreating(true)}>+ New tenant</button>}
+        </div>
         {orgs === null ? (
           error ? <Failed msg={error} onRetry={load} expired={expired} /> : <Skeleton />
         ) : (
@@ -664,27 +672,47 @@ function Tenants() {
                 ))}
               </tbody>
             </table>
-            {orgs.length === 0 && <p className="empty-state">No tenants yet — create one below.</p>}
+            {orgs.length === 0 && <p className="empty-state">No tenants yet — create the first one.</p>}
+            {/* One line, with the reasoning behind a disclosure. The rules have not
+                changed — regulated mode is still not a switch — but an operator reads this
+                page to DO something, and three paragraphs of policy between them and the
+                table is a wall they learn to scroll past. Detail on demand keeps it
+                available without making it the room's furniture. */}
             <p className="hint" style={{ marginTop: 12 }}>
-              Seats and crisis region are editable here. <b>Regulated mode is not</b> — turning
-              it off is a contract-level decision with counsel sign-off, not a switch
-              (docs/SECURITY.md). The crisis region decides which helplines this tenant&rsquo;s
-              people see; &ldquo;international&rdquo; is a real answer, not a missing one.
+              Seats and crisis region are editable. <b>Regulated mode is not.</b>{" "}
+              <button className="linklike" onClick={() => setWhy((w) => !w)}>
+                {why ? "hide why" : "why?"}
+              </button>
             </p>
+            {why && (
+              <p className="hint">
+                Turning regulated mode off is a contract-level decision with counsel
+                sign-off, not a switch (docs/SECURITY.md) — EU AI Act Art. 5 sits behind it,
+                and new tenants start with it ON. The crisis region decides which helplines
+                this tenant&rsquo;s people see; &ldquo;international&rdquo; is a real answer,
+                not a missing one.
+              </p>
+            )}
           </>
         )}
       </div>
-      <div className="card">
-        <h2>New tenant</h2>
-        <form className="stack" onSubmit={create}>
-          <label>Name<input name="name" required minLength={2} /></label>
-          <label>Slug<input name="slug" required pattern="[a-z0-9-]+" /></label>
-          <label>Seats<input name="seats_total" type="number" defaultValue={50} min={1} /></label>
-          <button className="primary">Create tenant</button>
-          {error && <p className="error">{error}</p>}
-        </form>
-        <p className="hint" style={{ marginTop: 10 }}>New tenants start with regulated mode ON — turning it off is a contract-level decision (SECURITY.md).</p>
-      </div>
+      {/* Collapsed by default. Creating a tenant is a rare, deliberate act; it was taking
+          half the viewport on every visit to a page whose actual job is the table above. */}
+      {creating && (
+        <div className="card">
+          <div className="people-head">
+            <h2>New tenant</h2>
+            <button className="linklike" onClick={() => { setCreating(false); setError(""); }}>cancel</button>
+          </div>
+          <form className="stack" onSubmit={create}>
+            <label>Name<input name="name" required minLength={2} autoFocus /></label>
+            <label>Slug<input name="slug" required pattern="[a-z0-9-]+" /></label>
+            <label>Seats<input name="seats_total" type="number" defaultValue={50} min={1} /></label>
+            <button className="primary">Create tenant</button>
+            {error && <p className="error">{error}</p>}
+          </form>
+        </div>
+      )}
       <InviteFirstAdmin orgs={orgs ?? []} />
     </>
   );
