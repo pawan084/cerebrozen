@@ -212,3 +212,106 @@ def test_the_eval_harness_reports_an_empty_index_rather_than_scoring_over_it(kb,
     seeded = capsys.readouterr().out
     assert "EMPTY" not in seeded
     assert "cskb 1 rows" in seeded
+
+
+# ── the values extractor must not report "no values" when it HAS them ─────────
+
+
+def _values_result(monkeypatch, *, hits, llm_ok, mongo_values=None, answered_none=False):
+    """Run Extract3 with the inputs that decide its answer.
+
+    `llm_ok=False` means the CALL FAILED (no key, rate limit, retired model) — the model
+    never answered. `answered_none=True` means it answered "these passages hold no values",
+    which is a real answer and must still produce null.
+    """
+    from app.rag import extractors as ex
+    from app.rag.registry import get_registry
+
+    monkeypatch.setattr(ex.store, "search", lambda *a, **k: hits)
+    monkeypatch.setattr(ex, "embed_one", lambda *_a, **_k: [0.1] * 8, raising=False)
+    monkeypatch.setattr("app.rag.embedder.embed_one", lambda *_a, **_k: [0.1] * 8)
+    if llm_ok:
+        reply = {"values": [{"name": "Candour", "description": "say the hard thing"}],
+                 "from_passage": 1}
+    else:
+        reply = None if answered_none else ex._LLM_UNAVAILABLE
+    monkeypatch.setattr(ex, "_llm_extract_values", lambda h: reply)
+    monkeypatch.setattr("app.stores.org.read_org_values",
+                        lambda _org: {"values": mongo_values or []})
+    e3 = next(x for x in get_registry().all() if x.extract_id == "Extract3")
+    return ex._extract_values(e3, {"org_id": "acme"}, 0.0)
+
+
+VALUES_DOC = {"text": "We value candour over comfort. Decisions sit with the people closest to the work.",
+              "source_link": "", "title": "Values"}
+
+
+def test_a_failed_structuring_model_is_loud_even_though_it_still_blanks(monkeypatch, caplog):
+    """The answer stays null; the SILENCE does not.
+
+    My first fix here served the top-hit passage instead, and
+    `test_a_crashed_values_extraction_is_logged_and_blanks_rather_than_guessing` caught it
+    and was right: values are quoted to the user as their company's own words, and a top
+    hit is whatever chunk ranked highest — a page header, a disclaimer. Reading that to an
+    employee as their organisation's values is worse than saying nothing.
+
+    But "we hold your values and the model died" is NOT "you have no values", and the
+    prompts act on the difference: CH gates Step 5 on non-null and routes null to Step 9,
+    which asks the EMPLOYEE for their own company's values. So a rate limit has the coach
+    interrogating someone about a document we are holding. The turn degrades either way;
+    the operator now finds out.
+    """
+    import logging
+
+    caplog.set_level(logging.ERROR, logger="cerebrozen.rag")
+
+    r = _values_result(monkeypatch, hits=[VALUES_DOC], llm_ok=False)
+
+    assert r.status == "null", "it must still blank — a top-hit chunk is not their values"
+    assert "rag.values_unavailable_not_absent" in caplog.text, "it degraded silently"
+    # The reason rides in `extra`, not the message — that is what the JSON log ships.
+    rec = next(r for r in caplog.records if r.msg == "rag.values_unavailable_not_absent")
+    assert "check the RAG model" in rec.detail, "say which half broke"
+    assert rec.org_id == "acme", "an operator needs to know WHOSE coaching degraded"
+
+
+def test_an_org_that_genuinely_has_no_values_is_not_reported_as_an_outage(monkeypatch, caplog):
+    """The counterweight. An un-onboarded tenant is the NORMAL case — crying outage over
+    it is how the alert gets muted, and then the real one is missed too."""
+    import logging
+
+    caplog.set_level(logging.ERROR, logger="cerebrozen.rag")
+
+    r = _values_result(monkeypatch, hits=[], llm_ok=False)
+
+    assert r.status == "null"
+    assert "rag.values_unavailable_not_absent" not in caplog.text
+
+
+def test_a_model_that_answers_no_values_is_believed(monkeypatch):
+    """The counterweight to the fix, and an existing contract it must not break
+    (`test_..._ends_in_null_not_a_half_answer`): a model that READ the passages and said
+    "nothing here" is answering, not failing. Only a call that never returned degrades —
+    otherwise the fallback would serve an unrelated document as an org's values.
+    """
+    r = _values_result(monkeypatch, hits=[VALUES_DOC], llm_ok=False, answered_none=True)
+
+    assert r.status == "null"
+
+
+def test_an_org_with_no_values_document_still_resolves_to_null(monkeypatch):
+    """The counterweight. This null is CORRECT and must survive the fix — otherwise the
+    coach never asks a genuinely un-onboarded tenant for their values, which is the whole
+    point of Step 9."""
+    r = _values_result(monkeypatch, hits=[], llm_ok=False)
+
+    assert r.status == "null"
+
+
+def test_the_structured_path_is_still_preferred(monkeypatch):
+    """A working model must still produce named values — the fallback is a degradation,
+    not the new normal."""
+    r = _values_result(monkeypatch, hits=[VALUES_DOC], llm_ok=True)
+
+    assert r.status == "resolved"
+    assert "Candour: say the hard thing" in r.formatted

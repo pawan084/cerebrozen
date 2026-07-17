@@ -268,11 +268,24 @@ def _result(
 _VALUES_QUERY = "organization core values, guiding principles and their descriptions"
 
 
+#: The structuring call never returned an answer — no key, a rate limit, a retired model
+#: id, the network. Distinct from None, which means the model ANSWERED and the answer was
+#: "these passages hold no values". Conflating the two is what let a transient outage tell
+#: the coach a customer has no values (see `_extract_values`), and keeping them apart is
+#: what lets `test_..._ends_in_null_not_a_half_answer` still hold: a model that read the
+#: document and said "nothing here" is believed.
+_LLM_UNAVAILABLE = object()
+
+
 def _llm_extract_values(hits: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Extract the FULL list of org values (name + description) from CSKB passages,
     verbatim, plus WHICH passage they came from (so the caller can attribute the
-    source link correctly). Returns {"values": [...], "from_passage": int|None} or
-    None for none/error."""
+    source link correctly).
+
+    Returns {"values": [...], "from_passage": int|None} when the model answered with
+    values, None when it ANSWERED that there are none (including unparseable output —
+    a garbled answer is still an answer, and a half-read values list is worse than none),
+    or `_LLM_UNAVAILABLE` when the call itself failed."""
     from app.graph.tools import _safe_json
     from app.rag.embedder import _client
 
@@ -294,7 +307,7 @@ def _llm_extract_values(hits: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         obj = _safe_json(resp.output_text)
     except Exception as exc:  # noqa: BLE001
         logger.warning("rag.values_llm_failed", extra={"error": str(exc)})
-        return None
+        return _LLM_UNAVAILABLE
     if not obj or str(obj.get("status", "")).lower() == "null":
         return None
     values = obj.get("values") or []
@@ -331,8 +344,11 @@ def _extract_values(ex: Extraction, params: Dict[str, Any], started: float) -> E
     except Exception as exc:  # noqa: BLE001
         logger.warning("rag.values_cskb_failed", extra={"org_id": org_id, "error": str(exc)})
     _log_candidates(ex, _VALUES_QUERY, hits, params)
+    unavailable = False
     if hits:
         extracted = _llm_extract_values(hits)
+        if extracted is _LLM_UNAVAILABLE:
+            unavailable, extracted = True, None
         if extracted:
             # Attribute the source link to the passage the values were actually
             # drawn from (set from the doc, never the LLM). Falls back to the top hit.
@@ -352,7 +368,46 @@ def _extract_values(ex: Extraction, params: Dict[str, Any], started: float) -> E
             started=started,
         )
 
-    # 3) Nothing anywhere.
+    # 2b) We HOLD this org's values document and the structuring model never answered.
+    #
+    #     Do NOT fall back to the top-hit passage. That was my first fix and it is wrong:
+    #     values are QUOTED to the user as their company's own words (CH Step 5 presents
+    #     them "verbatim, no reinterpreting"), and a top hit is whatever chunk ranked
+    #     highest for a values-ish query — a page header, a contents page, a legal
+    #     disclaimer. Reading that to an employee as their organisation's values is putting
+    #     words in the customer's mouth, which is worse than saying nothing.
+    #     `test_a_crashed_values_extraction_is_logged_and_blanks_rather_than_guessing`
+    #     already pinned that decision; it caught the fallback and it was right.
+    #
+    #     So the answer is still null — but it is no longer SILENT. This is a different
+    #     fact from "this organisation has no values", and the prompts act on the
+    #     difference: CH gates Step 5 on {CSKB_Values} being non-null and routes a null to
+    #     Step 9, which ASKS THE EMPLOYEE what their company's values are. A rate limit
+    #     therefore has the coach interrogating someone about a document we are holding at
+    #     that moment. That is worth an ERROR and a counted violation, not a WARNING nobody
+    #     reads: the turn degrades, and the operator finds out.
+    if hits and unavailable:
+        logger.error(
+            "rag.values_unavailable_not_absent",
+            extra={
+                "org_id": org_id,
+                "hits": len(hits),
+                "detail": (
+                    "this org HAS a values document but the structuring model never "
+                    "answered — the coach will act as though they have none and ask the "
+                    "user for them (CH Step 9). Not a data problem: check the RAG model."
+                ),
+            },
+        )
+        try:
+            from app.metrics import record_contract_violation
+
+            record_contract_violation("rag_values_unavailable")
+        except Exception:  # noqa: BLE001 — never let telemetry break a turn
+            pass
+
+    # 3) Nothing anywhere — the org genuinely has no values. THIS null is correct, and it
+    #    is the only path that may produce one.
     return _result(ex, status="null", started=started)
 
 
