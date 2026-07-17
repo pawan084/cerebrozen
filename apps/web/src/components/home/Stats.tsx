@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Counter from "@/components/Counter";
 import Reveal from "@/components/Reveal";
 
@@ -16,7 +17,7 @@ export default function Stats() {
             Trusted by teams that run on clarity
           </h2>
           <p className="mt-2 text-sm text-brand-800">
-            Measured across 90 days
+            Representative outcomes over a 90-day engagement
           </p>
         </Reveal>
 
@@ -38,6 +39,19 @@ export default function Stats() {
             </Reveal>
           ))}
         </div>
+
+        <Reveal className="mx-auto mt-12 max-w-2xl text-center text-xs text-brand-500">
+          Illustrative outcomes — representative of typical engagements, not a
+          specific measured cohort. The numbers we <em>do</em> measure —
+          coverage, cost per session, crisis red-team gaps — are on the{" "}
+          <Link
+            href="/evidence"
+            className="font-semibold text-brand-800 underline underline-offset-2 hover:text-zen-600"
+          >
+            Evidence page
+          </Link>
+          , each with a way to check it yourself.
+        </Reveal>
       </div>
     </section>
   );
