@@ -1860,16 +1860,46 @@ def test_a_stage_missing_from_the_catalog_entirely_is_flagged_and_disabled(tmp_p
     assert reg.model_for("learning_aid_agent") is None
 
 
-def test_an_oversize_prompt_is_flagged_before_it_becomes_a_latency_bill(tmp_path):
-    """~6K tokens of system prompt on every turn of every session. The Excel cell cap forces
-    a spill long after the cost has become the problem."""
+def test_an_oversize_prompt_is_flagged(tmp_path):
+    """Past the warn threshold, a prompt cannot leave room for a conversation on the local
+    model — see PROMPT_SIZE_WARN_CHARS for the arithmetic (it is derived from the offline
+    context window, not from taste).
+
+    Written across CONTINUATION cells because a single cell cannot express it: Excel caps a
+    cell at 32,767 chars and truncates silently past that — measured, writing 79,001 chars
+    to one cell reads back as 32,767, so the old single-cell version of this test could
+    only ever have flagged a threshold BELOW the cap. The real prompts spill the same way
+    (CH is 70,934 chars over three cells).
+    """
+    over = prompts_mod.PROMPT_SIZE_WARN_CHARS + 1
+    chunk = 30_000  # comfortably under Excel's 32,767 per-cell cap
+    body = {i: "x" * min(chunk, over - i * chunk)
+            for i in range((over + chunk - 1) // chunk)}
     sheets = {sheet: "" for sheet in prompts_mod.STAGE_SHEET.values()}
-    sheets["environment_system_agent"] = "x" * (prompts_mod.PROMPT_SIZE_WARN_CHARS + 1)
+    sheets["environment_system_agent"] = body
     sheets["feedback_mood_capture_agent"] = "Wrap up."
 
     reg = prompts_mod.PromptRegistry(_workbook(tmp_path, sheets, _clean_catalog()))
 
-    assert reg.validation["oversize"]["environment"] == prompts_mod.PROMPT_SIZE_WARN_CHARS + 1
+    assert len(reg.get("environment")) == over, "the workbook truncated — test builds nothing"
+    assert reg.validation["oversize"]["environment"] == over
+
+
+def test_todays_prompts_are_not_oversize(tmp_path):
+    """The threshold must describe the prompts that SHIP, or it is noise.
+
+    It was 24,000 and fired on five of the fifteen — permanently, on every load. Nine
+    validation issues, five of them false, which is how four REAL unresolved-placeholder
+    bugs sat unnoticed in the same report. A gate that is always red gates nothing.
+    """
+    from app.graph.runtime import get_registry
+
+    report = get_registry().validation
+    assert not report["oversize"], (
+        f"the bundled workbook trips the size warning: {report['oversize']} — either a "
+        f"prompt genuinely outgrew the offline context budget, or the threshold is wrong "
+        f"again"
+    )
 
 
 def test_a_placeholder_nothing_can_resolve_is_flagged_rather_than_blanked(tmp_path):

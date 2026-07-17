@@ -85,11 +85,34 @@ STAGE_SHEET: Dict[str, str] = {
     "action_checkin_agent": "action_checkin_agent",
 }
 
-# Advisory size budget per prompt. Excel's hard 32,767-char cell cap forces a
-# continuation spill (B8, B9, …), but a prompt anywhere near that size is itself
-# a latency/cost/quality smell (~6K tokens) — the validation report flags it
-# well before the spill so authors trim or modularize instead of growing blobs.
-PROMPT_SIZE_WARN_CHARS = 24_000
+# Advisory size budget per prompt — DERIVED from the offline context window, not from a
+# feeling about what looks big.
+#
+# It was 24,000 ("a prompt anywhere near Excel's 32,767-char cell cap is a latency/cost/
+# quality smell"). Measured 2026-07-17, that smell does not exist: every reason to keep
+# prompts small — money, latency, offline viability, attention dilution — was tested and
+# none held (docs/PROMPTS_SPEC.md §"The budget, measured"; the 16.5K-token CH prompt scores
+# 100% on an 8B local model with the rule it must obey buried at 88% depth).
+#
+# So 24,000 fired on FIVE of the fifteen shipping prompts, permanently. Nine validation
+# issues on every load, five of them false — which is how the other four (real unresolved
+# placeholders that BLANK a template at runtime, wiping two of its three parts) sat
+# unnoticed. A threshold that cries wolf does not make anyone trim a prompt; it teaches
+# them to skim the report.
+#
+# The one budget that is real is the offline context window, so derive from it:
+#
+#     32,768  tok   CEREBROZEN_OLLAMA_NUM_CTX — the tightest configured target
+#     -8,192  tok   OPENAI_MAX_OUTPUT_TOKENS  — reply + hidden reasoning
+#     -6,000  tok   conversation history      — ~15 turns at ~400 tok
+#     =18,576 tok   left for the composed prompt
+#      x 4.28 chars/token (measured on these prompts: 70,934 chars / 16,576 tok)
+#     ~79,000 chars
+#
+# A prompt past this genuinely cannot hold a conversation offline — that is a real defect,
+# not a smell. Today's largest (CH, 70,934) sits ~8K under it, which is a consequence of
+# the arithmetic and not the goal: raise NUM_CTX and this rises with it.
+PROMPT_SIZE_WARN_CHARS = 79_000
 
 # How many rows past the first blank cell the loader scans for stray content.
 # Content BELOW a blank cell is silently dropped by the continuation reader

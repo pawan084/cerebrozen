@@ -8,8 +8,15 @@ question was raised — the reference's own docs describe the content as
 built for a prior client program — and the owner decided to proceed on it;
 recorded here and in TODO.md.) This spec governs the **adaptation**: each
 agent must emit the structured fields the graph routes on, honor its
-placeholders, hit the length budgets (most reference prompts are far over
-them), and be rebranded into the CereBroZen voice.
+placeholders, and be rebranded into the CereBroZen voice.
+
+> **The length budget is retired (2026-07-17).** This paragraph used to say
+> "hit the length budgets (most reference prompts are far over them)". Every
+> reason to shrink them — money, latency, offline viability, attention
+> dilution — has now been measured, and none of them exists. §"The budget,
+> measured" has the numbers. Nothing else in this spec changed: the envelope,
+> the placeholders and the voice rules are unaffected, and a qualified coach's
+> sign-off on the method remains a release condition.
 
 ## Global rules (apply to every prompt)
 
@@ -39,9 +46,22 @@ them), and be rebranded into the CereBroZen voice.
   fields like `{coachability_score}`). The validator rejects unknown tokens;
   an unresolved token is blanked, so prompts must read naturally with any
   single token absent.
-- **Length budget**: target ≤8K characters per prompt (validator warns at
-  24K). The reference's 70K-char prompts are the anti-pattern — they cost
-  latency, money, and offline viability.
+- **Length budget**: aim for the shortest prompt that does the job — as a
+  drafting habit, not a target to retrofit. **The ≤8K target is retired**
+  (2026-07-17). It was justified by "latency, money, and offline viability";
+  all three were measured and none held, and so was a fourth added later
+  (attention dilution). See §"The budget, measured" below for the numbers
+  before re-proposing it. Short is still a virtue: it is easier to author,
+  review and reason about, and `environment` at 45K on every single call
+  genuinely was the #1 cost bug (fixed, now 1.7K). But no shipping prompt is
+  rewritten to hit a number, and none of them needs to be.
+  The validator's hard warning is **79K chars**, derived from the offline
+  context window rather than from taste (`llm/prompts.PROMPT_SIZE_WARN_CHARS`
+  shows the arithmetic): past that, a prompt cannot leave room for a
+  conversation on the local model, which is a real defect. It was 24K, fired
+  on five of the fifteen shipping prompts permanently, and that noise is
+  exactly what hid four REAL unresolved-placeholder bugs sitting in the same
+  report.
 - **Safety**: never instruct the model on crisis handling — the screen and
   takeover run in code before the prompt is ever seen. Prompts must not
   claim the coach is a therapist, doctor, or lawyer.
@@ -73,8 +93,10 @@ Ordering follows the session arc. "Emits" = routed fields beyond
 
 ## The budget, measured (2026-07-17) — read this before shrinking anything
 
-The ≤8K target is justified above as "latency, money, and offline viability". Measured, on
-the real API, those three are not equal — and the biggest lever is not the prompt:
+This is why the ≤8K target above is retired. It **was** justified as "latency, money, and
+offline viability" — three claims, none measured when they were written. Measured on the
+real API and on the real offline model, none of them survives, and the biggest lever turned
+out not to be the prompt at all:
 
 | claim | measured | verdict |
 |---|---|---|
@@ -103,10 +125,11 @@ qualified coach's sign-off — which is a release condition this project does no
 That is a bad trade in every direction, and it was invisible until someone measured instead
 of reasoning from "70K chars is obviously too big".
 
-The budget is not therefore meaningless — a NEW prompt written at 70K would still be
-careless, and `environment` at 45K on every call genuinely was the #1 cost bug (fixed, 1.7K).
-Keep ≤8K as guidance for new authoring. Do not spend a quarter retrofitting it onto content
-that measures fine.
+Brevity is not therefore worthless — a NEW prompt written at 70K would still be careless,
+and `environment` at 45K on every call genuinely was the #1 cost bug (fixed, 1.7K). But
+"≤8K" specifically is retired: it is a number nothing measures, and keeping it "as
+guidance" is how it comes back as a target. Write short because short is clear. The only
+hard line is the validator's 79K, derived from the offline context window.
 
 **The last candidate — attention dilution — was tested on 2026-07-17. It is dead too.**
 
