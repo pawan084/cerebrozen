@@ -5,7 +5,7 @@
    internal_admin → Tenants · Demo requests  */
 
 import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
+import { AuthExpired, api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
 import { AgentFlowCanvas } from "@/components/flow";
 
@@ -27,21 +27,32 @@ function useLoad<T>(loader: () => Promise<T>) {
   const [loading, setLoading] = useState(true);
   const ref = useRef(loader);
   ref.current = loader;
+  const [expired, setExpired] = useState(false);
   const reload = useCallback(() => {
     setLoading(true); setError("");
-    ref.current().then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    ref.current().then(setData).catch((e) => {
+      // A dead session is not a failed request: Retry cannot fix it (the tokens are
+      // already gone), so the card must offer the one action that can.
+      setExpired(e instanceof AuthExpired);
+      setError(e.message);
+    }).finally(() => setLoading(false));
   }, []);
   useEffect(() => { reload(); }, [reload]);
-  return { data, error, loading, reload };
+  return { data, error, loading, reload, expired };
 }
 function Skeleton({ rows = 3 }: { rows?: number }) {
   return <div className="skeleton">{Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton-row" />)}</div>;
 }
-function Failed({ msg, onRetry }: { msg: string; onRetry?: () => void }) {
+function Failed({ msg, onRetry, expired }: { msg: string; onRetry?: () => void; expired?: boolean }) {
+  // Retry is the wrong verb for an expired session — refresh already ran and lost, the
+  // tokens are cleared, and pressing it just fails again with the same opaque 401. A
+  // reload lands on the sign-in screen, which is the thing the operator actually needs.
   return (
     <div className="card"><div className="failed">
       <p className="error">{msg}</p>
-      {onRetry && <button className="ghost" onClick={onRetry}>Retry</button>}
+      {expired
+        ? <button className="ghost" onClick={() => window.location.reload()}>Reload to sign in</button>
+        : onRetry && <button className="ghost" onClick={onRetry}>Retry</button>}
     </div></div>
   );
 }
@@ -112,9 +123,9 @@ function Login({ onDone }: { onDone: () => void }) {
 }
 
 function OrgOverview() {
-  const { data: org, error, loading, reload } = useLoad<Org>(() => apiJson<Org>("/orgs/me"));
+  const { data: org, error, loading, reload, expired } = useLoad<Org>(() => apiJson<Org>("/orgs/me"));
   if (loading) return <div className="card"><Skeleton rows={2} /></div>;
-  if (error) return <Failed msg={error} onRetry={reload} />;
+  if (error) return <Failed msg={error} onRetry={reload} expired={expired} />;
   if (!org) return null;
   return (
     <div className="card">
@@ -143,9 +154,9 @@ const METRIC_LABELS: Record<string, string> = {
 };
 
 function OrgAnalytics() {
-  const { data, error, loading, reload } = useLoad<Analytics>(() => apiJson<Analytics>("/orgs/me/analytics"));
+  const { data, error, loading, reload, expired } = useLoad<Analytics>(() => apiJson<Analytics>("/orgs/me/analytics"));
   if (loading) return <div className="card"><Skeleton rows={3} /></div>;
-  if (error) return <Failed msg={error} onRetry={reload} />;
+  if (error) return <Failed msg={error} onRetry={reload} expired={expired} />;
   if (!data) return null;
   const anySuppressed = Object.values(data.metrics).some((m) => m.suppressed);
   const fmt = (name: string, m: Metric) =>
@@ -196,6 +207,9 @@ function People({ me }: { me: Me }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState("");
+  // This list loads by hand rather than through useLoad, so it needs the same distinction:
+  // a dead session cannot be retried, only signed into again.
+  const [expired, setExpired] = useState(false);
 
   const fetchPage = useCallback(async (term: string, offset: number) => {
     const url = `/orgs/me/people?limit=${PAGE}&offset=${offset}${term ? `&q=${encodeURIComponent(term)}` : ""}`;
@@ -206,7 +220,7 @@ function People({ me }: { me: Me }) {
     setError("");
     fetchPage(term, 0)
       .then((r) => { setRows(r.people); setTotal(r.total); })
-      .catch((e) => setError(e.message));
+      .catch((e) => { setExpired(e instanceof AuthExpired); setError(e.message); });
   }, [fetchPage]);
 
   // Debounced: a keystroke per request would hammer the roster of a big tenant.
@@ -250,7 +264,7 @@ function People({ me }: { me: Me }) {
     }
   }
 
-  if (error && !rows) return <Failed msg={error} onRetry={reload} />;
+  if (error && !rows) return <Failed msg={error} onRetry={reload} expired={expired} />;
   return (
     <div className="card">
       <div className="people-head">
@@ -568,8 +582,12 @@ function Tenants() {
   const [regions, setRegions] = useState<string[]>([]);
   const [openKb, setOpenKb] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   const load = useCallback(() => {
-    apiJson<Org[]>("/orgs").then(setOrgs).catch((e) => setError(e.message));
+    apiJson<Org[]>("/orgs").then(setOrgs).catch((e) => {
+      setExpired(e instanceof AuthExpired);
+      setError(e.message);
+    });
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
@@ -611,7 +629,7 @@ function Tenants() {
       <div className="card">
         <h2>Tenants</h2>
         {orgs === null ? (
-          error ? <div className="failed"><p className="error">{error}</p><button className="ghost" onClick={load}>Retry</button></div> : <Skeleton />
+          error ? <Failed msg={error} onRetry={load} expired={expired} /> : <Skeleton />
         ) : (
           <>
             <table>

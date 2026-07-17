@@ -83,8 +83,24 @@ export async function api(path: string, init: RequestInit = {}, retried = false)
   return r;
 }
 
+/** The session is gone and no request will succeed until someone signs in again.
+ *
+ * A 401 reaching here has ALREADY been through `refresh()` and lost (see `api`), so the
+ * tokens are cleared and retrying is guaranteed to fail. It used to arrive as a bare
+ * "HTTP 401" in a Failed card with a Retry button — an operator pressing a button that
+ * cannot work, told nothing about why. Distinguished from a real error so the UI can offer
+ * the one action that helps. (403 stays an ordinary error: that is "not for you", which
+ * signing in again will not change.) */
+export class AuthExpired extends Error {
+  constructor() {
+    super("Session expired — reload to sign in.");
+    this.name = "AuthExpired";
+  }
+}
+
 export async function apiJson<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const r = await api(path, init);
+  if (r.status === 401) throw new AuthExpired();
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
   return (await r.json()) as T;
 }
@@ -102,6 +118,8 @@ export async function engineApi(path: string, init: RequestInit = {}, retried = 
 
 export async function engineJson<T = unknown>(path: string): Promise<T> {
   const r = await engineApi(path);
+  // Same session, same expiry — the engine trusts the platform's token.
+  if (r.status === 401) throw new AuthExpired();
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
   return (await r.json()) as T;
 }

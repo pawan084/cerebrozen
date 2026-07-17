@@ -263,6 +263,32 @@ test.describe("ops console", () => {
     expect(r.status(), "an org_admin could resolve their employees' crisis records").toBe(403);
   });
 
+  test("an expired session says so, and offers the action that works", async ({ page }) => {
+    /* The admin threw a bare "HTTP 401" into a Failed card with a RETRY button — which
+       could never work: by the time a 401 reaches the UI, refresh() has already run and
+       lost, and the tokens are cleared. An operator pressing it just got the same opaque
+       error. Worse on Tenants, which rendered its own error div only while orgs === null,
+       so an expiry AFTER a successful load was swallowed silently. */
+  await signIn(page, urls.admin, "ops");
+  await page.getByRole("button", { name: "Tenants", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
+
+  // Rot BOTH tokens: the access token 401s, and the refresh that follows also fails —
+  // which is exactly the state a real expiry reaches.
+  await page.evaluate(() => localStorage.setItem("cbz_tokens",
+    JSON.stringify({ access_token: "dead", refresh_token: "dead" })));
+  await page.getByRole("button", { name: "Demo requests" }).click();
+  await page.getByRole("button", { name: "Tenants", exact: true }).click();
+
+  await expect(page.locator(".failed .error").first()).toContainText("Session expired", { timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Reload to sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+
+  // And the offered action actually resolves it: reload → no tokens → sign-in screen.
+  await page.getByRole("button", { name: "Reload to sign in" }).click();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible({ timeout: 10_000 });
+  });
+
   test("a tenant's knowledge base is visible and says when it is ungrounded", async ({ page }) => {
     /* The "Tuned to Your Culture" mechanism (PRODUCT.md). Its failure mode is SILENT: no
        values document -> no {CSKB_Values} -> the prompt's field-presence gate takes the
