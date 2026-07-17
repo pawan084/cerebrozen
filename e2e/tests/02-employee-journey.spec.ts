@@ -90,14 +90,31 @@ test.describe("employee journey", () => {
     await page.waitForSelector(".sidebar", { timeout: 30_000 });
     await page.goto(`${urls.app}/coach`, { waitUntil: "domcontentloaded" });
 
+    /* Send, and wait for the turn to actually FINISH.
+       `send()` bails while `busy`, and the composer swallows the keypress silently — so a
+       test that only waits for the first token races the stream, presses Enter into a busy
+       composer, and then waits 40s for a panel whose message was never sent. The Send
+       button is `disabled={busy || !draft.trim()}`, which makes "the turn is done" a real
+       DOM state rather than a sleep. */
+    const say = async (text: string) => {
+      await page.locator("textarea").fill(text);
+      // With a non-empty draft the button is enabled ONLY when !busy, so this is what
+      // waits out the previous turn. (Disabled alone would prove nothing — an empty draft
+      // disables it too.)
+      await expect(page.locator("button.send"), "the previous turn never finished")
+        .toBeEnabled({ timeout: 40_000 });
+      await page.keyboard.press("Enter");
+      // send() clears the draft: proof the keypress was accepted rather than swallowed.
+      await expect(page.locator("textarea"), "the composer swallowed the message")
+        .toHaveValue("");
+    };
+
     // An ordinary turn must NOT cry wolf.
-    await page.locator("textarea").fill("I keep putting off a hard conversation with my manager.");
-    await page.keyboard.press("Enter");
+    await say("I keep putting off a hard conversation with my manager.");
     await expect(page.locator(".coach .bubble, .row.coach .bubble").first()).toBeVisible({ timeout: 40_000 });
     await expect(page.locator(".crisis"), "an ordinary turn raised the crisis panel").toHaveCount(0);
 
-    await page.locator("textarea").fill("I want to kill myself");
-    await page.keyboard.press("Enter");
+    await say("I want to kill myself");
     const panel = page.locator(".crisis");
     await expect(panel, "the crisis screen fired and the UI said nothing").toBeVisible({ timeout: 40_000 });
     // role=alert: a screen reader must announce this the moment it appears.

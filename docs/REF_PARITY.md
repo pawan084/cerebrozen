@@ -220,8 +220,51 @@ at which customer tripped the crisis screen.** No customer role can — an `org_
 HR) gets 403 on both the read and the ack, verified against the composed stack. Recorded in
 SECURITY.md (the tenancy claim now names its exception) and ARCHITECTURE.md.
 
+## NEXT — export and erasure are broken on Postgres (the default store)
+
+Found by running the e2e suite against the composed stack while verifying item 15.
+Measured, not reasoned about:
+
+    GET    /v1/privacy/me/export  ->  500   psycopg UndefinedColumn: column "doc" does not exist
+    DELETE /v1/privacy/me         ->  400
+
+Both are **statutory DPDP paths**, and PRODUCT.md ships export + delete as v1 functions.
+
+Root cause — a name collision the shim cannot see. `privacy/erasure.py:_locations()` registers
+`checkpoints` and `checkpoint_writes` as if they were Mongo collections. On Postgres those
+are **LangGraph's own tables**, with LangGraph's schema (`thread_id, checkpoint_ns,
+checkpoint_id, …`) — not the shim's `(_id TEXT, doc JSONB)`. `_ensure`'s
+`CREATE TABLE IF NOT EXISTS` sees a table of that name, skips it, and the first
+`SELECT doc FROM checkpoints` fails. Same family as bugs 2/3/5/6: mongomock has no
+LangGraph tables, so the suite is green.
+
+The erasure path **fails closed** (400, refusing to claim a partial wipe succeeded) rather
+than reporting a success it did not achieve — that part of the design works, and it is why
+this is a bug and not an incident.
+
+Worse, and separate: **`checkpoint_blobs` is not in the registry at all.** The registry's
+own comment says checkpoints hold "the entire graph state, including the message history",
+but on the Postgres checkpointer the payload lives in `checkpoint_blobs`, keyed by
+`thread_id`. So even once the two registered locations are readable, an erasure would
+leave the message history behind. Verify the whole checkpointer schema
+(`checkpoints`, `checkpoint_writes`, `checkpoint_blobs`) against the registry — do not
+just fix the crash.
+
+Shape of the fix: the registry needs a per-location strategy — shim-document vs. native
+checkpointer — because "delete this person's graph state" is a `DELETE … WHERE thread_id =
+ANY(...)` against LangGraph's tables, not a document read. Whatever lands must be driven
+against a real Postgres, not mongomock; `tests/conftest.py` now has `pgdb`/`requires_pg`
+for exactly this.
+
 ## Warts found while building, not yet fixed
 
+- **A test leaves an injection artifact in the dev database.** `\dt` on the dev Postgres
+  shows a table named `convDROPTABLEusers` — a collection name like
+  `conv'; DROP TABLE users;--` run through `PgCollection.__init__`'s sanitiser
+  (`isalnum() or "_"`), which is the sanitiser doing its job. But the table outlives the
+  test that made it, so the evidence reads like a successful injection to anyone who looks
+  at the schema later. Give that test the `pgdb` harness (it drops what it creates) rather
+  than leaving the artifact behind.
 - **A missing store reports "disabled for this tenant" (409).** `wellness.add_mood`
   returns `None` both when the tenant flag is off AND when no store is reachable, and
   `routers/wellness.py` maps that to `_REFUSED`. A developer with no `POSTGRES_URL` is

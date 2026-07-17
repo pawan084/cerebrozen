@@ -206,11 +206,25 @@ test.describe("ops console", () => {
       (await (await request.get(`${urls.engine}/v1/safety/escalations?status=${status}`,
         { headers: auth(ops) })).json());
 
+    /* Seed the row this test needs rather than hoping the shared stack has one: an earlier
+       run of this very spec drains the queue, so a `test.skip` on an empty queue would make
+       the test pass by never running — which is the failure mode this whole file exists to
+       catch. A real crisis turn also proves the path end to end: the person's disclosure
+       reaches escalate(), and what they said never reaches the queue. */
+    const member = await token(request, "member");
+    const turn = await request.post(`${urls.engine}/v1/sessions/start`, {
+      headers: auth(member),
+      data: { text: "i want to kill myself" },
+      timeout: 60_000,
+    });
+    expect(turn.ok(), `the crisis turn failed: ${turn.status()}`).toBeTruthy();
+
     const before = await open();
-    test.skip(before.count === 0, "no escalation in the shared stack's queue to acknowledge");
+    expect(before.count, "a crisis turn recorded no escalation").toBeGreaterThan(0);
 
     const row = before.escalations[0];
     expect(row.id, "an empty id would leave the Resolve button nothing to send").toBeTruthy();
+    expect(row.org_id, "a cross-tenant row must name its tenant").toBeTruthy();
 
     const r = await request.post(
       `${urls.engine}/v1/safety/escalations/${encodeURIComponent(row.id)}/ack`,
@@ -251,7 +265,7 @@ test.describe("ops console", () => {
 
   test("the console renders the queue and its open/resolved filter", async ({ page }) => {
     await signIn(page, urls.admin, "ops");
-    await page.getByRole("button", { name: "Safety", exact: true }).click();
+    await page.getByRole("button", { name: "Safety queue", exact: true }).click();
 
     await expect(page.getByRole("heading", { name: /Safety queue/ })).toBeVisible();
     // The filter must actually be a control, not three unstyled buttons: `.seg` was
