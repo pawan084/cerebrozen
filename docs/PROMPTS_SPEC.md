@@ -79,7 +79,7 @@ the real API, those three are not equal — and the biggest lever is not the pro
 | claim | measured | verdict |
 |---|---|---|
 | **money** | a full 15-agent session ≈ 80K input tok ≈ **$0.02**; a 27-turn CH session ≈ 457K ≈ **$0.11** | weak. Not what the rewrite is for. |
-| **latency** | dominated by the **model**, not the prompt: same prompts, `gpt-5.4` = 2.4–4.3s/turn, `gpt-5-mini` = 9.8–29.7s. Production forces mini on every agent (`docker-compose.prod.yml`), so it ships 5–8× slower than the config the eval measures. | **fix the model config first — one line, no coach, no rewrite.** |
+| **latency** | dominated by the **model**, not the prompt: same prompts, `gpt-5.4` = 2.4–4.3s/turn, `gpt-5-mini` = 9.8–29.7s. Production forced mini on every agent. | ~~fix the model config first~~ **DONE 2026-07-17** — the override default is gone (priority 4). Also 1.7× cheaper, not just faster. |
 | **offline viability** | CH's composed prompt is **16.5K tokens**. A local model cannot hold it. | **real, and the only one that requires the cut.** |
 
 Two things that look like wins and are not, so nobody spends a week on them:
@@ -108,9 +108,18 @@ do the model-config fix (priority 4) first — it is bigger, cheaper and safer.
    reference into RAG where possible.
 3. **Rebrand sweep**: strip all incumbent naming/persona references; apply
    CereBroZen voice rules.
-4. **Model column cleanup**: Catalog lists `gpt-5.4`/`gpt-5-mini`/`gpt-5-nano`
-   with inconsistent `TRUE/True` enabled values — normalize, and map models
-   per our provider matrix (incl. Anthropic + Ollama equivalents).
+4. ~~**Model column cleanup**~~ **DONE 2026-07-17** — and the described defect
+   was not there. Our fork's Catalog is already consistent: 15 rows, all
+   `enabled=TRUE`, two models (`gpt-5.4` ×10, `gpt-5-mini` ×5). No `gpt-5-nano`,
+   no `True`/`TRUE` mix — that was the reference's workbook, not ours.
+   The real defect was one level down: `docker-compose.prod.yml` DISCARDED the
+   Catalog, forcing `gpt-5-mini` on every agent, because `gpt-5.4` was believed
+   to be a placeholder id. It is a real model (API: HTTP 200). Measured, forcing
+   mini cost 3.6× the latency AND 1.7× the money per cached turn — it spends
+   ~1,408 reasoning tokens/turn at output rates, which its cheaper input cannot
+   pay for once the prompt caches at 90% off. The default is gone; the env hatch
+   remains for accounts that cannot reach a Catalog model, and for the offline
+   ollama profile. Pinned by `test_production_does_not_pin_one_model_over_the_catalog`.
 5. **Drop legacy sheets** (`orchestrator`, `placeholder_replacement_agent`,
    `user_profile_retrieval_agent`) — extracted for the record, not carried
    into the fork.

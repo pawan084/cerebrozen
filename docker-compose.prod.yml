@@ -42,23 +42,33 @@ services:
       PROMPT_SOURCE: codebase
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (base64) in .env.production}
       OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env.production}
-      # DECISION PENDING — this default is load-bearing and was never measured.
-      # It forces ONE model on every agent, ignoring the workbook Catalog that
-      # responses_client.model_for calls "the sole source of truth". It was added
-      # because gpt-5.4 was believed to be a placeholder id; it is not — the API
-      # returns HTTP 200 for it, and the Catalog assigns it to the nine heavy
-      # coaching agents deliberately.
+      # EMPTY ON PURPOSE — do not put a model id here.
       #
-      # Measured 2026-07-17, same prompts, same 16 eval cases, only the model differs:
-      #     Catalog (gpt-5.4)  -> 100% (16/16),  2.4-4.3s per turn
-      #     this default       ->  98% (15/16),  9.8-29.7s per turn
+      # Setting this forces ONE model on every agent and ignores the workbook
+      # Catalog, which responses_client.model_for calls "the sole source of
+      # truth". It defaulted to gpt-5-mini until 2026-07-17, on the belief that
+      # gpt-5.4 was a placeholder id. It is not: the API returns HTTP 200 for it,
+      # and the Catalog assigns it to the nine heavy coaching agents on purpose.
       #
-      # So production ships 5-8x slower coaching than the configuration anyone
-      # tested, and a 20-30s wait for a reply is a product decision nobody made.
-      # Unsetting it honours the Catalog and costs whatever gpt-5.4 costs — a
-      # money-vs-latency call for the owner, which is why this still says
-      # gpt-5-mini rather than being changed silently. See docs/EVALS.md.
-      CEREBROZEN_MODEL_OVERRIDE: ${CEREBROZEN_MODEL_OVERRIDE:-gpt-5-mini}
+      # Measured (same prompts, same 16 eval cases, 3 samples, only the model
+      # differs) — the default was worse on BOTH axes people assume it wins:
+      #
+      #     Catalog (gpt-5.4)   100% (16/16)   2.4-4.3s/turn    $0.0048/cached turn
+      #     gpt-5-mini forced    98% (15/16)   9.8-29.7s/turn   $0.0080/cached turn
+      #
+      # "mini" is not cheaper here. It burns ~1,408 REASONING tokens per turn
+      # (measured: 1,408 vs 0 for the same question, near-identical answer) and
+      # those bill at output rates, which its cheaper input cannot pay for once
+      # the prompt caches at 90% off. So forcing it bought 3.6x the latency and
+      # 1.7x the cost. A 20-30s wait for a coaching reply was a product decision
+      # nobody made; it was invisible because the eval ran the Catalog and
+      # production ran the override.
+      #
+      # Legitimate uses of this hatch: an account that genuinely cannot reach a
+      # Catalog model, or the offline profile (services/engine/.env.offline pins
+      # a local ollama model). Set it per-deployment then — never as a default.
+      # See docs/EVALS.md and services/engine/docs/OPERATIONS.md.
+      CEREBROZEN_MODEL_OVERRIDE: ${CEREBROZEN_MODEL_OVERRIDE:-}
       # The engine's CORS boot-guard refuses "*" under ENV=production, so this is
       # required. Only the browser apps that call the API cross-origin belong here.
       CEREBROZEN_CORS_ORIGINS: https://admin.cerebrozen.in,https://app.cerebrozen.in

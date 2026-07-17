@@ -48,10 +48,26 @@ reaching the user).
 > | Catalog, as authored | `gpt-5.4` (9 agents) | **100%** (16/16) | **2.4–4.3s** |
 > | `docker-compose.prod.yml` | `gpt-5-mini` (all) | 98% (15/16) | **9.8–29.7s** |
 >
-> A coaching turn taking 20–30s is a product decision nobody made. The contract holds
-> either way (98 vs 100 on a 16-case net), so this is a latency and cost question, not a
-> correctness one — but it was never measured, because the eval ran the Catalog and
-> production ran the override.
+> **FIXED 2026-07-17: the override default is gone; production honours the Catalog.**
+> The decision looked like latency-vs-money and turned out to be neither — measuring the
+> token mix showed the forced model was worse on BOTH axes:
+>
+> | | gpt-5.4 (Catalog) | gpt-5-mini (was forced) |
+> |---|---|---|
+> | latency/turn | **3.8s** | 13.7s |
+> | reasoning tokens/turn | **0** | **1,408** |
+> | visible answer | 229 tok | 286 tok |
+> | cost, cached turn | **$0.0048** | $0.0080 |
+>
+> "mini" is not cheaper here. It spends ~1,408 reasoning tokens on the same question for a
+> near-identical answer, and those bill at output rates ($4.50/M) — which its cheaper input
+> ($0.75/M vs $2.50/M) cannot pay for once the prompt caches at 90% off. Forcing it bought
+> 3.6× the latency and 1.7× the cost. (Mini prices are the published mini-tier rates; the
+> Catalog id is `gpt-5-mini`, the pricing page lists `gpt-5.4-mini` — close enough for the
+> direction, not exact.)
+>
+> Cold turn 1 is the one case mini wins ($0.0116 vs $0.0168), because the full prompt is
+> uncached. It does not survive turn 2.
 >
 > **The override's premise is false.** Its docstring says it exists "when the workbook
 > lists placeholder ids like gpt-5.4". `gpt-5.4` is a real model — asked the API directly:

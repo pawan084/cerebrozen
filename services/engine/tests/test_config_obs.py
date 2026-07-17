@@ -1510,3 +1510,48 @@ def test_a_real_secret_boots_in_production(reload_config):
     real = base64.b64encode(_secrets.token_bytes(48)).decode()
     cfg = reload_config(ENV="production", JWT_SECRET=real)
     assert cfg.JWT_SECRET == base64.b64decode(real)
+
+
+# ── the Catalog must survive deployment ──────────────────────────────────────
+
+
+def test_production_does_not_pin_one_model_over_the_catalog():
+    """`docker-compose.prod.yml` forced gpt-5-mini on every agent until 2026-07-17.
+
+    The Catalog is what `responses_client.model_for` calls "the sole source of truth", and
+    a deployment default quietly discarded it — so production ran a configuration the eval
+    never measured. Measured, forcing mini cost 3.6x the latency AND 1.7x the money per
+    cached turn (it spends ~1,408 reasoning tokens/turn, billed at output rates, which its
+    cheaper input cannot pay for once the prompt caches at 90% off).
+
+    The env var stays — an account that cannot reach a Catalog model needs the hatch, and
+    the offline profile pins a local ollama model with it. What must not come back is a
+    DEFAULT, because that applies to every deployment that never thought about it.
+    """
+    import re
+    from pathlib import Path
+
+    compose = (Path(__file__).resolve().parents[3] / "docker-compose.prod.yml").read_text()
+    # (.*?) not (.+?): the correct state is an EMPTY default, which `+` cannot match — so
+    # the greedy version found nothing and fell into the "guards nothing" assert below.
+    pinned = re.findall(r"CEREBROZEN_MODEL_OVERRIDE:\s*\$\{CEREBROZEN_MODEL_OVERRIDE:-(.*?)\}",
+                        compose)
+    assert pinned, "the override line vanished — this test now guards nothing"
+    for value in pinned:
+        assert not value.strip(), (
+            f"docker-compose.prod.yml defaults every agent to {value.strip()!r}, discarding "
+            f"the Catalog's per-agent model. Set it per-deployment, never as a default."
+        )
+
+
+def test_an_empty_override_falls_through_to_the_catalog(reload_config, monkeypatch):
+    """The compose default is the empty string, not an unset var — so an empty value must
+    mean "use the Catalog", or the fix above does nothing."""
+    from app.llm.responses_client import model_for
+
+    monkeypatch.setenv("CEREBROZEN_MODEL_OVERRIDE", "")
+    assert model_for("core_coaching_agent", catalog_model="gpt-5.4") == "gpt-5.4"
+    monkeypatch.setenv("CEREBROZEN_MODEL_OVERRIDE", "   ")  # whitespace is not a model
+    assert model_for("core_coaching_agent", catalog_model="gpt-5.4") == "gpt-5.4"
+    monkeypatch.setenv("CEREBROZEN_MODEL_OVERRIDE", "gemma4:latest")  # the offline hatch
+    assert model_for("core_coaching_agent", catalog_model="gpt-5.4") == "gemma4:latest"
