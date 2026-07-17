@@ -27,6 +27,7 @@ Legend: **✅ shipped** · **⚠️ partial** · **❌ not built**
 | Prompts as versioned data | ✅ | Coaches edit behaviour; content-hashed, validated, reversible. No release needed. |
 | Evaluation harness | ✅ | Coaching quality becomes a number, on every change. |
 | 7-day check-in scheduler | ⚠️ | Decides **who is due**. Nothing delivers it — see §5. |
+| **Outcome progress read** | ✅ | **New.** `GET /v1/outcomes` — a user's own progress: counts by status, actions per Development Area, and a follow-through rate. Counts, never content; user-scoped from the JWT. Aggregate/cohort view is separate (§4). |
 
 ## 2. Safety
 
