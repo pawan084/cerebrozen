@@ -1,6 +1,15 @@
 # Prompt-shrink draft — CH_coaching_agent & core_coaching_agent
 
-> **Status: DRAFT for coach review. Not applied to the live workbook.**
+> **Status: SHELVED 2026-07-17 — the justification was measured and does not exist.**
+> The strategy below ("externalize, don't compress") is still the right one, and this
+> stays as the plan-of-record if a measured reason ever appears. But the ≤8K target's
+> three justifications (latency, money, offline viability) were all measured and none
+> holds — offline hardest of all: gemma4's context is 131,072 tokens, CH's 16.9K prompt
+> prefills in 2.1s, and the offline eval scores 100% (16/16) on the full-size prompts.
+> See `docs/PROMPTS_SPEC.md` §"The budget, measured". Do not start this work without a
+> reason that survives measurement.
+>
+> **Originally: DRAFT for coach review. Not applied to the live workbook.**
 > Produced 2026-07-16. The target is ≤8K chars/agent (`docs/PROMPTS_SPEC.md`);
 > coaching-quality sign-off is a release condition, so this is a starting shape,
 > not a finished prompt.

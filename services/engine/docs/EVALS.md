@@ -75,11 +75,11 @@ reaching the user).
 > `gpt-5-mini` is guarding against a problem that does not exist.
 >
 > Corollary for the prompt-budget work (`PROMPTS_SPEC.md` priority 2): the ≤8K target is
-> justified by "latency, money, and offline viability". Measured, latency is dominated by
-> the forced model, not by prompt size, and money is ~$0.02–0.11 per session at these
-> rates. **Offline viability is the only one of the three that actually requires the cut** —
-> a local model cannot hold CH's 16.5K-token prompt at all. Fix the model config first; it
-> is one line and needs no coach.
+> justified by "latency, money, and offline viability". **All three are now measured and none
+> of them holds** — see PROMPTS_SPEC.md §"The budget, measured". The last one to fall was
+> offline: I asserted here that "a local model cannot hold CH's 16.5K-token prompt at all".
+> That was wrong, and it was an assumption, not a measurement. gemma4's context is **131,072
+> tokens** — the prompt fits eight times over — and it prefills in **2.1s at 7,756 tok/s**.
 
 ## The baseline as first measured (stale — see above)
 
@@ -142,9 +142,20 @@ clear cases when the field was forced by the grammar** (`_ROUTING_REQUIRED` in t
 provider). Grammar-forcing gives the local model something OpenAI does *not* have here: it
 **cannot** omit the field.
 
-> The comparison run (`--compare`) is not in this document because the Ollama host
-> (`122.180.255.176:11434`) went offline mid-session. The harness is ready; run it when the box
-> is back. **Do not accept a claim about offline quality — including mine — without this number.**
+> **The number, finally (2026-07-17).** The box came back. `--provider ollama` against
+> `gemma4:latest` (8B), `num_ctx=32768`, the real full-size prompts:
+>
+> ```
+> score 100%   (16/16 cases fully passing, 1 sample)   1.8-9.8s per case
+> ```
+>
+> The local 8B model matches the cloud on the contract eval — and beats the config
+> production shipped until today (gpt-5-mini forced: 96-98%, 9.8-29.7s).
+>
+> Caveats, so this number is not over-read: 1 sample not 3; 16 cases is a thin net; it tests
+> the CONTRACT, never coaching quality; and the host is a remote GPU box, so a true
+> air-gapped deployment on weaker on-prem hardware would prefill slower (the context math
+> holds regardless).
 
 ---
 

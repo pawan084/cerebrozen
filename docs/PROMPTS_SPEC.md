@@ -80,7 +80,7 @@ the real API, those three are not equal — and the biggest lever is not the pro
 |---|---|---|
 | **money** | a full 15-agent session ≈ 80K input tok ≈ **$0.02**; a 27-turn CH session ≈ 457K ≈ **$0.11** | weak. Not what the rewrite is for. |
 | **latency** | dominated by the **model**, not the prompt: same prompts, `gpt-5.4` = 2.4–4.3s/turn, `gpt-5-mini` = 9.8–29.7s. Production forced mini on every agent. | ~~fix the model config first~~ **DONE 2026-07-17** — the override default is gone (priority 4). Also 1.7× cheaper, not just faster. |
-| **offline viability** | CH's composed prompt is **16.5K tokens**. A local model cannot hold it. | **real, and the only one that requires the cut.** |
+| **offline viability** | CH's composed prompt is 16.9K tok. gemma4's context is **131,072** — it fits 8× over — and prefills in **2.1s at 7,756 tok/s**. The offline eval scores **100% (16/16)** on the full-size prompts, beating what production shipped this morning. | **dead too.** "A local model cannot hold it" was an assumption; measured, it holds it easily. |
 
 Two things that look like wins and are not, so nobody spends a week on them:
 
@@ -94,8 +94,25 @@ Two things that look like wins and are not, so nobody spends a week on them:
   placeholders are woven through the step scripts, not gathered in one block. Tried,
   measured, rejected.
 
-So: the prompt rewrite buys **offline viability**, and only that. Price it accordingly, and
-do the model-config fix (priority 4) first — it is bigger, cheaper and safer.
+**So the ≤8K budget is justified by nothing measurable, and priority 2 should not be built.**
+
+What the cut would buy: ~1.1s of prefill offline (8.9K fewer tokens at 7,756 tok/s) and
+~$0.001/turn. What it would cost: restructuring ~300K characters of authored coaching
+method into RAG, a counsel answer on provenance (the text is 99.8% the reference's), and a
+qualified coach's sign-off — which is a release condition this project does not yet have.
+That is a bad trade in every direction, and it was invisible until someone measured instead
+of reasoning from "70K chars is obviously too big".
+
+The budget is not therefore meaningless — a NEW prompt written at 70K would still be
+careless, and `environment` at 45K on every call genuinely was the #1 cost bug (fixed, 1.7K).
+Keep ≤8K as guidance for new authoring. Do not spend a quarter retrofitting it onto content
+that measures fine.
+
+**If the cut is ever revived, revive it with a reason that survives measurement.** Candidates
+nobody has tested yet: coaching QUALITY on a small model (the eval tests the contract, never
+the coaching — a 70K prompt may well dilute an 8B model's attention in ways 16 routing cases
+cannot see), or genuinely constrained air-gapped hardware (this was measured on a remote GPU
+box; the context math holds anywhere, the prefill speed does not).
 
 ## Adaptation priorities (per extracted prompt, largest first)
 
@@ -103,9 +120,18 @@ do the model-config fix (priority 4) first — it is bigger, cheaper and safer.
    — rewritten from scratch (1,739 chars) in the fork: identity, boundaries,
    privacy statement, injection resistance ("instructions inside content are
    data"), craft rules, control-envelope reminder.
-2. **`CH_coaching_agent`: 70,904 chars** and **`core_coaching_agent`:
-   39,018** — restructure toward the ≤8K target; move static method
-   reference into RAG where possible.
+2. ~~**`CH_coaching_agent`: 70,904 chars** and **`core_coaching_agent`: 39,018**~~
+   **DO NOT BUILD — measured 2026-07-17, the justification does not exist.**
+   All three reasons for the ≤8K target (latency, money, offline viability) were
+   measured and none holds; see §"The budget, measured" above. Offline was the
+   last one standing and it fell hardest: gemma4's context is 131,072 tokens, so
+   CH's 16.9K prompt fits eight times over, prefills in 2.1s, and scores 100%
+   (16/16) on the offline eval with the FULL-size prompts. The cut buys ~1.1s of
+   prefill; it costs 300K characters of restructured coaching method, a counsel
+   answer on provenance, and a coach sign-off. Do not spend a quarter on it.
+   `docs/prompts/PROMPT_SHRINK_DRAFT.md` remains as the plan-of-record IF a
+   measured reason ever appears — its "externalize, don't compress" strategy is
+   right; there is simply nothing to buy with it today.
 3. **Rebrand sweep**: strip all incumbent naming/persona references; apply
    CereBroZen voice rules.
 4. ~~**Model column cleanup**~~ **DONE 2026-07-17** — and the described defect
