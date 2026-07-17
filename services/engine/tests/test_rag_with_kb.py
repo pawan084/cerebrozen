@@ -19,6 +19,8 @@ assertion here pretends otherwise.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from tests.conftest import PG_URL, requires_pg
@@ -46,6 +48,15 @@ def kb(pgdb, monkeypatch):
     monkeypatch.setenv("CEREBROZEN_RAG_BACKEND", "pgvector")
     monkeypatch.setattr(pgvector_store, "_ready", set())
 
+    # BOTH tables, and dropped BEFORE the run as well as after. The learning-aid extraction
+    # pools CSKB *and* SSKB sub-extractions, and embeddings are dimension-locked per table:
+    # a 1536-dim `rag_sskb` left by a real-embedder run makes this fixture's 16-dim query
+    # raise inside the pool, which empties the placeholder — i.e. it fails exactly like the
+    # bug under test, for an unrelated reason. That is what cost me the first attempt.
+    with pgdb.pool.connection() as conn:
+        for t in ("rag_cskb", "rag_sskb"):
+            conn.execute(f"DROP TABLE IF EXISTS {t}")
+
     _DIM = 16
 
     def _vec(text: str):
@@ -58,31 +69,24 @@ def kb(pgdb, monkeypatch):
     monkeypatch.setattr(embedder, "embedding_dim", lambda: _DIM)
     monkeypatch.setattr(store_facade, "writable", lambda: True)
 
-    # Stand in for the RAG SELECTION model. Every extraction path — values, vector, and
-    # learning aid — funnels through `_llm_extract`, a SECOND model call that picks and
-    # restructures the retrieved passages. It is not what R3 asks about ("did retrieval
-    # reach the model?"), and under the mock provider it fails and empties the placeholder,
-    # so it would mask the very thing under test. This echoes the top candidate, leaving
-    # search → extract → prompt as the path being asserted.
+    # No LLM stand-in, and none needed: `_extract_learning_aid` uses `_llm_select_index`
+    # to pick WHICH retrieved item to use, and falls back to the best vector score when
+    # that call fails. So the aid path is genuinely pure retrieval with a deterministic
+    # fallback — which is why R3's question ("did retrieval reach the model?") can be
+    # answered without a model.
     #
-    # Worth stating plainly because it is a live risk of its own: with a FULL index, a RAG
-    # model failure (no key, rate limit, model retired) degrades to "this org has no
-    # values" and a WARNING, not an error. The knowledge base depends on a model call per
-    # extraction, and its failure is as silent as the empty index R3 names.
-    from app.rag import extractors as _ex
-
-    def _echo(ex, query, candidates):
-        top = (candidates or [{}])[0]
-        return {"retrieved_item": top.get("text", ""), "text": top.get("text", ""),
-                "status": "ok", "source_link": top.get("source_link", "")}
-
-    monkeypatch.setattr(_ex, "_llm_extract", _echo)
+    # `_extract_values` and `_extract_vector` are NOT like this: each makes a second model
+    # call that RESTRUCTURES the passages, and on failure returns null — so with a full
+    # index a RAG model outage degrades to "this org has no values" and a WARNING. That is
+    # a live risk of its own, recorded in TODO.md under R3, and not what this file asserts.
 
     yield pgvector_store
 
     with pgdb.pool.connection() as conn:
-        conn.execute("DROP TABLE IF EXISTS rag_cskb")
-    pgvector_store._ready.discard("rag_cskb")
+        for t in ("rag_cskb", "rag_sskb"):
+            conn.execute(f"DROP TABLE IF EXISTS {t}")
+    for t in ("rag_cskb", "rag_sskb"):
+        pgvector_store._ready.discard(t)
 
 
 def _seed(org_id: str, text: str = FACT, doc_type: str = "learning_aids") -> None:
@@ -112,21 +116,54 @@ def _compose(org_id: str, stage: str = "learning_aid_agent") -> str:
     )
 
 
-# NOT YET WRITTEN — R3's central assertion: "a seeded KB reaches the composed prompt".
-#
-# The wiring is confirmed ({CSKB_LearningAid} is in learning_aid_agent's prompt; Extract5
-# maps it to kb=cskb, condition=org_available), and the pieces below prove isolation,
-# graceful degradation, and the harness report. What is missing is the positive case, and
-# I could not stand the fixture up inside one sitting: every extraction funnels through
-# `_llm_extract` (a second model call), and standing in for it was not sufficient — the
-# placeholder still resolved empty, so something between the search and the render is not
-# being exercised the way a live turn exercises it.
-#
-# Do NOT mark this xfail and move on: an xfail on the one assertion R3 exists for is the
-# same silence the risk describes, with a decorator on it. The honest next step is to run
-# ONE real turn against a seeded index (the composed stack, a real key) and diff the
-# prompt — the same move that found every other bug in this file's history.
-#
+#: R3's central assertion runs the REAL path — real embedder, real index, no stand-ins —
+#: because that is the only configuration that answers the question. It needs a key, so it
+#: skips without one; it is not a substitute for the deterministic tests below, it is the
+#: one thing they cannot cover.
+requires_real_embedder = pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY"),
+    reason="needs a real embedder — R3 asks whether retrieval reaches the model, and a "
+           "fake 16-dim embedder answers a different question",
+)
+
+
+@requires_pg
+@requires_real_embedder
+def test_a_seeded_knowledge_base_reaches_the_composed_prompt(pgdb, monkeypatch):
+    """The whole of R3, driven for real.
+
+    If this fails, the coach is running on the general method while a customer pays for
+    "tuned to your culture" — and nothing errors, which is the entire risk.
+
+    Every hop is live: OpenAI embeddings, pgvector, the real extraction registry, the real
+    `_llm_select_index`. No fake embedder, because that is what defeated the first two
+    attempts — a 16-dim query against a 1536-dim `rag_sskb` raises INSIDE the learning-aid
+    pool and empties the placeholder, failing exactly like the bug under test for an
+    unrelated reason. Measured against the live index, the fact reached the prompt first
+    time; the product was never broken, the fixture was.
+    """
+    monkeypatch.setenv("POSTGRES_URL", PG_URL)
+    monkeypatch.setenv("CEREBROZEN_RAG_BACKEND", "pgvector")
+    monkeypatch.setenv("CEREBROZEN_EMBED_PROVIDER", "openai")
+    from app.rag import pgvector_store
+
+    monkeypatch.setattr(pgvector_store, "_ready", set())
+    org = "r3-real-turn"
+    try:
+        _seed(org)
+
+        composed = _compose(org)
+
+        assert FACT in composed, (
+            "the org's own knowledge base did not reach the prompt — retrieval is degraded "
+            "and the coaching is ungrounded, silently"
+        )
+    finally:
+        from app.rag import store
+
+        store.delete_org_doc("cskb", org, f"cskb:{org}:probe")
+
+
 @requires_pg
 def test_an_empty_knowledge_base_degrades_instead_of_breaking(kb):
     """The other half of the contract: no KB must not mean no turn.
