@@ -242,8 +242,65 @@ def indexed_docs(kb: str) -> Dict[str, str]:
 
 
 def delete_by_doc_key(kb: str, doc_key: str) -> None:
+    """Delete every chunk of a document. NOT org-scoped — the ingestion pipeline owns the
+    key it is replacing, so it may. Anything reachable from an HTTP route must use
+    `delete_org_doc` instead: a caller-supplied key with no org filter is how one tenant
+    deletes another's knowledge base."""
     pool = _pool()
     if pool is None or not doc_key:
         return
     with pool.connection() as conn:
         conn.execute(f"DELETE FROM {_table(kb)} WHERE doc_key = %s", (doc_key,))
+
+
+def org_docs(kb: str, org_id: str) -> List[Dict[str, Any]]:
+    """One row per document in this org's knowledge base — what an operator needs to see
+    to answer "is this tenant actually tuned to their culture, or is the coach improvising
+    over an empty index?".
+
+    Chunks, not documents, are what retrieval sees, so the count is the honest unit: a
+    file that chunked to zero is indexed in name only.
+    """
+    pool = _pool()
+    if pool is None or not org_id:
+        return []
+    t = _table(kb)
+    from psycopg.types.json import Jsonb
+
+    try:
+        with pool.connection() as conn:
+            rows = conn.execute(
+                f"SELECT doc_key, COALESCE(meta->>'doc_type', ''), "
+                f"       COALESCE(meta->>'source', ''), count(*), sum(length(text)) "
+                f"FROM {t} WHERE meta @> %s GROUP BY 1, 2, 3 ORDER BY 2, 1",
+                (Jsonb({"org_id": org_id}),),
+            ).fetchall()
+    except Exception as exc:  # noqa: BLE001 — an empty/absent index is not an error here
+        logger.warning("rag.org_docs_failed", extra={"kb": kb, "error": str(exc)})
+        return []
+    return [
+        {"doc_key": r[0], "doc_type": r[1], "source": r[2],
+         "chunks": int(r[3] or 0), "chars": int(r[4] or 0)}
+        for r in rows
+    ]
+
+
+def delete_org_doc(kb: str, org_id: str, doc_key: str) -> int:
+    """Delete one document from ONE org's knowledge base. Returns chunks removed.
+
+    The org filter is in the WHERE, not checked beforehand, so there is no window between
+    the check and the delete and no way for a doc_key from another tenant to match. The
+    same rule the search path follows (`meta @> filters` pre-filter): isolation is a
+    property of the query, not of the caller remembering to ask nicely.
+    """
+    pool = _pool()
+    if pool is None or not org_id or not doc_key:
+        return 0
+    from psycopg.types.json import Jsonb
+
+    with pool.connection() as conn:
+        cur = conn.execute(
+            f"DELETE FROM {_table(kb)} WHERE doc_key = %s AND meta @> %s",
+            (doc_key, Jsonb({"org_id": org_id})),
+        )
+        return cur.rowcount or 0

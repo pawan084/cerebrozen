@@ -286,3 +286,17 @@ select.mini { padding: 5px 8px; font-size: 13px; border: 1px solid var(--color-m
 .demo-chip:hover { border-color: var(--color-zen-500); background: var(--color-zen-50); }
 .dc-who { font-size: 13.5px; font-weight: 700; color: var(--color-brand-900); }
 .dc-role { font-size: 11.5px; color: var(--color-brand-500); }
+
+/* Per-tenant knowledge base (CSKB), expanded inside the Tenants row. Indented and
+   tinted so it reads as belonging to the row above it rather than as a sibling table. */
+.kb { background: var(--color-mist-100); border-radius: 10px; padding: 14px 16px; margin: 4px 0; }
+.kb-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.kb .table { background: #fff; border-radius: 8px; margin: 8px 0; }
+.kb code { font-size: 12.5px; }
+.kb-form { display: grid; grid-template-columns: 1fr 160px; gap: 8px; margin-top: 10px; }
+.kb-form textarea, .kb-form button { grid-column: 1 / -1; }
+.kb-form input, .kb-form select, .kb-form textarea {
+  font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--color-mist-200);
+  border-radius: 8px; background: #fff; width: 100%;
+}
+.kb-form textarea { resize: vertical; font-family: inherit; }

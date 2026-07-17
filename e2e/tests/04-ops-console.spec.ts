@@ -263,6 +263,24 @@ test.describe("ops console", () => {
     expect(r.status(), "an org_admin could resolve their employees' crisis records").toBe(403);
   });
 
+  test("a tenant's knowledge base is visible and says when it is ungrounded", async ({ page }) => {
+    /* The "Tuned to Your Culture" mechanism (PRODUCT.md). Its failure mode is SILENT: no
+       values document -> no {CSKB_Values} -> the prompt's field-presence gate takes the
+       absent branch -> the coaching runs on the general method and nothing errors. This
+       panel is the only place that gap is visible, so it is worth an e2e. */
+    await signIn(page, urls.admin, "ops");
+    await page.getByRole("button", { name: "Tenants", exact: true }).click();
+    await page.getByRole("button", { name: "knowledge base" }).first().click();
+
+    const kb = page.locator(".kb");
+    await expect(kb).toBeVisible();
+    await expect(kb.locator(".kb-head")).toContainText("Knowledge base");
+    // Grounded or not, it must SAY which — an operator cannot act on a blank panel.
+    await expect(kb.locator(".pill")).toHaveText(/grounded|ungrounded: no /);
+    // The curated-not-self-serve gate is stated where someone would think to open it up.
+    await expect(kb).toContainText("self-serve is v2");
+  });
+
   test("the console renders the queue and its open/resolved filter", async ({ page }) => {
     await signIn(page, urls.admin, "ops");
     await page.getByRole("button", { name: "Safety queue", exact: true }).click();

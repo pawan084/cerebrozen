@@ -4,7 +4,7 @@
    org_admin  → Overview · People · Invite
    internal_admin → Tenants · Demo requests  */
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, apiJson, engineApi, engineJson, getTokens, login, logout } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
 import { AgentFlowCanvas } from "@/components/flow";
@@ -428,9 +428,145 @@ function RegionEditor({ org, regions, onSaved }: { org: Org; regions: string[]; 
   );
 }
 
+// ── Per-org knowledge base (CSKB) — the "Tuned to Your Culture" mechanism ────
+// A tenant's own material (their competency framework, their values), retrieved per turn
+// and woven into the coaching. Without it the coach improvises over an empty index and
+// the marketing claim has no mechanism behind it (rule 6) — and it fails SILENTLY: no
+// values doc → no {CSKB_Values} → the prompt's field-presence gate takes the absent
+// branch → ungrounded coaching, no error. This panel exists to make that visible.
+//
+// Ops-curated, not self-serve: everything indexed here is retrieved straight into the
+// coach's context on a later turn, so an upload box is an instruction channel into every
+// session that tenant runs. PRODUCT.md ships "curated" and puts self-serve in v2 behind
+// SECURITY.md's injection review.
+type CskbDoc = { doc_key: string; doc_type: string; source: string; chunks: number; chars: number };
+type CskbHealth = {
+  org_id: string; enabled: boolean; docs: CskbDoc[];
+  by_type: Record<string, { docs: number; chunks: number }>;
+  retrievable: string[]; missing: string[];
+};
+
+const DOC_TYPES = ["values", "frameworks", "competencies", "learning_aids", "general"];
+
+function KnowledgeBase({ org }: { org: Org }) {
+  const [kb, setKb] = useState<CskbHealth | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => {
+    engineJson<CskbHealth>(`/v1/cskb/${encodeURIComponent(org.id)}`)
+      .then(setKb).catch((e) => setError(e.message));
+  }, [org.id]);
+  useEffect(load, [load]);
+
+  async function upload(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const d = new FormData(form);
+    setBusy(true); setError("");
+    try {
+      const r = await engineApi(`/v1/cskb/${encodeURIComponent(org.id)}`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: String(d.get("title") || ""),
+          doc_type: String(d.get("doc_type") || ""),
+          text: String(d.get("text") || ""),
+        }),
+      });
+      if (!r.ok) throw new Error((await r.json())?.detail || `HTTP ${r.status}`);
+      form.reset();
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(doc: CskbDoc) {
+    if (!window.confirm(`Remove "${doc.doc_key}" from ${org.name}'s knowledge base?\n\nTheir coach stops retrieving it on the next turn.`)) return;
+    setBusy(true); setError("");
+    try {
+      const r = await engineApi(
+        `/v1/cskb/${encodeURIComponent(org.id)}/docs?doc_key=${encodeURIComponent(doc.doc_key)}`,
+        { method: "DELETE" },
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!kb) return <div className="kb"><Skeleton rows={2} /></div>;
+  if (!kb.enabled) {
+    return (
+      <div className="kb">
+        <p className="hint">
+          No manageable vector index (pgvector) is configured, so this tenant&rsquo;s knowledge
+          base cannot be read or written here. <b>That is not the same as empty</b> — nothing
+          uploaded would be indexed.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="kb">
+      <div className="kb-head">
+        <b>Knowledge base</b>
+        {kb.missing.length === 0
+          ? <span className="pill ok">grounded</span>
+          : <span className="pill off">ungrounded: no {kb.missing.join(", ")}</span>}
+      </div>
+      {kb.missing.length > 0 && (
+        <p className="hint">
+          {/* One expression, not text-around-an-expression: JSX collapses the whitespace
+              between `{expr}` and a following line, which rendered "learning_aidson this
+              tenant". Only visible by looking at the page. */}
+          {`The coach retrieves nothing for ${kb.missing.join(", ")} on this tenant, so those turns run on the general method alone. It does not error — it just stops being “tuned to your culture”.`}
+        </p>
+      )}
+      {kb.docs.length > 0 && (
+        <table className="table">
+          <thead><tr><th>Document</th><th>Type</th><th>Chunks</th><th /></tr></thead>
+          <tbody>
+            {kb.docs.map((d) => (
+              <tr key={d.doc_key}>
+                <td><code>{d.doc_key.replace(`cskb:${org.id}:`, "")}</code></td>
+                <td>{d.doc_type}</td>
+                {/* Chunks, not documents: retrieval sees chunks, so a file that chunked
+                    to zero is indexed in name only. */}
+                <td>{d.chunks}</td>
+                <td><button className="ghost" disabled={busy} onClick={() => remove(d)}>remove</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form className="kb-form" onSubmit={upload}>
+        <input name="title" placeholder="Document title" required maxLength={200} />
+        <select name="doc_type" defaultValue="values">
+          {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <textarea name="text" placeholder="Paste the document text — their values, their competency framework…" required rows={3} />
+        <button className="ghost" disabled={busy}>{busy ? "Indexing…" : "Add to knowledge base"}</button>
+      </form>
+      <p className="hint">
+        Re-using a title replaces that document rather than duplicating it. Curated by us,
+        not uploaded by the customer: indexed text is retrieved into the coach&rsquo;s context on
+        a later turn, so this is an instruction channel into every session they run
+        (docs/SECURITY.md — self-serve is v2, behind the injection review).
+      </p>
+      {error && <p className="error">{error}</p>}
+    </div>
+  );
+}
+
 function Tenants() {
   const [orgs, setOrgs] = useState<Org[] | null>(null);
   const [regions, setRegions] = useState<string[]>([]);
+  const [openKb, setOpenKb] = useState<string | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(() => {
     apiJson<Org[]>("/orgs").then(setOrgs).catch((e) => setError(e.message));
@@ -479,10 +615,11 @@ function Tenants() {
         ) : (
           <>
             <table>
-              <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Crisis region</th><th>Regulated</th><th>Status</th><th /></tr></thead>
+              <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Crisis region</th><th>Regulated</th><th>Status</th><th /><th /></tr></thead>
               <tbody>
                 {orgs.map((o) => (
-                  <tr key={o.id}>
+                  <Fragment key={o.id}>
+                  <tr>
                     <td>{o.name}</td><td>{o.slug}</td>
                     <td><SeatEditor org={o} onSaved={load} /></td>
                     <td><RegionEditor org={o} regions={regions} onSaved={load} /></td>
@@ -495,7 +632,17 @@ function Tenants() {
                     <td><span className={`pill ${o.regulated_mode ? "ok" : "off"}`}>{o.regulated_mode ? "on" : "off"}</span></td>
                     <td><span className={`pill ${o.is_active ? "ok" : "off"}`}>{o.is_active ? "active" : "inactive"}</span></td>
                     <td><button className="ghost" onClick={() => toggle(o)}>{o.is_active ? "deactivate" : "activate"}</button></td>
+                    {/* Per-tenant, so it lives on the tenant's row rather than in a tab
+                        that would need its own org picker — the thing that made the safety
+                        queue empty was an operator surface guessing which org it meant. */}
+                    <td><button className="linklike" onClick={() => setOpenKb(openKb === o.id ? null : o.id)}>
+                      {openKb === o.id ? "hide KB" : "knowledge base"}
+                    </button></td>
                   </tr>
+                  {openKb === o.id && (
+                    <tr><td colSpan={8}><KnowledgeBase org={o} /></td></tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

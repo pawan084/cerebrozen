@@ -201,9 +201,22 @@ dated notes, grouped by priority; items needing an owner decision are marked
       `chunk_doc`/`embed_and_upsert` primitives; `python -m scripts.seed_demo_rag`
       seeds it. 7 tests (`test_rag_demo_seed.py`) prove ingest→search across
       both KBs incl. CSKB org-isolation. Real content drops into the same
-      layout. **Remaining:** the admin upload/reindex/health UI, and the
-      RAG-with-KB eval (R3, Phase 5). The demo corpus is placeholder — replace
-      with real SSKB/CSKB before shipping.
+      layout. **Admin UI done 2026-07-17:** `GET/POST /v1/cskb/{org_id}` +
+      `DELETE .../docs` (internal_admin), and a per-tenant panel on the Tenants
+      row — list, chunk counts, curated upload, remove, and a grounded/
+      ungrounded pill naming which doc_types this tenant retrieves NOTHING for.
+      That gap was the point: no values doc → no `{CSKB_Values}` → the prompt's
+      field-presence gate takes the absent branch → the coaching quietly runs on
+      the general method with no error. The org is a PATH PARAMETER, never
+      `current_org()` — an operator's token carries `org_id="internal"`, which is
+      what made the safety and nudge queues permanently empty. Deletes are
+      org-scoped inside the DELETE's own WHERE (`store.delete_org_doc`), pinned
+      by a two-org test that fails with "one tenant deleted another tenant's
+      knowledge base". Stays curated: SECURITY.md gates self-serve on injection
+      (indexed text is retrieved into the coach's context on a later turn), so
+      `org_admin` cannot reach it. **Remaining:** the RAG-with-KB eval (R3,
+      Phase 5). The demo corpus is placeholder — replace with real SSKB/CSKB
+      before shipping.
 - [x] 2026-07-16 — e2e suite (Playwright) against the **composed stack**, with the
       seeded dev logins: tenancy/cross-tenant denial, employee journey (SSE
       vocabulary read off the wire), HR aggregates + cohort floors, ops workbook +

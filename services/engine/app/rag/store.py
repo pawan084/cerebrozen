@@ -330,3 +330,46 @@ def count(kb: str) -> int:
     except Exception as exc:  # noqa: BLE001
         logger.warning("rag.count_failed", extra={"kb": kb, "error": str(exc)})
         return 0
+
+
+# ── per-org knowledge-base management (routers/cskb.py) ──────────────────────
+#
+# pgvector only, and that is stated rather than papered over. The management surface needs
+# a metadata GROUP BY and an org-filtered DELETE; LanceDB is the legacy path
+# (ARCHITECTURE.md §"Storage consolidation: Postgres-first" drops it from the critical
+# path, and even the offline profile pins CEREBROZEN_RAG_BACKEND=pgvector). Returning an
+# empty list on LanceDB would tell an operator their tenant has no documents when the
+# truth is that this backend cannot answer — the exact silent lie `writable()` exists to
+# prevent.
+
+
+def writable() -> bool:
+    """Can a curated document be indexed AND listed back right now?
+
+    Not "is some vector store reachable" — is the one that supports management. The
+    routes report this rather than assuming, because an upload that returns 200 into a
+    backend that never wrote it leaves the operator believing a tenant is tuned.
+    """
+    from app.rag import pgvector_store as _pg
+
+    return bool(_pg.enabled())
+
+
+def org_docs(kb: str, org_id: str) -> List[Dict[str, Any]]:
+    """One row per document in an org's KB. Empty when the backend cannot answer — the
+    caller must check `writable()` first to tell that from a genuinely empty index."""
+    from app.rag import pgvector_store as _pg
+
+    if not _pg.enabled():
+        return []
+    return _pg.org_docs(kb, org_id)
+
+
+def delete_org_doc(kb: str, org_id: str, doc_key: str) -> int:
+    """Delete one document from ONE org's KB; returns chunks removed. The org filter is in
+    the DELETE's own WHERE — see pgvector_store.delete_org_doc for why that matters."""
+    from app.rag import pgvector_store as _pg
+
+    if not _pg.enabled():
+        return 0
+    return _pg.delete_org_doc(kb, org_id, doc_key)

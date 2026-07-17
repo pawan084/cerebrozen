@@ -24,6 +24,7 @@ from app.routers.flow import router as flow_router
 from app.routers.privacy import router as privacy_router
 from app.routers.prompts import router as prompts_router
 from app.routers.nudges import router as nudges_router
+from app.routers.cskb import router as cskb_router
 from app.routers.rag import router as rag_router
 from app.routers.safety import router as safety_router
 from app.routers.sessions import router as sessions_router
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
     app.include_router(router)
     app.include_router(prompts_router)
     app.include_router(rag_router)
+    app.include_router(cskb_router)
     app.include_router(sessions_router)
     app.include_router(flow_router)
     app.include_router(privacy_router)
