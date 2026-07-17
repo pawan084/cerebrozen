@@ -1196,18 +1196,60 @@ type NudgesResp = { armed: boolean; count: number; nudges: Nudge[] };
 function Nudges() {
   const [data, setData] = useState<NudgesResp | null>(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState("");
   const load = useCallback(() => {
     engineJson<NudgesResp>("/v1/nudges").then(setData).catch((e) => setError(e.message));
   }, []);
   useEffect(load, [load]);
-  if (error) return <Failed msg={error} onRetry={load} />;
+
+  /* The queue was read-only: an operator could see nudges were due and had no way to send
+     them. POST /v1/nudges/dispatch has existed and been role-gated the whole time.
+
+     Confirmed, because this REACHES PEOPLE — it is the one control on this console that
+     puts a notification on a stranger's phone. The confirm says how many, since "dispatch"
+     alone does not tell you whether that is 0 or 400. Verified against the live route
+     before wiring: {"armed":false,"due":0,"delivered":0}, and an org_admin gets 403. */
+  async function dispatch() {
+    const due = data?.count ?? 0;
+    if (!window.confirm(
+      `Send check-in nudges now?\n\n${due} ${due === 1 ? "person is" : "people are"} due. ` +
+      (data?.armed
+        ? "They will be notified."
+        : "The delivery channel is NOT armed, so nothing will actually reach anyone — this " +
+          "will scan and report only."),
+    )) return;
+    setBusy(true); setError(""); setResult("");
+    try {
+      const r = await engineApi("/v1/nudges/dispatch", { method: "POST" });
+      const out = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(out?.detail || `HTTP ${r.status}`);
+      // Counts, never content — the same rule the queue itself follows.
+      setResult(`Scanned ${out.due} due · delivered ${out.delivered}${out.armed ? "" : " (not armed — nothing sent)"}`);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "dispatch failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (error && !data) return <Failed msg={error} onRetry={load} />;
   if (!data) return <div className="card"><Skeleton rows={4} /></div>;
   return (
     <div className="card">
-      <h2>Nudges <span className="hint">check-in reminders · signal only · {data.count}</span></h2>
+      <div className="people-head">
+        <h2>Nudges <span className="hint">check-in reminders · signal only · {data.count}</span></h2>
+        <button className="ghost" onClick={dispatch} disabled={busy}>
+          {busy ? "Dispatching…" : "Dispatch now"}
+        </button>
+      </div>
       <div className="stats" style={{ marginBottom: 12 }}>
         <div className="stat"><b><span className={`pill ${data.armed ? "ok" : "off"}`}>{data.armed ? "armed" : "not armed"}</span></b><span>delivery channel</span></div>
       </div>
+      {result && <p className="hint"><span className="pill ok">{result}</span></p>}
+      {error && <p className="error">{error}</p>}
+
       {!data.armed && (
         <p className="hint">No delivery endpoint is configured (CEREBROZEN_NUDGE_DELIVERY_URL). The scheduler still computes who&rsquo;s due, but no reminder is sent until a channel is wired.</p>
       )}

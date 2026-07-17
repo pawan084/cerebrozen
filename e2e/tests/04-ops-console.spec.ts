@@ -294,6 +294,25 @@ test.describe("ops console", () => {
     await expect(page.getByRole("heading", { name: "New tenant" })).toBeVisible();
   });
 
+  test("an operator can dispatch nudges, and is told what happened", async ({ page }) => {
+  await signIn(page, urls.admin, "ops");
+  await page.getByRole("button", { name: "Nudges", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Nudges/ })).toBeVisible();
+
+  // Not armed here, so the page must SAY dispatching reaches nobody.
+  // The tab already explains not-armed (naming the env var) — one explanation, not two.
+  await expect(page.getByText(/no reminder is sent until a channel is wired/)).toBeVisible();
+
+  let asked = "";
+  page.on("dialog", (d) => { asked = d.message(); d.accept(); });
+  await page.getByRole("button", { name: "Dispatch now" }).click();
+
+  // The confirm must name the blast radius and the armed state.
+  expect(asked).toMatch(/due/);
+  expect(asked).toMatch(/NOT armed/);
+  await expect(page.getByText(/Scanned \d+ due · delivered \d+/)).toBeVisible({ timeout: 20_000 });
+});
+
   test("an expired session says so, and offers the action that works", async ({ page }) => {
     /* The admin threw a bare "HTTP 401" into a Failed card with a RETRY button — which
        could never work: by the time a 401 reaches the UI, refresh() has already run and
