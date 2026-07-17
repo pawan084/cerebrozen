@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -406,7 +407,32 @@ fun CereBroApp() {
             popEnterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
             popExitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
         ) {
-            val open: (String) -> Unit = { route -> navController.navigate(route) }
+            // Opening a TAB's route SELECTS that tab; anything else is pushed on top of the
+            // current one.
+            //
+            // Both used to push. That is the bug it fixes: "Talk it through" on Today did
+            // navigate("coach"), which put the COACH TAB's own destination onto Today's back
+            // stack. The tab bar saves and restores that stack (saveState/restoreState —
+            // the textbook pattern, working exactly as designed), so from then on tapping
+            // Today faithfully restored [today → coach] and landed on Coach. Today stopped
+            // being Today for the life of the process, and a fresh launch hid it. Six call
+            // sites did this: onOpen("actions") x3, onOpen("coach") x2, onOpen("journeys").
+            //
+            // The real fix is nested graphs, one per tab, so a pushed screen lives INSIDE
+            // its tab and "restore this tab" cannot mean "restore some other tab". That is
+            // a 39-route IA decision (which tab owns sounds/player/toolkit/winddown/
+            // insights?) and is tracked in docs/ANDROID_QA.md. This makes the flat graph
+            // behave in the meantime by never letting a tab route enter another tab's stack.
+            val tabRoutes = Tab.entries.mapTo(HashSet()) { it.route }
+            val selectTab: NavOptionsBuilder.() -> Unit = {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            val open: (String) -> Unit = { route ->
+                if (route in tabRoutes) navController.navigate(route, selectTab)
+                else navController.navigate(route)
+            }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Today.route) { TodayHome(onOpen = open) }
             composable(Tab.Coach.route) { CoachScreen(onOpen = open) }

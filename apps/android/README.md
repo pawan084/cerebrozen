@@ -62,3 +62,39 @@ app's localStorage) — move to EncryptedSharedPreferences with security-crypto.
    trusted contact, You/settings parity.
 3. StoreKit's counterpart: Google Play Billing for subscriptions.
 4. Notifications (FCM) for the daily reminder.
+
+
+## Tab navigation: nested graphs (open — the real fix)
+
+Fixed 2026-07-17 with a **narrow** fix; the structural one is still owed.
+
+**The bug (reproducible in 3 taps, found on the owner's CPH2681):** open a sub-screen
+from Today → go to another tab → tap Today → you land on the sub-screen. Today stopped
+being Today for the life of the process, and a fresh launch hid it entirely.
+
+**Why:** the graph is FLAT and `onOpen` pushed routes that are themselves TAB routes
+(`onOpen("actions")` x3, `onOpen("coach")` x2, `onOpen("journeys")`). So a tab's own
+destination landed on ANOTHER tab's back stack. The tab bar's `saveState`/`restoreState`
+— the textbook pattern, working exactly as designed — then faithfully restored
+`[today → actions]`. One `actions` destination was serving two roles ("the Actions tab"
+and "Actions pushed from Today") and the graph could not tell them apart.
+
+**What shipped:** `open` is route-aware — a TAB route SELECTS its tab (same NavOptions as
+the tab bar); anything else still pushes. A tab route can no longer enter another tab's
+stack, so there is nothing wrong to restore.
+
+**What is still owed — nested graphs, one per tab.** The narrow fix removes the six
+known offenders; it does not remove the CLASS. Any future `onOpen(<a tab route>)`, or any
+two tabs sharing a pushed destination, reintroduces it. The real fix needs an IA decision
+first, and it is a product call, not a mechanical refactor — of 39 routes, only 5 are tabs,
+so someone must say which tab OWNS each of the rest:
+
+    sounds · player · toolkit · winddown · insights · sleep · games ·
+    breathe · journal · programs · the legacy aliases "home" and "talk"
+
+Back-button behaviour changes on every one of them, so it wants a full tap-through of all
+five tabs plus the wellness suite on a device. Do not start it without that time.
+
+**Reproduction, for whoever picks it up:** `am force-stop` → launch → tap a sub-screen
+from Today → tap Journeys → tap Today. Correct = "Good afternoon, ..."; the bug = the
+sub-screen.
