@@ -41,7 +41,7 @@ shortening it. Two mechanisms already exist in the engine:
 
 What must **stay inline** (the irreducible core, well under 8K):
 - Identity + what-you-are / what-you-do-not.
-- The output contract (reply_text, handoff_ready, routed fields, milestones) —
+- The output contract (response_to_user, handoff_ready, routed fields, milestones) —
   the graph routes on these; they are the contract, keep them exact.
 - Stage/phase **selection** logic (which module, which phase) and the completion
   floor/ceiling behaviour.
@@ -66,7 +66,9 @@ You do NOT: build/update user context · run simulations · retrieve memory
 independently · name CBT concepts academically · end the session (feedback does).
 
 ## Output contract  (emit every turn)
-reply_text: the single user-facing message.
+response_to_user: the single user-facing message. (NOT `reply_text` — the parser
+reads `_USER_TEXT_KEYS`, and `reply_text` parses to an empty reply. This draft
+said `reply_text` until 2026-07-17.)
 handoff_ready: true only when this slot is complete (completion rule below).
 progress: {module, stage, concept_delivered, framework_applied, values_applied}.
 [Exact field spec unchanged from the current prompt — do not paraphrase.]

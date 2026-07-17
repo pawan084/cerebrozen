@@ -106,3 +106,71 @@ def test_only_routing_violations_are_repaired():
 
     assert "dynamic_actions_no_cards" not in _CONTRACT_REPAIR
     assert "learning_aid_commit_without_delivery" not in _CONTRACT_REPAIR
+
+
+# ── the spec must not drift from the parser ──────────────────────────────────
+
+
+def test_the_authoring_spec_names_the_key_the_parser_actually_reads():
+    """PROMPTS_SPEC.md is what a prompt author writes against, so a wrong key there is a
+    wrong key in every prompt written from it.
+
+    It said `reply_text` until 2026-07-17. The parser has never read that: it reads
+    `_USER_TEXT_KEYS`, so a prompt following the spec would have emitted valid JSON, parsed
+    to an EMPTY reply, and produced a dead turn with no error — the exact failure EVALS.md
+    records as having reached production. The trap is `parse_control`'s docstring, which
+    names its RETURN TUPLE `(reply_text, handoff_ready, coaching_path)`; read the signature
+    instead of `_USER_TEXT_KEYS` and `reply_text` looks authoritative.
+
+    Pinned here rather than trusted, because the doc and the code have already disagreed
+    once and nothing failed when they did.
+    """
+    from pathlib import Path
+
+    from app.graph.tools import _USER_TEXT_KEYS
+
+    spec = Path(__file__).resolve().parents[3] / "docs" / "PROMPTS_SPEC.md"
+    text = spec.read_text(encoding="utf-8")
+
+    assert "response_to_user" in text, "the spec no longer names a key the parser reads"
+    assert "response_to_user" in _USER_TEXT_KEYS, "the parser stopped reading the spec's key"
+
+    # `reply_text` may still be NAMED in the spec — it documents the trap — but never as
+    # the thing to emit. Checked per PARAGRAPH, not per line: markdown wraps, so the
+    # mention and its correction routinely land on different lines (my first version of
+    # this test failed on exactly that).
+    for para in text.split("\n\n"):
+        if "reply_text" not in para:
+            continue
+        corrected = any(w in para for w in ("NOT", "wrong", "empty", "return tuple", "docstring"))
+        assert corrected, (
+            f"the spec names reply_text without correcting it — an author would emit it "
+            f"and every reply would be empty:\n{para.strip()[:200]}"
+        )
+
+
+def test_the_shipping_prompts_emit_a_key_the_parser_reads():
+    """The workbook is the real artifact — a prompt whose envelope names an unread key is a
+    dead turn for that agent, and nothing in the suite would notice."""
+    import json
+
+    from app.graph.runtime import get_registry
+    from app.graph.tools import _USER_TEXT_KEYS, parse_control
+
+    reg = get_registry()
+    stages = [s for s in reg.sizes() if reg.get(s)]
+    assert stages, "no prompts loaded — this test would pass vacuously"
+
+    offenders = []
+    for stage in stages:
+        body = reg.get(stage) or ""
+        if "reply_text" in body and not any(k in body for k in _USER_TEXT_KEYS):
+            offenders.append(stage)
+    assert not offenders, (
+        f"these prompts emit reply_text and no key the parser reads, so every reply is "
+        f"empty: {offenders}"
+    )
+
+    # And prove the failure is real rather than theoretical.
+    assert parse_control(json.dumps({"reply_text": "hi"}))[0] == ""
+    assert parse_control(json.dumps({"response_to_user": "hi"}))[0] == "hi"

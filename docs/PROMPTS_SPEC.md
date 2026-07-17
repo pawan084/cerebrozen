@@ -18,11 +18,22 @@ them), and be rebranded into the CereBroZen voice.
   therapy language — this is workplace performance coaching (the brand:
   *cerebro* clarity, *zen* calm, action always).
 - **Control envelope**: every agent ends its reasoning by emitting the
-  structured fields the parser reads — `reply_text`, `handoff_ready`, and
-  its stage-specific fields below. An agent that stops emitting a routed
+  structured fields the parser reads — the user-facing text, `handoff_ready`,
+  and its stage-specific fields below. An agent that stops emitting a routed
   field doesn't break routing; it silently takes the fallback path — which
   is why the contract monitors exist. Authors treat the envelope as part of
   the prompt, not an afterthought.
+- **The user-facing key is `response_to_user`, NOT `reply_text`.** This spec
+  said `reply_text` until 2026-07-17 and it was wrong: `parse_control` reads
+  `_USER_TEXT_KEYS = (response_to_user, next_question, clarifying_question,
+  message, question, response)`. A prompt that emits `reply_text` parses to an
+  **empty reply** — a dead turn, no error. The trap is that `parse_control`'s
+  docstring names its *return tuple* `(reply_text, handoff_ready,
+  coaching_path)`, so the key looks like `reply_text` if you read the signature
+  rather than `_USER_TEXT_KEYS`. No shipping prompt ever used it; every one
+  emits `response_to_user` or `next_question`. `tests/test_contracts.py` now
+  pins this spec's key against the parser so the doc cannot drift from the code
+  again. Accept any key in the tuple; prefer `response_to_user`.
 - **Placeholders**: only registered tokens (camelCase profile fields like
   `{userName}`, `{userRoleContext}`, `{coachingHistory}`; snake_case session
   fields like `{coachability_score}`). The validator rejects unknown tokens;
@@ -40,7 +51,7 @@ them), and be rebranded into the CereBroZen voice.
 ## Per-agent briefs
 
 Ordering follows the session arc. "Emits" = routed fields beyond
-`reply_text`/`handoff_ready`.
+`response_to_user`/`handoff_ready`.
 
 | # | Agent (sheet) | Job in one line | Emits / contract notes |
 |---|---|---|---|
@@ -57,7 +68,7 @@ Ordering follows the session arc. "Emits" = routed fields beyond
 | 11 | `dynamic_actions_insights_agent` | Turn the session into 1–3 concrete, small, trackable action cards + one insight. Two-shot: show cards, then hand off silently. | action cards (contract-monitored: zero cards = a session that can't close honestly). Verb-first, specific, ≤7-day horizon. |
 | 12 | `feedback_mood_capture_agent` | Close the session: brief mood + feedback capture. **Always-on; sole path to close.** | feedback progress; completion ceiling applies (the re-asked-7× incident). In regulated mode, mood is conversational only, never persisted. |
 | 13 | `action_checkin_agent` | Standalone: user taps one action card; focused reflection on that single action — what happened, what's next. | own arc, closes directly. |
-| 14 | `user_context_builder_agent` | Off-path: maintain the 10-dimension user context model from the transcript. Never user-facing. | structured context model only; no reply_text. |
+| 14 | `user_context_builder_agent` | Off-path: maintain the 10-dimension user context model from the transcript. Never user-facing. | structured context model only; no user-facing text. |
 | 15 | `environment` (guardrail wrapper) | Always-on system layer: identity, boundaries, tone, what the coach never does; composed around every agent prompt. | keep SHORT — the reference's 45K-char wrapper on every call is the #1 cost bug. Target ≤2K chars. |
 
 ## Adaptation priorities (per extracted prompt, largest first)
