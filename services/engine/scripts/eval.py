@@ -183,7 +183,50 @@ def run(provider: Optional[str], repeat: int) -> Dict[str, Any]:
     hard = sum(1 for r in results if not r["passed"])
     print("  " + "-" * 54)
     print(f"  score {score:.0%}   ({len(results) - hard}/{len(results)} cases fully passing)")
-    return {"score": score, "results": results}
+    _report_rag()
+    return {"score": score, "results": results, "rag": _rag_state()}
+
+
+def _rag_state() -> Dict[str, Any]:
+    """Is there a knowledge base behind this run — and how big?"""
+    try:
+        from app.rag import pgvector_store as _pg
+        from app.rag import store
+
+        backend = "pgvector" if _pg.enabled() else "lancedb/none"
+        return {
+            "backend": backend,
+            "sskb_rows": store.count("sskb"),
+            "cskb_rows": store.count("cskb"),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"backend": "error", "error": str(exc)[:80], "sskb_rows": 0, "cskb_rows": 0}
+
+
+def _report_rag() -> None:
+    """Say whether the coach had an evidence base, right next to the score.
+
+    Risk R3 in the register: "RAG silently degraded (0 rows) → coaching never evaluated
+    with KB". This harness WAS that risk. Every run printed a score with
+    `rag.search_failed` in the logs above it and nothing in the result — measured
+    2026-07-17, `POSTGRES_URL` was unset, pgvector was off, every retrieval failed, and
+    the harness reported 100%. The number was true and the impression was false: it
+    measured the agents' routing contract with no knowledge base attached, which is not
+    what ships.
+
+    A score is not wrong here — routing is genuinely what these cases test. What is wrong
+    is printing it without saying which product it describes.
+    """
+    rag = _rag_state()
+    rows = rag["sskb_rows"] + rag["cskb_rows"]
+    if rows:
+        print(f"  rag: {rag['backend']} — sskb {rag['sskb_rows']} rows, "
+              f"cskb {rag['cskb_rows']} rows")
+        return
+    print(f"  rag: {rag['backend']} — EMPTY (0 rows). This run measured the agents with NO")
+    print("       knowledge base: every {SSKB_*}/{CSKB_*} placeholder resolved to nothing,")
+    print("       so the coach had no evidence base and no org grounding. The routing score")
+    print("       above is still real; 'the coaching works' is NOT what it says. (Risk R3.)")
 
 
 def main() -> int:
