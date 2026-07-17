@@ -999,6 +999,13 @@ function PromptWorkbook() {
         <button className="ghost" onClick={downloadWorkbook}>Download .xlsx</button>
         <input className="wb-search" placeholder="Filter agents…" value={query}
           onChange={(e) => setQuery(e.target.value)} aria-label="Filter agents" />
+        {/* Feedback belongs NEXT TO THE BUTTON. `saved`/`error` are also rendered inside
+            the editor panel below — which only exists once an agent is open, so an upload
+            from this toolbar reported its result to an empty room. Replacing the global
+            workbook and saying nothing is the exact silent-success this console keeps
+            finding elsewhere. */}
+        {saved && <span className="pill ok">{saved}</span>}
+        {error && <span className="error">{error}</span>}
         {data.degraded && <span className="pill off">degraded: {data.degraded_reason || "serving fallback"}</span>}
         <span className={`pill ${issues ? "off" : "ok"}`}>{issues ? `${issues} validation issue${issues === 1 ? "" : "s"}` : "validation clean"}</span>
       </div>
