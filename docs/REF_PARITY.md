@@ -282,6 +282,22 @@ e2e: 61 passed, 0 failed.
 
 ## Warts found while building, not yet fixed
 
+- **`{time}` is a real missing input, and it makes the coach guess the hour.**
+  `coaching_intake_agent` says, five times: *"Greet the user based on `{time}` — add a
+  relevant human touch based on whether it's early morning, late afternoon, or late
+  evening."* Nothing in the stack knows the user's local time — there is no timezone column
+  on the platform's user model and no time value in the engine's prompt context — so the
+  resolver blanks it and the model reads *"Greet the user based on ``"* while still being
+  told to vary by time of day. It will invent one. "Good evening" at 9am is a small,
+  visible, avoidable defect, and it fires on the returning-user path (ALL-13-populated →
+  greet → skip), which is the common one.
+  Two ways out, and it needs a decision rather than a drive-by: **(a)** carry a timezone —
+  platform column → token/profile → engine context → register `{time}` (cross-stack, so
+  rule 7 applies); or **(b)** drop the time-varying greeting from the prompt (content, so
+  the coach owns it). Doing nothing is the current state and it is the worst of the three.
+  Pinned as the one known gap by `test_no_shipping_prompt_has_a_placeholder_nothing_can_resolve`,
+  so it cannot quietly grow company.
+
 - **A test leaves an injection artifact in the dev database.** `\dt` on the dev Postgres
   shows a table named `convDROPTABLEusers` — a collection name like
   `conv'; DROP TABLE users;--` run through `PgCollection.__init__`'s sanitiser

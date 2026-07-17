@@ -201,3 +201,62 @@ def _set_catalog_enabled(path, sheet_name: str, value: bool) -> None:
             cat.cell(row=row, column=i_enabled + 1).value = "TRUE" if value else "FALSE"
             break
     wb.save(path)
+
+
+def test_no_shipping_prompt_has_a_placeholder_nothing_can_resolve():
+    """An unknown `{token}` is BLANKED at runtime, silently.
+
+    That is not theoretical. Until 2026-07-17 `feedback_mood_capture_agent` told the model
+    to build its reply "in this shape:" and the shape was a template — but two of its three
+    slots were single-word `{Question}` / `{Examples}`, which the resolver ate. What the
+    model actually received was:
+
+        \\n\\n{One-line context/framing sentence}\\n\\n
+
+    ...an instruction pointing at a template with its parts erased. The author's own
+    MULTI-WORD slots ({low anchor}, {high anchor}) survived, because the resolver's regex
+    has no space in its character class — so the bug was invisible unless you diffed the
+    composed prompt against the workbook.
+
+    It hid for another reason too: the size warning fired on five prompts permanently, so
+    the validation report was never clean and nobody read it. This asserts it stays clean.
+    """
+    from app.graph.runtime import get_registry
+
+    unknown = get_registry().validation["unknown_placeholders"]
+    # `{time}` is a real missing INPUT, not a notation slip: coaching_intake says "greet the
+    # user based on {time} ... early morning, late afternoon, or late evening" and nothing
+    # in the stack knows the user's local time (no timezone on the platform's user model,
+    # no time value in the prompt context). Fixing it needs a decision — wire a timezone
+    # cross-stack, or drop the time-varying greeting — so it is named here rather than
+    # quietly tolerated.
+    known_gap = {"coaching_intake_agent": ["time"]}
+    assert unknown == known_gap, (
+        f"a prompt gained a placeholder nothing resolves — it will be blanked at runtime "
+        f"and no error will be raised: {unknown}"
+    )
+
+
+def test_the_reply_templates_survive_placeholder_resolution():
+    """The two prompts that show the model a template must still show it one.
+
+    Checks the composed prompt, not the workbook — the workbook was always fine; the damage
+    happened in resolution, which is the only place it was visible.
+    """
+    from app.graph.guardrails import build_system_prompt
+    from app.graph.runtime import get_registry
+
+    reg = get_registry()
+    for stage, slots in (
+        ("feedback_mood_capture_agent", ("{the question}", "{the examples}")),
+        ("coaching_intake_agent", ("{the question}", "{low anchor}", "{high anchor}")),
+    ):
+        composed = build_system_prompt(
+            reg.environment, reg.get(stage), None, {},
+            {"user_message": "x", "conversation_history": "x"}, invoking_agent=stage,
+        )
+        for slot in slots:
+            assert slot in composed, (
+                f"{stage}: the template slot {slot} was blanked before the model saw it — "
+                f"the reply-shape instruction now points at a hole"
+            )
