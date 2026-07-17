@@ -817,6 +817,8 @@ def _run_stage(
     )
     query_context = {
         "user_message": state.get("user_message", ""),
+        # The caller's local hour; guardrails turns it into {time}. None is fine.
+        "local_hour": state.get("local_hour"),
         "conversation": _flat_history,
         # Canonical name (matches builders.py's {conversation_history} convention);
         # same value as "conversation" above — this is what Extract1/2/5 now query

@@ -224,14 +224,11 @@ def test_no_shipping_prompt_has_a_placeholder_nothing_can_resolve():
     from app.graph.runtime import get_registry
 
     unknown = get_registry().validation["unknown_placeholders"]
-    # `{time}` is a real missing INPUT, not a notation slip: coaching_intake says "greet the
-    # user based on {time} ... early morning, late afternoon, or late evening" and nothing
-    # in the stack knows the user's local time (no timezone on the platform's user model,
-    # no time value in the prompt context). Fixing it needs a decision — wire a timezone
-    # cross-stack, or drop the time-varying greeting — so it is named here rather than
-    # quietly tolerated.
-    known_gap = {"coaching_intake_agent": ["time"]}
-    assert unknown == known_gap, (
+    # No known gaps left. `{time}` was the last one — coaching_intake says "greet the user
+    # based on {time}" five times and nothing resolved it, so the model was told to vary by
+    # time of day and handed a blank. The client now sends `local_hour` and
+    # guardrails.time_of_day turns it into a phrase (2026-07-17).
+    assert unknown == {}, (
         f"a prompt gained a placeholder nothing resolves — it will be blanked at runtime "
         f"and no error will be raised: {unknown}"
     )

@@ -41,6 +41,15 @@ class _MessageFields(BaseModel):
 
     message: Optional[str] = Field(default=None)
     text: Optional[str] = Field(default=None)
+    local_hour: Optional[int] = Field(
+        default=None, ge=0, le=23,
+        description=(
+            "The caller's own local hour, 0-23. The client is the ONLY party that knows it: "
+            "there is no timezone on the platform's user model, and `region` is multi-zone "
+            "for US/CA/AU/EU. Optional — omit it and the coach greets without naming a time "
+            "of day rather than guessing one. An hour, never a location."
+        ),
+    )
 
     _validate_length = field_validator("message", "text")(_cap_message_length)
 

@@ -46,6 +46,49 @@ FLOW_NOTE = (
 )
 
 
+#: Hour → the phrase the coach greets with. The ENGINE owns this vocabulary, not the
+#: clients: the web app and the phone would otherwise each invent their own wording and
+#: `coaching_intake_agent` would greet two people differently at the same hour. Clients send
+#: a number; the words are ours.
+#:
+#: Bands cover the whole clock. The prompt names only three ("early morning, late afternoon,
+#: or late evening") as EXAMPLES of the register, so the rest are filled in to match — a
+#: 3am greeting has to say something, and "early morning" is not it.
+_TIME_BANDS = (
+    (5, "the middle of the night"),   # 0-4
+    (8, "early morning"),             # 5-7
+    (12, "the morning"),              # 8-11
+    (14, "midday"),                   # 12-13
+    (17, "the afternoon"),            # 14-16
+    (19, "late afternoon"),           # 17-18
+    (22, "the evening"),              # 19-21
+    (24, "late evening"),             # 22-23
+)
+
+#: What `{time}` resolves to when the client did not send an hour — an OLD client, or one
+#: that chooses not to. It must not blank: the prompt says "greet the user based on {time}"
+#: and a blank there is what made the model invent an hour in the first place. The value
+#: carries its own instruction, because the sentence around it belongs to the coach.
+TIME_UNKNOWN = "an unknown time of day — greet warmly without naming one"
+
+
+def time_of_day(local_hour: Optional[int]) -> str:
+    """The greeting phrase for a caller's local hour, or TIME_UNKNOWN.
+
+    Defensive about the input on purpose. The schema bounds it (0-23), but this also runs
+    for turns replayed from stored state and for anything a future caller passes, and the
+    failure mode of a bad hour must be "greet neutrally", never a KeyError inside a turn.
+    """
+    if not isinstance(local_hour, int) or isinstance(local_hour, bool):
+        return TIME_UNKNOWN
+    if not 0 <= local_hour <= 23:
+        return TIME_UNKNOWN
+    for below, phrase in _TIME_BANDS:
+        if local_hour < below:
+            return phrase
+    return TIME_UNKNOWN  # unreachable: the bands cover 0-23
+
+
 def _rag_query_context(
     user_context: Dict[str, Any],
     coaching_path: Optional[str],
@@ -88,6 +131,17 @@ def _rag_query_context(
     # reaches user_goal_challenge/user_message, so no separate default needed here.)
     merged.setdefault("user_goal_challenge", qc.get("user_message", ""))
     merged.setdefault("user_challenge", qc.get("user_message", ""))
+    # {time} — always set, never blank. coaching_intake says "Greet the user based on
+    # {time}" five times; before 2026-07-17 nothing resolved it, so the model was told to
+    # vary by time of day and handed an empty string, and it guessed. A wrong "Good
+    # evening" at 9am is small and avoidable. The hour comes from the CLIENT (the only
+    # party that knows it — no timezone on the platform, and `region` is multi-zone for
+    # US/CA/AU/EU); an absent one degrades to a phrase that tells the coach not to guess.
+    if "time" not in merged:
+        hour = merged.get("local_hour")
+        if hour is None:
+            hour = qc.get("local_hour")
+        merged["time"] = time_of_day(hour)
     return merged
 
 

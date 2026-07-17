@@ -86,6 +86,7 @@ class CereBroZenEngine:
         bot_name: str,
         user_message: str,
         user_language: Optional[str] = None,
+        local_hour: Optional[int] = None,
         session_continued: Optional[str] = None,
         conversation_mode: Optional[str] = None,
         checkin_action: Optional[Dict[str, Any]] = None,
@@ -128,6 +129,7 @@ class CereBroZenEngine:
             "user_message": user_message,
             "is_first_turn": first,
             "user_language": user_language or "",
+            "local_hour": local_hour,
             # CH phase button press from the UI (e.g. "continue_to_phase_2"); "" otherwise.
             # profile_read_node injects this into user_context as {session_continued} every turn.
             "session_continued": session_continued or "",

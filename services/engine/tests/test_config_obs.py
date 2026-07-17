@@ -1555,3 +1555,66 @@ def test_an_empty_override_falls_through_to_the_catalog(reload_config, monkeypat
     assert model_for("core_coaching_agent", catalog_model="gpt-5.4") == "gpt-5.4"
     monkeypatch.setenv("CEREBROZEN_MODEL_OVERRIDE", "gemma4:latest")  # the offline hatch
     assert model_for("core_coaching_agent", catalog_model="gpt-5.4") == "gemma4:latest"
+
+
+# ── {time}: the client is the only party that knows the hour ─────────────────
+
+
+def test_every_hour_of_the_clock_gets_a_phrase():
+    """A 3am greeting has to say something, and "early morning" is not it.
+
+    coaching_intake names only three bands ("early morning, late afternoon, or late
+    evening") as EXAMPLES of the register, so the rest are filled in to match. The engine
+    owns this vocabulary rather than the clients: the web app and the phone would otherwise
+    each invent their own wording and two people would be greeted differently at the same
+    hour.
+    """
+    from app.graph.guardrails import TIME_UNKNOWN, time_of_day
+
+    phrases = {h: time_of_day(h) for h in range(24)}
+    assert TIME_UNKNOWN not in phrases.values(), "an hour on the clock fell through the bands"
+    assert phrases[3] == "the middle of the night"
+    assert phrases[6] == "early morning"
+    assert phrases[18] == "late afternoon"
+    assert phrases[23] == "late evening"
+
+
+def test_a_missing_or_absurd_hour_tells_the_coach_not_to_guess():
+    """The whole bug was a blank. `{time}` must never resolve to one again.
+
+    An older client sends no hour, and that is a normal, permanent state — the value has to
+    carry its own instruction, because the sentence around it ("Greet the user based on
+    {time} — ... whether it's early morning, late afternoon, or late evening") belongs to
+    the coach and is not ours to edit.
+    """
+    from app.graph.guardrails import TIME_UNKNOWN, time_of_day
+
+    for bad in (None, -1, 24, 99, "20", 20.5, True):
+        got = time_of_day(bad)
+        assert got == TIME_UNKNOWN, f"{bad!r} produced {got!r}"
+        assert got.strip(), "resolved to a blank — the model will invent an hour again"
+    # True is an int in Python (and == 1). A bool is not an hour anyone sent.
+    assert time_of_day(True) == TIME_UNKNOWN
+
+
+def test_the_greeting_line_reads_naturally_with_and_without_an_hour(monkeypatch):
+    """PROMPTS_SPEC: "prompts must read naturally with any single token absent". This is
+    the line that did not, and it is why the rule exists."""
+    from app.graph.guardrails import build_system_prompt
+    from app.graph.runtime import get_registry
+
+    reg = get_registry()
+
+    def line(qc):
+        sp = build_system_prompt(reg.environment, reg.get("coaching_intake_agent"), None,
+                                 {}, qc, invoking_agent="coaching_intake_agent")
+        i = sp.find("Greet the user based on")
+        assert i != -1, "the greeting instruction moved — this test is now guarding nothing"
+        return sp[i:i + 90]
+
+    base = {"user_message": "x", "conversation_history": "x"}
+    assert "`the evening`" in line({**base, "local_hour": 21})
+    assert "`early morning`" in line({**base, "local_hour": 6})
+    absent = line(base)
+    assert "``" not in absent, "back to a blank — the model will guess the hour"
+    assert "without naming one" in absent

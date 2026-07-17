@@ -48,7 +48,12 @@ async function openStream(text: string, sessionId: string | null, token: string,
   return fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ text }),
+    // local_hour: the coach greets by time of day, and this browser is the only party
+    // that knows what time it is here. There is no timezone on the account, and `region`
+    // is multi-zone for US/CA/AU/EU — so without this the engine has nothing and the coach
+    // guesses ("Good evening" at 9am). Sent per turn rather than stored, so it stays right
+    // when someone travels. An hour, never a location.
+    body: JSON.stringify({ text, local_hour: new Date().getHours() }),
   });
 }
 

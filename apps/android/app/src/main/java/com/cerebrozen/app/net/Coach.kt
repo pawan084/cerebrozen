@@ -50,7 +50,15 @@ object Coach {
             ?: "/v1/sessions/start?stream=true"
         var done = JSONObject()
         val stages = mutableSetOf<String>()
-        Session.sse(path, JSONObject().put("text", text), base = BuildConfig.ENGINE_BASE_URL) { ev ->
+        // local_hour: the coach greets by time of day, and this phone is the only party
+        // that knows the hour here — there is no timezone on the account, and `region` is
+        // multi-zone for US/CA/AU/EU. Without it the engine has nothing and the coach
+        // guesses ("Good evening" at 9am). Sent per turn, not stored, so it stays right
+        // across a flight. An hour, never a location.
+        val body = JSONObject()
+            .put("text", text)
+            .put("local_hour", java.time.LocalTime.now().hour)
+        Session.sse(path, body, base = BuildConfig.ENGINE_BASE_URL) { ev ->
             when (ev.optString("type")) {
                 "token" -> onToken(ev.optString("text"))
                 "status" -> onStatus(ev.optString("msg"))

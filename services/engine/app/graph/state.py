@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import operator
-from typing import Annotated, Any, Dict, List, TypedDict
+from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
 logger = logging.getLogger("cerebrozen.graph")
 
@@ -128,6 +128,11 @@ class CereBroZenState(TypedDict, total=False):
     user_message: str
     is_first_turn: bool
     user_language: str  # from request metadata.user_language; → user_context.language
+    # The caller's own local hour (0-23), sent by the CLIENT — the only party that
+    # knows it. → user_context.time via guardrails.time_of_day. Absent is normal (an
+    # older client, or one that declines): the coach then greets without naming a time
+    # of day rather than guessing one.
+    local_hour: Optional[int]
     # Per-turn CH phase signal from request metadata — the user_selection value of the
     # phase button the user pressed ("continue_to_phase_2", "continue_to_phase_3",
     # "save_and_exit") or "" when no button was pressed. Injected into user_context as

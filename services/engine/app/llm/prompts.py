@@ -133,7 +133,16 @@ _PLACEHOLDER_RE = re.compile(r"\{[A-Za-z0-9_.&\-]+\}")
 KNOWN_CONTEXT_TOKENS = frozenset({
     # identity / request metadata
     "userName", "user_name", "name", "username", "user_id", "session_id",
-    "language", "Time", "timezone", "country", "conversation_mode",
+    # "time" is the caller's local time of day, as a PHRASE ("late evening"), resolved by
+    # guardrails.time_of_day from the client-supplied `local_hour`. Never blank: absent an
+    # hour it degrades to a value telling the coach not to name a time (TIME_UNKNOWN).
+    #
+    # "Time" (capital) was already listed and "time" was not, which is why the resolver ate
+    # coaching_intake's {time} for five occurrences while the report called it unknown —
+    # the token was anticipated, registered in the wrong case, and never given a value.
+    # Both spellings stay: the matcher is case-sensitive and a prompt may use either.
+    "time", "Time", "timezone", "local_hour",
+    "language", "country", "conversation_mode",
     "session_continued", "invoking_agent",
     # org / role
     "org_id", "orgId", "organizationName", "organizationValues",
