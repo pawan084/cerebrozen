@@ -37,7 +37,7 @@ Legend: **✅ shipped** · **⚠️ partial** · **❌ not built**
 | **Crisis classifier** | ✅ | **New.** Runs on everything the lexicon lets through. **1/22 → 20/22 measured.** ~$0.00014/session. |
 | **Escalation to a human** | ✅ | **New.** Notifies a designated contact. Sends a *signal*, never the disclosure. Logs at ERROR if unconfigured. |
 | Crisis reply in the user's language | ✅ | 7 languages written; detection spans ~20. The gap logs itself. |
-| Red-team scorecard | ✅ | Published, including the bad number. Pinned so it can't regress. |
+| Red-team scorecard | ✅ | Published, including the bad number. Pinned so it can't regress. **Reproducible:** `python -m scripts.redteam_report` scores the same scenarios as CI and reprints 1/22 — a buyer can run it. |
 
 ## 3. Security & privacy
 
