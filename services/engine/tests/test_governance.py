@@ -31,24 +31,34 @@ def test_no_agent_is_decisional():
     assert all(row["decisional"] is False for row in governance.ai_inventory())
 
 
-def test_regulated_is_the_default(monkeypatch):
-    """Unset env → fully regulated: no emotion inference, no durable person-score. This is
-    the shipped posture and the attestation must report it truthfully."""
-    for var in ("CEREBROZEN_REGULATED_WORKPLACE", "CEREBROZEN_EMOTION_CAPTURE",
-                "CEREBROZEN_PERSON_SCORING"):
-        monkeypatch.delenv(var, raising=False)
-    import importlib
+def test_attestation_reflects_the_regulated_flags(monkeypatch):
+    """The attestation must report the deployment's ACTUAL posture, both ways.
 
+    Flags are patched directly rather than reloading the config module — reloading mutates
+    shared global state that later tests (mood/ic_profile persistence) depend on, which is
+    exactly the kind of cross-test pollution a reload causes. `monkeypatch.setattr` restores
+    cleanly at teardown."""
     import app.config as config
-    importlib.reload(config)
-    try:
-        att = governance.attestation()
-        rw = att["regulated_workplace"]
-        assert rw["fully_regulated"] is True
-        assert rw["emotion_inference"] is False
-        assert rw["durable_person_scoring"] is False
-    finally:
-        importlib.reload(config)  # restore for the rest of the suite
+
+    # Shipped default: both off → fully regulated.
+    monkeypatch.setattr(config, "EMOTION_CAPTURE_ENABLED", False)
+    monkeypatch.setattr(config, "PERSON_SCORING_ENABLED", False)
+    rw = governance.attestation()["regulated_workplace"]
+    assert rw == {
+        "fully_regulated": True,
+        "emotion_inference": False,
+        "durable_person_scoring": False,
+        "reference": rw["reference"],
+    }
+
+    # Opted in (contract-level decision): the attestation must say so, not hide it.
+    monkeypatch.setattr(config, "EMOTION_CAPTURE_ENABLED", True)
+    rw2 = governance.attestation()["regulated_workplace"]
+    assert rw2["fully_regulated"] is False
+    assert rw2["emotion_inference"] is True
+    # The inventory row for the mood agent must track the live flag too.
+    mood = next(r for r in governance.ai_inventory() if r["agent"] == "feedback_mood_capture_agent")
+    assert mood["active"] is True
 
 
 def test_certifications_are_reported_honestly():
