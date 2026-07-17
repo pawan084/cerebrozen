@@ -300,3 +300,15 @@ select.mini { padding: 5px 8px; font-size: 13px; border: 1px solid var(--color-m
   border-radius: 8px; background: #fff; width: 100%;
 }
 .kb-form textarea { resize: vertical; font-family: inherit; }
+
+/* Tab groups: three jobs, not seven equal choices (Customers · Coaching · Queues).
+   The label is a quiet caption above its pills — structure the eye can skip when it
+   already knows where it is going, and find when it doesn't. org_admin's four tabs
+   render label-less, so a single-job console keeps a plain row. */
+.tabs { align-items: flex-end; gap: 18px; }
+.tabgroup { display: flex; flex-direction: column; gap: 5px; }
+.tabgroup-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--color-brand-500); padding-left: 4px;
+}
+.tabgroup-pills { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -313,6 +313,10 @@ e2e: 61 passed, 0 failed.
 
 ## Shared gaps — in neither app, worth doing anyway
 
+- **Tenant list is client-filtered, not paged.** `/orgs` returns every tenant in one
+  response; the Tenants filter (2026-07-17) narrows what is SHOWN, not what is fetched, and
+  hides itself under 6 tenants. Fine at today's scale, wrong at 500 — the fix is a server
+  query + paging like `/orgs/me/people` already has, not a better filter.
 - **Admin audit log**: neither console has one; regulated-mode-by-default makes "who
   changed seats / deactivated whom / edited which prompt" table stakes. Ours only
   writes prompt saves to stdout.

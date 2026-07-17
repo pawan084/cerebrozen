@@ -263,6 +263,37 @@ test.describe("ops console", () => {
     expect(r.status(), "an org_admin could resolve their employees' crisis records").toBe(403);
   });
 
+  test("the console groups its seven tabs by job, and loses none of them", async ({ page }) => {
+    /* Seven pills in one undifferentiated row asked an operator to hold three unrelated
+       jobs in their head at once. Grouping is only an improvement if every tab is still
+       one click away — a reorganisation that hides a surface is a regression wearing a
+       tidy hat, so this asserts reachability, not just the labels. */
+    await signIn(page, urls.admin, "ops");
+    for (const g of ["Customers", "Coaching", "Queues"]) {
+      await expect(page.getByText(g, { exact: true })).toBeVisible();
+    }
+    for (const t of ["Tenants", "Demo requests", "Prompt workbook", "Agent flow",
+                     "Console", "Safety queue", "Nudges"]) {
+      await expect(page.getByRole("button", { name: t, exact: true }),
+        `${t} vanished in the regroup`).toBeVisible();
+    }
+  });
+
+  test("Tenants is the table: the create form waits to be asked for", async ({ page }) => {
+    await signIn(page, urls.admin, "ops");
+    await page.getByRole("button", { name: "Tenants", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "New tenant" })).toHaveCount(0);
+
+    // The policy is not deleted, only demoted: one line, reasoning on demand.
+    await expect(page.getByText("Regulated mode is not.")).toBeVisible();
+    await expect(page.getByText("counsel sign-off")).toHaveCount(0);
+    await page.getByRole("button", { name: "why?" }).click();
+    await expect(page.getByText("counsel sign-off")).toBeVisible();
+
+    await page.getByRole("button", { name: "+ New tenant" }).click();
+    await expect(page.getByRole("heading", { name: "New tenant" })).toBeVisible();
+  });
+
   test("an expired session says so, and offers the action that works", async ({ page }) => {
     /* The admin threw a bare "HTTP 401" into a Failed card with a RETRY button — which
        could never work: by the time a 401 reaches the UI, refresh() has already run and

@@ -583,6 +583,7 @@ function Tenants() {
   const [openKb, setOpenKb] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [why, setWhy] = useState(false);
+  const [q, setQ] = useState("");
   const [error, setError] = useState("");
   const [expired, setExpired] = useState(false);
   const load = useCallback(() => {
@@ -629,11 +630,23 @@ function Tenants() {
     await api(`/orgs/${org.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !org.is_active }) });
     load();
   }
+  const needle = q.trim().toLowerCase();
+  const shown = (orgs ?? []).filter(
+    (o) => !needle || o.name.toLowerCase().includes(needle) || o.slug.toLowerCase().includes(needle),
+  );
   return (
     <>
       <div className="card">
         <div className="people-head">
           <h2>Tenants</h2>
+          {/* Client-side, deliberately: /orgs returns every tenant in one response, so a
+              server query would not save the fetch — it would only move the filter. This
+              makes them FINDABLE now; the unbounded fetch is a separate server concern and
+              the honest limit of this control (see the note under the table). */}
+          {(orgs?.length ?? 0) > 5 && (
+            <input className="wb-search" type="search" placeholder="Filter tenants…"
+              aria-label="Filter tenants" value={q} onChange={(e) => setQ(e.target.value)} />
+          )}
           {!creating && <button className="ghost" onClick={() => setCreating(true)}>+ New tenant</button>}
         </div>
         {orgs === null ? (
@@ -643,7 +656,7 @@ function Tenants() {
             <table>
               <thead><tr><th>Name</th><th>Slug</th><th>Seats</th><th>Crisis region</th><th>Regulated</th><th>Status</th><th /><th /></tr></thead>
               <tbody>
-                {orgs.map((o) => (
+                {shown.map((o) => (
                   <Fragment key={o.id}>
                   <tr>
                     <td>{o.name}</td><td>{o.slug}</td>
@@ -673,6 +686,9 @@ function Tenants() {
               </tbody>
             </table>
             {orgs.length === 0 && <p className="empty-state">No tenants yet — create the first one.</p>}
+            {orgs.length > 0 && shown.length === 0 && (
+              <p className="empty-state">No tenant matches &ldquo;{q}&rdquo;.</p>
+            )}
             {/* One line, with the reasoning behind a disclosure. The rules have not
                 changed — regulated mode is still not a switch — but an operator reads this
                 page to DO something, and three paragraphs of policy between them and the
@@ -1362,10 +1378,24 @@ export default function Admin() {
   if (!ready) return null;
   if (!me) return <div className="shell"><Login onDone={loadMe} /></div>;
 
-  const tabs =
+  /* Seven pills in one undifferentiated row asked the operator to hold three unrelated
+     jobs in their head at once. They are not unrelated to each OTHER — they are three
+     jobs, and which one you are doing decides which tabs you care about:
+
+       Customers  — who is on the platform, and who wants to be
+       Coaching   — the workbook, the compiled arc, and a place to try one
+       Queues     — the two things that need a human, and drain
+
+     The HR side (org_admin) keeps a flat row: four tabs, one job, and a group label on
+     every one of them would be noise dressed as structure. */
+  const groups: [string, string[][]][] =
     me.role === "internal_admin"
-      ? [["tenants", "Tenants"], ["demos", "Demo requests"], ["prompts", "Prompt workbook"], ["flow", "Agent flow"], ["safety", "Safety queue"], ["nudges", "Nudges"], ["console", "Console"]]
-      : [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]];
+      ? [
+          ["Customers", [["tenants", "Tenants"], ["demos", "Demo requests"]]],
+          ["Coaching", [["prompts", "Prompt workbook"], ["flow", "Agent flow"], ["console", "Console"]]],
+          ["Queues", [["safety", "Safety queue"], ["nudges", "Nudges"]]],
+        ]
+      : [["", [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]]]];
 
   return (
     // The agent flow is a canvas workspace, not a document — it gets the full
@@ -1379,8 +1409,15 @@ export default function Admin() {
         </span>
       </header>
       <nav className="tabs">
-        {tabs.map(([id, label]) => (
-          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
+        {groups.map(([group, items]) => (
+          <div className="tabgroup" key={group || "all"}>
+            {group && <span className="tabgroup-label">{group}</span>}
+            <div className="tabgroup-pills">
+              {items.map(([id, label]) => (
+                <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
       {tab === "overview" && <OrgOverview />}
