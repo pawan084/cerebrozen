@@ -61,6 +61,7 @@ Legend: **✅ shipped** · **⚠️ partial** · **❌ not built**
 | — no emotion inference | ✅ | Refused **at the store** — the last gate before the disk. |
 | — no durable person-score | ✅ | Refused **at registry load** — never registered, so no prompt edit can bring it back. |
 | Aggregate-only org insight | ✅ | **Enforced now.** Platform `/orgs/me/analytics` nulls any metric under a k-anonymity `COHORT_FLOOR`; admin `OrgAnalytics` renders counts/trends only. (This row read ⚠️/unbuilt until 2026-07-17 — stale; the product exists.) |
+| — cohort themes | ✅ | **New.** "What your org is coaching on" — a k-anon-floored aggregate of controlled Development-Area labels (`THEME_VOCABULARY`), counts never content. A theme below the floor is counted, never named. |
 | **Governance attestation** | ✅ | **New.** `GET /v1/governance` — machine-readable model card + AI inventory + the non-decisional guarantee, built from live config. Human companion: [MODEL_CARD.md](MODEL_CARD.md). |
 
 ## 5. Deployment & platform

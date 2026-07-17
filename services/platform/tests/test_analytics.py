@@ -180,3 +180,83 @@ async def test_plain_users_cannot_read_analytics(client, org_with_admin):
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     assert r.status_code == 403
+
+
+# ── Cohort themes: a controlled, floored aggregate of Development Areas ───────
+
+async def _seed_themed(org_id: str, theme_people: dict[str, int]) -> None:
+    """For each theme, `n` distinct synthetic members each emit one themed action beat."""
+    async with SessionLocal() as session:
+        for theme, people in theme_people.items():
+            for _ in range(people):
+                user = User(
+                    org_id=org_id,
+                    email=f"t-{uuid.uuid4().hex[:10]}@x.example",
+                    password_hash="x",
+                )
+                session.add(user)
+                await session.flush()
+                session.add(ActivityEvent(
+                    org_id=org_id, user_id=user.id, kind="action_saved", theme=theme,
+                ))
+        await session.commit()
+
+
+async def test_theme_is_controlled_vocabulary_only(client, org_with_admin):
+    """A theme in the catalogue is stored; free text is dropped to None — the beat still
+    records. This is the content firewall for the new dimension."""
+    from sqlalchemy import select
+
+    h = org_with_admin["admin_headers"]
+    ok = await client.post(
+        "/events/coaching", json={"kind": "action_saved", "theme": "Delegation"}, headers=h,
+    )
+    freetext = await client.post(
+        "/events/coaching",
+        json={"kind": "action_saved", "theme": "I want to quit, here's what my manager did"},
+        headers=h,
+    )
+    assert ok.status_code == 202 and freetext.status_code == 202
+
+    async with SessionLocal() as s:
+        themes = (
+            await s.execute(
+                select(ActivityEvent.theme).where(ActivityEvent.org_id == org_with_admin["org"]["id"])
+            )
+        ).scalars().all()
+    assert "Delegation" in themes
+    assert None in themes  # the free-text beat recorded, its theme dropped
+    assert not any(t and "quit" in t for t in themes), "free text must never be stored as a theme"
+
+
+async def test_cohort_themes_respect_the_floor(client, org_with_admin, internal):
+    """A theme worked on by >= floor people is named; one below the floor is counted,
+    never named — the same k-anonymity guarantee as every other metric."""
+    org_id = org_with_admin["org"]["id"]
+    ihead, _ = internal
+    await client.patch(f"/orgs/{org_id}", json={"seats_total": 40}, headers=ihead)
+    await _seed_themed(org_id, {"Decision making": 8, "Delegation": 3})  # floor is 8
+
+    body = (
+        await client.get("/orgs/me/analytics", headers=org_with_admin["admin_headers"])
+    ).json()
+    themes = body["themes"]
+
+    named = {t["theme"]: t for t in themes["top"]}
+    assert "Decision making" in named and named["Decision making"]["people"] == 8
+    assert "Delegation" not in named, "a sub-floor theme was named — k-anon leak"
+    assert themes["suppressed"] == 1
+    assert "Delegation" not in str(themes), "the suppressed theme's NAME leaked into the payload"
+
+
+async def test_themes_are_backward_compatible(client, org_with_admin):
+    """A beat with no theme still records and simply contributes no theme — the dimension
+    is additive, old clients keep working."""
+    r = await client.post(
+        "/events/coaching", json={"kind": "session_started"}, headers=org_with_admin["admin_headers"],
+    )
+    assert r.status_code == 202
+    body = (
+        await client.get("/orgs/me/analytics", headers=org_with_admin["admin_headers"])
+    ).json()
+    assert body["themes"]["top"] == [] and body["themes"]["suppressed"] == 0

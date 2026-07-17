@@ -174,6 +174,20 @@ class DemoRequest(Base):
 
 EVENT_KINDS = {"session_started", "session_completed", "action_saved", "action_completed"}
 
+# Controlled coaching-theme vocabulary (the "Development Area" catalogue). A coaching beat
+# MAY carry one of these as its `theme` — a CONTROLLED label, never free text, so "counts,
+# never content" survives the new dimension: a theme is which development area a person is
+# working on, never a word they said. Anything not in this set is dropped on ingest, exactly
+# like an unknown event kind. Owned by the platform (the analytics vocabulary lives here);
+# mirrors the engine's default ROI-metric catalogue.
+THEME_VOCABULARY = {
+    "Mental & emotional state", "Inspiration", "Managing conflicts", "Future orientation",
+    "Creativity & innovation", "Decision making", "Inclusion", "Contribution & giving back",
+    "Delegation", "Clarity of purpose", "Upskilling", "Level of stress", "Collaboration",
+    "Self-confidence", "Job satisfaction", "Goal setting", "Resilience", "Intellectual growth",
+    "Ownership", "Building relationships", "Continuous improvement & learning", "Communication",
+}
+
 # Pre-auth product-funnel beats (the app's anonymous /events contract). Names
 # not in this set are dropped on ingest, never stored.
 FUNNEL_EVENTS = {"onboarding_step", "onboarding_done"}
@@ -206,6 +220,9 @@ class ActivityEvent(Base):
     org_id: Mapped[str] = mapped_column(String(32), index=True)
     user_id: Mapped[str] = mapped_column(String(32), index=True)
     kind: Mapped[str] = mapped_column(String(32), index=True)
+    # Optional controlled theme (a Development Area from THEME_VOCABULARY). Nullable so the
+    # dimension is backward-compatible: beats without it still count for every kind metric.
+    theme: Mapped[str | None] = mapped_column(String(48), index=True, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

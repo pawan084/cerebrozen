@@ -13,10 +13,12 @@ type Me = { id: string; email: string; name: string; role: string; org_id: strin
 type Org = { id: string; name: string; slug: string; seats_total: number; seats_used: number; regulated_mode: boolean; crisis_region: string; is_active: boolean };
 type Person = { id: string; email: string; name: string; role: string; is_active: boolean };
 type Metric = { value: number | null; suppressed: boolean };
+type Theme = { theme: string; people: number; events: number };
 type Analytics = {
   window_days: number; cohort_floor: number;
   seats: { total: number; active_members: number };
   metrics: Record<string, Metric>;
+  themes: { cohort_floor: number; top: Theme[]; suppressed: number };
 };
 type Demo = { id: string; name: string; email: string; company: string; size: string; message: string; status: string; created_at: string };
 
@@ -183,6 +185,30 @@ function OrgAnalytics() {
         <p className="hint" style={{ marginTop: 8 }}>
           Counts and trends only — no transcripts, no individual records, ever.
         </p>
+      </div>
+      <div className="card">
+        <h2>What your org is coaching on</h2>
+        {data.themes.top.length === 0 ? (
+          <p className="hint">
+            No development area yet has {data.themes.cohort_floor} or more people working on
+            it — themes appear once a cohort is large enough that naming one identifies no one.
+          </p>
+        ) : (
+          <ul className="themes">
+            {data.themes.top.map((t) => (
+              <li key={t.theme}>
+                <span>{t.theme}</span>
+                <b>{t.people} {t.people === 1 ? "person" : "people"}</b>
+              </li>
+            ))}
+          </ul>
+        )}
+        {data.themes.suppressed > 0 && (
+          <p className="hint" style={{ marginTop: 10 }}>
+            {data.themes.suppressed} further {data.themes.suppressed === 1 ? "theme is" : "themes are"}{" "}
+            below the {data.themes.cohort_floor}-person floor and withheld — counted, never named.
+          </p>
+        )}
       </div>
       <div className="card">
         <h2>Seats</h2>

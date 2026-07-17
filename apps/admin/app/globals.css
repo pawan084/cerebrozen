@@ -70,6 +70,12 @@ a.wordmark.home:hover em { opacity: 0.7; }
 .stat { min-width: 130px; }
 .stat b { display: block; font-size: 26px; }
 .stat span { font-size: 12px; color: var(--color-brand-600); }
+.themes { list-style: none; margin: 0; padding: 0; }
+.themes li { display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 9px 0; border-bottom: 1px solid var(--color-brand-100); }
+.themes li:last-child { border-bottom: 0; }
+.themes li span { color: var(--color-brand-800); }
+.themes li b { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-brand-600); font-weight: 600; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-brand-500); padding: 6px 10px; }

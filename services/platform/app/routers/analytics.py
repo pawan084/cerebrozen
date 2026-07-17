@@ -15,13 +15,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import config
 from app.db import get_session
 from app.deps import current_user, require_org_admin
-from app.models import EVENT_KINDS, FUNNEL_EVENTS, ActivityEvent, FunnelEvent, Org, User
+from app.models import (
+    EVENT_KINDS,
+    FUNNEL_EVENTS,
+    THEME_VOCABULARY,
+    ActivityEvent,
+    FunnelEvent,
+    Org,
+    User,
+)
 
 router = APIRouter(tags=["analytics"])
 
 
 class EventIn(BaseModel):
     kind: str
+    # Optional controlled theme (a Development Area). Anything outside THEME_VOCABULARY is
+    # dropped to None on ingest — the beat still records, but no free text is ever stored.
+    theme: str | None = None
 
 
 class FunnelEventIn(BaseModel):
@@ -71,9 +82,49 @@ async def report_event(
         raise HTTPException(400, "internal staff produce no coaching activity")
     if body.kind not in EVENT_KINDS:
         raise HTTPException(400, f"kind must be one of {sorted(EVENT_KINDS)}")
-    session.add(ActivityEvent(org_id=user.org_id, user_id=user.id, kind=body.kind))
+    # Controlled vocabulary only: an unknown theme is dropped, never stored — the beat still
+    # counts. This is what keeps the new dimension "counts, never content".
+    theme = body.theme if body.theme in THEME_VOCABULARY else None
+    session.add(ActivityEvent(org_id=user.org_id, user_id=user.id, kind=body.kind, theme=theme))
     await session.commit()
     return {"ok": True}
+
+
+async def _theme_stats(
+    session: AsyncSession, org_id: str, since: datetime
+) -> dict:
+    """Top coaching themes in the window, k-anonymity floored.
+
+    A theme is surfaced ONLY when at least COHORT_FLOOR distinct people worked on it — the
+    same floor as every other behavioral metric, so a rare theme (which could re-identify)
+    never appears. Sub-floor themes are COUNTED, never named. Sorted by contributors."""
+    rows = (
+        await session.execute(
+            select(
+                ActivityEvent.theme,
+                func.count().label("events"),
+                func.count(distinct(ActivityEvent.user_id)).label("people"),
+            )
+            .where(
+                ActivityEvent.org_id == org_id,
+                ActivityEvent.created_at >= since,
+                ActivityEvent.theme.is_not(None),
+            )
+            .group_by(ActivityEvent.theme)
+        )
+    ).all()
+    top = [
+        {"theme": r.theme, "people": int(r.people), "events": int(r.events)}
+        for r in rows
+        if int(r.people) >= config.COHORT_FLOOR
+    ]
+    top.sort(key=lambda t: (-t["people"], t["theme"]))
+    return {
+        "cohort_floor": config.COHORT_FLOOR,
+        "top": top,
+        # Present but below the floor — a number, never the names.
+        "suppressed": len(rows) - len(top),
+    }
 
 
 async def _kind_stats(
@@ -130,6 +181,8 @@ async def org_analytics(
         )
     ).scalar_one()
 
+    themes = await _theme_stats(session, org.id, since)
+
     # Rates inherit the WEAKEST cohort of their components: a rate over a
     # suppressed numerator or denominator would leak what suppression hid.
     session_rate_cohort = min(started_u, completed_u)
@@ -164,4 +217,7 @@ async def org_analytics(
                 action_rate_cohort,
             ),
         },
+        # What the org is coaching ON — controlled Development-Area labels, k-anon floored,
+        # counts only. The "cohort themes" HR has always wanted, without a transcript.
+        "themes": themes,
     }
