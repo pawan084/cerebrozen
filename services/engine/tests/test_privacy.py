@@ -21,6 +21,7 @@ import pytest
 
 from app import config
 from app.privacy import erasure
+from tests.conftest import requires_pg
 
 
 # ── Seed a user into EVERY location, the way the app really does ─────────────
@@ -405,3 +406,151 @@ def test_forget_survives_a_store_that_falls_over(with_diary, monkeypatch):
     report = erasure.forget_user(user_id)
     assert report["verified"] is False
     assert report["remaining"], "a failed wipe reported nothing left behind"
+
+
+# ── The checkpointer as it ACTUALLY ships ────────────────────────────────────
+#
+# Everything above models the MongoDB saver: it inserts documents into mongomock
+# collections named `checkpoints`/`checkpoint_writes`. That saver is a FALLBACK. Postgres
+# is the default (ARCHITECTURE.md §Storage consolidation), and there LangGraph owns its own
+# tables with its own schema — which is why this whole area was broken while the suite was
+# green.
+
+
+def test_erasure_searches_for_the_thread_id_the_engine_actually_writes(mongo, user_id):
+    """The bug that made every erasure a lie, pinned as a contract between two modules.
+
+    The checkpointer writes `"<org>:<session_id>"`. Erasure searched for the bare
+    `session_id`, matched nothing, deleted nothing, re-scanned with the same wrong filter,
+    found nothing remaining, and reported `verified: True`. Measured against the live
+    database, where the same id appeared in both columns:
+
+        checkpoints.thread_id            6da49ab55dac…:157f8ae79fcc…
+        user_conversations.session_id    157f8ae79fcc…
+
+    Both sides now build the key with `tenancy.thread_id_for`, so this asserts they agree
+    rather than trusting that they do.
+    """
+    from app.tenancy import ctx_org_id, thread_id_for
+
+    token = ctx_org_id.set("acme")
+    try:
+        loc = next(l for l in erasure._locations() if l.key == "thread_id")
+        flt = erasure._filter_for(loc, user_id, ["s1"])
+        wanted = flt["thread_id"]["$in"]
+
+        assert thread_id_for("s1") == "acme:s1"
+        assert "acme:s1" in wanted, (
+            "erasure is not looking for the key the checkpointer wrote — it will delete "
+            "nothing and report verified"
+        )
+        # ...and still reaches threads written before the org prefix existed.
+        assert "s1" in wanted
+    finally:
+        ctx_org_id.reset(token)
+
+
+def test_no_sessions_never_becomes_a_match_everything_filter(mongo, user_id):
+    """An empty $in matches every row, and this is a delete path."""
+    loc = next(l for l in erasure._locations() if l.key == "thread_id")
+    assert erasure._filter_for(loc, user_id, []) is None
+
+
+def test_the_registry_follows_the_checkpointer_that_will_be_built(monkeypatch):
+    """Only the Mongo saver stores checkpoints as documents we can read. On Postgres they
+    are LangGraph's tables (`SELECT doc FROM checkpoints` → UndefinedColumn → export 500);
+    on SQLite they are a file our client cannot see at all, which is worse, because the
+    delete and the re-scan both find nothing and erasure reports success."""
+    monkeypatch.setattr(config, "MONGO_DB_URL", "mongodb://fake")
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    monkeypatch.setattr(config, "POSTGRES_URL", "", raising=False)
+    assert erasure._checkpoint_backend() == "document"
+    assert {l.label for l in erasure._locations() if l.key == "thread_id"} == {
+        "checkpoints", "checkpoint_writes"}
+
+    monkeypatch.setenv("POSTGRES_URL", "postgresql://x/y")
+    assert erasure._checkpoint_backend() == "checkpointer"
+    ckpt = [l for l in erasure._locations() if l.key == "thread_id"]
+    assert [l.via for l in ckpt] == ["checkpointer"], "Postgres would be read as documents"
+
+    # SQLite/memory: no Postgres, no Mongo. The silent-false-success case.
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    monkeypatch.setattr(config, "MONGO_DB_URL", "")
+    assert erasure._checkpoint_backend() == "checkpointer"
+
+
+@requires_pg
+def test_erasure_actually_clears_the_real_postgres_checkpointer(pgdb, monkeypatch, mongo,
+                                                                user_id):
+    """The whole point, against the store that ships.
+
+    Writes a real checkpoint through a real PostgresSaver, then erases the person and reads
+    LangGraph's tables DIRECTLY — never through the code under test — to prove the message
+    history is gone. Covers `checkpoint_blobs`, which the old registry never listed and
+    which is where Postgres actually puts the state: an erasure that only fixed the
+    UndefinedColumn crash would still have left the conversation on disk.
+    """
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from psycopg_pool import ConnectionPool
+
+    from app.tenancy import ctx_org_id, thread_id_for
+    from tests.conftest import PG_URL
+
+    monkeypatch.setenv("POSTGRES_URL", PG_URL)
+    pool = ConnectionPool(conninfo=PG_URL, kwargs={"autocommit": True, "prepare_threshold": 0},
+                          open=True)
+    saver = PostgresSaver(pool)
+    saver.setup()
+    monkeypatch.setattr(erasure, "_SAVER", saver)  # the cached saver the module would build
+
+    token = ctx_org_id.set("acme")
+    try:
+        session_id = "sess-erasure-probe"
+        thread_id = thread_id_for(session_id)
+
+        # The person's transcript — how erasure finds their sessions at all.
+        conv = mongo[config.MONGO_RASA_DB][config.MONGO_USER_CONVERSATIONS_COLLECTION]
+        conv.insert_one({"user_id": user_id, "session_id": session_id})
+
+        cfg = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        # new_versions must name the channel, or the saver writes NO blob — and the blob is
+        # where Postgres puts the message history. (First draft passed {} here; the guard
+        # assertion below caught it, which is the only reason the blob check means anything.)
+        saver.put(cfg, {"id": "c1", "ts": "2026-07-17T00:00:00+00:00", "v": 1,
+                        "channel_values": {"messages": ["I want to kill myself"]},
+                        "channel_versions": {"messages": "00000000000000000000000000000001."},
+                        "versions_seen": {}},
+                  {"source": "input", "step": 1},
+                  {"messages": "00000000000000000000000000000001."})
+
+        def rows(table):
+            with pool.connection() as conn:
+                return conn.execute(
+                    f'SELECT count(*) FROM {table} WHERE thread_id = %s', (thread_id,)
+                ).fetchone()[0]
+
+        assert rows("checkpoints") > 0, "the fixture wrote nothing — this would pass vacuously"
+        assert rows("checkpoint_blobs") > 0, "no blob written; the blob assertion below is empty"
+
+        # Right of access must not 500 (it did: SELECT doc FROM checkpoints).
+        bundle = erasure.export_user(user_id)
+        assert "error" not in str(bundle["data"]["checkpoints"]), (
+            f"export could not read the checkpointer: {bundle['data']['checkpoints']}"
+        )
+
+        report = erasure.erase_user(user_id)
+
+        assert rows("checkpoints") == 0, "THE CONVERSATION STATE SURVIVED ERASURE"
+        assert rows("checkpoint_blobs") == 0, (
+            "the message history survived in checkpoint_blobs — the table the old registry "
+            "never listed"
+        )
+        assert rows("checkpoint_writes") == 0, "the write-ahead log survived"
+        assert report["verified"] is True, f"erasure could not verify itself: {report}"
+        assert report["deleted"]["checkpoints"] == 1
+    finally:
+        ctx_org_id.reset(token)
+        with pool.connection() as conn:
+            for t in ("checkpoints", "checkpoint_blobs", "checkpoint_writes"):
+                conn.execute(f'DELETE FROM {t} WHERE thread_id LIKE %s', ("acme:sess-erasure-probe%",))
+        pool.close()

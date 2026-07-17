@@ -220,7 +220,7 @@ at which customer tripped the crisis screen.** No customer role can — an `org_
 HR) gets 403 on both the read and the ack, verified against the composed stack. Recorded in
 SECURITY.md (the tenancy claim now names its exception) and ARCHITECTURE.md.
 
-## NEXT — export and erasure are broken on Postgres (the default store)
+## Export and erasure on Postgres — FIXED 2026-07-17 (and it was worse than a crash)
 
 Found by running the e2e suite against the composed stack while verifying item 15.
 Measured, not reasoned about:
@@ -250,11 +250,35 @@ leave the message history behind. Verify the whole checkpointer schema
 (`checkpoints`, `checkpoint_writes`, `checkpoint_blobs`) against the registry — do not
 just fix the crash.
 
-Shape of the fix: the registry needs a per-location strategy — shim-document vs. native
-checkpointer — because "delete this person's graph state" is a `DELETE … WHERE thread_id =
-ANY(...)` against LangGraph's tables, not a document read. Whatever lands must be driven
-against a real Postgres, not mongomock; `tests/conftest.py` now has `pgdb`/`requires_pg`
-for exactly this.
+**The crash was the lucky part.** Fixing it surfaced the real bug: the checkpointer keys
+threads by `"<org>:<session_id>"`, and erasure searched for the **bare `session_id`**. It
+matched nothing, deleted nothing, then re-scanned with the same wrong filter, found nothing
+"remaining", and reported **`verified: True`** — on EVERY backend, Mongo included. A
+statutory erasure returning verified success with the entire message history on disk, which
+is the precise failure this module's own docstring warns about ("it reported deletions it
+never made"). The org prefix tenanted the checkpointer; erasure predates it and was never
+told. The unit tests inserted bare `thread_id`s, so they encoded the same wrong assumption
+and stayed green. Measured against the live database, where the same id sat in both columns.
+
+Fixed:
+* `tenancy.thread_id_for()` is now the ONE place the key is built — the engine writes it and
+  erasure searches for it, so they cannot drift again. `thread_ids_for()` also returns the
+  bare id, so pre-tenancy threads stay reachable.
+* `_checkpoint_backend()` mirrors `get_checkpointer()`'s precedence. Only the MongoDB saver
+  stores checkpoints as readable documents; Postgres/SQLite/memory get a
+  `_CheckpointerCollection` — a pymongo-shaped view over the saver's own
+  `list`/`delete_thread`, the same trick `PgCollection` plays. The saver owns its schema, so
+  it is the only thing that can honestly answer.
+* That also picks up **`checkpoint_blobs`**, which the registry never listed and which is
+  where Postgres actually puts the message history.
+* SQLite was the worst case and is now covered too: the checkpoints live in a file the Mongo
+  client cannot see, so the delete and the re-scan both found nothing and erasure reported
+  success. Silent, not loud.
+
+Verified on the composed stack, not just in the suite: 12 threads / 406 blobs before,
+`verified: True` with `checkpoints: 12` deleted, **0 threads / 0 blobs** after. The
+pg-backed test fails with "THE CONVERSATION STATE SURVIVED ERASURE" against the old filter.
+e2e: 61 passed, 0 failed.
 
 ## Warts found while building, not yet fixed
 

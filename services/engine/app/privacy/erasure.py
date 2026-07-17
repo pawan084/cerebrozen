@@ -55,6 +55,39 @@ class Location:
     collection: str    # ditto, or a literal name
     key: str           # "user_id" | "thread_id"
     note: str = ""
+    #: How to reach it. "document" = a pymongo-shaped collection (the stores, and the
+    #: MongoDB checkpointer). "checkpointer" = LangGraph's own saver, which owns its
+    #: schema and is the only thing that can speak it — see `_checkpoint_backend`.
+    via: str = "document"
+
+
+def _checkpoint_backend() -> str:
+    """Which checkpointer will `get_checkpointer()` actually build — and can we read its
+    tables as documents?
+
+    This mirrors `build_graph.get_checkpointer`'s precedence (Postgres → Mongo → SQLite →
+    memory) rather than instantiating it, because the answer changes what the REGISTRY
+    contains and the registry is read on every export.
+
+    Only the MongoDB saver stores checkpoints as documents our client can read. Everything
+    else has its own schema in its own database:
+
+      * **Postgres** — LangGraph's native tables (`thread_id, checkpoint_ns, …`), NOT the
+        shim's `(_id, doc)`. `CREATE TABLE IF NOT EXISTS` saw them and skipped, so the shim
+        then ran `SELECT doc FROM checkpoints` → UndefinedColumn → export 500, erase 400.
+      * **SQLite / memory** — a file (or a dict) the Mongo client cannot see at all. Worse
+        than the crash: the delete found nothing, the re-scan found nothing, and erasure
+        reported `verified: True` with the whole conversation intact.
+    """
+    import os
+
+    from app import config
+
+    if os.environ.get("POSTGRES_URL") or getattr(config, "POSTGRES_URL", ""):
+        return "checkpointer"
+    if getattr(config, "MONGO_DB_URL", ""):
+        return "document"
+    return "checkpointer"
 
 
 def _locations() -> List[Location]:
@@ -72,17 +105,129 @@ def _locations() -> List[Location]:
                  "user_id", "their journal, sleep log, and mood check-ins"),
         Location("transcripts", config.MONGO_RASA_DB, config.MONGO_USER_CONVERSATIONS_COLLECTION,
                  "user_id", "the conversation itself"),
-        # The two nobody remembers. LangGraph keys these by thread_id, which IS the
-        # session_id — so they cannot be found by user_id at all. They have to be reached
-        # through the user's sessions, which is exactly why they get missed.
-        Location("checkpoints", config.MONGO_CHECKPOINT_DB, "checkpoints",
-                 "thread_id", "the entire graph state, including the message history"),
-        Location("checkpoint_writes", config.MONGO_CHECKPOINT_DB, "checkpoint_writes",
-                 "thread_id", "the checkpointer's write-ahead log"),
+    ] + _checkpoint_locations()
+
+
+def _checkpoint_locations() -> List[Location]:
+    """The ones nobody remembers. LangGraph keys these by `thread_id`, so they cannot be
+    found by `user_id` at all — they are reached through the person's sessions, which is
+    exactly why they get missed.
+
+    Two shapes, because the checkpointer has two shapes (`_checkpoint_backend`). The
+    document pair is correct ONLY for the MongoDB saver; for every other backend the saver
+    is the only thing that can read or delete its own tables, so we ask IT.
+    """
+    from app import config
+
+    if _checkpoint_backend() == "document":
+        return [
+            Location("checkpoints", config.MONGO_CHECKPOINT_DB, "checkpoints",
+                     "thread_id", "the entire graph state, including the message history"),
+            Location("checkpoint_writes", config.MONGO_CHECKPOINT_DB, "checkpoint_writes",
+                     "thread_id", "the checkpointer's write-ahead log"),
+        ]
+    # ONE location, not three: `delete_thread` clears checkpoints + writes + blobs in a
+    # single call and reports no per-table counts, so splitting the label would mean
+    # inventing numbers. It also picks up `checkpoint_blobs`, which the document pair
+    # above never listed — on Postgres that is where the message history actually lives,
+    # so an erasure that fixed only the crash would still have left the conversation.
+    return [
+        Location("checkpoints", "", "", "thread_id",
+                 "the entire graph state — message history, write-ahead log and blobs",
+                 via="checkpointer"),
     ]
 
 
+class _Deleted:
+    """`delete_many`'s result shape, so the caller cannot tell the difference."""
+
+    def __init__(self, deleted_count: int) -> None:
+        self.deleted_count = deleted_count
+
+
+class _CheckpointerCollection:
+    """A pymongo-shaped view over LangGraph's saver.
+
+    The same trick `stores/pg.PgCollection` plays, for the same reason: `export_user`,
+    `erase_user` and `forget_user` all speak find/count_documents/delete_many, and they
+    should not have to learn a second vocabulary for one location. The saver owns its
+    schema — Postgres puts the state in `checkpoint_blobs`, SQLite calls the WAL `writes`,
+    memory is a dict — so it is the only thing that can honestly answer.
+
+    Counts are threads, not rows. `delete_thread` reports nothing, and a per-row number
+    across three tables of a schema we do not own would be invented. A thread is also the
+    unit a person would recognise: it is one conversation.
+    """
+
+    def __init__(self, saver) -> None:
+        self._saver = saver
+
+    @staticmethod
+    def _threads(flt: Dict[str, Any]) -> List[str]:
+        spec = (flt or {}).get("thread_id")
+        if isinstance(spec, dict):
+            return [str(t) for t in (spec.get("$in") or [])]
+        return [str(spec)] if spec else []
+
+    def _tuples(self, thread_id: str):
+        try:
+            return list(self._saver.list({"configurable": {"thread_id": thread_id}}))
+        except Exception as exc:  # noqa: BLE001
+            logger.error("privacy.checkpoint_list_failed",
+                         extra={"thread_id": thread_id, "error": str(exc)})
+            return []
+
+    def find(self, flt: Dict[str, Any]):
+        for thread_id in self._threads(flt):
+            for t in self._tuples(thread_id):
+                yield {
+                    "thread_id": thread_id,
+                    "checkpoint_id": (t.config or {}).get("configurable", {}).get("checkpoint_id"),
+                    "checkpoint": getattr(t, "checkpoint", None),
+                    "metadata": getattr(t, "metadata", None),
+                }
+
+    def count_documents(self, flt: Dict[str, Any]) -> int:
+        return sum(1 for _ in self.find(flt))
+
+    def delete_many(self, flt: Dict[str, Any]) -> _Deleted:
+        n = 0
+        for thread_id in self._threads(flt):
+            if not self._tuples(thread_id):
+                continue  # nothing there — do not claim a deletion we did not make
+            try:
+                self._saver.delete_thread(thread_id)
+                n += 1
+            except Exception as exc:  # noqa: BLE001
+                # Never swallow into a success: the re-scan below is what decides
+                # `verified`, and it will still find this thread.
+                logger.error("privacy.checkpoint_delete_failed",
+                             extra={"thread_id": thread_id, "error": str(exc)})
+        return _Deleted(n)
+
+
+def _checkpointer():
+    """The saver `get_checkpointer()` would build. Cached: it opens a connection pool, and
+    erase → re-scan would otherwise open two."""
+    global _SAVER
+    if _SAVER is None:
+        from app.graph.build_graph import get_checkpointer
+
+        _SAVER = get_checkpointer()
+    return _SAVER
+
+
+_SAVER = None
+
+
 def _coll(loc: Location):
+    if loc.via == "checkpointer":
+        try:
+            return _CheckpointerCollection(_checkpointer())
+        except Exception as exc:  # noqa: BLE001
+            logger.error("privacy.checkpointer_unavailable", extra={"error": str(exc)})
+            return None
+
     from app.stores.mongo import get_client
 
     client = get_client()
@@ -115,9 +260,18 @@ def _filter_for(loc: Location, user_id: str, session_ids: List[str]) -> Dict[str
     if loc.key == "user_id":
         return {"user_id": user_id}
     if loc.key == "thread_id":
+        # The checkpointer keys by "<org>:<session_id>", NOT by the bare session_id. This
+        # filter passed bare ids until 2026-07-17, matched nothing, deleted nothing, and
+        # then re-scanned with the same wrong filter — finding nothing "remaining" and
+        # reporting `verified: True` with the entire message history still on disk.
+        # `thread_ids_for` also returns the bare id, so threads written before the org
+        # prefix are still reachable. See app/tenancy.thread_id_for.
+        from app.tenancy import thread_ids_for
+
+        threads = [t for sid in session_ids for t in thread_ids_for(sid)]
         # No sessions → nothing to match. Returning None (rather than an empty $in) matters:
         # an empty filter would match EVERY row, and this is a delete path.
-        return {"thread_id": {"$in": session_ids}} if session_ids else None
+        return {"thread_id": {"$in": threads}} if threads else None
     return None
 
 
@@ -195,6 +349,22 @@ _MEMORY_LABELS = frozenset({
 })
 
 
+def _memory_labels() -> frozenset:
+    """The memory labels that EXIST in the registry we actually have.
+
+    The constant above is the intent, and it stays an explicit allow-list rather than
+    "everything except wellness and crisis_escalations": a store added tomorrow must not
+    fall into the forget button by default and quietly burn something the person wrote.
+
+    But the checkpoint labels are backend-dependent — the MongoDB saver has `checkpoints`
+    and `checkpoint_writes`; every other backend has one `checkpoints` location that its
+    saver clears whole (`delete_thread` covers the WAL and the blobs and reports no
+    per-table counts). Intersecting keeps the allow-list honest under both shapes instead
+    of naming a location that isn't there.
+    """
+    return _MEMORY_LABELS & {loc.label for loc in _locations()}
+
+
 def forget_user(user_id: str) -> Dict[str, Any]:
     """Wipe what the coach has learned, and keep what the person wrote.
 
@@ -214,7 +384,8 @@ def forget_user(user_id: str) -> Dict[str, Any]:
     sessions = _session_ids(user_id)
     logger.warning("privacy.forget_started", extra={"user_id": user_id, "sessions": len(sessions)})
 
-    targets = [loc for loc in _locations() if loc.label in _MEMORY_LABELS]
+    memory = _memory_labels()
+    targets = [loc for loc in _locations() if loc.label in memory]
     deleted: Dict[str, int] = {}
     for loc in targets:
         coll = _coll(loc)
@@ -253,7 +424,7 @@ def forget_user(user_id: str) -> Dict[str, Any]:
         "remaining": remaining,
         # Named, so the answer to "what survived this?" is in the response rather than in
         # a doc somebody has to go and find.
-        "kept": sorted(loc.label for loc in _locations() if loc.label not in _MEMORY_LABELS),
+        "kept": sorted(loc.label for loc in _locations() if loc.label not in memory),
         "verified": verified,
     }
 

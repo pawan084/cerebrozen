@@ -32,6 +32,38 @@ def current_org() -> str:
 _LEGACY_DEFAULT = {"$or": [{"org_id": DEFAULT_ORG}, {"org_id": {"$exists": False}}]}
 
 
+def thread_id_for(session_id: str) -> str:
+    """The checkpointer's key for a session: ``"<org>:<session_id>"``.
+
+    THE ONE PLACE THIS IS BUILT. It lives here, rather than in the engine that writes it,
+    because the engine is not the only party that needs it — the right to erasure has to
+    find the same rows, and until 2026-07-17 it did not:
+
+        checkpointer wrote:   6da49ab55dac…:157f8ae79fcc…      (org:session)
+        erasure searched for: 157f8ae79fcc…                    (bare session_id)
+
+    It matched nothing, so `delete_many` removed nothing, the re-scan found nothing
+    remaining, and `verified` came back **True** — statutory erasure reporting success with
+    the entire message history still on disk. On every backend. The unit tests inserted
+    bare `thread_id`s, so they encoded the same wrong assumption as the code and stayed
+    green.
+
+    The org prefix is what tenanted the checkpointer (one namespace per org); erasure
+    predates it and was never told. Two call sites deriving the same key independently is
+    what made a silent divergence possible, so now there is one.
+    """
+    return f"{current_org()}:{session_id}"
+
+
+def thread_ids_for(session_id: str) -> list:
+    """Every key a session's checkpoints could be under — current, and pre-tenancy.
+
+    Threads written before the org prefix carry the bare `session_id`. Erasure must reach
+    those too: "we could not find your data in the old format" is not a defence.
+    """
+    return [thread_id_for(session_id), session_id]
+
+
 def scoped(query: dict) -> dict:
     """Return ``query`` with the active org's scope added.
 

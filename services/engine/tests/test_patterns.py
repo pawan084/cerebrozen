@@ -396,7 +396,13 @@ def test_the_memory_wipe_is_a_strict_subset_of_the_erasure():
     from app.privacy import erasure
 
     all_labels = {loc.label for loc in erasure._locations()}
-    assert erasure._MEMORY_LABELS < all_labels, "memory must be a strict subset of erasure"
+    # `_memory_labels()`, not the raw constant: the checkpoint labels are backend-dependent
+    # (the Mongo saver has checkpoints + checkpoint_writes; every other backend has one
+    # `checkpoints` location its saver clears whole), so the constant states the intent and
+    # the accessor intersects it with the registry that actually exists. This test caught
+    # the orphan when the checkpointer path collapsed to one label.
+    assert erasure._memory_labels() < all_labels, "memory must be a strict subset of erasure"
+    assert erasure._memory_labels(), "the memory wipe targets nothing at all"
 
 
 def test_the_journal_is_never_part_of_the_memory_wipe():

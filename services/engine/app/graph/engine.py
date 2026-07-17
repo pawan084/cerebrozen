@@ -11,7 +11,7 @@ import logging
 from typing import Any, Callable, Dict, Optional
 
 from app.graph.build_graph import build_graph
-from app.tenancy import current_org
+from app.tenancy import thread_id_for
 from app.graph.state import STAGE_CORE, STAGE_PATTERN
 from app.roi_metrics import get_roi_metrics
 from app.tracing_otel import get_tracer
@@ -24,7 +24,9 @@ class CereBroZenEngine:
         self.graph = build_graph()
 
     def _thread(self, session_id: str, on_token=None, on_status=None, on_node=None) -> Dict[str, Any]:
-        cfg: Dict[str, Any] = {"configurable": {"thread_id": f"{current_org()}:{session_id}"}}
+        # thread_id_for(), not an f-string: erasure has to find these exact rows, and when
+        # each side built the key itself they silently disagreed (app/tenancy.py).
+        cfg: Dict[str, Any] = {"configurable": {"thread_id": thread_id_for(session_id)}}
         if on_token is not None:
             cfg["configurable"]["on_token"] = on_token
         if on_status is not None:
