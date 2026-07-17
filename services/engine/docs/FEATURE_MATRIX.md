@@ -66,7 +66,7 @@ Legend: **✅ shipped** · **⚠️ partial** · **❌ not built**
 
 | Feature | | Notes |
 |---|---|---|
-| Air-gapped stack | ⚠️ | **Runs** — Postgres + pgvector + Ollama, no cloud. **Coaching quality unmeasured.** |
+| Air-gapped stack | ⚠️ | **Runs** — Postgres + pgvector + Ollama, no cloud. **Coaching quality unmeasured.** Now **verifiable**: `python -m scripts.egress_audit` proves a real turn makes 0 external connections (guarded in CI too). Recipe + proof: [AIR_GAPPED.md](AIR_GAPPED.md). |
 | Postgres backend | ✅ | Mongo-compatible shim. |
 | Cloud (OpenAI) backend | ✅ | ~5¢/session, 83% prompt-cache hit. |
 | Prompt cache | ✅ | 48% cheaper, 23% faster per turn. |
