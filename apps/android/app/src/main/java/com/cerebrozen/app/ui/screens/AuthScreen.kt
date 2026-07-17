@@ -115,10 +115,25 @@ fun AuthScreen(
     // Identifiers survive rotation so they aren't re-typed. Password is deliberately
     // NOT saved — persisting a secret into instance state is an anti-pattern.
     var name by rememberSaveable { mutableStateOf("") }
-    // Debug convenience: the walkthrough account, so a dev build signs in
-    // with one tap. Never compiled into release (BuildConfig.DEBUG).
-    var email by rememberSaveable { mutableStateOf(if (BuildConfig.DEBUG) "worker@acme-test.example" else "") }
-    var password by remember { mutableStateOf(if (BuildConfig.DEBUG) "walkthrough123" else "") }
+    // Debug convenience: the platform's DEV-SEEDED member, so a dev build signs in with one
+    // tap. It must be an account that actually exists — this prefilled
+    // `worker@acme-test.example` / `walkthrough123` until 2026-07-17, which the platform
+    // has never seeded, so tapping Continue on a fresh device just... did nothing visible.
+    // No error worth reading, no account: the one-tap convenience cost more time than
+    // typing would have. Found on the owner's phone (see docs/ANDROID_QA.md).
+    //
+    // Keep these in step with services/platform's seeder (PERSONAS in e2e/tests/helpers.ts
+    // is the same three accounts) — a prefill that names a non-existent account is worse
+    // than an empty field, because an empty field tells you to go and find a credential.
+    //
+    // The `BuildConfig.DEBUG` gate must stay a plain compile-time constant so R8 folds the
+    // branch away and these literals never reach a release APK. Do NOT make it configurable
+    // (an env var, a gradle property): apps/admin shipped exactly that mistake — the
+    // condition became runtime-unknowable, the minifier kept the branch, and the demo
+    // credentials went out in the public bundle. `test_release_apk_has_no_dev_credentials`
+    // in this module's QA notes is the check; assertions live in the release build itself.
+    var email by rememberSaveable { mutableStateOf(if (BuildConfig.DEBUG) "demo@cerebrozen.in" else "") }
+    var password by remember { mutableStateOf(if (BuildConfig.DEBUG) "demo12345" else "") }
     var code by rememberSaveable { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
