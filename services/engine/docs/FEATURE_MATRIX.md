@@ -75,7 +75,8 @@ Legend: **✅ shipped** · **⚠️ partial** · **❌ not built**
 | CI | ✅ | Tests, coverage gate at 96%, workbook validation, gitleaks. |
 | Voice | ⚠️ | Code exists. **livekit not installed, never exercised by any test.** |
 | **Knowledge base (RAG)** | ❌ | **Retrieval layer works. It returns nothing.** No corpus on any box we control — so the coach is currently improvising, confidently. |
-| **Notification delivery** | ⚠️ | The scheduler knows who's due, and `POST /v1/nudges/dispatch` now delivers a content-free signal via `CEREBROZEN_NUDGE_DELIVERY_URL` (a generic webhook; logged no-op when unset). **Still no native push/email/Slack channel** — that adapter is the remaining work. (This row read ❌ until 2026-07-17.) |
+| **Notification delivery** | ✅ | `POST /v1/nudges/dispatch` delivers a content-free signal via `CEREBROZEN_NUDGE_DELIVERY_URL`, formatted **native to the channel** — Slack (Block Kit) or Teams (MessageCard) auto-detected from the webhook host, else the raw signal. Visible text is a count + link, never a body. (❌→✅ 2026-07-17.) |
+| — two-way coach in Slack/Teams | ❌ | A conversational bot holding a session inside a DM needs an OAuth app + a decision about content in chat history. Deliberately not built — delivery is one-way. |
 | **Auth / signup / login** | ❌ | This service **validates** JWTs. It does not mint them. |
 | Analytics / dashboards | ❌ | Not built. |
 | Gamification | ❌ | Not built. Not wanted. |

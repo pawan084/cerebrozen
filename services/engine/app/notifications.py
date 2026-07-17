@@ -3,8 +3,16 @@
 ``checkin_scheduler`` decides WHO is due for a 7-day check-in; until now nothing
 delivered a reminder (the scheduler computed eligibility, and it went nowhere).
 This module scans due check-ins across users and emits a **content-free nudge
-signal** per user to a configured delivery endpoint — push, email, or Slack is
-the deployment's channel; this module only carries the signal.
+signal** per user to a configured delivery endpoint. It formats that signal for
+the target chat surface — **Slack** (Block Kit) or **Microsoft Teams**
+(MessageCard) when the endpoint is one of their incoming webhooks, or the raw
+signal record for a deployment's own receiver (``generic``). The visible message
+is always a count and a link, never a commitment body.
+
+NOTE: this is one-way delivery into a channel — the reminder half. A two-way
+conversational coach *inside* Slack/Teams (an OAuth bot that holds a session in a
+DM) is a larger build that needs an app registration and a deliberate decision
+about content living in a chat client's history; it is intentionally NOT this.
 
 It deliberately mirrors ``app/safety/escalation.py``:
 
@@ -45,6 +53,67 @@ def _timeout_s() -> float:
         return float(os.environ.get("CEREBROZEN_NUDGE_DELIVERY_TIMEOUT_S", "5"))
     except ValueError:
         return 5.0
+
+
+def channel() -> str:
+    """Which chat surface the delivery endpoint is: ``slack``, ``teams``, or ``generic``.
+
+    Explicit ``CEREBROZEN_NUDGE_CHANNEL`` wins; otherwise inferred from the endpoint host so
+    a Slack/Teams incoming webhook Just Works. ``generic`` posts the raw signal record —
+    the original behaviour, unchanged, for a deployment's own receiver."""
+    c = os.environ.get("CEREBROZEN_NUDGE_CHANNEL", "").strip().lower()
+    if c in ("slack", "teams", "generic"):
+        return c
+    url = endpoint()
+    if "hooks.slack.com" in url:
+        return "slack"
+    if "webhook.office.com" in url or "office.com/webhook" in url:
+        return "teams"
+    return "generic"
+
+
+def _format_payload(record: dict) -> dict:
+    """Shape the wire payload for the target chat surface.
+
+    Rule 5 holds at the boundary: the human-visible message is a COUNT and a link, never a
+    commitment body, journal, or session id. The generic path is byte-for-byte the signal
+    record (a deployment's own endpoint may want the ids); Slack/Teams get a card whose
+    visible text carries nothing but the count."""
+    ch = channel()
+    if ch == "generic":
+        return record
+
+    from app import config
+
+    n = record.get("due_count", 0)
+    brand = getattr(config, "BRAND_NAME", None) or "your coach"
+    link = os.environ.get("CEREBROZEN_APP_DEEP_LINK", "").strip()
+    text = (
+        f"You have {n} coaching check-in{'s' if n != 1 else ''} due. "
+        f"Open {brand} to follow through."
+    )
+
+    if ch == "slack":
+        blocks: list = [{"type": "section", "text": {"type": "mrkdwn", "text": f":bell: {text}"}}]
+        if link:
+            blocks.append({"type": "actions", "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "Open"}, "url": link}]})
+        return {"text": text, "blocks": blocks}
+
+    # Teams MessageCard (incoming-webhook connector format).
+    card: dict = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "summary": "Coaching check-in due",
+        "themeColor": "EF5B5B",
+        "text": text,
+    }
+    if link:
+        card["potentialAction"] = [{
+            "@type": "OpenUri", "name": "Open",
+            "targets": [{"os": "default", "uri": link}],
+        }]
+    return card
 
 
 def due_nudges(today: Optional[date] = None, due_days: Optional[int] = None) -> List[dict]:
@@ -118,11 +187,14 @@ def deliver_nudge(record: dict) -> bool:
         import httpx
 
         resp = httpx.post(
-            endpoint(), json=record, timeout=_timeout_s(),
+            endpoint(), json=_format_payload(record), timeout=_timeout_s(),
             headers={"content-type": "application/json"},
         )
         resp.raise_for_status()
-        logger.info("nudge.delivered", extra={**_signal(record), "status": resp.status_code})
+        logger.info(
+            "nudge.delivered",
+            extra={**_signal(record), "channel": channel(), "status": resp.status_code},
+        )
         _persist(record, delivered=True)
         return True
     except Exception as exc:  # noqa: BLE001
