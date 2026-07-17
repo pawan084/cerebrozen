@@ -61,7 +61,7 @@ prompt edit, so a reload can never serve a stale prefix.
 |---|---|---|
 | `CEREBROZEN_REASONING_<STAGE>` | per-stage | Overrides reasoning effort, e.g. `CEREBROZEN_REASONING_CORE=medium`. Stage keys are in `responses_client.STAGE_REASONING_EFFORT`. |
 | `CEREBROZEN_STAGE_OPT` | `true` | `false` reverts every stage to the pre-optimization `low` effort. |
-| `CEREBROZEN_MODEL_OVERRIDE` | — | Forces one model id for every agent, ignoring the Catalog. Useful when the workbook lists placeholder model ids. |
+| `CEREBROZEN_MODEL_OVERRIDE` | — (leave UNSET) | Forces one model id for every agent, ignoring the Catalog. An escape hatch for an account that cannot reach a model the workbook names — **not** a default. `gpt-5.4` is a real model, not a placeholder (this table said otherwise until 2026-07-17); setting this flattens the Catalog's per-agent choice and, measured, runs 5–8× slower per turn (docs/EVALS.md). |
 | `OPENAI_TIMEOUT` | | Per-request cap (one CIM call once took 341s). |
 
 ### Routing / features

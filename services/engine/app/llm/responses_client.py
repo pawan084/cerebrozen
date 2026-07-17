@@ -158,8 +158,19 @@ def model_for(stage: str, catalog_model: Optional[str] = None) -> str:
     wrong model (which would break the agent's JSON contract).
 
     Override: ``CEREBROZEN_MODEL_OVERRIDE`` (env), when set, forces one model id for every
-    stage regardless of the Catalog — used to pin a known-good model (e.g. gpt-4o-mini)
-    when the workbook lists placeholder ids like gpt-5.4.
+    stage regardless of the Catalog — an escape hatch for an account that cannot reach a
+    model the workbook names.
+
+    **`gpt-5.4` is NOT a placeholder.** This docstring said it was until 2026-07-17, and
+    `docker-compose.prod.yml` defaulted the override to `gpt-5-mini` on the strength of it.
+    Asked the API directly: `gpt-5.4` returns HTTP 200. It is the model the Catalog
+    deliberately assigns to the nine heavy coaching agents.
+
+    That mattered: the default flattened every agent onto one model, so production ran a
+    configuration the eval never saw — 5–8× slower per turn (9.8–29.7s vs 2.4–4.3s, same
+    prompts, measured; see docs/EVALS.md). Leave the override UNSET unless an account
+    genuinely lacks a Catalog model; the Catalog is the source of truth precisely so the
+    per-agent choice survives deployment.
     """
     import os as _os
 

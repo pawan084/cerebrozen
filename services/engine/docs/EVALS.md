@@ -31,7 +31,41 @@ reaching the user).
 
 ---
 
-## The baseline is not what anyone assumed
+## Re-measured 2026-07-17 — and the model, not the prompt, is the story
+
+> **The 79–81% below is STALE.** Re-run with 3 samples on 2026-07-17: the Catalog's own
+> configuration scores **100% (16/16)**. Whatever caused the routing failures documented
+> below has since been fixed or has moved with the model. Do not quote 79–81% as current.
+>
+> The finding that replaces it: **the shipping config is not the configured one, and it is
+> 5–8× slower.** `docker-compose.prod.yml` sets
+> `CEREBROZEN_MODEL_OVERRIDE: ${CEREBROZEN_MODEL_OVERRIDE:-gpt-5-mini}`, which forces ONE
+> model on every agent and ignores the Catalog — the thing `responses_client.model_for`
+> calls "the sole source of truth". Same prompts, same cases, only the model differs:
+>
+> | config | model | score | latency/case |
+> |---|---|---|---|
+> | Catalog, as authored | `gpt-5.4` (9 agents) | **100%** (16/16) | **2.4–4.3s** |
+> | `docker-compose.prod.yml` | `gpt-5-mini` (all) | 98% (15/16) | **9.8–29.7s** |
+>
+> A coaching turn taking 20–30s is a product decision nobody made. The contract holds
+> either way (98 vs 100 on a 16-case net), so this is a latency and cost question, not a
+> correctness one — but it was never measured, because the eval ran the Catalog and
+> production ran the override.
+>
+> **The override's premise is false.** Its docstring says it exists "when the workbook
+> lists placeholder ids like gpt-5.4". `gpt-5.4` is a real model — asked the API directly:
+> HTTP 200. It was never a placeholder, so the default that flattens every agent onto
+> `gpt-5-mini` is guarding against a problem that does not exist.
+>
+> Corollary for the prompt-budget work (`PROMPTS_SPEC.md` priority 2): the ≤8K target is
+> justified by "latency, money, and offline viability". Measured, latency is dominated by
+> the forced model, not by prompt size, and money is ~$0.02–0.11 per session at these
+> rates. **Offline viability is the only one of the three that actually requires the cut** —
+> a local model cannot hold CH's 16.5K-token prompt at all. Fix the model config first; it
+> is one line and needs no coach.
+
+## The baseline as first measured (stale — see above)
 
 **OpenAI — the stack that ships today — scores 79–81%.**
 

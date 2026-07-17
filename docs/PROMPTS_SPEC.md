@@ -71,6 +71,32 @@ Ordering follows the session arc. "Emits" = routed fields beyond
 | 14 | `user_context_builder_agent` | Off-path: maintain the 10-dimension user context model from the transcript. Never user-facing. | structured context model only; no user-facing text. |
 | 15 | `environment` (guardrail wrapper) | Always-on system layer: identity, boundaries, tone, what the coach never does; composed around every agent prompt. | keep SHORT — the reference's 45K-char wrapper on every call is the #1 cost bug. Target ≤2K chars. |
 
+## The budget, measured (2026-07-17) — read this before shrinking anything
+
+The ≤8K target is justified above as "latency, money, and offline viability". Measured, on
+the real API, those three are not equal — and the biggest lever is not the prompt:
+
+| claim | measured | verdict |
+|---|---|---|
+| **money** | a full 15-agent session ≈ 80K input tok ≈ **$0.02**; a 27-turn CH session ≈ 457K ≈ **$0.11** | weak. Not what the rewrite is for. |
+| **latency** | dominated by the **model**, not the prompt: same prompts, `gpt-5.4` = 2.4–4.3s/turn, `gpt-5-mini` = 9.8–29.7s. Production forces mini on every agent (`docker-compose.prod.yml`), so it ships 5–8× slower than the config the eval measures. | **fix the model config first — one line, no coach, no rewrite.** |
+| **offline viability** | CH's composed prompt is **16.5K tokens**. A local model cannot hold it. | **real, and the only one that requires the cut.** |
+
+Two things that look like wins and are not, so nobody spends a week on them:
+
+* **Prompt caching is already working.** OpenAI caches the prefix: measured, a repeat turn
+  for the same user is **100% cached** (15,104/15,168). Sessions are cheap after turn 1;
+  only the first turn pays.
+* **Reordering placeholders to extend the cached prefix does not pay.** `{userName}` sits at
+  token 174 of CH's 16.5K, so nothing after it is shared BETWEEN users. Moving the whole
+  `# Input Parameters` block to the end (instructions byte-identical) took the shared prefix
+  from 174 → 1,792 tokens — **12%, not the ~97% the idea promises** — because the remaining
+  placeholders are woven through the step scripts, not gathered in one block. Tried,
+  measured, rejected.
+
+So: the prompt rewrite buys **offline viability**, and only that. Price it accordingly, and
+do the model-config fix (priority 4) first — it is bigger, cheaper and safer.
+
 ## Adaptation priorities (per extracted prompt, largest first)
 
 1. ~~**`environment` wrapper: 45,014 → ≤2,000 chars.**~~ **Done 2026-07-14**
