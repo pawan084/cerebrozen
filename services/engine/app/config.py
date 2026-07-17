@@ -514,6 +514,32 @@ try:
 except Exception:  # noqa: BLE001 — malformed secret -> treat as unset
     JWT_SECRET = b""
 
+# A published secret must not VALIDATE tokens either. The platform mints them and guards
+# its own boot (guard_production), but this service is the one holding the transcripts, and
+# it had no check at all: an engine running production on docker-compose.yml's secret would
+# have accepted forged tokens — any org_id, any role, including internal_admin — from
+# anyone who had read the repo. Same posture as the CORS guard above: refuse to start.
+#
+# Decoded-substring match, so a copy-paste with one character changed is still refused.
+_PUBLISHED_JWT_SECRETS = frozenset({
+    "ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q=",  # docker-compose.yml
+})
+_WEAK_SECRET_MARKERS = ("dev-only", "not-for-prod", "changeme", "test-secret", "example")
+
+if ENV not in _CORS_DEV_ENVS and _JWT_SECRET_B64:
+    _decoded = JWT_SECRET.decode("utf-8", "ignore").lower()
+    _why = ""
+    if _JWT_SECRET_B64 in _PUBLISHED_JWT_SECRETS:
+        _why = ("it is published in docker-compose.yml, so anyone who can read this "
+                "repository can forge tokens for this deployment")
+    elif any(m in _decoded for m in _WEAK_SECRET_MARKERS):
+        _why = "it decodes to a development placeholder"
+    if _why:
+        raise RuntimeError(
+            f"refusing to start: JWT_SECRET {_why} (ENV={ENV!r}). This service validates "
+            "every token with it. Generate a real one: openssl rand -base64 48"
+        )
+
 # --- challenge_context: real multi-turn discovery agent (default ON). It runs the
 # authored prompt, explores the challenge, and emits coaching_path (CIM/CBT/CH) via
 # structured output. Set CEREBROZEN_STUB_CHALLENGE=true to fall back to the Phase-1

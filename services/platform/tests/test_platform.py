@@ -412,6 +412,82 @@ def test_the_boot_guard_refuses_insecure_production(monkeypatch):
     assert "JWT_SECRET" in msg and "sqlite" in msg.lower()
 
 
+def test_the_boot_guard_refuses_the_secret_we_publish(monkeypatch):
+    """"Set" is not the same as "secret".
+
+    The guard checked only that JWT_SECRET had a value, so a deployment that inherited
+    docker-compose.yml booted PRODUCTION on a secret committed to this repo in the clear —
+    and said nothing. Anyone who can read the repo could mint a token for any org_id and
+    any role, including internal_admin.
+
+    Found while triaging gitleaks: the scanner was right that the string is a credential
+    and wrong that committing it was the problem. Publishing a dev secret is fine; letting
+    it reach production is not, and nothing stopped it.
+    """
+    from pathlib import Path
+
+    from app import config as cfg
+
+    monkeypatch.setattr(cfg, "ENV", "production")
+    monkeypatch.setattr(cfg, "DATABASE_URL", "postgresql+asyncpg://u:p@db/prod")
+    monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
+    monkeypatch.setattr(cfg, "_JWT_SECRET_B64", next(iter(cfg.PUBLISHED_JWT_SECRETS)))
+
+    with pytest.raises(RuntimeError) as err:
+        cfg.guard_production()
+    assert "published" in str(err.value)
+
+    # The listed value must be the one compose actually ships, or this guards nothing.
+    compose = (Path(__file__).resolve().parents[3] / "docker-compose.yml").read_text()
+    for secret in cfg.PUBLISHED_JWT_SECRETS:
+        assert secret in compose, (
+            f"{secret!r} is listed as published but is not in docker-compose.yml — the list "
+            f"has drifted from the file it describes"
+        )
+    for line in compose.splitlines():
+        if "JWT_SECRET:" in line and "${" not in line:
+            # Strip YAML's inline comment ("… = # dev only") before comparing.
+            value = line.split("JWT_SECRET:")[1].split("#")[0].strip()
+            assert value in cfg.PUBLISHED_JWT_SECRETS, (
+                f"docker-compose.yml ships a JWT_SECRET the guard does not know about: "
+                f"{value!r} — production would boot on it"
+            )
+
+
+def test_the_boot_guard_refuses_a_placeholder_that_was_edited(monkeypatch):
+    """An exact-match list is defeated by one keystroke. The decoded value is checked for
+    development markers too, so `dev-only-shared-secret-XXX` is refused as well."""
+    import base64
+
+    from app import config as cfg
+
+    monkeypatch.setattr(cfg, "ENV", "production")
+    monkeypatch.setattr(cfg, "DATABASE_URL", "postgresql+asyncpg://u:p@db/prod")
+    monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
+    edited = base64.b64encode(b"dev-only-shared-secret-XXX").decode()
+    assert edited not in cfg.PUBLISHED_JWT_SECRETS, "pick a value the exact list misses"
+    monkeypatch.setattr(cfg, "_JWT_SECRET_B64", edited)
+
+    with pytest.raises(RuntimeError) as err:
+        cfg.guard_production()
+    assert "placeholder" in str(err.value)
+
+
+def test_the_boot_guard_accepts_a_real_secret(monkeypatch):
+    """A guard that refuses everything gets deleted by the next person in a hurry."""
+    import base64
+    import secrets as _secrets
+
+    from app import config as cfg
+
+    monkeypatch.setattr(cfg, "ENV", "production")
+    monkeypatch.setattr(cfg, "DATABASE_URL", "postgresql+asyncpg://u:p@db/prod")
+    monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
+    monkeypatch.setattr(cfg, "_JWT_SECRET_B64",
+                        base64.b64encode(_secrets.token_bytes(48)).decode())
+    cfg.guard_production()  # must not raise
+
+
 def test_the_boot_guard_is_quiet_in_dev(monkeypatch):
     from app import config as cfg
 

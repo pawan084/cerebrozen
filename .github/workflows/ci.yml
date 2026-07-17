@@ -134,3 +134,10 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Named explicitly rather than relying on auto-discovery: the config is what
+          # allowlists this repo's 7 known false positives (see .gitleaks.toml), and if the
+          # action silently missed it the job would fail on findings that are fine. The
+          # inverse — a config that quietly disables the default rules — is the dangerous
+          # one, so `.gitleaks.toml` sets `[extend] useDefault = true` and every allowlist
+          # entry is a literal value, never a path.
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml

@@ -1457,3 +1457,56 @@ def test_load_local_env_reports_what_it_loaded_and_what_it_skipped(caplog):
             ps1.unlink(missing_ok=True)
         os.environ.clear()
         os.environ.update(saved)
+
+
+# ── A published secret must not validate tokens ──────────────────────────────
+
+
+def test_the_engine_refuses_to_validate_tokens_with_the_published_secret(reload_config):
+    """This service holds the transcripts, and it had no JWT_SECRET guard at all.
+
+    The platform mints tokens and guards its own boot; the engine only ever VALIDATED
+    them, so nothing here noticed which secret it was validating with. An engine running
+    production on docker-compose.yml's secret — which is committed to this repo in the
+    clear — would have accepted a forged token carrying any `org_id` and any `role`,
+    including internal_admin, from anyone who had read the repository. Every tenancy and
+    role check in the codebase sits downstream of that signature.
+
+    Same posture as the wildcard-CORS guard next to it: the failure mode of the mistake is
+    "won't start", not "wide open".
+    """
+    published = "ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q="  # docker-compose.yml
+
+    with pytest.raises(RuntimeError) as err:
+        reload_config(ENV="production", JWT_SECRET=published)
+    assert "published" in str(err.value)
+    assert "openssl" in str(err.value), "refuse, but say how to fix it"
+
+
+def test_a_dev_placeholder_is_refused_even_if_it_was_edited(reload_config):
+    """An exact-match list is defeated by one keystroke, so the DECODED value is checked
+    for development markers too."""
+    import base64
+
+    edited = base64.b64encode(b"dev-only-shared-secret-XXX").decode()
+    with pytest.raises(RuntimeError) as err:
+        reload_config(ENV="production", JWT_SECRET=edited)
+    assert "placeholder" in str(err.value)
+
+
+def test_the_published_secret_still_boots_locally(reload_config):
+    """`docker compose up` must keep working — the secret is published precisely so a
+    fresh clone runs. It is only production that must refuse it."""
+    cfg = reload_config(ENV="local",
+                        JWT_SECRET="ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q=")
+    assert cfg.JWT_SECRET == b"dev-only-shared-secret-not-for-prod"
+
+
+def test_a_real_secret_boots_in_production(reload_config):
+    """A guard that refuses everything gets deleted by the next person in a hurry."""
+    import base64
+    import secrets as _secrets
+
+    real = base64.b64encode(_secrets.token_bytes(48)).decode()
+    cfg = reload_config(ENV="production", JWT_SECRET=real)
+    assert cfg.JWT_SECRET == base64.b64decode(real)

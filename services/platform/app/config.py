@@ -89,6 +89,41 @@ CORS_ORIGINS = [
 ]
 
 
+#: JWT secrets that are PUBLISHED — committed to this repository in the clear, so anyone
+#: who can read it can mint a valid token for any deployment using them. Keep in step with
+#: docker-compose.yml; `test_boot_guard` asserts the compose value is listed.
+PUBLISHED_JWT_SECRETS = frozenset({
+    "ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q=",  # docker-compose.yml (base64 of
+                                                          # "dev-only-shared-secret-not-for-prod")
+})
+
+#: Markers of a secret that was never meant to leave a laptop. Checked against the DECODED
+#: value, so a copy-paste with one character changed (which defeats the exact-match set
+#: above) is still refused.
+_WEAK_SECRET_MARKERS = ("dev-only", "not-for-prod", "changeme", "test-secret", "example")
+
+
+def _weak_secret_reason(secret_b64: str) -> str:
+    """Why this secret must not sign production tokens — or "" if it is fine."""
+    if not secret_b64:
+        return ""
+    if secret_b64 in PUBLISHED_JWT_SECRETS:
+        return (
+            "JWT_SECRET is the value published in docker-compose.yml — it is in a public "
+            "git history, so anyone who can read the repo can mint tokens for this "
+            "deployment"
+        )
+    try:
+        decoded = base64.b64decode(secret_b64).decode("utf-8", "ignore").lower()
+    except Exception:  # noqa: BLE001 — a malformed secret is caught by the unset check
+        return ""
+    hit = next((m for m in _WEAK_SECRET_MARKERS if m in decoded), "")
+    return (
+        f"JWT_SECRET decodes to a development placeholder (contains {hit!r}) — generate a "
+        "real one: openssl rand -base64 48"
+    ) if hit else ""
+
+
 def guard_production() -> None:
     """Refuse to boot a production deployment on development defaults.
 
@@ -100,6 +135,14 @@ def guard_production() -> None:
     problems = []
     if not _JWT_SECRET_B64:
         problems.append("JWT_SECRET is unset (tokens would use a process-random secret)")
+    # "Set" is not the same as "secret". This guard checked only that a value existed until
+    # 2026-07-17, so a deployment that inherited docker-compose.yml booted production on a
+    # secret published in a public repo — and said nothing. Found while triaging gitleaks:
+    # the scanner was right that the string is a credential and wrong that it was the
+    # problem. The problem was that nothing stopped it reaching production.
+    weak = _weak_secret_reason(_JWT_SECRET_B64)
+    if weak:
+        problems.append(weak)
     if DATABASE_URL.startswith("sqlite"):
         problems.append("DATABASE_URL is sqlite (production needs Postgres)")
     if SEED_DEV_ADMIN:

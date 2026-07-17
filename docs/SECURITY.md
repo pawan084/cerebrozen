@@ -46,6 +46,21 @@ trap. Our position:
   (`all_orgs=True`), passed only by a route that has already run
   `require_internal_admin`, and is refused to every other engine read.
 - JWTs carry `org_id`; the engine rejects tokens without it.
+- **The dev JWT secret is published on purpose, and cannot reach production.**
+  `docker-compose.yml` ships `JWT_SECRET` in the clear (base64 of
+  `dev-only-shared-secret-not-for-prod`) so a fresh clone runs and the two
+  services agree on a token. That is only safe because both refuse to boot a
+  non-dev `ENV` with it: `guard_production()` on the platform, and a matching
+  check in the engine's config — which is the service that *validates* every
+  token and, until 2026-07-17, had **no check at all**. Before that the guard
+  asked only whether `JWT_SECRET` was set, so a deployment inheriting compose
+  would have started production on a secret anyone could read off GitHub and
+  accepted forged tokens for any `org_id` and any role, `internal_admin`
+  included — upstream of every tenancy and role check in this document. Both
+  the exact published value and any secret decoding to a dev placeholder are
+  refused; `.gitleaks.toml`'s allowlist for it is safe **because of** these
+  guards, not instead of them, and a test reads `docker-compose.yml` and fails
+  if it ships a secret the guard does not know about.
 - `STRICT_TENANT` boot-guard behavior is default-on: refusing to boot in
   prod with placeholder/foreign resource names.
 - Single-tenant dedicated deployment (incl. air-gapped) remains available

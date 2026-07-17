@@ -1,0 +1,61 @@
+# gitleaks configuration — CereBroZen
+#
+# CI runs `gitleaks` over the FULL history (`fetch-depth: 0`), and it reports 7 findings on
+# this repo. All seven are false positives, and each is allowlisted BY VALUE below with the
+# reason. Read this before adding an entry: an allowlist is how a scanner is made useful,
+# and it is also how a real leak gets silenced. The bar is "this string is not a
+# credential, or it is a credential that grants nothing" — never "this finding is noisy".
+#
+# What triaging them actually found: the scanner was RIGHT that docker-compose.yml ships a
+# real JWT signing key, and wrong that committing it was the problem. Publishing a dev
+# secret is fine — a fresh clone has to run. Letting it reach production is not, and
+# nothing stopped it: `guard_production` checked only that JWT_SECRET was *set*, and the
+# engine (which validates every token) had no check at all. Both refuse it now, in
+# production only, and tests pin the compose value against the guard's list so the two
+# cannot drift. The allowlist below is safe BECAUSE of those guards, not instead of them.
+#
+# Why by-value and not by-fingerprint: a gitleaks fingerprint is commit:file:rule:line, so
+# a `.gitleaksignore` entry dies the moment anyone touches the file or the line moves, and
+# CI fails again for a reason nobody remembers. Matching the literal string is stable, and
+# it stays scoped to the exact value rather than to a whole path.
+
+title = "CereBroZen"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures, published dev defaults, and one public identifier."
+regexTarget = "match"
+regexes = [
+  # ── Published dev JWT secret (docker-compose.yml, 2 hits) ──────────────────
+  # base64("dev-only-shared-secret-not-for-prod"). Deliberately committed: the compose
+  # stack must work on a fresh clone, and the engine and platform have to share a secret
+  # to agree on a token. It grants nothing anywhere real — both services REFUSE TO BOOT in
+  # a non-dev ENV with this value (services/platform/app/config.py guard_production;
+  # services/engine/app/config.py). Pinned by test_the_boot_guard_refuses_the_secret_we_publish,
+  # which reads docker-compose.yml and fails if it ships a secret the guard does not know.
+  '''ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q=''',
+
+  # ── Test secrets (services/engine/tests/, 2 hits) ──────────────────────────
+  # base64("test-secret-for-pattern-tests-ok") and base64("test-secret-for-role-gate-tests").
+  # They sign tokens for assertions inside the suite and are refused in production by the
+  # same "test-secret" marker check as above. Prefix-anchored rather than blanket-ignoring
+  # the tests directory: a real key pasted into a test is exactly the accident worth
+  # catching.
+  '''dGVzdC1zZWNyZXQt[A-Za-z0-9+/=]*''',
+
+  # ── backend/tests/test_config_deps.py (1 hit, history only) ────────────────
+  # `admin_password="A-strong-pass-123"` — a fixture asserting the config layer rejects
+  # weak defaults. The `backend/` tree no longer exists; it was removed in the restructure
+  # to services/, so this is unreachable except by rewriting history, which is not worth
+  # doing for a string that was never a credential.
+  '''A-strong-pass-123''',
+
+  # ── backend/.env{,.production}.example (2 hits, history only) ──────────────
+  # NOT a key. ElevenLabs' public default voice id (Sarah), documented in their API docs.
+  # The rule matched it only because the line above (`ELEVENLABS_API_KEY=`) was empty and
+  # the regex ran on into the next line — the .env.example holds a placeholder, exactly as
+  # CLAUDE.md rule 2 requires. Also history-only (`backend/` is gone).
+  '''EXAVITQu4vr4xnSDxMaL''',
+]
