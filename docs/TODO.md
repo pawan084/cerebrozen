@@ -6,9 +6,13 @@ dated notes, grouped by priority; items needing an owner decision are marked
 
 ## P0 — before any product code
 
-- [ ] **Rotate the OpenAI key found in `ref/Agent/.env`** (and any other
-      credentials in `ref/**/.env*`). Treat all committed reference secrets
-      as compromised. Never load a `ref/` env file.
+- [ ] **Rotate TWO OpenAI keys.** (1) the one in `ref/Agent/.env` — and any
+      other credential under `ref/**/.env*`; treat every committed reference
+      secret as compromised, and never load a `ref/` env file. (2) **the key
+      pasted into a chat transcript on 2026-07-17** to give the eval harness a
+      real model. It currently sits in `services/engine/.env` (git-ignored,
+      verified never staged) but transcript exposure is independent of file
+      permissions. Both are burned; neither is in git.
 - [x] 2026-07-14 — Repo consolidated: `git init` at root, initial commit
       `52dd2ba` (348 files, clean tree; secrets audit passed — only
       `.env.example`/`.env.offline`/`.env.demo` placeholders tracked).
@@ -160,8 +164,12 @@ dated notes, grouped by priority; items needing an owner decision are marked
       Verified live against the platform (login → me → create tenant →
       list). Deviation: security headers via next.config, nonce-CSP deferred
       (below).
-- [ ] Admin: nonce-CSP middleware (the ref/Zen pattern) — deferred from the
-      skeleton; add before production exposure.
+- [x] 2026-07-16 — Admin: nonce-CSP middleware (the ref/Zen pattern), then
+      extended to `apps/app` and `apps/web` (the app holds the transcripts).
+      **Not** the ref's recipe on web: a nonce forces dynamic rendering and the
+      marketing site is static, so it gets a static CSP via `next.config.ts`
+      headers(). Measured caveat in the commit: SRI does NOT permit a strict
+      script-src on a static Next build — tried, hydration died, reverted.
 - [x] 2026-07-16 — Ops tabs wired to the engine: **Prompt workbook**
       (view/edit prompt·model·enabled via `GET /v1/prompts` + `PUT
       /v1/prompts/{stage}`; validate-on-save surfaces hard errors/warnings;

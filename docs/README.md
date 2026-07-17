@@ -10,6 +10,7 @@ from two reference codebases in `ref/`.
 
 | Doc | Answers |
 |---|---|
+| [**DEVELOPING.md**](DEVELOPING.md) | **Start here to run it.** Ports, the seeded dev logins, the test gates — and the traps that cost days: `stack:down` wipes the engine's data, `JWT_SECRET` is base64 and a bad one silently disables auth, two unrelated databases, the mongomock-vs-Postgres blind spot that has produced six bugs, and why the eval harness lies without a real model. |
 | [PRODUCT.md](PRODUCT.md) | What are we building, for whom, and what does each surface do? |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How do the services and apps fit together? What comes from which reference? |
 | [COACHING_FLOW.md](COACHING_FLOW.md) | The agent graph: 18 nodes, 15 agents, routing rules, safety nets, the prompt workbook, and inherited traps. |

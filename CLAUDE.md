@@ -3,6 +3,9 @@
 B2B enterprise AI coaching platform. **Read `docs/README.md` first** — it
 indexes PRODUCT, ARCHITECTURE, DESIGN, ENGINEERING, SECURITY, and TODO.
 Work follows `docs/TODO.md` phase order.
+**To run or test anything: `docs/DEVELOPING.md`** — ports, seeded logins, gates,
+and the traps (`stack:down` wipes the engine's data; the suite runs on mongomock
+while Postgres ships).
 
 ## Hard rules
 
