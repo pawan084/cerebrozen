@@ -845,6 +845,16 @@ if ENV not in ("local", "") and _at_default:
 #      `negative_emotions` — see stores/agentic._MOOD_FIELDS).
 #   2. It SCORES THE PERSON. The Coachable Index is 8 dimensions plus a weighted
 #      `coachability_score`, captured ONCE IN A LIFETIME — a durable rating of a worker.
+#   3. It PROFILES THE PERSON, CUMULATIVELY. `pattern_agent` maintains `ic_profile` — ten
+#      psychological clusters (mindset orientation, locus of control, emotional regulation,
+#      thinking traps, conflict style, leadership style, …), each with a `confidence` float,
+#      a `frequency` count, a `trend` line across sessions, and up to three VERBATIM QUOTES
+#      of the person. It is both of the above at once: `emotional_regulation` is emotion
+#      inference (the prompt's own cue for it is "emotional spikes"), and the confidence/
+#      trend accumulation is a standing rating. This list said "two things" until
+#      2026-07-17 and `save_ic_profile` had no gate — so a regulated tenant refused the mood
+#      write and then persisted a psychological profile to the same document. Gated now on
+#      BOTH flags; see stores/agentic.save_ic_profile and test_regulated_workplace.py.
 #
 # Under the EU AI Act, inferring emotions of a natural person IN THE WORKPLACE is a
 # PROHIBITED practice (Art. 5), and AI used in employment / worker management is HIGH-RISK

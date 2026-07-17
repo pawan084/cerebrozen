@@ -209,3 +209,84 @@ def test_ordinary_coaching_variables_are_untouched(regulated):
         cfg = reg.config(keeper)
         if cfg is not None:
             assert cfg.capture_enabled, f"{keeper} was suppressed — that is coaching, not scoring"
+
+
+# ── The cumulative pattern profile: both loaded things at once ───────────────
+
+
+def test_the_pattern_profile_is_not_persisted_in_regulated_mode(regulated, mongo,
+                                                                agentic_coll, user_id):
+    """`pattern_agent`'s ic_profile had NO gate until 2026-07-17.
+
+    So a regulated tenant refused the mood write and then wrote this to the same document,
+    for the same person, on the same turn:
+
+        emotional_regulation: Reactive   confidence 0.82
+        verbatim_anchors:     ["I'm furious about this"]
+        thinking_traps:       Catastrophizing
+
+    That is emotion inference AND a durable person score, cumulative across sessions, with
+    three exact quotes of the person embedded in the rating. config.py's regulated-mode
+    block names the two loaded surfaces it knew about (mood capture, the Coachable Index)
+    and did not know about this one, so SECURITY.md's "not recorded at all — refused at
+    write" was true of mood and false here.
+
+    Found by reading the prompt during the adaptation sweep, not by a failing test: nothing
+    in the suite asked whether this write was gated, and the write itself works fine.
+    """
+    from app.stores import agentic
+
+    profile = (
+        '{"clusters": {"emotional_regulation": {"dominant_facet": "Reactive",'
+        ' "confidence": 0.82, "verbatim_anchors": ["I am furious about this"]},'
+        ' "thinking_traps": {"dominant_facet": "Catastrophizing", "confidence": 0.7}}}'
+    )
+    written = agentic.save_ic_profile(user_id, profile)
+
+    assert written is False, "a psychological profile was written in a tenant that forbids it"
+    doc = agentic_coll.find_one({"user_id": user_id}) or {}
+    assert not doc.get("ic_profile"), (
+        f"a cumulative psychological profile reached the database: {doc.get('ic_profile')!r}"
+    )
+
+
+def test_either_flag_alone_is_enough_to_refuse_the_profile(monkeypatch, mongo, user_id):
+    """The record is emotion inference AND person scoring, so a tenant that has switched off
+    EITHER must not get it. Gating on one flag would let a tenant that only forbids emotion
+    inference still receive `emotional_regulation` — read back next session and shown to the
+    coach as `{ic_profile}`."""
+    from app.stores import agentic
+
+    for emotion, scoring in ((False, True), (True, False)):
+        monkeypatch.setattr(config, "EMOTION_CAPTURE_ENABLED", emotion)
+        monkeypatch.setattr(config, "PERSON_SCORING_ENABLED", scoring)
+        assert agentic.save_ic_profile(user_id, '{"clusters": {}}') is False, (
+            f"profile written with EMOTION_CAPTURE={emotion}, PERSON_SCORING={scoring}"
+        )
+
+
+def test_the_profile_still_works_for_a_tenant_that_permits_it(unregulated, mongo,
+                                                              agentic_coll, user_id):
+    """A switch, not a deletion — same contract as emotion capture above."""
+    from app.stores import agentic
+
+    assert agentic.save_ic_profile(user_id, '{"clusters": {"mindset_orientation": {}}}') is True
+    doc = agentic_coll.find_one({"user_id": user_id}) or {}
+    assert doc.get("ic_profile"), "the profile was refused for a tenant that permits it"
+
+
+def test_the_reflection_beat_survives_the_gate(regulated, mongo, agentic_coll, user_id):
+    """Refusing the PROFILE must not cost the person their coaching.
+
+    pattern_agent branches on `{userRepeatFresh}`, so with nothing stored a regulated tenant
+    runs the "fresh" path every session: one mirror drawn from the current conversation,
+    nothing accumulated. The reflection is what the user experiences; the standing profile
+    is what the EU AI Act is about. The mirror is coaching content — a single latest value,
+    not a rating — so it is deliberately NOT gated.
+    """
+    from app.stores import agentic
+
+    assert agentic.save_pattern_mirror(user_id, "I'm noticing you weigh this carefully.") is True
+    doc = agentic_coll.find_one({"user_id": user_id}) or {}
+    assert doc.get("pattern_mirror"), "the user lost their reflection, not just the profile"
+    assert not doc.get("ic_profile"), "the profile came back"

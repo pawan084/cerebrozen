@@ -392,7 +392,43 @@ def save_ic_profile(user_id: str, ic_profile: str) -> bool:
     """Persist pattern_agent's cumulative Pattern Intelligence Model (the IC
     profile) as serialized JSON, from a `background_write` invocation. Read back
     next session via read_user_context, which exposes it as the prompt's
-    `{ic_profile}` (and legacy `{prev_pattern_table}`/`{pattern}`)."""
+    `{ic_profile}` (and legacy `{prev_pattern_table}`/`{pattern}`).
+
+    Gated by BOTH regulated-mode flags, because this one record is both of the things
+    config.py names as legally loaded, at once:
+
+    * **Emotion inference** — the `emotional_regulation` cluster classifies the person
+      Reactive/Adaptive/Reflective, and the prompt's own detection aid for it is
+      "emotional spikes ('this is too much', 'I'm furious')".
+    * **Durable person scoring** — every cluster carries a `confidence` float, a
+      `frequency` count and a `trend` line, accumulated ACROSS sessions. That is a
+      standing psychological rating of a worker, which is exactly what
+      `PERSON_SCORING_ENABLED` exists to refuse; `coachability_score` is not the only one.
+
+    It also stores `verbatim_anchors` — up to three exact quotes of the person — inside
+    that rating.
+
+    Until 2026-07-17 this had no gate at all, so a regulated tenant (the DEFAULT) refused
+    the mood write on the line below and then wrote a cumulative psychological profile
+    including inferred emotion to the same document. config.py's regulated-mode block
+    enumerated the two loaded surfaces it knew about and did not know about this one; the
+    SECURITY.md claim ("not recorded at all — refused at write, proven by a dedicated test
+    suite") was true of mood and false of this.
+
+    Fails CLOSED, and the fallback is already designed: pattern_agent branches on
+    `{userRepeatFresh}`, and with no stored profile a regulated tenant simply runs the
+    "fresh" path every session — one mirror drawn from the current conversation, nothing
+    accumulated. The reflection beat survives; the standing profile does not.
+    """
+    if not (config.EMOTION_CAPTURE_ENABLED and config.PERSON_SCORING_ENABLED):
+        logger.info(
+            "agentic.ic_profile_disabled",
+            extra={"reason": (
+                "the cumulative pattern profile infers emotion AND scores the person; "
+                "one of those is off for this tenant (regulated workplace)"
+            )},
+        )
+        return False
     coll = _collection()
     if coll is None or not user_id or not (ic_profile and ic_profile.strip()):
         return False
