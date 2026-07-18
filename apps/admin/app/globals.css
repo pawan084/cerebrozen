@@ -127,6 +127,17 @@ td { padding: 8px 10px; border-top: 1px solid var(--color-mist-100); }
 .pill.ok { background: #e7f5ec; color: #15803d; }
 .pill.off { background: var(--color-zen-50); color: var(--color-zen-700); }
 
+.muted { color: var(--color-brand-500); }
+button.ghost.sm { padding: 4px 12px; font-size: 12px; }
+
+/* People roster — denser rows, a clear name/email hierarchy, hover to track a row across. */
+.roster td { padding: 7px 12px; vertical-align: middle; }
+.roster tbody tr:hover { background: var(--color-brand-50); }
+.roster .cell-name { font-weight: 600; color: var(--color-brand-900); }
+.roster .cell-email { color: var(--color-brand-600); font-variant-numeric: tabular-nums; }
+.roster .cell-action { text-align: right; white-space: nowrap; }
+.roster th:last-child { text-align: right; }
+
 form.stack { display: grid; gap: 10px; max-width: 420px; }
 input, select, textarea {
   font: inherit; padding: 9px 12px; border: 1px solid var(--color-mist-200);

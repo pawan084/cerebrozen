@@ -155,6 +155,13 @@ const METRIC_LABELS: Record<string, string> = {
   action_completion_rate: "follow-through",
 };
 
+// Raw role enums read like a database dump in a roster; humanize them for HR.
+const ROLE_LABEL: Record<string, string> = {
+  internal_admin: "Internal admin",
+  org_admin: "Org admin",
+  user: "Member",
+};
+
 function OrgAnalytics() {
   const { data, error, loading, reload, expired } = useLoad<Analytics>(() => apiJson<Analytics>("/orgs/me/analytics"));
   if (loading) return <div className="card"><Skeleton rows={3} /></div>;
@@ -294,25 +301,27 @@ function People({ me }: { me: Me }) {
   return (
     <div className="card">
       <div className="people-head">
-        <h2>People</h2>
         <input className="wb-search" type="search" placeholder="Search by name or email"
-          aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
+          aria-label="Search people" style={{ marginLeft: "auto" }}
+          value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {loading ? <Skeleton /> : (
       <>
-      <table>
-        <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th /></tr></thead>
+      <table className="roster">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th aria-label="Actions" /></tr></thead>
         <tbody>
           {(people ?? []).map((p) => (
             <tr key={p.id}>
-              <td>{p.email}</td><td>{p.name}</td><td>{p.role}</td>
+              <td className="cell-name">{p.name || <span className="muted">—</span>}</td>
+              <td className="cell-email">{p.email}</td>
+              <td className="muted">{ROLE_LABEL[p.role] ?? p.role}</td>
               <td><span className={`pill ${p.is_active ? "ok" : "off"}`}>{p.is_active ? "active" : "disabled"}</span></td>
-              <td>
+              <td className="cell-action">
                 {/* No self-deactivation: with one org_admin it locks the whole tenant out
                     of its own console. The server refuses it too — this only saves the
                     round trip and the confusing error. */}
-                {p.id === me.id ? <span className="hint">you</span> : (
-                  <button className="ghost" disabled={busy === p.id} onClick={() => toggle(p)}>
+                {p.id === me.id ? <span className="muted">you</span> : (
+                  <button className="ghost sm" disabled={busy === p.id} onClick={() => toggle(p)}>
                     {busy === p.id ? "…" : p.is_active ? "deactivate" : "reactivate"}
                   </button>
                 )}
