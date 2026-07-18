@@ -101,7 +101,8 @@ const modules = [
     points: [
       "Early-warning signals surfaced privately to the individual",
       "Boundary-setting and recovery routines that fit real schedules",
-      "Escalation paths to human support for sensitive situations",
+      "A library of rest and recovery practices to enrol in",
+      "A deterministic crisis response that surfaces regional helplines to the person the moment it's needed",
     ],
   },
   {

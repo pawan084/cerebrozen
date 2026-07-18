@@ -13,6 +13,7 @@ import Audience from "@/components/home/Audience";
 import Features from "@/components/home/Features";
 import CaseStudy from "@/components/home/CaseStudy";
 import CtaBanner from "@/components/home/CtaBanner";
+import DataControls from "@/components/home/DataControls";
 import Security from "@/components/home/Security";
 
 export default function Home() {
@@ -33,6 +34,7 @@ export default function Home() {
       <Features />
       <CaseStudy />
       <CtaBanner />
+      <DataControls />
       <Security />
     </>
   );

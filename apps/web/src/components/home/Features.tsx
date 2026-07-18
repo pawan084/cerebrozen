@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import { ChartIcon, ChatIcon, CompassIcon, LeafIcon } from "@/components/icons";
+import { ChartIcon, ChatIcon, CompassIcon, GlobeIcon, LeafIcon, MicIcon } from "@/components/icons";
 
 const features = [
   {
@@ -31,6 +31,20 @@ const features = [
     body: "Converts coaching activity into real-time, anonymized signals on productivity, engagement, and well-being — so HR sees readiness and risk early.",
     art: "from-[#f2ddb8] to-[#e7c68e]",
   },
+  {
+    icon: MicIcon,
+    title: "Coach Out Loud",
+    kicker: "Voice, same brain as text",
+    body: "Talk it through hands-free — speech in, spoken reply out — running through the exact same governed coaching arc as the typed experience.",
+    art: "from-[#ffd0c4] to-[#f5836b]",
+  },
+  {
+    icon: GlobeIcon,
+    title: "Speaks Their Language",
+    kicker: "~20 languages, safety included",
+    body: "Coaching and greetings adapt to each person's language — and the crisis safety screen runs in roughly twenty of them, so protection is never English-only.",
+    art: "from-[#c9c3ff] to-[#8f86e0]",
+  },
 ];
 
 export default function Features() {
@@ -48,13 +62,16 @@ export default function Features() {
           </p>
         </Reveal>
 
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f, i) => (
-            <Reveal key={f.title} delay={(i % 4) * 90} className="text-center">
+            <Reveal key={f.title} delay={(i % 3) * 90} className="group text-center">
               <div
-                className={`flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br ${f.art}`}
+                className={`flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br ${f.art} shadow-sm transition duration-500 group-hover:-translate-y-1.5 group-hover:shadow-xl`}
               >
-                <f.icon className="h-16 w-16 text-white" strokeWidth={1.3} />
+                <f.icon
+                  className="h-16 w-16 text-white transition-transform duration-500 group-hover:scale-110"
+                  strokeWidth={1.3}
+                />
               </div>
               <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold leading-snug text-brand-900">
                 {f.title}

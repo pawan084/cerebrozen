@@ -54,6 +54,10 @@ const verify = [
     title: "The routing graph",
     body: "We walk the live graph with your engineer and run a real session through it, node by node. Sessions are reproducible.",
   },
+  {
+    title: "The governance model card",
+    body: "A public endpoint serves the model inventory and the non-decisional guarantee — the system coaches, it does not decide about a person. Read it live; it is not a PDF we email you.",
+  },
 ];
 
 export default function EvidencePage() {

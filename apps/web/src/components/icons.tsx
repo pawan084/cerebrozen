@@ -32,6 +32,24 @@ export function ChatIcon(props: IconProps) {
   );
 }
 
+export function MicIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
+      <path d="M19 11a7 7 0 0 1-14 0M12 18v3" />
+    </svg>
+  );
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+    </svg>
+  );
+}
+
 export function CompassIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
