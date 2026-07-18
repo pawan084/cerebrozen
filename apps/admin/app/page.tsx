@@ -139,7 +139,8 @@ function OrgOverview() {
         <div className="stat"><b>{org.is_active ? "active" : "inactive"}</b><span>status</span></div>
       </div>
       <p className="hint" style={{ marginTop: 12 }}>
-        Analytics land in Phase 2 — aggregates only, with cohort floors. This portal never shows coaching content.
+        Aggregates only, with cohort floors — this portal never shows coaching content.
+        Full metrics are on the Analytics tab.
       </p>
     </div>
   );
@@ -176,7 +177,7 @@ function OrgAnalytics() {
         <h2>Last {data.window_days} days</h2>
         <div className="stats">
           {Object.entries(data.metrics).map(([name, m]) => (
-            <div className="stat" key={name}>
+            <div className={`stat${m.suppressed ? " suppressed" : ""}`} key={name}>
               <b>{fmt(name, m)}</b>
               <span>{METRIC_LABELS[name] ?? name}</span>
             </div>
