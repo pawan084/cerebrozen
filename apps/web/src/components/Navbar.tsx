@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { navLinks, signInTargets, site } from "@/lib/site";
 import { CloseIcon, MenuIcon } from "@/components/icons";
@@ -21,6 +22,7 @@ export function Wordmark({ className = "" }: { className?: string }) {
 function SignInMenu() {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +37,22 @@ function SignInMenu() {
       document.removeEventListener("mousedown", onClick);
     };
   }, [open]);
+
+  // On open, move focus into the menu so keyboard users land on the first choice.
+  useEffect(() => {
+    if (open) menu.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]')?.focus();
+  }, [open]);
+
+  // Roving focus with the arrow/Home/End keys, per the WAI-ARIA menu pattern.
+  const onMenuKey = (e: React.KeyboardEvent) => {
+    const items = Array.from(menu.current?.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]') ?? []);
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement as HTMLAnchorElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); items[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1].focus(); }
+  };
 
   return (
     <div className="relative" ref={wrap}>
@@ -56,7 +74,9 @@ function SignInMenu() {
       </button>
       {open && (
         <div
+          ref={menu}
           role="menu"
+          onKeyDown={onMenuKey}
           className="absolute right-0 top-full z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-mist-100 bg-white shadow-[0_12px_40px_rgba(16,16,16,0.14)]"
         >
           {signInTargets.map((t) => (
@@ -83,6 +103,7 @@ function SignInMenu() {
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -103,15 +124,21 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-8 lg:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-[13.5px] font-semibold text-brand-900 transition-colors hover:text-zen-600"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`text-[13.5px] font-semibold transition-colors hover:text-zen-600 ${
+                  active ? "text-zen-600" : "text-brand-900"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           <SignInMenu />
           <Link
             href="/contact"
@@ -138,16 +165,20 @@ export default function Navbar() {
           id="mobile-menu"
           className="border-t border-mist-100 bg-white px-6 pb-6 pt-2 lg:hidden"
         >
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="block py-3 text-base font-semibold text-brand-900"
-              onClick={() => setOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`block py-3 text-base font-semibold ${active ? "text-zen-600" : "text-brand-900"}`}
+                onClick={() => setOpen(false)}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           <div className="mt-3 border-t border-mist-100 pt-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-500">Sign in</p>
             {/* No dropdown here: the drawer is already a menu, so both destinations

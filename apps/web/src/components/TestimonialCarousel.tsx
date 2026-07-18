@@ -18,20 +18,34 @@ export default function TestimonialCarousel({
 }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
 
+  // No auto-advance for users who asked for reduced motion (WCAG 2.3 / 2.2.2).
   useEffect(() => {
-    if (paused) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const autoplay = !paused && !reduced;
+  useEffect(() => {
+    if (!autoplay) return;
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % items.length);
     }, 6000);
     return () => clearInterval(id);
-  }, [paused, items.length]);
+  }, [autoplay, items.length]);
 
   const current = items[index];
 
   return (
     <div
       className="mx-auto max-w-3xl"
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Customer testimonials"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -45,6 +59,10 @@ export default function TestimonialCarousel({
       </p>
       <div
         key={index}
+        role="group"
+        aria-roledescription="slide"
+        aria-label={`${index + 1} of ${items.length}`}
+        aria-live={paused ? "polite" : "off"}
         className="mt-2 grid items-center gap-8 sm:grid-cols-[auto_1fr]"
         style={{ animation: "fadeSlide 0.5s ease both" }}
       >
@@ -68,7 +86,26 @@ export default function TestimonialCarousel({
         </div>
       </div>
 
-      <div className="mt-10 flex justify-center gap-2.5">
+      <div className="mt-10 flex items-center justify-center gap-2.5">
+        {!reduced && (
+          <button
+            type="button"
+            onClick={() => setPaused((p) => !p)}
+            aria-label={paused ? "Play testimonials" : "Pause testimonials"}
+            className="mr-2 flex h-6 w-6 items-center justify-center rounded-full text-brand-500 transition hover:text-zen-600"
+          >
+            {paused ? (
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+                <path d="M4 3l9 5-9 5V3z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+                <rect x="4" y="3" width="3" height="10" rx="1" />
+                <rect x="9" y="3" width="3" height="10" rx="1" />
+              </svg>
+            )}
+          </button>
+        )}
         {items.map((_, i) => (
           <button
             key={i}

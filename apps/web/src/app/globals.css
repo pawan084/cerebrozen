@@ -46,9 +46,108 @@ h6 {
   font-family: var(--font-heading);
 }
 
+/* World-class typography defaults: balance multi-line headings so they don't
+   leave a lone word on the last line, and keep body copy from orphaning. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
 ::selection {
   background: var(--color-zen-100);
   color: var(--color-brand-900);
+}
+
+/* Consistent keyboard focus ring on every interactive element. Only on
+   :focus-visible, so pointer clicks don't paint a ring. */
+:focus-visible {
+  outline: 2px solid var(--color-zen-600);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Global reduced-motion reset — honors the OS setting for every animation,
+   transition and smooth scroll site-wide, not only <Reveal />. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Motion layer. The hero is the one orchestrated moment (enso draws itself,
+   copy rises in sequence, the photo settles from a slow push-in); everything
+   else stays quiet. All of it is animation/transition based, so the global
+   reduced-motion reset above snaps each to its end (visible) state.
+   ───────────────────────────────────────────────────────────────────────── */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes enso-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ken-burns {
+  from {
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Sequenced entrance — pair with an inline animation-delay for the stagger. */
+.animate-rise {
+  opacity: 0;
+  animation: rise-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Self-drawing enso mark (path uses pathLength="1" so the dash math is unitless). */
+.enso-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: enso-draw 1.5s cubic-bezier(0.6, 0, 0.2, 1) 0.15s forwards;
+}
+/* Slow settle on the hero photo. */
+.animate-ken-burns {
+  animation: ken-burns 16s ease-out both;
+}
+
+/* Print: a CISO or HR lead prints /security and /evidence for a review packet.
+   Drop the sticky nav, animations and backgrounds; keep the content readable. */
+@media print {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
+  body {
+    color: #000;
+    background: #fff;
+  }
+  a {
+    text-decoration: underline;
+  }
 }
 
 /* Scroll-reveal (activated by <Reveal />). The hidden state is scoped to

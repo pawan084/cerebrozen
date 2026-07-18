@@ -22,6 +22,13 @@ export default function Counter({
     const el = ref.current;
     if (!el) return;
 
+    // Reduced motion: show the final number at once — rAF count-up isn't reachable
+    // by the CSS motion reset, so it has to be gated here.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setValue(end);
+      return;
+    }
+
     let frame = 0;
     const observer = new IntersectionObserver(
       (entries) => {

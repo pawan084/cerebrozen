@@ -57,6 +57,7 @@ export default function DemoForm() {
   return (
     <form
       onSubmit={handleSubmit}
+      aria-busy={status === "sending"}
       className="space-y-5 rounded-3xl border border-mist-200 bg-white p-8 shadow-sm md:p-10"
     >
       <div className="grid gap-5 sm:grid-cols-2">
@@ -80,7 +81,7 @@ export default function DemoForm() {
             required
             type="email"
             name="email"
-            autoComplete="work email"
+            autoComplete="email"
             placeholder="you@company.com"
             className={inputCls}
           />
@@ -141,6 +142,9 @@ export default function DemoForm() {
       >
         {status === "sending" ? "Sending…" : "Request a demo"}
       </button>
+      <p aria-live="polite" className="sr-only">
+        {status === "sending" ? "Sending your request." : ""}
+      </p>
       {status === "error" && (
         <p role="alert" className="text-center text-sm text-zen-700">
           {error} Please try again, or email us directly at{" "}
