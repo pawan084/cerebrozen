@@ -134,8 +134,14 @@ td { padding: 8px 10px; border-top: 1px solid var(--color-mist-100); }
 button.ghost.sm { padding: 4px 12px; font-size: 12px; }
 
 /* People roster — denser rows, a clear name/email hierarchy, hover to track a row across. */
+/* Consistent row hover across every data table (roster, .table, and bare tables), so a
+   row highlights as the eye tracks it across the width. */
+table tbody tr:hover { background: var(--color-brand-50); }
+/* Opaque ids (user/session/org): monospace and shortened in the cell — the full value is
+   on hover via title. Keeps a support table from overflowing on 32-char hex. */
+td code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--color-brand-700); }
+.nowrap { white-space: nowrap; }
 .roster td { padding: 7px 12px; vertical-align: middle; }
-.roster tbody tr:hover { background: var(--color-brand-50); }
 .roster .cell-name { font-weight: 600; color: var(--color-brand-900); }
 .roster .cell-email { color: var(--color-brand-600); font-variant-numeric: tabular-nums; }
 .roster .cell-action { text-align: right; white-space: nowrap; }

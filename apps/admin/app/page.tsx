@@ -1180,13 +1180,14 @@ function SafetyQueue() {
         <tbody>
           {data.escalations.map((e, i) => (
             <tr key={`${e.id}:${i}`}>
-              <td>{e.at ? new Date(e.at).toLocaleString() : "—"}</td>
+              <td className="nowrap">{e.at ? new Date(e.at).toLocaleString() : "—"}</td>
               {/* The queue spans tenants (the engine's operators are the responders), so a
                   row has to say whose it is — otherwise a user id is unattributable and an
-                  operator cannot tell which client's programme to follow. */}
-              <td>{e.org_id ? <code>{e.org_id.slice(0, 8)}</code> : "—"}</td>
-              <td>{e.user_id}</td>
-              <td>{e.session_id}</td>
+                  operator cannot tell which client's programme to follow. Ids are shortened
+                  to keep the table on-screen; the full value is on hover (title). */}
+              <td>{e.org_id ? <code title={e.org_id}>{e.org_id.slice(0, 8)}</code> : "—"}</td>
+              <td>{e.user_id ? <code title={e.user_id}>{e.user_id.slice(0, 8)}</code> : "—"}</td>
+              <td>{e.session_id ? <code title={e.session_id}>{e.session_id.slice(0, 8)}</code> : "—"}</td>
               <td>{e.detected_by ?? "—"}</td>
               <td><span className={`pill ${e.delivered ? "ok" : "off"}`}>{e.delivered ? "yes" : "no"}</span></td>
               <td>
@@ -1277,8 +1278,8 @@ function Nudges() {
   return (
     <div className="card">
       <div className="people-head">
-        <h2>Nudges <span className="hint">check-in reminders · signal only · {data.count}</span></h2>
-        <button className="ghost" onClick={dispatch} disabled={busy}>
+        <p className="panel-status">check-in reminders · signal only · {data.count}</p>
+        <button className="ghost" style={{ marginLeft: "auto" }} onClick={dispatch} disabled={busy}>
           {busy ? "Dispatching…" : "Dispatch now"}
         </button>
       </div>
@@ -1296,12 +1297,12 @@ function Nudges() {
         <tbody>
           {data.nudges.map((n, i) => (
             <tr key={`${n.user_id}:${n.at ?? ""}:${i}`}>
-              <td>{n.at ? new Date(n.at).toLocaleString() : "—"}</td>
-              <td>{n.user_id}</td>
+              <td className="nowrap">{n.at ? new Date(n.at).toLocaleString() : "—"}</td>
+              <td>{n.user_id ? <code title={n.user_id}>{n.user_id.slice(0, 8)}</code> : "—"}</td>
               <td>{n.due_count ?? "—"}</td>
               <td>{n.session_ids?.length ?? 0}</td>
               <td><span className={`pill ${n.delivered ? "ok" : "off"}`}>{n.delivered ? "yes" : "no"}</span></td>
-              <td>{n.org_id ?? "—"}</td>
+              <td>{n.org_id ? <code title={n.org_id}>{n.org_id.slice(0, 8)}</code> : "—"}</td>
             </tr>
           ))}
         </tbody>
