@@ -30,6 +30,30 @@ your current source, health-checks every surface, and opens landing/admin/app in
 Health is **`/health`**, not `/v1/health`. Session start is `POST /v1/sessions/start`
 (`/v1/sessions` is GET/DELETE only).
 
+### Cross-surface URLs — dev vs production
+
+Each front-end links out to the others (the web "Sign in" menu → app/admin; app/admin →
+their APIs and back to the marketing site). Every such URL is a `NEXT_PUBLIC_*` value
+**inlined at build time**, so it's fixed per build, not per request. The dev↔prod switch:
+
+| Set on | Var | Dev (local) | Production default |
+|---|---|---|---|
+| web | `NEXT_PUBLIC_APP_URL` | `http://localhost:3002` | `https://app.cerebrozen.in` |
+| web | `NEXT_PUBLIC_ADMIN_URL` | `http://localhost:3001` | `https://admin.cerebrozen.in` |
+| app, admin | `NEXT_PUBLIC_API_URL` | `http://localhost:8100` | `https://api.cerebrozen.in` |
+| app | `NEXT_PUBLIC_ENGINE_URL` | `http://localhost:8000` | `https://api.cerebrozen.in/engine` |
+| app, admin | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `https://cerebrozen.in` |
+
+**web** needs no config: `site.ts` defaults the two portal links on `NODE_ENV`, so
+`next dev` links localhost and `next build` links the prod subdomains automatically. Set
+the env vars only to override (e.g. point a dev build at staging).
+
+**app / admin** read the env directly. For `next dev`, `cp .env.example .env.local` in each
+(the examples already carry the localhost values). For production, the Dockerfiles bake the
+prod defaults via build `ARG`; `./launch.sh` builds those images, so a local compose stack
+still links the **prod** hostnames — run the raw `next dev` servers when you want the
+front-ends cross-linked to each other on localhost.
+
 ### Dev sign-ins (seeded by the platform on boot)
 
 | Persona | Credentials | Role |

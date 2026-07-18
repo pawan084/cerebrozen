@@ -1,3 +1,7 @@
+// `next dev` sets NODE_ENV=development; `next build` sets production. This is what
+// flips the portal links between the local dev servers and the production domains.
+const isProd = process.env.NODE_ENV === "production";
+
 export const site = {
   name: "CereBroZen",
   domain: "cerebrozen.in",
@@ -9,10 +13,12 @@ export const site = {
   // The two product surfaces, each on its own subdomain; both serve their login at
   // the root when unauthenticated. "Sign in" offers both rather than guessing —
   // employees and HR admins are different people and land in different places.
-  // Overridable per environment (dev: :3002 / :3001) — NEXT_PUBLIC_ so they're
-  // inlined at build time for the client Navbar. Default to the production domains.
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://app.cerebrozen.in",
-  adminUrl: process.env.NEXT_PUBLIC_ADMIN_URL || "https://admin.cerebrozen.in",
+  // These are NEXT_PUBLIC_ so they're inlined at build time for the client Navbar.
+  // The default switches on the build environment: the local dev servers under
+  // `next dev`, the production subdomains in a production build. Set either env
+  // var to override (e.g. a compose build arg, or pointing dev at a staging URL).
+  appUrl: process.env.NEXT_PUBLIC_APP_URL || (isProd ? "https://app.cerebrozen.in" : "http://localhost:3002"),
+  adminUrl: process.env.NEXT_PUBLIC_ADMIN_URL || (isProd ? "https://admin.cerebrozen.in" : "http://localhost:3001"),
 } as const;
 
 /** Where "Sign in" can take you. Employees first: there are far more of them.
