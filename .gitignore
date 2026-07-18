@@ -54,3 +54,4 @@ ref/
 # machine-specific
 local.properties
 .git.pre-monorepo-backup/
+.launch-dev.pids
