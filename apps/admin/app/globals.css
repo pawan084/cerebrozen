@@ -70,6 +70,10 @@ a.wordmark.home:hover em { opacity: 0.7; }
 .side-foot .ghost { align-self: flex-start; }
 .main { padding: 28px 32px; max-width: 1120px; min-width: 0; }
 .console.wide .main { max-width: none; }
+.main-head { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--color-mist-100); }
+.main-eyebrow { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--color-brand-500); margin-bottom: 5px; }
+.main-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
 
 @media (max-width: 860px) {
   /* Collapse to a top strip: sidebar becomes a horizontal, scrollable nav bar. */
@@ -103,6 +107,8 @@ a.wordmark.home:hover em { opacity: 0.7; }
 
 .card { background: #fff; border: 1px solid var(--color-mist-200); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
 .card h2 { font-size: 16px; margin-bottom: 12px; }
+/* A card's status caption (replaces a title the main-head now owns): source/version/count. */
+.panel-status { color: var(--color-brand-500); font-size: 13px; margin: 0 0 14px; }
 .stats { display: flex; gap: 24px; flex-wrap: wrap; }
 .stat { min-width: 130px; }
 .stat b { display: block; font-size: 26px; }

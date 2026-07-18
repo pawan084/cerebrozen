@@ -664,7 +664,6 @@ function Tenants() {
     <>
       <div className="card">
         <div className="people-head">
-          <h2>Tenants</h2>
           {/* Client-side, deliberately: /orgs returns every tenant in one response, so a
               server query would not save the fetch — it would only move the filter. This
               makes them FINDABLE now; the unbounded fetch is a separate server concern and
@@ -673,7 +672,7 @@ function Tenants() {
             <input className="wb-search" type="search" placeholder="Filter tenants…"
               aria-label="Filter tenants" value={q} onChange={(e) => setQ(e.target.value)} />
           )}
-          {!creating && <button className="ghost" onClick={() => setCreating(true)}>+ New tenant</button>}
+          {!creating && <button className="ghost" style={{ marginLeft: "auto" }} onClick={() => setCreating(true)}>+ New tenant</button>}
         </div>
         {orgs === null ? (
           error ? <Failed msg={error} onRetry={load} expired={expired} /> : <Skeleton />
@@ -820,7 +819,6 @@ function Demos() {
   if (rows === null) return <div className="card"><Skeleton /></div>;
   return (
     <div className="card">
-      <h2>Demo requests</h2>
       <table>
         <thead><tr><th>Company</th><th>Contact</th><th>Size</th><th>Message</th><th>Status</th></tr></thead>
         <tbody>
@@ -1012,9 +1010,9 @@ function PromptWorkbook() {
   const dirty = !!(agent && draft && (draft.prompt !== agent.prompt || draft.model !== agent.model || draft.enabled !== agent.enabled));
   return (
     <div className="card">
-      <h2>Prompt workbook <span className="hint">
+      <p className="panel-status">
         source: {data.source} · {editable ? "editable" : "read-only"} · {data.count} agents in the workbook{data.version ? ` · v${data.version}` : ""}
-      </span></h2>
+      </p>
       <p className="hint" style={{ marginBottom: 10 }}>
         Every agent whose prompt lives in the workbook. Two of them aren&rsquo;t graph nodes —
         <b> environment</b> (the guardrail wrapper composed into every prompt) and{" "}
@@ -1141,7 +1139,7 @@ function SafetyQueue() {
   return (
     <div className="card">
       <div className="people-head">
-        <h2>Safety queue <span className="hint">crisis escalations · signal only, never content · {data.count}</span></h2>
+        <p className="panel-status">crisis escalations · signal only, never content · {data.count}</p>
         {/* Open by default: a queue whose default view includes everything ever handled is
             a queue nobody reads, and this is the one an operator must read. */}
         <div className="seg">
@@ -1323,7 +1321,6 @@ function AgentFlow() {
   return (
     <div className="flow-page">
       <div className="flow-head">
-        <h2>Agent flow</h2>
         <span className="hint">
           the governed coaching arc · {agents.length} agents in the arc · routing is
           deterministic (code predicates over typed state) · read-only
@@ -1410,7 +1407,7 @@ function Console() {
   }
   return (
     <div className="card">
-      <h2>Console <span className="hint">test any prompt against the live model</span></h2>
+      <p className="panel-status">test any prompt against the live model</p>
       <label className="fld">System <span className="hint">supports {"{{variables}}"}</span>
         <textarea value={system} onChange={(e) => setSystem(e.target.value)} rows={3} />
       </label>
@@ -1472,6 +1469,11 @@ export default function Admin() {
         ]
       : [["", [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]]]];
 
+  // The current section's title + its group, for the main-column header bar.
+  const current = groups
+    .flatMap(([group, items]) => items.map(([id, label]) => ({ id, label, group })))
+    .find((s) => s.id === tab);
+
   return (
     // Sidebar + main. The agent flow is a canvas workspace, not a document — `wide`
     // drops the main column's reading width so the graph gets the full viewport.
@@ -1505,6 +1507,10 @@ export default function Admin() {
         </div>
       </aside>
       <main className="main">
+        <div className="main-head">
+          {current?.group && <span className="main-eyebrow">{current.group}</span>}
+          <h1 className="main-title">{current?.label ?? ""}</h1>
+        </div>
         {tab === "overview" && <OrgOverview />}
         {tab === "analytics" && <OrgAnalytics />}
         {tab === "people" && <People me={me} />}
