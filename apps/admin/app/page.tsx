@@ -1473,39 +1473,50 @@ export default function Admin() {
       : [["", [["overview", "Overview"], ["analytics", "Analytics"], ["people", "People"], ["invite", "Invite"]]]];
 
   return (
-    // The agent flow is a canvas workspace, not a document — it gets the full
-    // viewport width instead of the 1080px reading column every other tab wants.
-    <div className={`shell ${tab === "flow" ? "wide" : ""}`}>
-      <header className="topbar">
-        <a className="wordmark home" href={SITE_URL} title="cerebrozen.in">CereBr<em>o</em>Zen · admin</a>
-        <span className="who">
-          {me.email} ({me.role}{me.org_name ? ` · ${me.org_name}` : ""})
-          <button className="ghost" onClick={async () => { await logout(); setMe(null); }}>Sign out</button>
-        </span>
-      </header>
-      <nav className="tabs">
-        {groups.map(([group, items]) => (
-          <div className="tabgroup" key={group || "all"}>
-            {group && <span className="tabgroup-label">{group}</span>}
-            <div className="tabgroup-pills">
+    // Sidebar + main. The agent flow is a canvas workspace, not a document — `wide`
+    // drops the main column's reading width so the graph gets the full viewport.
+    <div className={`console ${tab === "flow" ? "wide" : ""}`}>
+      <aside className="sidebar">
+        <a className="wordmark home" href={SITE_URL} title="cerebrozen.in">
+          CereBr<em>o</em>Zen<span className="wm-sub"> · admin</span>
+        </a>
+        <nav className="side-nav">
+          {groups.map(([group, items]) => (
+            <div className="nav-group" key={group || "all"}>
+              {group && <span className="nav-group-label">{group}</span>}
               {items.map(([id, label]) => (
-                <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
+                <button
+                  key={id}
+                  className={`nav-item ${tab === id ? "active" : ""}`}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
               ))}
             </div>
-          </div>
-        ))}
-      </nav>
-      {tab === "overview" && <OrgOverview />}
-      {tab === "analytics" && <OrgAnalytics />}
-      {tab === "people" && <People me={me} />}
-      {tab === "invite" && <Invite />}
-      {tab === "tenants" && <Tenants />}
-      {tab === "demos" && <Demos />}
-      {tab === "prompts" && <PromptWorkbook />}
-      {tab === "flow" && <AgentFlow />}
-      {tab === "safety" && <SafetyQueue />}
-      {tab === "nudges" && <Nudges />}
-      {tab === "console" && <Console />}
+          ))}
+        </nav>
+        <div className="side-foot">
+          <span className="who-side">
+            {me.email}
+            <small>{me.role}{me.org_name ? ` · ${me.org_name}` : ""}</small>
+          </span>
+          <button className="ghost" onClick={async () => { await logout(); setMe(null); }}>Sign out</button>
+        </div>
+      </aside>
+      <main className="main">
+        {tab === "overview" && <OrgOverview />}
+        {tab === "analytics" && <OrgAnalytics />}
+        {tab === "people" && <People me={me} />}
+        {tab === "invite" && <Invite />}
+        {tab === "tenants" && <Tenants />}
+        {tab === "demos" && <Demos />}
+        {tab === "prompts" && <PromptWorkbook />}
+        {tab === "flow" && <AgentFlow />}
+        {tab === "safety" && <SafetyQueue />}
+        {tab === "nudges" && <Nudges />}
+        {tab === "console" && <Console />}
+      </main>
     </div>
   );
 }
