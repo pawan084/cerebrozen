@@ -55,3 +55,6 @@ ref/
 local.properties
 .git.pre-monorepo-backup/
 .launch-dev.pids
+
+# local dev compose overrides (per-machine ports/CORS, etc.) — never committed
+docker-compose.override.yml
