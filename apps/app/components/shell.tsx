@@ -75,6 +75,11 @@ function Login({ onDone }: { onDone: () => void }) {
   return (
     <main className="center">
       <div className="login-card">
+        {/* enso mark, echoing the marketing site's hero */}
+        <svg viewBox="0 0 48 48" width="38" height="38" aria-hidden="true" style={{ display: "block", marginBottom: 14 }}>
+          <path d="M34.5 13.5a13 13 0 1 0 3.2 8.6" fill="none" stroke="#f56b6b" strokeWidth="4.5" strokeLinecap="round" />
+          <circle cx="36" cy="12" r="3" fill="#f56b6b" />
+        </svg>
         {/* The site is a separate deployment — a real navigation, not a route. */}
         <a className="wordmark home" href={SITE_URL}>CereBr<span className="o">o</span>Zen</a>
         <h1>Welcome back</h1>

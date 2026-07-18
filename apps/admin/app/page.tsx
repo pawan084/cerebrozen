@@ -92,6 +92,11 @@ function Login({ onDone }: { onDone: () => void }) {
   }
   return (
     <div className="login-wrap card">
+      {/* enso mark, echoing the marketing site's hero */}
+      <svg viewBox="0 0 48 48" width="36" height="36" aria-hidden="true" style={{ display: "block", marginBottom: 12 }}>
+        <path d="M34.5 13.5a13 13 0 1 0 3.2 8.6" fill="none" stroke="#f56b6b" strokeWidth="4.5" strokeLinecap="round" />
+        <circle cx="36" cy="12" r="3" fill="#f56b6b" />
+      </svg>
       {/* The site is a separate deployment — a real navigation, not a route. */}
       <a className="wordmark home" href={SITE_URL}>CereBr<em>o</em>Zen<span className="wm-sub"> · admin</span></a>
       <h2>Sign in</h2>

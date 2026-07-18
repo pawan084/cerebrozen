@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
+import { Inter, Poppins, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/shell";
+
+// Same type family as the marketing site so the product feels of a piece with it:
+// Inter body, Poppins headings, Playfair for the reflective serif moments.
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const poppins = Poppins({
+  variable: "--font-poppins",
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin"],
+});
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  weight: ["500", "600", "700"],
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "CereBroZen",
@@ -17,7 +32,10 @@ export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${inter.variable} ${poppins.variable} ${playfair.variable}`}
+    >
       <body>
         <AppShell>{children}</AppShell>
       </body>
