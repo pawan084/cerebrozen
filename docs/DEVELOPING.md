@@ -10,8 +10,14 @@ because it cost someone hours. Read the traps before the commands.
 ## Run the stack
 
 ```bash
-npm run stack:up --prefix e2e     # docker compose: db, redis, engine, platform, web, admin, app
+./launch.sh                       # build from source, wait for health, open the 3 front-ends
+npm run stack:up --prefix e2e     # or the raw compose: db, redis, engine, platform, web, admin, app
 ```
+
+`./launch.sh` wraps compose: it frees a stray local dev server off 3000-3002, rebuilds from
+your current source, health-checks every surface, and opens landing/admin/app in the browser.
+`./launch.sh down` stops the stack with **plain** `down` (preserves data) — unlike
+`stack:down`, which is `down -v` and wipes the engine's Postgres. `./launch.sh logs` tails.
 
 | Surface | Port | What |
 |---|---|---|
