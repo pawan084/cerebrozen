@@ -380,13 +380,17 @@ function Invite() {
   }
   return (
     <div className="card">
-      <h2>Invite someone</h2>
+      <p className="panel-status">
+        Send an invitation to join this workspace. They set their own password when they
+        accept — you never see it.
+      </p>
       <form className="stack" onSubmit={submit}>
         <label>Work email<input name="email" type="email" required /></label>
         <label>Role
+          {/* Values are the API enums; labels are the humanized forms (see ROLE_LABEL). */}
           <select name="role" defaultValue="user">
-            <option value="user">user</option>
-            <option value="org_admin">org_admin</option>
+            <option value="user">Member</option>
+            <option value="org_admin">Org admin</option>
           </select>
         </label>
         <button className="primary">Create invitation</button>
