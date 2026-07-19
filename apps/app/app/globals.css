@@ -400,6 +400,17 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .mem-item:last-child { border-bottom: 0; padding-bottom: 0; }
 .mem-text { font-size: 14.5px; color: var(--text); line-height: 1.5; }
 .mem-basis { font-size: 12px; color: var(--muted-2); }
+
+/* ─── Programs ─── */
+.prog-hero { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+.ph-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.ph-top h2 { font-size: 22px; margin: 4px 0 2px; }
+.ph-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.ph-track { height: 8px; border-radius: 999px; background: var(--tint); overflow: hidden; }
+.ph-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #7c8cff); transition: width .4s ease; }
+.ph-guide { background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+.ph-guide-t { font-family: var(--font-heading); font-weight: 650; font-size: 15px; margin-bottom: 6px; }
+.ph-guide p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .composer { position: relative; }
 .to-latest { position: absolute; top: -42px; right: 20px; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 15px; font-size: 13px; font-weight: 600;

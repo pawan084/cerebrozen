@@ -3,6 +3,7 @@ import Link from "next/link";
 const TOOLS = [
   { href: "/tools/breathe", emoji: "🫧", t: "Breathing", s: "Box, 4-7-8, or coherent — a guided pacer with a pacing orb." },
   { href: "/tools/grounding", emoji: "🌿", t: "5-4-3-2-1 grounding", s: "Walk your senses back to the present moment." },
+  { href: "/programs", emoji: "🌱", t: "Programs", s: "Short guided journeys — one small change a day." },
   { href: "/coach", emoji: "💬", t: "Talk it through", s: "A live coaching session that ends with one concrete step." },
   { href: "/journal", emoji: "📓", t: "Write it down", s: "A private journal entry — only you ever see it." },
 ];
