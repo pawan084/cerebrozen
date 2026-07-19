@@ -373,6 +373,19 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .ground-card h2 { font-size: 22px; }
 .g-big { font-size: 68px; font-weight: 800; color: var(--accent); font-family: var(--font-heading); line-height: 1; }
 .g-dots { display: flex; gap: 8px; margin: 6px 0; }
+
+/* ─── Sleep ─── */
+.sleep-checkin { background: linear-gradient(135deg, #1a1830 0%, #201a2e 46%, #191720 100%); }
+.sleep-times { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; position: relative; z-index: 1; flex-wrap: wrap; }
+.st { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+.st input { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: #fff;
+  border-radius: 10px; padding: 9px 12px; width: 130px; }
+.sleep-bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+.sb-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.sb-track { flex: 1; width: 100%; max-width: 34px; display: flex; align-items: flex-end;
+  background: var(--tint); border-radius: 8px; overflow: hidden; }
+.sb-fill { width: 100%; background: linear-gradient(180deg, var(--accent), #7c8cff); border-radius: 8px; min-height: 4px; }
+.sb-lbl { font-size: 11px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
 .composer { position: relative; }
 .to-latest { position: absolute; top: -42px; right: 20px; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 15px; font-size: 13px; font-weight: 600;

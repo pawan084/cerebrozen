@@ -36,5 +36,16 @@ export const listMoods = () => call<MoodEntry[]>("/v1/wellness/moods?limit=30");
 export const addMood = (mood: string, symbol = "", intensity = 0) =>
   call<MoodEntry>("/v1/wellness/moods", { method: "POST", body: JSON.stringify({ mood, symbol, intensity }) });
 export const weeklyInsights = () => call<Record<string, unknown>>("/v1/wellness/insights/weekly");
+
+export type SleepEntry = {
+  id?: string; entry_id?: string; date?: string;
+  bedtime?: string; wake_time?: string; quality?: number; awakenings?: number;
+  duration_min?: number; created_at?: string; at?: string;
+};
+export const listSleep = () => call<SleepEntry[]>("/v1/wellness/sleep");
+export const addSleep = (b: { bedtime: string; wake_time: string; quality: number; awakenings?: number }) =>
+  call<SleepEntry>("/v1/wellness/sleep", { method: "POST", body: JSON.stringify(b) });
+export const sleepSummary = () => call<Record<string, unknown>>("/v1/wellness/sleep/summary?days=7");
+
 export const deleteEntry = (kind: "journal" | "moods" | "sleep", id: string) =>
   call<{ deleted?: boolean }>(`/v1/wellness/${kind}/${encodeURIComponent(id)}`, { method: "DELETE" });

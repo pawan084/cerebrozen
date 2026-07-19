@@ -121,6 +121,7 @@ const MENU = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/coach", label: "Talk", icon: "talk" },
   { href: "/tools", label: "Tools", icon: "spark" },
+  { href: "/sleep", label: "Sleep", icon: "moon" },
   { href: "/journal", label: "Journal", icon: "journal" },
   { href: "/insights", label: "Insights", icon: "insights" },
 ];
