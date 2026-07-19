@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Poppins, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/shell";
@@ -21,6 +21,16 @@ export const metadata: Metadata = {
   title: "CereBroZen",
   description: "Your always-on performance coach.",
   robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = {
+  // On mobile, resize the layout when the on-screen keyboard appears so the chat
+  // composer stays visible instead of being buried (pairs with the app's 100dvh).
+  interactiveWidget: "resizes-content",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#faf6ef" },
+  ],
 };
 
 /* Required by the nonce-CSP in proxy.ts, not a preference. Next stamps the nonce onto its

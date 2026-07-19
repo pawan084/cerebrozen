@@ -327,7 +327,7 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
 .composer { border-top: 1px solid var(--line); background: var(--composer-bg); backdrop-filter: blur(8px); }
-.composer-inner { max-width: 760px; margin: 0 auto; padding: 14px 24px; display: flex; gap: 10px; align-items: flex-end; }
+.composer-inner { max-width: 760px; margin: 0 auto; padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: flex-end; }
 .composer textarea { resize: none; max-height: 160px; border-radius: 16px; flex: 1; }
 .send { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 14px;
   padding: 0 22px; height: 46px; font-weight: 700; cursor: pointer; flex: none; }
