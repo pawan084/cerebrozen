@@ -511,6 +511,8 @@ button.danger:disabled { opacity: 0.45; cursor: default; }
 .c-done { color: var(--ok); font-weight: 650; font-size: 13.5px; flex: none; }
 
 /* ─────────────────────────── Responsive ─────────────────────────── */
+.sidebar-close { display: none; position: absolute; top: 14px; right: 12px; background: var(--surface-2);
+  border: 1px solid var(--line); color: var(--text); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; }
 .menu-btn { display: none; place-items: center; width: 40px; height: 40px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--line); color: var(--text); cursor: pointer; }
 .menu-btn svg { width: 18px; height: 18px; }
@@ -519,6 +521,7 @@ button.danger:disabled { opacity: 0.45; cursor: default; }
   .app { grid-template-columns: 1fr; }
   .sidebar { position: fixed; z-index: 40; width: 78%; max-width: 300px; transform: translateX(-102%); transition: transform .2s; }
   .sidebar.open { transform: none; }
+  .sidebar-close { display: grid; place-items: center; }
   .dash { grid-template-columns: 1fr; }
   .jump { grid-template-columns: repeat(2, 1fr); }
   .page { padding: 20px 18px 48px; }

@@ -19,10 +19,21 @@ export class Unavailable extends Error {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
   if (!token) throw new Unavailable("offline", "not signed in");
-  const r = await fetch(`${ENGINE}${path}`, {
-    ...init,
-    headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${token}` },
-  });
+  // Bound the request so a dead backend / captive portal can't hang a button forever.
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 15000);
+  let r: Response;
+  try {
+    r = await fetch(`${ENGINE}${path}`, {
+      ...init,
+      signal: ac.signal,
+      headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Unavailable("offline", "couldn't reach the server");
+  } finally {
+    clearTimeout(timer);
+  }
   if (r.status === 403) throw new Unavailable("consent", "You haven't turned this on in Settings.");
   if (r.status === 409) throw new Unavailable("disabled", "Self-report wellness isn't enabled for your workspace.");
   if (!r.ok) throw new Unavailable("offline", `HTTP ${r.status}`);

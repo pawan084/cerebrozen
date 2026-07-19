@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode,
+  createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode,
 } from "react";
 import { hasSession, login, logout, me, type Me } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
@@ -160,6 +160,26 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  // Is the sidebar a slide-in drawer (mobile) or the persistent desktop nav?
+  const [isMobile, setIsMobile] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  // Drawer open: Escape closes it, and focus moves into it (the rest of the page
+  // is inert, so focus stays trapped there).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    sidebarRef.current?.querySelector<HTMLElement>("a, button")?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!ready) return <div className="center" aria-busy="true"><div className="booting"><span className="glyph" /></div></div>;
   if (!user) return <Login onDone={load} />;
 
@@ -172,10 +192,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <MeCtx.Provider value={user}>
       <Pwa />
-      <button className="menu-btn" aria-label="Menu" onClick={() => setOpen(true)}>{Icon.menu}</button>
+      <button className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar"
+        onClick={() => setOpen(true)}>{Icon.menu}</button>
       <div className="app">
         <div className={`scrim ${open ? "show" : ""}`} onClick={() => setOpen(false)} />
-        <aside className={`sidebar ${open ? "open" : ""}`}>
+        <aside
+          id="app-sidebar"
+          ref={sidebarRef}
+          className={`sidebar ${open ? "open" : ""}`}
+          aria-label="Main"
+          // Off-screen mobile drawer is not tabbable; desktop nav is always interactive.
+          inert={isMobile && !open}
+        >
+          <button className="sidebar-close" aria-label="Close menu" onClick={() => setOpen(false)}>{Icon.close ?? "✕"}</button>
           <a className="brand" href={SITE_URL} title="cerebrozen.in">
             <span className="glyph" />
             <span className="wordmark">CereBr<span className="o">o</span>Zen</span>
@@ -205,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button className="linkbtn" onClick={signOut}>Sign out</button>
           </div>
         </aside>
-        <main className="main">{children}</main>
+        <main className="main" inert={isMobile && open}>{children}</main>
       </div>
     </MeCtx.Provider>
   );
