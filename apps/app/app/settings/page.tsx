@@ -5,6 +5,7 @@ import { getConsent, logout, updateConsent, updateProfile, type Consent } from "
 import { useMe } from "@/components/shell";
 import { YourData } from "@/components/your-data";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "@/lib/theme";
+import { disableLock, enableLock, isLockOn, lockSupported } from "@/lib/lock";
 
 /* The six DPDP consents (platform models.CONSENT_KEYS). Each is OFF until the
    person turns it on; the engine enforces from the signed claim, so a change here
@@ -45,6 +46,18 @@ export default function SettingsPage() {
     try { await updateProfile({ companion: p }); }
     catch { setPersona(prev); }
     finally { setPersonaBusy(false); }
+  }
+
+  const [lockOn, setLockOn] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
+  useEffect(() => { setLockOn(isLockOn()); }, []);
+  async function toggleLock() {
+    if (lockBusy) return;
+    setLockBusy(true);
+    try {
+      if (lockOn) { disableLock(); setLockOn(false); }
+      else { setLockOn(await enableLock()); }
+    } finally { setLockBusy(false); }
   }
 
   async function toggle(key: keyof Consent, next: boolean, label: string) {
@@ -112,6 +125,24 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3>Journal lock</h3>
+          <p className="placeholder" style={{ marginBottom: 14 }}>
+            Require your device biometric (Face ID / Touch ID / passkey) to open your journal.
+          </p>
+          {lockSupported() ? (
+            <label className="consent">
+              <input type="checkbox" checked={lockOn} disabled={lockBusy} onChange={toggleLock} />
+              <span className="c-copy">
+                <span className="c-label">Lock my journal{lockBusy && <span className="placeholder"> · …</span>}</span>
+                <span className="c-hint">Your entries stay hidden until you verify on this device.</span>
+              </span>
+            </label>
+          ) : (
+            <p className="placeholder">This browser doesn&rsquo;t support device biometric lock.</p>
+          )}
         </div>
 
         <div className="card" style={{ marginTop: 16 }}>

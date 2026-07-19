@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { addJournal, deleteEntry, listJournal, Unavailable, type JournalEntry } from "@/lib/wellness";
 import { celebrate } from "@/lib/celebrate";
+import { isLockOn, unlock } from "@/lib/lock";
 
 function when(e: JournalEntry) {
   const raw = e.created_at || e.at;
@@ -16,6 +17,16 @@ export default function JournalPage() {
   const [blocked, setBlocked] = useState<Unavailable | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [error, setError] = useState("");
+  const [locked, setLocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [lockFailed, setLockFailed] = useState(false);
+  useEffect(() => { setLocked(isLockOn()); }, []);
+  async function tryUnlock() {
+    setUnlocking(true); setLockFailed(false);
+    const ok = await unlock();
+    setUnlocking(false);
+    if (ok) setLocked(false); else setLockFailed(true);
+  }
 
   const load = useCallback(() => {
     setLoadErr(false);
@@ -54,6 +65,21 @@ export default function JournalPage() {
       if (e instanceof Unavailable) setBlocked(e);
       else setError(e instanceof Error ? e.message : "Couldn't save that.");
     } finally { setBusy(false); }
+  }
+
+  if (locked) {
+    return (
+      <div className="page tool-page">
+        <div className="page-head"><div><div className="eyebrow">Journal</div><h1>Your journal</h1></div></div>
+        <div className="ground-card">
+          <div className="g-big" aria-hidden="true">🔒</div>
+          <h2>Locked</h2>
+          <p className="placeholder">Your journal is private to you. Verify on this device to open it.</p>
+          <button className="primary" onClick={tryUnlock} disabled={unlocking}>{unlocking ? "Verifying…" : "Unlock"}</button>
+          {lockFailed && <p className="error">Couldn&rsquo;t verify — try again.</p>}
+        </div>
+      </div>
+    );
   }
 
   return (
