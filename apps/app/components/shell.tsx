@@ -134,8 +134,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     // is therefore ALWAYS absent on a fresh load. Gating on it would sign everyone out on
     // every refresh of the page. me() spends the refresh token to mint a new one.
     if (!hasSession()) { setUser(null); setReady(true); return; }
-    setUser(await me());
-    setReady(true);
+    try {
+      setUser(await me());
+    } catch {
+      // A network rejection while minting the session must NOT strand the app on the
+      // booting spinner forever — fall through to the login screen instead.
+      setUser(null);
+    } finally {
+      setReady(true);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setOpen(false); }, [pathname]);

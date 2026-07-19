@@ -19,15 +19,51 @@ function Spark({ moods }: { moods: MoodEntry[] }) {
   );
 }
 
+function humanize(k: string): string {
+  return k.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/* Render the weekly read as a human summary — a headline plus labelled metrics —
+   instead of dumping raw JSON. Nested/object fields are skipped, not stringified. */
+function WeeklySummary({ data }: { data: Record<string, unknown> }) {
+  const headline =
+    typeof data.headline === "string" ? data.headline
+    : typeof data.summary === "string" ? data.summary
+    : null;
+  const scalars = Object.entries(data).filter(
+    ([k, v]) => k !== "headline" && k !== "summary" &&
+      (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+  );
+  if (!headline && scalars.length === 0) {
+    return <p className="placeholder">Your weekly summary appears once you&rsquo;ve had a session or two.</p>;
+  }
+  return (
+    <div className="weekly-summary">
+      {headline && <p className="w-headline">{headline}</p>}
+      {scalars.length > 0 && (
+        <ul className="w-metrics">
+          {scalars.map(([k, v]) => (
+            <li key={k}>
+              <span className="w-k">{humanize(k)}</span>
+              <span className="w-v">{typeof v === "boolean" ? (v ? "Yes" : "No") : String(v)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function InsightsPage() {
   const [moods, setMoods] = useState<MoodEntry[] | null>(null);
   const [weekly, setWeekly] = useState<Record<string, unknown> | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [blocked, setBlocked] = useState<Unavailable | null>(null);
 
   useEffect(() => {
     listMoods().then((m) => { setMoods(m ?? []); setBlocked(null); })
       .catch((e) => { if (e instanceof Unavailable) setBlocked(e); setMoods([]); });
-    weeklyInsights().then(setWeekly).catch(() => setWeekly(null));
+    weeklyInsights().then(setWeekly).catch(() => setWeekly(null)).finally(() => setWeeklyLoading(false));
   }, []);
 
   const hasWeekly = weekly && Object.keys(weekly).length > 0;
@@ -58,9 +94,11 @@ export default function InsightsPage() {
 
           <div className="card">
             <div className="sec-title" style={{ margin: "0 0 8px" }}><h3>Your week</h3></div>
-            {hasWeekly
-              ? <pre className="weekly">{JSON.stringify(weekly, null, 2)}</pre>
-              : <p className="placeholder">Your weekly summary appears once you&rsquo;ve had a session or two.</p>}
+            {weeklyLoading
+              ? <p className="placeholder">Loading your week…</p>
+              : hasWeekly
+                ? <WeeklySummary data={weekly!} />
+                : <p className="placeholder">Your weekly summary appears once you&rsquo;ve had a session or two.</p>}
           </div>
         </div>
 

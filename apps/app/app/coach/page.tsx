@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { logout } from "@/lib/api";
 import { coachTurn, setActionStatus, listSessions, loadHistory, AuthExpired, type CoachAction, type SessionMeta } from "@/lib/coach";
 import { firstName, useMe } from "@/components/shell";
@@ -30,8 +31,16 @@ export default function CoachPage() {
   const lastUserText = useRef("");
   const streamRef = useRef<HTMLDivElement>(null);
 
+  const params = useSearchParams();
   const refreshSessions = useCallback(() => { listSessions().then(setSessions).catch(() => {}); }, []);
   useEffect(() => { refreshSessions(); }, [refreshSessions]);
+
+  // Prefill from the home-screen "What's on your mind?" search (don't auto-send —
+  // let the person review it first).
+  useEffect(() => {
+    const q = params.get("q");
+    if (q) setDraft(q);
+  }, [params]);
 
   useEffect(() => {
     streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight, behavior: "smooth" });
@@ -39,14 +48,19 @@ export default function CoachPage() {
 
   function newSession() {
     sessionId.current = null; lastUserText.current = "";
-    setMessages([]); setActions([]); setStatus(""); setShowRecents(false);
+    setMessages([]); setActions([]); setStatus(""); setShowRecents(false); setCrisis(false);
   }
   async function openSession(s: SessionMeta) {
     setShowRecents(false);
     if (s.session_id === sessionId.current) return;
     sessionId.current = s.session_id;
-    setActions([]); setStatus("");
-    setMessages(await loadHistory(s.session_id));
+    // A different session carries its own safety state; don't leak the previous one's.
+    setActions([]); setStatus(""); setCrisis(false);
+    const history = await loadHistory(s.session_id);
+    setMessages(history);
+    // So Regenerate on a loaded session re-runs the real last message, not "".
+    const lastYou = [...history].reverse().find((m) => m.who === "you");
+    lastUserText.current = lastYou?.text ?? "";
   }
 
   async function runTurn(text: string, edit = false) {
