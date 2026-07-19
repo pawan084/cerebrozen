@@ -7,7 +7,7 @@ import { isLockOn, unlock } from "@/lib/lock";
 
 function when(e: JournalEntry) {
   const raw = e.created_at || e.at;
-  return raw ? new Date(raw).toLocaleString() : "";
+  return raw ? new Date(raw).toLocaleString() : "Recently";
 }
 
 export default function JournalPage() {

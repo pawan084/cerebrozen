@@ -6,7 +6,11 @@ import { forgetMemory, getPatterns, listMoods, weeklyInsights, Unavailable, type
 /* A sparkline over the person's own check-ins. Intensity when we have it, else a
    flat mid-line — we never invent a trend we don't have data for. */
 function Spark({ moods }: { moods: MoodEntry[] }) {
-  const pts = moods.slice().reverse().map((m) => (typeof m.intensity === "number" && m.intensity > 0 ? m.intensity : 3));
+  // Only real intensities — never substitute a mid-value for a missing one, which
+  // would draw a trend the data doesn't support.
+  const pts = moods.slice().reverse()
+    .map((m) => m.intensity)
+    .filter((v): v is number => typeof v === "number" && v > 0);
   if (pts.length < 2) return null;
   const max = Math.max(...pts, 5);
   const step = 300 / (pts.length - 1);

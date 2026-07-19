@@ -134,6 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
 
   const load = useCallback(async () => {
@@ -187,10 +188,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!user) return <Login onDone={load} />;
 
   async function signOut() {
-    await logout();
-    setUser(null);
+    if (signingOut) return;
+    setSigningOut(true);
+    try { await logout(); } finally { setUser(null); }
   }
   const initial = (user.name?.trim() || user.email).charAt(0).toUpperCase();
+  // Never print a raw role string; members see "Member", staff see "Admin".
+  const roleLabel = user.role === "org_admin" || user.role === "internal_admin" ? "Admin" : "Member";
 
   return (
     <MeCtx.Provider value={user}>
@@ -235,9 +239,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="avatar">{initial}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="u-name">{firstName(user)}</div>
-              <div className="u-sub">{user.role === "user" ? "Member" : user.role}</div>
+              <div className="u-sub">{roleLabel}</div>
             </div>
-            <button className="linkbtn" onClick={signOut}>Sign out</button>
+            <button className="linkbtn" onClick={signOut} disabled={signingOut}>{signingOut ? "…" : "Sign out"}</button>
           </div>
         </aside>
         <main className="main" inert={isMobile && open}>{children}</main>

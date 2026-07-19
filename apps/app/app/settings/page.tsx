@@ -76,7 +76,12 @@ export default function SettingsPage() {
     } finally { setBusy(""); }
   }
 
-  async function signOut() { await logout(); window.location.href = "/"; }
+  const [signingOut, setSigningOut] = useState(false);
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try { await logout(); } finally { window.location.href = "/"; }
+  }
 
   return (
     <div className="page">
@@ -85,9 +90,9 @@ export default function SettingsPage() {
         <div className="card">
           <h3>Account</h3>
           <p className="placeholder" style={{ marginBottom: 2 }}>{me?.name || "—"}</p>
-          <p className="placeholder">{me?.email}</p>
+          <p className="placeholder">{me?.email || "—"}</p>
           <div style={{ marginTop: 18 }}>
-            <button className="primary" onClick={signOut}>Sign out</button>
+            <button className="primary" onClick={signOut} disabled={signingOut}>{signingOut ? "Signing out…" : "Sign out"}</button>
           </div>
         </div>
 
