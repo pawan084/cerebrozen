@@ -12,6 +12,7 @@ import {
 import { hasSession, login, logout, me, type Me } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
 import { applyTheme, getThemeChoice } from "@/lib/theme";
+import { Pwa } from "@/components/pwa";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -170,6 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <MeCtx.Provider value={user}>
+      <Pwa />
       <button className="menu-btn" aria-label="Menu" onClick={() => setOpen(true)}>{Icon.menu}</button>
       <div className="app">
         <div className={`scrim ${open ? "show" : ""}`} onClick={() => setOpen(false)} />

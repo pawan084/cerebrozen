@@ -439,6 +439,10 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .starter:hover { border-color: var(--accent); transform: translateY(-1px); }
 .starter:disabled { opacity: .5; cursor: default; }
 
+/* Offline banner (PWA) */
+.offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--accent-strong);
+  color: #fff; text-align: center; font-size: 13px; font-weight: 600; padding: 8px 16px; }
+
 /* markdown inside coach bubbles */
 .row.coach .bubble p { margin: 0 0 8px; }
 .row.coach .bubble p:last-child { margin-bottom: 0; }
