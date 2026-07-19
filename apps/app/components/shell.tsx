@@ -15,6 +15,7 @@ import { applyTheme, getThemeChoice } from "@/lib/theme";
 import { Pwa } from "@/components/pwa";
 import { Onboarding } from "@/components/onboarding";
 import { Celebration } from "@/components/celebration";
+import { Sos } from "@/components/sos";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -196,6 +197,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Pwa />
       <Onboarding />
       <Celebration />
+      <Sos />
       <button className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar"
         onClick={() => setOpen(true)}>{Icon.menu}</button>
       <div className="app">
