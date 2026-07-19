@@ -7,6 +7,7 @@ import { coachTurn, setActionStatus, listSessions, loadHistory, AuthExpired, typ
 import { firstName, useMe } from "@/components/shell";
 import { Markdown } from "@/components/markdown";
 import { CrisisPanel } from "@/components/crisis";
+import { getRecognition, speak, stopSpeaking, sttSupported, ttsSupported, type Recognition } from "@/lib/voice";
 
 type Msg = { who: "you" | "coach"; text: string };
 type Card = CoachAction & { local?: "saving" | "saved" | "dismissed" };
@@ -29,12 +30,18 @@ export default function CoachPage() {
   const [showRecents, setShowRecents] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const [announce, setAnnounce] = useState("");
+  const [listening, setListening] = useState(false);
+  const [speakOn, setSpeakOn] = useState(false);
+  const [voiceCaps, setVoiceCaps] = useState({ stt: false, tts: false });
   const sessionId = useRef<string | null>(null);
   const lastUserText = useRef("");
   const streamRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recentsWrap = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const recogRef = useRef<Recognition | null>(null);
+  const speakOnRef = useRef(false);
+  const runTurnRef = useRef<(text: string, edit?: boolean) => void>(() => {});
 
   const params = useSearchParams();
   const refreshSessions = useCallback(() => { listSessions().then(setSessions).catch(() => {}); }, []);
@@ -72,6 +79,39 @@ export default function CoachPage() {
     document.addEventListener("mousedown", onClick);
     return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onClick); };
   }, [showRecents]);
+
+  // Voice is browser-native + keyless; probe support on mount and keep the
+  // speak-replies flag on a ref so streaming callbacks read the latest value.
+  useEffect(() => { setVoiceCaps({ stt: sttSupported(), tts: ttsSupported() }); }, []);
+  useEffect(() => { speakOnRef.current = speakOn; if (!speakOn) stopSpeaking(); }, [speakOn]);
+  useEffect(() => () => { stopSpeaking(); recogRef.current?.abort(); }, []);
+
+  function startListening() {
+    const r = getRecognition();
+    if (!r) return;
+    recogRef.current = r;
+    setListening(true);
+    stopSpeaking();
+    let finalText = "";
+    r.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        const t = res[0]?.transcript ?? "";
+        if (res.isFinal) finalText += t; else interim += t;
+      }
+      setDraft((finalText + interim).trim());
+    };
+    r.onend = () => {
+      setListening(false);
+      recogRef.current = null;
+      const text = finalText.trim();
+      if (text) { setDraft(""); runTurnRef.current(text); } // voice loop: speak → send
+    };
+    r.onerror = () => { setListening(false); recogRef.current = null; };
+    try { r.start(); } catch { setListening(false); recogRef.current = null; }
+  }
+  function toggleMic() { if (listening) recogRef.current?.stop(); else startListening(); }
 
   function newSession() {
     sessionId.current = null; lastUserText.current = "";
@@ -130,6 +170,7 @@ export default function CoachPage() {
             return next;
           });
           setAnnounce(acc); // announce the completed reply politely to screen readers
+          if (speakOnRef.current) speak(acc); // spoken coach reply (voice mode)
         } else if (ev.type === "error") throw new Error(ev.detail);
       }
     } catch (err) {
@@ -155,7 +196,10 @@ export default function CoachPage() {
 
   function stop() {
     abortRef.current?.abort();
+    stopSpeaking();
   }
+  // Keep the ref pointing at the current runTurn so voice's onend calls the latest closure.
+  runTurnRef.current = runTurn;
 
   function send() {
     const text = draft.trim();
@@ -215,6 +259,12 @@ export default function CoachPage() {
           <h1>Your coach</h1>
         </div>
         <div className="chat-actions">
+          {voiceCaps.tts && (
+            <button className={`ghost-btn ${speakOn ? "on" : ""}`} onClick={() => setSpeakOn((v) => !v)}
+              aria-pressed={speakOn} aria-label={speakOn ? "Turn off spoken replies" : "Read replies aloud"}>
+              {speakOn ? "🔊 Voice on" : "🔈 Voice"}
+            </button>
+          )}
           <button className="ghost-btn" onClick={newSession} disabled={busy}>+ New</button>
           <div className="recents-wrap" ref={recentsWrap}>
             <button className="ghost-btn" onClick={() => setShowRecents((v) => !v)} aria-expanded={showRecents} aria-haspopup="menu">Recents ▾</button>
@@ -298,7 +348,13 @@ export default function CoachPage() {
         )}
         <div className="composer-inner">
           <textarea ref={taRef} value={draft} onChange={onDraftChange} onKeyDown={onKey}
-            placeholder="Talk it through…" rows={1} aria-label="Message your coach" />
+            placeholder={listening ? "Listening…" : "Talk it through…"} rows={1} aria-label="Message your coach" />
+          {voiceCaps.stt && !busy && (
+            <button className={`mic ${listening ? "on" : ""}`} onClick={toggleMic}
+              aria-pressed={listening} aria-label={listening ? "Stop listening" : "Speak to your coach"}>
+              <span aria-hidden="true">{listening ? "●" : "🎙"}</span>
+            </button>
+          )}
           {busy
             ? <button className="send stop" onClick={stop} aria-label="Stop generating">■ Stop</button>
             : <button className="send" onClick={send} disabled={!draft.trim()}>Send</button>}
