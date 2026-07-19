@@ -397,6 +397,21 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .reframe-form textarea { min-height: 60px; }
 .reframe-form .primary { align-self: flex-start; }
 
+/* Soundscape mixer */
+.mixer { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.mix-layer { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px; transition: border-color .15s ease; }
+.mix-layer.on { border-color: var(--accent); }
+.mix-toggle { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; color: var(--text);
+  padding: 12px; cursor: pointer; text-align: left; }
+.mix-emoji { font-size: 22px; }
+.mix-label { flex: 1; font-weight: 600; font-size: 15px; }
+.mix-state { font-size: 12px; color: var(--muted-2); }
+.mix-layer.on .mix-state { color: var(--accent); }
+.mix-layer input[type="range"] { width: calc(100% - 24px); margin: 0 12px 10px; accent-color: var(--accent); }
+.mix-master { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; }
+.mix-master input { flex: 1; max-width: 240px; accent-color: var(--accent); }
+.mix-timer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; font-size: 14px; flex-wrap: wrap; }
+
 /* ─── Sleep ─── */
 .sleep-checkin { background: linear-gradient(135deg, #1a1830 0%, #201a2e 46%, #191720 100%); }
 .sleep-times { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; position: relative; z-index: 1; flex-wrap: wrap; }
