@@ -14,6 +14,7 @@ import { SITE_URL, siteLinks } from "@/lib/site";
 import { applyTheme, getThemeChoice } from "@/lib/theme";
 import { Pwa } from "@/components/pwa";
 import { Onboarding } from "@/components/onboarding";
+import { Celebration } from "@/components/celebration";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -194,6 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MeCtx.Provider value={user}>
       <Pwa />
       <Onboarding />
+      <Celebration />
       <button className="menu-btn" aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar"
         onClick={() => setOpen(true)}>{Icon.menu}</button>
       <div className="app">

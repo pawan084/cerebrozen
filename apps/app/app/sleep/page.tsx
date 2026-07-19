@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addSleep, listSleep, Unavailable, type SleepEntry } from "@/lib/wellness";
+import { celebrate } from "@/lib/celebrate";
 
 const QUALITY = ["😩", "😔", "😐", "🙂", "😴"];
 const QLABEL = ["rough", "restless", "okay", "good", "deep"];
@@ -35,6 +36,7 @@ export default function SleepPage() {
       const saved = await addSleep({ bedtime: bed, wake_time: wake, quality: quality + 1 });
       setNights((prev) => [saved ?? { bedtime: bed, wake_time: wake, quality: quality + 1 }, ...(prev ?? [])]);
       setNote("Logged — rest well.");
+      celebrate("Logged");
       setQuality(null);
     } catch (e) {
       setNote(

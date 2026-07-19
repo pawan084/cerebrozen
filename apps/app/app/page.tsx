@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Icon, firstName, useMe } from "@/components/shell";
 import { addMood, listJournal, listMoods, Unavailable, type MoodEntry } from "@/lib/wellness";
+import { celebrate } from "@/lib/celebrate";
 
 const MOODS = ["😣", "😔", "😐", "🙂", "😌"];
 const MOOD_LABELS = ["struggling", "low", "okay", "good", "great"];
@@ -80,6 +81,7 @@ export default function Home() {
         { ...(saved ?? {}), intensity: i + 1, created_at: new Date().toISOString() } as MoodEntry,
         ...(prev ?? []),
       ]);
+      celebrate("Checked in");
     } catch (e) {
       if (e instanceof Unavailable) {
         setMoodNote(

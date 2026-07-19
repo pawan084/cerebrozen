@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { addJournal, deleteEntry, listJournal, Unavailable, type JournalEntry } from "@/lib/wellness";
+import { celebrate } from "@/lib/celebrate";
 
 function when(e: JournalEntry) {
   const raw = e.created_at || e.at;
@@ -46,6 +47,7 @@ export default function JournalPage() {
     setBusy(true); setError("");
     try {
       await addJournal(body);
+      celebrate("Saved");
       setDraft("");
       load();
     } catch (e) {

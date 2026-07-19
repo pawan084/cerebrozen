@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { celebrate } from "@/lib/celebrate";
 
 const STEPS = [
   { n: 5, prompt: "Name 5 things you can see." },
@@ -16,7 +17,7 @@ export default function Grounding() {
   const [done, setDone] = useState(false);
   const step = STEPS[i];
 
-  function next() { if (i < STEPS.length - 1) setI(i + 1); else setDone(true); }
+  function next() { if (i < STEPS.length - 1) setI(i + 1); else { setDone(true); celebrate("Grounded"); } }
   function restart() { setI(0); setDone(false); }
 
   return (

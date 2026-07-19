@@ -5,6 +5,7 @@ import {
   activeProgram, enrollProgram, leaveProgram, listPrograms,
   type ActiveProgram, type CatalogProgram,
 } from "@/lib/programs";
+import { celebrate } from "@/lib/celebrate";
 
 export default function ProgramsPage() {
   const [active, setActive] = useState<ActiveProgram | null | undefined>(undefined); // undefined = loading
@@ -24,7 +25,7 @@ export default function ProgramsPage() {
   async function enroll(id: string) {
     if (busy) return;
     setBusy(id);
-    try { await enrollProgram(id); load(); }
+    try { await enrollProgram(id); celebrate("Let's go"); load(); }
     catch { setErr(true); }
     finally { setBusy(""); }
   }
