@@ -41,12 +41,13 @@ export type CoachEvent =
 
 export class AuthExpired extends Error {}
 
-async function openStream(text: string, sessionId: string | null, token: string, edit = false): Promise<Response> {
+async function openStream(text: string, sessionId: string | null, token: string, edit = false, signal?: AbortSignal): Promise<Response> {
   const url = sessionId
     ? `${ENGINE}/v1/sessions/${encodeURIComponent(sessionId)}/turn?stream=true${edit ? "&edit=true" : ""}`
     : `${ENGINE}/v1/sessions/start?stream=true`;
   return fetch(url, {
     method: "POST",
+    signal,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     // local_hour: the coach greets by time of day, and this browser is the only party
     // that knows what time it is here. There is no timezone on the account, and `region`
@@ -64,15 +65,16 @@ export async function* coachTurn(
   text: string,
   sessionId: string | null,
   edit = false,
+  signal?: AbortSignal,
 ): AsyncGenerator<CoachEvent> {
   let token = await accessToken();
   if (!token) throw new AuthExpired("not signed in");
 
-  let res = await openStream(text, sessionId, token, edit);
+  let res = await openStream(text, sessionId, token, edit, signal);
   if (res.status === 401) {
     token = await accessToken(true);
     if (!token) throw new AuthExpired("session expired");
-    res = await openStream(text, sessionId, token, edit);
+    res = await openStream(text, sessionId, token, edit, signal);
   }
   if (res.status === 401) throw new AuthExpired("session expired");
   if (!res.ok || !res.body) {

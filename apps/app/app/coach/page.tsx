@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { logout } from "@/lib/api";
 import { coachTurn, setActionStatus, listSessions, loadHistory, AuthExpired, type CoachAction, type SessionMeta } from "@/lib/coach";
@@ -27,9 +27,14 @@ export default function CoachPage() {
   const [crisis, setCrisis] = useState(false);
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
   const [showRecents, setShowRecents] = useState(false);
+  const [atBottom, setAtBottom] = useState(true);
+  const [announce, setAnnounce] = useState("");
   const sessionId = useRef<string | null>(null);
   const lastUserText = useRef("");
   const streamRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const recentsWrap = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const params = useSearchParams();
   const refreshSessions = useCallback(() => { listSessions().then(setSessions).catch(() => {}); }, []);
@@ -42,9 +47,31 @@ export default function CoachPage() {
     if (q) setDraft(q);
   }, [params]);
 
+  // Anchored auto-scroll: only follow the stream while the user is already at the
+  // bottom, so scrolling up to re-read isn't yanked back (a scroll-to-latest pill
+  // returns them). WAI streaming-chat pattern.
   useEffect(() => {
+    if (atBottom) streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, status, actions, atBottom]);
+
+  const onStreamScroll = () => {
+    const el = streamRef.current;
+    if (el) setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 48);
+  };
+  const jumpToLatest = () => {
+    setAtBottom(true);
     streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, status, actions]);
+  };
+
+  // Recents menu: close on Escape or outside click (WAI menu pattern).
+  useEffect(() => {
+    if (!showRecents) return;
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === "Escape" && setShowRecents(false);
+    const onClick = (e: MouseEvent) => { if (!recentsWrap.current?.contains(e.target as Node)) setShowRecents(false); };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onClick); };
+  }, [showRecents]);
 
   function newSession() {
     sessionId.current = null; lastUserText.current = "";
@@ -64,7 +91,7 @@ export default function CoachPage() {
   }
 
   async function runTurn(text: string, edit = false) {
-    setBusy(true); setStatus("");
+    setBusy(true); setStatus(""); setAnnounce(""); setAtBottom(true);
     if (!edit) {
       lastUserText.current = text;
       setMessages((m) => [...m, { who: "you", text }, { who: "coach", text: "" }]);
@@ -73,15 +100,19 @@ export default function CoachPage() {
       setMessages((m) => [...m.slice(0, -1), { who: "coach", text: "" }]);
     }
     const coachIdx = edit ? messages.length - 1 : messages.length + 1;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let acc = ""; // the reply so far — so a stop/disconnect keeps what streamed
 
     try {
-      for await (const ev of coachTurn(text, sessionId.current, edit)) {
+      for await (const ev of coachTurn(text, sessionId.current, edit, controller.signal)) {
         if (ev.type === "status") setStatus(ev.msg);
         else if (ev.type === "token") {
+          acc += ev.text;
           setStatus("");
           setMessages((m) => {
             const next = [...m];
-            if (next[coachIdx]) next[coachIdx] = { who: "coach", text: next[coachIdx].text + ev.text };
+            if (next[coachIdx]) next[coachIdx] = { who: "coach", text: acc };
             return next;
           });
         } else if (ev.type === "done") {
@@ -91,31 +122,46 @@ export default function CoachPage() {
           // safety message, not coaching. Surface the helplines rather than letting it
           // read as an ordinary reply.
           if (ev.safety_flag === "crisis") setCrisis(true);
+          if (!acc.trim() && ev.response_to_user) acc = ev.response_to_user;
           setStatus("");
           setMessages((m) => {
             const next = [...m];
-            const cur = next[coachIdx]?.text ?? "";
-            if (!cur.trim() && ev.response_to_user) next[coachIdx] = { who: "coach", text: ev.response_to_user };
+            next[coachIdx] = { who: "coach", text: acc };
             return next;
           });
+          setAnnounce(acc); // announce the completed reply politely to screen readers
         } else if (ev.type === "error") throw new Error(ev.detail);
       }
     } catch (err) {
       if (err instanceof AuthExpired) { await logout(); window.location.href = "/"; return; }
       setMessages((m) => {
         const next = [...m];
-        next[coachIdx] = { who: "coach", text: "The coach is unreachable right now — your message wasn't lost. Try again in a moment." };
+        if (controller.signal.aborted) {
+          // User hit Stop — keep whatever arrived rather than discarding it.
+          next[coachIdx] = { who: "coach", text: acc.trim() ? acc + "\n\n_(stopped)_" : "_(stopped)_" };
+        } else if (acc.trim()) {
+          // Mid-stream disconnect: preserve the partial reply, don't nuke it.
+          next[coachIdx] = { who: "coach", text: acc + "\n\n_(the connection dropped before the rest arrived — try again)_" };
+        } else {
+          next[coachIdx] = { who: "coach", text: "The coach is unreachable right now — your message wasn't lost. Try again in a moment." };
+        }
         return next;
       });
     } finally {
+      abortRef.current = null;
       setStatus(""); setBusy(false); refreshSessions();
     }
+  }
+
+  function stop() {
+    abortRef.current?.abort();
   }
 
   function send() {
     const text = draft.trim();
     if (!text || busy) return;
     setDraft("");
+    if (taRef.current) taRef.current.style.height = "auto"; // reset the grown textarea
     runTurn(text);
   }
 
@@ -123,8 +169,27 @@ export default function CoachPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
+  // Auto-grow the composer up to a cap so multi-line drafts aren't stuck in one row.
+  function onDraftChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    setDraft(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 140) + "px";
+  }
+
   async function copy(text: string, i: number) {
-    try { await navigator.clipboard.writeText(text); setCopied(i); setTimeout(() => setCopied(null), 1400); } catch { /* ignore */ }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for insecure contexts (http) where the Clipboard API is unavailable.
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+      }
+      setCopied(i); setTimeout(() => setCopied(null), 1400);
+    } catch { /* clipboard blocked — nothing we can do, fail quietly */ }
   }
 
   async function actOn(a: Card, action: "save" | "delete") {
@@ -151,8 +216,8 @@ export default function CoachPage() {
         </div>
         <div className="chat-actions">
           <button className="ghost-btn" onClick={newSession} disabled={busy}>+ New</button>
-          <div className="recents-wrap">
-            <button className="ghost-btn" onClick={() => setShowRecents((v) => !v)} aria-expanded={showRecents}>Recents ▾</button>
+          <div className="recents-wrap" ref={recentsWrap}>
+            <button className="ghost-btn" onClick={() => setShowRecents((v) => !v)} aria-expanded={showRecents} aria-haspopup="menu">Recents ▾</button>
             {showRecents && (
               <div className="recents" role="menu">
                 {sessions.length === 0
@@ -171,7 +236,7 @@ export default function CoachPage() {
         </div>
       </div>
 
-      <div className="stream" ref={streamRef}>
+      <div className="stream" ref={streamRef} onScroll={onStreamScroll} aria-busy={busy}>
         <div className="thread">
           {messages.length === 0 && (
             <div className="intro">
@@ -194,7 +259,10 @@ export default function CoachPage() {
               </div>
             </div>
           ))}
-          {status && <div className="status">{status}</div>}
+          {status && <div className="status" aria-live="polite">{status}</div>}
+          {/* Screen-reader announcement of the completed reply — a primed polite region
+              (streaming token-by-token would flood, so we announce once on done). */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">{announce}</div>
 
           {/* Above the commitments on purpose: when the screen has fired, a phone number
               outranks a coaching commitment. */}
@@ -225,10 +293,15 @@ export default function CoachPage() {
       </div>
 
       <div className="composer">
+        {!atBottom && (
+          <button className="to-latest" onClick={jumpToLatest} aria-label="Scroll to latest message">↓ Latest</button>
+        )}
         <div className="composer-inner">
-          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey}
+          <textarea ref={taRef} value={draft} onChange={onDraftChange} onKeyDown={onKey}
             placeholder="Talk it through…" rows={1} aria-label="Message your coach" />
-          <button className="send" onClick={send} disabled={busy || !draft.trim()}>Send</button>
+          {busy
+            ? <button className="send stop" onClick={stop} aria-label="Stop generating">■ Stop</button>
+            : <button className="send" onClick={send} disabled={!draft.trim()}>Send</button>}
         </div>
       </div>
     </div>
