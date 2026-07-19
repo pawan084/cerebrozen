@@ -445,6 +445,29 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--accent-strong);
   color: #fff; text-align: center; font-size: 13px; font-weight: 600; padding: 8px 16px; }
 
+/* Onboarding overlay */
+.onb-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px;
+  background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); }
+.onb-card { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: 24px; padding: 30px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5); }
+.onb-card h2 { font-size: 24px; margin: 0 0 8px; }
+.onb-card p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+.onb-sub { font-size: 14px; }
+.onb-dots { display: flex; gap: 6px; margin-bottom: 20px; }
+.onb-dot { width: 26px; height: 4px; border-radius: 999px; background: var(--line-2); }
+.onb-dot.on { background: var(--accent); }
+.onb-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.onb-chip { background: var(--surface-2); border: 1px solid var(--line-2); color: var(--text); border-radius: 999px;
+  padding: 9px 16px; font-size: 13.5px; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.onb-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.onb-consents { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+.onb-consent { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.onb-consent input { width: auto; margin-top: 3px; }
+.onb-c-l { display: block; font-size: 14.5px; font-weight: 600; }
+.onb-c-h { display: block; font-size: 12.5px; color: var(--muted); }
+.onb-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.onb-nav.end { justify-content: flex-end; }
+
 /* markdown inside coach bubbles */
 .row.coach .bubble p { margin: 0 0 8px; }
 .row.coach .bubble p:last-child { margin-bottom: 0; }
