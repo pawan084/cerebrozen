@@ -49,3 +49,10 @@ export const sleepSummary = () => call<Record<string, unknown>>("/v1/wellness/sl
 
 export const deleteEntry = (kind: "journal" | "moods" | "sleep", id: string) =>
   call<{ deleted?: boolean }>(`/v1/wellness/${kind}/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+// Transparent AI memory: every statement the coach derived, with the counts behind it.
+export type PatternStatement = { text?: string; statement?: string; basis?: string; count?: number; sources?: string[] };
+export type Patterns = { enough_data?: boolean; statements?: PatternStatement[]; sources?: string[] };
+export const getPatterns = () => call<Patterns>("/v1/wellness/patterns");
+// Forget what the coach learned (a strict subset — journal/moods/sleep survive).
+export const forgetMemory = () => call<{ ok?: boolean; forgotten?: number }>("/v1/privacy/me/memory", { method: "DELETE" });

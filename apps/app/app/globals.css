@@ -393,6 +393,13 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
   opacity: 0; transition: opacity .12s ease, color .12s ease; }
 .j-entry:hover .j-del, .j-del:focus-visible { opacity: 1; }
 .j-del:hover { color: var(--accent); }
+
+/* Transparent AI memory list */
+.mem-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.mem-item { display: flex; flex-direction: column; gap: 3px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.mem-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.mem-text { font-size: 14.5px; color: var(--text); line-height: 1.5; }
+.mem-basis { font-size: 12px; color: var(--muted-2); }
 .composer { position: relative; }
 .to-latest { position: absolute; top: -42px; right: 20px; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 15px; font-size: 13px; font-weight: 600;

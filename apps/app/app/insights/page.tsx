@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listMoods, weeklyInsights, Unavailable, type MoodEntry } from "@/lib/wellness";
+import { forgetMemory, getPatterns, listMoods, weeklyInsights, Unavailable, type MoodEntry, type Patterns } from "@/lib/wellness";
 
 /* A sparkline over the person's own check-ins. Intensity when we have it, else a
    flat mid-line — we never invent a trend we don't have data for. */
@@ -59,14 +59,30 @@ export default function InsightsPage() {
   const [weekly, setWeekly] = useState<Record<string, unknown> | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [blocked, setBlocked] = useState<Unavailable | null>(null);
+  const [patterns, setPatterns] = useState<Patterns | null>(null);
+  const [patternsLoading, setPatternsLoading] = useState(true);
+  const [forgetting, setForgetting] = useState(false);
 
   useEffect(() => {
     listMoods().then((m) => { setMoods(m ?? []); setBlocked(null); })
       .catch((e) => { if (e instanceof Unavailable) setBlocked(e); setMoods([]); });
     weeklyInsights().then(setWeekly).catch(() => setWeekly(null)).finally(() => setWeeklyLoading(false));
+    getPatterns().then(setPatterns).catch(() => setPatterns(null)).finally(() => setPatternsLoading(false));
   }, []);
 
   const hasWeekly = weekly && Object.keys(weekly).length > 0;
+  const statements = patterns?.statements ?? [];
+
+  async function forget() {
+    if (forgetting) return;
+    if (!window.confirm("Forget everything the coach has learned about you? Your journal, mood and sleep logs are kept — only what the coach inferred is cleared. This can't be undone.")) return;
+    setForgetting(true);
+    try {
+      await forgetMemory();
+      setPatterns({ enough_data: false, statements: [] });
+    } catch { /* leave as-is; the user can retry */ }
+    finally { setForgetting(false); }
+  }
 
   return (
     <div className="page">
@@ -99,6 +115,39 @@ export default function InsightsPage() {
               : hasWeekly
                 ? <WeeklySummary data={weekly!} />
                 : <p className="placeholder">Your weekly summary appears once you&rsquo;ve had a session or two.</p>}
+          </div>
+
+          <div className="card">
+            <div className="sec-title" style={{ margin: "0 0 8px" }}>
+              <h3>What your coach has learned</h3>
+              {statements.length > 0 && (
+                <button className="tool" onClick={forget} disabled={forgetting}>
+                  {forgetting ? "Forgetting…" : "Forget everything"}
+                </button>
+              )}
+            </div>
+            {patternsLoading ? <p className="placeholder">Loading…</p>
+              : statements.length === 0 ? (
+                <p className="placeholder">
+                  {patterns?.enough_data === false
+                    ? "Nothing yet — the coach only forms a picture once it has enough of your own check-ins and sessions to stand behind it."
+                    : "Nothing here yet."}
+                </p>
+              ) : (
+                <ul className="mem-list">
+                  {statements.map((s, i) => (
+                    <li key={i} className="mem-item">
+                      <span className="mem-text">{s.text || s.statement}</span>
+                      {(s.basis || s.count != null) && (
+                        <span className="mem-basis">{s.basis || `${s.count} check-in${s.count === 1 ? "" : "s"}`}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            <p className="placeholder" style={{ marginTop: 12, fontSize: 12 }}>
+              Everything the coach knows, with the counts behind it — and a button to erase it. A claim you can&rsquo;t audit is a horoscope.
+            </p>
           </div>
         </div>
 
