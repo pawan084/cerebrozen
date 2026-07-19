@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addJournal, listJournal, Unavailable, type JournalEntry } from "@/lib/wellness";
+import { addJournal, deleteEntry, listJournal, Unavailable, type JournalEntry } from "@/lib/wellness";
 
 function when(e: JournalEntry) {
   const raw = e.created_at || e.at;
@@ -13,14 +13,32 @@ export default function JournalPage() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState<Unavailable | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
+    setLoadErr(false);
     listJournal()
       .then((rows) => { setEntries(rows ?? []); setBlocked(null); })
-      .catch((e) => { if (e instanceof Unavailable) setBlocked(e); setEntries([]); });
+      .catch((e) => {
+        // A real load failure must not masquerade as the "nothing yet" empty state.
+        if (e instanceof Unavailable && e.reason !== "offline") setBlocked(e);
+        else setLoadErr(true);
+        setEntries([]);
+      });
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  async function remove(id: string) {
+    const prev = entries;
+    setEntries((es) => (es ?? []).filter((e) => (e.id || e.entry_id) !== id)); // optimistic
+    try {
+      await deleteEntry("journal", id);
+    } catch {
+      setEntries(prev); // restore on failure
+      setError("Couldn't delete that entry — try again.");
+    }
+  }
 
   async function save() {
     const body = draft.trim();
@@ -73,13 +91,25 @@ export default function JournalPage() {
           <div className="card">
             <div className="sec-title" style={{ margin: "0 0 8px" }}><h3>Recent entries</h3></div>
             {entries === null ? <p className="placeholder">Loading…</p>
+              : loadErr ? <p className="placeholder">Couldn&rsquo;t load your entries just now — they&rsquo;re not lost. <button className="tool" onClick={load}>Retry</button></p>
               : entries.length === 0 ? <p className="placeholder">Nothing yet — your entries appear here.</p>
-                : entries.map((e, i) => (
-                    <div key={e.id || e.entry_id || i} className="j-entry">
-                      <div className="j-when">{when(e)}</div>
-                      <div className="j-body">{e.body}</div>
-                    </div>
-                  ))}
+                : entries.map((e, i) => {
+                    const id = e.id || e.entry_id;
+                    return (
+                      <div key={id || i} className="j-entry">
+                        <div className="j-entry-head">
+                          <div className="j-when">{when(e)}</div>
+                          {id && (
+                            <button className="j-del" aria-label="Delete this entry"
+                              onClick={() => { if (window.confirm("Delete this journal entry? This can't be undone.")) remove(id); }}>
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                        <div className="j-body">{e.body}</div>
+                      </div>
+                    );
+                  })}
           </div>
         </div>
       </div>
