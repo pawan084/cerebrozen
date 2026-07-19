@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getConsent, logout, updateConsent, type Consent } from "@/lib/api";
 import { useMe } from "@/components/shell";
 import { YourData } from "@/components/your-data";
+import { getThemeChoice, setThemeChoice, type ThemeChoice } from "@/lib/theme";
 
 /* The six DPDP consents (platform models.CONSENT_KEYS). Each is OFF until the
    person turns it on; the engine enforces from the signed claim, so a change here
@@ -23,15 +24,25 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string>("");
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState<ThemeChoice>("dark");
 
   const load = useCallback(() => {
     setLoading(true);
     getConsent().then(setConsent).catch(() => setError("Couldn't load your consents.")).finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setTheme(getThemeChoice()); }, []);
 
-  async function toggle(key: keyof Consent, next: boolean) {
+  function pickTheme(c: ThemeChoice) { setTheme(c); setThemeChoice(c); }
+
+  async function toggle(key: keyof Consent, next: boolean, label: string) {
     if (busy) return;
+    // Withdrawing a data-keeping consent stops new entries being kept — confirm it.
+    const keepsData = key === "journal_memory" || key === "mood_history" || key === "sleep_history" || key === "ai_memory" || key === "voice_storage";
+    if (!next && keepsData &&
+      !window.confirm(`Turn off "${label}"? New entries won't be kept while it's off (this toggle doesn't delete anything you've already saved — use "Your data" for that).`)) {
+      return;
+    }
     setBusy(key); setError("");
     try {
       setConsent(await updateConsent({ [key]: next } as Partial<Consent>));
@@ -56,6 +67,21 @@ export default function SettingsPage() {
         </div>
 
         <div className="card" style={{ marginTop: 16 }}>
+          <h3>Appearance</h3>
+          <p className="placeholder" style={{ marginBottom: 14 }}>
+            How CereBroZen looks. Sleep and calming spaces stay dark either way.
+          </p>
+          <div className="seg" role="radiogroup" aria-label="Appearance">
+            {([["system", "System"], ["light", "Dawn"], ["dark", "Night"]] as [ThemeChoice, string][]).map(([v, label]) => (
+              <button key={v} type="button" role="radio" aria-checked={theme === v}
+                className={`seg-btn ${theme === v ? "on" : ""}`} onClick={() => pickTheme(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginTop: 16 }}>
           <h3>Privacy &amp; consent</h3>
           <p className="placeholder" style={{ marginBottom: 14 }}>
             Each is off until you turn it on, and you can withdraw any of them at any time —
@@ -68,8 +94,8 @@ export default function SettingsPage() {
             <div className="consents">
               {KEYS.map(({ key, label, hint }) => (
                 <label key={key} className="consent">
-                  <input type="checkbox" checked={!!consent[key]} disabled={busy === key}
-                    onChange={(e) => toggle(key, e.target.checked)} />
+                  <input type="checkbox" checked={!!consent[key]} disabled={!!busy}
+                    onChange={(e) => toggle(key, e.target.checked, label)} />
                   <span className="c-copy">
                     <span className="c-label">{label}{busy === key && <span className="placeholder"> · saving…</span>}</span>
                     <span className="c-hint">{hint}</span>

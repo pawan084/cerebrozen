@@ -11,6 +11,7 @@ import {
 } from "react";
 import { hasSession, login, logout, me, type Me } from "@/lib/api";
 import { SITE_URL, siteLinks } from "@/lib/site";
+import { applyTheme, getThemeChoice } from "@/lib/theme";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -146,6 +147,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  // Apply the saved appearance on mount, and follow the OS when set to "system".
+  useEffect(() => {
+    applyTheme(getThemeChoice());
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = () => { if (getThemeChoice() === "system") applyTheme("system"); };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   if (!ready) return <div className="center" aria-busy="true"><div className="booting"><span className="glyph" /></div></div>;
   if (!user) return <Login onDone={load} />;
