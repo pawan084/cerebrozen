@@ -386,6 +386,16 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
 .ground-card h2 { font-size: 22px; }
 .g-big { font-size: 68px; font-weight: 800; color: var(--accent); font-family: var(--font-heading); line-height: 1; }
 .g-dots { display: flex; gap: 8px; margin: 6px 0; }
+.g-step { font-size: 40px; font-weight: 800; color: var(--accent); font-family: var(--font-heading);
+  width: 72px; height: 72px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; }
+
+/* CBT thought-record form */
+.reframe-form { display: flex; flex-direction: column; gap: 18px; max-width: 560px; }
+.rf-field { display: flex; flex-direction: column; gap: 4px; }
+.rf-label { font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--text); }
+.rf-hint { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+.reframe-form textarea { min-height: 60px; }
+.reframe-form .primary { align-self: flex-start; }
 
 /* ─── Sleep ─── */
 .sleep-checkin { background: linear-gradient(135deg, #1a1830 0%, #201a2e 46%, #191720 100%); }
