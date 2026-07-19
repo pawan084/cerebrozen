@@ -152,6 +152,8 @@ export async function accessToken(force = false): Promise<string | null> {
 
 export type Me = {
   id: string; email: string; name: string; role: string; org_id: string | null;
+  /** The coach's persona/style — one of the companion keys the platform stores on the profile. */
+  companion?: string;
   /** The platform's RESOLVED crisis region: the person's own choice, else their org's
    *  default, else "" = unknown (which the engine answers with an international
    *  directory rather than a guess). The crisis panel asks the engine for this region's
@@ -204,4 +206,17 @@ export async function updateConsent(patch: Partial<Consent>): Promise<Consent> {
     setTokens({ access_token: body.access_token, refresh_token: body.refresh_token });
   }
   return body as Consent;
+}
+
+/** Patch profile fields (name, companion/persona, language, region, goals…). */
+export async function updateProfile(patch: Record<string, unknown>): Promise<Me> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+  const r = await fetch(`${BASE}/users/me`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.detail ?? `HTTP ${r.status}`);
+  return (await r.json()) as Me;
 }

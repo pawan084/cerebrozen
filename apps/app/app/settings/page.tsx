@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getConsent, logout, updateConsent, type Consent } from "@/lib/api";
+import { getConsent, logout, updateConsent, updateProfile, type Consent } from "@/lib/api";
 import { useMe } from "@/components/shell";
 import { YourData } from "@/components/your-data";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "@/lib/theme";
@@ -35,6 +35,18 @@ export default function SettingsPage() {
 
   function pickTheme(c: ThemeChoice) { setTheme(c); setThemeChoice(c); }
 
+  const [persona, setPersona] = useState<string>("");
+  const [personaBusy, setPersonaBusy] = useState(false);
+  useEffect(() => { setPersona(me?.companion ?? ""); }, [me?.companion]);
+  async function pickPersona(p: string) {
+    if (personaBusy) return;
+    const prev = persona;
+    setPersona(p); setPersonaBusy(true);
+    try { await updateProfile({ companion: p }); }
+    catch { setPersona(prev); }
+    finally { setPersonaBusy(false); }
+  }
+
   async function toggle(key: keyof Consent, next: boolean, label: string) {
     if (busy) return;
     // Withdrawing a data-keeping consent stops new entries being kept — confirm it.
@@ -63,6 +75,27 @@ export default function SettingsPage() {
           <p className="placeholder">{me?.email}</p>
           <div style={{ marginTop: 18 }}>
             <button className="primary" onClick={signOut}>Sign out</button>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3>Coach style</h3>
+          <p className="placeholder" style={{ marginBottom: 14 }}>
+            How your coach speaks to you. You can change this any time.
+          </p>
+          <div className="persona-grid" role="radiogroup" aria-label="Coach style">
+            {[
+              ["Calm Guide", "Steady, unhurried, grounding."],
+              ["Warm Friend", "Encouraging and kind."],
+              ["Straight Talker", "Direct, no fluff."],
+              ["Quiet Coach", "Few words, lots of space."],
+            ].map(([key, desc]) => (
+              <button key={key} type="button" role="radio" aria-checked={persona === key} disabled={personaBusy}
+                className={`persona ${persona === key ? "on" : ""}`} onClick={() => pickPersona(key)}>
+                <span className="persona-t">{key}</span>
+                <span className="persona-d">{desc}</span>
+              </button>
+            ))}
           </div>
         </div>
 

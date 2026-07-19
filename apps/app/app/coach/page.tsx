@@ -12,6 +12,14 @@ import { getRecognition, speak, stopSpeaking, sttSupported, ttsSupported, type R
 type Msg = { who: "you" | "coach"; text: string };
 type Card = CoachAction & { local?: "saving" | "saved" | "dismissed" };
 
+// Conversation starters — beat the blank box (the semi-guided pattern).
+const STARTERS = [
+  "Help me prepare for a hard conversation.",
+  "I keep procrastinating on something important.",
+  "I got tough feedback and I'm still stuck on it.",
+  "I have a decision to make and I'm going in circles.",
+];
+
 export default function CoachPage() {
   const me = useMe();
   const name = firstName(me);
@@ -292,6 +300,14 @@ export default function CoachPage() {
             <div className="intro">
               <h2>{name ? `Hi ${name} — what's on your mind?` : "What's on your mind?"}</h2>
               <p>A conversation you're postponing, a decision that's stalling, a moment you want to get right. Start there — every session ends with one concrete step.</p>
+              <div className="starters">
+                {STARTERS.map((s) => (
+                  <button key={s} type="button" className="starter" disabled={busy}
+                    onClick={() => { setDraft(""); runTurn(s); }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {messages.map((m, i) => (
