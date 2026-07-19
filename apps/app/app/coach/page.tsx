@@ -36,6 +36,7 @@ export default function CoachPage() {
   const [crisis, setCrisis] = useState(false);
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
   const [showRecents, setShowRecents] = useState(false);
+  const [recentSearch, setRecentSearch] = useState("");
   const [atBottom, setAtBottom] = useState(true);
   const [announce, setAnnounce] = useState("");
   const [listening, setListening] = useState(false);
@@ -276,20 +277,30 @@ export default function CoachPage() {
           <button className="ghost-btn" onClick={newSession} disabled={busy}>+ New</button>
           <div className="recents-wrap" ref={recentsWrap}>
             <button className="ghost-btn" onClick={() => setShowRecents((v) => !v)} aria-expanded={showRecents} aria-haspopup="menu">Recents ▾</button>
-            {showRecents && (
-              <div className="recents" role="menu">
-                {sessions.length === 0
-                  ? <div className="recents-empty">No past sessions yet.</div>
-                  : sessions.map((s) => (
-                      <button key={s.session_id} role="menuitem"
-                        className={`recent ${s.session_id === sessionId.current ? "active" : ""}`}
-                        onClick={() => openSession(s)}>
-                        <span className="r-title">{s.title || "Untitled session"}</span>
-                        <span className="r-meta">{s.ended ? "ended" : "active"}{s.updated_at ? ` · ${new Date(s.updated_at).toLocaleDateString()}` : ""}</span>
-                      </button>
-                    ))}
-              </div>
-            )}
+            {showRecents && (() => {
+              const q = recentSearch.trim().toLowerCase();
+              const filtered = q ? sessions.filter((s) => (s.title || "untitled session").toLowerCase().includes(q)) : sessions;
+              return (
+                <div className="recents" role="menu">
+                  {sessions.length >= 4 && (
+                    <input className="recents-search" value={recentSearch} onChange={(e) => setRecentSearch(e.target.value)}
+                      placeholder="Search sessions…" aria-label="Search past sessions" />
+                  )}
+                  {sessions.length === 0
+                    ? <div className="recents-empty">No past sessions yet.</div>
+                    : filtered.length === 0
+                      ? <div className="recents-empty">No sessions match &ldquo;{recentSearch}&rdquo;.</div>
+                      : filtered.map((s) => (
+                          <button key={s.session_id} role="menuitem"
+                            className={`recent ${s.session_id === sessionId.current ? "active" : ""}`}
+                            onClick={() => openSession(s)}>
+                            <span className="r-title">{s.title || "Untitled session"}</span>
+                            <span className="r-meta">{s.ended ? "ended" : "active"}{s.updated_at ? ` · ${new Date(s.updated_at).toLocaleDateString()}` : ""}</span>
+                          </button>
+                        ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
