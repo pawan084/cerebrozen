@@ -120,6 +120,7 @@ function Login({ onDone }: { onDone: () => void }) {
 const MENU = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/coach", label: "Talk", icon: "talk" },
+  { href: "/tools", label: "Tools", icon: "spark" },
   { href: "/journal", label: "Journal", icon: "journal" },
   { href: "/insights", label: "Insights", icon: "insights" },
 ];
@@ -178,11 +179,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </a>
           <div className="nav-label">Menu</div>
           <nav className="nav">
-            {MENU.map((n) => (
-              <Link key={n.href} href={n.href} className={pathname === n.href ? "active" : ""}>
-                {Icon[n.icon]}{n.label}
-              </Link>
-            ))}
+            {MENU.map((n) => {
+              const active = pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/"));
+              return (
+                <Link key={n.href} href={n.href} className={active ? "active" : ""}>
+                  {Icon[n.icon]}{n.label}
+                </Link>
+              );
+            })}
           </nav>
           <div className="nav-label">Account</div>
           <nav className="nav">
