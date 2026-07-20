@@ -183,14 +183,18 @@ def safety_node(state: CereBroZenState, config: RunnableConfig) -> Dict[str, Any
     # smarter. The response did not become negotiable.
     from app.graph.crisis import full_screen
 
-    flag, _lang, why = full_screen(state.get("user_message", ""))
+    flag, lang, why = full_screen(state.get("user_message", ""))
     logger.info(
         "node.safety",
         extra={"safety_flag": flag, "detected_by": why, "llm": why.startswith("classifier")},
     )
     if flag == "crisis":
+        from app.metrics import record_crisis
         from app.safety.escalation import escalate
 
+        # Count the takeover as a content-free safety event (detection layer + language only)
+        # for the release-gate metrics — never a word the person wrote. See app/metrics.py.
+        record_crisis(detected_by=why, lang=lang)
         # Fire-and-forget, and it never raises into the turn: a failed notification must not
         # cost the user their reply. See app/safety/escalation.py.
         escalate(

@@ -65,6 +65,8 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
+import com.cerebrozen.app.ui.screens.BuildInfoScreen
+import com.cerebrozen.app.ui.screens.rememberReduceMotion
 import com.cerebrozen.app.ui.screens.Celebration
 import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
@@ -77,6 +79,7 @@ import com.cerebrozen.app.ui.screens.Onboarding
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
+import com.cerebrozen.app.ui.screens.PaywallScreen
 import com.cerebrozen.app.ui.screens.PrivacyScreen
 import com.cerebrozen.app.ui.screens.ProgramsScreen
 import com.cerebrozen.app.ui.screens.RemindersScreen
@@ -255,6 +258,10 @@ private fun SyncSystemBarIcons() {
     }
 }
 
+// The aurora arrival plays once per PROCESS (a true cold launch), not on every config change
+// or recomposition. Process-scoped on purpose: a fresh process replays it, a rotation does not.
+private var splashArrivalShown = false
+
 @Composable
 fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
@@ -265,13 +272,35 @@ fun CereBroApp() {
     remember { Session.prefGet("theme_mode")?.let { AppTheme.mode = themeModeFromPref(it) }; true }
     SyncSystemBarIcons()
 
-    // A brief branded splash on cold launch — always Night (brand moment).
-    var showSplash by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { delay(1100); showSplash = false }
+    // The aurora ARRIVAL, handed off from the OS SplashScreen (which already held the branded
+    // orb until boot-readiness — see MainActivity / docs/SPLASH_SPEC.md). This is the ≤900ms
+    // settle animation playing ONCE, not a loading wait, so it is timed to the animation and
+    // to Reduce Motion — never an arbitrary delay. Only on a true cold launch: a config change
+    // restores with bootReady already true and skips straight to the app.
+    val splashReduceMotion = rememberReduceMotion()
+    var showSplash by remember { mutableStateOf(!splashArrivalShown) }
+    LaunchedEffect(Unit) {
+        if (splashArrivalShown) { showSplash = false; return@LaunchedEffect }
+        delay(if (splashReduceMotion) 350L else 950L)
+        splashArrivalShown = true
+        showSplash = false
+    }
     if (showSplash) {
         AppTheme.forceNight = true
         Splash()
         return
+    }
+
+    // Cold-start instrumentation (#27): the splash is gone and the first real screen is up, so
+    // tell the OS we're fully drawn (feeds Play vitals / macrobenchmark TTFD) and log the
+    // measured time-to-full-display. Fires once per process. Best-effort — never a crash path.
+    val fullyDrawnCtx = LocalContext.current
+    LaunchedEffect(Unit) {
+        runCatching {
+            (fullyDrawnCtx as? android.app.Activity)?.reportFullyDrawn()
+            val ms = android.os.SystemClock.uptimeMillis() - android.os.Process.getStartUptimeMillis()
+            android.util.Log.i("CereBro", "cold-start fully-drawn in ${ms}ms")
+        }
     }
 
     // Signed-out: the whole app is the onboarding/auth flow (live backend session,
@@ -319,6 +348,8 @@ fun CereBroApp() {
         // A consent captured in onboarding but never delivered (a dropped first request)
         // is owed to the server. Replay it before anything else touches the account.
         runCatching { com.cerebrozen.app.net.Session.flushPendingConsent() }
+        // Load the consumer plan + entitlements so the UI unlocks Plus features.
+        runCatching { Session.refreshBilling() }
         runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
         runCatching { Sfx.warm(appContext) }
     }
@@ -442,15 +473,15 @@ fun CereBroApp() {
             // with the B2C sweep): the old Home/Sleep/Journal surfaces.
             composable("home") { TodayHome(onOpen = open) }
             composable("talk") { CoachScreen(onOpen = open) }
-            composable("sleep") { SleepScreen(onOpen = open, onBack = back) }
+            composable("sleep") { if (Session.entitled("sleep")) SleepScreen(onOpen = open, onBack = back) else PaywallScreen(onBack = back, highlight = "sleep") }
             composable("winddown") { WindDownScreen(onBack = back, onOpen = open) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
-            composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
+            composable("insights") { if (Session.entitled("insights")) InsightsScreen(onBack = back, onOpen = open) else PaywallScreen(onBack = back, highlight = "insights") }
             composable("programs") { ProgramsScreen(onBack = back) }
             // Well-being suite (owner call, 2026-07-14: wellness returns to the
             // coaching app — sounds, sleep scenes, breathe, reset tools, games).
-            composable("sounds") { SoundsScreen(onBack = back, onOpen = open) }
-            composable("sounds/mixer") { SoundsScreen(onBack = back, onOpen = open, startInMixer = true) }
+            composable("sounds") { if (Session.entitled("soundscapes")) SoundsScreen(onBack = back, onOpen = open) else PaywallScreen(onBack = back, highlight = "soundscapes") }
+            composable("sounds/mixer") { if (Session.entitled("soundscapes")) SoundsScreen(onBack = back, onOpen = open, startInMixer = true) else PaywallScreen(onBack = back, highlight = "soundscapes") }
             composable("player") { PlayerScreen(onBack = back) }
             composable("toolkit") { ToolkitScreen(onOpen = open, onBack = back) }
             composable("games") { ToolkitScreen(onOpen = open, onBack = back) }
@@ -470,13 +501,15 @@ fun CereBroApp() {
             composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }
             composable("journal") { JournalScreen(onBack = back) }
-            composable("patterns") { PatternScreen(onBack = back) }
+            composable("patterns") { if (Session.entitled("patterns")) PatternScreen(onBack = back) else PaywallScreen(onBack = back, highlight = "patterns") }
             composable("privacy") { PrivacyScreen(onBack = back) }
             composable("crisisregion") { CrisisRegionScreen(onBack = back) }
             composable("humansupport") { HumanSupportScreen(onBack = back) }
             composable("privacypolicy") { PrivacyPolicyScreen(onBack = back) }
             composable("export") { DataExportScreen(onBack = back) }
             composable("delete") { AccountDeletionScreen(onBack = back) }
+            composable("buildinfo") { BuildInfoScreen(onBack = back) }
+            composable("paywall") { PaywallScreen(onBack = back) }
         }
     }
     // App-wide celebration flourish, above the nav chrome.

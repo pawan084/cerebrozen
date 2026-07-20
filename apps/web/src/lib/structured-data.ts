@@ -29,3 +29,33 @@ export const websiteSchema = {
   description: site.description,
   publisher: { "@type": "Organization", name: site.name },
 } as const;
+
+// Emitted only from /pricing. Prices are REAL, not invented — they mirror the platform's
+// single source of truth (services/platform billing.PRICES, GET /billing/prices), so this
+// stays inside rule 6. Update both if the price changes.
+export const plusProductSchema = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: "CereBro Plus",
+  description:
+    "The paid tier of CereBroZen: unlimited AI coaching, voice, every guided program, sleep tracking, weekly insights, the pattern dashboard, and ambient soundscapes.",
+  brand: { "@type": "Brand", name: site.name },
+  offers: [
+    {
+      "@type": "Offer",
+      name: "CereBro Plus — yearly",
+      price: "59.99",
+      priceCurrency: "USD",
+      url: `${site.url}/pricing`,
+      availability: "https://schema.org/InStock",
+    },
+    {
+      "@type": "Offer",
+      name: "CereBro Plus — monthly",
+      price: "9.99",
+      priceCurrency: "USD",
+      url: `${site.url}/pricing`,
+      availability: "https://schema.org/InStock",
+    },
+  ],
+} as const;

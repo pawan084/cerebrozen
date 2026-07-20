@@ -58,6 +58,21 @@ DEMO_MEMBER_EMAIL = "demo@cerebrozen.in"
 DEMO_PASSWORD = "demo12345"
 
 INVITATION_TTL_DAYS = int(os.environ.get("CEREBROZEN_INVITATION_TTL_DAYS", "14"))
+RESET_TTL_HOURS = int(os.environ.get("CEREBROZEN_RESET_TTL_HOURS", "2"))
+OTP_TTL_MINUTES = int(os.environ.get("CEREBROZEN_OTP_TTL_MINUTES", "10"))
+OTP_MAX_ATTEMPTS = int(os.environ.get("CEREBROZEN_OTP_MAX_ATTEMPTS", "5"))
+# Consent grows stale (DPDP currency): a client can prompt a re-confirmation past this.
+CONSENT_STALE_DAYS = int(os.environ.get("CEREBROZEN_CONSENT_STALE_DAYS", "365"))
+# Where the consumer password-reset link points (the reset page lives on the app/web
+# frontend). Separate from ADMIN_BASE_URL — a member resets on the app, not the console.
+APP_BASE_URL = os.environ.get("CEREBROZEN_APP_BASE_URL", "").strip() or "http://localhost:3000"
+
+# ── consumer billing (B2C) ───────────────────────────────────────────────────
+# The mock provider is the default so the whole freemium loop runs with ZERO
+# payment keys (the same "everything degrades without keys" rule as the LLM
+# provider). A real Stripe / Play Billing integration flips this off and supplies
+# the provider's keys; until then checkout completes synchronously in-process.
+BILLING_MOCK = os.environ.get("CEREBROZEN_BILLING_MOCK", "true").strip().lower() != "false"
 
 # k-anonymity floor for HR analytics: a behavioral metric computed from fewer
 # distinct people than this is SUPPRESSED (returned as null). Contract-level;
@@ -147,6 +162,12 @@ def guard_production() -> None:
         problems.append("DATABASE_URL is sqlite (production needs Postgres)")
     if SEED_DEV_ADMIN:
         problems.append("CEREBROZEN_SEED_DEV_ADMIN must be false in production")
+    # The mock billing provider activates Plus with no payment — free Plus for everyone
+    # if it reaches prod. Same class of footgun as the seed admin: refuse to boot on it.
+    if BILLING_MOCK:
+        problems.append(
+            "CEREBROZEN_BILLING_MOCK must be false in production (mock grants free Plus)"
+        )
     if problems:
         raise RuntimeError(
             "refusing to start in production with insecure defaults: " + "; ".join(problems)

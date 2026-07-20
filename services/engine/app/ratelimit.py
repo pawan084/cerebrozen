@@ -165,3 +165,63 @@ def _limiter(bucket: str):
 # The two endpoints that cost money. Everything else is a database read.
 limit_turn = _limiter("turn")
 limit_start = _limiter("start")
+
+
+# ── consumer freemium: free-tier daily coaching cap (B2C) ────────────────────
+# Mirrors the platform's entitlement matrix (models.entitlements_for: the free plan's
+# coach_daily_limit is 5). ONLY the free plan is capped; plus/enterprise — and auth-off
+# local dev — are uncapped. Same Redis day-window substrate as the per-minute limiter
+# (fail-open, per-process without REDIS_URL): the right guarantee for a soft quota that
+# bounds spend without ever failing a paying user closed.
+FREE_TURN_DAILY_LIMIT = _int_env("CEREBROZEN_FREE_TURN_DAILY_LIMIT", 5)
+_DAY_SECONDS = 86400
+
+
+def _plan_from_request(request: Request) -> Optional[str]:
+    """The signed ``plan`` claim, or None when auth is off or the claim is absent.
+
+    Re-decodes the token like ``_caller_id`` (a dependency can't read another's return).
+    """
+    from app.auth.dependencies import auth_enabled
+
+    if not auth_enabled():
+        return None
+    try:
+        from app.auth.jwt_validator import decode_token, extract_bearer
+
+        claims = decode_token(extract_bearer(request.headers.get("Authorization")))
+        plan = str(claims.get("plan") or "").strip()
+        return plan or None
+    except Exception:  # noqa: BLE001 — a bad token is 401's problem, not the limiter's
+        return None
+
+
+async def limit_free_daily_turns(request: Request) -> None:
+    """Cap FREE-plan coaching at ``FREE_TURN_DAILY_LIMIT`` turns per user per day.
+
+    An absent plan claim (auth off, or a non-consumer token) is NOT the free plan — it
+    passes, exactly as consent enforcement treats an absent claim as 'not refused'.
+    """
+    if not _enabled() or FREE_TURN_DAILY_LIMIT <= 0:
+        return
+    if _plan_from_request(request) != "free":
+        return
+    caller = _caller_id(request)
+    retry_after = _hit("turn_daily", caller, FREE_TURN_DAILY_LIMIT, _DAY_SECONDS)
+    if retry_after is None:
+        return
+    from app.metrics import record_rate_limited
+
+    record_rate_limited(bucket="turn_daily")
+    logger.warning(
+        "ratelimit.free_daily_exceeded",
+        extra={"caller_kind": caller.split(":", 1)[0], "limit": FREE_TURN_DAILY_LIMIT},
+    )
+    raise HTTPException(
+        status_code=429,
+        detail=(
+            f"You've used today's {FREE_TURN_DAILY_LIMIT} free coaching turns. "
+            "Upgrade to CereBro Plus for unlimited coaching."
+        ),
+        headers={"Retry-After": str(retry_after)},
+    )

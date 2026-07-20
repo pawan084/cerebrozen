@@ -190,6 +190,11 @@ fun Onboarding() {
     var signIn by remember { mutableStateOf(false) }
     if (signIn) { AuthScreen(onBack = { signIn = false }); return }
 
+    // Work account (#40/#41): an employee invited by their org redeems the invite code
+    // here instead of self-serve signup — landing in their employer's org, not a personal one.
+    var inviteMode by remember { mutableStateOf(false) }
+    if (inviteMode) { InviteScreen(onBack = { inviteMode = false }); return }
+
     var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     val order = OStep.entries
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
@@ -250,7 +255,7 @@ fun Onboarding() {
         label = "onboarding-step",
     ) { current ->
         when (current) {
-        OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
+        OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true }, onWorkInvite = { inviteMode = true })
 
         OStep.Disclosure -> Funnel(
             stringResource(R.string.ob_disclosure_eyebrow), stringResource(R.string.ob_disclosure_title),
@@ -378,6 +383,11 @@ fun Onboarding() {
                 val stored = runCatching { Api.updateConsent(given) }.isSuccess
                 if (!stored) Session.queueConsent(given)
 
+                // Persist the language they picked in onboarding so the account starts in
+                // it — otherwise the choice was collected and silently dropped (backlog #45),
+                // and the You screen / coach would default back to English.
+                runCatching { Api.updateProfile(JSONObject().put("language", language)) }
+
                 val selectedState = state
                 if (selectedState != null) {
                     runCatching {
@@ -400,8 +410,46 @@ fun Onboarding() {
     }
 }
 
+/** Redeem an organisation invite (#41): the employee pastes the code from their invite
+ *  email, sets a name + password, and joins their EMPLOYER'S org. On success the platform
+ *  returns a session pair (Session.store flips signedIn) and the app swaps to the signed-in
+ *  surface — no explicit navigation, same as signup. */
 @Composable
-private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
+private fun InviteScreen(onBack: () -> Unit) {
+    var token by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val failed = stringResource(R.string.invite_error)
+    PremiumSubPage(stringResource(R.string.invite_eyebrow), stringResource(R.string.invite_title), onBack) {
+        Text(stringResource(R.string.invite_intro), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        AppTextField(token, { token = it }, stringResource(R.string.invite_code_label), singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+        AppTextField(name, { name = it }, stringResource(R.string.auth_name_label), singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+        AppTextField(password, { password = it }, stringResource(R.string.invite_password_label), singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done))
+        PrimaryButton(
+            text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.invite_cta),
+            enabled = !busy && token.isNotBlank() && name.isNotBlank() && password.length >= 10,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            busy = true; error = null
+            scope.launch {
+                runCatching { Session.acceptInvitation(token.trim(), name.trim(), password) }
+                    .onFailure { error = it.message ?: failed }
+                busy = false
+            }
+        }
+        error?.let { Text(it, color = Danger, style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit, onWorkInvite: () -> Unit) {
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(WelcomeGradientTop, WelcomeGradientBottom)))
@@ -459,6 +507,11 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onSignIn) {
                 Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleSmall, color = WelcomeSecondaryText)
+            }
+            // Work account door (#40): most people self-serve, so this is quiet — but an
+            // employee whose org invited them has a code, not a signup, and needs the way in.
+            TextButton(onClick = onWorkInvite) {
+                Text(stringResource(R.string.ob_work_invite), style = MaterialTheme.typography.bodyMedium, color = WelcomeSubtitleText)
             }
         }
     }

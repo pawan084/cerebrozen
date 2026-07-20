@@ -43,13 +43,26 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def issue_access_token(user: User) -> str:
+def issue_access_token(user: User, plan: str = "free", adult: bool = False) -> str:
     now = datetime.now(timezone.utc)
     claims = {
         "sub": user.id,
         "org_id": user.org_id or "internal",
         "role": user.role,
         "user": {"username": user.id},  # the engine's user identity claim
+        # The 18+ attestation travels in the signed token so the engine can refuse to serve
+        # a coaching turn to an un-attested consumer OFFLINE — the age gate can't be
+        # client-only. True by contract for B2B seats/internal staff (they don't do consumer
+        # onboarding); reflects the personal account's own attestation otherwise. Resolved
+        # by _issue_pair; same 15-min staleness trade as plan/consent (attest rotates the
+        # token so it takes effect at once).
+        "adult": adult,
+        # The consumer plan (free|plus|enterprise) travels in the signed token so the
+        # engine can enforce entitlements (free-tier coaching cap, premium gating)
+        # offline — same staleness trade as consent (takes effect on the next 15-min
+        # rotation; /billing/me is the immediate source of truth for the UI). Resolved
+        # by _issue_pair from the user's org + subscription.
+        "plan": plan,
         # Consent travels IN THE SIGNED TOKEN. The engine holds the content and must
         # enforce the person's choices, but it cannot read this database — and a
         # per-request call back to us would put an outage between someone and their own

@@ -114,6 +114,46 @@ async def test_duplicate_slug_is_409(client, internal, org_with_admin):
     assert r.status_code == 409
 
 
+async def test_tenant_list_excludes_consumer_personal_orgs(client, internal, org_with_admin):
+    """B2C signups mint a personal org-of-one each. The B2B tenant console must NOT list
+    them, or real tenants drown under every consumer signup."""
+    headers, _ = internal
+    # A consumer self-serve signup (creates a `personal-*` org).
+    await client.post(
+        "/auth/signup",
+        json={"email": "consumer@example.com", "password": "hunter2hunter2", "name": "C"},
+    )
+    r = await client.get("/orgs", headers=headers)
+    assert r.status_code == 200, r.text
+    slugs = [o["slug"] for o in r.json()]
+    assert "acme" in slugs, "real B2B tenant still listed"
+    assert not any(s.startswith("personal-") for s in slugs), "personal orgs must be hidden"
+
+
+async def test_consumer_stats_counts_accounts_and_subscribers(client, internal):
+    """Internal-admin B2C traction tile: COUNTS ONLY — accounts and active subscribers,
+    never any consumer's identity."""
+    headers, _ = internal
+    # Two consumer accounts; one upgrades to Plus.
+    for i in range(2):
+        r = await client.post(
+            "/auth/signup",
+            json={"email": f"c{i}@example.com", "password": "hunter2hunter2", "name": "C"},
+        )
+        if i == 0:
+            h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+            await client.post("/billing/checkout", json={"plan": "plus"}, headers=h)
+    r = await client.get("/orgs/consumer-stats", headers=headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["accounts"] == 2 and body["subscribers"] == 1
+
+
+async def test_consumer_stats_requires_internal_admin(client, org_with_admin):
+    r = await client.get("/orgs/consumer-stats", headers=org_with_admin["admin_headers"])
+    assert r.status_code == 403
+
+
 async def test_org_admin_sees_their_org_and_seat_usage(client, org_with_admin):
     r = await client.get("/orgs/me", headers=org_with_admin["admin_headers"])
     assert r.status_code == 200
@@ -485,7 +525,27 @@ def test_the_boot_guard_accepts_a_real_secret(monkeypatch):
     monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
     monkeypatch.setattr(cfg, "_JWT_SECRET_B64",
                         base64.b64encode(_secrets.token_bytes(48)).decode())
+    monkeypatch.setattr(cfg, "BILLING_MOCK", False)
     cfg.guard_production()  # must not raise
+
+
+def test_the_boot_guard_refuses_mock_billing(monkeypatch):
+    """Mock billing in production activates Plus with no payment — free Plus for everyone.
+    The boot-guard must refuse it, same as the dev-seed admin."""
+    import base64
+    import secrets as _secrets
+
+    from app import config as cfg
+
+    monkeypatch.setattr(cfg, "ENV", "production")
+    monkeypatch.setattr(cfg, "DATABASE_URL", "postgresql+asyncpg://u:p@db/prod")
+    monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
+    monkeypatch.setattr(cfg, "_JWT_SECRET_B64",
+                        base64.b64encode(_secrets.token_bytes(48)).decode())
+    monkeypatch.setattr(cfg, "BILLING_MOCK", True)  # the only problem
+    with pytest.raises(RuntimeError) as err:
+        cfg.guard_production()
+    assert "BILLING_MOCK" in str(err.value)
 
 
 def test_the_boot_guard_is_quiet_in_dev(monkeypatch):

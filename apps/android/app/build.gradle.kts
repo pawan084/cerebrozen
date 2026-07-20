@@ -272,6 +272,9 @@ tasks.named("check") { dependsOn(jacocoLogicCoverageVerification) }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // Android 12+ SplashScreen API — a single branded, readiness-gated launch moment
+    // (backfills the system splash on 6–11 too). See docs/SPLASH_SPEC.md.
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

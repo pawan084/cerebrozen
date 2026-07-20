@@ -132,14 +132,19 @@ fun AuthScreen(
     // condition became runtime-unknowable, the minifier kept the branch, and the demo
     // credentials went out in the public bundle. `test_release_apk_has_no_dev_credentials`
     // in this module's QA notes is the check; assertions live in the release build itself.
-    var email by rememberSaveable { mutableStateOf(if (BuildConfig.DEBUG) "demo@cerebrozen.in" else "") }
-    var password by remember { mutableStateOf(if (BuildConfig.DEBUG) "demo12345" else "") }
+    // Prefill the dev-seeded member ONLY on the sign-IN path. A signup form must start
+    // empty: demo@ already exists (→ 409) and demo12345 is under the 10-char signup minimum,
+    // so prefilling it made "Create my account" fail out of the box.
+    var email by rememberSaveable { mutableStateOf(if (BuildConfig.DEBUG && !initialCreating) "demo@cerebrozen.in" else "") }
+    var password by remember { mutableStateOf(if (BuildConfig.DEBUG && !initialCreating) "demo12345" else "") }
     var code by rememberSaveable { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var showPw by remember { mutableStateOf(false) }
+    // The email is already registered — offer a one-tap switch to sign-in instead of a 409.
+    var existingAccount by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val focus = LocalFocusManager.current
@@ -150,11 +155,32 @@ fun AuthScreen(
     val googleNotSetup = stringResource(R.string.auth_google_not_setup)
     val resetSent = stringResource(R.string.auth_reset_sent)
     val codeSentTemplate = stringResource(R.string.auth_otp_code_sent)
+    val emailError = stringResource(R.string.auth_error_email)
+    val passwordShortError = stringResource(R.string.auth_error_password_short)
+    val signinCredsError = stringResource(R.string.auth_error_signin_creds)
+    val networkError = stringResource(R.string.auth_error_network)
 
     fun run(block: suspend () -> Unit) {
-        busy = true; error = null
+        busy = true; error = null; existingAccount = false
         scope.launch {
-            try { block() } catch (e: Exception) { error = e.message ?: genericError } finally { busy = false }
+            try {
+                block()
+            } catch (e: Session.ApiException) {
+                // Differentiate without enabling account enumeration: a 409 on signup means
+                // "you already have one" (→ offer sign-in); a 401 on sign-in is the SAME
+                // "email or password is wrong" whether or not the email exists.
+                when {
+                    creating && e.code == 409 -> existingAccount = true
+                    !creating && e.code == 401 -> error = signinCredsError
+                    else -> error = e.message ?: genericError
+                }
+            } catch (e: Exception) {
+                // Not an HTTP status — a dropped connection, DNS, timeout. Say so, so the
+                // person retries the network rather than doubting their password.
+                error = networkError
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -202,6 +228,16 @@ fun AuthScreen(
                 val pwReady = !busy && email.isNotBlank() && password.isNotBlank()
                 fun submitPw() {
                     if (!pwReady) return
+                    if (creating) {
+                        // Fail fast client-side so a bad address / short password never
+                        // round-trips to a 400. Mirrors the platform's signup rules.
+                        val e = email.trim()
+                        val domain = e.substringAfterLast("@", "")
+                        if ("@" !in e || e.startsWith("@") || "." !in domain || domain.startsWith(".")) {
+                            error = emailError; return
+                        }
+                        if (password.length < 10) { error = passwordShortError; return }
+                    }
                     focus.clearFocus()
                     run {
                         if (creating) {
@@ -226,6 +262,15 @@ fun AuthScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
                 }
+                // The platform lowercases the address on signup — show the person exactly
+                // what they'll type at sign-in, so a stray capital never surprises them later.
+                if (creating && "@" in email.trim() && !email.trim().endsWith("@")) {
+                    Text(
+                        stringResource(R.string.auth_email_preview, email.trim().lowercase()),
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                }
                 AuthFieldLabel(stringResource(R.string.auth_password_label)) {
                     AppTextField(password, { password = it }, "", placeholderText = "••••••••", singleLine = true,
                         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
@@ -241,6 +286,30 @@ fun AuthScreen(
                                 )
                             }
                         })
+                }
+                // Password-strength meter (signup only): the platform's floor is 10 chars, so
+                // a short one shows red with the length hint; a longer / mixed one earns fair
+                // then strong. Guidance, never a gate — the button already enforces the rule.
+                if (creating && password.isNotEmpty()) {
+                    val strength = when {
+                        password.length < 10 -> 0
+                        password.length < 14 && password.all { it.isLetterOrDigit() } -> 1
+                        else -> 2
+                    }
+                    val barColor = listOf(Danger, Color(0xFFE0B341), Color(0xFF6BCB77))[strength]
+                    val label = stringResource(
+                        listOf(R.string.auth_pw_weak, R.string.auth_pw_fair, R.string.auth_pw_strong)[strength],
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        repeat(3) { i ->
+                            Box(
+                                Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp))
+                                    .background(if (i <= strength) barColor else Color.White.copy(alpha = 0.12f)),
+                            )
+                        }
+                    }
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = barColor,
+                        modifier = Modifier.padding(start = 2.dp))
                 }
                 AuthWhiteButton(
                     text = if (busy) stringResource(R.string.common_one_moment)
@@ -308,6 +377,15 @@ fun AuthScreen(
 
         info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Periwinkle) }
         error?.let { Text(it, color = Danger) }
+        // Already registered: don't dead-end on a 409 — offer the one tap that helps. The
+        // typed email (and password) carry over, so it's a genuine one-tap switch to sign-in.
+        if (existingAccount) {
+            AuthInfoCard(stringResource(R.string.auth_account_exists))
+            AuthWhiteButton(
+                text = stringResource(R.string.auth_signin_instead),
+                modifier = Modifier.fillMaxWidth(),
+            ) { creating = false; existingAccount = false; error = null; info = null }
+        }
     }
     }
 }

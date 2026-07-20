@@ -78,12 +78,29 @@ if _ENABLED:
         "Requests rejected by the rate limiter, by bucket.",
         ["bucket"],
     )
+    # Crisis takeovers fired, by detection LAYER (lexicon / classifier) and language.
+    # Content-free by construction — the labels are low-cardinality signal, never a word
+    # the person wrote (CLAUDE.md rule 5). This is the counted safety event the release
+    # gate reads: a sudden change in the lexicon/classifier split, or a drop to zero, is a
+    # regression in the one path that must never silently break.
+    CRISIS_TRIGGERED = Counter(
+        "cerebrozen_crisis_triggered_total",
+        "Crisis takeovers fired, by detection layer and language.",
+        ["detected_by", "lang"],
+    )
 
 
 def record_rate_limited(*, bucket: str) -> None:
     """Count one 429. No-op when Prometheus is absent."""
     if _ENABLED:
         RATE_LIMITED.labels(bucket or "unknown").inc()
+
+
+def record_crisis(*, detected_by: str, lang: str) -> None:
+    """Count one crisis takeover, by detection layer + language. Content-free: never called
+    with anything the person wrote. No-op when Prometheus is absent."""
+    if _ENABLED:
+        CRISIS_TRIGGERED.labels(detected_by or "unknown", lang or "unknown").inc()
 
 
 def record_contract_violation(*, stage: str, contract: str) -> None:

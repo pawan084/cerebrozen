@@ -17,11 +17,14 @@ from app.db import get_session
 from app.deps import require_internal_admin, require_org_admin
 from app.models import (
     DELETED_EMAIL_DOMAIN,
+    PERSONAL_ORG_SLUG_PREFIX,
     ROLE_ORG_ADMIN,
     ROLE_USER,
+    SUB_STATUS_ACTIVE,
     Invitation,
     Org,
     RefreshToken,
+    Subscription,
     User,
     is_tombstone,
 )
@@ -92,8 +95,44 @@ async def create_org(body: OrgCreate, session: AsyncSession = Depends(get_sessio
 
 @router.get("", dependencies=[Depends(require_internal_admin)])
 async def list_orgs(session: AsyncSession = Depends(get_session)):
-    orgs = (await session.execute(select(Org).order_by(Org.created_at))).scalars().all()
+    # B2B tenants only. Consumer self-serve signup mints a `personal-*` org-of-one per
+    # account (see is_personal_org); those are managed through consumer billing, not the
+    # tenant console — listing them here would bury real tenants under every signup.
+    orgs = (
+        await session.execute(
+            select(Org)
+            .where(~Org.slug.startswith(PERSONAL_ORG_SLUG_PREFIX))
+            .order_by(Org.created_at)
+        )
+    ).scalars().all()
     return [_org_out(o, await _seats_used(session, o.id)) for o in orgs]
+
+
+@router.get("/consumer-stats", dependencies=[Depends(require_internal_admin)])
+async def consumer_stats(session: AsyncSession = Depends(get_session)):
+    """B2C traction at a glance — COUNTS ONLY (no identities, no content), for the
+    internal ops dashboard. `accounts` = personal orgs-of-one; `subscribers` = those on
+    an access-granting Plus subscription. Never lists or exposes any consumer's details."""
+    accounts = (
+        await session.execute(
+            select(func.count())
+            .select_from(Org)
+            .where(Org.slug.startswith(PERSONAL_ORG_SLUG_PREFIX))
+        )
+    ).scalar_one()
+    # A personal org has at most one Subscription row; count those currently active.
+    subscribers = (
+        await session.execute(
+            select(func.count())
+            .select_from(Subscription)
+            .join(Org, Org.id == Subscription.org_id)
+            .where(
+                Org.slug.startswith(PERSONAL_ORG_SLUG_PREFIX),
+                Subscription.status == SUB_STATUS_ACTIVE,
+            )
+        )
+    ).scalar_one()
+    return {"accounts": accounts, "subscribers": subscribers}
 
 
 class OrgPatch(BaseModel):

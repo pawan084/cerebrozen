@@ -130,6 +130,8 @@ jobs:
         with: { node-version: 20 }
       - name: design-token drift check
         run: node scripts/sync-tokens.mjs --check
+      - name: marketing claims check (rule 6 / CLAIMS_MAP.md)
+        run: node scripts/check-claims.mjs
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:

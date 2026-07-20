@@ -74,6 +74,25 @@ class ApiEndpointsTest {
     }
 
     @Test
+    fun acceptInvitation_posts_token_and_signs_in() = runTest {
+        val store = FakeStore()
+        Session.resetForTest(store) { url, method, body, contentType, auth ->
+            assertTrue(url.endsWith("/auth/accept-invitation"))
+            assertEquals("POST", method)
+            assertEquals("application/json", contentType)
+            assertNull("accept-invitation is unauthenticated", auth)
+            val json = JSONObject(body!!)
+            assertEquals("inv-code", json.getString("token"))
+            assertEquals("Employee", json.getString("name"))
+            assertEquals("pw12345678", json.getString("password"))
+            200 to tokens
+        }
+        Session.acceptInvitation("inv-code", "Employee", "pw12345678")
+        assertTrue(Session.signedIn)
+        assertEquals("r1", store.getString("refresh_token"))
+    }
+
+    @Test
     fun otp_request_then_verify_signs_in() = runTest {
         val store = FakeStore()
         val seen = mutableListOf<String>()

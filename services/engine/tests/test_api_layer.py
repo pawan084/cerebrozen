@@ -2483,6 +2483,25 @@ def test_health_surfaces_the_force_handoff_test_flag(client, monkeypatch):
     assert body["force_handoff"] == {"enabled": True, "all": True, "stages": ["intake"]}
 
 
+def test_health_status_reports_a_keyless_sovereign_posture(client):
+    """The engine's sovereignty self-check: in the offline test env (mock LLM, no
+    Redis/Mongo/LiveKit) it reports a fully self-hostable posture. Posture, never data."""
+    body = client.get("/health/status").json()
+    assert body["service"] == "engine"
+    assert body["llm_provider"] == "mock" and body["llm_local"] is True
+    assert body["redis_external"] is False and body["voice_cloud"] is False
+    assert body["sovereign_ready"] is True
+
+
+def test_health_status_flags_a_non_sovereign_deployment(client, monkeypatch):
+    """A cloud LLM + a cloud-voice provider flips sovereign_ready off — honestly."""
+    monkeypatch.setenv("CEREBROZEN_LLM_PROVIDER", "openai")
+    monkeypatch.setattr(config, "LIVEKIT_URL", "wss://x.livekit.cloud")
+    body = client.get("/health/status").json()
+    assert body["llm_local"] is False and body["voice_cloud"] is True
+    assert body["sovereign_ready"] is False
+
+
 def test_the_deprecated_webhook_still_runs_a_turn(client):
     """Legacy callers are still on this shim. It must keep answering with the same
     payload the session endpoints return, or migrating clients break in production."""

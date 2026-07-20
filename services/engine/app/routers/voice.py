@@ -26,7 +26,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app import config
-from app.auth import require_auth
+from app.auth import require_auth, require_plus
 from app.schemas import SessionStartRequest
 from app.session import resolve_user_id
 from app.voice.ssm_config import read_voice_params, write_voice_params
@@ -178,7 +178,7 @@ def preview_voice(request: VoicePreviewRequest, claims: dict = Depends(require_a
     return StreamingResponse(_stream(), media_type="audio/mpeg")
 
 
-@router.post("/{session_id}/voice/token")
+@router.post("/{session_id}/voice/token", dependencies=[Depends(require_plus)])
 def voice_token(
     session_id: str,
     request: SessionStartRequest,
@@ -200,7 +200,8 @@ def voice_token(
         raise HTTPException(status_code=400, detail="user_id required (body or JWT).")
     if not session_id.strip():
         raise HTTPException(status_code=400, detail="session_id required in the path.")
-
+    # Voice is CereBro Plus: the free plan is blocked server-side by the route's
+    # require_plus dependency (not just the app UI) before we mint a LiveKit token.
     # Fresh room name per connect: LiveKit only dispatches an agent when a room is
     # FIRST created, so reconnecting to an existing room leaves you with no agent.
     # A unique room each time guarantees dispatch. The persistent BRAIN session_id

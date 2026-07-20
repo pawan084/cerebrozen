@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Diversity3
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Lock
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -111,6 +113,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
             }
         }
 
+        // CereBro Plus — the consumer upgrade door (B2C). Subtitle reflects the live plan.
+        PremiumNavRow(stringResource(R.string.you_plus_title),
+            stringResource(if (Session.isPlus) R.string.you_plus_subtitle_active else R.string.you_plus_subtitle_free),
+            icon = Icons.Outlined.WorkspacePremium, emphasis = true) { onOpen("paywall") }
         PremiumNavRow(stringResource(R.string.you_companion_title),
             stringResource(R.string.you_companion_subtitle, companion.ifBlank { "Calm Guide" }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
@@ -119,7 +125,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
         PremiumNavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
-            icon = Icons.Outlined.Insights) { onOpen("insights") }
+            icon = Icons.Outlined.Insights, locked = !Session.entitled("insights")) { onOpen("insights") }
         // The journal you can now read. Written from the breathing/reset tools all along;
         // until now there was no way back to it.
         PremiumNavRow(stringResource(R.string.journal_title), stringResource(R.string.journal_eyebrow),
@@ -127,7 +133,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // Directly above Privacy on purpose: "what it learned about me" and "what it keeps
         // about me" are one thought for the person reading them.
         PremiumNavRow(stringResource(R.string.patterns_title), stringResource(R.string.patterns_eyebrow),
-            icon = Icons.Outlined.Psychology) { onOpen("patterns") }
+            icon = Icons.Outlined.Psychology, locked = !Session.entitled("patterns")) { onOpen("patterns") }
         PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
@@ -143,6 +149,8 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.FileDownload) { onOpen("export") }
         PremiumNavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
             icon = Icons.Outlined.DeleteOutline) { onOpen("delete") }
+        PremiumNavRow(stringResource(R.string.you_buildinfo_title), stringResource(R.string.you_buildinfo_subtitle),
+            icon = Icons.Outlined.Info) { onOpen("buildinfo") }
 
         TextButton(onClick = { Session.signOut() }) { Text(stringResource(R.string.you_signout), color = TextMuted) }
         Text(stringResource(R.string.common_wellness_footer),

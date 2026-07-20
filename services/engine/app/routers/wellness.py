@@ -37,7 +37,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
-from app.auth import require_auth
+from app.auth import require_auth, require_plus
 from app.session import user_id_from_claims
 from app.stores import patterns, wellness
 
@@ -137,21 +137,21 @@ async def post_journal(body: JournalIn, claims: dict = Depends(require_auth)) ->
 # ── sleep ────────────────────────────────────────────────────────────────────
 
 
-@router.get("/sleep")
+@router.get("/sleep", dependencies=[Depends(require_plus)])
 async def get_sleep(
     limit: int = Query(30, ge=1, le=200), claims: dict = Depends(require_auth)
 ) -> list:
     return await run_in_threadpool(wellness.list_sleep, _subject(claims), limit)
 
 
-@router.get("/sleep/summary")
+@router.get("/sleep/summary", dependencies=[Depends(require_plus)])
 async def get_sleep_summary(
     days: int = Query(7, ge=1, le=90), claims: dict = Depends(require_auth)
 ) -> dict:
     return await run_in_threadpool(wellness.sleep_summary, _subject(claims), days)
 
 
-@router.post("/sleep", status_code=201)
+@router.post("/sleep", status_code=201, dependencies=[Depends(require_plus)])
 async def post_sleep(body: SleepIn, claims: dict = Depends(require_auth)) -> dict:
     _require_consent(claims, "sleep")
     entry = await run_in_threadpool(
@@ -198,14 +198,14 @@ async def post_mood(body: MoodIn, claims: dict = Depends(require_auth)) -> dict:
 # ── the person's own week ────────────────────────────────────────────────────
 
 
-@router.get("/insights/weekly")
+@router.get("/insights/weekly", dependencies=[Depends(require_plus)])
 async def get_weekly_insights(
     days: int = Query(7, ge=1, le=90), claims: dict = Depends(require_auth)
 ) -> dict:
     return await run_in_threadpool(wellness.weekly_insights, _subject(claims), days)
 
 
-@router.get("/patterns")
+@router.get("/patterns", dependencies=[Depends(require_plus)])
 async def get_patterns(claims: dict = Depends(require_auth)) -> dict:
     """Transparent AI memory: every statement the coach has learned, with its basis.
 

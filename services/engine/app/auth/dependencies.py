@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Any, Dict
 
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request
 
 from app import config
 from app.auth.errors import AuthorizationError, ForbiddenError
@@ -78,6 +78,41 @@ async def require_auth(request: Request) -> Dict[str, Any]:
             raise AuthorizationError("token missing required org_id claim")
         org = DEFAULT_ORG
     ctx_org_id.set(org)
+    return claims
+
+
+def require_plus(claims: Dict[str, Any] = Depends(require_auth)) -> Dict[str, Any]:
+    """Gate a CereBro Plus-only route SERVER-SIDE (the paywall can't be client-only).
+
+    Only an EXPLICIT ``plan == "free"`` is denied (402). An absent plan claim (auth off /
+    dev, or a non-consumer token) passes — same 'absence is not refusal' rule as the free
+    coaching cap — so premium routes stay usable offline and for enterprise seats, while
+    plus/enterprise pass. The platform's entitlement matrix (models.entitlements_for) is
+    the source of truth for WHICH features are Plus; these routes ARE those features.
+    """
+    if (claims or {}).get("plan") == "free":
+        raise HTTPException(
+            status_code=402, detail="This is a CereBro Plus feature. Upgrade to unlock it."
+        )
+    return claims
+
+
+def require_adult(claims: Dict[str, Any] = Depends(require_auth)) -> Dict[str, Any]:
+    """Gate a coaching turn on the 18+ attestation SERVER-SIDE — the onboarding age gate
+    can't be client-only. The product is not for children (DPDP treats a child's data
+    differently), and a client that skips onboarding must not still reach a coaching turn.
+
+    Only an EXPLICIT ``adult == False`` is denied (403). An ABSENT claim (auth off / dev, or
+    a pre-rollout token) passes — same 'absence is not refusal' rule as require_plus — so the
+    enforcement rides in on the next 15-min rotation without a flag-day lockout. Every
+    platform-issued consumer token carries the claim (True/False), so the gate is real; B2B
+    seats and internal staff get ``adult == True`` by contract.
+    """
+    if (claims or {}).get("adult") is False:
+        raise HTTPException(
+            status_code=403,
+            detail="You must confirm you are 18 or older before coaching can begin.",
+        )
     return claims
 
 

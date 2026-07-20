@@ -42,7 +42,9 @@ export const navLinks = [
   { label: "Platform", href: "/platform" },
   { label: "Solutions", href: "/solutions" },
   { label: "Security", href: "/security" },
+  { label: "Sovereignty", href: "/sovereignty" },
   { label: "Evidence", href: "/evidence" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Client stories", href: "/clients" },
   { label: "About", href: "/about" },
 ] as const;

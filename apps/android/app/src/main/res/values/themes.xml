@@ -7,4 +7,17 @@
         <item name="android:statusBarColor">@color/night</item>
         <item name="android:navigationBarColor">@color/night</item>
     </style>
+
+    <!-- The launch theme: the OS-drawn splash IS the brand from frame zero (the night orb
+         mark on the night background), so there is no unbranded first frame. On first draw
+         the window swaps to Theme.CereBro. Held until boot-readiness by the SplashScreen API
+         in MainActivity; the Compose Splash then plays the aurora arrival. See
+         docs/SPLASH_SPEC.md. -->
+    <style name="Theme.CereBro.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/night</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.CereBro</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+    </style>
 </resources>

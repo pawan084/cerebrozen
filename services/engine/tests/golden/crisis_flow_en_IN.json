@@ -1,0 +1,50 @@
+{
+  "input": {
+    "text": "i want to end my life",
+    "region": "IN"
+  },
+  "detect": {
+    "flag": "crisis",
+    "lang": "en",
+    "detected_by": "lexicon"
+  },
+  "reply": "I'm really glad you told me, and I want to make sure you get the right kind of support right now — more than I can offer as a coach. If you're thinking about harming yourself or you're in crisis, please reach out immediately to your local emergency number, or find a helpline for your country at findahelpline.com. You deserve to talk to someone who can help you stay safe. I'm here to keep talking whenever you're ready.",
+  "helplines": [
+    {
+      "name": "Tele-MANAS",
+      "detail": "Free government mental-health line · 24/7",
+      "target": "14416",
+      "kind": "tel"
+    },
+    {
+      "name": "Emergency services",
+      "detail": "Police · ambulance · fire",
+      "target": "112",
+      "kind": "tel"
+    },
+    {
+      "name": "KIRAN",
+      "detail": "National mental-health helpline · 24/7",
+      "target": "1800-599-0019",
+      "kind": "tel"
+    },
+    {
+      "name": "Find a helpline in your country",
+      "detail": "International directory · routes to your region",
+      "target": "https://findahelpline.com",
+      "kind": "url"
+    }
+  ],
+  "escalation_signal": {
+    "keys": [
+      "at",
+      "detected_by",
+      "event",
+      "org_id",
+      "session_id",
+      "user_id"
+    ],
+    "event": "crisis_escalation",
+    "detected_by": "lexicon"
+  }
+}

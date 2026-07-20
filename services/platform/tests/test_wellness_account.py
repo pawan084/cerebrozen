@@ -192,6 +192,24 @@ async def test_the_user_table_holds_no_content_columns(client):
     assert not (columns & forbidden), f"content columns on the user table: {columns & forbidden}"
 
 
+async def test_no_platform_table_holds_content_columns(client):
+    """The firewall extends to EVERY table on the org database — including the new
+    billing/subscription tables — not just users. None may grow a column that could
+    store what someone said to their coach."""
+    from app import models  # noqa: F401 — register all tables
+    from app.db import Base
+
+    # The coaching-content words. NOT "message" — DemoRequest.message is a sales-inquiry
+    # field, not coaching content; the firewall guards journals/moods/sleep/transcripts.
+    forbidden = {"journal", "mood", "sleep", "transcript", "diary", "entry", "body"}
+    offenders = {
+        t.name: (cols & forbidden)
+        for t in Base.metadata.sorted_tables
+        if (cols := {c.name for c in t.columns}) & forbidden
+    }
+    assert not offenders, f"content columns on platform tables: {offenders}"
+
+
 # ── profile ──────────────────────────────────────────────────────────────────
 
 
@@ -248,6 +266,46 @@ async def test_the_age_gate_records_when_they_said_so_not_how_old_they_are(
     assert user.adult_attested_at is not None
     columns = {c.name for c in User.__table__.columns}
     assert "date_of_birth" not in columns and "age" not in columns, "we asked how old they are"
+
+
+async def test_a_fresh_personal_signup_is_not_yet_adult_attested(client):
+    """The engine gates coaching on the signed `adult` claim. A brand-new consumer account
+    has attested nothing, so its token must say so."""
+    from app.security import decode_access_token
+
+    r = await client.post(
+        "/auth/signup",
+        json={"email": "unattested@example.com", "password": "hunter2hunter2", "name": "U"},
+    )
+    assert r.status_code == 201, r.text
+    assert decode_access_token(r.json()["access_token"])["adult"] is False
+
+
+async def test_attest_rotates_the_token_so_the_adult_claim_is_immediate(client):
+    """Attest must hand back a fresh token carrying adult=true — otherwise a user who just
+    confirmed 18+ in onboarding would be refused their first coaching turn until the token
+    rotated (≤15 min)."""
+    from app.security import decode_access_token
+
+    r = await client.post(
+        "/auth/signup",
+        json={"email": "attesting@example.com", "password": "hunter2hunter2", "name": "A"},
+    )
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    r2 = await client.post("/users/me/attest", json={"adult": True}, headers=h)
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["adult"] is True and body["access_token"]
+    assert decode_access_token(body["access_token"])["adult"] is True
+
+
+async def test_a_b2b_seat_is_adult_by_contract(client, org_with_admin):
+    """A B2B employee never does consumer 18+ onboarding, so the claim is true by contract —
+    the age gate must not lock enterprise seats out of coaching."""
+    from app.security import decode_access_token
+
+    _, tokens = await _member(client, org_with_admin)
+    assert decode_access_token(tokens["access_token"])["adult"] is True
 
 
 # ── trusted contact ──────────────────────────────────────────────────────────

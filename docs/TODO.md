@@ -154,6 +154,23 @@ dated notes, grouped by priority; items needing an owner decision are marked
 
 ## Phase 2 — Admin (ops first, HR second)
 
+- [x] 2026-07-20 — Billing security review-fixes (2 adversarial passes) all closed:
+      #1 free daily-turn cap on engine `/start`; #2 monthly Stripe subs get 30d not
+      365d (interval via checkout metadata→webhook); #3 token rotation on
+      purchase/cancel (`_plan_out_rotated`; Android `applyBilling` adopts the fresh
+      pair) so the engine plan gate updates immediately; #4 partial UNIQUE index on
+      non-empty `provider_ref` (idempotent DDL in `db.create_all()`, no Alembic)
+      backstops the Play-token TOCTOU replay → 409; #5 Stripe cancel failure surfaces
+      502 and keeps the sub active rather than showing a cancel that never reached
+      Stripe. Platform 230 tests green, 97.2% branch; engine 1860 green.
+- [x] 2026-07-20 — Admin ↔ B2C reconciliation. Consumer self-serve signup mints
+      a `personal-*` org-of-one each, which the internal-admin Tenants list
+      (`GET /orgs`) was returning — every signup would bury the real B2B tenants.
+      `list_orgs` now filters personal orgs out. Added `GET /orgs/consumer-stats`
+      (internal_admin, **counts only** — personal-account and active-subscriber
+      totals, no identities/content) and a "Consumer (B2C)" tile on the Tenants
+      tab. Tests: exclusion + stats counts + stats role-gate (403). Verified live:
+      tenant list clean, stats `{accounts, subscribers}` served.
 - [x] 2026-07-14 — Admin app built (`apps/admin`): Next.js 16, zero runtime
       deps beyond next/react, tokens synced from `design/tokens.css` (2nd
       sync consumer, drift check passing), `lib/api.ts` with coalesced
@@ -763,6 +780,32 @@ dated notes, grouped by priority; items needing an owner decision are marked
 
 ## Done
 
+- [x] 2026-07-20 — **B2C freemium program — the product is now B2B *and* B2C.**
+      Deliberate reversal of the B2B-only stance (rationale: the legal line is
+      *functional* not contractual — non-clinical coaching + safety-as-code is
+      defensible on either side; see `market-positioning` research + the review
+      artifact). Shipped and gate-green across platform/engine/web:
+      **Signup + tenancy** — `POST /auth/signup` → personal org-of-one
+      (`is_personal_org`), full self-serve auth suite (OTP + password-reset,
+      previously 404), all per-IP rate-limited and non-enumerating; clean
+      account+org teardown (no orphans).
+      **Billing** — `Subscription` model + `/billing` (mock provider, keyless) with
+      **real Stripe** checkout+webhook behind a provider seam (`billing_providers.py`,
+      inert without keys); `/billing/prices` single source of truth; correct
+      period-end cancel semantics.
+      **Entitlements enforced server-side** — `plan` added to the signed JWT
+      (ARCHITECTURE contract table updated); engine caps free coaching at the turn
+      endpoint (`ratelimit.limit_free_daily_turns`). The paywall is not bypassable.
+      **Android** — onboarding→paywall→checkout→unlock→cancel flow (device-verified);
+      lock-badges written (device-verify pending).
+      **Sovereignty** — `/health/status` self-checks (both services) + `SELF_HOSTING.md`.
+      **Privacy** — counts-never-content firewall test extended to every table;
+      consent audit-trail (`ConsentEvent`) + freshness signal.
+      **Web** — `/pricing` (+ Product JSON-LD), `/sovereignty`, `/accessibility`,
+      `security.txt`; a **claims gate** (`scripts/check-claims.mjs`, CI) enforcing rule 6.
+      Full backlog + proofs: `docs/IMPROVEMENT_BACKLOG.md`, `docs/CLAIMS_MAP.md`,
+      `docs/DATA_SAFETY.md`. Consumer ToS draft (needs counsel): `docs/legal/CONSUMER_TERMS_DRAFT.md`.
+      Still yours: Stripe/Play keys, Google sign-in backend, store submission, legal sign-off.
 - [x] 2026-07-14 — Marketing site reviewed, fixed (consistency, a11y, SEO,
       no-JS fallback), demo form wired to SMTP email, legal pages written,
       illustrative disclaimers added.

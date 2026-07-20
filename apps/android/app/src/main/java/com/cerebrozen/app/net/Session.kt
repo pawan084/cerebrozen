@@ -8,9 +8,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.cerebrozen.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -50,6 +52,22 @@ object Session {
      * like the Home offline banner clear themselves when connectivity returns. */
     var servedStale by mutableStateOf(false)
         private set
+
+    /** Compose-observable consumer plan + feature entitlements (B2C freemium),
+     * from GET /billing/me. Drives which Plus features the UI unlocks. Defaults
+     * are the FREE tier so a not-yet-loaded or offline app fails SAFE (locked) —
+     * it never grants Plus it hasn't confirmed. */
+    var plan by mutableStateOf("free")
+        private set
+    var entitlements by mutableStateOf<Map<String, Any?>>(emptyMap())
+        private set
+
+    /** True when the plan grants the paid feature set (Plus, or an enterprise seat). */
+    val isPlus: Boolean get() = plan == "plus" || plan == "enterprise"
+
+    /** A boolean Plus feature (voice, sleep, insights, patterns, soundscapes,
+     * journal_memory, all_programs). Unknown/unloaded → false (locked). */
+    fun entitled(feature: String): Boolean = entitlements[feature] == true
 
     @Volatile private var access: String? = null
     private var storage: Store = MemoryStore()
@@ -107,6 +125,8 @@ object Session {
         binExec = ::realBin
         access = null
         servedStale = false
+        plan = "free"
+        entitlements = emptyMap()
         signedIn = storage.getString(REFRESH_KEY) != null
     }
 
@@ -255,6 +275,14 @@ object Session {
     suspend fun signUp(email: String, password: String, name: String) {
         val body = JSONObject().put("email", email).put("password", password).put("name", name)
         store(JSONObject(raw("/auth/signup", "POST", body.toString(), "application/json", authed = false)))
+    }
+
+    /** Redeem an organisation invitation (a work account): the token comes from the invite
+     * email/link; the platform mints the same access/refresh pair as signup, but the member
+     * lands in their EMPLOYER'S org (enterprise entitlements) rather than a personal one. */
+    suspend fun acceptInvitation(token: String, name: String, password: String) {
+        val body = JSONObject().put("token", token).put("name", name).put("password", password)
+        store(JSONObject(raw("/auth/accept-invitation", "POST", body.toString(), "application/json", authed = false)))
     }
 
     /** Email a 6-digit one-time sign-in code (passwordless). */
@@ -546,11 +574,65 @@ object Session {
         storage.keys().filter { it.startsWith("cache:") }.forEach { storage.remove(it) }
     }
 
+    // ── consumer plan (B2C freemium) ─────────────────────────────────────────
+    private fun applyBilling(o: JSONObject) {
+        plan = o.optString("plan", "free")
+        val ent = o.optJSONObject("entitlements") ?: JSONObject()
+        entitlements = ent.keys().asSequence().associateWith { k ->
+            ent.get(k).takeUnless { it === JSONObject.NULL }
+        }
+        // A purchase/cancel rotates the session: the response carries a fresh token pair
+        // whose `plan` claim reflects the change, so the engine's plan gate and free-turn
+        // cap honour it on the very next request instead of after the ≤15-min token TTL.
+        // No-op for GET /billing/me (no tokens in that body).
+        adoptTokens(o)
+    }
+
+    /** Load the current plan + entitlements (GET /billing/me). Best-effort: on
+     * failure the last known plan stays in place — callers wrap in runCatching. */
+    suspend fun refreshBilling() = applyBilling(JSONObject(api("/billing/me")))
+
+    // ── cold-start readiness (splash gate) ───────────────────────────────────
+    /** True once the launch warm-path has run. The SplashScreen holds the branded launch
+     *  until this flips, so the first real frame is already populated (no post-splash
+     *  spinner). @Volatile because the splash keep-condition polls it off the main thread. */
+    @Volatile
+    var bootReady: Boolean = false
+        private set
+
+    /** Warm the cold-start path under the splash: for a signed-in account, refresh the plan
+     *  + entitlements so the home screen renders unlocked-correctly on the first frame.
+     *  Bounded (never hold the splash on a slow/absent network) and it ALWAYS flips
+     *  [bootReady] — a failure or timeout must never trap the user on the launch screen.
+     *  A [minMs] floor keeps the brand moment from being a sub-100ms flicker. */
+    suspend fun warmBoot(minMs: Long = 500L) {
+        val start = android.os.SystemClock.elapsedRealtime()
+        if (signedIn) {
+            // Max ~1.6s: past that we proceed with whatever we have (cached/last-known plan).
+            withTimeoutOrNull(1600L) { runCatching { refreshBilling() } }
+        }
+        val elapsed = android.os.SystemClock.elapsedRealtime() - start
+        if (elapsed < minMs) delay(minMs - elapsed)
+        bootReady = true
+    }
+
+    /** Buy CereBro Plus (POST /billing/checkout). The mock provider completes the
+     * purchase in-process; a real Stripe/Play flow returns here already active. */
+    suspend fun startPlus(interval: String = "yearly") =
+        applyBilling(JSONObject(api("/billing/checkout", "POST",
+            JSONObject().put("plan", "plus").put("interval", interval))))
+
+    /** Cancel Plus (POST /billing/cancel); reverts to the free tier. */
+    suspend fun cancelPlus() =
+        applyBilling(JSONObject(api("/billing/cancel", "POST")))
+
     fun signOut() {
         access = null
         storage.remove(REFRESH_KEY)
         clearCache()
         servedStale = false
+        plan = "free"
+        entitlements = emptyMap()
         signedIn = false
     }
 }
@@ -701,8 +783,16 @@ object Api {
     suspend fun updateConsent(patch: JSONObject): JSONObject =
         JSONObject(Session.api("/users/me/consent", "PATCH", patch)).also { Session.adoptTokens(it) }
 
-    /** 18+ attestation captured during onboarding (best-effort; never blocks). */
-    suspend fun attest() { Session.api("/users/me/attest", "POST", JSONObject().put("adult", true)) }
+    /** 18+ attestation captured during onboarding, then ADOPT the rotated token pair.
+     *
+     * The engine refuses a coaching turn to a token whose `adult` claim is false (the age
+     * gate can't be client-only). Adopting the fresh pair the attest call returns makes the
+     * just-confirmed 18+ effective on the very next request, instead of after the token TTL —
+     * so the first coaching turn right after onboarding isn't refused. */
+    suspend fun attest() {
+        JSONObject(Session.api("/users/me/attest", "POST", JSONObject().put("adult", true)))
+            .also { Session.adoptTokens(it) }
+    }
 
     suspend fun trustedContact(): JSONObject? =
         Session.api("/users/me/trusted-contact").let {

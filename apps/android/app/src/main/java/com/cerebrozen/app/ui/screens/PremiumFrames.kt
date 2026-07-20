@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -90,6 +91,7 @@ internal fun PremiumNavRow(
     subtitle: String,
     icon: ImageVector? = null,
     emphasis: Boolean = false,
+    locked: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -138,7 +140,12 @@ internal fun PremiumNavRow(
             Modifier.size(40.dp).background(accent.copy(alpha = 0.10f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+            Icon(
+                if (locked) Icons.Outlined.Lock else Icons.Outlined.ChevronRight,
+                contentDescription = if (locked) "CereBro Plus feature" else null,
+                tint = accent,
+                modifier = Modifier.size(if (locked) 17.dp else 21.dp),
+            )
         }
     }
 }

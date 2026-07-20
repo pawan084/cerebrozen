@@ -301,6 +301,9 @@
     <string name="you_support_title">Support, any time</string>
     <string name="you_companion_title">Companion style</string>
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
+    <string name="you_plus_title">CereBro Plus</string>
+    <string name="you_plus_subtitle_free">Unlock voice, insights, programs, and more</string>
+    <string name="you_plus_subtitle_active">Active — manage your plan</string>
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">One calm dark theme, everywhere</string>
     <string name="you_reminder_title">Daily reminder</string>
@@ -315,6 +318,8 @@
     <string name="you_legal_header">LEGAL &amp; ACCOUNT</string>
     <string name="you_export_subtitle">Download a full copy</string>
     <string name="you_delete_subtitle">Permanently erase everything</string>
+    <string name="you_buildinfo_title">What\'s real</string>
+    <string name="you_buildinfo_subtitle">This build — plan, voice, languages</string>
     <string name="you_signout">Sign out</string>
 
     <!-- ── Onboarding (OnboardingScreen.kt) ────────────────────────────── -->
@@ -374,6 +379,25 @@
     <string name="auth_google_cta">"G   Continue with Google"</string>
     <string name="auth_google_not_setup">Google sign-in isn\'t set up yet — use email below.</string>
     <string name="auth_error_generic">Something went wrong.</string>
+    <string name="auth_error_email">Enter a valid email address</string>
+    <string name="auth_error_password_short">Password must be at least 10 characters</string>
+    <string name="auth_error_signin_creds">That email or password doesn\'t match. Please try again.</string>
+    <string name="auth_error_network">Couldn\'t reach CereBro — check your connection and try again.</string>
+    <string name="auth_email_preview">You\'ll sign in as %1$s</string>
+    <string name="auth_account_exists">You already have an account with this email.</string>
+    <string name="auth_signin_instead">Sign in instead</string>
+    <string name="auth_pw_weak">At least 10 characters</string>
+    <string name="auth_pw_fair">Fair — a bit longer is stronger</string>
+    <string name="auth_pw_strong">Strong password</string>
+    <string name="ob_work_invite">Have a work invite? Join your team</string>
+    <string name="invite_eyebrow">WORK ACCOUNT</string>
+    <string name="invite_title">Join your team</string>
+    <string name="invite_intro">Paste the invitation code from your organization\'s email. You\'ll join your employer\'s CereBro — and everything you write stays private to you, as always.</string>
+    <string name="invite_code_label">Invitation code</string>
+    <string name="invite_password_label">Create a password</string>
+    <string name="invite_cta">Join</string>
+    <string name="invite_error">Couldn\'t join — check the code and try again.</string>
+    <string name="splash_loading">CereBro, loading</string>
     <string name="auth_divider_email">OR USE EMAIL</string>
     <string name="auth_divider_otp">EMAIL CODE</string>
     <string name="auth_name_label">Name</string>

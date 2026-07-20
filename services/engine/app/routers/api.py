@@ -111,6 +111,35 @@ async def health() -> dict:
     }
 
 
+@router.get("/health/status")
+async def health_status() -> dict:
+    """Sovereignty self-check: which EXTERNAL dependencies this engine instance actually
+    reaches for. Posture, never content — safe without auth, and it mirrors the platform's
+    /health/status. `sovereign_ready` = the LLM runs locally (mock or on-prem ollama) and
+    no cloud-voice provider is wired, i.e. no coaching data leaves your infrastructure."""
+    import os
+
+    from app import config
+    from app.auth.dependencies import auth_enabled
+
+    provider = (os.environ.get("CEREBROZEN_LLM_PROVIDER") or "openai").strip().lower()
+    llm_local = provider in ("mock", "ollama")
+    voice_cloud = bool(config.LIVEKIT_URL)
+    return {
+        "service": "engine",
+        "env": config.ENV,
+        "llm_provider": provider,
+        "llm_local": llm_local,
+        "redis_external": bool(config.REDIS_URL),
+        "mongo_configured": bool(config.MONGO_DB_URL),
+        # POSTGRES_URL is read via the store seam, not exposed on config.
+        "postgres_configured": bool(os.environ.get("POSTGRES_URL", "").strip()),
+        "voice_cloud": voice_cloud,
+        "auth_enabled": auth_enabled(),
+        "sovereign_ready": all((llm_local, not voice_cloud)),
+    }
+
+
 @router.get("/v1/greeting")
 async def greeting(stream: bool = True, claims: dict = Depends(require_auth)):
     """LLM-generate a short, varying home-screen greeting (app/llm/greeting_generator.py).

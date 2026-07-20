@@ -211,3 +211,21 @@ def test_an_unknown_language_falls_back_to_english_not_to_silence():
 
     assert safe_response("xx") == safe_response("en")
     assert safe_response("xx").strip()
+
+
+def test_the_crisis_reply_is_byte_identical_across_identical_inputs():
+    """Safety-as-code: the takeover reply is scripted — zero tokens, no model in the loop —
+    so identical input yields the EXACT same bytes every time. Drift here would mean a model
+    had crept into the crisis path, the one place it must never be."""
+    from app.graph.crisis import full_screen, safe_response
+    from app.llm.prompts import CRISIS_LINE
+
+    text = "i want to end my life"
+    flag0, lang0, by0 = full_screen(text)
+    assert flag0 == "crisis" and by0 == "lexicon", "the test phrase must trip the lexicon"
+    reply0 = safe_response(lang0)
+    for _ in range(50):
+        flag, lang, by = full_screen(text)
+        assert (flag, lang, by) == (flag0, lang0, by0), "the crisis screen is not deterministic"
+        assert safe_response(lang) == reply0, "the crisis reply drifted between identical calls"
+    assert reply0.strip() and CRISIS_LINE in reply0, "the reply must carry the helpline"

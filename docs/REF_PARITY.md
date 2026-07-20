@@ -84,11 +84,25 @@ exactly these; they were unavailable until the reference landed on this machine.
 
 ## CORRECTLY-ABSENT — deliberately dropped, do not "fix"
 
-Premium/paywall/billing (PRODUCT.md: seats instead) · coins/badges/leaderboards ·
-waitlist + public pricing (demo-gated; `DemoForm` supersedes) · social sign-in ·
-onboarding acquisition funnel · content library + media catalogue (v2) ·
-ElevenLabs narration (voice = v2) · App Store badges · B2C retention cohorts
-(D1/D7/D30 on signup — wrong unit for seats) · ref `/support` page (`/contact` covers it).
+> **SUPERSEDED IN PART — 2026-07-19: B2C self-serve is now in scope** (deliberate
+> product decision, not drift). CereBroZen is now **B2B *and* B2C**: individuals can
+> self-serve into a personal org-of-one and optionally buy **CereBro Plus** (freemium).
+> This REVERSES the "no self-serve signup / no consumer billing / no acquisition
+> funnel" items below for personal accounts only — enterprise remains seat-licensed
+> and demo-gated exactly as before. Shipped: `POST /auth/signup` + personal orgs,
+> the `Subscription` model + `/billing` (mock provider, keyless). Pending: app
+> paywall/gating, web pricing page, real Stripe/Play adapters, consumer ToS (draft at
+> `docs/legal/CONSUMER_TERMS_DRAFT.md`). The safety model is unchanged and still
+> load-bearing — see the B2C entry in `docs/TODO.md`. Items still correctly absent for
+> BOTH models: coins/badges/leaderboards, video emotion-analysis, ElevenLabs (v2).
+
+Premium/paywall/billing (~~PRODUCT.md: seats instead~~ — **now: seats for B2B, Plus for B2C**) ·
+coins/badges/leaderboards · ~~waitlist +~~ public pricing (**now shipped for B2C**;
+enterprise still demo-gated via `DemoForm`) · social sign-in (**app has OTP/Google UI;
+backend pending**) · onboarding acquisition funnel (**now in scope for B2C**) · content
+library + media catalogue (v2) · ElevenLabs narration (voice = v2) · App Store badges ·
+B2C retention cohorts (now a valid unit for personal accounts) · ref `/support` page
+(`/contact` covers it).
 
 Android hygiene: `Settings.kt:296` still defines an unreachable `PremiumScreen` +
 `premium_*` strings; ~102 strings for removed screens still ship. Four of those

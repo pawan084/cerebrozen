@@ -253,6 +253,8 @@
     <string name="you_legal_header">कानूनी और खाता</string>
     <string name="you_export_subtitle">पूरी कॉपी डाउनलोड करें</string>
     <string name="you_delete_subtitle">सब कुछ स्थायी रूप से मिटाएँ</string>
+    <string name="you_buildinfo_title">क्या असली है</string>
+    <string name="you_buildinfo_subtitle">यह बिल्ड — प्लान, वॉइस, भाषाएँ</string>
     <string name="you_signout">साइन आउट</string>
 
     <!-- ── Onboarding ──────────────────────────────────────────────────── -->
@@ -302,6 +304,23 @@
     <string name="auth_google_cta">"G   Google के साथ जारी रखें"</string>
     <string name="auth_google_not_setup">Google साइन-इन अभी सेट नहीं है — नीचे ईमेल इस्तेमाल करें।</string>
     <string name="auth_error_generic">कुछ गड़बड़ हो गई।</string>
+    <string name="auth_error_signin_creds">ईमेल या पासवर्ड मेल नहीं खाता। कृपया फिर से प्रयास करें।</string>
+    <string name="auth_error_network">CereBro तक नहीं पहुँच सके — अपना कनेक्शन जाँचें और फिर से प्रयास करें।</string>
+    <string name="auth_email_preview">आप %1$s के रूप में साइन इन करेंगे</string>
+    <string name="auth_account_exists">इस ईमेल से आपका खाता पहले से मौजूद है।</string>
+    <string name="auth_signin_instead">इसके बजाय साइन इन करें</string>
+    <string name="auth_pw_weak">कम से कम 10 अक्षर</string>
+    <string name="auth_pw_fair">ठीक — थोड़ा लंबा और मजबूत होगा</string>
+    <string name="auth_pw_strong">मजबूत पासवर्ड</string>
+    <string name="ob_work_invite">काम का निमंत्रण है? अपनी टीम से जुड़ें</string>
+    <string name="invite_eyebrow">कार्य खाता</string>
+    <string name="invite_title">अपनी टीम से जुड़ें</string>
+    <string name="invite_intro">अपने संगठन के ईमेल से निमंत्रण कोड पेस्ट करें। आप अपने नियोक्ता के CereBro से जुड़ेंगे — और आप जो लिखते हैं वह हमेशा की तरह आपके लिए निजी रहता है।</string>
+    <string name="invite_code_label">निमंत्रण कोड</string>
+    <string name="invite_password_label">पासवर्ड बनाएँ</string>
+    <string name="invite_cta">जुड़ें</string>
+    <string name="invite_error">जुड़ नहीं सके — कोड जाँचें और फिर से प्रयास करें।</string>
+    <string name="splash_loading">CereBro, लोड हो रहा है</string>
     <string name="auth_divider_email">या ईमेल से</string>
     <string name="auth_divider_otp">ईमेल कोड</string>
     <string name="auth_name_label">नाम</string>

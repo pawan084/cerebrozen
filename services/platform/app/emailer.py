@@ -63,3 +63,53 @@ def send_invitation(to: str, org_name: str, role: str, link: str) -> bool:
     except Exception as exc:  # noqa: BLE001 — delivery must never break creation
         logger.warning("email.invitation_failed to=%s error=%s", to, exc)
         return False
+
+
+def send_password_reset(to: str, link: str) -> bool:
+    """Email a single-use reset link. Same best-effort contract as invitations:
+    unconfigured SMTP or a delivery failure returns False and is logged, never raised
+    (the request always answers 200 so account existence isn't revealed)."""
+    if not configured():
+        logger.info("email.reset_skipped_unconfigured to=%s", to)
+        return False
+    msg = EmailMessage()
+    msg["From"] = f"CereBroZen <{config.SMTP_USER}>"
+    msg["To"] = to
+    msg["Subject"] = "Reset your CereBroZen password"
+    msg.set_content(
+        "We got a request to reset your CereBroZen password.\n\n"
+        "Set a new one here (this link is single-use and expires soon):\n\n"
+        f"    {link}\n\n"
+        "If you didn't ask for this, you can ignore this email — your password "
+        "hasn't changed.\n"
+    )
+    try:
+        deliver(msg)
+        logger.info("email.reset_sent to=%s", to)
+        return True
+    except Exception as exc:  # noqa: BLE001 — delivery must never break the flow
+        logger.warning("email.reset_failed to=%s error=%s", to, exc)
+        return False
+
+
+def send_otp_code(to: str, code: str) -> bool:
+    """Email a one-time sign-in code. Best-effort, same contract as the others."""
+    if not configured():
+        logger.info("email.otp_skipped_unconfigured to=%s", to)
+        return False
+    msg = EmailMessage()
+    msg["From"] = f"CereBroZen <{config.SMTP_USER}>"
+    msg["To"] = to
+    msg["Subject"] = "Your CereBroZen sign-in code"
+    msg.set_content(
+        f"Your CereBroZen sign-in code is:\n\n    {code}\n\n"
+        "It expires shortly and can be used once. If you didn't request it, you can "
+        "ignore this email.\n"
+    )
+    try:
+        deliver(msg)
+        logger.info("email.otp_sent to=%s", to)
+        return True
+    except Exception as exc:  # noqa: BLE001 — delivery must never break the flow
+        logger.warning("email.otp_failed to=%s error=%s", to, exc)
+        return False

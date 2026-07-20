@@ -122,6 +122,18 @@ def test_a_provider_failure_degrades_to_the_lexicon_and_never_raises(provider, f
     assert why == "classifier_error"
 
 
+def test_the_takeover_fires_end_to_end_even_with_the_provider_down(provider):
+    """#21: a lexicon-detectable crisis must take over the turn with NO working model. The
+    lexicon is the zero-token floor, so the provider being down cannot cost a person their
+    helpline — full_screen returns 'crisis' via the lexicon and the scripted reply is served."""
+    provider(raises=RuntimeError("provider is down"))
+
+    flag, lang, why = crisis.full_screen("i want to end my life")
+
+    assert flag == "crisis" and why == "lexicon", "the takeover must not depend on the model"
+    assert crisis.safe_response(lang).strip(), "the scripted reply is served regardless"
+
+
 def test_junk_from_the_model_degrades_safely(provider):
     """Models return prose, markdown fences and half-JSON. None of that may reach a user as
     a stack trace."""

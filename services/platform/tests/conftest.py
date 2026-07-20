@@ -8,6 +8,9 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 # Fast hashes in tests: PBKDF2 at 600k iterations is ~0.3s per hash — right in
 # production, wasteful across hundreds of test logins.
 os.environ["CEREBROZEN_PBKDF2_ITERATIONS"] = "1000"
+# The per-IP auth rate limiter is off by default in the suite (hundreds of tests share
+# one client IP and would trip it); test_rate_limit.py re-enables it explicitly.
+os.environ["CEREBROZEN_RATE_LIMIT"] = "false"
 
 import httpx
 import pytest

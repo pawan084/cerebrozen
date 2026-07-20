@@ -25,6 +25,105 @@ ROLE_INTERNAL_ADMIN = "internal_admin"
 ROLES = {ROLE_USER, ROLE_ORG_ADMIN, ROLE_INTERNAL_ADMIN}
 
 
+# A "personal" org is the org-of-one minted by consumer self-serve signup
+# (POST /auth/signup): the same schema as a B2B tenant, but seats_total=1 and a
+# slug under this prefix. The prefix is the marker — so analytics and the
+# internal-admin console can tell a solo B2C account from a real customer tenant
+# without a schema change — while seats_total=1 naturally caps it at its owner.
+PERSONAL_ORG_SLUG_PREFIX = "personal-"
+
+
+def is_personal_org(org: "Org") -> bool:
+    """True for a consumer self-serve org-of-one (see PERSONAL_ORG_SLUG_PREFIX)."""
+    return (org.slug or "").startswith(PERSONAL_ORG_SLUG_PREFIX)
+
+
+# ── consumer plans (B2C freemium) ────────────────────────────────────────────
+# A personal account is FREE until it holds a Subscription in an access-granting
+# status; a B2B seat and internal staff are ENTERPRISE — the full product, never a
+# consumer cap. Crisis/safety and the core daily loop (check-ins, the coach itself,
+# breathing/grounding tools) are on in EVERY plan: safety is never paywalled
+# (docs/SECURITY.md). Only the paywalled DEPTH toggles live in the map below.
+PLAN_FREE = "free"
+PLAN_PLUS = "plus"
+PLAN_ENTERPRISE = "enterprise"
+PLANS = {PLAN_FREE, PLAN_PLUS, PLAN_ENTERPRISE}
+
+SUB_STATUS_ACTIVE = "active"
+SUB_STATUS_TRIALING = "trialing"
+SUB_STATUS_CANCELED = "canceled"
+SUB_STATUS_PAST_DUE = "past_due"
+#: Statuses that still grant the paid plan's entitlements.
+ACTIVE_SUB_STATUSES = {SUB_STATUS_ACTIVE, SUB_STATUS_TRIALING}
+
+# `coach_daily_limit` / `programs_limit` = None means unlimited.
+_PLAN_ENTITLEMENTS: dict[str, dict] = {
+    PLAN_FREE: {
+        "voice": False,
+        "all_programs": False,
+        "sleep": False,
+        "insights": False,
+        "patterns": False,
+        "soundscapes": False,
+        "journal_memory": False,
+        "coach_daily_limit": 5,
+        "programs_limit": 1,
+    },
+    PLAN_PLUS: {
+        "voice": True,
+        "all_programs": True,
+        "sleep": True,
+        "insights": True,
+        "patterns": True,
+        "soundscapes": True,
+        "journal_memory": True,
+        "coach_daily_limit": None,
+        "programs_limit": None,
+    },
+}
+# Enterprise is the full product with no consumer caps — same toggles as Plus.
+_PLAN_ENTITLEMENTS[PLAN_ENTERPRISE] = dict(_PLAN_ENTITLEMENTS[PLAN_PLUS])
+
+
+def entitlements_for(plan: str) -> dict:
+    """The feature map a client uses to gate UI. Unknown plan → free (fail safe)."""
+    return dict(_PLAN_ENTITLEMENTS.get(plan, _PLAN_ENTITLEMENTS[PLAN_FREE]))
+
+
+def subscription_grants(subscription: "Subscription", at: "datetime | None" = None) -> bool:
+    """Whether a subscription currently entitles its paid plan.
+
+    Active/trialing always grant. A CANCELLED subscription keeps access until its
+    paid period ends — cancel means 'won't renew', not 'cut off now' (the standard
+    consumer-billing contract). `at` is injectable for deterministic tests."""
+    if subscription.status in ACTIVE_SUB_STATUSES:
+        return True
+    if (
+        subscription.status == SUB_STATUS_CANCELED
+        and subscription.current_period_end is not None
+    ):
+        end = subscription.current_period_end
+        if end.tzinfo is None:  # SQLite drops tzinfo
+            end = end.replace(tzinfo=timezone.utc)
+        return end > (at or datetime.now(timezone.utc))
+    return False
+
+
+def resolve_plan(
+    org: "Org | None", subscription: "Subscription | None", at: "datetime | None" = None
+) -> str:
+    """The effective plan for a user, from their org and any subscription.
+
+    Internal staff (no org) and B2B seats are ENTERPRISE by construction; a
+    personal account is FREE unless it holds a subscription that currently grants
+    (see subscription_grants). Fail safe: an unknown stored plan degrades to free."""
+    if org is None or not is_personal_org(org):
+        return PLAN_ENTERPRISE
+    if subscription is not None and subscription_grants(subscription, at):
+        return subscription.plan if subscription.plan in PLANS else PLAN_FREE
+    return PLAN_FREE
+
+
 class Org(Base):
     __tablename__ = "orgs"
 
@@ -156,6 +255,76 @@ class Invitation(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Subscription(Base):
+    """A personal account's consumer plan (B2C). One row per org, and in practice
+    only ever a PERSONAL org — B2B orgs are ENTERPRISE by construction and never get
+    a row (an absent row = free tier). Holds NO payment data beyond an opaque
+    provider reference: card details live with the payment provider, never here,
+    the same way coaching content never lives on the platform."""
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    org_id: Mapped[str] = mapped_column(
+        ForeignKey("orgs.id"), unique=True, index=True
+    )
+    plan: Mapped[str] = mapped_column(String(20), default=PLAN_PLUS)
+    status: Mapped[str] = mapped_column(String(20), default=SUB_STATUS_ACTIVE)
+    provider: Mapped[str] = mapped_column(String(20), default="mock")  # mock|stripe|play
+    provider_ref: Mapped[str] = mapped_column(String(200), default="")
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PasswordReset(Base):
+    """A single-use, short-lived password-reset token. Only the hash is stored (like
+    Invitation / RefreshToken); the raw token rides in the emailed link and is never
+    persisted. `used_at` makes it one-shot; expiry makes a leaked link go stale."""
+
+    __tablename__ = "password_resets"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class OtpCode(Base):
+    """A short-lived, single-use email one-time code for passwordless sign-in. Only the
+    hash is stored; `attempts` is capped so a guessable 6-digit code can't be brute-forced,
+    and expiry + `used_at` bound its life to one use in a small window."""
+
+    __tablename__ = "otp_codes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    email: Mapped[str] = mapped_column(String(320), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ConsentEvent(Base):
+    """An append-only record of one consent toggle — which category changed to what,
+    and when. Content-free by construction (a category name + a boolean), so it lives on
+    the platform without breaking 'counts, never content', and gives the person an
+    auditable history of their own DPDP choices."""
+
+    __tablename__ = "consent_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    key: Mapped[str] = mapped_column(String(40))  # one of CONSENT_KEYS
+    value: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

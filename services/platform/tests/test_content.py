@@ -259,3 +259,46 @@ def test_a_naive_start_date_is_treated_as_utc_not_a_crash():
     naive = datetime.now().replace(tzinfo=None)
     payload = catalog.program_payload("better-sleep", naive)
     assert payload is not None and payload["day"] == 1
+
+
+# ── #48: programs_limit enforced server-side (free = one journey) ─────────────
+
+
+async def _free_signup(client, email):
+    r = await client.post(
+        "/auth/signup", json={"email": email, "password": "hunter2hunter2", "name": "F"}
+    )
+    assert r.status_code == 201, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+async def test_free_user_is_locked_to_one_program(client):
+    """Free = 1 journey. Start one, restart the SAME one — both fine. Switching to a
+    DIFFERENT program is the `all_programs` Plus benefit, and it's enforced on the server
+    (a free client can POST any id, so a UI-only gate is no gate)."""
+    h = await _free_signup(client, "free-programs@example.com")
+    assert (await client.post("/programs/enroll", json={"content_id": "better-sleep"}, headers=h)).status_code == 200
+    # restart the same program — allowed
+    assert (await client.post("/programs/enroll", json={"content_id": "better-sleep"}, headers=h)).status_code == 200
+    # switch to a different one — blocked with 402 (upgrade)
+    r = await client.post("/programs/enroll", json={"content_id": "steady-focus"}, headers=h)
+    assert r.status_code == 402, r.text
+    # the rejected switch left the original enrolment untouched
+    assert (await client.get("/programs/active", headers=h)).json()["program"]["id"] == "better-sleep"
+
+
+async def test_plus_user_can_switch_programs_freely(client):
+    h = await _free_signup(client, "plus-programs@example.com")
+    await client.post("/billing/checkout", json={"plan": "plus"}, headers=h)  # mock-activate Plus
+    await client.post("/programs/enroll", json={"content_id": "better-sleep"}, headers=h)
+    r = await client.post("/programs/enroll", json={"content_id": "steady-focus"}, headers=h)
+    assert r.status_code == 200, r.text
+    assert (await client.get("/programs/active", headers=h)).json()["program"]["id"] == "steady-focus"
+
+
+async def test_enterprise_seat_can_switch_programs(client, org_with_admin):
+    """A B2B seat has the full product (enterprise entitlements) — no consumer program cap."""
+    h = await _member(client, org_with_admin)
+    await client.post("/programs/enroll", json={"content_id": "better-sleep"}, headers=h)
+    r = await client.post("/programs/enroll", json={"content_id": "steady-focus"}, headers=h)
+    assert r.status_code == 200, r.text

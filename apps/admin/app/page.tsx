@@ -622,6 +622,33 @@ function KnowledgeBase({ org }: { org: Org }) {
   );
 }
 
+function ConsumerStats() {
+  // B2C traction, counts only. Self-serve signups mint a personal org-of-one each; those
+  // are deliberately kept OUT of the tenant table (server filters them), so this tile is
+  // the only place their volume shows — and it shows numbers, never identities.
+  const { data, error, loading } = useLoad<{ accounts: number; subscribers: number }>(
+    () => apiJson("/orgs/consumer-stats"),
+  );
+  // Supplementary tile: stay quiet on failure rather than bury the tenant table under an
+  // error card. (Loading is brief and silent for the same reason.)
+  if (loading || error || !data) return null;
+  const conv = data.accounts > 0 ? Math.round((data.subscribers / data.accounts) * 100) : 0;
+  return (
+    <div className="card">
+      <h2>Consumer (B2C)</h2>
+      <div className="stats">
+        <div className="stat"><b>{data.accounts.toLocaleString()}</b><span>personal accounts</span></div>
+        <div className="stat"><b>{data.subscribers.toLocaleString()}</b><span>Plus subscribers</span></div>
+        <div className="stat"><b>{conv}%</b><span>paid conversion</span></div>
+      </div>
+      <p className="hint" style={{ marginTop: 12 }}>
+        Self-serve signups, kept out of the tenant table below. Counts only — no consumer
+        identity or content is ever shown here.
+      </p>
+    </div>
+  );
+}
+
 function Tenants() {
   const [orgs, setOrgs] = useState<Org[] | null>(null);
   const [regions, setRegions] = useState<string[]>([]);
@@ -681,6 +708,7 @@ function Tenants() {
   );
   return (
     <>
+      <ConsumerStats />
       <div className="card">
         <div className="people-head">
           {/* Client-side, deliberately: /orgs returns every tenant in one response, so a

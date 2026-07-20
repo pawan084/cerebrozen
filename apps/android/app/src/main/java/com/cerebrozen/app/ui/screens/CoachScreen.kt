@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Icon
@@ -449,6 +450,7 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 Modifier.padding(horizontal = pageHorizontalPadding()).padding(top = 6.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .clickable {
+                        if (!Session.entitled("voice")) { onOpen("paywall"); return@clickable }
                         speakReplies = !speakReplies
                         Session.prefPut("coach_speak_replies", if (speakReplies) "1" else "0")
                         if (!speakReplies) voice.dispose()
@@ -457,7 +459,11 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    if (speakReplies) "Replies aloud · on" else "Replies aloud · off",
+                    when {
+                        !Session.entitled("voice") -> "Replies aloud · Plus"
+                        speakReplies -> "Replies aloud · on"
+                        else -> "Replies aloud · off"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (speakReplies) TextPrimary else TextMuted,
                 )
@@ -549,7 +555,7 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 Box(
                     Modifier.size(44.dp).clip(RoundedCornerShape(999.dp))
                         .background(if (voice.listening) BrandPrimary else ChipFill)
-                        .clickable { micTap() },
+                        .clickable { if (Session.entitled("voice")) micTap() else onOpen("paywall") },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -558,6 +564,18 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                         tint = if (voice.listening) OnPrimary else TextMuted,
                         modifier = Modifier.size(20.dp),
                     )
+                    if (!Session.entitled("voice")) {
+                        Box(
+                            Modifier.align(Alignment.TopEnd).size(15.dp)
+                                .clip(RoundedCornerShape(999.dp)).background(BrandPrimary),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Lock, contentDescription = null,
+                                tint = OnPrimary, modifier = Modifier.size(9.dp),
+                            )
+                        }
+                    }
                 }
             }
             OutlinedTextField(

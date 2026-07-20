@@ -14,7 +14,7 @@ from sqlalchemy import select
 from app import config
 from app.db import SessionLocal, create_all
 from app.models import ROLE_INTERNAL_ADMIN, ROLE_ORG_ADMIN, ROLE_USER, Org, User
-from app.routers import analytics, auth, content, demo, orgs, users
+from app.routers import analytics, auth, billing, content, demo, orgs, users
 from app.security import hash_password
 
 logger = logging.getLogger("cerebrozen.platform")
@@ -102,10 +102,35 @@ def create_app() -> FastAPI:
     app.include_router(demo.router)
     app.include_router(analytics.router)
     app.include_router(content.router)
+    app.include_router(billing.router)
 
     @app.get("/health")
     async def health() -> dict:
         return {"status": "ok", "service": "platform", "env": config.ENV}
+
+    @app.get("/health/status")
+    async def health_status() -> dict:
+        """Honest deployment self-check: what this running instance actually reaches
+        for. Supports the sovereignty story — an operator (or a test) can see, without
+        credentials, exactly which external dependencies are live vs degraded. Reveals
+        posture, never data, so it needs no auth."""
+        from app import emailer
+
+        url = config.DATABASE_URL
+        database = (
+            "postgres" if url.startswith("postgres")
+            else "sqlite" if url.startswith("sqlite")
+            else "other"
+        )
+        return {
+            "service": "platform",
+            "env": config.ENV,
+            "database": database,
+            "email_delivery": emailer.configured(),  # False = links shared manually
+            "billing_provider": "mock" if config.BILLING_MOCK else "live",
+            "dev_seed_enabled": config.SEED_DEV_ADMIN,
+            "sovereign_ready": database == "sqlite" or url.startswith("postgres"),
+        }
 
     return app
 

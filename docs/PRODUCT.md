@@ -131,7 +131,7 @@ recovery" doors, not as tabs, keeping the five coaching tabs primary.
 | Gamification coins | Sherlock | | | ✔ deliberate |
 | Well-being suite: soundscapes/mixer, sleep scenes, breathe, reset tools, games | Zen | ✔ (owner call 2026-07-14 — reversed the v1 strip; supports the site's Well-Being pillar) | | |
 | Health Connect sleep prefill | Zen | ✔ (restored with the sleep surface) | | |
-| Consumer billing/premium | Zen | | | ✔ seats instead |
+| Consumer billing/premium | Zen | ✔ **CereBro Plus freemium** (2026-07-19 — B2C self-serve added alongside enterprise seats; `services/platform/app/routers/billing.py` mock provider, keyless; Android paywall `Paywall.kt`; real Stripe/Play adapters pending keys) | | ✔ seats **and** Plus |
 
 ## Success metrics (the ones the HR portal must eventually prove)
 

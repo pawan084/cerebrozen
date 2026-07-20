@@ -177,6 +177,7 @@ def test_the_boot_guard_lists_only_real_problems(monkeypatch):
         assert "SEED_DEV_ADMIN" in str(err)
         assert "JWT_SECRET" not in str(err)
     monkeypatch.setattr(cfg, "SEED_DEV_ADMIN", False)
+    monkeypatch.setattr(cfg, "BILLING_MOCK", False)
     cfg.guard_production()  # fully configured production boots
 
 

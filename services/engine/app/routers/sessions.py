@@ -28,8 +28,8 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.actions_insights import get_actions_insights_service
-from app.auth import require_auth
-from app.ratelimit import limit_start, limit_turn
+from app.auth import require_adult, require_auth
+from app.ratelimit import limit_free_daily_turns, limit_start, limit_turn
 from app.request_context import ctx_session_id, ctx_user_id, request_id as _req_id
 from app.roi_metrics import canonical_roi_metrics
 from app.history import get_history_service
@@ -152,11 +152,11 @@ async def _run_or_stream(
 # -- coaching endpoints -------------------------------------------------------
 
 
-@router.post("/start", dependencies=[Depends(limit_start)])
+@router.post("/start", dependencies=[Depends(limit_start), Depends(limit_free_daily_turns)])
 async def start_session(
     request: SessionStartRequest,
     stream: bool = False,
-    claims: dict = Depends(require_auth),
+    claims: dict = Depends(require_adult),
 ):
     """Mint (or adopt) a session_id and run the first turn. The response/`done`
     event carries `session_id` — the client stores it and sends it on each turn."""
@@ -171,13 +171,13 @@ async def start_session(
     )
 
 
-@router.post("/{session_id}/turn", dependencies=[Depends(limit_turn)])
+@router.post("/{session_id}/turn", dependencies=[Depends(limit_turn), Depends(limit_free_daily_turns)])
 async def run_turn(
     session_id: str,
     request: SessionTurnRequest,
     stream: bool = False,
     edit: bool = False,
-    claims: dict = Depends(require_auth),
+    claims: dict = Depends(require_adult),
 ):
     """Run one coaching turn on an existing session.
 

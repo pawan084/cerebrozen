@@ -16,19 +16,23 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import config
 from app.db import get_session
 from app.deps import current_user
 from app.models import (
     CONSENT_KEYS,
     DELETED_EMAIL_DOMAIN,
     ActivityEvent,
+    ConsentEvent,
     DeletionLedger,
     Org,
     RefreshToken,
+    Subscription,
     User,
+    is_personal_org,
 )
 from app.routers.auth import _issue_pair  # one code path mints tokens, here and at login
 from app.security import hash_email
@@ -133,6 +137,48 @@ async def get_consent(user: User = Depends(current_user)):
     return user.consents()
 
 
+@router.get("/me/consent/history")
+async def consent_history(
+    user: User = Depends(current_user), session: AsyncSession = Depends(get_session)
+):
+    """The person's own audit trail of consent changes (newest first). Content-free —
+    a category name and a boolean — so it can live on the platform. Gives DPDP-style
+    transparency: 'here is every change you made, and when.'"""
+    rows = (
+        await session.execute(
+            select(ConsentEvent)
+            .where(ConsentEvent.user_id == user.id)
+            .order_by(ConsentEvent.created_at.desc())
+            .limit(200)
+        )
+    ).scalars().all()
+    return [
+        {"key": r.key, "value": r.value, "at": r.created_at.isoformat()} for r in rows
+    ]
+
+
+@router.get("/me/consent/status")
+async def consent_status(user: User = Depends(current_user)):
+    """Whether consent is still fresh (DPDP currency). A client uses `stale` to prompt a
+    re-confirmation. `ever_set` is false for an account that never made a choice (all six
+    default off) — that needs an INITIAL consent, which is a different ask than a refresh."""
+    updated = user.consent_updated_at
+    ever_set = updated is not None
+    age_days = None
+    stale = False
+    if ever_set:
+        u = updated if updated.tzinfo else updated.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - u).days
+        stale = age_days >= config.CONSENT_STALE_DAYS
+    return {
+        "consents": user.consents(),
+        "updated_at": updated.isoformat() if ever_set else None,
+        "age_days": age_days,
+        "ever_set": ever_set,
+        "stale": stale,
+    }
+
+
 class ConsentIn(BaseModel):
     """A partial patch: Settings sends ONE key, onboarding sends all six."""
 
@@ -169,6 +215,8 @@ async def update_consent(
         raise HTTPException(400, "nothing to update")
     for key, value in patch.items():
         setattr(user, f"consent_{key}", value)
+        # Append-only audit trail — content-free (category + boolean).
+        session.add(ConsentEvent(user_id=user.id, key=key, value=value))
     user.consent_updated_at = datetime.now(timezone.utc)
     await session.execute(
         update(RefreshToken)
@@ -207,7 +255,16 @@ async def attest(
     """
     user.adult_attested_at = datetime.now(timezone.utc) if body.adult else None
     await session.commit()
-    return {"adult": bool(user.adult_attested_at)}
+    # Rotate the session so the new `adult` claim takes effect on the very next request
+    # instead of after the ≤15-min token TTL — otherwise a user who just confirmed 18+ in
+    # onboarding would be refused their first coaching turn. Mirrors the consent flow; the
+    # client adopts these tokens.
+    pair = await _issue_pair(session, user)
+    return {
+        "adult": bool(user.adult_attested_at),
+        "access_token": pair.access_token,
+        "refresh_token": pair.refresh_token,
+    }
 
 
 # ── trusted contact (crisis) ─────────────────────────────────────────────────
@@ -373,4 +430,22 @@ async def delete_me(
     await session.execute(
         update(RefreshToken).where(RefreshToken.user_id == user.id).values(revoked=True)
     )
+    # A personal org (org-of-one from self-serve signup) has no reason to outlive its
+    # sole member: deactivate it and drop its subscription so no orphan tenancy or
+    # billing lingers. B2B orgs are never touched — they outlive any single member.
+    if user.org_id:
+        org = await session.get(Org, user.org_id)
+        if org is not None and is_personal_org(org):
+            others = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(User)
+                    .where(User.org_id == org.id, User.is_active, User.id != user.id)
+                )
+            ).scalar_one()
+            if others == 0:
+                org.is_active = False
+                await session.execute(
+                    delete(Subscription).where(Subscription.org_id == org.id)
+                )
     await session.commit()

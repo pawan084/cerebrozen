@@ -81,6 +81,49 @@ class SessionStoreTest {
     }
 
     @Test
+    fun warmBoot_flips_readiness_signed_out_without_a_network_call() = runTest {
+        val store = object : Session.Store {
+            val m = mutableMapOf<String, String>() // no refresh token → signed out
+            override fun getString(key: String) = m[key]
+            override fun putString(key: String, value: String) { m[key] = value }
+            override fun remove(key: String) { m.remove(key) }
+            override fun keys() = m.keys.toSet()
+        }
+        var calls = 0
+        Session.resetForTest(store) { _, _, _, _, _ -> calls++; 200 to "{}" }
+        Session.warmBoot(minMs = 0)
+        assertTrue("readiness must always flip, or the splash traps the user", Session.bootReady)
+        assertEquals("a signed-out warm boot must not hit the network", 0, calls)
+    }
+
+    @Test
+    fun warmBoot_warms_the_plan_when_signed_in() = runTest {
+        val store = object : Session.Store {
+            val m = mutableMapOf("refresh_token" to "r1") // signed in
+            override fun getString(key: String) = m[key]
+            override fun putString(key: String, value: String) { m[key] = value }
+            override fun remove(key: String) { m.remove(key) }
+            override fun keys() = m.keys.toSet()
+        }
+        var billingHit = false
+        Session.resetForTest(store) { url, _, _, _, _ ->
+            when {
+                url.endsWith("/billing/me") -> {
+                    billingHit = true
+                    200 to """{"plan":"plus","entitlements":{"voice":true}}"""
+                }
+                // api() refreshes the access token first when it's null (post-reset).
+                url.endsWith("/auth/refresh") -> 200 to """{"access_token":"a1","refresh_token":"r1"}"""
+                else -> 200 to "{}"
+            }
+        }
+        Session.warmBoot(minMs = 0)
+        assertTrue(Session.bootReady)
+        assertTrue("a signed-in warm boot loads the plan for the first frame", billingHit)
+        assertEquals("plus", Session.plan)
+    }
+
+    @Test
     fun the_default_memory_store_supports_the_full_store_contract() {
         // MemoryStore backs Session before init() runs (a pure in-JVM map).
         // It's private — reached the same way the JVM does, via reflection.

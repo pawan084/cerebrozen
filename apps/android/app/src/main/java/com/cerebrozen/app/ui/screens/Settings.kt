@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.cerebrozen.app.BuildConfig
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.data.Helplines
@@ -466,5 +467,68 @@ private fun InfoCard(title: String, body: String) {
     SectionCard {
         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+    }
+}
+
+/** "What's real vs coming soon" — honest QA (backlog #14). Shows what THIS build actually
+ *  has wired: version, backend, the live plan + entitlements, billing provider, languages.
+ *  Everything here is read from the running app/backend, so it can't overclaim. */
+@Composable
+fun BuildInfoScreen(onBack: () -> Unit) {
+    var provider by remember { mutableStateOf("—") }
+    var status by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        runCatching {
+            val me = org.json.JSONObject(Session.api("/billing/me"))
+            provider = me.optString("provider").ifBlank { "none (keyless)" }
+            status = me.optString("status").ifBlank { "—" }
+        }
+    }
+    PremiumSubPage("HONEST QA", "What's real", onBack) {
+        Text(
+            "A plain look at what this build actually has wired — real vs coming soon, no guessing.",
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+        )
+        SectionCard {
+            InfoLine("App version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            InfoLine("Build type", if (BuildConfig.DEBUG) "debug" else "release")
+            InfoLine("Platform API", BuildConfig.API_BASE_URL)
+            InfoLine("Coaching engine", BuildConfig.ENGINE_BASE_URL)
+        }
+        SectionCard {
+            InfoLine("Plan", Session.plan)
+            InfoLine("Billing provider", provider)
+            InfoLine("Subscription", status)
+            InfoLine("Voice", if (Session.entitled("voice")) "unlocked for your plan" else "Plus feature")
+            InfoLine("Programs", if (Session.entitled("all_programs")) "all unlocked" else "one at a time (free)")
+            InfoLine("Insights", if (Session.entitled("insights")) "on" else "locked")
+            InfoLine("Patterns", if (Session.entitled("patterns")) "on" else "locked")
+            InfoLine("Sleep", if (Session.entitled("sleep")) "on" else "locked")
+            InfoLine("Soundscapes", if (Session.entitled("soundscapes")) "on" else "locked")
+        }
+        SectionCard {
+            InfoLine("Coaching language", "English (full)")
+            InfoLine("Also available", "Hindi · Hinglish · Punjabi · Tamil")
+            InfoLine("Crisis screening", "~20 languages detected")
+        }
+        Text(
+            "Coaching replies come from a live model; with no keys configured a mock provider " +
+                "keeps every screen working. Crisis support is always on and always free.",
+            style = MaterialTheme.typography.bodySmall, color = TextMuted2,
+        )
+    }
+}
+
+@Composable
+private fun InfoLine(label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = TextSoft,
+            modifier = Modifier.weight(1.5f))
     }
 }

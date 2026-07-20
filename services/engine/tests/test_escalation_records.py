@@ -42,6 +42,44 @@ def test_two_escalations_for_one_person_are_two_records(mongo):
     assert len(rows) == 2, "one person's second crisis overwrote their first"
 
 
+def test_the_escalation_payload_is_signal_only_never_the_disclosure(mongo, monkeypatch):
+    """CLAUDE.md rule 5 / escalation.py's core promise: the notification carries a SIGNAL —
+    who, which session, when, which detection layer — never a word the person wrote. Lock
+    the delivered payload's SCHEMA so a future field can't smuggle content into the webhook
+    body that a designated contact (or their logs) would then hold."""
+    import json
+
+    import httpx
+
+    sent: dict = {}
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+    def _fake_post(url, json=None, **kw):  # noqa: A002 — mirrors httpx.post's kwarg name
+        sent["url"], sent["body"] = url, json
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+    monkeypatch.setenv("CEREBROZEN_CRISIS_ESCALATION_URL", "https://contact.example/hook")
+
+    ok = escalation.escalate(user_id="u-42", session_id="s-99", detected_by="lexicon")
+    assert ok is True and sent, "the webhook was never called"
+
+    allowed = {"event", "org_id", "user_id", "session_id", "detected_by", "at"}
+    body = sent["body"]
+    extra = set(body) - allowed
+    assert not extra, f"the escalation payload grew a non-signal field: {extra}"
+    assert body["event"] == "crisis_escalation"
+    assert body["detected_by"] == "lexicon"  # the LAYER, not a reason/summary
+    # Belt-and-braces: a disclosure the person might have written never appears anywhere in
+    # the serialised body (it can't — escalate() is never given it — but pin that it can't).
+    assert "end my life" not in json.dumps(body).lower()
+
+
 def test_two_escalations_in_one_session_are_two_records(mongo):
     """Same session, different moments. The old fallback keyed on session_id:at precisely
     so these stayed apart."""
