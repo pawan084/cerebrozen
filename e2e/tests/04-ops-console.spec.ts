@@ -269,8 +269,12 @@ test.describe("ops console", () => {
        one click away — a reorganisation that hides a surface is a regression wearing a
        tidy hat, so this asserts reachability, not just the labels. */
     await signIn(page, urls.admin, "ops");
+    // Scoped to the sidebar's own label class: the group name is ALSO rendered in the main
+    // column's header bar ("the current section's title + its group"), so an unscoped
+    // getByText now matches twice and fails on strict mode. Asserting the grouping means
+    // asserting the NAV, which is the thing this test is about.
     for (const g of ["Customers", "Coaching", "Queues"]) {
-      await expect(page.getByText(g, { exact: true })).toBeVisible();
+      await expect(page.locator(".nav-group-label", { hasText: new RegExp(`^${g}$`) })).toBeVisible();
     }
     for (const t of ["Tenants", "Demo requests", "Prompt workbook", "Agent flow",
                      "Console", "Safety queue", "Nudges"]) {

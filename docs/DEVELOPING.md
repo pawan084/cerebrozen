@@ -165,6 +165,23 @@ gitleaks detect --no-banner                                  # FROM THE ROOT
 The e2e suite runs against **either** compose or hand-started dev servers (same ports). Dev
 servers already on 3000-3002 make `stack:up` fail on a port bind.
 
+### Start the e2e stack with `stack:up`, not raw `docker compose up`
+
+The whole suite signs in from **one IP**, and the platform rate-limits auth per IP at 20/60s
+(`app/ratelimit.py`) — a control the suite is not testing and walks straight into. Past the
+limit the platform correctly answers 429, the sign-in page says *"Too many attempts"*, and
+the failure lands on whichever test was unlucky: it looked like flakiness in the ops console,
+the crisis panel and the privacy screens, moving between runs, for as long as it went
+unnoticed. `npm run stack:up --prefix e2e` exports `CEREBROZEN_AUTH_RL_MAX=500` for that
+reason. The compose default stays the **production** value so a dev stack still behaves like
+the real thing.
+
+Two matching rules live in `e2e/tests/helpers.ts` and are worth knowing before adding tests:
+`token()` is **cached per persona** for the run (re-logging-in was never what those tests
+were asserting), and `signIn()` seeds `localStorage["cbz-onboarded"]` so the app's first-run
+modal is not up. That modal is `aria-modal` and swallows clicks, which surfaces as a 15s
+timeout against whatever control the test wanted — not as "a dialog is open".
+
 ---
 
 ## Android

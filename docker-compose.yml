@@ -54,6 +54,11 @@ services:
       JWT_SECRET: ZGV2LW9ubHktc2hhcmVkLXNlY3JldC1ub3QtZm9yLXByb2Q= # dev only, same as engine
       CEREBROZEN_CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:3002
       CEREBROZEN_ADMIN_BASE_URL: http://localhost:3001
+      # Per-IP auth rate limit (app/ratelimit.py). The default stays the PRODUCTION value,
+      # so a dev stack behaves like the real thing; the e2e runner raises it explicitly
+      # (`npm run stack:up --prefix e2e`) because the whole suite signs in from ONE ip and
+      # otherwise trips a control it is not testing — see e2e/tests/helpers.ts.
+      CEREBROZEN_AUTH_RL_MAX: ${CEREBROZEN_AUTH_RL_MAX:-20}
     depends_on:
       db: { condition: service_healthy }
 

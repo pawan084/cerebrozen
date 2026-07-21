@@ -93,15 +93,22 @@ test.describe("employee journey", () => {
     /* Send, and wait for the turn to actually FINISH.
        `send()` bails while `busy`, and the composer swallows the keypress silently — so a
        test that only waits for the first token races the stream, presses Enter into a busy
-       composer, and then waits 40s for a panel whose message was never sent. The Send
-       button is `disabled={busy || !draft.trim()}`, which makes "the turn is done" a real
-       DOM state rather than a sleep. */
+       composer, and then waits 40s for a panel whose message was never sent. So we wait on
+       a real DOM state rather than sleeping.
+
+       That wait used to be `button.send` + `toBeEnabled`, on the reasoning that the button
+       is `disabled={busy || !draft.trim()}`. It stopped being true and the test went red:
+       while streaming, the composer now swaps in a **Stop** button — which is also
+       `button.send` (`className="send stop"`) and, being a stop control, is deliberately
+       ENABLED. So the wait passed instantly mid-stream, Enter went into a busy composer,
+       and `send()` dropped it. The product change was right; the assertion was reading the
+       wrong thing. `:not(.stop)` is what "not busy" actually looks like now. */
     const say = async (text: string) => {
       await page.locator("textarea").fill(text);
-      // With a non-empty draft the button is enabled ONLY when !busy, so this is what
-      // waits out the previous turn. (Disabled alone would prove nothing — an empty draft
-      // disables it too.)
-      await expect(page.locator("button.send"), "the previous turn never finished")
+      // The Send button only EXISTS when !busy (busy renders Stop in its place), so this
+      // waits out the previous turn. Enabled-ness alone would prove nothing: Stop is
+      // enabled too, and an empty draft disables Send.
+      await expect(page.locator("button.send:not(.stop)"), "the previous turn never finished")
         .toBeEnabled({ timeout: 40_000 });
       await page.keyboard.press("Enter");
       // send() clears the draft: proof the keypress was accepted rather than swallowed.
