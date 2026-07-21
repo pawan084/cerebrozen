@@ -356,6 +356,10 @@ class CereBroZenEngine:
             "stage": final.get("stage", STAGE_CORE),
             "active_node": final.get("active_node", ""),
             "safety_flag": final.get("safety_flag", "ok"),
+            # "" | "pause" | "distress_route" — which pacing intervention shaped this reply
+            # (`app/safety/pacing.py`). Additive on the wire: absent/"" is the ordinary turn,
+            # so a client that has never heard of it is unaffected.
+            "pacing": final.get("pacing") or "",
             "is_first_turn": first,
             # Actions/insights generated THIS turn ship inline so clients render cards
             # straight from the `done` payload; [] on other turns.

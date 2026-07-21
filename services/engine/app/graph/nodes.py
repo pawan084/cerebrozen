@@ -203,7 +203,14 @@ def safety_node(state: CereBroZenState, config: RunnableConfig) -> Dict[str, Any
             session_id=state.get("session_id", ""),
             detected_by=why,
         )
-    return {"safety_flag": flag, "active_node": "crisis_safety_classifier"}
+    # `pacing` is a PER-TURN marker, and this node is the graph's entry point (START →
+    # safety) — so clearing it here is what makes it per-turn. Graph state is checkpointed
+    # and node returns MERGE into it: a value written on turn 20 and simply not rewritten on
+    # turn 21 is still there on turn 21, and the client would draw a support-route card over
+    # ordinary coaching prose until the session ended. It also has to be cleared on the
+    # crisis path specifically, which never reaches `_run_stage` to overwrite it — a crisis
+    # turn is not a pacing turn (CHAT_SPEC §10.98).
+    return {"safety_flag": flag, "active_node": "crisis_safety_classifier", "pacing": ""}
 
 
 def safe_response_node(state: CereBroZenState, config: RunnableConfig) -> Dict[str, Any]:
@@ -1251,6 +1258,13 @@ def _run_stage(
         "prompt_tokens": resp.prompt_tokens,
         "completion_tokens": resp.completion_tokens,
         "cost_usd": resp.cost_usd,
+        # Which pacing intervention shaped THIS reply ("" when none) — see safety_node for
+        # why it is cleared per turn. The client cannot infer this from the text: the block
+        # is a system-prompt instruction and the model answers in its own voice, so a
+        # support-route turn is indistinguishable from ordinary coaching prose on the wire.
+        # Inferring it from wording is the same class of guess that made every crisis
+        # takeover render as "…" (CHAT_SPEC §1.1).
+        "pacing": pacing_kind,
     }
     # Persist the per-stage turn count (watchdog + floor gate) — merge_dict reducer, so
     # each stage's counter accumulates across turns without clobbering the others.

@@ -113,6 +113,12 @@ platform+engine over two `adb reverse` tunnels):
       (CHAT_SPEC §5.61 — the pill already wraps to two lines at default).
 - [ ] **TalkBack** announces the SOS control by name and role. Its label is the only thing
       distinguishing it from the mic to a non-sighted user.
+- [ ] **Support-route card** (CHAT_SPEC §1.7) renders under the reply on a `distress_route`
+      turn and taps through to Human support. **Hard to reach on purpose:** with the crisis
+      classifier on, the real model escalates most "can't cope" phrasing to a takeover
+      before the route can fire (see IMPROVEMENT_BACKLOG #28), so provoking it on a device
+      means the softer lexicon ("drowning", "barely holding it together") three times in one
+      session. Confirm the card does **not** appear on the crisis turn that follows.
 
 ### Accessibility — needs TalkBack on hardware
 

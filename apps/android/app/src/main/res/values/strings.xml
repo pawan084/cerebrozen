@@ -93,6 +93,9 @@
     <string name="talk_disclosure_ok">Got it</string>
     <string name="talk_disclosure_crisis">Get crisis support</string>
     <string name="talk_sos">Crisis support</string>
+    <string name="talk_support_route_title">Support beyond this app</string>
+    <string name="talk_support_route_body">Coaching can sit alongside real support — it isn\'t a substitute for it. A person you trust, your employer\'s support line, or your doctor are all reasonable next steps.</string>
+    <string name="talk_support_route_action">See human support</string>
     <string name="talk_hint_hearing">Hearing you…</string>
     <string name="talk_hint_thinking">Thinking…</string>
     <string name="talk_hint_speaking_interrupt">Speaking… tap to interrupt</string>

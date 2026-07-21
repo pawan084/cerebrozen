@@ -51,8 +51,25 @@ LONG_SESSION_TURNS = 20
 DISTRESS_ROUTE_AT = 3
 
 # The language of not coping. Deliberately NOT the language of a hard week: see the module
-# docstring. None of these overlap the crisis lexicon — an explicit disclosure is already
-# a takeover long before it reaches here.
+# docstring. None of these overlap the crisis LEXICON — an explicit disclosure is already a
+# takeover long before it reaches here.
+#
+# ⚠️ THE CLASSIFIER IS A DIFFERENT MATTER, and it is the layer that actually decides.
+# Measured against the composed stack on 2026-07-21 with the real model: "I really can't
+# cope" was flagged crisis ("expresses inability to cope") and "I'm not coping at all" was
+# too ("not coping; potential suicide risk"). That is the classifier working exactly as
+# specified — it is told to return true when unsure, because a false negative is the failure
+# that kills people — but it means the crisis takeover intercepts the very phrases at the top
+# of this list, `_run_stage` never runs for them, and the distress route below cannot reach
+# its threshold. **In a deployment with the classifier on, `distress_route` is close to
+# unreachable for the "can't cope" family; the softer entries (drowning, barely holding,
+# crying) are what still gets here.**
+#
+# Left as-is rather than quietly resolved, because both plausible fixes are safety
+# calibration decisions that belong to a human: narrowing the classifier so ordinary
+# not-coping language stops escalating, or accepting that this list's job is only the tail.
+# Tracked in docs/IMPROVEMENT_BACKLOG.md #28. What must NOT happen is someone reading this
+# list and assuming it fires.
 _DISTRESS: Tuple[str, ...] = (
     r"can'?t cope", r"cannot cope", r"not coping",
     r"can'?t take (it|this) (any\s?more|anymore)", r"can'?t do this (any\s?more|anymore)",

@@ -127,6 +127,8 @@ private data class CoachMsg(
     var text: String = "",
     val grounded: Boolean = false,
     val card: ChatCard? = null,
+    /** The engine's `pacing` marker for this turn: "" | "pause" | "distress_route". */
+    val pacing: String = "",
 )
 
 /**
@@ -147,6 +149,30 @@ private data class CoachMsg(
  * The older keys are kept as further fallbacks — they cost nothing and a shape this
  * load-bearing should not have exactly one way to succeed.
  */
+/**
+ * Which session-pacing intervention shaped this turn, from the `done` frame.
+ *
+ * `""` | `"pause"` | `"distress_route"` — the engine's vocabulary verbatim
+ * (`services/engine/app/safety/pacing.py`; contract row in `docs/ARCHITECTURE.md`). It is
+ * a *marker*, not text: the pacing instruction goes into the system prompt, so the reply
+ * comes back in the coach's own voice and nothing in the prose identifies it.
+ *
+ * A function rather than an inline `optString` for one reason — the key name is the whole
+ * contract, and reading a key the engine does not send is precisely how every crisis
+ * takeover came to render as "…" (see [replyFallback]). This one is pinned by a test.
+ */
+internal fun pacingOf(payload: org.json.JSONObject?): String =
+    payload?.optString("pacing").orEmpty()
+
+/** The engine's `pacing` values, verbatim. */
+internal const val PACING_DISTRESS_ROUTE = "distress_route"
+internal const val PACING_PAUSE = "pause"
+
+/** Whether to draw the support-route block. Only the distress route earns it: a `pause` is
+ *  a scheduling nudge and belongs inline (CHAT_SPEC §1.6), not in a bordered card. */
+internal fun isSupportRoute(payload: org.json.JSONObject?): Boolean =
+    pacingOf(payload) == PACING_DISTRESS_ROUTE
+
 internal fun replyFallback(payload: org.json.JSONObject?): String {
     if (payload == null) return ""
     return payload.optString("response_to_user")
@@ -346,6 +372,55 @@ private fun DisclosurePill(onOpen: (String) -> Unit) {
     }
 }
 
+/**
+ * The support-route block (CHAT_SPEC §1.7).
+ *
+ * Drawn under the reply on a turn the engine marked `distress_route` — someone has said
+ * several times in one session that they are not coping, and the coach was instructed to
+ * change register and point at support that is not this app. As a bubble that is just more
+ * coaching prose, and prose is what the person has already been reading for twenty minutes.
+ * A bordered card is the cheapest way to say "this part is different".
+ *
+ * **It deliberately does NOT carry the crisis helpline row that §1.7 asked for.** The
+ * engine's own instruction for this turn is explicit that this is not a crisis takeover and
+ * that it must not hand over an emergency line nobody asked for (`safety/pacing.py`), and
+ * answering "I'm falling apart" with a suicide hotline is exactly the over-escalation that
+ * design avoids. The helpline row belongs to the crisis turn (§1.9); this one routes to
+ * Human support — a person, the EAP, a doctor — which is what the coach just said out loud.
+ * SOS is one tap away in the composer for anyone who does want it.
+ */
+@Composable
+private fun SupportRouteCard(onOpen: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.86f)
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Accent.crisis, RoundedCornerShape(16.dp))
+                .background(CardFill)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                stringResource(R.string.talk_support_route_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = Accent.crisis,
+            )
+            Text(
+                stringResource(R.string.talk_support_route_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary,
+            )
+            Text(
+                stringResource(R.string.talk_support_route_action),
+                style = MaterialTheme.typography.labelMedium,
+                color = Cyan,
+            )
+        }
+    }
+}
+
 @Composable
 fun CoachScreen(onOpen: (String) -> Unit) {
     val messages = remember { mutableStateListOf<CoachMsg>() }
@@ -426,6 +501,13 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 if ("learning_aid" in done.stages) {
                     messages[replyIndex] = messages[replyIndex].copy(grounded = true)
                 }
+                // CHAT_SPEC §1.7. The engine changed register this turn — it stopped
+                // treating the problem as an ordinary work problem and pointed at support
+                // outside this app. That is not something the client can infer: the pacing
+                // block is a system-prompt instruction, so the reply comes back as the
+                // coach's own prose and reads exactly like coaching. The `pacing` marker
+                // (engine `graph/engine.py`) is the only way to know.
+                messages[replyIndex] = messages[replyIndex].copy(pacing = pacingOf(done.payload))
                 if (speakReplies && messages[replyIndex].text.isNotBlank()) {
                     voice.speak(messages[replyIndex].text)
                 }
@@ -591,6 +673,9 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                             }
                         }
                     }
+                }
+                if (m.pacing == PACING_DISTRESS_ROUTE) {
+                    SupportRouteCard { onOpen("humansupport") }
                 }
             }
             if (statusLine.isNotBlank()) {

@@ -2195,3 +2195,91 @@ def test_the_disclosure_stays_last_even_when_pacing_also_fires(llm):
     assert "SESSION PACING" in system_prompt
     assert system_prompt.index("SESSION PACING") < system_prompt.index("MANDATORY DISCLOSURE")
     assert system_prompt.rstrip().endswith("say plainly that you are not.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# The pacing marker on the wire (CHAT_SPEC §1.7) — a cross-stack contract
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Everything above proves the pacing block reaches the MODEL. These prove the client is
+# told it happened. That is a separate guarantee and it needs one: the block is a
+# system-prompt instruction, so the model answers in its own voice and a support-route turn
+# is byte-indistinguishable from ordinary coaching prose on the wire. Without a marker a
+# client can only guess from wording — the same class of guess that rendered every crisis
+# takeover as "…" (CHAT_SPEC §1.1).
+
+
+def test_the_pacing_marker_rides_the_turn_payload(llm):
+    """The distress route is the one a client must be able to draw differently."""
+    llm()
+
+    out = run_node(nodes.intake_node, {
+        "history": _long_history(2) + [
+            {"role": "user", "content": "I can't cope"},
+            {"role": "assistant", "content": "tell me more"},
+            {"role": "user", "content": "I'm falling apart"},
+            {"role": "assistant", "content": "I hear you"},
+        ],
+        "user_message": "I can't take it anymore",
+    })
+
+    assert out["pacing"] == "distress_route"
+
+
+def test_a_long_session_marks_the_turn_as_a_pause(llm):
+    llm()
+    out = run_node(nodes.intake_node, {"history": _long_history(19), "user_message": "one more"})
+    assert out["pacing"] == "pause"
+
+
+def test_an_ordinary_turn_marks_the_turn_as_nothing(llm):
+    """Empty, not absent-and-therefore-stale: `_run_stage` writes the key on EVERY turn."""
+    llm()
+    out = run_node(nodes.intake_node, {"history": _long_history(3), "user_message": "next step?"})
+    assert out["pacing"] == "", "an ordinary turn must actively clear the marker, not omit it"
+
+
+def test_the_marker_does_not_leak_into_the_next_turn(engine, llm, user_id, mongo, inline_builders):
+    """**The regression this contract is most likely to ship with.**
+
+    Graph state is checkpointed and node returns MERGE into it. A marker written on the
+    turn it fires and merely not rewritten afterwards stays set for the rest of the
+    session — so the client would draw a support-route card over every subsequent reply,
+    which is worse than not having the feature: the one turn that genuinely needed to look
+    different stops looking different.
+
+    Driven through the real engine over a real checkpointer, across two turns of ONE
+    session, because that is the only arrangement in which the bug can appear at all.
+    """
+    llm()
+    session = f"s-{uuid.uuid4().hex[:8]}"
+
+    for message in ("I can't cope with this", "I'm falling apart"):
+        engine.run_turn_stream(user_id=user_id, session_id=session,
+                               bot_name="CereBroZen", user_message=message)
+    fired = engine.run_turn_stream(user_id=user_id, session_id=session,
+                                   bot_name="CereBroZen", user_message="I can't take it anymore")
+    assert fired["pacing"] == "distress_route", "the third not-coping message did not route"
+
+    after = engine.run_turn_stream(user_id=user_id, session_id=session,
+                                   bot_name="CereBroZen", user_message="ok, what should I try?")
+    assert after["pacing"] == "", "the marker leaked into the next turn — see safety_node"
+
+
+def test_a_crisis_turn_is_not_a_pacing_turn(engine, llm, user_id, mongo, inline_builders):
+    """The crisis path never reaches `_run_stage`, so nothing there can clear a marker left
+    by an earlier turn. `safety_node` — the graph's entry point, and the one node a crisis
+    turn is guaranteed to run — is what makes this true. CHAT_SPEC §10.98: a takeover must
+    not also arrive decorated as a support-route card."""
+    llm()
+    session = f"s-{uuid.uuid4().hex[:8]}"
+
+    for message in ("I can't cope with this", "I'm falling apart", "I can't take it anymore"):
+        engine.run_turn_stream(user_id=user_id, session_id=session,
+                               bot_name="CereBroZen", user_message=message)
+
+    crisis = engine.run_turn_stream(user_id=user_id, session_id=session,
+                                    bot_name="CereBroZen", user_message="I want to kill myself")
+
+    assert crisis["safety_flag"] == "crisis", "the takeover did not fire"
+    assert crisis["pacing"] == "", "a crisis turn arrived flagged as a pacing turn"

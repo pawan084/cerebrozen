@@ -173,6 +173,13 @@ class CereBroZenState(TypedDict, total=False):
     # the next stage.
     simulation_route: str
     safety_flag: str  # ok | crisis
+    # Which session-pacing intervention shaped this turn's reply: "" | pause |
+    # distress_route (`app/safety/pacing.py`). PER-TURN, not accumulated: safety_node (the
+    # graph's entry point) resets it to "" and _run_stage rewrites it, because a merged
+    # channel that is only written when something fires stays set for the rest of the
+    # session. Surfaced on the wire so a client can render the support-route turn as
+    # something other than ordinary coaching prose — it cannot tell from the text.
+    pacing: str
     active_node: str
 
     # data layer

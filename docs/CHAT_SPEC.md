@@ -62,9 +62,35 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
 6. ❌ **Re-disclose on a cadence, not on every turn** — first message of a session, and
    again after a long unbroken run (engine `pacing.py` already computes the crossing;
    surface it as a quiet inline system line, never a modal).
-7. ❌ **Render the engine's support-route turn as a distinct block** (not a normal bubble)
-   when `pacing` fires: a bordered card with the helpline row and "talk to a person"
-   affordances, so it cannot be mistaken for coaching prose.
+7. ✅ **Render the engine's support-route turn as a distinct block** (not a normal bubble)
+   when `pacing` fires. Shipped 2026-07-21 as a **cross-stack contract change**, because it
+   could not be done client-side: `pacing.block_for` is injected into the *system prompt*, so
+   the reply comes back in the coach's own voice and a support-route turn is
+   byte-indistinguishable from ordinary coaching prose on the wire. The engine now sends
+   `pacing` (`""`\|`pause`\|`distress_route`) on the `done` frame — contract row in
+   ARCHITECTURE.md, additive, client fails closed on an unknown value.
+   The subtle half is that the marker is **per-turn**: graph state is checkpointed and node
+   returns *merge*, so a marker written when it fires and not rewritten afterwards would
+   stay set and paint every later reply — the turn that needed to look different would stop
+   looking different. `safety_node` (the graph entry point, the one node a crisis turn is
+   guaranteed to run) resets it; `_run_stage` rewrites it. That also gives §10.98 for free:
+   a crisis turn always carries `pacing: ""`.
+   **The card deliberately does NOT carry the helpline row this point asked for.** The
+   engine's own instruction for that turn is explicit that it is not a crisis takeover and
+   must not hand over an emergency line nobody asked for, and answering "I'm falling apart"
+   with a suicide hotline is precisely the over-escalation `pacing.py` was written to avoid.
+   It routes to **Human support** — a person, the EAP, a doctor — which is what the coach
+   just said out loud. The helpline row stays with the crisis turn (#9); SOS is one tap away
+   in the composer (#8) for anyone who does want it.
+   Only `distress_route` earns the card: a `pause` is a scheduling nudge and belongs inline
+   (#6). Verified end-to-end on the composed stack (ENGINEERING.md's protocol requires it) —
+   turn 20 of a real session carried `pacing: "pause"` and turn 21 did not.
+   **Live-stack finding, unresolved on purpose:** with the crisis classifier on (the
+   default), the real model flags "I really can't cope" as a crisis — so the takeover
+   intercepts the top of the distress lexicon and `distress_route` is close to unreachable
+   for that family of phrases. The classifier is behaving as specified (err toward true).
+   Resolving the overlap is a safety-calibration call for a human; see
+   IMPROVEMENT_BACKLOG #28 and the warning block in `pacing.py`.
 8. ✅ **SOS is two taps from the composer** — shipped as *one*: a quiet always-visible
    control at the head of the input row, routing straight to `crisis`. It was five taps and
    a tab change away in You → Human support, i.e. reachable only by someone composed enough
