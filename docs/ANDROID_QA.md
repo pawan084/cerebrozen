@@ -113,6 +113,9 @@ platform+engine over two `adb reverse` tunnels):
       (CHAT_SPEC §5.61 — the pill already wraps to two lines at default).
 - [ ] **TalkBack** announces the SOS control by name and role. Its label is the only thing
       distinguishing it from the mic to a non-sighted user.
+- [ ] **AI disclosure line** (CHAT_SPEC §1.6) appears once at the head of a new session, is
+      **absent** from a resumed thread's replay, and returns on the 20th user turn. TalkBack
+      should read it politely — after the reply it follows, not interrupting it.
 - [ ] **Support-route card** (CHAT_SPEC §1.7) renders under the reply on a `distress_route`
       turn and taps through to Human support. **Hard to reach on purpose:** with the crisis
       classifier on, the real model escalates most "can't cope" phrasing to a takeover

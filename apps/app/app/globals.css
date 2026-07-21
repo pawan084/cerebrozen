@@ -471,6 +471,11 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
   color: #fff; text-align: center; font-size: 13px; font-weight: 600; padding: 8px 16px; }
 
 /* Onboarding overlay */
+/* The repeated AI disclosure inside the transcript (CA SB243). Quiet and centred so it
+   reads as the product's own aside rather than a message — but full-width and never
+   truncated: it is a legal sentence, and clipping one is the failure mode. */
+.ai-note { margin: 6px 0; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
 .onb-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px;
   background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); }
 .onb-card { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--line-2);

@@ -59,9 +59,18 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
    **Cut deliberately: the model tier.** The client is never told which model served a turn,
    so naming one would be a guess — and rule 6 forbids a claim without a mechanism. Exposing
    it is an engine contract change (rule 7), not a copy fix; tracked as a §9 candidate.
-6. ❌ **Re-disclose on a cadence, not on every turn** — first message of a session, and
-   again after a long unbroken run (engine `pacing.py` already computes the crossing;
-   surface it as a quiet inline system line, never a modal).
+6. ✅ **Re-disclose on a cadence, not on every turn** — first message of a session, and
+   again after a long unbroken run. Shipped 2026-07-21 on **both** clients as a quiet
+   centred system line in the transcript, never a bubble and never a modal: a disclosure the
+   coach appears to have *said* is one the coach could be argued out of.
+   The cadence rides the `pacing: "pause"` marker from #7 rather than a counter kept in the
+   client — server-derived from checkpointed history, so it survives a process death and
+   Android and `apps/app` disclose at the same points in the same conversation. The distress
+   route deliberately does **not** double as a disclosure beat (pinned by a test): someone
+   being pointed at real support is not the moment for "by the way, I'm an AI".
+   **`apps/app` had no in-conversation disclosure at all** until now — onboarding said it
+   once and the transcript never did. Guarded by an e2e test, the only thing that exercises
+   that surface, plus `DisclosureCopyTest` on the Android string.
 7. ✅ **Render the engine's support-route turn as a distinct block** (not a normal bubble)
    when `pacing` fires. Shipped 2026-07-21 as a **cross-stack contract change**, because it
    could not be done client-side: `pacing.block_for` is injected into the *system prompt*, so

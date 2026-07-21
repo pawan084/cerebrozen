@@ -9,7 +9,14 @@ import { Markdown } from "@/components/markdown";
 import { CrisisPanel } from "@/components/crisis";
 import { getRecognition, speak, stopSpeaking, sttSupported, ttsSupported, type Recognition } from "@/lib/voice";
 
-type Msg = { who: "you" | "coach"; text: string };
+type Msg = { who: "you" | "coach" | "system"; text: string };
+
+/* The repeated AI disclosure (CA SB243; backlog #23, CHAT_SPEC §1.6).
+   Kept here as a constant rather than inlined twice: it is a legal sentence, and the two
+   places it appears must not be able to drift apart. Wording matches the Android client's
+   `talk_ai_note` — a person on a laptop and a person on a phone are owed the same words. */
+const AI_NOTE =
+  "You're talking with an AI coach — not a person, and not a therapist. It doesn't diagnose or treat.";
 type Card = CoachAction & { local?: "saving" | "saved" | "dismissed" };
 
 // Conversation starters — beat the blank box (the semi-guided pattern).
@@ -141,14 +148,20 @@ export default function CoachPage() {
 
   async function runTurn(text: string, edit = false) {
     setBusy(true); setStatus(""); setAnnounce(""); setAtBottom(true);
+    // Empty on every turn but the first, and on regenerate — but it still has to be
+    // counted into `coachIdx` below, or the stream writes into the wrong bubble.
+    const opening: Msg[] = !edit && messages.length === 0 ? [{ who: "system", text: AI_NOTE }] : [];
     if (!edit) {
       lastUserText.current = text;
-      setMessages((m) => [...m, { who: "you", text }, { who: "coach", text: "" }]);
+      /* Open the thread with the disclosure (CHAT_SPEC §1.6). This surface had NO
+         in-conversation disclosure at all — onboarding said it once, on day one, and the
+         conversation itself never did. */
+      setMessages((m) => [...m, ...opening, { who: "you", text }, { who: "coach", text: "" }]);
     } else {
       // regenerate: replace the last coach bubble with a fresh empty one
       setMessages((m) => [...m.slice(0, -1), { who: "coach", text: "" }]);
     }
-    const coachIdx = edit ? messages.length - 1 : messages.length + 1;
+    const coachIdx = edit ? messages.length - 1 : messages.length + 1 + opening.length;
     const controller = new AbortController();
     abortRef.current = controller;
     let acc = ""; // the reply so far — so a stop/disconnect keeps what streamed
@@ -176,6 +189,12 @@ export default function CoachPage() {
           setMessages((m) => {
             const next = [...m];
             next[coachIdx] = { who: "coach", text: acc };
+            /* Re-disclose on the engine's `pause` crossing (ARCHITECTURE.md contract row).
+               The cadence is server-derived from checkpointed history, so this client and
+               the Android one disclose at the same points in the same conversation rather
+               than each keeping its own counter and drifting. Its own line, after the
+               reply — never inside the coach's words, and never a modal. */
+            if (ev.pacing === "pause") next.push({ who: "system", text: AI_NOTE });
             return next;
           });
           setAnnounce(acc); // announce the completed reply politely to screen readers
@@ -321,7 +340,12 @@ export default function CoachPage() {
               </div>
             </div>
           )}
-          {messages.map((m, i) => (
+          {messages.map((m, i) => m.who === "system" ? (
+            /* Not a bubble: this is the product speaking, not the coach, and it must never
+               be mistakable for something the coach chose to say. `role="note"` +
+               aria-live="polite" so a screen reader picks it up without interrupting. */
+            <p key={i} className="ai-note" role="note" aria-live="polite">{m.text}</p>
+          ) : (
             <div key={i} className={`row ${m.who}`}>
               <div className="bubble">
                 {m.who === "coach"

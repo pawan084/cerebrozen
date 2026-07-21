@@ -134,6 +134,35 @@ test.describe("employee journey", () => {
     expect(hrefs.join(","), "another country's number reached a GB user").not.toContain("14416");
   });
 
+  test("the conversation itself says it is an AI, not just the onboarding did once", async ({ page }) => {
+    /* CA SB243 / backlog #23. This surface had NO in-conversation disclosure at all: the
+       welcome dialog said it on day one and the transcript never did, so an employee who
+       onboarded in March and opened the coach in November was told nothing. Pinned here
+       because e2e is the only thing that exercises apps/app at all.
+
+       Asserts the SUBSTANCE (AI, not a person, not a therapist) rather than the sentence,
+       so rewording is free and deleting the meaning is not. It must also not be a bubble —
+       a disclosure the coach appears to have *said* is a disclosure the coach could be
+       argued out of. */
+    await signIn(page, urls.app, "member");
+    await page.waitForSelector(".sidebar", { timeout: 30_000 });
+    await page.goto(`${urls.app}/coach`, { waitUntil: "domcontentloaded" });
+
+    await page.locator("textarea").fill("I want to get better at delegating.");
+    await page.keyboard.press("Enter");
+
+    const note = page.locator(".ai-note");
+    await expect(note, "the transcript never disclosed it is an AI").toBeVisible({ timeout: 40_000 });
+    const text = (await note.first().innerText()).toLowerCase();
+    expect(text).toContain("ai");
+    expect(text, "the disclosure does not deny being a person").toContain("person");
+    expect(text, "the disclosure does not deny being a therapist").toContain("therapist");
+    // Screen readers must get it without it interrupting the reply being streamed.
+    await expect(note.first()).toHaveAttribute("aria-live", "polite");
+    await expect(page.locator(".row .bubble .ai-note"), "the disclosure rendered as a coach message")
+      .toHaveCount(0);
+  });
+
   test("crisis helplines come from the engine and are region-neutral when unknown", async ({ request }) => {
     // The client must never hold a country's numbers (ARCHITECTURE.md §Cross-stack
     // contracts). Pinned here because it is a *cross-service* promise: the engine owns the

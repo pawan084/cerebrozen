@@ -71,6 +71,41 @@ class CoachPacingMarkerTest {
         assertFalse(isSupportRoute(JSONObject().put("pacing", "some_future_kind")))
     }
 
+    // ── the repeated AI disclosure (CA SB243 / backlog #23) ──────────────────────────────
+
+    @Test
+    fun `a long session re-states that the coach is an AI`() {
+        assertTrue(shouldRestateAiNote(JSONObject().put("pacing", PACING_PAUSE)))
+    }
+
+    @Test
+    fun `an ordinary turn does not`() {
+        // The statute wants the disclosure repeated, not constant. A line on every turn is
+        // one people learn to skip — which is the opposite of disclosure.
+        assertFalse(shouldRestateAiNote(JSONObject().put("pacing", "")))
+        assertFalse(shouldRestateAiNote(JSONObject()))
+        assertFalse(shouldRestateAiNote(null))
+    }
+
+    @Test
+    fun `the distress route does not double as a disclosure beat`() {
+        // Someone who has said three times that they are not coping is being pointed at
+        // real support. Appending "by the way, I'm an AI" to that moment is the wrong beat
+        // for it — the support-route card is what that turn gets.
+        assertFalse(shouldRestateAiNote(JSONObject().put("pacing", PACING_DISTRESS_ROUTE)))
+        assertTrue(isSupportRoute(JSONObject().put("pacing", PACING_DISTRESS_ROUTE)))
+    }
+
+    @Test
+    fun `the two pacing kinds never both fire on one turn`() {
+        // The engine returns ONE kind per turn (`block_for` — distress wins when both
+        // qualify), so the client must never draw both treatments on the same reply.
+        for (kind in listOf(PACING_PAUSE, PACING_DISTRESS_ROUTE, "")) {
+            val p = JSONObject().put("pacing", kind)
+            assertFalse("both treatments fired for '$kind'", isSupportRoute(p) && shouldRestateAiNote(p))
+        }
+    }
+
     @Test
     fun `a crisis turn is never also a support-route turn`() {
         // safety_node clears the marker on every turn including the crisis path, so a

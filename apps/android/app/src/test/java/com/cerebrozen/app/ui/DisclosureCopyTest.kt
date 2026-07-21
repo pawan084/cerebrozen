@@ -79,6 +79,41 @@ class DisclosureCopyTest {
     }
 
     @Test
+    fun the_product_says_somewhere_that_it_does_not_diagnose_or_treat() {
+        /* Backlog #24. Onboarding already carried it ("Diagnose, prescribe, replace therapy,
+           or handle emergencies" under "Can't do") and so did the disclosure sheet — so
+           nothing needed writing, and a fourth copy of the same sentence would have made all
+           four easier to ignore. What was missing is this: a guard, so the claim cannot
+           leave the product the way "companion" got into it — one edit at a time, with
+           nobody watching. Asserts the SUBSTANCE survives, not any one wording. */
+        val en = File(resDir(), "values/strings.xml").readText()
+        val all = entry.findAll(en).associate { it.groupValues[1] to it.groupValues[2] }
+
+        val medical = listOf("ob_cant_do_body", "talk_disclosure_dialog_body", "talk_ai_note")
+            .mapNotNull { all[it] }
+        assertTrue(
+            "no string tells the user this is not medical care — see backlog #24",
+            medical.any { it.contains("diagnos", ignoreCase = true) },
+        )
+        assertTrue(
+            "no string distinguishes the coach from therapy",
+            medical.any { it.contains("therap", ignoreCase = true) },
+        )
+    }
+
+    @Test
+    fun the_repeated_in_conversation_disclosure_stands_on_its_own() {
+        // CA SB243: the line shown again mid-session must work alone. Someone reading only
+        // this one sentence, twenty turns in, has to learn the same three facts.
+        val en = File(resDir(), "values/strings.xml").readText()
+        val note = entry.findAll(en).first { it.groupValues[1] == "talk_ai_note" }.groupValues[2]
+
+        assertTrue("the repeated disclosure must name it as AI: $note", note.contains("AI"))
+        assertTrue("…and deny being a person: $note", note.contains("person", ignoreCase = true))
+        assertTrue("…and deny being a therapist: $note", note.contains("therap", ignoreCase = true))
+    }
+
+    @Test
     fun every_locale_that_translates_the_style_setting_agrees_it_is_coaching() {
         // The Hindi feature name was "साथी की शैली" — साथी is *companion*. A locale is where
         // a renamed concept quietly survives, because the reviewer cannot read it.

@@ -84,6 +84,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import com.cerebrozen.app.R
 
@@ -168,10 +172,33 @@ internal fun pacingOf(payload: org.json.JSONObject?): String =
 internal const val PACING_DISTRESS_ROUTE = "distress_route"
 internal const val PACING_PAUSE = "pause"
 
+/** A line the PRODUCT says, not the coach — rendered as a quiet system note, never a bubble,
+ *  so it can never be mistaken for something the coach chose to say. */
+internal const val WHO_SYSTEM = "system"
+
 /** Whether to draw the support-route block. Only the distress route earns it: a `pause` is
  *  a scheduling nudge and belongs inline (CHAT_SPEC §1.6), not in a bordered card. */
 internal fun isSupportRoute(payload: org.json.JSONObject?): Boolean =
     pacingOf(payload) == PACING_DISTRESS_ROUTE
+
+/**
+ * Whether this turn should re-state that the coach is an AI (CHAT_SPEC §1.6, backlog #23).
+ *
+ * CA SB243 wants the disclosure repeated through a long conversation, not just at the door.
+ * The cadence rides the engine's `pause` marker rather than a counter kept here, for the
+ * same reason `pacing.py` derives its own count from the transcript: a client-side counter
+ * resets on process death and drifts per surface, so two people in the same situation would
+ * get disclosed to at different times, and the one whose app was killed would get it least.
+ * The crossing is already computed server-side from checkpointed history, so it survives a
+ * resume and every client agrees on it.
+ *
+ * `pause` also lands it at the right MOMENT: the engine has just told the coach to offer a
+ * break, so the conversation is already stepping back. That is where "by the way, this is an
+ * AI" reads as candour rather than as an interruption — and a disclosure someone resents is
+ * a disclosure they learn to skip.
+ */
+internal fun shouldRestateAiNote(payload: org.json.JSONObject?): Boolean =
+    pacingOf(payload) == PACING_PAUSE
 
 internal fun replyFallback(payload: org.json.JSONObject?): String {
     if (payload == null) return ""
@@ -480,6 +507,13 @@ fun CoachScreen(onOpen: (String) -> Unit) {
         draft = ""
         busy = true
         statusLine = ""
+        // First message of a session gets the disclosure ahead of it (CHAT_SPEC §1.6). The
+        // standing pill above the composer is always there, but it is chrome — people stop
+        // seeing chrome. This lands once, in the thread, where the conversation starts.
+        // Keyed on there being no session yet, so a resumed thread does not re-open with it.
+        if (Coach.sessionId == null && messages.none { it.who == WHO_SYSTEM }) {
+            messages.add(CoachMsg(WHO_SYSTEM))
+        }
         messages.add(CoachMsg("you", text))
         val reply = CoachMsg("coach", "")
         messages.add(reply)
@@ -508,6 +542,10 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 // coach's own prose and reads exactly like coaching. The `pacing` marker
                 // (engine `graph/engine.py`) is the only way to know.
                 messages[replyIndex] = messages[replyIndex].copy(pacing = pacingOf(done.payload))
+                // CA SB243 / CHAT_SPEC §1.6: repeat the disclosure through a long
+                // conversation. Appended AFTER the reply, as its own quiet line — never a
+                // modal, and never attached to the coach's own words.
+                if (shouldRestateAiNote(done.payload)) messages.add(CoachMsg(WHO_SYSTEM))
                 if (speakReplies && messages[replyIndex].text.isNotBlank()) {
                     voice.speak(messages[replyIndex].text)
                 }
@@ -627,6 +665,21 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                 }
             }
             items(messages) { m ->
+                if (m.who == WHO_SYSTEM) {
+                    Text(
+                        stringResource(R.string.talk_ai_note),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            // One announcement, as a status rather than an alert: it is not
+                            // urgent and must not interrupt what TalkBack is already reading.
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                    return@items
+                }
                 val card = m.card
                 if (card != null) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {

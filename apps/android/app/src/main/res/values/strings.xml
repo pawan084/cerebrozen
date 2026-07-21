@@ -96,6 +96,7 @@
     <string name="talk_support_route_title">Support beyond this app</string>
     <string name="talk_support_route_body">Coaching can sit alongside real support — it isn\'t a substitute for it. A person you trust, your employer\'s support line, or your doctor are all reasonable next steps.</string>
     <string name="talk_support_route_action">See human support</string>
+    <string name="talk_ai_note">You\'re talking with an AI coach — not a person, and not a therapist. It doesn\'t diagnose or treat.</string>
     <string name="talk_hint_hearing">Hearing you…</string>
     <string name="talk_hint_thinking">Thinking…</string>
     <string name="talk_hint_speaking_interrupt">Speaking… tap to interrupt</string>
