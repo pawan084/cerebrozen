@@ -59,12 +59,12 @@
     <!-- ── Human support (Settings.kt) ─────────────────────────────────── -->
     <string name="humansupport_eyebrow">Beyond the app</string>
     <string name="humansupport_title">Human support</string>
-    <string name="humansupport_intro">CereBro is a companion, not a clinician. When you want a real person, these connect you with one.</string>
+    <string name="humansupport_intro">CereBro is an AI coach, not a clinician. When you want a real person, these connect you with one.</string>
     <string name="humansupport_coach_title">Talk to a coach</string>
     <string name="humansupport_coach_body">A vetted coach directory for India is on our roadmap. Until it\'s real, the lines above reach real people today.</string>
 
     <!-- ── Talk (TalkScreen.kt) ────────────────────────────────────────── -->
-    <string name="talk_eyebrow">AI voice companion</string>
+    <string name="talk_eyebrow">AI voice coach</string>
     <string name="talk_title">How are you feeling today?</string>
     <string name="talk_good_morning">Good morning</string>
     <string name="talk_good_afternoon">Good afternoon</string>
@@ -79,13 +79,13 @@
     <string name="talk_landing_body">Tap the orb to start a real conversation. I\'ll listen, then talk it through with you.</string>
     <string name="talk_send_cd">Send message</string>
     <string name="talk_history_start">Start of this conversation</string>
-    <string name="talk_offline_banner">You\'re offline — the companion needs a connection. The Toolkit below still works.</string>
+    <string name="talk_offline_banner">You\'re offline — the coach needs a connection. The Toolkit below still works.</string>
     <string name="talk_offline_action">Toolkit</string>
-    <string name="talk_disclosure_pill">AI companion — not a therapist or crisis service</string>
+    <string name="talk_disclosure_pill">AI coach — not a therapist or crisis service</string>
     <string name="talk_disclosure_details">Details</string>
     <string name="talk_crisis_title">You matter. Support is available right now.</string>
     <string name="talk_crisis_subtitle">Tap for crisis resources — real people, 24/7.</string>
-    <string name="talk_disclosure_dialog_title">About your AI companion</string>
+    <string name="talk_disclosure_dialog_title">About your AI coach</string>
     <string name="talk_disclosure_dialog_body">• It\'s AI, not a person — replies are generated.\n• It isn\'t medical care and never diagnoses or prescribes.\n• It isn\'t for emergencies — in one, contact local services.\n• Conversations are reviewed for safety signals only.</string>
     <string name="talk_disclosure_ok">Got it</string>
     <string name="talk_disclosure_crisis">Get crisis support</string>
@@ -105,7 +105,7 @@
     <string name="talk_journal_entry_title">Talk reflection</string>
     <string name="talk_saved_status">Saved to your journal.</string>
     <string name="talk_save_failed">Couldn\'t save — try again.</string>
-    <string name="talk_confirm_header">The companion wants to act</string>
+    <string name="talk_confirm_header">The coach wants to act</string>
     <string name="talk_confirm_fallback">Approve this action?</string>
     <string name="talk_error_generic">Something went wrong — please try again.</string>
     <string name="talk_approve">Approve</string>
@@ -299,7 +299,7 @@
     <string name="you_title">You</string>
     <string name="you_default_name">You</string>
     <string name="you_support_title">Support, any time</string>
-    <string name="you_companion_title">Companion style</string>
+    <string name="you_companion_title">Coaching style</string>
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
     <string name="you_plus_title">CereBro Plus</string>
     <string name="you_plus_subtitle_free">Unlock voice, insights, programs, and more</string>
@@ -330,7 +330,7 @@
     <string name="auth_have_account">I already have an account</string>
     <string name="ob_disclosure_eyebrow">Honesty first</string>
     <string name="ob_disclosure_title">Who CereBro is for — and what it isn\'t</string>
-    <string name="ob_disclosure_sub">Here\'s exactly what your AI companion can and can\'t do for you.</string>
+    <string name="ob_disclosure_sub">Here\'s exactly what your AI coach can and can\'t do for you.</string>
     <string name="ob_disclosure_cta">I\'m 18+ — continue</string>
     <string name="ob_danger_line">If you are in immediate danger, call emergency services now.</string>
     <string name="ob_confirmed_18">Confirmed: I am 18 or older</string>
@@ -358,7 +358,7 @@
     <string name="ob_consent_sleep">Sleep history</string>
     <string name="ob_consent_sleep_hint">Powers your sleep insights</string>
     <string name="ob_consent_journal">Journal memory</string>
-    <string name="ob_consent_journal_hint">Lets the companion recall your entries</string>
+    <string name="ob_consent_journal_hint">Lets the coach recall your entries</string>
     <string name="ob_consent_ai">AI memory</string>
     <string name="ob_consent_ai_hint">Goals and preferences</string>
     <string name="ob_consent_voice">Voice storage</string>
@@ -589,7 +589,7 @@
 
     <!-- ── Settings sub-screens (Settings.kt) ──────────────────────────── -->
     <string name="companion_eyebrow">How CereBro talks with you</string>
-    <string name="companion_title">Companion style</string>
+    <string name="companion_title">Coaching style</string>
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
     <string name="appearance_eyebrow">Dark theme</string>
     <string name="appearance_title">Appearance</string>
@@ -648,7 +648,7 @@
     <string name="privacypolicy_evidence_title">Evidence, labeled</string>
     <string name="privacypolicy_evidence_body">Tools are labeled with why they work. Where something is comfort rather than therapy, we say so.</string>
     <string name="privacypolicy_not_title">What CereBro is not</string>
-    <string name="privacypolicy_not_body">A companion alongside care, never a replacement. It doesn\'t diagnose or treat.</string>
+    <string name="privacypolicy_not_body">A coach alongside care, never a replacement. It doesn\'t diagnose or treat.</string>
     <string name="privacypolicy_professional_title">Professional involvement</string>
     <string name="privacypolicy_professional_body">Built with published clinical research; a formal clinical advisory process is on our roadmap.</string>
     <string name="privacypolicy_full_policy">Full policy at cerebrozen.in/privacy.</string>
@@ -791,7 +791,7 @@
     <string name="patterns_loading">Looking at your data…</string>
     <string name="patterns_empty">Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.</string>
     <string name="patterns_delete_title">Delete all memory</string>
-    <string name="patterns_delete_body">Removes chat history, computed insights and the companion\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
+    <string name="patterns_delete_body">Removes chat history, computed insights and the coach\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
     <string name="patterns_cleared">Memory cleared — %1$d messages and %2$d insights forgotten.</string>
     <string name="patterns_delete_failed">Couldn\'t delete — try again.</string>
     <string name="patterns_confirm">Tap again to confirm</string>
@@ -817,7 +817,7 @@
     <string name="tour_stop2_title">Your plan adapts</string>
     <string name="tour_stop2_body">Three small steps a day, rebuilt from your check-ins and sleep diary. Tap the hero any time.</string>
     <string name="tour_stop3_title">Talk it through</string>
-    <string name="tour_stop3_body">A voice companion that listens first. It\'s AI — never a therapist, and always honest about that.</string>
+    <string name="tour_stop3_body">A voice coach that listens first. It\'s AI — never a therapist, and always honest about that.</string>
     <string name="tour_stop4_title">Private by default</string>
     <string name="tour_stop4_body">Nothing is remembered without your say-so. Change anything under You → Privacy &amp; memory.</string>
     <string name="tour_header">GUIDED TOUR · %1$d OF %2$d</string>

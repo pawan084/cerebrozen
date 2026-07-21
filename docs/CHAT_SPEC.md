@@ -11,10 +11,11 @@ shape — numbered, individually verifiable, each point either shippable or expl
 
 Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect found on device**.
 
-> **Two device findings opened this spec, and both are in §1.** A crisis takeover rendered
-> as the literal string "…" (fixed 2026-07-21, #1), and the app calls itself an "AI
+> **Two device findings opened this spec, and both are in §1 — both now fixed.** A crisis
+> takeover rendered as the literal string "…" (#1), and the app called itself an "AI
 > companion" in its own compliance disclosure (#4) — the exact word the statutes attach to,
-> in the one sentence written to satisfy them.
+> in the one sentence written to satisfy them. Both closed 2026-07-21, each with the test
+> that would have caught it (#97, #99).
 
 ---
 
@@ -29,13 +30,21 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
 2. ✅ **Crisis detection is server-side and unbypassable** — the client cannot suppress it.
 3. ✅ **The crisis reply carries the helpline and an AI disclosure**, in the detected
    language (engine `crisis._AI_DISCLOSURE`, 21 languages).
-4. 🔴 **Stop calling it an "AI companion."** 17 English strings do (`talk_disclosure_pill`,
-   `talk_eyebrow`, `ob_disclosure_sub`, `humansupport_intro`, `tour_stop3_body`, the whole
-   `companion_*` feature). CA SB243 / NY GBL art. 47 attach to *companion* systems; the
-   engine ships a guardrail forbidding companion framing and `/v1/governance` attests
-   "non-companion by design". Our own disclosure pill contradicts the attestation.
-   **Self-description must say "AI coach"**; the *feature* name ("Companion style") is a
-   separate product decision.
+4. 🔴→✅ **Stop calling it an "AI companion."** 17 English strings did
+   (`talk_disclosure_pill`, `talk_eyebrow`, `ob_disclosure_sub`, `humansupport_intro`,
+   `tour_stop3_body`, the whole `companion_*` feature). CA SB243 / NY GBL art. 47 attach to
+   *companion* systems; the engine ships a guardrail forbidding companion framing and
+   `/v1/governance` attests "non-companion by design" — so our own disclosure pill
+   contradicted an attestation we serve over an API.
+   Fixed 2026-07-21: self-description now says **"AI coach"** (12 strings), and the product
+   decision on the *feature* name came back **"Coaching style"** — so the statutory word is
+   now absent from every shipped locale, Hindi included (`साथी की शैली` → `कोचिंग शैली`;
+   `साथी` *is* companion, and a locale is exactly where a renamed concept survives because
+   the reviewer cannot read it).
+   **Deliberately unchanged:** the resource *ids* (`companion_title`, `you_companion_*`) and
+   the `companion` profile field they mirror. That field is a cross-stack contract
+   (rule 7 — `PATCH /users/me`, engine-side persona selection); renaming it is a protocol
+   change, not a copy fix, and no user ever sees it. Pinned by #99.
 5. ❌ **The disclosure pill must be reachable, not decorative.** Today it sits above the
    composer and scrolls with nothing; it should be persistently visible while a
    conversation is open, and its "Details" sheet should name the model tier, what is
@@ -219,8 +228,14 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
 97. ✅ `CoachReplyFallbackTest` — the non-streaming/safety path (added with defect #1).
 98. ❌ A test that a `safety_flag: crisis` turn renders the reply **and** that no inline
     suggestion card is offered on that turn.
-99. ❌ A test that the disclosure string does not contain the word "companion" — the
-    mechanical half of §1.4, so it cannot regress once fixed.
+99. ✅ A test that the disclosure string does not contain the word "companion" — the
+    mechanical half of §1.4, so it cannot regress once fixed. `ui/DisclosureCopyTest`
+    reads the shipped **XML**, not an `R.string` constant, so it covers every locale we
+    ship and fails on the *next* such sentence too. Two companion assertions stop the
+    cheap ways to pass it: the pill must still say "AI" and still disclaim therapy and
+    crisis service (you cannot satisfy the guard by deleting the disclosure), and no
+    translated locale may still call the style setting a companion's. Mutation-checked —
+    restoring the old pill text fails the build.
 100. ❌ A device checklist appended to [ANDROID_QA.md](ANDROID_QA.md) §2 for the items no
      JVM test can reach: TalkBack order, TTS interrupt, keyboard overlap, RTL.
 

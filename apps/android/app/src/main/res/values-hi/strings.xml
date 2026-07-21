@@ -240,7 +240,7 @@
     <string name="you_eyebrow">सेटिंग और सहायता</string>
     <string name="you_title">आप</string>
     <string name="you_default_name">आप</string>
-    <string name="you_companion_title">साथी की शैली</string>
+    <string name="you_companion_title">कोचिंग शैली</string>
     <string name="you_companion_subtitle">%1$s · CereBro आपसे कैसे बात करता है</string>
     <string name="you_appearance_title">रूप-रंग</string>
     <string name="you_appearance_subtitle">रात, भोर, या आपके सिस्टम जैसा</string>
@@ -460,8 +460,8 @@
 
     <!-- ── Settings sub-screens ────────────────────────────────────────── -->
     <string name="companion_eyebrow">CereBro आपसे कैसे बात करता है</string>
-    <string name="companion_title">साथी की शैली</string>
-    <string name="companion_intro">वही अपनापन, अलग अंदाज़। कभी भी बदलें — अगले संदेश से बातचीत ढल जाती है।</string>
+    <string name="companion_title">कोचिंग शैली</string>
+    <string name="companion_intro">वही देखभाल, अलग अंदाज़। कभी भी बदलें — अगले संदेश से बातचीत ढल जाती है।</string>
     <string name="appearance_eyebrow">रात या भोर</string>
     <string name="appearance_title">रूप-रंग</string>
     <string name="appearance_intro">भोर एक हल्का, गर्म रूप है जो दिन की रोशनी में पढ़ने में आसान है। नींद हमेशा रात में रहती है — वह शांत होने की जगह है।</string>

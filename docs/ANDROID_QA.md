@@ -20,7 +20,7 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 cd apps/android && ./gradlew :app:jacocoLogicCoverageVerification
 ```
 
-Verified 2026-07-21 on the current tree: **38 suites · 289 tests · 0 failures · 0 skipped**,
+Verified 2026-07-21 on the current tree: **40 suites · 297 tests · 0 failures · 0 skipped**,
 and the coverage gate passes.
 
 | Package | Line coverage | |
@@ -124,7 +124,7 @@ gap rather than a rule-6 claims violation — but it becomes one the moment anyo
 
 ### Defects the device found that CI could not — 2026-07-21
 
-Both were invisible to a 294-test JVM suite, and both are the reason this section exists.
+All three were invisible to the JVM suite, and they are the reason this section exists.
 
 1. **A crisis takeover rendered as "…".** The engine detected the disclosure, escalated it
    and served the scripted helpline reply; the app showed an ellipsis. A crisis reply emits
@@ -140,8 +140,14 @@ Both were invisible to a 294-test JVM suite, and both are the reason this sectio
    cleared it — so the user landed on Home. Cold start always worked, which is why the first
    device pass missed it. Holder is now per-activity; both routes verified cold and warm.
 
-Also observed, not yet fixed: the app calls itself an **"AI companion"** in 17 strings
-including the compliance disclosure pill — see [CHAT_SPEC.md](CHAT_SPEC.md) §1.4.
+3. **The app called itself an "AI companion"** in 17 strings including the compliance
+   disclosure pill — the exact word CA SB243 / NY GBL art. 47 attach to, inside the one
+   sentence written to satisfy them, while `/v1/governance` attested "non-companion by
+   design". Not a device *defect* so much as something only reading the screen surfaces:
+   the contradiction is invisible in a diff and invisible in a test suite that never
+   asserts on copy. Self-description is now "AI coach" and the feature is "Coaching style",
+   in English and Hindi; `DisclosureCopyTest` keeps it that way. See
+   [CHAT_SPEC.md](CHAT_SPEC.md) §1.4.
 
 ## 3. Verified on hardware
 
