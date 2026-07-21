@@ -45,18 +45,34 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
    the `companion` profile field they mirror. That field is a cross-stack contract
    (rule 7 — `PATCH /users/me`, engine-side persona selection); renaming it is a protocol
    change, not a copy fix, and no user ever sees it. Pinned by #99.
-5. ❌ **The disclosure pill must be reachable, not decorative.** Today it sits above the
-   composer and scrolls with nothing; it should be persistently visible while a
-   conversation is open, and its "Details" sheet should name the model tier, what is
-   stored, and what is not.
+5. 🟡→✅ **The disclosure pill must be reachable, not decorative.** Persistence was already
+   right — the pill lives *outside* the `LazyColumn`, so it cannot scroll away. What was
+   missing was the sheet behind it: "it's AI and it isn't a clinician" is half of what
+   someone typing into employer-paid software needs, and the other half is what happens to
+   the words afterwards. The Details sheet now also says what is kept (stored so the coach
+   can resume), who can read it (**your employer sees counts and account state, never your
+   words** — rule 5), and that none of it is sold; it routes to **Privacy & memory**, which
+   is not entitlement-locked (the Pattern dashboard's delete control is, so pointing there
+   would have sent a free user at a padlock). Every line restates an already-backed claim
+   (`privacypolicy_private_body`, `_noselling_body`) at the moment the decision is made
+   rather than three screens away.
+   **Cut deliberately: the model tier.** The client is never told which model served a turn,
+   so naming one would be a guess — and rule 6 forbids a claim without a mechanism. Exposing
+   it is an engine contract change (rule 7), not a copy fix; tracked as a §9 candidate.
 6. ❌ **Re-disclose on a cadence, not on every turn** — first message of a session, and
    again after a long unbroken run (engine `pacing.py` already computes the crossing;
    surface it as a quiet inline system line, never a modal).
 7. ❌ **Render the engine's support-route turn as a distinct block** (not a normal bubble)
    when `pacing` fires: a bordered card with the helpline row and "talk to a person"
    affordances, so it cannot be mistaken for coaching prose.
-8. ❌ **SOS is two taps from the composer** — a small always-visible affordance in the
-   input row, not buried in You → Human support.
+8. ✅ **SOS is two taps from the composer** — shipped as *one*: a quiet always-visible
+   control at the head of the input row, routing straight to `crisis`. It was five taps and
+   a tab change away in You → Human support, i.e. reachable only by someone composed enough
+   to go looking, which is the wrong requirement for the only control on the screen that
+   matters at 2am. Deliberately understated (`Accent.crisis` on the standard chip fill, not
+   a red alarm): a panic button someone is embarrassed to be seen pressing in an open-plan
+   office is a button they do not press. 48dp, above the mic's 44 — a safety control has no
+   business under the accessibility floor. The rest of the row is still #63.
 9. ❌ **A crisis turn should offer the region's helplines as tappable rows**
    (`engine /v1/safety/helplines` already serves them per region) instead of a URL inside
    prose.
@@ -243,8 +259,15 @@ Markers: ✅ already true · 🟡 partly there · ❌ not built · 🔴 **defect
 
 ## Sequencing
 
-**Ship first (safety + honesty):** 4, 5, 7, 8, 99 — the naming defect and the crisis
-surfacing. **Then correctness:** 15, 23, 24, 32, 49, 52, 56 — the ones a user hits weekly.
+**Ship first (safety + honesty):** ~~4~~, ~~5~~, **7**, ~~8~~, ~~99~~ — done 2026-07-21
+except **#7**, which is left because it is the one that needs an *engine contract* change,
+not a client change: the turn payload carries no marker saying "this reply is the pacing
+support-route", so the client cannot render it as a distinct block without guessing from
+prose. That is a rule-7 change (`docs/ENGINEERING.md` protocol + the ARCHITECTURE table in
+the same PR), and guessing is exactly the class of bug #1 was.
+The three shipped UI changes have **not** been on a device — checklist in
+[ANDROID_QA.md](ANDROID_QA.md) §2.
+**Then correctness:** 15, 23, 24, 32, 49, 52, 56 — the ones a user hits weekly.
 **Then craft:** §8 and the a11y block, which is where "good" becomes "world-class" and
 which no amount of visual polish substitutes for.
 

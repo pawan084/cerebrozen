@@ -87,8 +87,12 @@
     <string name="talk_crisis_subtitle">Tap for crisis resources — real people, 24/7.</string>
     <string name="talk_disclosure_dialog_title">About your AI coach</string>
     <string name="talk_disclosure_dialog_body">• It\'s AI, not a person — replies are generated.\n• It isn\'t medical care and never diagnoses or prescribes.\n• It isn\'t for emergencies — in one, contact local services.\n• Conversations are reviewed for safety signals only.</string>
+    <string name="talk_disclosure_stored_title">What\'s kept</string>
+    <string name="talk_disclosure_stored_body">• What you write is stored, so the coach can pick up where you left off.\n• Your employer sees counts and account state — never your words.\n• Nothing here is sold, and no advertiser sees any of it.</string>
+    <string name="talk_disclosure_privacy">Privacy &amp; memory</string>
     <string name="talk_disclosure_ok">Got it</string>
     <string name="talk_disclosure_crisis">Get crisis support</string>
+    <string name="talk_sos">Crisis support</string>
     <string name="talk_hint_hearing">Hearing you…</string>
     <string name="talk_hint_thinking">Thinking…</string>
     <string name="talk_hint_speaking_interrupt">Speaking… tap to interrupt</string>

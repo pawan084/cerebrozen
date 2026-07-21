@@ -95,6 +95,25 @@ platform+engine over two `adb reverse` tunnels):
       this is a product decision before it is a test. Tracked in [CHAT_SPEC.md](CHAT_SPEC.md) §8.81.
 - [ ] **≥600dp** (tablet or unfolded foldable) — the 2-up door grid.
 
+### Coach / "Talk" batch — **not device-verified** (shipped 2026-07-21)
+
+[CHAT_SPEC.md](CHAT_SPEC.md) §1.4/§1.5/§1.8 + §10.99. The copy change (#4) and its guard
+(#99) are fully covered by `DisclosureCopyTest`; the two UI changes are not, because
+`CoachScreen` is composable-dominated and outside the gated denominator (§1). So:
+
+- [ ] **SOS control** — visible in the input row at every state (keyboard up and down, mic
+      present and absent), one tap reaches the crisis screen, and Back returns to the
+      conversation *with the draft intact*.
+- [ ] **It must not be reachable by accident.** It sits beside the mic; a mis-tap while
+      reaching for dictation is a bad surprise. Check the gap at a real thumb width.
+- [ ] **Disclosure sheet** — the added "What's kept" block does not push "Got it" or "Get
+      crisis support" off-screen on a 720×1600 device, and "Privacy & memory" lands on the
+      unlocked privacy screen (**not** the entitlement-locked Pattern dashboard).
+- [ ] **At 200% font scale** the sheet scrolls rather than clipping a legal sentence
+      (CHAT_SPEC §5.61 — the pill already wraps to two lines at default).
+- [ ] **TalkBack** announces the SOS control by name and role. Its label is the only thing
+      distinguishing it from the mic to a non-sighted user.
+
 ### Accessibility — needs TalkBack on hardware
 
 - [ ] TalkBack through every screen: reading order, and every control announcing a

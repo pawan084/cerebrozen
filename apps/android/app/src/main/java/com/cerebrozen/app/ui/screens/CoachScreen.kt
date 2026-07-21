@@ -69,6 +69,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Diversity3
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.ui.graphics.Color
@@ -303,7 +304,33 @@ private fun DisclosurePill(onOpen: (String) -> Unit) {
         AlertDialog(
             onDismissRequest = { showing = false },
             title = { Text(stringResource(R.string.talk_disclosure_dialog_title)) },
-            text = { Text(stringResource(R.string.talk_disclosure_dialog_body)) },
+            // CHAT_SPEC §1.5: "reachable, not decorative" — the sheet has to answer the
+            // question the pill raises. "It's AI and it isn't a clinician" is only half of
+            // what someone typing into employer-paid software needs; the other half is what
+            // happens to the words afterwards, and who can read them. Both halves are
+            // already-backed claims (`privacypolicy_private_body`, `_noselling_body`) — this
+            // states them where the decision is actually being made rather than three
+            // screens away in a policy page nobody opens mid-sentence.
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.talk_disclosure_dialog_body))
+                    Text(
+                        stringResource(R.string.talk_disclosure_stored_title),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Periwinkle,
+                    )
+                    Text(stringResource(R.string.talk_disclosure_stored_body))
+                    Text(
+                        stringResource(R.string.talk_disclosure_privacy),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Cyan,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .clickable(role = Role.Button) { showing = false; onOpen("privacy") }
+                            .padding(vertical = 14.dp),
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(onClick = { showing = false }) {
                     Text(stringResource(R.string.talk_disclosure_ok))
@@ -580,6 +607,27 @@ fun CoachScreen(onOpen: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
+            // CHAT_SPEC §1.8. Crisis support used to live in You → Human support: five taps
+            // and a tab change away from the person who needs it, and reachable only by
+            // someone composed enough to go looking. It sits in the input row instead —
+            // always visible, one tap, next to the thing they are already touching. It is
+            // deliberately quiet (an outline, not a red alarm): a panic button someone is
+            // embarrassed to be seen pressing in an open-plan office is a button they will
+            // not press. 48dp, not the mic's 44 — a safety control has no business sitting
+            // under the accessibility floor (CHAT_SPEC §5.63 covers the rest of the row).
+            Box(
+                Modifier.size(48.dp).clip(RoundedCornerShape(999.dp))
+                    .background(ChipFill)
+                    .clickable(role = Role.Button) { onOpen("crisis") },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.HealthAndSafety,
+                    contentDescription = stringResource(R.string.talk_sos),
+                    tint = Accent.crisis,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             if (voice.available) {
                 Box(
                     Modifier.size(44.dp).clip(RoundedCornerShape(999.dp))
