@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-07-16
+Last updated: 2026-07-21
 
 ## System shape
 
@@ -17,7 +17,7 @@ Two backend services, three client surfaces, one reverse proxy.
                                 │                      │
                  ┌──────────────▼──────────┐   ┌───────▼──────────────────┐
    Android ──────►      Platform API       │   │     Coaching Engine      │
-   (direct to    │  FastAPI + Postgres 16  ├──►│  FastAPI + LangGraph     │
+   (direct to    │  FastAPI + Postgres 16* ├──►│  FastAPI + LangGraph     │
     api.*)       │  auth, orgs, users,     │JWT│  the governed arc,       │
                  │  actions mirror,        │   │  prompt workbook, RAG,   │
                  │  analytics, nudges,     │   │  crisis screen,          │
@@ -28,6 +28,11 @@ Two backend services, three client surfaces, one reverse proxy.
                         │   Postgres 16 (+ Redis, pgvector)    │
                         └──────────────────────────────────────┘
 ```
+
+\* Under compose and in production the platform is Postgres — database
+`cerebrozen_platform` on the **same instance and volume as the engine**. Run
+bare with no `DATABASE_URL` it falls back to sqlite. That difference is a live
+trap (`stack:down -v` takes accounts with it); see DEVELOPING.md §Traps.
 
 **How the surfaces link to each other.** Each is a separate deployment on its own
 host, so every link between them is a real navigation — never a `next/link` route.
@@ -140,10 +145,17 @@ Change/add:
   minimal per-user actions/commitments mirror (id, status, due, session ref —
   no transcript content) so the app's Actions tab and HR completion metrics
   don't need engine reads.
-- Drop B2C features from the surface: consumer billing (Stripe/App Store),
-  waitlist, sleep/health tracking, media/audio catalogue, web push — either
-  delete or leave dormant behind flags. Seat licensing replaces consumer
-  billing in v1 (invoiced, not self-serve).
+- ~~Drop B2C features from the surface~~ — **reversed 2026-07-19.** The product
+  is now B2B *and* B2C freemium, so consumer billing is live, not dormant:
+  `POST /auth/signup` mints a personal org-of-one, and `app/billing_providers.py`
+  puts **mock** (default, in-process, inert without keys), **Stripe** (checkout +
+  signature-verified webhook) and **Google Play** (`/billing/play/verify`) behind
+  one seam. Entitlements are enforced **server-side** — resolved from org +
+  subscription in the DB, and carried to the engine as the `plan` JWT claim so it
+  can gate a coaching turn without calling back. Seat licensing (invoiced) remains
+  the enterprise path; the two coexist. A purchase or cancel **rotates the token
+  pair** so the engine's gate sees the change immediately instead of up to 15
+  minutes later.
 
 ## Android app (adapted from `ref/Zen/apps/android`)
 
@@ -166,9 +178,38 @@ SSE streaming, phase cards, role-play) · **Journeys** (programs) ·
 privacy center with export/delete, "what your employer sees", appearance).
 Crisis and HumanSupport screens carry over nearly unchanged.
 
-Drop for v1: soundscapes/audio mixer, sleep/Health Connect, games toolkit,
-premium/paywall. (The audio engine is impressive but it's a wellness-app
-feature; revisit for well-being journeys later.)
+~~Drop for v1: soundscapes/audio mixer, sleep/Health Connect, games toolkit,
+premium/paywall.~~ **Reversed — every item on that list now ships.** They were
+stripped on 2026-07-14 and added back from 2026-07-15 onward: the audio mixer and
+soundscapes returned as the "Rest & recovery" door (synthesized on-device, no
+licensed media), Health Connect as an optional last-night sleep prefill, the games
+as the "Reset toolkit", and the paywall as the B2C freemium surface. Read
+`TODO.md` chronologically or the strip entry reads as current.
+
+**OS integration** (`docs/HOME_SPEC.md` #22–#25). Four entry points outside the
+app share one vocabulary — a `route` string delivered as the `EXTRA_ROUTE` intent
+extra:
+
+| Source | Route |
+|---|---|
+| Launcher app-shortcut "Talk it through" (`res/xml/shortcuts.xml`) | `coach` |
+| Launcher app-shortcut "Breathe" | `breathe/reset` |
+| Glance home-screen widget (`widget/HomeWidget.kt`), both buttons | `coach` · `breathe/reset` |
+| Daily reminder notification (`notify/Reminders.kt`) | `actions` |
+
+`MainActivity` is `singleTask` and stashes the extra in `ui/PendingRoute.kt` — a
+**Compose-observable** holder, because a warm re-tap arrives via `onNewIntent`
+after the NavHost is already composed and a plain `var` cannot wake it. The
+NavHost consumes the route once and clears it. **Adding a route here means adding
+a matching `composable(...)`** — these strings are a contract between XML, a
+widget in another process, a notification, and the graph, with no compiler
+checking them.
+
+`net/HomeCache.kt` warms Home's data (name, moods, streak, active program,
+resumable session) **concurrently inside the splash's `Session.warmBoot()`**, so
+the first real frame arrives populated rather than assembling from three
+uncoordinated calls. It is cleared on sign-out so a new account never briefly
+renders the previous one's name or streak.
 
 ## Admin app (adapted from `ref/Zen/apps/admin`)
 
@@ -198,12 +239,13 @@ contracts that must be changed in lockstep across surfaces
 | Contract | Owner | Consumers | Rule |
 |---|---|---|---|
 | Session turn body (`text`, `message`, `metadata`, **`local_hour`**) | Engine | apps/app, Android | Additive, and every field must be OPTIONAL — an older client that omits one must still get a good turn. `local_hour` (0-23) is the caller's own clock: the CLIENT is the only party that knows it, because there is no timezone on the platform's user model and `region` is multi-zone for US/CA/AU/EU. The engine turns it into the `{time}` phrase (`guardrails.time_of_day`) — clients send a NUMBER, the engine owns the words, or two people get greeted differently at the same hour. Absent → a value that tells the coach not to name a time of day; it must never resolve blank, which is the bug it fixes (`coaching_intake` was told to greet by time of day and handed an empty string, so it invented one). An hour, never a location — nothing is stored. |
-| JWT claims (`sub`, `org_id`, `role`, `user.username`, `consent`, `plan`, `adult`) | Platform | Engine, Android, admin | Additive changes only; engine validates same secret. `consent` carries the six DPDP flags so the engine can enforce them without calling back — a consent change **rotates the token pair** (PATCH `/users/me/consent` returns a new pair; the app adopts it) so a withdrawal bites on the next request rather than at token expiry. `plan` (`free`\|`plus`\|`enterprise`, added 2026-07-19 for B2C freemium) carries the consumer entitlement so the engine can enforce the free-tier coaching cap + premium gating offline; resolved by `auth._resolve_plan` from the user's org + subscription. Same 15-min staleness trade as `consent` — `/billing/me` is the immediate truth for the UI; a purchase should rotate the token when engine enforcement lands so it bites promptly. `adult` (bool, added 2026-07-20) carries the 18+ attestation so the engine can refuse a coaching turn (`require_adult` → 403) to an un-attested consumer offline — true by contract for B2B seats/internal staff, else the personal account's own attestation; `POST /users/me/attest` **rotates the token pair** so a just-confirmed 18+ takes effect at once. Only an explicit `adult=false` is refused (absent passes, same rule as `plan`) |
+| JWT claims (`sub`, `org_id`, `role`, `user.username`, `consent`, `plan`, `adult`) | Platform | Engine, Android, admin | Additive changes only; engine validates same secret. `consent` carries the six DPDP flags so the engine can enforce them without calling back — a consent change **rotates the token pair** (PATCH `/users/me/consent` returns a new pair; the app adopts it) so a withdrawal bites on the next request rather than at token expiry. `plan` (`free`\|`plus`\|`enterprise`, added 2026-07-19 for B2C freemium) carries the consumer entitlement so the engine can enforce the free-tier coaching cap + premium gating offline; resolved by `auth._resolve_plan` from the user's org + subscription. **Engine enforcement has since landed** (`auth/dependencies.py::require_plus` → 402 on premium routes; `ratelimit.py::limit_free_daily_turns` caps free coaching at `FREE_TURN_DAILY_LIMIT`=5/day on both `/sessions/start` and `/turn`), and a purchase or cancel accordingly **rotates the token pair** (`billing._plan_out_rotated`) so the gate bites at once instead of lagging by the token TTL. `/billing/me` remains the immediate truth for the UI. `adult` (bool, added 2026-07-20) carries the 18+ attestation so the engine can refuse a coaching turn (`require_adult` → 403) to an un-attested consumer offline — true by contract for B2B seats/internal staff, else the personal account's own attestation; `POST /users/me/attest` **rotates the token pair** so a just-confirmed 18+ takes effect at once. Only an explicit `adult=false` is refused (absent passes, same rule as `plan`) |
 | Wellness content lives in the **engine**, never the platform | Engine | Android | Journal / sleep / check-ins are content: they are served from `/v1/wellness/*` on the engine, because the platform is the database an HR admin's token reaches and it must hold nothing to read. Pinned by tests on both sides (`test_wellness.py`, `test_wellness_account.py`, `ApiEndpointsTest`) |
 | Rest-and-recovery catalog (`/content`, `/media/catalog`, `/programs/*`) | Platform (`app/catalog.py`) | Android | Static app configuration, NOT user content nor licensed media — a curated list of scene titles that play through the phone's own bundled beds / synth tones (`audio_url` blank → MediaUrls bundled fallback). Program enrolment is per-user preference (program id + start date; the day is DERIVED, never stored). When real narration is licensed, its URLs drop into the same entries |
 | Consent keys (`mood_history`, `ai_memory`, `journal_memory`, `sleep_history`, `voice_storage`, `model_training`) | Platform (`models.CONSENT_KEYS`) | Android `ConsentNotice`, engine `_CONSENT_FOR_KIND` | Append-only. Renaming one silently unticks a box somebody consented to |
 | SSE event vocabulary (`status`/`node`/`token`/`done`, plus `error`) | Engine | Android, web app | Renames require simultaneous client release. **Wire format:** frames are `data:`-only — there is no SSE `event:` line — and the name rides in the JSON's `type` field; `done` carries `session_id`, which clients key every later turn on. Pinned against the composed stack (`e2e/tests/02-employee-journey.spec.ts`) |
 | Action status lifecycle (`active/saved/skipped/deleted/completed`) | Engine | Platform mirror, Android, HR analytics | Enum is append-only |
+| Android deep-link routes (`EXTRA_ROUTE` = `coach` \| `breathe/reset` \| `actions`) | Android NavHost (`ui/CereBroApp.kt`) | `res/xml/shortcuts.xml`, `widget/HomeWidget.kt`, `notify/Reminders.kt` | The only cross-**process** contract on the client: a launcher shortcut and a pinned widget live in the launcher's process and are parsed by the OS, so nothing compiles them against the graph. A route named by any of the three consumers MUST have a matching `composable(...)`, or the tap opens the app and silently does nothing. Renaming a route means updating the XML, the widget, and the notification in the same change. The Glance widget rebuilds its intents on every render, so it follows an app update — but a shortcut the user has **pinned** to their home screen keeps the definition it was pinned with until it is explicitly updated, so treat a route removal as breaking for pinned shortcuts. Added 2026-07-20 (HOME_SPEC #22–#25) |
 | Design tokens | `design/tokens.css` | web, admin, Android `Color.kt` | `sync-tokens` script + CI drift check |
 | Analytics event vocabulary | Platform | Android, admin dashboards | Documented enums (`EVENT_KINDS` authed coaching beats via `/events/coaching`; `FUNNEL_EVENTS` anonymous pre-auth beats via `/events`), no free-text event names. A coaching beat MAY carry an optional `theme` — a controlled Development-Area label from `models.THEME_VOCABULARY`, **never free text** (an unknown value is dropped to null on ingest, the beat still counts). Added 2026-07-17, server-side backward-compatible first: an old client that sends no `theme` is unaffected; a client populates it from the action's Development Area. HR sees themes only as a **k-anon-floored** aggregate (`/orgs/me/analytics` `themes`), counts never names below the floor |
 | Crisis regions/helplines (`app/safety/helplines.py`) | Engine | Android crisis + human-support screens | Never hardcoded in clients — this was violated: India's numbers were literals in the Android screens and shown to everyone, while Settings offered a region picker nothing read. Clients GET `/v1/safety/helplines?region=` and render what comes back. `region` is the platform's resolved `crisis_region` on `/users/me` (the person's `User.region`, else their `Org.crisis_region`, else `""` = unknown) — deliberately NOT a JWT claim: a directory lookup is not an authorisation decision. The endpoint is total (no input yields an empty list) and clients keep a region-**neutral** offline floor identical to the engine's unknown-region answer — never a country's numbers (`data/Helplines.kt`, `test_helplines.py`, `HelplinesTest.kt`) |

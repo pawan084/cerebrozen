@@ -398,6 +398,10 @@
     <string name="invite_cta">Join</string>
     <string name="invite_error">Couldn\'t join — check the code and try again.</string>
     <string name="splash_loading">CereBro, loading</string>
+    <string name="shortcut_talk_short">Talk</string>
+    <string name="shortcut_talk_long">Talk it through</string>
+    <string name="shortcut_breathe_short">Breathe</string>
+    <string name="shortcut_breathe_long">Breathe for 2 minutes</string>
     <string name="auth_divider_email">OR USE EMAIL</string>
     <string name="auth_divider_otp">EMAIL CODE</string>
     <string name="auth_name_label">Name</string>

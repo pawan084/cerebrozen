@@ -70,3 +70,34 @@ def test_singular_grammar(monkeypatch):
     monkeypatch.setenv("CEREBROZEN_NUDGE_CHANNEL", "slack")
     one = {**REC, "due_count": 1}
     assert "1 coaching check-in due" in notifications._format_payload(one)["text"]
+
+
+# ── #68: a nudge may remind, never manipulate ────────────────────────────────
+
+#: Vocabulary that turns a reminder into a retention lever. Not a style preference: an AI
+#: that performs longing to pull a user back is the behaviour CA SB243 and NY's
+#: companion-AI law are written about, and a notification is where it would appear first
+#: because notification copy is the thing product teams A/B test hardest.
+_MANIPULATIVE = (
+    "miss you", "we miss", "missing you", "lonely", "come back to me", "don't leave",
+    "abandoned", "still there", "waiting for you", "i need you", "haven't heard from you",
+    "disappointed", "you promised", "don't let me down", "streak", "you'll lose",
+)
+
+
+@pytest.mark.parametrize("ch", ["slack", "teams", "generic"])
+def test_a_nudge_never_uses_longing_guilt_or_loss_to_pull_the_user_back(monkeypatch, ch):
+    """The engine's nudge is a count and a link by construction — this is the guard that
+    keeps it that way when someone later "improves engagement" on this copy."""
+    monkeypatch.setenv("CEREBROZEN_NUDGE_CHANNEL", ch)
+    blob = str(notifications._format_payload(REC)).lower()
+    for phrase in _MANIPULATIVE:
+        assert phrase not in blob, f"the nudge copy leans on {phrase!r}"
+
+
+def test_the_nudge_points_at_the_user_s_own_follow_through(monkeypatch):
+    """The honest reason to reopen the app is the commitment the user made, not the coach's
+    feelings about their absence."""
+    monkeypatch.setenv("CEREBROZEN_NUDGE_CHANNEL", "slack")
+    text = notifications._format_payload(REC)["text"].lower()
+    assert "check-in" in text and "follow through" in text

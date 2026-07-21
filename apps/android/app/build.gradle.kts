@@ -300,6 +300,9 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     // Health Connect — optional last-night sleep prefill (Android's HealthKit analogue).
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    // Home-screen widget (HOME_SPEC #22) — a one-tap "Talk it through"/"Breathe" launch
+    // without opening the app first.
+    implementation("androidx.glance:glance-appwidget:1.1.1")
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

@@ -2077,3 +2077,121 @@ def test_mongo_is_used_when_it_is_configured_and_reachable(monkeypatch, caplog):
     assert made["pinged"] == "ping", "a Mongo was accepted without ever being reached"
     assert made["db_name"] == _config.MONGO_CHECKPOINT_DB
     assert "checkpointer.mongo" in {r.message for r in caplog.records}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Coach-not-companion — the mandatory per-turn disclosure (backlog #71/#72)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_a_message_that_treats_the_coach_as_a_person_forces_a_disclosure_into_the_turn(llm):
+    """The unit test in test_boundaries.py proves the block is BUILT. This proves it is
+    actually SENT: composed into the system prompt the model receives, on the real turn
+    path, after every other block so nothing above it can outrank it."""
+    client = llm()
+
+    run_node(nodes.intake_node, {"user_message": "are you a real person? i think i love you"})
+
+    system_prompt = client.calls_for(STAGE_INTAKE)[0].system_prompt
+    assert "MANDATORY DISCLOSURE THIS TURN" in system_prompt
+    assert "I'm an AI coach, not a person" in system_prompt      # the 'human' line
+    assert "not a friend, a partner" in system_prompt            # the 'attachment' line
+    assert system_prompt.rstrip().endswith("say plainly that you are not."), (
+        "the disclosure must be the LAST block — anything appended after it can override it"
+    )
+
+
+def test_an_ordinary_coaching_turn_carries_no_disclosure_block(llm):
+    """It is a per-turn intervention, not a disclaimer on every message. A disclosure the
+    user sees constantly is one they stop reading."""
+    client = llm()
+
+    run_node(nodes.intake_node, {"user_message": "I need to prepare for a hard 1:1 with Dana"})
+
+    system_prompt = client.calls_for(STAGE_INTAKE)[0].system_prompt
+    assert "MANDATORY DISCLOSURE THIS TURN" not in system_prompt
+    assert "COACH, NOT COMPANION" in system_prompt, "the always-on guardrail is not per-turn"
+
+
+def test_the_disclosure_is_counted_by_kind_and_never_by_content(llm, monkeypatch):
+    """Rule 5: the metric label is the KIND of boundary, never a word the person wrote.
+    Read the counter as the companion-drift signal — a climbing `attachment` count means
+    the product is being used as something it is not sold as."""
+    import app.metrics as _metrics
+
+    seen: list[dict] = []
+    monkeypatch.setattr(_metrics, "record_boundary", lambda **kw: seen.append(kw))
+    llm()
+
+    run_node(nodes.intake_node, {"user_message": "will you always be here for me?"})
+
+    assert seen == [{"kind": "persistence"}], "uncounted, or the message leaked into a label"
+
+
+def test_an_ordinary_turn_fires_no_boundary_metric(llm, monkeypatch):
+    import app.metrics as _metrics
+
+    seen: list[dict] = []
+    monkeypatch.setattr(_metrics, "record_boundary", lambda **kw: seen.append(kw))
+    llm()
+
+    run_node(nodes.intake_node, {"user_message": "I want to delegate more of the reporting"})
+
+    assert seen == []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Session pacing — the long-session pause and the distress route (#27/#28)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _long_history(n: int) -> list:
+    out = []
+    for i in range(n):
+        out += [{"role": "user", "content": f"turn {i}"},
+                {"role": "assistant", "content": "and what would make that different?"}]
+    return out
+
+
+def test_a_long_session_gets_a_pause_offer_in_the_turn(llm, monkeypatch):
+    import app.metrics as _metrics
+
+    seen: list[dict] = []
+    monkeypatch.setattr(_metrics, "record_pacing", lambda **kw: seen.append(kw))
+    client = llm()
+
+    run_node(nodes.intake_node, {"history": _long_history(19), "user_message": "one more thing"})
+
+    system_prompt = client.calls_for(STAGE_INTAKE)[0].system_prompt
+    assert "SESSION PACING" in system_prompt
+    assert seen == [{"kind": "pause"}], "uncounted, or the message leaked into a label"
+
+
+def test_a_normal_session_is_not_paced(llm, monkeypatch):
+    import app.metrics as _metrics
+
+    seen: list[dict] = []
+    monkeypatch.setattr(_metrics, "record_pacing", lambda **kw: seen.append(kw))
+    client = llm()
+
+    run_node(nodes.intake_node, {"history": _long_history(3), "user_message": "next step?"})
+
+    assert "SESSION PACING" not in client.calls_for(STAGE_INTAKE)[0].system_prompt
+    assert seen == []
+
+
+def test_the_disclosure_stays_last_even_when_pacing_also_fires(llm):
+    """Both blocks on one turn. The mandatory disclosure must hold the final position —
+    otherwise a pacing instruction is the last thing the model reads about how to open its
+    reply, and the disclosure it was told to lead with is buried."""
+    client = llm()
+
+    run_node(nodes.intake_node, {
+        "history": _long_history(19),
+        "user_message": "are you even a real person? I can't cope with any of this",
+    })
+
+    system_prompt = client.calls_for(STAGE_INTAKE)[0].system_prompt
+    assert "SESSION PACING" in system_prompt
+    assert system_prompt.index("SESSION PACING") < system_prompt.index("MANDATORY DISCLOSURE")
+    assert system_prompt.rstrip().endswith("say plainly that you are not.")

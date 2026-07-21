@@ -35,12 +35,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -55,10 +58,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.HomeCache
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.BrandPrimary
 import com.cerebrozen.app.ui.theme.ChipFill
@@ -125,6 +130,28 @@ internal fun weekPresence(
 internal fun checkedInToday(dates: Set<LocalDate>, today: LocalDate): Boolean = today in dates
 
 /**
+ * The last 30 days, oldest first — a density view beyond what the 7-dot week ring can show
+ * (HOME_SPEC #17). Still a mirror, not a scorecard: no labels, no counts, just whether each
+ * day happened. Shown only once a streak has actually grown past a week (see [CheckInCard]) —
+ * a brand-new account has nothing here worth looking at yet.
+ */
+internal fun monthPresence(dates: Set<LocalDate>, today: LocalDate): List<Boolean> =
+    (29 downTo 0).map { back -> today.minusDays(back.toLong()) in dates }
+
+/**
+ * A quiet warmth shift at real milestones (7/30/100 days) — never a badge, never a
+ * congratulation, just the SAME dot reading a little richer once the streak has actually
+ * earned it (HOME_SPEC #18). Below 7 this is plain [BrandPrimary]; it never appears anywhere
+ * gamified — no counter resets it, no copy calls attention to the shift itself.
+ */
+internal fun milestoneTint(streakDays: Int, base: Color, gold: Color): Color = when {
+    streakDays >= 100 -> androidx.compose.ui.graphics.lerp(base, gold, 0.85f)
+    streakDays >= 30 -> androidx.compose.ui.graphics.lerp(base, gold, 0.55f)
+    streakDays >= 7 -> androidx.compose.ui.graphics.lerp(base, gold, 0.28f)
+    else -> base
+}
+
+/**
  * What to say next to the ring. Never a scold, never a streak-loss warning.
  *
  * A streak is only mentioned once it is worth mentioning (2+), because "1 day streak" is
@@ -166,12 +193,26 @@ internal fun CheckInCard() {
         // Absence is not refusal: a token minted before the claim existed, or a profile
         // fetch that failed, must not silently hide the feature. Only an explicit false does.
         allowed = runCatching { Api.consent().optBoolean("mood_history", true) }.getOrDefault(true)
-        if (allowed == true) refresh()
+        // The keyed effect below already seeds `dates`/`streak` from HomeCache the moment it
+        // has a value; only fetch directly here when the cache came up genuinely empty (a
+        // cold path — warmBoot() timed out, or this card mounted before it finished).
+        if (allowed == true && HomeCache.moods == null && HomeCache.streak == null) refresh()
+    }
+    // HomeCache is warmed once during the splash (Session.warmBoot) and re-warmed by Today's
+    // pull-to-refresh — this keeps the card in sync with BOTH without a manual callback: any
+    // update to the shared cache re-fires here and recomposes the card.
+    LaunchedEffect(HomeCache.moods, HomeCache.streak) {
+        HomeCache.moods?.let { dates = checkInDates(it) }
+        HomeCache.streak?.let { streak = it }
     }
 
+    if (allowed == null) { CheckInSkeleton(); return }
     if (allowed != true) return
 
     val done = checkedInToday(dates, today) || justSaved
+    // A quiet warmth shift at real milestones — the SAME dot, a little richer once the
+    // streak has actually earned it (HOME_SPEC #18). Never a badge, never named as such.
+    val tint = milestoneTint(streak, BrandPrimary, MilestoneGold)
     SectionCard {
         Text(
             progressLine(streak, done),
@@ -179,29 +220,77 @@ internal fun CheckInCard() {
         )
         Spacer(Modifier.height(12.dp))
         if (!done) {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MOOD_OPTIONS.forEach { option ->
-                    MoodChip(option.label, busy = saving == option.label) {
-                        saving = option.label
-                        scope.launch {
-                            runCatching { Api.checkIn(option.label, "", option.symbol, option.intensity) }
-                                .onSuccess { justSaved = true; refresh() }
-                            saving = null
+            val moodScroll = rememberScrollState()
+            Box {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(moodScroll),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    MOOD_OPTIONS.forEach { option ->
+                        MoodChip(option.label, option.intensity, busy = saving == option.label) {
+                            saving = option.label
+                            scope.launch {
+                                runCatching { Api.checkIn(option.label, "", option.symbol, option.intensity) }
+                                    .onSuccess { justSaved = true; refresh(); HomeCache.markCheckedInToday() }
+                                saving = null
+                            }
                         }
                     }
+                }
+                // A hint that there's a chip off-screen (HOME_SPEC #20) — "Rough" used to sit
+                // past the fold with nothing telling you it was there.
+                if (moodScroll.canScrollForward) {
+                    Box(
+                        Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(28.dp)
+                            .background(Brush.horizontalGradient(listOf(Color.Transparent, ScrollFadeScrim))),
+                    )
+                }
+                if (moodScroll.canScrollBackward) {
+                    Box(
+                        Modifier.align(Alignment.CenterStart).fillMaxHeight().width(28.dp)
+                            .background(Brush.horizontalGradient(listOf(ScrollFadeScrim, Color.Transparent))),
+                    )
                 }
             }
             Spacer(Modifier.height(14.dp))
         }
-        WeekRing(weekPresence(dates, today))
+        WeekRing(weekPresence(dates, today), tint)
+        // Beyond a week, the 7-dot ring can't show the shape of a longer streak — a quiet
+        // density strip, no labels, no counts (HOME_SPEC #17). Held back until it's actually
+        // meaningful; a brand-new account has nothing here worth looking at yet.
+        if (streak >= 8) {
+            Spacer(Modifier.height(10.dp))
+            MonthDensity(monthPresence(dates, today), tint)
+        }
     }
 }
 
+private val MilestoneGold = Color(0xFFE0B341)
+private val ScrollFadeScrim = Color(0xFF0B0E24).copy(alpha = 0.55f)
+
+/** Placeholder shape for [CheckInCard] while the consent check is in flight — the card used
+ *  to render NOTHING until it resolved, so the page visibly grew once data landed. Mirrors
+ *  the card's real layout (a title line, four chip-shaped fills, seven day-dots) so there is
+ *  no jump when the shimmer is replaced by the real content. */
 @Composable
-private fun MoodChip(label: String, busy: Boolean, onClick: () -> Unit) {
+private fun CheckInSkeleton() {
+    SectionCard {
+        ShimmerBox(Modifier.fillMaxWidth(0.55f).height(20.dp), RoundedCornerShape(6.dp))
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(4) { ShimmerBox(Modifier.size(width = 72.dp, height = 52.dp), RoundedCornerShape(999.dp)) }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            repeat(7) { ShimmerBox(Modifier.size(22.dp), CircleShape) }
+        }
+    }
+}
+
+/** [intensity] (1=Good..4=Rough) softens the tap for heavier moods — HOME_SPEC #19: every
+ *  option used to fire the identical tick regardless of which feeling was tapped. */
+@Composable
+private fun MoodChip(label: String, intensity: Int, busy: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
@@ -212,7 +301,10 @@ private fun MoodChip(label: String, busy: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(999.dp))
             .background(ChipFill)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button) {
-                if (!busy) { Haptics.selection(); onClick() }
+                if (!busy) {
+                    Haptics.soft(1f - (intensity - 1) * 0.18f)
+                    onClick()
+                }
             }
             .padding(horizontal = 20.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
@@ -222,9 +314,10 @@ private fun MoodChip(label: String, busy: Boolean, onClick: () -> Unit) {
 }
 
 /** Seven dots. A filled one is a day they showed up; an empty one is just a day.
- *  No red, no cross, no "missed" — see the file header. */
+ *  No red, no cross, no "missed" — see the file header. [tint] carries the quiet
+ *  milestone warmth (HOME_SPEC #18); plain [BrandPrimary] below a 7-day streak. */
 @Composable
-private fun WeekRing(week: List<Pair<String, Boolean>>) {
+private fun WeekRing(week: List<Pair<String, Boolean>>, tint: Color = BrandPrimary) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         week.forEachIndexed { i, (day, active) ->
             val isToday = i == week.lastIndex
@@ -235,14 +328,29 @@ private fun WeekRing(week: List<Pair<String, Boolean>>) {
                 Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
                     if (isToday) {
                         Box(Modifier.size(22.dp).clip(CircleShape)
-                            .border(1.dp, BrandPrimary.copy(alpha = 0.55f), CircleShape))
+                            .border(1.dp, tint.copy(alpha = 0.55f), CircleShape))
                     }
                     Box(Modifier.size(14.dp).clip(CircleShape)
-                        .background(if (active) BrandPrimary else ChipFill)
+                        .background(if (active) tint else ChipFill)
                         .testTag("presence-dot-$i"))
                 }
                 Text(day, style = MaterialTheme.typography.labelSmall, color = TextMuted)
             }
+        }
+    }
+}
+
+/** A 30-tick density strip beyond the week ring — no labels, no counts, just whether each
+ *  day happened (HOME_SPEC #17). Compact enough to sit under the week ring without
+ *  competing with it for attention. */
+@Composable
+private fun MonthDensity(month: List<Boolean>, tint: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        month.forEach { active ->
+            Box(
+                Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(2.dp))
+                    .background(if (active) tint.copy(alpha = 0.85f) else ChipFill),
+            )
         }
     }
 }

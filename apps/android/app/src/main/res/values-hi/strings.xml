@@ -321,6 +321,10 @@
     <string name="invite_cta">जुड़ें</string>
     <string name="invite_error">जुड़ नहीं सके — कोड जाँचें और फिर से प्रयास करें।</string>
     <string name="splash_loading">CereBro, लोड हो रहा है</string>
+    <string name="shortcut_talk_short">बात करें</string>
+    <string name="shortcut_talk_long">बात करके सुलझाएँ</string>
+    <string name="shortcut_breathe_short">साँस लें</string>
+    <string name="shortcut_breathe_long">2 मिनट साँस लें</string>
     <string name="auth_divider_email">या ईमेल से</string>
     <string name="auth_divider_otp">ईमेल कोड</string>
     <string name="auth_name_label">नाम</string>

@@ -5,7 +5,7 @@
 > evidence, so counsel can answer the questions in §6 quickly. This document records
 > **facts and open questions only** — it draws no legal conclusion, and nothing here
 > should be read as one.
-> Last updated: 2026-07-16.
+> Last updated: 2026-07-21.
 
 ## 1. The short version
 
@@ -23,7 +23,7 @@ can rely on either half.
 
 | | |
 |---|---|
-| **Us** | CereBroZen (this repo), a B2B workplace-coaching product intended for sale to multiple enterprise tenants. |
+| **Us** | CereBroZen (this repo), a workplace-coaching product sold **two ways**: to multiple enterprise tenants, and — **since 2026-07-19** — **direct to individual consumers on a public, self-serve price** (`/pricing`, $9.99/mo · $59.99/yr). **This is a material change to the facts below and postdates the questions in §6.** Counsel was briefed on a B2B-only product; if inherited coaching content may be resold at all, "we also sell it self-serve to individuals at a published price, with no negotiated contract in between" is a different question from the one originally asked. Re-put §6 on that basis. |
 | **Prior client** | Sherlock Performance (`sherlockperformance.com`) — per the reference's docs, a live enterprise product with named customers (Citibank, HSBC, Northwestern Mutual, Guardian Life, SCOR, HCL). Described there as "a company with real customers and real counsel." |
 | **Third parties** | Kobus Neethling (NBI / "Whole Brain", credited **by name** in the prompts); DISC (behavioural profiling); ICF (the "PCC" credential, asserted as the coach's claimed maturity). Their rights are **separate from** the prior client's and are not covered by any agreement with that client. |
 
@@ -122,6 +122,15 @@ monitors, the stuck-stage watchdog, the crisis screen, the rate limiter, the eva
 **Blocked pending §6:** shipping the workbook to any tenant; marketing the three-path
 model; the prompt-shrink work (adapting content we may not own); flipping `ref/` to
 tracked; any customer commitment or dated promise.
+
+> ⚠️ **Reconcile this list with what has since shipped (flagged 2026-07-21).** Phase 1
+> and everything below it were built anyway, and a **public self-serve pricing page with
+> working checkout** is arguably "a customer commitment or dated promise". Two readings:
+> either the gate was consciously narrowed to *the workbook content specifically* (in
+> which case say so here, and the shipped engineering is fine — §3.4 already calls the
+> machinery generic), or the block is real and is not being honoured. Someone has to
+> pick. Recording the ambiguity rather than quietly letting a stated gate rot is the
+> whole point of this document.
 
 **Not blocked** (generic engineering, per §3.4): the graph machinery, prompt registry,
 offline port, contract monitors, watchdog, crisis screen, rate limiter, evals, tenancy,

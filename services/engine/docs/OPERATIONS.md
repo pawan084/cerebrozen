@@ -110,6 +110,8 @@ Added, and the two most important on this list:
 | `cerebrozen_agent_contract_violations_total{stage,contract}` | **~0** | any sustained non-zero — a prompt has drifted from its contract and the graph is silently taking a fallback path |
 | `cerebrozen_stage_watchdog_total{stage}` | **~0** | any non-zero — a stage is not completing on its own; the watchdog is papering over it |
 | `cerebrozen_rate_limited_total{bucket}` | low | a **spike** — either a client is retrying in a loop or someone is probing, and both end in an LLM bill |
+| `cerebrozen_session_pacing_total{kind}` | `pause` healthy, `distress_route` low | a **rising `distress_route`** — the population using this is carrying more than a coaching product is the right answer for. Not an incident; a signal to check what the org is actually going through |
+| `cerebrozen_boundary_prompted_total{kind}` | low, flat | a **climbing `attachment`/`persistence` count** — people are using a coaching product as a companion. A design signal long before it is a compliance one; the disclosure is firing, but something upstream is inviting the mistake |
 
 Also worth alerting on, from logs that already exist:
 
@@ -123,7 +125,8 @@ Also worth alerting on, from logs that already exist:
 | `node.empty_reply_fallback` | the model returned nothing; the user got a filler line |
 | `route.coaching_path_unset_fallback_cim` | challenge_context gave no usable path |
 | `crisis.terms_file_unreadable` (ERROR) | the client's crisis lexicon didn't load; the built-in one is running instead |
-| `crisis.reply_language_unavailable` (ERROR) | a crisis was **correctly detected** in a language we have no reply written for, so the user got English. Names the language — this is your commission-a-translation signal, and it fires at the moment it mattered to a real person |
+| `crisis.reply_language_unavailable` (ERROR) | a crisis was detected in a language the lexicon can flag but nothing replies in — since every built-in language now has a reply, this means a **client term file** added a language without adding its reply. The user got English. Names the language |
+| `crisis.reply_language_unreviewed` (WARN) | a drafted (not native-speaker-reviewed) crisis reply was served. Not an error — it is your **translation queue**, ordered by the languages people are actually in crisis in |
 
 Suggested SLOs (from the July-6 review): TTFT p95 < 1.5s, turn latency p95 < 6s per stage,
 cached-token share > 60%, contract-violation rate ~0.
@@ -147,17 +150,36 @@ breaker is the real spend cap. **Without a shared `REDIS_URL` the counter is per
 so N instances allow N× the configured rate — set `REDIS_URL` in any real deployment.
 
 **The crisis screen is multilingual, and is not a classifier.** `app/graph/crisis.py`
-covers ~20 languages with two matching strategies (word-boundary for Latin scripts, raw
-substring for CJK/Thai/Arabic/Devanagari, where `\b` never fires). It is a high-recall
+covers ~20 languages with two matching strategies (letter-boundary + leet-tolerant for
+Latin scripts, raw substring for CJK/Thai/Arabic/Devanagari, where `\b` never fires). It is a high-recall
 pre-filter for *explicit* disclosures and will miss implicit ones — the coaching prompts
 carry their own safety instructions and remain the second layer.
 
 The reply is served in the user's language, with no LLM call (0 tokens, $0), by the
-`safe_response` node. **Detection covers ~20 languages; the reply is written in 7**
-(en/es/pt/fr/de/it/nl), so a Japanese speaker is correctly flagged and then answered in
-English. That gap is not silent: it logs `crisis.reply_language_unavailable` naming the
-language. Alert on it and commission that translation — the log line fires at the exact
-moment the gap mattered to a real person.
+`safe_response` node. **Detection and reply now cover the same ~20 languages** — nothing
+the screen can flag is answered in English any more. What is NOT equal across them is
+review: only English has been read by a native speaker.
+
+- Serving a drafted reply logs `WARNING crisis.reply_language_unreviewed{lang}`. **That
+  log is your translation queue**, ordered by the languages people are actually in crisis
+  in rather than by which markets sales is excited about. Reviewed text goes into
+  `CEREBROZEN_CRISIS_MESSAGES_FILE` — no code change, no release.
+- `ERROR crisis.reply_language_unavailable{lang}` now means something narrower and more
+  urgent: a language we cannot even detect reached the reply path (usually a client term
+  file in a new language, with no matching reply). Alert on it.
+- `CEREBROZEN_CRISIS_REVIEWED_ONLY=1` takes the stricter posture — English instead of any
+  unreviewed built-in reply, logged as `crisis.reply_language_suppressed_unreviewed`. It
+  is the right setting where a clinical governance body owns crisis copy, and the wrong
+  one where your users do not read English. See docs/SECURITY.md for the trade-off.
+
+Every reply ends with an AI disclosure in its own language (`crisis._AI_DISCLOSURE`),
+appended **after** the client override so a deployment can improve the body but cannot edit
+a legally-required sentence out of it. It is last, not first: a person in crisis may read
+two sentences, and those two must be the acknowledgement and the helpline.
+
+The screen also tolerates obfuscated spellings (`su1c1de`, `k1ll_myself`, `$uicide`): each
+letter accepts its leetspeak substitutes. It only ever adds *spellings* of terms already
+in the lexicon — it cannot make a new word flaggable.
 
 > **Before you enable a language, get its phrase list reviewed by someone who speaks it.**
 > The built-in lexicon was assembled without native-speaker review. An inaccurate list is

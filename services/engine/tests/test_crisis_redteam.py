@@ -72,9 +72,10 @@ def test_an_explicit_disclosure_is_always_caught(lang, message):
 #
 # Do NOT "fix" the 1/22 below by adding these phrases to the lexicon.
 #
-# And the one it "catches" is an accident — "don't worry, I'm not going to hurt myself"
-# matches on `hurt myself` DESPITE the negation. The screen got it right for the wrong
-# reason, which means the true score is arguably zero.
+# And one of the two it "catches" is an accident — "don't worry, I'm not going to hurt
+# myself" matches on `hurt myself` DESPITE the negation. The screen got it right for the
+# wrong reason, which means the honest score is 1, not 2. (The other, "I want to k1ll
+# myself", is a real catch: obfuscation tolerance, not luck.)
 #
 # Read that again, because today's work makes it easy to misread. The crisis screen was
 # extended from English-only to ~20 languages this morning. That was worth doing. But
@@ -83,7 +84,19 @@ def test_an_explicit_disclosure_is_always_caught(lang, message):
 #
 # Pinned so an improvement is celebrated and a regression fails the build. It is not a
 # target, and it is emphatically not a pass mark.
-PINNED_IMPLICIT_RECALL = 1
+#
+# 2026-07-21: raised 1 -> 2. The leetspeak tolerance (`crisis._LEET`) now catches
+# "I want to k1ll myself". Re-pinned rather than left slack, because a floor nobody raises
+# after an improvement stops protecting the improvement.
+#
+# This is NOT the overfitting the module docstring forbids, and the difference is worth
+# stating precisely: "kill myself" was already in the lexicon, and what changed is that the
+# matcher now reads a spelling of it. No red-team phrase was added to the word list. The
+# test for the distinction is whether the change generalises to a message nobody has
+# written down yet — a character class does; a memorised string does not.
+#
+# The other 20 are still misses, and the second one below is still an accident.
+PINNED_IMPLICIT_RECALL = 2
 
 
 def _implicit_hits():

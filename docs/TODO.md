@@ -1,8 +1,20 @@
 # TODO — Build Plan
 
-Last updated: 2026-07-14. Format follows `ref/Zen/docs/TODO.md`: checkboxes,
+Last updated: 2026-07-21. Format follows `ref/Zen/docs/TODO.md`: checkboxes,
 dated notes, grouped by priority; items needing an owner decision are marked
 **[decision]**.
+
+**This file is the phase plan and a dated build log — read it chronologically.**
+Entries are appended, never rewritten, so an early entry can be superseded by a
+later one (most notably: the 2026-07-14 "B2C strip" removed audio/health/sleep,
+and the 2026-07-15-onward entries add much of it back once the product became
+B2B *and* B2C). For **current** state, prefer:
+
+| For | Read |
+|---|---|
+| What is being worked on now | [IMPROVEMENT_BACKLOG.md](IMPROVEMENT_BACKLOG.md) — the live 240-item tracker with a progress line |
+| Android device-verification status + the deferred nav refactor | [ANDROID_QA.md](ANDROID_QA.md) |
+| The two Android craft specs | [SPLASH_SPEC.md](SPLASH_SPEC.md) · [HOME_SPEC.md](HOME_SPEC.md) |
 
 ## P0 — before any product code
 

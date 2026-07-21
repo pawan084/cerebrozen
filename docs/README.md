@@ -1,10 +1,17 @@
 # CereBroZen Documentation
 
-CereBroZen is a B2B enterprise AI coaching platform: every employee gets an
-always-on performance coach, and HR/leadership gets aggregated behavioral
-analytics. The commercial model follows sherlockperformance.com (enterprise
-subscription, demo-gated sales, CHRO/L&D buyers); the engineering is adapted
-from two reference codebases in `ref/`.
+CereBroZen is an AI coaching platform sold **two ways**: to enterprises (every
+employee gets an always-on performance coach; HR/leadership gets aggregated
+behavioural analytics) and, since 2026-07-19, **direct to consumers as freemium**
+(Free / Plus / enterprise, personal org-of-one on signup). The B2C tier is run as
+a B2B2C funnel and evidence engine, not the P&L. The enterprise commercial model
+follows sherlockperformance.com (subscription, demo-gated sales, CHRO/L&D buyers);
+the engineering is adapted from two reference codebases in `ref/`.
+
+The line that governs legal exposure is **functional, not contractual** — what
+matters is that the product stays non-clinical, disclaims therapy, routes crises
+deterministically, and hands off to humans. That posture is what makes B2C
+defensible, and it is why safety is code (rule 4) rather than editable content.
 
 ## The documents
 
@@ -21,7 +28,19 @@ from two reference codebases in `ref/`.
 | [SECURITY.md](SECURITY.md) | Threat posture, tenancy, privacy modes, crisis safety, compliance mapping. |
 | [LICENSING.md](LICENSING.md) | **What this codebase inherited and from whom** — the provenance inventory + the open questions for counsel. **Gates Phase 1 and below.** Read before promising anyone anything. |
 | [REF_PARITY.md](REF_PARITY.md) | Feature-by-feature vs the `ref/Zen` clients: what to **take**, what is **correctly absent** (B2C→B2B), what we are **ahead** on, and the **traps** that would break rule 5 if ported. |
-| [TODO.md](TODO.md) | The prioritized build plan, phase by phase, with inherited risks from the references. |
+| [TODO.md](TODO.md) | The phase-by-phase build plan **and dated build log** — append-only, so read it chronologically; a 2026-07-14 entry can be superseded by a later one. |
+| [IMPROVEMENT_BACKLOG.md](IMPROVEMENT_BACKLOG.md) | **The live tracker** — 240 numbered, autonomously-implementable items with a progress line. This is "what's being worked on now"; TODO.md is "the plan". |
+| [CLAIMS_MAP.md](CLAIMS_MAP.md) | Rule 6 made checkable: every marketing claim → the mechanism that backs it → the test that proves it. Enforced in CI by `scripts/check-claims.mjs`. |
+| [DATA_SAFETY.md](DATA_SAFETY.md) | Pre-filled answers for the Play Store Data Safety form and Apple's privacy questionnaire. |
+| [SELF_HOSTING.md](SELF_HOSTING.md) | Running the whole thing on your own infrastructure — the sovereignty claim's actual instructions. |
+| [ANDROID_QA.md](ANDROID_QA.md) | The line between what CI proves and what only a physical device can: coverage, the pending device checklist, hardware-verified log, and the deferred nav refactor (#174). |
+| [SPLASH_SPEC.md](SPLASH_SPEC.md) · [HOME_SPEC.md](HOME_SPEC.md) | The two Android craft specs — each a numbered gap analysis with a shipped-status banner on top. Splash is device-verified; Home is not yet. |
+| [legal/CONSUMER_TERMS_DRAFT.md](legal/CONSUMER_TERMS_DRAFT.md) | Consumer ToS draft. **Needs counsel review — not cleared.** |
+
+Each backend service carries its own doc set for things that shouldn't leak into
+the shared plan: `services/engine/docs/` (12 docs — `AGENT_FLOW`, `EVALS`,
+`OPERATIONS`, `AIR_GAPPED`, `MODEL_CARD`, `FORK_NOTES`, …). A `docs/X.md`
+reference inside an engine doc means *that* tree, not this one.
 
 ## The reference codebases (read-only)
 
@@ -37,5 +56,21 @@ never ship its media assets.
 
 ## Status
 
-- 2026-07-14 — docs created; marketing site live in `apps/web`; no product
-  code written yet. Start at [TODO.md](TODO.md) Phase 0.
+**2026-07-21.** All four surfaces and both services are built and gate-green;
+the work now is backlog burn-down, not scaffolding.
+
+| Surface | State |
+|---|---|
+| `services/engine` | Coaching graph, safety pipeline, evals + 22-case crisis red-team gate |
+| `services/platform` | Auth/orgs/entitlements/billing (mock · Stripe · Play behind one seam) |
+| `apps/web` | Marketing site + pricing, sovereignty, coaching-not-therapy, accessibility pages |
+| `apps/admin` | HR portal + ops admin (personal B2C orgs excluded from the tenant list) |
+| `apps/android` | 5 tabs, B2C purchase loop device-verified; Home/"Today" rebuild awaiting a device |
+
+Live test/coverage numbers are kept in **one** place — the progress line of
+[IMPROVEMENT_BACKLOG.md](IMPROVEMENT_BACKLOG.md) — deliberately not duplicated
+here, because a second copy is a second thing to go stale.
+
+**What needs a human, not code:** real Stripe + Google Play merchant keys; the
+`/auth/google` backend; counsel review of the consumer ToS; app-store submission;
+the final pricing call. These are listed unnumbered at the end of the backlog.

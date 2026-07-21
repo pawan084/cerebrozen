@@ -1,6 +1,6 @@
 # Developing — run it, test it, and the traps that cost us days
 
-Last updated: 2026-07-17.
+Last updated: 2026-07-21.
 
 Everything here is **measured on this codebase**, not general advice. Most of it exists
 because it cost someone hours. Read the traps before the commands.
@@ -70,12 +70,17 @@ Android prefilled `worker@acme-test.example` and tapping Continue silently did n
 
 ## Traps
 
-### `npm run stack:down` DESTROYS the engine's data
+### `npm run stack:down` DESTROYS **both** services' data
 
-It is `docker compose down -v`. The `-v` removes the `cere_pg-data` volume: conversations,
-escalations, wellness, the vector index. Use plain `docker compose down` unless a wipe is
-the point. (Recovery: `docker compose up -d db --wait`; the shim recreates its tables and
-the platform reseeds personas on boot.)
+It is `docker compose down -v`. The `-v` removes the `cere_pg-data` volume — and under
+compose that one volume holds **both** databases (see the next trap). You lose the engine's
+conversations, escalations, wellness and vector index **and** the platform's accounts, orgs,
+invitations, subscriptions and consent history. Use plain `docker compose down` unless a
+total wipe is the point.
+
+Recovery: `docker compose up -d db --wait`; the shim recreates the engine's tables and the
+platform reseeds its personas on boot. Anything you created by hand — a real signup, an
+invite you redeemed, a purchase — is gone for good.
 
 ### `JWT_SECRET` is base64, and a bad one silently disables auth
 
@@ -91,11 +96,35 @@ There is no committed `.env`; both read the shell.
 reach production: both services **refuse to boot** a non-dev `ENV` with it, or with any
 secret decoding to a dev placeholder.
 
-### Two databases, and they are unrelated
+### Two databases — and **where** they live depends on how you started the platform
 
-Platform = **sqlite** (`services/platform/platform.db`). Engine = **compose Postgres**
-(`localhost:55432`). Wiping one does not touch the other. If sign-in works but coaching
-does not, you are looking at the wrong database.
+This is the trap, and it is the opposite of what this doc used to say. The engine is always
+the compose Postgres (`localhost:55432`). The **platform moves**:
+
+| How you started the platform | Its database |
+|---|---|
+| `docker compose` / `npm run stack:up` / `launch.sh` | **Postgres** — `cerebrozen_platform` on the **same `db` container and the same `pg-data` volume as the engine** (`docker-compose.yml:53`, `deploy/initdb/01-platform-db.sql`) |
+| bare `uvicorn app.main:app` with no `DATABASE_URL` | **sqlite** — `services/platform/platform.db` (`services/platform/app/config.py:14-16`) |
+
+So "two unrelated databases, wiping one does not touch the other" is true **only** for the
+bare-uvicorn path. Under compose they share a volume, which is why `stack:down -v` above
+takes your accounts with it.
+
+Two practical consequences:
+
+- **Your signup can vanish while your engine data survives, or neither** — check which
+  platform you actually started before concluding data was lost.
+- **Editing platform code may change nothing you can see.** Two platforms can bind `:8100`
+  at once — the compose container binds `[::]:8100` (IPv6) while a bare local uvicorn binds
+  `127.0.0.1:8100` (IPv4). They coexist. `curl localhost:8100` from the Mac may resolve to
+  IPv6 → the **container**, but `adb reverse tcp:8100` forwards to IPv4 → the **local
+  uvicorn**. So your phone and your curl can hit different servers running different code,
+  and the symptom is the app 404-ing an endpoint curl says works. Confirm with
+  `lsof -nP -iTCP -sTCP:LISTEN | grep 8100` (docker vs python), then edit and restart the one
+  the app actually reaches. The bare uvicorn has **no `--reload`**, and it needs the same
+  base64 `JWT_SECRET` handed to it on restart or its tokens 401 at the engine.
+
+If sign-in works but coaching does not, you are looking at the wrong database.
 
 ### The engine suite runs on mongomock; **Postgres is what ships**
 

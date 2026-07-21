@@ -1,6 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
 import android.provider.Settings
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
@@ -412,6 +413,10 @@ internal fun Page(
     eyebrowColor: Color = EyebrowMuted,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+    // Off by default (every existing call site is unaffected). Home is the one screen a
+    // person returns to every single day, right after the splash's brand moment — a tiny
+    // BrandMark beside its eyebrow is the one place that continuity is worth spending.
+    leadingMark: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -436,6 +441,7 @@ internal fun Page(
             eyebrowColor = eyebrowColor,
             trailingLabel = trailingLabel,
             onTrailingClick = onTrailingClick,
+            leadingMark = leadingMark,
         )
         content()
     }
@@ -458,6 +464,7 @@ internal fun PageHeader(
     eyebrowColor: Color = EyebrowMuted,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+    leadingMark: Boolean = false,
 ) {
     Row(
         Modifier.fillMaxWidth(),
@@ -465,19 +472,32 @@ internal fun PageHeader(
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.tight)) {
-            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = eyebrowColor)
-            Text(
-                title,
-                // A soft accent glow behind the title — subtle depth, tinted per
-                // section. The size comes from the type scale (displayLarge) rather
-                // than a per-call-site override.
-                style = MaterialTheme.typography.displayLarge.copy(
-                    shadow = Shadow(accent.copy(alpha = 0.28f), Offset.Zero, 24f),
-                ),
-                color = TextPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // The SAME brand mark the splash arrives on (see ui/Brand.kt BrandMark) —
+                // one continuous identity from launch through to the screen you land on
+                // every day, rather than the mark being a launch-only flourish.
+                if (leadingMark) {
+                    com.cerebrozen.app.ui.BrandMark(size = 18.dp, showGlow = false)
+                }
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = eyebrowColor)
+            }
+            // A title that changes value AFTER the first frame (Home's greeting growing a
+            // name once it loads, a streak line updating) crossfades in rather than hard-
+            // swapping — the one relayout-adjacent moment every Page-based screen shares.
+            Crossfade(targetState = title, animationSpec = tween(220), label = "page-title") { t ->
+                Text(
+                    t,
+                    // A soft accent glow behind the title — subtle depth, tinted per
+                    // section. The size comes from the type scale (displayLarge) rather
+                    // than a per-call-site override.
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        shadow = Shadow(accent.copy(alpha = 0.28f), Offset.Zero, 24f),
+                    ),
+                    color = TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         trailing?.let { icon ->
             val shape = RoundedCornerShape(Radius.round)

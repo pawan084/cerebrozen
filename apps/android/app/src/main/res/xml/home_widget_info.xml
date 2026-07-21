@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Today widget (HOME_SPEC #22): a one-tap "Talk it through" / "Breathe" launch from
+     the home screen, no app-open required first. Event-driven only (updatePeriodMillis=0) —
+     it has no live data to poll for; see widget/HomeWidget.kt for the scoping note on why
+     it doesn't (yet) mirror the in-app streak/mood state. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="90dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/glance_default_loading_layout" />

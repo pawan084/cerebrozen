@@ -1,6 +1,6 @@
 # Engineering Standards
 
-Last updated: 2026-07-14
+Last updated: 2026-07-21
 
 These are inherited from the two references — both enforce their standards
 mechanically (build-failing gates), and that discipline is the reason their
@@ -14,14 +14,31 @@ codebases are trustworthy. We keep every gate.
 | Platform API | pytest ≥95% coverage, runs without any API keys | `ref/Zen/backend` |
 | Android | JaCoCo 95% on the gated scope (documented include/exclude), Robolectric for UI logic | `ref/Zen/apps/android/app/build.gradle.kts` |
 | Admin + web | Playwright e2e against the composed Docker stack | `ref/Zen/e2e` |
-| Design tokens | sync script `--check` fails CI on drift; contrast test fails on AA violations | `ref/Zen/scripts/sync-tokens.mjs` |
+| Design tokens | `scripts/sync-tokens.mjs --check` fails CI on declaration drift. It does **not** check contrast — it is a 75-line diff with no luminance maths. Contrast is enforced **on Android only**, by `ContrastTest.kt` under `:app:check`; web/admin have no automated contrast gate | `ref/Zen/scripts/sync-tokens.mjs` |
+| Marketing claims | `scripts/check-claims.mjs` fails CI when a claim on `apps/web` has no row in `docs/CLAIMS_MAP.md`. This is the mechanical half of hard rule 6 | ours |
 | Engine quality | evals harness (routing-contract golden cases) nightly, off the merge path | `ref/Agent/evals` |
 | Safety | crisis red-team suite runs in CI; its catch-rate is a **release gate**, published on the Evidence page | `ref/Agent/tests/test_crisis_redteam.py` |
 
-Additional CI checks: gitleaks (secret scanning), `.env`-is-ignored check,
-ruff (Python), ktlint/detekt (Kotlin), eslint (web/admin), and the
-workbook-loadability gate (a prompt-workbook change that fails validation
-cannot merge).
+**What CI actually runs today** (`.github/workflows/ci.yml`) — this list was
+aspirational and is now corrected to the file, because a table of gates that
+names checks nobody runs teaches new contributors the wrong thing about what
+will fail their PR:
+
+- engine pytest · platform pytest · `apps/web` eslint + build · `apps/admin`
+  build · `apps/app` build · android `assembleDebug` + `:app:check` · e2e
+- `sync-tokens --check` · `check-claims.mjs` · gitleaks
+
+**Not implemented, despite previously being listed here** — treat each as an
+open task, not a standard we already meet: ruff (Python), ktlint/detekt
+(Kotlin), eslint on `apps/admin` and `apps/app` (both only build), an
+`.env`-is-ignored check (gitleaks covers the worst case), and the
+workbook-loadability gate (a prompt-workbook change that fails validation can
+currently merge).
+
+Two coverage-scope exclusions worth stating plainly, since a headline
+percentage hides them: the engine omits `app/voice/*` (noted in its
+`.coveragerc`), and Android's JaCoCo scope excludes the `health` package
+(`app/build.gradle.kts`).
 
 ## Principles (the references' rules we adopt verbatim)
 

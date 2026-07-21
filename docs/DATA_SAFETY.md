@@ -47,8 +47,13 @@ Precise or approximate **location**; device **contacts**, **photos**, **files**,
 - **Encrypted in transit:** yes (HTTPS).
 - **At rest:** datastore-layer encryption, attested per deployment (`/health` `storage`).
 - **Data sold:** **no.**
-- **Data used for advertising / tracking:** **no.** Tracking/targeting is disabled for any
-  account not 18+-attested (DPDP Rule 10 posture).
+- **Data used for advertising / tracking:** **no** — by construction, for every account.
+  There is no ad SDK, no third-party analytics, and no cross-app identifier anywhere in the
+  build; the only analytics are first-party aggregates computed in our own Postgres.
+  (An earlier draft said tracking "is disabled for any account not 18+-attested", which
+  implied a conditional mechanism keyed on the `adult` claim. No such conditional exists —
+  and it would be a weaker statement than the truth. The 18+ attestation gates *coaching*,
+  via `require_adult`; it has nothing to do with tracking, because there is none to gate.)
 - **User can request deletion:** **yes** — in-app: Settings → Delete account (platform
   tombstone + `users.delete_me`), plus engine erasure (`privacy.py`), and "forget AI memory"
   (a strict subset that keeps your journal). Personal accounts also retire their solo org

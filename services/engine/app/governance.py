@@ -118,6 +118,28 @@ def attestation() -> Dict[str, Any]:
             "reference": "EU AI Act Art. 5 (workplace emotion recognition), "
             "Annex III (employment high-risk)",
         },
+        # Non-companion by design. A coaching product and a companion product are built
+        # from the same parts and regulated differently (CA SB243, NY companion-AI law),
+        # so "we're a coach, not a companion" has to be a control a reviewer can inspect,
+        # not a positioning statement. Both mechanisms below are in code, on every turn,
+        # and outside the editable prompt workbook.
+        "non_companion": {
+            "attested": True,
+            "statement": (
+                "The coach does not simulate a personal relationship, does not claim to be "
+                "human or clinically licensed, and discloses that it is an AI whenever it "
+                "is asked or treated as a person."
+            ),
+            "enforced_by": [
+                "always-on conduct guardrail prepended to every turn's system prompt "
+                "(graph/guardrails.py::NON_COMPANION) — in code, not in the editable "
+                "prompt workbook",
+                "mandatory per-turn disclosure when a message treats the coach as a "
+                "person, a relationship, or a clinician (safety/boundaries.py); counted "
+                "content-free as cerebrozen_boundary_prompted_total{kind}",
+            ],
+            "reference": "CA SB243 (companion chatbots), NY GBL art. 47 (AI companions)",
+        },
         "data_boundary": {
             "content_exposed_to_employer": False,
             "trains_on_user_data": False,

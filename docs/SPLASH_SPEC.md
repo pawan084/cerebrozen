@@ -26,13 +26,20 @@ brand moment** that is fast, alive, accessible, and seamless into the app.
 > welcomed back with a time-of-day line under the wordmark ("Good afternoon" verified at
 > 16:35), a first-run user sees only the wordmark. Remaining below are further craft.
 
-**Current state** (`apps/android/.../ui/Brand.kt::Splash()`, gated in `ui/CereBroApp.kt`):
-Compose splash — night gradient, Canvas aurora ribbons + 46-star field, `BrandMark`
-(C-ring + orb) scale-settle + glow-bloom, "CereBro" wordmark fade-up, reduce-motion aware —
-shown for a **hardcoded `delay(1100)`**. There is **no `androidx.core:core-splashscreen`
-integration and no branded window theme**, so the real first frame is an unbranded
-`windowBackground=@color/night`, then Compose draws its own `Splash()` (a double-splash on
-a fixed timer).
+**The state this spec was written against** — i.e. the splash *before* the work above, kept
+as the baseline the numbered points argue from. **None of this is true any more**; see the
+shipped banner above, and `MainActivity.kt` (`installSplashScreen()`,
+`setKeepOnScreenCondition { !Session.bootReady }`, `setOnExitAnimationListener`),
+`build.gradle.kts` (`core-splashscreen:1.0.1`) and `res/values/themes.xml`
+(`postSplashScreenTheme`) for what replaced it:
+
+> (`apps/android/.../ui/Brand.kt::Splash()`, gated in `ui/CereBroApp.kt`): Compose splash —
+> night gradient, Canvas aurora ribbons + 46-star field, `BrandMark` (C-ring + orb)
+> scale-settle + glow-bloom, "CereBro" wordmark fade-up, reduce-motion aware — shown for a
+> **hardcoded `delay(1100)`**. There is **no `androidx.core:core-splashscreen` integration
+> and no branded window theme**, so the real first frame is an unbranded
+> `windowBackground=@color/night`, then Compose draws its own `Splash()` (a double-splash on
+> a fixed timer).
 
 ---
 

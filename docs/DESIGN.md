@@ -1,6 +1,6 @@
 # Design System
 
-Last updated: 2026-07-14
+Last updated: 2026-07-21
 
 ## Brand
 
@@ -12,9 +12,10 @@ opens must feel like the site their CHRO bought from.
 
 ## Palette
 
-Source of truth: `design/tokens.css` (to create, seeded from
-`apps/web/src/app/globals.css`), synced to each surface by a
-`scripts/sync-tokens` script with a CI drift check — the `ref/Zen` pattern.
+Source of truth: `design/tokens.css` — **built**, seeded from
+`apps/web/src/app/globals.css`, synced to each surface by
+`scripts/sync-tokens.mjs` with a CI drift check (`--check`) — the `ref/Zen`
+pattern.
 
 | Token family | Values | Role |
 |---|---|---|
@@ -34,9 +35,16 @@ hue therefore exists in two tiers:
   text on light backgrounds. Dark theme flips this: `zen-400` is the
   text-safe tier on ink.
 
-Enforced, not advised: Android gets a `ContrastTest` that fails the build if
-any (text-token, background-token) pair drops below 4.5:1 (`ref/Zen`
-pattern); web gets the same check in the token-sync script.
+Enforced, not advised — **on Android**: `ContrastTest` fails the build if any
+(text-token, background-token) pair drops below 4.5:1 (`ref/Zen` pattern).
+
+**Web and admin have no automated contrast gate.** This doc previously said
+they got "the same check in the token-sync script"; they do not —
+`scripts/sync-tokens.mjs` only diffs custom-property *declarations* and
+contains no luminance maths at all. So a web-only colour change can ship an AA
+violation that nothing catches. Either port the ratio check into the sync
+script or treat web contrast as a manual review step, but don't rely on a gate
+that isn't there.
 
 ### Dark theme
 

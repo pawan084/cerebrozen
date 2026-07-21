@@ -1,11 +1,14 @@
 # CereBroZen — project rules
 
-B2B enterprise AI coaching platform. **Read `docs/README.md` first** — it
-indexes PRODUCT, ARCHITECTURE, DESIGN, ENGINEERING, SECURITY, and TODO.
-Work follows `docs/TODO.md` phase order.
+AI coaching platform, sold **B2B (enterprise seats) and B2C (freemium)** since
+2026-07-19. **Read `docs/README.md` first** — it indexes the whole doc set.
+`docs/TODO.md` is the phase plan and an append-only build log (read it
+chronologically); `docs/IMPROVEMENT_BACKLOG.md` is the live tracker for what is
+being worked on now.
 **To run or test anything: `docs/DEVELOPING.md`** — ports, seeded logins, gates,
-and the traps (`stack:down` wipes the engine's data; the suite runs on mongomock
-while Postgres ships).
+and the traps (`stack:down` wipes **both** services' data — under compose the
+platform shares the engine's Postgres volume; the suite runs on mongomock while
+Postgres ships).
 
 ## Hard rules
 
@@ -21,20 +24,31 @@ while Postgres ships).
    into the editable prompt workbook.
 5. "Counts, never content": no admin/HR surface or API exposes transcripts,
    journals, or commitment bodies.
-6. Marketing claims must map to mechanisms (`docs/SECURITY.md` table). Don't
-   add a claim to `apps/web` without the backing mechanism, and vice versa.
+6. Marketing claims must map to mechanisms. The **CI-enforced** table is
+   `docs/CLAIMS_MAP.md` (claim → mechanism → test, gated by
+   `scripts/check-claims.mjs`); `docs/SECURITY.md` carries a second, broader
+   compliance table that is *not* gated. Don't add a claim to `apps/web`
+   without the backing mechanism, and vice versa.
 7. Cross-stack contracts (JWT claims, SSE vocabulary, action lifecycle,
    design tokens, analytics vocabulary) change only per the protocol in
    `docs/ENGINEERING.md` — update the ARCHITECTURE.md table in the same PR.
 
 ## Layout
 
-- `apps/web` — marketing site (Next.js 16, built; has its own CLAUDE.md).
-- `apps/android`, `apps/admin` — to build (Phases 3, 2).
-- `services/engine`, `services/platform` — to build (Phase 1).
+All surfaces are **built and gate-green**; the work is backlog burn-down, not
+scaffolding.
+
+- `apps/web` — marketing site (Next.js 16; has its own CLAUDE.md).
+- `apps/app` — web client · `apps/admin` — HR portal + ops admin.
+- `apps/android` — employee/consumer app (5 tabs; see `docs/ANDROID_QA.md` for
+  what is device-verified vs only CI-verified).
+- `services/engine` — coaching graph + safety · `services/platform` — auth,
+  orgs, entitlements, billing. Each carries its own `docs/` (a `docs/X.md`
+  reference inside one means *that* tree).
 - `docs/` — the plan; keep it current: PRs state which doc they touch or why none.
 
 ## Gates (build-failing; details in docs/ENGINEERING.md)
 
 Engine 96% branch / platform 95% / Android JaCoCo 95% coverage; token-drift
-and contrast checks; gitleaks; crisis red-team is a release gate.
+(`sync-tokens --check`) and the Android contrast test; the marketing-claims
+gate (`scripts/check-claims.mjs`); gitleaks. Crisis red-team is a release gate.

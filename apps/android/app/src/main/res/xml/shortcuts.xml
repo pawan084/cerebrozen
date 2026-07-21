@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static launcher app-shortcuts (long-press the icon): a zero-navigation entry point for
+     the two highest-frequency actions on Home (HOME_SPEC #23). Each delivers a `route` extra
+     that MainActivity stashes in ui/PendingRoute.kt for the NavHost to consume once. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="talk"
+        android:enabled="true"
+        android:icon="@drawable/ic_tab_talk"
+        android:shortcutShortLabel="@string/shortcut_talk_short"
+        android:shortcutLongLabel="@string/shortcut_talk_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cerebrozen.app"
+            android:targetClass="com.cerebrozen.app.MainActivity">
+            <extra android:name="route" android:value="coach" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="breathe"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_orb"
+        android:shortcutShortLabel="@string/shortcut_breathe_short"
+        android:shortcutLongLabel="@string/shortcut_breathe_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cerebrozen.app"
+            android:targetClass="com.cerebrozen.app.MainActivity">
+            <extra android:name="route" android:value="breathe/reset" />
+        </intent>
+    </shortcut>
+</shortcuts>

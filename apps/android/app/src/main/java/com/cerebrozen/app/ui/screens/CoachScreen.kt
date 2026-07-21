@@ -128,6 +128,32 @@ private data class CoachMsg(
     val card: ChatCard? = null,
 )
 
+/**
+ * The reply text when NOTHING streamed — read from the `done` frame.
+ *
+ * This is not an edge case, it is the safety path. A crisis takeover is a scripted reply
+ * with no model in the loop (`engine app/graph/crisis.py`), so it emits **no token frames
+ * at all**: the entire message arrives once, in `done`. The engine's key there is
+ * `response_to_user` (`service.py`, sent as `{"type":"done", **result}`).
+ *
+ * Device-verified 2026-07-21, and it had been wrong: this looked only for `reply` and
+ * `text`, neither of which the engine sends. Every crisis takeover therefore rendered as
+ * the literal placeholder "…" — the engine detected, escalated and served a helpline, and
+ * the person in crisis watched an ellipsis. Nothing caught it because the unit suite fakes
+ * `Coach.turn`, and every non-crisis reply streams tokens and so never reaches this
+ * fallback at all.
+ *
+ * The older keys are kept as further fallbacks — they cost nothing and a shape this
+ * load-bearing should not have exactly one way to succeed.
+ */
+internal fun replyFallback(payload: org.json.JSONObject?): String {
+    if (payload == null) return ""
+    return payload.optString("response_to_user")
+        .ifBlank { payload.optString("reply") }
+        .ifBlank { payload.optString("text") }
+        .ifBlank { payload.optString("greeting") }
+}
+
 /** Pre-first-token typing indicator (Mira reference): three quiet pulsing
  * dots. Reduce Motion shows a static ellipsis. */
 @Composable
@@ -394,11 +420,14 @@ fun CoachScreen(onOpen: (String) -> Unit) {
                     }
                 }
                 if (messages[replyIndex].text.isBlank()) {
-                    val fallback = done.payload.optString("reply")
-                        .ifBlank { done.payload.optString("text") }
+                    // Nothing streamed: either a scripted reply (the crisis takeover runs
+                    // with no model, so it never emits tokens) or a degraded turn. See
+                    // replyFallback — the "…" below must stay unreachable in practice.
+                    val fallback = replyFallback(done.payload)
                     messages[replyIndex] = messages[replyIndex].copy(
                         text = fallback.ifBlank { "…" },
                     )
+                    if (speakReplies && fallback.isNotBlank()) voice.speak(fallback)
                 }
             } catch (e: Exception) {
                 messages[replyIndex] = messages[replyIndex].copy(

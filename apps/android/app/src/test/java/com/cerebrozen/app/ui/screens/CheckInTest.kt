@@ -137,4 +137,48 @@ class CheckInTest {
         assertTrue(MOOD_OPTIONS.all { it.label.isNotBlank() && it.symbol.isNotBlank() })
         assertEquals(MOOD_OPTIONS.size, MOOD_OPTIONS.map { it.label }.toSet().size)
     }
+
+    // ── the month density strip (HOME_SPEC #17) ──────────────────────────────
+
+    @Test
+    fun `the month is thirty days ending today`() {
+        val month = monthPresence(emptySet(), today)
+        assertEquals(30, month.size)
+    }
+
+    @Test
+    fun `today is always the last entry in the month too`() {
+        val month = monthPresence(setOf(today), today)
+        assertTrue(month.last())
+        assertFalse(month.dropLast(1).any { it })
+    }
+
+    @Test
+    fun `a check-in older than thirty days does not light a tick`() {
+        assertFalse(monthPresence(setOf(today.minusDays(45)), today).any { it })
+    }
+
+    // ── the quiet milestone tint (HOME_SPEC #18) ─────────────────────────────
+
+    private val base = androidx.compose.ui.graphics.Color(0xFFF56B6B)
+    private val gold = androidx.compose.ui.graphics.Color(0xFFE0B341)
+
+    @Test
+    fun `below a week the tint is plain, unshifted`() {
+        assertEquals(base, milestoneTint(0, base, gold))
+        assertEquals(base, milestoneTint(6, base, gold))
+    }
+
+    @Test
+    fun `each milestone shifts warmer than the one before it, never past gold`() {
+        val week = milestoneTint(7, base, gold)
+        val month = milestoneTint(30, base, gold)
+        val hundred = milestoneTint(100, base, gold)
+        assertTrue("7 days must shift at all", week != base)
+        // Closer to gold means a smaller distance from gold's own channels.
+        fun distanceToGold(c: androidx.compose.ui.graphics.Color) =
+            kotlin.math.abs(c.red - gold.red) + kotlin.math.abs(c.green - gold.green) + kotlin.math.abs(c.blue - gold.blue)
+        assertTrue("30 days is warmer than 7", distanceToGold(month) < distanceToGold(week))
+        assertTrue("100 days is warmer than 30", distanceToGold(hundred) < distanceToGold(month))
+    }
 }

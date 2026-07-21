@@ -71,6 +71,7 @@ from app.llm.resilience import BreakerOpen
 from app.llm.responses_client import UserTextStreamer, model_for, reasoning_effort_for
 from app.metrics import record_stage_watchdog
 from app.request_context import request_id as _ctx_request_id
+from app.safety import boundaries, pacing
 from app.stores.agentic import save_mood_capture
 from app.stores.variable_capture_registry import VariableCaptureRegistry as _VarRegistry
 from app.tracing_otel import get_tracer
@@ -879,6 +880,27 @@ def _run_stage(
         if ck_block:
             system_prompt = f"{system_prompt}\n\n{ck_block}"
     user_message = state.get("user_message", "")
+    # Coach-not-companion (SB243 / NY companion law): a message that treats the coach as a
+    # person, a relationship, or a clinician gets a mandatory disclosure appended to THIS
+    # turn's prompt. Appended last so it outranks anything above it, and owned by code so a
+    # prompt author tuning warmth cannot soften a legal disclosure out of existence.
+    from app.metrics import record_boundary, record_pacing
+
+    # Session pacing (#27/#28): offer a break on a long unbroken run, and a support route
+    # when someone has said several times they are not coping. Both fire on a crossing and
+    # then periodically — see pacing.block_for.
+    pacing_block, pacing_kind = pacing.block_for(state.get("history"), user_message)
+    if pacing_block:
+        record_pacing(kind=pacing_kind)  # kind only — never the message (rule 5)
+        system_prompt = f"{system_prompt}\n\n{pacing_block}"
+    # The coach-not-companion disclosure goes LAST, always: on a turn that needs both, a
+    # pacing instruction appended after it would be the last thing the model reads about
+    # how to open its reply, and the mandatory disclosure must hold that position.
+    for _kind in boundaries.detect(user_message):
+        record_boundary(kind=_kind)  # kind only — never the message (rule 5)
+    boundary_block = boundaries.block_for(user_message)
+    if boundary_block:
+        system_prompt = f"{system_prompt}\n\n{boundary_block}"
     # Per-stage model (Phase 9 TTFT lever): hot-path stages (intake/challenge/
     # checkin) → fast non-reasoning model; CIM core stays on the reasoning model.
     # reasoning_effort_for returns None for non-reasoning models, so no reasoning

@@ -8,8 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.cerebrozen.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -609,7 +611,16 @@ object Session {
         val start = android.os.SystemClock.elapsedRealtime()
         if (signedIn) {
             // Max ~1.6s: past that we proceed with whatever we have (cached/last-known plan).
-            withTimeoutOrNull(1600L) { runCatching { refreshBilling() } }
+            // Billing AND Home's data (name/moods/streak/active program) warm CONCURRENTLY —
+            // warming Home costs nothing the billing refresh wasn't already going to spend,
+            // and it's the reason Home's first frame now arrives fully populated instead of
+            // assembling piece by piece after the splash hands off.
+            withTimeoutOrNull(1600L) {
+                coroutineScope {
+                    launch { runCatching { refreshBilling() } }
+                    launch { HomeCache.warm() }
+                }
+            }
         }
         val elapsed = android.os.SystemClock.elapsedRealtime() - start
         if (elapsed < minMs) delay(minMs - elapsed)
@@ -634,6 +645,9 @@ object Session {
         plan = "free"
         entitlements = emptyMap()
         signedIn = false
+        // A fresh sign-in must never briefly render the PREVIOUS account's cached Home data
+        // (name/streak/moods) while its own warmBoot() is in flight.
+        HomeCache.clear()
     }
 }
 

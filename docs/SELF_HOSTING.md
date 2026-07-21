@@ -29,7 +29,7 @@ curl -s localhost:8100/health/status
 ```
 
 ```json
-{ "service": "platform", "env": "local", "database": "sqlite",
+{ "service": "platform", "env": "local", "database": "postgres",
   "email_delivery": false, "billing_provider": "mock",
   "dev_seed_enabled": true, "sovereign_ready": true }
 ```
@@ -38,6 +38,19 @@ curl -s localhost:8100/health/status
 `email_delivery`/`billing_provider` tell you honestly which subsystems are degraded
 (keyless) vs live. This endpoint reveals **posture, never data**, so it needs no auth
 and is safe to scrape for monitoring.
+
+Two things about that output worth knowing before you use it as a proof surface:
+
+- **`database` follows how you started the platform**, so it is `"postgres"` after
+  the compose command above (the sample here said `"sqlite"` until 2026-07-21, which
+  made the doc look wrong to anyone who actually ran it). You only get `"sqlite"`
+  running the process bare with no `DATABASE_URL`. Both are `sovereign_ready: true`
+  — that flag asserts *self-hostable*, not *which one*.
+- **`billing_provider` is a posture, not a provider name.** It reports `"mock"` or
+  `"live"` (derived from `BILLING_MOCK`), so a Stripe or Play deployment reads
+  `"live"` — never `"stripe"`. Deliberate: the endpoint is unauthenticated, and
+  naming your payment processor to the open internet is a detail an operator should
+  choose to publish, not one we publish for them.
 
 ## The guarantee, enforced in CI
 

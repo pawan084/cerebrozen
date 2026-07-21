@@ -37,6 +37,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.CereBro.Splash">
@@ -48,11 +49,28 @@
             <intent-filter>
                 <action android:name="androidx.health.connect.action.SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
+            <!-- Long-press the launcher icon: a zero-navigation jump to the two
+                 highest-frequency actions (HOME_SPEC #23). -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <receiver
             android:name=".notify.ReminderReceiver"
             android:exported="false" />
+
+        <!-- The Today home-screen widget (HOME_SPEC #22): one-tap Talk-it-through/Breathe. -->
+        <receiver
+            android:name=".widget.HomeWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_info" />
+        </receiver>
 
         <receiver
             android:name=".notify.BootReceiver"

@@ -1,15 +1,23 @@
 # Reference parity — what to take from `ref/Zen`, and what not to
 
-Last updated: 2026-07-16
+Last updated: 2026-07-21
 
 A feature-by-feature comparison of our four client surfaces against the Zen
 reference (`ref/Zen/apps/{web,admin,app,android}`), following the reference's own
 `WEB_PARITY.md` / `IOS_PARITY.md` convention.
 
-**The translation rule.** Zen is a **B2C consumer wellness** product. We are **B2B
-enterprise coaching**. Most differences are deliberate, and `docs/PRODUCT.md`
-§"What we deliberately do not build (v1)" + the feature matrix are the authority —
-not this file. A feature is only worth taking if it survives that translation.
+**The translation rule — revised 2026-07-19.** Zen is a **B2C consumer wellness**
+product. We were **B2B enterprise coaching**; we are now **B2B *and* B2C
+freemium**, so the old rule ("consumer feature → probably drop it") no longer
+holds on its own. The surviving test is narrower and better: a Zen feature is
+worth taking if it fits a **non-clinical coaching** product — not whether it
+smells consumer. Wellness *depth* (sleep, soundscapes, breathing) came back
+because it is non-clinical support around coaching; what stays out is anything
+that drifts toward therapy, emotion inference, or companion framing.
+
+`docs/PRODUCT.md`'s feature matrix remains the authority — not this file — but
+note its §"What we deliberately do not build (v1)" has itself been corrected
+where the matrix contradicted it.
 
 **The finding that shapes the list.** Our Android app is a *fork* of the reference
 with the B2C screens deleted — but the client methods those screens called survived.
@@ -54,16 +62,24 @@ tested; only a client calls it into being.
 | 18 | ~~**Nudge dispatch button**~~ **DONE 2026-07-17** | `apps/admin` | `page.tsx:164` | `POST /v1/nudges/dispatch` exists; the Nudges tab never calls it. Zero backend work. | Trivial |
 | 19 | **Guided tour** | `apps/android` | `TodayScreen.kt:1036` | `GuidedTourOverlay` is defined at `GuidedTour.kt:55` and **never called**. Enrolled enterprise users need orientation *more* than self-selected consumers. | Trivial |
 | 20 | **DPDP s.5(3) consent-notice languages** | `apps/app` | `lib/consentNotice.ts` | English + 12 Eighth-Schedule languages with a picker. Our six labels are English literals. Statutory; deadline 13 May 2027; Indian employees are exactly the population. | Medium |
-| 21 | **FAQ + FAQPage/Organization JSON-LD** | `apps/web` | `page.tsx:33-249` | Zero `ld+json` anywhere in our site. The demo-blocking objections ("what does HR see?", "where is data hosted?", "DPDP?") are FAQ-shaped and already answered in SECURITY.md. Free reach for a site whose only job is earning the demo. | Small |
+| 21 | **FAQ + FAQPage JSON-LD** — *partly done 2026-07-19* | `apps/web` | `page.tsx:33-249` | ~~Zero `ld+json` anywhere in our site.~~ Organization + Product JSON-LD now ship via `src/lib/structured-data.ts` (`layout.tsx`, `pricing/page.tsx`); what remains is the **FAQPage** half and the FAQ content itself. The demo-blocking objections ("what does HR see?", "where is data hosted?", "DPDP?") are FAQ-shaped and already answered in SECURITY.md. Free reach for a site whose only job is earning the demo. | Small |
 | 22 | **Branded OG/Twitter images** | `apps/web` | `opengraph-image.tsx` | Ours point at `/hero.jpg` — a stock photo with no product name. Matters exactly when a champion pastes `/security` into Slack for their CISO. | Small |
-| 23 | **Web push / nudges** | `apps/app` | `lib/push.ts`, `public/sw.js` | PRODUCT.md v1 ✔. Ship **title-only / generic bodies** — see TRAPS. | Medium |
+| 23 | **Web push / nudges** | `apps/app` | `public/sw.js` (**`lib/push.ts` does not exist here** — it was a reference path; per the 2026-07-16 caveat above, check ours before trusting the Effort column) | PRODUCT.md v1 ✔. Nothing server-side either: no vapid/webpush/fcm anywhere in `services/*`, so this is a full build, not wiring. Ship **title-only / generic bodies** — see TRAPS. | Medium → **Large** |
 | 24 | **`viewport`/`themeColor`, sitemap detail, robots host** | `apps/web` | `layout.tsx:41-43`, `sitemap.ts` | Minor, one-line each. | Trivial |
 
 ### Docs to adapt (unblocks four open TODO items)
 
-`ANDROID_RELEASE.md` · `PRIVACY_LABELS.md` · `ANDROID_QA.md` (TalkBack sweep,
-130/200% font scaling, RTL, contrast) · `BREACH_RUNBOOK.md`. Our TODO says "adapt"
-exactly these; they were unavailable until the reference landed on this machine.
+- **`ANDROID_QA.md`** — ✅ **written 2026-07-21** as [ANDROID_QA.md](ANDROID_QA.md)
+  (coverage, the pending TalkBack / font-scaling / RTL checks, hardware-verified
+  log, deferred nav refactor). Not adapted from the reference — written from our
+  own measured state.
+- **`PRIVACY_LABELS.md`** — ✅ superseded by [DATA_SAFETY.md](DATA_SAFETY.md),
+  which already carries the Play Data Safety + Apple privacy answers. Don't write
+  a second one.
+- **`ANDROID_RELEASE.md`** · **`BREACH_RUNBOOK.md`** — still to write. Note `ref/`
+  is **not checked in and is absent from most working copies**, so "adapt the
+  reference's version" is no longer an available plan; these have to be written
+  from our own release process and incident posture.
 
 ---
 
@@ -104,8 +120,12 @@ library + media catalogue (v2) · ElevenLabs narration (voice = v2) · App Store
 B2C retention cohorts (now a valid unit for personal accounts) · ref `/support` page
 (`/contact` covers it).
 
-Android hygiene: `Settings.kt:296` still defines an unreachable `PremiumScreen` +
-`premium_*` strings; ~102 strings for removed screens still ship. Four of those
+Android hygiene: `Settings.kt` still defines an unreachable `PremiumScreen` with
+no caller — genuine dead code, worth deleting. But **do not read that as "premium
+was removed"**: a paywall is now a shipped B2C surface (`ui/screens/Paywall.kt`,
+routed from `CereBroApp.kt`, plus `PremiumFrames.kt`). The dead function is a
+leftover of the 2026-07-14 B2C strip that the freemium work superseded rather
+than reused. ~102 strings for since-removed screens still ship; four of those
 groups go live again if items 3/11/12 are built.
 
 ---

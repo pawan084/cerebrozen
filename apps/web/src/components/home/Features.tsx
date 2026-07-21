@@ -42,7 +42,7 @@ const features = [
     icon: GlobeIcon,
     title: "Speaks Their Language",
     kicker: "~20 languages, safety included",
-    body: "Coaching and greetings adapt to each person's language — and the crisis safety screen runs in roughly twenty of them, so protection is never English-only.",
+    body: "Coaching and greetings adapt to each person's language — and the crisis safety screen both detects and answers in roughly twenty of them, so protection is never English-only.",
     art: "from-[#c9c3ff] to-[#8f86e0]",
   },
 ];

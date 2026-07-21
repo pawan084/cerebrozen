@@ -88,6 +88,25 @@ if _ENABLED:
         "Crisis takeovers fired, by detection layer and language.",
         ["detected_by", "lang"],
     )
+    # Turns where the user treated the coach as a person / a relationship / a clinician and
+    # the mandatory disclosure was injected. Label is the KIND only — never a word the
+    # person wrote (rule 5). Read it as the companion-drift signal: a product whose
+    # `attachment` count climbs is being used as something it is not sold as, which is a
+    # design problem long before it is a compliance one.
+    BOUNDARY_PROMPTED = Counter(
+        "cerebrozen_boundary_prompted_total",
+        "Mandatory coach-not-companion disclosures injected, by kind.",
+        ["kind"],
+    )
+    # Session-pacing interventions: a long-session pause offer, or a support route after
+    # repeated not-coping messages. Kind only — never a word the person wrote. `pause` is
+    # a healthy number to see; a rising `distress_route` says the population using this is
+    # carrying more than a coaching product is the right answer for.
+    SESSION_PACING = Counter(
+        "cerebrozen_session_pacing_total",
+        "Session-pacing interventions injected, by kind.",
+        ["kind"],
+    )
 
 
 def record_rate_limited(*, bucket: str) -> None:
@@ -101,6 +120,20 @@ def record_crisis(*, detected_by: str, lang: str) -> None:
     with anything the person wrote. No-op when Prometheus is absent."""
     if _ENABLED:
         CRISIS_TRIGGERED.labels(detected_by or "unknown", lang or "unknown").inc()
+
+
+def record_pacing(*, kind: str) -> None:
+    """Count one session-pacing intervention (pause offer / support route), by kind.
+    Content-free: never called with anything the person wrote. No-op without Prometheus."""
+    if _ENABLED:
+        SESSION_PACING.labels(kind or "unknown").inc()
+
+
+def record_boundary(*, kind: str) -> None:
+    """Count one mandatory coach-not-companion disclosure, by kind. Content-free: never
+    called with anything the person wrote. No-op when Prometheus is absent."""
+    if _ENABLED:
+        BOUNDARY_PROMPTED.labels(kind or "unknown").inc()
 
 
 def record_contract_violation(*, stage: str, contract: str) -> None:

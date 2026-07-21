@@ -180,9 +180,14 @@ def test_a_cold_start_survives_concurrent_first_use(pgdb):
     assert len(list(pg.PgCollection(name).find({}, {"_id": 1}))) == 6
 
 
-def test_a_real_ddl_failure_still_raises(pgdb, monkeypatch):
+def test_a_real_ddl_failure_still_raises(monkeypatch):
     """The concurrency tolerance must not swallow a genuine DDL problem — a first query
-    failing with something illegible is exactly what it would cost."""
+    failing with something illegible is exactly what it would cost.
+
+    Deliberately NOT on `pgdb`: every connection this touches is a fake, so taking the live
+    harness bought nothing and cost the coverage — without a server the fixture ERRORS where
+    its `@requires_pg` siblings skip, and the one path asserting we still raise on a real DDL
+    failure would go unrun in exactly the default, serverless configuration CI runs in."""
     from app.stores import pg
 
     class _Boom(Exception):
@@ -199,7 +204,7 @@ def test_a_real_ddl_failure_still_raises(pgdb, monkeypatch):
             raise _Boom("permission denied for schema public")
 
     monkeypatch.setattr(pg, "get_pool", lambda: type("P", (), {"connection": lambda self: _Conn()})())
-    pg._ensured.discard("never_created")
+    monkeypatch.setattr(pg, "_ensured", set())  # was `pgdb`'s job; don't leak into other tests
     with pytest.raises(_Boom):
         pg.PgCollection("never_created")
 

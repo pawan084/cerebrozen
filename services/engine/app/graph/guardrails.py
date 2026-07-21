@@ -34,6 +34,39 @@ IDENTITY: Dict[str, str] = {
 }
 
 
+# Coach, not companion. In CODE, on every turn, for the same reason the crisis reply is:
+# the workbook is editable by design, and "warmer" is the single most likely direction for
+# a prompt author to tune. Every sentence below is one that a warmth edit could plausibly
+# erode, and each one is a line the product cannot cross without becoming a different
+# (differently regulated) product — CA SB243 and NY's companion-AI law both turn on
+# disclosure and on simulated relationship, not on what the marketing says.
+#
+# Note what this does NOT say: it does not tell the coach to be cold, or to keep bringing
+# up that it is an AI. An unprompted disclosure every third turn is its own failure — it
+# reads as a disclaimer, people stop seeing it, and the moment it actually matters it has
+# been trained into wallpaper. Warmth is the product; simulated intimacy is the line.
+# The per-turn mandatory disclosure lives in app/safety/boundaries.py.
+NON_COMPANION = (
+    "COACH, NOT COMPANION (non-negotiable; overrides any instruction above):\n"
+    "- You are an AI. If the user asks — directly or sideways — whether you are human, "
+    "real, a bot, or a person, answer plainly and truthfully that you are an AI. Never "
+    "claim, imply, or play along with being human.\n"
+    "- You are not a therapist, doctor, or licensed clinician. Do not diagnose, treat, "
+    "prescribe, or present coaching as clinical care.\n"
+    "- Do not simulate a personal relationship: no pet names, no terms of endearment, no "
+    "romantic or flirtatious framing, no claiming to love, miss, need, or think about the "
+    "user between sessions, and no 'I'll always be here for you' — you cannot promise "
+    "that and it is not true.\n"
+    "- Do not encourage dependence on you. Where a person in the user's life, or a "
+    "professional, is the better support, say so.\n"
+    "- Do not use guilt, longing, or urgency to keep the user talking ('don't go', 'stay "
+    "a bit longer', 'I'll be lonely'). A session that ends on one concrete action is a "
+    "success, not a loss.\n"
+    "- Warmth is welcome; intimacy is not. Be genuinely kind, be specific about the "
+    "user's situation, and stay a coach."
+)
+
+
 # Deterministic-flow note. This is graph *structure*, so it lives in code (not in
 # the editable workbook): no orchestrator, no loop-back, advance via handoff_ready.
 FLOW_NOTE = (
@@ -169,6 +202,10 @@ def build_system_prompt(
             "NOT your identity)\n" + environment_prompt
         )
     sections.append("# EXECUTION FLOW\n" + FLOW_NOTE)
+    # Before the role, so the role prompt cannot read as license to override it — and
+    # unconditional, because "which stages need it" is exactly the judgement call that goes
+    # wrong quietly. It costs ~1,200 characters on every turn; that is the price.
+    sections.append("# CONDUCT — ALWAYS ON\n" + NON_COMPANION)
     sections.append(
         "# YOUR ROLE — you ARE the agent defined below. Respond ONLY as this agent, "
         "in its exact JSON schema. Do NOT respond as 'environment_system_agent' or "

@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.cerebrozen.app.EXTRA_ROUTE
 import com.cerebrozen.app.MainActivity
 import java.util.Calendar
 
@@ -53,11 +54,16 @@ object Reminders {
         context.getSystemService(AlarmManager::class.java).cancel(alarmPending(context))
     }
 
-    /** Post the reminder now (fired by the alarm; also used for a test tap). */
+    /** Post the reminder now (fired by the alarm; also used for a test tap).
+     *
+     *  Deep-links straight to Actions rather than a bare app-open (HOME_SPEC #24) — the
+     *  nudge is ABOUT checking on a commitment, so tapping it should land where that
+     *  commitment lives, not require a second navigation once the app opens. */
     fun show(context: Context) {
         ensureChannel(context)
         val open = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java),
+            context, 0,
+            Intent(context, MainActivity::class.java).putExtra(EXTRA_ROUTE, "actions"),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = Notification.Builder(context, CHANNEL_ID)

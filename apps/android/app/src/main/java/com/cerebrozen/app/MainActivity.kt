@@ -1,6 +1,7 @@
 package com.cerebrozen.app
 
 import android.animation.ObjectAnimator
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.compose.setContent
@@ -12,12 +13,23 @@ import androidx.lifecycle.lifecycleScope
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.CereBroApp
 import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.PendingRoute
 import com.cerebrozen.app.ui.theme.CereBroTheme
 import kotlinx.coroutines.launch
+
+/** The extra a launcher app-shortcut ("Talk it through" / "Breathe", res/xml/shortcuts.xml)
+ *  or the daily-reminder notification (notify/Reminders.kt) attaches to jump straight past
+ *  Home to the screen they promised — see ui/PendingRoute.kt. */
+const val EXTRA_ROUTE = "route"
 
 // FragmentActivity (still a ComponentActivity) so androidx.biometric can
 // attach its prompt — needed by the journal lock.
 class MainActivity : FragmentActivity() {
+    // One holder per activity INSTANCE. A launcher shortcut carries CLEAR_TASK, which
+    // recreates this activity — a process-global holder let the outgoing instance's
+    // composition consume the incoming route and land the user on Home. See ui/PendingRoute.kt.
+    private val pendingRoute = PendingRoute()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The OS-drawn splash (branded orb on night) owns the launch moment — installed
         // BEFORE super.onCreate so there is no unbranded first frame. See docs/SPLASH_SPEC.md.
@@ -30,6 +42,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         Session.init(applicationContext)
         Haptics.init(applicationContext)
+        pendingRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
 
         // Hold the branded splash until the warm-path readiness signal (session + plan) —
         // real readiness, never an arbitrary timer. warmBoot() always flips bootReady, so a
@@ -55,8 +68,15 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             CereBroTheme {
-                CereBroApp()
+                CereBroApp(pendingRoute)
             }
         }
+    }
+
+    // The app already running (a shortcut or notification tapped again) redelivers here
+    // rather than through a fresh onCreate — without this a warm app just ignores the route.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        pendingRoute.value = intent.getStringExtra(EXTRA_ROUTE)
     }
 }

@@ -1,9 +1,17 @@
 # Coaching Flow — Agents, Routing, and the Prompt Workbook
 
-Last updated: 2026-07-14. Derived from `ref/Agent` (`docs/AGENT_FLOW.md`,
-`docs/PROMPT_REGISTRY.md`, `app/graph/`, and the workbook itself). This is
-CereBroZen's spec for the engine we adopt in Phase 1 — what we keep, what we
-drop, and the traps the reference already paid for.
+Last updated: 2026-07-21. Originally derived from `ref/Agent`, which is **not
+checked in and is absent from most working copies** — so for the live versions
+of those two documents read the adopted engine's own doc set:
+[`services/engine/docs/AGENT_FLOW.md`](../services/engine/docs/AGENT_FLOW.md)
+and
+[`services/engine/docs/PROMPT_REGISTRY.md`](../services/engine/docs/PROMPT_REGISTRY.md)
+(plus `services/engine/app/graph/` and the workbook itself).
+
+This was written as the spec for an engine we were *about to* adopt in Phase 1;
+that adoption is done and the engine ships. Read it as the rationale — what we
+keep, what we drop, and the traps the reference already paid for — and the
+engine's own `docs/` as the description of what now runs.
 
 **Prompt content note.** All workbook prompts are extracted verbatim to
 [`docs/prompts/`](prompts/README.md) and are the working base for our

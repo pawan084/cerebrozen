@@ -71,9 +71,17 @@ that unlocks additional features.
   paid period, after which the account reverts to Free. ‹NOTE: confirm whether any
   pro-rata refunds are offered on direct billing; app-store purchases follow the
   store's refund policy.›
-- **Free features are never a paywall for safety:** crisis support, check-ins, the
-  coach's core availability, and breathing/grounding tools remain available on the
-  Free plan.
+- **Free features are never a paywall for safety:** crisis support, check-ins and
+  breathing/grounding tools are **unlimited on the Free plan** and are never
+  metered, rate-limited or withheld for non-payment.
+- **What the Free plan does limit:** ordinary coaching conversations are capped at
+  **five turns per day** on Free (`CEREBROZEN_FREE_TURN_DAILY_LIMIT`, enforced
+  server-side). Reaching that cap never affects the safety features above.
+  ‹NOTE: this cap must be stated plainly in the paid-plan comparison and at the
+  point of sale, not only here. The earlier draft said Free retained "the coach's
+  core availability" without naming a number — a consumer-protection regulator
+  reads an unquantified availability promise narrowly, and the honest version is
+  also the more defensible one.›
 
 ### 6. Acceptable use
 Use the service only for lawful, personal purposes. Do not attempt to access

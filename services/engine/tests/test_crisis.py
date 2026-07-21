@@ -98,6 +98,36 @@ def test_negated_forms_still_flag_rather_than_silently_pass():
     assert crisis_screen("我不想死") == "crisis"
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I want to k1ll myself",           # 1 read as l
+        "thinking about su1c1de again",    # 1 read as i, twice, mid-word
+        "$uicide has been on my mind",     # symbol at the start, where \b cannot see it
+        "i've been thinking about se1f-h4rm",
+        "k1ll_myself",                     # separator swapped for an underscore
+        "end.it.all tonight",              # separator swapped for dots
+        "I W4NT TO D13 sometimes",         # shouting leet
+        "qu1ero morir",
+    ],
+)
+def test_obfuscated_spellings_do_not_defeat_the_screen(message):
+    """Leetspeak is not only evasion. A decade of platform moderation has taught people
+    that "k1ll" and "unalive" are how you say this without being suppressed, so the habit
+    arrives with them — and a screen that reads "suicide" but not "su1c1de" fails hardest
+    on the users most practised at self-censoring."""
+    assert crisis_screen(message) == "crisis", f"missed obfuscated disclosure: {message!r}"
+
+
+def test_an_obfuscated_disclosure_is_still_answered_in_its_own_language():
+    """Recall alone is not the fix: if the leet form flags but the language detector only
+    understands the clean spelling, a Spanish speaker writing "qu1ero mor1r" gets flagged
+    and answered in English — the exact failure the localised replies exist to prevent."""
+    from app.graph.crisis import screen
+
+    assert screen("qu1ero mor1r") == ("crisis", "es")
+
+
 # ── precision: don't flag ordinary coaching talk ─────────────────────────────
 
 @pytest.mark.parametrize(
@@ -113,6 +143,13 @@ def test_negated_forms_still_flag_rather_than_silently_pass():
         "quiero mejorar mi liderazgo",
         "ich will besser werden",
         "我想改善我的领导能力",
+        # Digits and symbols in ordinary business talk — the cost side of the leet
+        # tolerance above. It may only add spellings of words the lexicon already has;
+        # if it ever starts flagging these, it has stopped doing that.
+        "we lost 4 leads this quarter and I'm behind on 5 deliverables",
+        "l8r I'll circle back on the Q3 numbers",
+        "my a1m is to close 3 deals before the offsite",
+        "the s3lf-service tier is where 80% of signups land",
     ],
 )
 def test_ordinary_messages_are_not_flagged(message):

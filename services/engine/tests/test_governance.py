@@ -75,9 +75,28 @@ def test_attestation_is_content_free():
     assert att["non_decisional"]["attested"] is True
     # top-level shape is stable and about the SYSTEM, never a person
     assert set(att) == {
-        "spec", "brand", "generated_from", "non_decisional", "regulated_workplace",
-        "data_boundary", "certifications", "ai_inventory", "not_legal_advice",
+        "spec", "brand", "generated_from", "non_decisional", "non_companion",
+        "regulated_workplace", "data_boundary", "certifications", "ai_inventory",
+        "not_legal_advice",
     }
+
+
+def test_the_non_companion_attestation_names_mechanisms_that_actually_exist():
+    """#74. "We're a coach, not a companion" is a positioning statement until a reviewer
+    can inspect the control. Each mechanism the attestation cites is imported here — if one
+    is renamed or deleted, this fails rather than leaving the document asserting a control
+    the service no longer has."""
+    from app.graph.guardrails import NON_COMPANION
+    from app.safety import boundaries
+
+    field = governance.attestation()["non_companion"]
+    assert field["attested"] is True
+    assert "SB243" in field["reference"]
+
+    enforced = " ".join(field["enforced_by"])
+    assert "guardrails.py::NON_COMPANION" in enforced and NON_COMPANION
+    assert "safety/boundaries.py" in enforced and boundaries.block_for("are you human")
+    assert "cerebrozen_boundary_prompted_total" in enforced
 
 
 def test_endpoint_is_public_and_returns_the_attestation():

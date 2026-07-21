@@ -263,7 +263,7 @@ private fun SyncSystemBarIcons() {
 private var splashArrivalShown = false
 
 @Composable
-fun CereBroApp() {
+fun CereBroApp(pendingRoute: PendingRoute = remember { PendingRoute() }) {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
     // restore the persisted preference once, and keep the bar icons in step.
     AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -425,6 +425,46 @@ fun CereBroApp() {
             }
         },
     ) { padding ->
+        // Opening a TAB's route SELECTS that tab; anything else is pushed on top of the
+        // current one.
+        //
+        // Both used to push. That is the bug it fixes: "Talk it through" on Today did
+        // navigate("coach"), which put the COACH TAB's own destination onto Today's back
+        // stack. The tab bar saves and restores that stack (saveState/restoreState —
+        // the textbook pattern, working exactly as designed), so from then on tapping
+        // Today faithfully restored [today → coach] and landed on Coach. Today stopped
+        // being Today for the life of the process, and a fresh launch hid it. Six call
+        // sites did this: onOpen("actions") x3, onOpen("coach") x2, onOpen("journeys").
+        //
+        // The real fix is nested graphs, one per tab, so a pushed screen lives INSIDE
+        // its tab and "restore this tab" cannot mean "restore some other tab". That is
+        // a 39-route IA decision (which tab owns sounds/player/toolkit/winddown/
+        // insights?) and is tracked in docs/ANDROID_QA.md. This makes the flat graph
+        // behave in the meantime by never letting a tab route enter another tab's stack.
+        val tabRoutes = Tab.entries.mapTo(HashSet()) { it.route }
+        val selectTab: NavOptionsBuilder.() -> Unit = {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        val open: (String) -> Unit = { route ->
+            if (route in tabRoutes) navController.navigate(route, selectTab)
+            else navController.navigate(route)
+        }
+        // A launcher app-shortcut or a tapped notification requested a route from OUTSIDE
+        // Compose (MainActivity has no NavHost of its own) — navigate on it, then clear it so
+        // it never re-fires on a later recomposition. Keyed on the VALUE, not Unit: a cold
+        // start sets it before this composition exists at all (this effect's first run
+        // catches it), but a WARM re-tap (app already running, MainActivity.onNewIntent)
+        // needs this to fire AGAIN for the new value — device-verified 2026-07-20 that
+        // LaunchedEffect(Unit) never re-ran for a second shortcut tap while the app was
+        // already open. The holder is the ACTIVITY's, not a singleton: a shortcut's
+        // CLEAR_TASK recreates MainActivity, and a shared holder let the outgoing
+        // composition consume the new activity's route (device-verified 2026-07-21).
+        // See ui/PendingRoute.kt (HOME_SPEC #23/#24).
+        LaunchedEffect(pendingRoute.value) {
+            pendingRoute.value?.let { open(it); pendingRoute.value = null }
+        }
         NavHost(
             navController = navController,
             startDestination = Tab.Today.route,
@@ -438,32 +478,6 @@ fun CereBroApp() {
             popEnterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
             popExitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
         ) {
-            // Opening a TAB's route SELECTS that tab; anything else is pushed on top of the
-            // current one.
-            //
-            // Both used to push. That is the bug it fixes: "Talk it through" on Today did
-            // navigate("coach"), which put the COACH TAB's own destination onto Today's back
-            // stack. The tab bar saves and restores that stack (saveState/restoreState —
-            // the textbook pattern, working exactly as designed), so from then on tapping
-            // Today faithfully restored [today → coach] and landed on Coach. Today stopped
-            // being Today for the life of the process, and a fresh launch hid it. Six call
-            // sites did this: onOpen("actions") x3, onOpen("coach") x2, onOpen("journeys").
-            //
-            // The real fix is nested graphs, one per tab, so a pushed screen lives INSIDE
-            // its tab and "restore this tab" cannot mean "restore some other tab". That is
-            // a 39-route IA decision (which tab owns sounds/player/toolkit/winddown/
-            // insights?) and is tracked in docs/ANDROID_QA.md. This makes the flat graph
-            // behave in the meantime by never letting a tab route enter another tab's stack.
-            val tabRoutes = Tab.entries.mapTo(HashSet()) { it.route }
-            val selectTab: NavOptionsBuilder.() -> Unit = {
-                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
-            }
-            val open: (String) -> Unit = { route ->
-                if (route in tabRoutes) navController.navigate(route, selectTab)
-                else navController.navigate(route)
-            }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Today.route) { TodayHome(onOpen = open) }
             composable(Tab.Coach.route) { CoachScreen(onOpen = open) }

@@ -1,6 +1,6 @@
 # Security, Privacy & Safety
 
-Last updated: 2026-07-16
+Last updated: 2026-07-21
 
 The marketing site already sells a specific security story (air-gapped
 deployment, regulated workplace mode, routing an auditor can read, tests run
@@ -67,6 +67,43 @@ trap. Our position:
   for customers who buy that isolation level; app-layer tenancy is the
   floor, not the ceiling.
 
+## Consumer accounts (B2C) — added 2026-07-19
+
+Most of this document says "employer" and "employee". Since 2026-07-19 a second
+kind of account exists, and a reviewer needs the differences stated plainly.
+
+**A consumer is an org of one.** `POST /auth/signup` mints a personal org
+(`models.is_personal_org`, slug `personal-*`, `seats_total=1`) so every
+org-scoped guarantee below — tenant isolation, the content firewall, the
+k-anonymity floor — applies unchanged, with no second code path to review. The
+person is their own `org_admin`, so "what your employer sees" is *nothing*:
+there is no other member for an aggregate to be about. Personal orgs are
+excluded from the ops-admin tenant list (`list_orgs`); consumer scale is visible
+to staff only as counts (`GET /orgs/consumer-stats`).
+
+**Two JWT claims are security-relevant and enforced at the engine**, not just in
+the UI (both documented in ARCHITECTURE.md §Cross-stack contracts):
+
+| Claim | Enforcement | Failure mode it closes |
+|---|---|---|
+| `plan` (`free`\|`plus`\|`enterprise`) | Engine `require_plus` → **402** on premium routes; `limit_free_daily_turns` caps free coaching at **5 turns/day** on both `/sessions/start` and `/turn` | Premium routes were client-gated only and curl-bypassable — found and fixed in the first adversarial pass |
+| `adult` (bool) | Engine `require_adult` → **403** on `/sessions/start` and `/turn` for an explicit `adult=false` | An un-attested minor reaching the coach. True by contract for B2B seats and internal staff; for a personal account it is the person's own attestation (`POST /users/me/attest`, which **rotates the token pair** so it takes effect at once) |
+
+Both follow the same rule: **absent passes, explicit-false is refused**, so an
+older client that omits a claim is not locked out.
+
+**Purchase and cancel rotate the token pair** (`_plan_out_rotated`). Without
+that, the engine's gate lags the DB by up to the token TTL — a paying customer
+locked out for 15 minutes after paying, or a cancelled one still entitled. Play
+purchase tokens are bound to one account by a partial unique index on
+`provider_ref`, so a replayed receipt gets a clean 409 rather than a second
+grant.
+
+**What B2C does *not* change:** safety is identical. Crisis routing, the
+non-clinical posture, and the human-handoff paths are the same code for a
+consumer and an employee — which is the entire reason B2C was defensible to add
+(see PRODUCT.md §"The B2C model"). Safety is never behind the paywall.
+
 ## Privacy model
 
 | Data | Who sees it |
@@ -117,8 +154,18 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
    default in every cloud deployment; the red-team catch-rate with
    classifier enabled becomes the number the Evidence page publishes.
 2. The red-team suite is a release gate: no release may regress it.
-3. Crisis replies localized only with native-speaker + clinical review;
-   unreviewed languages fall back to English (reference rule, kept).
+3. Crisis replies exist for **every** language the lexicon detects (~20).
+   Only **English** has native-speaker + clinical review; the rest are
+   drafted in-house, recorded as such in `crisis._NATIVE_REVIEWED`, and
+   logged (`crisis.reply_language_unreviewed`) each time one is served.
+   **This reverses the inherited rule** ("unreviewed languages fall back to
+   English"), deliberately: that rule guarantees a fluent message a
+   monolingual speaker cannot read, and the payload that matters — the
+   helpline — is a number or a directory in any language. The inherited
+   posture stays available per deployment as
+   `CEREBROZEN_CRISIS_REVIEWED_ONLY=1`, and is the right setting where a
+   clinical governance body owns crisis copy. Marketing may only quote the
+   **reviewed** count (docs/CLAIMS_MAP.md).
 4. Escalation-to-human: v1 ships the webhook + ops-admin safety queue; "we
    alert a designated contact" is **not claimed** until built end-to-end
    (the Evidence page already says this honestly — keep it that way).
@@ -213,7 +260,9 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
   `test_datastore_encryption.py`). A deployment is thus never *silently* assumed
   encrypted — the claim is only as good as the operator's declaration, and the
   declaration is visible. Turning the datastore encryption on remains a
-  deployment step (docs/DEPLOY or the infra runbook), not an app feature.
+  deployment step ([SELF_HOSTING.md](SELF_HOSTING.md) or the operator's own
+  infra runbook), not an app feature. (This used to point at `docs/DEPLOY`,
+  which has never existed.)
 
 ## Deployment postures
 
@@ -228,6 +277,20 @@ catches ~1 in 22 realistic implicit disclosures. Commitments:
    discloses this; measure with the first design partner before committing.
 
 ## Compliance mapping (claims → mechanisms)
+
+> **Two tables of this shape now exist, and only one is enforced.**
+> [CLAIMS_MAP.md](CLAIMS_MAP.md) is the **CI-gated** claim → mechanism → *test*
+> mapping (`scripts/check-claims.mjs` fails the build on an unbacked claim on
+> `apps/web`); the table below is a broader **posture** map covering
+> deployment/compliance positions that aren't marketing copy and have no single
+> test. They were written independently, share no rows, and referenced each
+> other nowhere until 2026-07-21.
+>
+> **If you are adding a claim to the marketing site, add it to CLAIMS_MAP.md** —
+> a row added only here is invisible to the gate. Whether these should merge is
+> an open decision: merging gets one source of truth, keeping both preserves the
+> distinction between "provable by a test" and "a posture we've taken". Recorded
+> rather than silently left as a duplicate.
 
 | Site claim | Mechanism | Status |
 |---|---|---|

@@ -1,35 +1,71 @@
 # Product Definition
 
-Last updated: 2026-07-14
+Last updated: 2026-07-21
 
 ## One-liner
 
-An enterprise AI coaching platform: employees get a private, always-on
-performance coach in the moments that matter; HR and leadership get
+An AI coaching platform: people get a private, always-on performance coach in
+the moments that matter; where an employer is the buyer, HR and leadership get
 aggregated, anonymized behavioral analytics — never transcripts.
+
+**Two commercial models, one product.** B2B enterprise seats (the original and
+still the P&L) and, since 2026-07-19, B2C freemium. They share every mechanism:
+the same coaching graph, the same safety code, the same privacy schema. What
+differs is who the "org" is and who pays.
 
 ## The B2B model (patterned on sherlockperformance.com)
 
 - **Buyer**: CHRO, L&D, business leaders at organizations of 500+ employees.
 - **User**: every employee — ICs, managers, high-potential talent.
-- **Sales motion**: demo-gated enterprise subscription. Pricing is not public;
-  the marketing site's job is to earn the demo request. Our differentiator on
-  top of Sherlock's positioning: *verifiability* — routing an auditor can
-  read, tests run in front of the customer's DPO, air-gapped deployment, and
-  the Evidence page's honest-numbers posture.
+- **Sales motion**: demo-gated enterprise subscription, invoiced seat
+  licensing. **Enterprise** pricing is not public; the marketing site's job is
+  to earn the demo request. (Consumer pricing *is* public — see below.) Our
+  differentiator on top of Sherlock's positioning: *verifiability* — routing an
+  auditor can read, tests run in front of the customer's DPO, air-gapped
+  deployment, and the Evidence page's honest-numbers posture.
 - **Trust is the product**: employees only use a coach they believe is
   private; buyers only approve one that survives a security review. Every
   product decision is subordinate to those two facts.
+
+## The B2C model (freemium, added 2026-07-19)
+
+- **Why at all**: run as a **B2B2C funnel and evidence engine, not the P&L** —
+  the pattern Wysa, Headspace and Calm all use (free consumer app → enterprise
+  money). Measure it as top-of-funnel, not as a profit centre.
+- **Why it's defensible**: the line governing legal exposure is **functional,
+  not contractual**. An employer intermediary is no shield if you act as
+  therapy; conversely, non-clinical + disclaimers + deterministic crisis
+  routing + human handoff + 18+ + no disease claims is defensible on either
+  side. We already have that posture, which is why B2C did not require a
+  safety redesign.
+- **Tenancy**: `POST /auth/signup` mints a **personal org-of-one**
+  (`is_personal_org`, slug `personal-*`, one seat). Personal orgs are excluded
+  from the ops-admin tenant list; consumer scale is visible only as counts.
+- **Tiers**: Free · **Plus $9.99/mo or $59.99/yr** (public on `/pricing`) ·
+  enterprise. Entitlements resolve from the DB and ride the `plan` JWT claim so
+  the engine can gate offline; free coaching is capped at **5 turns/day**.
+- **The hard rule**: never drift into **companion framing**. A simulated
+  sustained emotional relationship is precisely what the consumer AI statutes
+  target. Our commit-gate and action-orientation are what keep us the other
+  side of that line — protect them. **Since 2026-07-21 the rule is also code**,
+  not only intent: `guardrails.NON_COMPANION` rides every turn's system prompt
+  (in code, outside the editable workbook, because "warmer" is the likeliest
+  direction for a prompt edit to drift), and `safety/boundaries.py` forces a
+  disclosure into any turn where the user treats the coach as a person, a
+  relationship, or a clinician. `/v1/governance` attests it; the
+  `cerebrozen_boundary_prompted_total{kind}` counter is the drift telemetry —
+  a climbing `attachment` count means people are using this as something we do
+  not sell, which is a product signal before it is a compliance one.
 
 ## Surfaces
 
 | Surface | Users | Purpose | Status |
 |---|---|---|---|
-| Marketing site (`apps/web`) | Prospects | Positioning, evidence, demo requests | **Built** |
-| Android app (`apps/android`) | Employees | The coach: sessions, actions, journeys, check-ins | To build |
+| Marketing site (`apps/web`) | Prospects | Positioning, evidence, public consumer pricing, demo requests | **Built** |
+| Android app (`apps/android`) | Employees **and consumers** | The coach: sessions, actions, journeys, check-ins; onboarding, paywall, restore | **Built** — 5 tabs, 39 routes; device-verification status in [ANDROID_QA.md](ANDROID_QA.md) |
 | Web app (`apps/app`) | Employees | Browser client at `app.cerebrozen.in`, same API | **Built** |
-| HR portal (`apps/admin`, org role) | Customer HR/L&D | Aggregate analytics, program management, rollout tools | To build |
-| Ops admin (`apps/admin`, internal role) | CereBroZen staff | Tenant management, prompt workbook, safety queue, demo pipeline | To build |
+| HR portal (`apps/admin`, org role) | Customer HR/L&D | Aggregate analytics, program management, rollout tools | **Built** |
+| Ops admin (`apps/admin`, internal role) | CereBroZen staff | Tenant management, prompt workbook, safety queue, demo pipeline, consumer-stats tile | **Built** |
 
 The HR portal and ops admin are one Next.js app with role-gated tabs (the
 `ref/Zen` admin pattern), not two codebases.
@@ -94,13 +130,22 @@ The HR portal and ops admin are one Next.js app with role-gated tabs (the
 - Marketplace integrations (calendar/Slack nudge triggers) — v2; v1 nudges
   are time/reminder-based.
 - Human-coach marketplace. The product is the AI coach plus escalation paths.
-- Voice coaching — the engine ships a full voice stack (LiveKit + STT/TTS)
-  but it is the one untested subsystem in the reference; it becomes a v2
-  differentiator once covered by tests, not a v1 risk.
 - Coins/badges/leaderboards (see "Progress, not gamification" above).
-- Journaling and micro-content library — v2 candidates from the Zen
-  reference (private reflections attached to sessions; learning-aid content
-  the `learning_aid` agent can already draw on).
+- Micro-content library — a v2 candidate from the Zen reference (learning-aid
+  content the `learning_aid` agent can already draw on).
+
+**Two items have since shipped and were moved off this list** (they were
+contradicted by this document's own feature matrix below, which is the
+authority):
+
+- **Journaling — shipped, v1.** Engine `stores/wellness.py`, web
+  `apps/app/journal`, and Android read+write (`JournalScreen.kt`,
+  `Session.createJournal`) with `BiometricGate` attached.
+- **Voice coaching — partly shipped.** Engine `/voice/token` (Plus-gated) and
+  the Android `CloudVoice` loop (Deepgram/ElevenLabs) with an on-device
+  fallback; `voice_storage` is a live consent key. Coverage is the remaining
+  gap — the engine's `.coveragerc` omits `app/voice/*` — so treat it as
+  shipped-but-under-tested, not as unbuilt.
 
 Note (2026-07-14): the well-being suite (sounds/sleep/breathe/games) was
 originally cut here as "wellness-app scope" and RESTORED the same day by
