@@ -36,7 +36,13 @@ struct OnboardingFlow: View {
                 case 3: StateCheckScreen(onContinue: next, onBack: back)
                 case 4: FirstResetScreen(onContinue: next, onBack: back)
                 case 5: SignupScreen(onContinue: next, onBack: back)
-                case 6: ConsentScreen(onContinue: next, onBack: back)
+                case 6: ConsentScreen(onContinue: {
+                    // Passing Consent unlocks telemetry (owner decision
+                    // 2026-07-13: no events before consent) — the earlier
+                    // funnel steps of THIS install stay uncounted by design.
+                    Analytics.unlock()
+                    next()
+                }, onBack: back)
                 default: NotificationsScreen(onContinue: {
                     Analytics.track("onboarding_done")
                     state.hasOnboarded = true

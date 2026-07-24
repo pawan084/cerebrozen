@@ -42,6 +42,9 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!hasSession()) { router.replace("/signin"); return; }
     setReady(true);
+    // A live session = established relationship → telemetry unlocked (the
+    // same rule iOS/Android apply on connect; the opt-out still governs).
+    import("@/lib/analytics").then(({ unlockAnalytics }) => unlockAnalytics());
     import("@/lib/api").then(({ api }) =>
       api("/auth/me").then((me: any) => {
         setName(me.name || "");

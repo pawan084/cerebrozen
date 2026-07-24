@@ -9,7 +9,13 @@
 > clickable journal prompts, today_guide, Try-together rail, widget links), and
 > items 12/8/11/18 (Sleep rhythm + stimulus-control cards, 10→8 onboarding,
 > `POST /billing/portal` cancel path + free-only sidebar upsell, reduce-motion +
-> dead-CSS sweep). Item 14 (web analytics) stays **decision-gated** — untouched.
+> dead-CSS sweep). **Item 14 (web analytics) landed 2026-07-24** once its gate
+> had a decision: the owner's 2026-07-13 Android ruling (no telemetry before
+> consent) applied cross-client — `lib/analytics.ts` (anon install id, no auth,
+> allowlisted names, `source: "app"`), unlocked on Consent-step pass or an
+> authenticated session, canonical post-merge step names (`age_gate`/
+> `first_plan` never fire), paywall_view/cta on /account, "Anonymous usage
+> stats" opt-out. iOS got the identical gate in the same commit.
 > **Wave E (item 17) landed 2026-07-24**: Dawn palette (mirrors Android's
 > WCAG-verified DawnPalette) via `prefers-color-scheme` + `data-theme`;
 > System/Night/Dawn picker on /account with a nonce'd pre-paint script;

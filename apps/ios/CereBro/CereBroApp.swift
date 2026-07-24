@@ -143,10 +143,11 @@ final class AppState: ObservableObject {
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
-            // One-shot flags (first-completion celebrations, consent-touched)
-            // are keyed dynamically — wipe by prefix so reruns stay deterministic.
+            // One-shot flags (first-completion celebrations, consent-touched,
+            // the analytics consent gate) are keyed dynamically — wipe them so
+            // reruns stay deterministic.
             UserDefaults.standard.dictionaryRepresentation().keys
-                .filter { $0.hasPrefix("celebrated_") || $0 == "onb_consent_touched" }
+                .filter { $0.hasPrefix("celebrated_") || $0 == "onb_consent_touched" || $0 == Analytics.unlockKey }
                 .forEach { UserDefaults.standard.removeObject(forKey: $0) }
         }
         hasOnboarded   = UserDefaults.standard.bool(forKey: Key.onboarded)

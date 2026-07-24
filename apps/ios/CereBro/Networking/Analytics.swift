@@ -13,11 +13,26 @@ enum Analytics {
     /// Mirrors AppState.usageStatsOn (same UserDefaults key) so tracking works
     /// from places without an AppState reference.
     static let enabledKey = "usageStatsOn"
+    /// DPDP posture (owner decision 2026-07-13, Android precedent): NO
+    /// telemetry before consent. Tracking stays silent until the user passes
+    /// the onboarding Consent step or authenticates (an existing account has
+    /// an established relationship); pre-consent funnel steps are deliberately
+    /// uncounted. After unlock the opt-out toggle governs as before.
+    static let unlockKey = "analytics_unlocked"
 
     private static let underTest = ProcessInfo.processInfo.arguments.contains("-resetState")
 
     private static var enabled: Bool {
         UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
+    }
+
+    private static var unlocked: Bool {
+        UserDefaults.standard.bool(forKey: unlockKey)
+    }
+
+    /// Called when the Consent step is passed or a session authenticates.
+    static func unlock() {
+        UserDefaults.standard.set(true, forKey: unlockKey)
     }
 
     private static var anonId: String {
@@ -30,7 +45,7 @@ enum Analytics {
     /// Best-effort and non-blocking; failures are dropped silently — analytics
     /// must never affect the product.
     static func track(_ name: String, step: String = "") {
-        guard enabled, !underTest else { return }
+        guard unlocked, enabled, !underTest else { return }
         let id = anonId
         Task.detached(priority: .utility) {
             await APIClient.shared.sendEvent(name: name, step: step, anonId: id)

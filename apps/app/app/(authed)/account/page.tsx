@@ -12,6 +12,7 @@ import {
   unsubscribePush,
   type PushStatus,
 } from "@/lib/push";
+import { analyticsEnabled, setAnalyticsEnabled, track } from "@/lib/analytics";
 import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
 import { getThemeMode, setThemeMode, type ThemeMode } from "@/lib/theme";
 import { AppHeader } from "@/components/AppHeader";
@@ -56,6 +57,7 @@ export default function Account() {
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
   const [theme, setTheme] = useState<ThemeMode>("system");
+  const [statsOn, setStatsOn] = useState(true);
   // DPDP s.5(3): the consent notice is readable in English or an
   // Eighth-Schedule language, picked right on the notice.
   const [noticeLang, setNoticeLang] = useState("en");
@@ -65,12 +67,16 @@ export default function Account() {
     api("/auth/me").then((u) => {
       setMe(u);
       setRegion(u.region ?? "");
+      // The paywall surface here is the upgrade card (iOS parity: PremiumView
+      // fires the same event; anonymous, consent-gated in lib/analytics).
+      if ((u.subscription_tier ?? "free") === "free") track("paywall_view");
     }).catch(() => {});
     api<Consent>("/users/me/consent").then(setConsent).catch(() => {});
     api<Contact | null>("/users/me/trusted-contact").then((c) => c && setContact(c)).catch(() => {});
     getPushStatus().then(setPush).catch(() => {});
     isSubscribed().then(setPushOn).catch(() => {});
     setTheme(getThemeMode());
+    setStatsOn(analyticsEnabled());
   }, []);
 
   function pickTheme(mode: ThemeMode) {
@@ -152,6 +158,7 @@ export default function Account() {
 
   async function upgrade() {
     setBillingMsg("");
+    track("paywall_cta", "premium");
     try {
       const { url } = await api<{ url: string }>("/billing/checkout", {
         method: "POST",
@@ -378,6 +385,22 @@ export default function Account() {
           <Link href="/patterns" style={{ color: "var(--lav)" }}>what the AI has learned</Link>{" "}
           (deletable there too).
         </p>
+        {/* iOS/Android "Anonymous usage stats" parity — local toggle over the
+            first-party, no-auth /events counts (never content, never linked). */}
+        <label className="row" style={{ marginTop: 12, gap: 10 }}>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={statsOn}
+            onChange={() => { setAnalyticsEnabled(!statsOn); setStatsOn(!statsOn); }}
+            aria-label="Anonymous usage stats"
+            style={{ width: "auto" }}
+          />
+          <span className="sub">
+            Anonymous usage stats — first-party counts (like "onboarding completed"), never your
+            content, never linked to your account.
+          </span>
+        </label>
         <button className="btn ghost" onClick={exportData}>Download my data (JSON)</button>
         {status && <p className="success" role="status">{status}</p>}
       </section>

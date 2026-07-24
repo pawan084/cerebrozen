@@ -172,6 +172,21 @@ before shipping; UITest funnel + games-hub assertions were checked by hand.**
   → 8 canonical names (`age_gate`/`first_plan` never fire — backend list
   unchanged); progress fractions refit; all four funnel UITests re-walked.
 
+### Analytics consent-gate parity, iOS + web (2026-07-24)
+The owner's 2026-07-13 decision ("no telemetry before consent", made for
+Android) applied cross-client — closing WEB_PARITY item 14 and the parked
+iOS note in IOS_PARITY "decisions taken":
+- [x] iOS: `Analytics.track` now no-ops until `analytics_unlocked` — set when the
+  onboarding Consent step is passed (`Analytics.unlock()` on its Continue) or a
+  session authenticates (restore + finishConnect); pre-consent funnel steps are
+  deliberately uncounted; flag wiped under `-resetState`. (⚠ static-verified.)
+- [x] Web (`apps/app`): new `lib/analytics.ts` — anon install id, no auth header,
+  allowlisted names, `source: "app"`, same consent gate (unlock on Consent pass /
+  sign-in / live session); onboarding_step fires per step with the canonical
+  8-step names (`age_gate`/`first_plan` never fire — backend list unchanged),
+  onboarding_done, paywall_view + paywall_cta on /account; "Anonymous usage
+  stats" opt-out toggle (iOS/Android parity). The admin funnel now sees web.
+
 ### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
 The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
 addition), e2e spec updated in the same commits; tsc + backend suite green.

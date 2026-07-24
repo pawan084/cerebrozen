@@ -10,9 +10,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import AuthPanel from "@/components/AuthPanel";
 import { hasOnboarded, hasSession, setOnboarded } from "@/lib/api";
+import { track, unlockAnalytics } from "@/lib/analytics";
 import {
   applyOnboarding, clearDraft, Draft, FEELINGS, freshDraft, LANGUAGES,
-  loadDraft, REMINDER_TIMES, saveDraft,
+  loadDraft, REMINDER_TIMES, saveDraft, STEP_NAMES,
 } from "@/lib/onboarding";
 import { CONSENT_NOTICE, defaultNoticeLang, NOTICE_LANGS } from "@/lib/consentNotice";
 
@@ -47,7 +48,15 @@ export default function Onboarding() {
   const next = () => setStep((s) => Math.min(s + 1, PROGRESS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
+  // Anonymous funnel: which step each install reached (name only — never any
+  // answer or content). No-ops until the Consent step unlocks telemetry, so
+  // pre-consent steps are deliberately uncounted (owner decision 2026-07-13).
+  useEffect(() => {
+    if (ready) track("onboarding_step", STEP_NAMES[step] ?? "");
+  }, [ready, step]);
+
   async function finish() {
+    track("onboarding_done");
     await applyOnboarding(draft);
     setOnboarded();
     clearDraft();
@@ -71,7 +80,8 @@ export default function Onboarding() {
         {step === 4 && <FirstReset onContinue={next} onBack={back} />}
         {step === 5 && <Signup onAuthed={next} onBack={back} />}
         {step === 6 && (
-          <ConsentStep draft={draft} update={update} onContinue={next} onBack={back} />
+          <ConsentStep draft={draft} update={update}
+            onContinue={() => { unlockAnalytics(); next(); }} onBack={back} />
         )}
         {step === 7 && (
           <Notifications draft={draft} update={update} onFinish={finish} onBack={back} />

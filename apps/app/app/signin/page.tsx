@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthPanel from "@/components/AuthPanel";
+import { unlockAnalytics } from "@/lib/analytics";
 import { setOnboarded } from "@/lib/api";
 
 export default function SignIn() {
@@ -11,6 +12,8 @@ export default function SignIn() {
   function onAuthed() {
     // A returning sign-in means this device is already introduced — skip the
     // funnel on subsequent loads (mirrors iOS: sign-in sets hasOnboarded).
+    // An authenticated session also unlocks anonymous telemetry (DPDP gate).
+    unlockAnalytics();
     setOnboarded();
     router.replace("/home");
   }
