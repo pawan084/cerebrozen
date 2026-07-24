@@ -27,8 +27,21 @@
 > "Check in" CTA path, Toolkit rename + crisis-footer assert, Programs via
 > Sleep).
 >
-> **⚠ BOTH WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
-> `xcodebuild test` pass before shipping.** Waves C–D remain.
+> **Wave C also landed 2026-07-24** (items 14, 12): Sleep reframed to
+> "Improve your sleep, night by night" with a "Your rhythm" card (pure
+> `averageSleepMinutes`/`bedtimeSpreadMinutes` noon-anchor helpers — Android's
+> unit-tested math ported; ≥3 nights) and two stimulus-control education cards
+> + the CBT-I WhyThisWorks footer; onboarding trimmed 10 → 8 (the fake
+> `FirstPlanScreen` deleted, the 18+ attest + underage exit merged into
+> `DisclosureScreen` — `confirmAge()`/`syncAgeConfirmation` preserved on its
+> Continue; `stepNames` now the 8 canonical names, `age_gate`/`first_plan`
+> never fire; progress fractions refit; every funnel UITest re-walked by
+> hand). Item 5 (Player audio-overlap) is a **listen test — macOS/device
+> only**, still open.
+>
+> **⚠ ALL THREE WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
+> `xcodebuild test` pass before shipping.** Wave D (contrast gate + Dawn
+> theme) remains — recommend running it only WITH a live build loop.
 
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,

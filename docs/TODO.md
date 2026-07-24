@@ -159,6 +159,19 @@ before shipping; UITest funnel + games-hub assertions were checked by hand.**
 - [x] UITests updated by hand: hero "Check in" path, Toolkit rename + crisis-footer
   assertion, Programs reached via Sleep.
 
+### iOS parity backport, Wave C (2026-07-24) — IOS_PARITY.md items 14, 12
+**⚠ Static-verified only — same macOS `xcodebuild test` caveat.** Item 5
+(back-to-back PlayerView audio overlap) is a device listen test — still open.
+- [x] Sleep "track" → "improve": "Improve your sleep, night by night" eyebrow;
+  "Your rhythm" card (≥3 nights) with noon-anchored bedtime-spread math ported
+  from Android's unit-tested helpers; "Bed is for sleep" + "Same wake time"
+  stimulus-control cards + the CBT-I provenance footer.
+- [x] Onboarding 10 → 8: fake `FirstPlanScreen` deleted (static Dummy steps posing
+  as personalization); 18+ attest + underage exit merged into `DisclosureScreen`
+  (confirmAge/syncAgeConfirmation preserved, Continue stays gated); `stepNames`
+  → 8 canonical names (`age_gate`/`first_plan` never fire — backend list
+  unchanged); progress fractions refit; all four funnel UITests re-walked.
+
 ### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
 The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
 addition), e2e spec updated in the same commits; tsc + backend suite green.

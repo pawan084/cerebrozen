@@ -5,37 +5,38 @@ struct OnboardingFlow: View {
     @State private var step = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Anonymous funnel step names — a cross-stack contract with
-    /// `backend/app/services/metrics.py: ONBOARDING_STEPS` (change both together).
+    /// Anonymous funnel step names — the canonical vocabulary is a cross-stack
+    /// contract with `backend/app/services/metrics.py: ONBOARDING_STEPS` (the
+    /// backend list is unchanged; after the 10→8 trim the merged step reports
+    /// "disclosure" and `age_gate`/`first_plan` simply never fire from iOS —
+    /// Android + web precedent).
     private static let stepNames = [
-        "welcome", "age_gate", "disclosure", "language", "state_check",
-        "first_reset", "first_plan", "signup", "consent", "notifications",
+        "welcome", "disclosure", "language", "state_check",
+        "first_reset", "signup", "consent", "notifications",
     ]
 
     var body: some View {
         ZStack {
             Theme.background
             Group {
-                // "90-second to calm" ordering: the legal/transparency gates stay
-                // first (fast taps), language comes early (feeling understood is
-                // part of the product), then ONE feeling tap → a real 2-minute
-                // breathing reset → the first mini-plan — all BEFORE any account
-                // ask. Account, consent (private by default) and the reminder
-                // opt-in come only after the user has felt something work.
+                // "90-second to calm" ordering, 8 steps (IOS_PARITY #12): the
+                // honesty gates first (18+ attest now lives INSIDE Disclosure),
+                // language early, ONE feeling tap → a real 2-minute breathing
+                // reset — all BEFORE any account ask. The fake "First plan"
+                // preview (static Dummy steps posing as personalization) is
+                // gone: the real plan appears on Home, built from real check-ins.
                 switch step {
                 case 0: WelcomeScreen(onBegin: next,
                                       // Returning account: originally gated at its own
                                       // onboarding (attestation is on the server), so
                                       // sign-in skips straight into the app.
                                       onSignedIn: { state.hasOnboarded = true })
-                case 1: AgeGateScreen(onContinue: next, onBack: back)
-                case 2: DisclosureScreen(onContinue: next, onBack: back)
-                case 3: LanguageScreen(onContinue: next, onBack: back)
-                case 4: StateCheckScreen(onContinue: next, onBack: back)
-                case 5: FirstResetScreen(onContinue: next, onBack: back)
-                case 6: FirstPlanScreen(onContinue: next, onBack: back)
-                case 7: SignupScreen(onContinue: next, onBack: back)
-                case 8: ConsentScreen(onContinue: next, onBack: back)
+                case 1: DisclosureScreen(onContinue: next, onBack: back)
+                case 2: LanguageScreen(onContinue: next, onBack: back)
+                case 3: StateCheckScreen(onContinue: next, onBack: back)
+                case 4: FirstResetScreen(onContinue: next, onBack: back)
+                case 5: SignupScreen(onContinue: next, onBack: back)
+                case 6: ConsentScreen(onContinue: next, onBack: back)
                 default: NotificationsScreen(onContinue: {
                     Analytics.track("onboarding_done")
                     state.hasOnboarded = true
@@ -200,7 +201,7 @@ private struct SignupScreen: View {
                 Text("Save your space").displayFont(28).foregroundStyle(Theme.Palette.text).entrance(1)
                 Text(backend.isConnected
                      ? "Your space is saved — plan, journal and check-ins now sync privately."
-                     : "You've shaped your plan — create your private space to keep it. No social feed, no sharing, just you.")
+                     : "Your first real plan takes shape on Home from what you picked — create your private space to keep it. No social feed, no sharing, just you.")
                     .appFont(13).foregroundStyle(Theme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .entrance(2)
@@ -209,7 +210,7 @@ private struct SignupScreen: View {
                 } else {
                     AuthForm(initialMode: .signUp).entrance(3)
                 }
-                OnboardingProgress(value: 0.80).entrance(4)
+                OnboardingProgress(value: 0.72).entrance(4)
                 if !backend.isConnected {
                     SecondaryButton(title: "Maybe later", systemImage: "arrow.right", action: onContinue)
                         .entrance(5)
@@ -226,8 +227,9 @@ private struct SignupScreen: View {
     }
 }
 
-// MARK: 1 — Age gate (kept early: fast legal gate)
-private struct AgeGateScreen: View {
+// MARK: 1 — AI disclosure + 18+ attest (merged step, IOS_PARITY #12: both are
+// honesty gates — one screen; the canonical funnel name stays "disclosure")
+private struct DisclosureScreen: View {
     var onContinue: () -> Void
     var onBack: (() -> Void)? = nil
     @EnvironmentObject var state: AppState
@@ -235,15 +237,25 @@ private struct AgeGateScreen: View {
     @State private var confirmed = false
     @State private var showUnderage = false
     var body: some View {
-        StepScaffold(eyebrow: "For adults only", title: "A quick check",
-                     caption: "CereBro is built for adults. A quick check keeps the experience safe and appropriate.",
-                     progress: 0.15, canContinue: confirmed, onContinue: {
+        StepScaffold(eyebrow: "Honesty first", title: "What CereBro is — and isn't",
+                     caption: "Here's exactly what your AI companion can and can't do for you. CereBro is built for adults.",
+                     progress: 0.2, canContinue: confirmed, onContinue: {
                          // Persist the tap time locally; attest() carries it to
                          // the server at the first connect (which may be later).
                          state.confirmAge()
                          backend.syncAgeConfirmation(state.ageConfirmedAt)
                          onContinue()
                      }, onBack: onBack) {
+            HStack(spacing: 10) {
+                Card { VStack(alignment: .leading, spacing: 4) {
+                    Text("Can help").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                    Text("Listen, reflect, guide tools, suggest a plan.").appFont(12).foregroundStyle(Theme.Palette.muted)
+                }}
+                Card { VStack(alignment: .leading, spacing: 4) {
+                    Text("Can't do").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                    Text("Diagnose, prescribe, replace therapy, or handle emergencies.").appFont(12).foregroundStyle(Theme.Palette.muted)
+                }}
+            }
             DangerPanel {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness support, not emergency care.").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
@@ -270,28 +282,6 @@ private struct AgeGateScreen: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("CereBro is built for adults, so we can't offer it to you yet. If things feel heavy, please talk to a trusted adult — or reach a free helpline like Childline (1098 in India).")
-        }
-    }
-}
-
-// MARK: 2 — AI disclosure (kept early: transparency builds trust before setup)
-private struct DisclosureScreen: View {
-    var onContinue: () -> Void
-    var onBack: (() -> Void)? = nil
-    var body: some View {
-        StepScaffold(eyebrow: "Honesty first", title: "What CereBro is — and isn't",
-                     caption: "Here's exactly what your AI companion can and can't do for you.",
-                     progress: 0.25, onContinue: onContinue, onBack: onBack) {
-            HStack(spacing: 10) {
-                Card { VStack(alignment: .leading, spacing: 4) {
-                    Text("Can help").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-                    Text("Listen, reflect, guide tools, suggest a plan.").appFont(12).foregroundStyle(Theme.Palette.muted)
-                }}
-                Card { VStack(alignment: .leading, spacing: 4) {
-                    Text("Can't do").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-                    Text("Diagnose, prescribe, replace therapy, or handle emergencies.").appFont(12).foregroundStyle(Theme.Palette.muted)
-                }}
-            }
         }
     }
 }
@@ -373,7 +363,7 @@ private struct LanguageScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "Speak your language", title: "Language",
                      caption: "Talk and reflect in the language you think in. Mix more than one if that's you.",
-                     progress: 0.35, onContinue: persistAndContinue, onBack: onBack) {
+                     progress: 0.32, onContinue: persistAndContinue, onBack: onBack) {
             ChipRow(options: Dummy.languages, selection: $selection)
         }
         .onAppear {
@@ -512,54 +502,10 @@ private struct NotificationsScreen: View {
     }
 }
 
-// MARK: 6 — First plan (the mini-plan lands right after the first win, and
-// gives the account step that follows its reason to exist: "save this")
-private struct FirstPlanScreen: View {
-    var onContinue: () -> Void
-    var onBack: (() -> Void)? = nil
-    @EnvironmentObject var state: AppState
-    @State private var done = false
-
-    /// Headline the plan around the user's first chosen goal.
-    private var planTitle: String {
-        switch state.selectedGoals.first {
-        case "Sleep better":      return "Sleep deeper"
-        case "Reduce stress":     return "Ease today's stress"
-        case "Stop overthinking": return "Quiet the noise"
-        case "Build confidence":  return "Steady confidence"
-        case "Feel less alone":   return "Feel more connected"
-        case "Strengthen willpower": return "Small promises, kept"
-        default:                  return "A calmer day"
-        }
-    }
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
-                if let onBack { OnboardingBackButton(action: onBack) }
-                Text("Made around you").eyebrow()
-                Text("First Plan").displayFont(28).foregroundStyle(Theme.Palette.text)
-                HeroCard(tag: "Today", title: planTitle,
-                         subtitle: "A light plan: one thing now, one tonight, one tomorrow — tuned to what you picked.",
-                         cta: "Looks right", imageURL: Dummy.Img.plan) {
-                    done.toggle()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onContinue() }
-                }
-                ForEach(Dummy.planSteps) { s in
-                    // Static preview rows — no chevron, no fake tap affordance.
-                    RowLabel(title: s.title, subtitle: s.detail, systemImage: s.symbol, emphasis: s.done, chevron: false)
-                }
-                OnboardingProgress(value: 0.70)
-                PrimaryButton(title: "Keep going", systemImage: "arrow.right.circle.fill") {
-                    done.toggle()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onContinue() }
-                }
-            }
-            .padding(18).padding(.top, 12)
-        }
-        .celebration(trigger: $done)
-    }
-}
+// The fake "First plan" preview that used to sit between the reset and signup
+// was killed (IOS_PARITY #12): it rendered static Dummy steps as if they were
+// a personalized plan — the real plan appears on Home, built from real
+// check-ins. Android + web made the same cut.
 
 // Reusable settings container
 struct SettingsGroup<Content: View>: View {
