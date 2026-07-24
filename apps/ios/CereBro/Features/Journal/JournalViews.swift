@@ -47,10 +47,31 @@ struct JournalHomeView: View {
                      subtitle: JournalPrompts.today,
                      cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
+            // Quick prompts — the old onegoodthing/intention micro-tools live
+            // on as guided entries (IOS_PARITY #4, Android IA precedent).
+            HStack(spacing: 8) {
+                quickPrompt("One good thing", prompt: "One good thing from today", symbol: "sparkles")
+                quickPrompt("Tonight's intention", prompt: "Tonight's intention", symbol: "target")
+            }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
         }
         .navigationDestination(isPresented: $writeNew) { JournalEntryView() }
+    }
+
+    /// A compact guided-entry chip: opens the composer prefilled with a prompt.
+    private func quickPrompt(_ label: String, prompt: String, symbol: String) -> some View {
+        NavigationLink { JournalEntryView(prompt: prompt) } label: {
+            HStack(spacing: 7) {
+                Image(systemName: symbol).appFont(12, weight: .semibold)
+                Text(label).appFont(12.5, weight: .semibold)
+            }
+            .foregroundStyle(Theme.Palette.soft)
+            .padding(.horizontal, 13).frame(height: 38).frame(maxWidth: .infinity)
+            .background(Theme.Palette.card).clipShape(Capsule())
+            .overlay(Capsule().stroke(Theme.Palette.line))
+        }
+        .buttonStyle(.pressable)
     }
 
     /// Face ID / passcode gate. If the device has no biometrics or passcode set

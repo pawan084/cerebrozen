@@ -782,3 +782,33 @@ struct Entrance: ViewModifier {
             }
     }
 }
+
+// MARK: - Why this works (credibility layer)
+/// One-line provenance footer under a tool or content surface — the iOS port of
+/// Android Common.kt WhyThisWorks (REDESIGN F9). Copy is hardcoded per surface
+/// and hand-synced with the Android `*_why` strings.
+struct WhyThisWorks: View {
+    let text: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Why this works").appFont(11, weight: .heavy).foregroundStyle(Theme.Brand.cyan)
+            Text(text).appFont(11.5).foregroundStyle(Theme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// One-time celebration gate: completions celebrate the FIRST time only, then
+/// settle to a quiet haptic (REDESIGN F5 — celebration at notable moments, not
+/// every rep). Keyed per tool in UserDefaults; `-resetState` wipes it, so the
+/// UITest suite still sees deterministic first-run behavior.
+enum CelebrationGate {
+    static func firstTime(_ key: String) -> Bool {
+        let k = "celebrated_\(key)"
+        if UserDefaults.standard.bool(forKey: k) { return false }
+        UserDefaults.standard.set(true, forKey: k)
+        return true
+    }
+}

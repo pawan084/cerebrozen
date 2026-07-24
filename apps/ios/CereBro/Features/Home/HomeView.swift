@@ -287,11 +287,12 @@ struct MoodCheckinView: View {
                 backend.mirrorMood(log)
                 saved.toggle()
             }
-            // Light reward loop: the check-in ritual ends with an optional
-            // one-minute playful reset — offered, never forced.
+            // A quiet next step after the check-in — offered, never forced.
+            // (Was "A tiny reward · Seal it…" — reward-loop framing conflicts
+            // with the F5 gentle-gamification posture.)
             if saved {
-                NavRow(title: "A tiny reward", subtitle: "Seal it with a 1-minute calm game",
-                       systemImage: "gamecontroller") { GamesHubView() }
+                NavRow(title: "Settle for a minute", subtitle: "A calm reset, if you'd like one",
+                       systemImage: "wind") { BreathingView() }
                     .entrance(0)
             }
         }
@@ -402,6 +403,7 @@ struct ProgramsView: View {
                     NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
                 }
             }
+            WhyThisWorks(text: "Programs are evidence-informed — built on CBT and sleep-science techniques.")
         }
         .task { await backend.loadCatalogue(); await backend.refresh() }
         .navigationDestination(isPresented: $startPlan) { DailyPlanView() }

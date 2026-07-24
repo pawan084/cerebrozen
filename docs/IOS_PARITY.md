@@ -1,5 +1,18 @@
 # iOS Parity Backport — Android Redesign → iOS
 
+> **STATUS 2026-07-24: Wave A landed** (items 9, 10, 13, 11, 4, 2, 22, 23) —
+> Tele-MANAS-first IN crisis directory (voice line only: **no WhatsApp row** —
+> Android W25 proved wa.me/9114416 dead, superseding item 9's instruction;
+> backend crisis.py already matches), HumanSupport real links + CoachBookingView
+> deleted, ConsentScreen 6th category + the consent-wiping onAppear fixed
+> (one-shot `onb_consent_touched`, wiped under `-resetState`), WhyThisWorks
+> provenance footers + "How CereBro is built" cards, journal quick-prompt chips
+> + one_good_thing/intention_set remapped to JournalEntryView(prompt:) (kinds
+> kept routable), 4 mini-games killed, first-completion-only celebrations
+> (CelebrationGate) + Home reward-loop copy reframed, paywall
+> manage/cancel-subscriptions link. **⚠ STATIC-VERIFIED ONLY — Windows host;
+> needs one macOS `xcodebuild test` pass before shipping.** Waves B–D remain.
+
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,
 > all files read), and the shipped Android implementation (read-only). **Analysis only — no

@@ -31,7 +31,12 @@ struct BreathingView: View {
                 .frame(maxWidth: .infinity)
 
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
-            PrimaryButton(title: "Continue") { done.toggle() }
+            WhyThisWorks(text: "Paced breathing is used in clinical distress-tolerance and relaxation protocols. Slowing the breath activates the body's calming response.")
+            // Celebrate the first-ever completion; after that a quiet haptic
+            // (F5 — reward at notable moments, not every rep).
+            PrimaryButton(title: "Continue") {
+                if CelebrationGate.firstTime("breathing") { done.toggle() } else { Haptics.success() }
+            }
         }
         .toolAmbience(.wind)
         .celebration(trigger: $done, accent: Theme.Accent.breathe)
@@ -141,7 +146,10 @@ struct GroundingView: View {
             RowLabel(title: "2 things you can smell", subtitle: "Take a slow breath in", systemImage: "nose", chevron: false)
             RowLabel(title: "1 thing you can taste", subtitle: "Notice it without judging", systemImage: "mouth", chevron: false)
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
-            PrimaryButton(title: "Continue") { done.toggle() }
+            WhyThisWorks(text: "Sensory grounding redirects attention from spiralling thoughts to the here-and-now — a widely taught anxiety-management skill.")
+            PrimaryButton(title: "Continue") {
+                if CelebrationGate.firstTime("grounding") { done.toggle() } else { Haptics.success() }
+            }
         }
         .toolAmbience(.rain)
         .celebration(trigger: $done, accent: Theme.Accent.breathe)
@@ -163,6 +171,7 @@ struct CBTReframeView: View {
             StepRow(number: 1, text: "Evidence for this thought")
             StepRow(number: 2, text: "Evidence against this thought")
             StepRow(number: 3, text: "A more balanced thought")
+            WhyThisWorks(text: "Reframing is a core cognitive-behavioural (CBT) technique — the approach with the strongest evidence among app-delivered tools (Linardon et al. 2024, World Psychiatry).")
             NavRow(title: "See balanced thought", subtitle: "CBT output", systemImage: "sparkles", imageURL: Dummy.Img.write, emphasis: true) { BalancedThoughtView() }
             PrimaryButton(title: "Continue") { showBalanced = true }
         }
@@ -207,7 +216,9 @@ struct BalancedThoughtView: View {
                 }}
             }
             NavRow(title: "Save reflection", subtitle: "Add result to private journal", systemImage: "book", imageURL: Dummy.Img.journal) { JournalEntryView() }
-            PrimaryButton(title: "Continue") { done.toggle() }
+            PrimaryButton(title: "Continue") {
+                if CelebrationGate.firstTime("balanced_thought") { done.toggle() } else { Haptics.success() }
+            }
         }
         .toolAmbience(.drone)
         .celebration(trigger: $done)

@@ -11,8 +11,11 @@ struct ActivityDestination: View {
         case "grounding":            GroundingView()
         case "mood_check":           MoodCheckinView()
         case "mini_journal", "journal": JournalEntryView()
-        case "one_good_thing":       OneGoodThingView()
-        case "intention_set":        IntentionSetView()
+        // IA consolidation (IOS_PARITY #4): the standalone micro-views were
+        // absorbed into Journal quick prompts — the kinds stay routable
+        // (cross-stack widget contract), only the destination changed.
+        case "one_good_thing":       JournalEntryView(prompt: "One good thing from today")
+        case "intention_set":        JournalEntryView(prompt: "Tonight's intention")
         case "dbt_skill":            DBTSkillView()
         case "sleep_checkin":        SleepCheckInView()
         case "crisis":               CrisisView()

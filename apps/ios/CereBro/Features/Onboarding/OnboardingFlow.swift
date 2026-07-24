@@ -306,6 +306,9 @@ private struct ConsentScreen: View {
     /// DPDP s.5(3): the notice itself is readable in English or an
     /// Eighth-Schedule language — seeded from the language step's choice.
     @State private var noticeLang = "en"
+    /// Survives the screen being recreated (Back → forward re-inits @State):
+    /// the private-by-default reset must run once per install, not per visit.
+    @AppStorage("onb_consent_touched") private var consentTouched = false
     private var notice: ConsentNotice { ConsentNotices.notice(noticeLang) }
 
     /// The recommended one-tap opt-in covers every "remember my patterns"
@@ -338,14 +341,24 @@ private struct ConsentScreen: View {
                 ToggleRow(title: notice.category("ai_memory").label, subtitle: notice.category("ai_memory").hint, isOn: $state.consent.aiMemory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: notice.category("journal_memory").label, subtitle: notice.category("journal_memory").hint, isOn: $state.consent.journalMemory); Divider().overlay(Theme.Palette.line)
                 ToggleRow(title: notice.category("sleep_history").label, subtitle: notice.category("sleep_history").hint, isOn: $state.consent.sleepHistory); Divider().overlay(Theme.Palette.line)
-                ToggleRow(title: notice.category("voice_storage").label, subtitle: notice.category("voice_storage").hint, isOn: $state.consent.voiceStorage)
+                ToggleRow(title: notice.category("voice_storage").label, subtitle: notice.category("voice_storage").hint, isOn: $state.consent.voiceStorage); Divider().overlay(Theme.Palette.line)
+                // All 6 DPDP categories render here (Android W3 / web parity):
+                // "specific and informed" is better served by showing the
+                // category than by silently defaulting it.
+                ToggleRow(title: notice.category("model_training").label, subtitle: notice.category("model_training").hint, isOn: $state.consent.modelTraining)
             }
         }
         .onAppear {
-            // First-run default is everything OFF — consent must be an action.
-            state.consent = Consent(moodHistory: false, aiMemory: false,
-                                    voiceStorage: false, modelTraining: false,
-                                    journalMemory: false, sleepHistory: false)
+            // Private by default on the FIRST arrival only. Resetting on every
+            // appearance wiped the user's taps when they navigated Back and
+            // returned (IOS_PARITY #13) — consent must be an action, but an
+            // action taken must survive navigation.
+            if !consentTouched {
+                state.consent = Consent(moodHistory: false, aiMemory: false,
+                                        voiceStorage: false, modelTraining: false,
+                                        journalMemory: false, sleepHistory: false)
+                consentTouched = true
+            }
             noticeLang = ConsentNotices.defaultCode(forAppLanguage: state.language)
         }
     }

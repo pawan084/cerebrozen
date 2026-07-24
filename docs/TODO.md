@@ -116,6 +116,30 @@
 
 ## Done — recent
 
+### iOS parity backport, Wave A (2026-07-24) — IOS_PARITY.md items 9,10,13,11,4,2,22,23
+**⚠ Static-verified only (Windows host) — OWNER: run `xcodebuild test` on macOS
+before shipping; UITest funnel + games-hub assertions were checked by hand.**
+- [x] Tele-MANAS 14416 now LEADS the iOS IN crisis directory (was 112+KIRAN only —
+  iOS had no Tele-MANAS anywhere); voice line only per the Android W25 dead-target
+  finding; mirrors backend `services/crisis.py`.
+- [x] Fake "Coach booking" flow deleted (invented time slots — App Store 2.1 risk);
+  HumanSupportView now ships real tappable lines (Tele-MANAS / iCall 9152987821 /
+  findahelpline.com/in) + an honest roadmap card (new `SupportLinkRow`).
+- [x] Onboarding ConsentScreen renders all 6 DPDP categories (model_training was
+  silently defaulted) AND no longer wipes the user's consent taps on every
+  appearance (IOS_PARITY #13 bug — reset now runs once per install).
+- [x] Credibility layer: `WhyThisWorks` footers (breathing, grounding, CBT reframe,
+  TIPP, gratitude garden, Programs) + "How CereBro is built" honesty cards in
+  PrivacyPolicyView — copy hand-synced with Android/web.
+- [x] IA: onegoodthing/intention → Journal quick-prompt chips; widget kinds remapped
+  to `JournalEntryView(prompt:)` (kinds stay routable — cross-stack contract);
+  memorymatch/slidingpuzzle/bubblewrap/colorbreathing killed (REDESIGN §2.2).
+- [x] F5 posture: celebrations now fire on FIRST completion only per tool
+  (`CelebrationGate`, `-resetState`-wiped); Home post-check-in "A tiny reward ·
+  Seal it with a calm game" reframed to a quiet "Settle for a minute" breathe row.
+- [x] Paywall: "Manage or cancel anytime" link to Apple's subscriptions page (OECD
+  cancel-path indicator; iOS StoreKit is live code).
+
 ### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
 The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
 addition), e2e spec updated in the same commits; tsc + backend suite green.

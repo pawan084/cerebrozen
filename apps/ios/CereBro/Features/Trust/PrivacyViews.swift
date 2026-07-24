@@ -94,6 +94,17 @@ struct PrivacyPolicyView: View {
             policy("Contact & grievances",
                    "Questions, requests, or complaints: grievance@cerebrozen.in — we respond within 90 days and include this contact in every reply. India: after using this channel you may approach the Data Protection Board.")
 
+            // Honesty cards — hand-synced with Android privacypolicy_* strings
+            // (REDESIGN F9: say what's evidence, what CereBro is not, who's
+            // involved) and the web account page.
+            SectionTitle(title: "How CereBro is built", trailing: nil)
+            policy("Evidence, labeled",
+                   "Tools are labeled with why they work. Where something is comfort rather than therapy, we say so.")
+            policy("What CereBro is not",
+                   "A companion alongside care, never a replacement. It doesn't diagnose or treat.")
+            policy("Professional involvement",
+                   "Built with published clinical research; a formal clinical advisory process is on our roadmap.")
+
             Link(destination: URL(string: "https://cerebrozen.in/privacy")!) {
                 HStack(spacing: 6) {
                     Text("Read the full policy online").appFont(13, weight: .heavy)
