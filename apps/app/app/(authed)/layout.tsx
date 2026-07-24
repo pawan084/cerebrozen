@@ -34,12 +34,16 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
+  const [tier, setTier] = useState("free");
 
   useEffect(() => {
     if (!hasSession()) { router.replace("/signin"); return; }
     setReady(true);
     import("@/lib/api").then(({ api }) =>
-      api("/auth/me").then((me: any) => setName(me.name || "")).catch(() => {}));
+      api("/auth/me").then((me: any) => {
+        setName(me.name || "");
+        setTier(me.subscription_tier || "free");
+      }).catch(() => {}));
   }, [router]);
 
   if (!ready) return null;
@@ -72,7 +76,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             <span className="user-avatar" aria-hidden="true" />
             <div className="user-meta">
               <strong>{name || "Your space"}</strong>
-              <small>Free plan</small>
+              <small>{{ premium: "Premium", premium_human: "Premium + Human" }[tier] ?? "Free plan"}</small>
             </div>
           </div>
           <button

@@ -1,9 +1,10 @@
 "use client";
 
 // The top bar shared by every authed screen: eyebrow + serif title on the left,
-// a "Search calm…" field and a notification bell on the right (matches ref).
+// an optional per-page action slot on the right. (A search field and a
+// notification bell used to render here, but neither had a backend — dead,
+// focusable-but-inert chrome fails the credibility bar and keyboard a11y.)
 import type { ReactNode } from "react";
-import { Icon } from "@/components/icons";
 
 export function AppHeader({
   eyebrow, title, right,
@@ -14,16 +15,7 @@ export function AppHeader({
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="page-title">{title}</h1>
       </div>
-      <div className="app-header-tools">
-        {right}
-        <label className="search-field">
-          <Icon.search size={17} />
-          <input type="search" placeholder="Search calm…" aria-label="Search" />
-        </label>
-        <button className="bell-btn" aria-label="Notifications" title="Notifications">
-          <Icon.bellDot size={18} />
-        </button>
-      </div>
+      {right && <div className="app-header-tools">{right}</div>}
     </header>
   );
 }

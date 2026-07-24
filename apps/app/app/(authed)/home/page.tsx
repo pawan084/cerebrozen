@@ -76,9 +76,9 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const days = ["S", "M", "T", "W", "T", "F", "S"];
-  // A gentle mood line for the rail chart (score by recency; fallback shape).
-  const scores = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
-  const pts = (scores.length >= 2 ? scores : [3, 4, 3, 4, 3, 4, 4]);
+  // A gentle mood line for the rail chart — only ever the user's real days.
+  const pts = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
+  const presentDays = streak?.week?.filter((d) => d.active).length ?? 0;
 
   return (
     <>
@@ -181,8 +181,8 @@ export default function Home() {
           {/* Right rail */}
           <div className="rail">
             <div className="rail-card">
-              <span className="kicker">Day rhythm</span>
-              <div className="rail-big"><b>{streak?.best ?? streak?.current ?? 0}</b><span>day rhythm</span></div>
+              <span className="kicker">This week</span>
+              <div className="rail-big"><b>{presentDays}</b><span>{presentDays === 1 ? "day present" : "days present"}</span></div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
               <div className="rhythm-bars">
                 {(streak?.week ?? Array.from({ length: 7 }, (_, i) => ({ date: `${i}`, active: false }))).map((d, i) => (
@@ -199,13 +199,19 @@ export default function Home() {
                 <span className="serif-h" style={{ fontSize: 18 }}>Mood this week</span>
                 <Link href="/insights" className="link">Details</Link>
               </div>
-              <svg viewBox="0 0 300 90" style={{ width: "100%", height: 80, marginTop: 12 }} aria-hidden="true">
-                <polyline
-                  fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                  points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
-                />
-                <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="#8fe6ee" /><stop offset="1" stopColor="#8a7bf0" /></linearGradient></defs>
-              </svg>
+              {pts.length >= 2 ? (
+                <svg viewBox="0 0 300 90" style={{ width: "100%", height: 80, marginTop: 12 }} aria-hidden="true">
+                  <polyline
+                    fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                    points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
+                  />
+                  <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="#8fe6ee" /><stop offset="1" stopColor="#8a7bf0" /></linearGradient></defs>
+                </svg>
+              ) : (
+                <p className="sub" style={{ marginTop: 12 }}>
+                  Your line starts after two check-ins.
+                </p>
+              )}
             </div>
 
             <div className="rail-card reflection">

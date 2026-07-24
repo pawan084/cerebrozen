@@ -43,7 +43,7 @@ export default function Journal() {
         <div className="dash-grid">
           <div>
             <section className="prompt-hero">
-              <p className="eyebrow">Today's prompt · shaped by your check-in</p>
+              <p className="eyebrow">Today's prompt</p>
               <h2>What's one small thing that felt lighter today?</h2>
               {!open && <button className="pill-btn" onClick={() => setOpen(true)}>+ Write an entry</button>}
               {open && (
@@ -60,7 +60,6 @@ export default function Journal() {
             {entries.length === 0 && <p className="footnote">Nothing here yet — your entries collect below.</p>}
             {entries.map((e) => (
               <article className="entry-card" key={e.id}>
-                <span className="emoji">{e.risk_level === "crisis" || e.risk_level === "elevated" ? "😔" : "🙂"}</span>
                 <span className="date">{new Date(e.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}</span>
                 <q>{e.body || e.title}</q>
               </article>
@@ -71,7 +70,7 @@ export default function Journal() {
             <div className="rail-card">
               <span className="kicker">This month</span>
               <div className="rail-big"><b>{monthCount}</b><span>{monthCount === 1 ? "entry" : "entries"}</span></div>
-              <p className="sub">Most often on quiet evenings.</p>
+              <p className="sub">Every entry stays private by default.</p>
             </div>
             <div className="rail-card">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>

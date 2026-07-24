@@ -12,12 +12,6 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
-const RECENT = [
-  { title: "Late-night worries", when: "Yesterday · 14 min", c: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
-  { title: "Morning intention", when: "Mon · 6 min", c: "linear-gradient(135deg,#8fe6ee,#4fd8e0)" },
-  { title: "Work stress", when: "Sun · 21 min", c: "linear-gradient(135deg,#f0a48c,#e08a9a)" },
-];
-
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
 type CrisisInfo = { message?: string; resources?: { name: string; number: string }[] };
@@ -170,28 +164,16 @@ export default function Chat() {
           <section className="talk-hero">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
-            <p>Start a live conversation, or just type. No pressure to have the right words.</p>
+            <p>Just type — no pressure to have the right words. Voice lives in the apps.</p>
             <div className="talk-actions">
-              <button className="pill-btn" onClick={() => begin()}><span className="live-dot" /> Start live session</button>
-              <button className="pill-btn ghost" onClick={() => begin()}>Type instead</button>
+              <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
           </section>
-          <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
-            <div>
-              <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
-              {STARTERS.map((s) => (
-                <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
-              ))}
-            </div>
-            <div>
-              <h2 className="serif-h" style={{ marginBottom: 14 }}>Recent conversations</h2>
-              {RECENT.map((r) => (
-                <div key={r.title} className="convo-row">
-                  <span className="convo-dot" style={{ background: r.c }} />
-                  <div><strong>{r.title}</strong><small>{r.when}</small></div>
-                </div>
-              ))}
-            </div>
+          <div>
+            <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
+            {STARTERS.map((s) => (
+              <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
+            ))}
           </div>
         </>
       ) : (
