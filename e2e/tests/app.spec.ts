@@ -51,8 +51,10 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Save entry" }).click();
     await expect(page.locator(".entry-card", { hasText: "A bit stressed" })).toBeVisible();
 
-    // Sleep: the morning check-in still writes server-side.
+    // Sleep: the morning check-in still writes server-side, and the CBT-I
+    // stimulus-control education cards render (improvement framing, W12).
     await nav(page, "Sleep").click();
+    await expect(page.getByRole("heading", { name: "Bed is for sleep" })).toBeVisible();
     await page.getByRole("radio", { name: "Good" }).click();
     await page.getByRole("button", { name: "Save check-in" }).click();
     await expect(page.getByText(/Saved — one entry per morning/)).toBeVisible();

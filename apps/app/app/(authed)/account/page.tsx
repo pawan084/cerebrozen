@@ -156,6 +156,16 @@ export default function Account() {
     }
   }
 
+  async function openPortal() {
+    setBillingMsg("");
+    try {
+      const { url } = await api<{ url: string }>("/billing/portal", { method: "POST" });
+      window.location.href = url;
+    } catch (err: any) {
+      setBillingMsg(err.message || "Couldn't open the billing portal.");
+    }
+  }
+
   async function deleteAccount() {
     if (confirmText !== "DELETE") return;
     try {
@@ -205,9 +215,18 @@ export default function Account() {
             />
             <span className="sub">Email me my nudges — gentle reminders arrive by email when no browser is subscribed.</span>
           </label>
-          {(me.subscription_tier ?? "free") === "free" && (
+          {(me.subscription_tier ?? "free") === "free" ? (
             <div style={{ marginTop: 12 }}>
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
+              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {/* Cancelling must be as easy as subscribing (OECD checklist). */}
+              <button className="btn ghost" onClick={openPortal}>Manage or cancel subscription</button>
+              <p className="footnote">
+                Opens Stripe&apos;s billing portal. Subscribed on iPhone? Manage it in the App Store instead.
+              </p>
               {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
             </div>
           )}

@@ -116,6 +116,41 @@
 
 ## Done — recent
 
+### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
+The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
+addition), e2e spec updated in the same commits; tsc + backend suite green.
+- [x] **Wave A — fakes killed (B1–B8+3)**: hardcoded "Recent conversations",
+  fabricated "Gentle patterns"/stat tiles (now computed from real check-ins or
+  honestly empty; patterns from `/insights/patterns`), invented mood-line
+  fallbacks, journal fabrications, dead search/bell chrome, fake "live session"
+  CTA, hardcoded "Free plan" chip (now `subscription_tier`), best-streak
+  headline (now days-present-this-week).
+- [x] **Wave B — safety**: public static `/crisis` page (works signed-out, dead-API
+  safe; Tele-MANAS 14416 → 112 → KIRAN → findahelpline, dialler-only `tel:`
+  links, NO WhatsApp row per Android W25); persistent sidebar "Support" door;
+  chat/journal crisis banners lead with Tele-MANAS, numbers tappable; account
+  "Talk to a human" card (Tele-MANAS/iCall/directories).
+- [x] **Wave C — credibility/consent**: onboarding consent renders all 6 DPDP
+  categories (model_training added; old drafts deep-merge private-by-default);
+  shared `WhyThisWorks` provenance footers; /games → "Toolkit / Small ways to
+  steady" + real 5-4-3-2-1 grounding; account "How CereBro is built" honesty
+  cards; `today_guide` on Programs + Home; chat "Try together" rail;
+  WIDGET_LINKS extended (breathing/grounding→/games, one_good_thing/
+  intention_set→/journal; kind names pinned to services/activities.py);
+  journal prompts clickable + gratitude/intention quick-entry chips.
+- [x] **Wave D — flagship**: Sleep "Your rhythm" card (noon-anchored bedtime
+  spread — Android's unit-tested math ported) + stimulus-control education
+  cards + improvement framing; onboarding 10 → 8 steps (fake FirstPlan killed,
+  18+ attest merged into Disclosure, resume→consent renumbered);
+  **`POST /billing/portal`** (backend: Stripe Billing-Portal session via
+  subscription-metadata lookup, 503/502-honest, 6 new tests) + account
+  "Manage or cancel subscription" row + sidebar upsell now free-tier-only
+  (OECD nagging indicator); reduce-motion gate on the streaming caret +
+  orphaned-CSS sweep.
+- [ ] **Wave E — Dawn/Night dual web theme** (WEB_PARITY item 17) — still open (L);
+  token sweep of inline TSX gradients first, then `prefers-color-scheme` +
+  `data-theme` override. Web analytics (item 14) stays decision-gated.
+
 ### Evidence-based redesign, Phases 1–2 (2026-07-12) — 6 implementation waves
 Research-driven redesign per docs/REDESIGN.md (verified findings F1–F11). All waves
 compile/test-green; emulator smoke-verified end-to-end (Home, Toolkit, breathe engine,

@@ -1,5 +1,18 @@
 # Web Parity Audit — Android Redesign → Web App (apps/app)
 
+> **STATUS 2026-07-24: Waves A–D LANDED** (4 commits on `v1`): B1–B8 + item 3
+> (fakes killed), items 1–4 (public `/crisis` page, Tele-MANAS-first banners with
+> tappable `tel:` links, Support sidebar door, Talk-to-a-human card — **no
+> WhatsApp row**: Android W25 proved wa.me/9114416 dead, superseding item 1's
+> instruction), items 5–7/9/10/13/15/16 (6-category onboarding consent,
+> WhyThisWorks + honesty cards, Toolkit reframing + real 5-4-3-2-1 grounding,
+> clickable journal prompts, today_guide, Try-together rail, widget links), and
+> items 12/8/11/18 (Sleep rhythm + stimulus-control cards, 10→8 onboarding,
+> `POST /billing/portal` cancel path + free-only sidebar upsell, reduce-motion +
+> dead-CSS sweep). Item 14 (web analytics) stays **decision-gated** — untouched.
+> **Wave E (item 17, Dawn theme) remains open.** e2e spec updated in the same
+> commits; table statuses below are as-audited (2026-07-12), kept for reference.
+
 > W19, produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/IOS_PARITY.md`
 > (format precedent), the full authenticated web client (`apps/app/**` — every page, component
 > and lib file), the shipped Android implementation (read-only), and the backend contract

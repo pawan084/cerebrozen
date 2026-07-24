@@ -68,11 +68,16 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         <div className="nav-group-label">Explore</div>
         <nav className="nav-group">{EXPLORE.map(NavLink)}</nav>
 
-        <div className="premium-card">
-          <strong>Unlock Premium</strong>
-          <p>Unlimited talks, the full sleep library, and deeper insights.</p>
-          <Link href="/account" className="premium-btn">See plans</Link>
-        </div>
+        {/* Shown to free accounts only — a permanent upsell in a wellness app
+            leans on the OECD "nagging" indicator, and premium users never
+            need it. */}
+        {tier === "free" && (
+          <div className="premium-card">
+            <strong>Unlock Premium</strong>
+            <p>Unlimited talks, the full sleep library, and deeper insights.</p>
+            <Link href="/account" className="premium-btn">See plans</Link>
+          </div>
+        )}
 
         <div className="sidebar-foot">
           <div className="user-chip">

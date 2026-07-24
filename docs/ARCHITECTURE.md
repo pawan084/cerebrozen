@@ -84,7 +84,7 @@ cere/
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
 | `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
-| `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
+| `/billing` | Stripe Checkout + Billing-Portal sessions for the web app (`/checkout`, `/portal` — the cancel path; customer found via subscription `user_id` metadata; 503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
 | `/media` | StaticFiles mount over `MEDIA_ROOT` (public, like `/content`; Range/ETag so native players stream + seek) — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |

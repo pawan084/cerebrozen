@@ -91,6 +91,37 @@ async def test_webhook_checkout_completed_sets_tier(client, monkeypatch):
     assert me["subscription_expires_at"] is not None
 
 
+async def test_portal_503_when_unconfigured(auth_client):
+    r = await auth_client.post("/billing/portal")
+    assert r.status_code == 503
+    assert "isn't available yet" in r.json()["detail"]
+
+
+async def test_portal_returns_url_when_configured(auth_client, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
+
+    async def fake_portal(user_id):
+        assert user_id
+        return "https://billing.stripe.com/p/session/test123"
+
+    monkeypatch.setattr(stripe_billing, "create_portal_session", fake_portal)
+    r = await auth_client.post("/billing/portal")
+    assert r.status_code == 200
+    assert r.json()["url"].startswith("https://billing.stripe.com/")
+
+
+async def test_portal_502_when_no_stripe_subscription(auth_client, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
+
+    async def boom(user_id):
+        raise stripe_billing.StripeError("no Stripe subscription for user")
+
+    monkeypatch.setattr(stripe_billing, "create_portal_session", boom)
+    r = await auth_client.post("/billing/portal")
+    assert r.status_code == 502
+    assert "App Store" in r.json()["detail"]
+
+
 class _FakeResponse:
     def __init__(self, status_code, body):
         self.status_code = status_code
@@ -105,6 +136,7 @@ class _FakeClient:
     """Stands in for httpx.AsyncClient; captures the form payload."""
     last_data = None
     response: _FakeResponse = _FakeResponse(200, {"url": "https://checkout.stripe.com/c/ok"})
+    get_response: _FakeResponse = _FakeResponse(200, {"data": []})
 
     def __init__(self, *args, **kwargs): ...
     async def __aenter__(self):
@@ -114,6 +146,9 @@ class _FakeClient:
     async def post(self, url, data=None, auth=None):
         _FakeClient.last_data = data
         return _FakeClient.response
+    async def get(self, url, params=None, auth=None):
+        _FakeClient.last_params = params
+        return _FakeClient.get_response
 
 
 async def test_create_checkout_session_builds_stripe_request(monkeypatch):
@@ -142,6 +177,43 @@ async def test_create_checkout_session_builds_stripe_request(monkeypatch):
     # Missing price configuration is a StripeError before any network call.
     try:
         stripe_billing.price_for("premium_human", False)
+        raise AssertionError("expected StripeError")
+    except stripe_billing.StripeError:
+        pass
+
+
+async def test_create_portal_session_looks_up_customer(monkeypatch):
+    import httpx
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
+    monkeypatch.setattr(httpx, "AsyncClient", _FakeClient)
+
+    # Happy path: subscription search finds the customer, portal returns a URL.
+    _FakeClient.get_response = _FakeResponse(200, {"data": [{"customer": "cus_9"}]})
+    _FakeClient.response = _FakeResponse(200, {"url": "https://billing.stripe.com/p/ok"})
+    url = await stripe_billing.create_portal_session("user-123")
+    assert url == "https://billing.stripe.com/p/ok"
+    assert "user-123" in _FakeClient.last_params["query"]
+    assert _FakeClient.last_data["customer"] == "cus_9"
+
+    # No subscription carrying our metadata (e.g. App Store billing) → error.
+    _FakeClient.get_response = _FakeResponse(200, {"data": []})
+    try:
+        await stripe_billing.create_portal_session("user-123")
+        raise AssertionError("expected StripeError")
+    except stripe_billing.StripeError as exc:
+        assert "no Stripe subscription" in str(exc)
+
+    # Stripe-side failures surface as StripeError (route maps them to 502).
+    _FakeClient.get_response = _FakeResponse(401, {"error": {"message": "bad key"}})
+    try:
+        await stripe_billing.create_portal_session("user-123")
+        raise AssertionError("expected StripeError")
+    except stripe_billing.StripeError:
+        pass
+    _FakeClient.get_response = _FakeResponse(200, {"data": [{"customer": "cus_9"}]})
+    _FakeClient.response = _FakeResponse(400, {"error": {"message": "no portal config"}})
+    try:
+        await stripe_billing.create_portal_session("user-123")
         raise AssertionError("expected StripeError")
     except stripe_billing.StripeError:
         pass

@@ -85,6 +85,44 @@ async def create_checkout_session(user_id: str, tier: str, annual: bool) -> str:
     return url
 
 
+async def create_portal_session(user_id: str) -> str:
+    """Create a Billing Portal session (manage/cancel) and return its URL.
+
+    The customer is found by searching subscriptions for our ``user_id``
+    metadata (set at checkout) — consistent with the no-customer-store design.
+    Raises when the user has no Stripe subscription (e.g. App Store billing).
+    """
+    if not settings.stripe_enabled:
+        raise StripeError("Stripe is not configured")
+    query = f"metadata['user_id']:'{user_id}'"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{_API}/subscriptions/search",
+                                    params={"query": query, "limit": "1"},
+                                    auth=(settings.stripe_secret_key, ""))
+            if resp.status_code != 200:
+                logger.warning("Stripe subscription search failed (%s): %s",
+                               resp.status_code, resp.text[:300])
+                raise StripeError("subscription lookup failed")
+            rows = resp.json().get("data") or []
+            customer = (rows[0] or {}).get("customer") if rows else None
+            if not customer:
+                raise StripeError("no Stripe subscription for user")
+            resp = await client.post(f"{_API}/billing_portal/sessions",
+                                     data={"customer": customer,
+                                           "return_url": settings.stripe_return_url},
+                                     auth=(settings.stripe_secret_key, ""))
+    except httpx.HTTPError as exc:  # pragma: no cover - network path
+        raise StripeError(f"Stripe unreachable: {exc}") from exc
+    if resp.status_code != 200:
+        logger.warning("Stripe portal creation failed (%s): %s", resp.status_code, resp.text[:300])
+        raise StripeError("portal session creation failed")
+    url = resp.json().get("url")
+    if not url:
+        raise StripeError("portal session had no url")
+    return url
+
+
 def verify_webhook(payload: bytes, sig_header: str) -> dict:
     """Verify a Stripe-Signature header (t=...,v1=...) and return the event.
     HMAC-SHA256 over "{t}.{payload}" with the webhook signing secret; the
