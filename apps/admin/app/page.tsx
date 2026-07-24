@@ -46,7 +46,8 @@ export default function AdminPage() {
           <BrandMark size={26} /> CereBro
         </div>
         {TABS.map((t) => {
-          const I = Icon[t.key];
+          // Fallback glyph: a missing icon must never take down the dashboard.
+          const I = Icon[t.key] ?? Icon.overview;
           return (
             <button
               key={t.key}
