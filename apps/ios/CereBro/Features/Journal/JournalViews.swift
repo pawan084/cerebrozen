@@ -55,6 +55,10 @@ struct JournalHomeView: View {
             }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
+            // Pathway-attached support (F7): writing often surfaces heavy
+            // things — the door sits right where they surface.
+            NavRow(title: "If today feels heavy", subtitle: "Tele-MANAS 14416 · real people, 24/7",
+                   systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
         }
         .navigationDestination(isPresented: $writeNew) { JournalEntryView() }
     }

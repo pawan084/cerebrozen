@@ -458,7 +458,7 @@ private struct FirstResetScreen: View {
                     .appFont(13).foregroundStyle(Theme.Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .entrance(2)
-                BreathingPacer(accent: Theme.Accent.breathe)
+                BreathingPacer(accent: Theme.Accent.breathe, preset: .reset)
                     .frame(maxWidth: .infinity)
                     .entrance(3)
                 OnboardingProgress(value: 0.58).entrance(4)

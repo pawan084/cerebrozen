@@ -495,8 +495,12 @@ final class CereBroUITests: XCTestCase {
             back(app)
         }
 
-        tap(app, "Check how you feel");  snapshot(app, "home-02-mood");     back(app)
+        // Fresh state has no check-in, so the hero IS the mood ask ("Check in"
+        // CTA); the dedicated row only renders once the hero moves on.
+        tapExact(app, "Check in");       snapshot(app, "home-02-mood");     back(app)
         tap(app, "Today's plan");        snapshot(app, "home-03-plan");     back(app)
+        // Programs' standing door moved to the Sleep tab (Home de-densify).
+        openTab(app, "Sleep")
         tap(app, "Programs");            snapshot(app, "home-04-programs"); back(app)
     }
 
@@ -647,9 +651,11 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         launchIntoApp(app)
 
-        // 1) Record a mood, then confirm Home reflects it.
+        // 1) Record a mood, then confirm Home reflects it. Fresh state: the
+        // hero IS the mood ask ("Check in"); after one check-in the hero moves
+        // on and the dedicated row appears instead.
         openTab(app, "Home")
-        if tap(app, "Check how you feel") {
+        if tapExact(app, "Check in") || tap(app, "Check how you feel") {
             tap(app, "Anxious")                 // select a mood
             tap(app, "Start gentle support")    // persist it (fires celebration)
             snapshot(app, "p2-01-mood-recorded")
@@ -839,13 +845,17 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         launchIntoApp(app)
 
-        // Games hub from Home → play a game.
-        if tap(app, "Calm games") {
-            XCTAssertTrue(app.staticTexts["Calm games"].waitForExistence(timeout: 4), "games hub did not open")
-            snapshot(app, "games-hub")
+        // Toolkit from Home (was "Calm games") → play a settling activity.
+        if tap(app, "Toolkit") {
+            XCTAssertTrue(app.staticTexts["Toolkit"].waitForExistence(timeout: 4), "Toolkit hub did not open")
+            // The crisis door must be on the hub (≤2 taps rule).
+            XCTAssertTrue(app.buttons.containing(
+                NSPredicate(format: "label CONTAINS[c] %@", "Need support right now?")).firstMatch.exists,
+                "Toolkit crisis footer missing")
+            snapshot(app, "toolkit-hub")
             if tap(app, "Bubble pop") {
                 _ = app.staticTexts.firstMatch.waitForExistence(timeout: 3)
-                snapshot(app, "game-bubble-pop")
+                snapshot(app, "toolkit-bubble-pop")
                 back(app)
             }
             back(app)

@@ -152,6 +152,43 @@ struct ConversationStartersRail: View {
     }
 }
 
+/// "Try together" — structured exercises offered up front, rule-based-first
+/// (IOS_PARITY #15, evidence F3: structure beats open-ended chat). Client-only
+/// links, no LLM dependency; shown in the empty state and available throughout.
+struct TryTogetherRail: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
+                Image(systemName: "figure.2").appFont(11, weight: .bold).foregroundStyle(Theme.Brand.cyan)
+                Text("Try together").eyebrow()
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    NavigationLink { CBTReframeView() } label: { chip("CBT reframe", symbol: "brain") }
+                        .buttonStyle(.pressable)
+                    NavigationLink { BreathingView(preset: .box) } label: { chip("Box breathing", symbol: "wind") }
+                        .buttonStyle(.pressable)
+                    NavigationLink { GroundingView() } label: { chip("5-4-3-2-1 grounding", symbol: "checkmark.shield") }
+                        .buttonStyle(.pressable)
+                }
+                .padding(.horizontal, 1)
+            }
+        }
+    }
+
+    private func chip(_ text: String, symbol: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).appFont(11, weight: .bold)
+            Text(text).appFont(12.5, weight: .semibold).lineLimit(1)
+        }
+        .foregroundStyle(Theme.Palette.soft)
+        .padding(.horizontal, 14).frame(height: 38)
+        .background(Theme.Palette.card)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Theme.Palette.line))
+    }
+}
+
 /// Quick-reply chips under the composer. Activity/crisis actions navigate to the
 /// matching screen; anything else is sent as a new message.
 struct SuggestionChipRail: View {

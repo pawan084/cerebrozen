@@ -1,65 +1,52 @@
 import SwiftUI
 
-// MARK: - Games hub
-/// A small hub of calming, low-stakes games — playful resets with no fail state,
-/// no timers pressuring you, no scores to chase. Designed to extend: add a
-/// `GameEntry` and a destination and it appears here.
-struct GamesHubView: View {
-    private struct GameEntry: Identifiable {
-        let id = UUID(); let title: String; let blurb: String; let symbol: String; let accent: Color
-        let destination: AnyView
-    }
-
-    private var games: [GameEntry] {
-        [
-            // REDESIGN §2.2 (IOS_PARITY #2): memory match, sliding puzzle,
-            // bubble wrap and color breathing were killed — the weakest items
-            // against the F9 credibility bar. Breathing lives in Tools
-            // (BreathingView); these four earn their place.
-            .init(title: "Bubble pop", blurb: "Pop drifting bubbles at your own pace.",
-                  symbol: "circle.circle", accent: Theme.Accent.breathe, destination: AnyView(BubblePopGame())),
-            .init(title: "Zen ripples", blurb: "Tap a still pool and watch it spread.",
-                  symbol: "drop", accent: Theme.Accent.sleep, destination: AnyView(ZenRipplesGame())),
-            .init(title: "Pattern glow", blurb: "Follow the light, one step at a time.",
-                  symbol: "circle.hexagongrid.fill", accent: Theme.Palette.lav, destination: AnyView(PatternGlowGame())),
-            .init(title: "Gratitude garden", blurb: "Plant one small joy at a time.",
-                  symbol: "leaf", accent: Theme.Accent.calm, destination: AnyView(GratitudeGardenGame())),
-        ]
-    }
-
-    private let cols = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-
+// MARK: - Toolkit
+/// One hub for every small steadying tool (IOS_PARITY #3, Android ToolkitScreen
+/// parity): sections Ground · Breathe · Reframe · Settle, ending with the
+/// crisis door — tools first, honest pathways when tools aren't enough. The
+/// old Games+Tools split (and the gamecontroller framing) is gone.
+struct ToolkitView: View {
     var body: some View {
-        ScreenScaffold(eyebrow: "Playful resets", title: "Calm games", trailingSystemImage: "gamecontroller") {
-            Text("Quick, gentle games for a busy mind. Nothing to win — just somewhere soft to put your attention.")
+        ScreenScaffold(eyebrow: "Small ways to steady", title: "Toolkit",
+                       trailingSystemImage: "wind") {
+            Text("Little tools with real provenance — pick whatever the moment needs. Nothing to win, nothing to keep up.")
                 .appFont(13).foregroundStyle(Theme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            LazyVGrid(columns: cols, spacing: 12) {
-                ForEach(Array(games.enumerated()), id: \.element.id) { i, g in
-                    NavigationLink { g.destination } label: { card(g) }
-                        .buttonStyle(.pressable)
-                        .entrance(i)
-                }
-            }
-        }
-    }
 
-    private func card(_ g: GameEntry) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: g.symbol)
-                .appFont(20, weight: .semibold).foregroundStyle(g.accent)
-                .frame(width: 46, height: 46)
-                .background(g.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            Text(g.title).appFont(15, weight: .semibold).foregroundStyle(Theme.Palette.text)
-            Text(g.blurb).appFont(11.5).foregroundStyle(Theme.Palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+            SectionTitle(title: "Ground", trailing: nil)
+            NavRow(title: "5-4-3-2-1 grounding", subtitle: "Anchor through the senses",
+                   systemImage: "checkmark.shield", imageURL: Dummy.Img.ground) { GroundingView() }
+            NavRow(title: "Zen ripples", subtitle: "Tap a still pool and watch it spread",
+                   systemImage: "drop", imageURL: Dummy.Img.ocean) { ZenRipplesGame() }
+            NavRow(title: "Bubble pop", subtitle: "Pop drifting bubbles at your own pace",
+                   systemImage: "circle.circle", imageURL: Dummy.Img.calm) { BubblePopGame() }
+
+            SectionTitle(title: "Breathe", trailing: nil)
+            NavRow(title: "Box breathing", subtitle: "4 · 4 · 4 · 4 — steady the body",
+                   systemImage: "wind", imageURL: Dummy.Img.breath, emphasis: true) { BreathingView(preset: .box) }
+            NavRow(title: "Two-minute reset", subtitle: "In for four, out for six — no holds",
+                   systemImage: "leaf", imageURL: Dummy.Img.breath) { BreathingView(preset: .reset) }
+            NavRow(title: "Color breathing", subtitle: "A soft glow with a long exhale",
+                   systemImage: "lungs", imageURL: Dummy.Img.breath) { BreathingView(preset: .color) }
+
+            SectionTitle(title: "Reframe", trailing: nil)
+            NavRow(title: "CBT reframe", subtitle: "A kinder look at a worried thought",
+                   systemImage: "brain", imageURL: Dummy.Img.journal) { CBTReframeView() }
+            NavRow(title: "TIPP reset", subtitle: "For overwhelming moments (DBT)",
+                   systemImage: "bolt.heart", imageURL: Dummy.Img.support) { DBTSkillView() }
+
+            SectionTitle(title: "Settle", trailing: nil)
+            NavRow(title: "Gratitude garden", subtitle: "Plant one small joy at a time",
+                   systemImage: "leaf.fill", imageURL: Dummy.Img.calm) { GratitudeGardenGame() }
+            NavRow(title: "Pattern glow", subtitle: "Follow the light, one step at a time",
+                   systemImage: "circle.hexagongrid.fill", imageURL: Dummy.Img.meditate) { PatternGlowGame() }
+            NavRow(title: "Sounds for sleep", subtitle: "Stories and soundscapes on the Sleep tab",
+                   systemImage: "moon.zzz", imageURL: Dummy.Img.sleep) { PlayerView(item: Dummy.sleepContent[0]) }
+
+            // Crisis stays ≤2 taps from every tool surface (REDESIGN §2.3).
+            NavRow(title: "Need support right now?", subtitle: "Tele-MANAS 14416 · real people, 24/7",
+                   systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
         }
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
-        .padding(13)
-        .background(Theme.Palette.card)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.Palette.line))
     }
 }
 

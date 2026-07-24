@@ -10,8 +10,25 @@
 > + one_good_thing/intention_set remapped to JournalEntryView(prompt:) (kinds
 > kept routable), 4 mini-games killed, first-completion-only celebrations
 > (CelebrationGate) + Home reward-loop copy reframed, paywall
-> manage/cancel-subscriptions link. **⚠ STATIC-VERIFIED ONLY — Windows host;
-> needs one macOS `xcodebuild test` pass before shipping.** Waves B–D remain.
+> manage/cancel-subscriptions link.
+>
+> **Wave B also landed 2026-07-24** (items 1, 3, 6, 7, 8, 15): one
+> `BreathingPacer.Preset` engine (box 4-4-4-4 / color 4-2-6 / reset 4-6
+> no-holds — onboarding uses `.reset`); `GamesHubView` → **`ToolkitView`**
+> (Ground · Breathe · Reframe · Settle + Tele-MANAS crisis footer); Home
+> de-densified ~10 → 6 blocks (check-in first unless the hero is the mood ask;
+> sleep/baseline/Programs rows cut — baseline ask moved to Insights, Programs'
+> standing door to the Sleep tab, enrolled card links remain; collapsed
+> recent-check-ins card added); StreakCard → presence framing ("N days you
+> showed up this week", best never surfaced; computation untouched —
+> cross-stack contract); You-header Support door + Journal "If today feels
+> heavy" card; Talk `TryTogetherRail` in the empty state + Ground chip
+> mid-conversation and in the voice session. UITests updated by hand (hero
+> "Check in" CTA path, Toolkit rename + crisis-footer assert, Programs via
+> Sleep).
+>
+> **⚠ BOTH WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
+> `xcodebuild test` pass before shipping.** Waves C–D remain.
 
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,

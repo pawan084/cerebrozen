@@ -140,6 +140,25 @@ before shipping; UITest funnel + games-hub assertions were checked by hand.**
 - [x] Paywall: "Manage or cancel anytime" link to Apple's subscriptions page (OECD
   cancel-path indicator; iOS StoreKit is live code).
 
+### iOS parity backport, Wave B (2026-07-24) — IOS_PARITY.md items 1,3,6,7,8,15
+**⚠ Static-verified only — same macOS `xcodebuild test` caveat as Wave A.**
+- [x] One breathing engine: `BreathingPacer.Preset` (box / color 4-2-6 / reset 4-6
+  no-holds); onboarding FirstReset uses `.reset`; Toolkit offers all three.
+- [x] `GamesHubView` → `ToolkitView`: Ground · Breathe · Reframe · Settle sections
+  over the surviving tools + the Tele-MANAS crisis footer (≤2-tap rule).
+- [x] Home de-densified (~10 → 6 blocks): hero → check-in (hidden when the hero IS
+  the mood ask) → plan → rail → presence card → collapsed recent check-ins →
+  quiet Toolkit row. Cut: sleep row (Sleep tab owns it), baseline ask (moved to
+  Insights, where its payoff renders), Programs row (standing door added to the
+  Sleep tab, Android sleep_programs_nav parity; enrolled card still links).
+- [x] Presence framing: "N days you showed up this week" headline, no "Begin your
+  streak" / "Best N days" pressure copy; streak computation untouched (contract).
+- [x] Crisis doors: You-header Support button, Journal "If today feels heavy" row.
+- [x] Talk: "Try together" rail (CBT reframe / box breathing / grounding) in the
+  empty state; Ground chip added mid-conversation + in the voice session.
+- [x] UITests updated by hand: hero "Check in" path, Toolkit rename + crisis-footer
+  assertion, Programs reached via Sleep.
+
 ### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
 The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
 addition), e2e spec updated in the same commits; tsc + backend suite green.

@@ -13,7 +13,9 @@ struct ProfileView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "Settings and support", title: "You", trailingSystemImage: "gearshape", isRoot: true) {
-            // Profile header
+            // Profile header — with the always-visible Support door (crisis
+            // ≤2 taps from anywhere; the row further down was easy to scroll
+            // past, the header door is not).
             HStack(spacing: 12) {
                 Circle().fill(Theme.orb).frame(width: 56, height: 56)
                 VStack(alignment: .leading, spacing: 2) {
@@ -21,6 +23,14 @@ struct ProfileView: View {
                     Text("\(state.companion) · \(state.language)").appFont(12).foregroundStyle(Theme.Palette.muted2)
                 }
                 Spacer()
+                NavigationLink { CrisisView() } label: {
+                    Image(systemName: "heart.text.square.fill")
+                        .appFont(19, weight: .semibold).foregroundStyle(Theme.Accent.warm)
+                        .frame(width: 44, height: 44)
+                        .background(Theme.Accent.warm.opacity(0.14), in: Circle())
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel("Support — crisis resources")
             }
             .padding(14)
             .background(Theme.Palette.card)
@@ -39,7 +49,7 @@ struct ProfileView: View {
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }
             NavRow(title: "Premium plan", subtitle: "Manage your subscription", systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }
-            NavRow(title: "Urgent support", subtitle: "Emergency resources", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
+            NavRow(title: "Urgent support", subtitle: "Tele-MANAS 14416 · real people, 24/7", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
             NavRow(title: "Crisis region", subtitle: CrisisDirectory.displayName(state.crisisRegion), systemImage: "globe", imageURL: Dummy.Img.privacy) { CrisisRegionView() }
             NavRow(title: "Human support", subtitle: "Coach or therapist handoff", systemImage: "person.2", imageURL: Dummy.Img.meditate) { HumanSupportView() }
 

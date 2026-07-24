@@ -63,6 +63,11 @@ struct SleepHomeView: View {
             SectionTitle(title: "Sleep stories & sounds")
             ForEach(sleepItems) { SleepRow(item: $0) }
             NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView(items: meditationItems) }
+            // Programs' standing door (Android sleep_programs_nav parity) — the
+            // Home row was cut in the de-densify; enrolled users also reach it
+            // from the Home program card.
+            NavRow(title: "Programs", subtitle: "Guided multi-day journeys — start with Sleep Reset",
+                   systemImage: "sparkles", imageURL: Dummy.Img.premium) { ProgramsView() }
             InsightCard(label: "Auto-stop timer", title: "Sleep-safe playback fades out when you set the timer.")
         }
         .navigationDestination(isPresented: $playFeatured) { PlayerView(item: featured) }
