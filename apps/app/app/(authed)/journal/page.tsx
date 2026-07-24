@@ -63,7 +63,9 @@ export default function Journal() {
         )}
         <div className="dash-grid">
           <div>
-            <section className="prompt-hero">
+            {/* theme-night: the hero stays dark in Dawn, and the composer's
+                var-driven labels/fields inside re-resolve to Night ink. */}
+            <section className="prompt-hero theme-night">
               <p className="eyebrow">Today's prompt</p>
               <h2>What's one small thing that felt lighter today?</h2>
               {!open && <button className="pill-btn" onClick={() => setOpen(true)}>+ Write an entry</button>}

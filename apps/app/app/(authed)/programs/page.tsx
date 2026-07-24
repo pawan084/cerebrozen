@@ -78,7 +78,7 @@ export default function Programs() {
           className="media-hero"
           style={{
             background:
-              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), var(--night)",
+              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), #0e0c22",
           }}
         >
           <p className="eyebrow">Multi-day paths to a calmer baseline</p>

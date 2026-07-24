@@ -106,7 +106,7 @@ export default function Toolkit() {
           style={{
             minHeight: 160,
             background:
-              "linear-gradient(120deg, rgba(60,90,90,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 88% 30%, rgba(143,230,238,0.28), transparent 42%), var(--night)",
+              "linear-gradient(120deg, rgba(60,90,90,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 88% 30%, rgba(143,230,238,0.28), transparent 42%), #0e0c22",
           }}
         >
           <p className="eyebrow">Breathe</p>

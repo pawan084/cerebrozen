@@ -90,6 +90,10 @@ export default function Sleep() {
 
   return (
     <>
+      {/* Sleep keeps Night in both themes (audit item 17 rule — a light sleep
+          surface fights the wind-down job); .theme-night re-scopes every var
+          and paints its own ground. */}
+      <div className="theme-night" style={{ flex: 1 }}>
       <AppHeader eyebrow="Improve your sleep, night by night" title="Sleep" />
       <div className="page-body">
         <section className="media-hero" style={{ background: "linear-gradient(120deg,rgba(90,40,80,0.6),rgba(20,16,44,0.4)), radial-gradient(circle at 82% 20%, rgba(143,230,238,0.25), transparent 40%), var(--night)" }}>
@@ -186,6 +190,7 @@ export default function Sleep() {
           {saved && <p className="success" role="status">Saved — one entry per morning, edits welcome.</p>}
           <button className="btn" disabled={!quality || busy}>{busy ? "Saving…" : "Save check-in"}</button>
         </form>
+      </div>
       </div>
     </>
   );

@@ -16,7 +16,7 @@ export default function SignIn() {
   }
 
   return (
-    <div className="authwrap">
+    <div className="authwrap theme-night">
       <div className="authcard">
         <p className="eyebrow">Private by design</p>
         <h1>Sign in</h1>

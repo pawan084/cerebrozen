@@ -147,9 +147,20 @@ addition), e2e spec updated in the same commits; tsc + backend suite green.
   "Manage or cancel subscription" row + sidebar upsell now free-tier-only
   (OECD nagging indicator); reduce-motion gate on the streaming caret +
   orphaned-CSS sweep.
-- [ ] **Wave E — Dawn/Night dual web theme** (WEB_PARITY item 17) — still open (L);
-  token sweep of inline TSX gradients first, then `prefers-color-scheme` +
-  `data-theme` override. Web analytics (item 14) stays decision-gated.
+- [x] **Wave E — Dawn/Night dual web theme** (WEB_PARITY item 17) — 2026-07-24:
+  Dawn var overrides in `apps/app/globals.css` (values mirror Android's
+  WCAG-verified `DawnPalette`, incl. AA-darkened accent inks) via
+  `prefers-color-scheme: light` + a `data-theme` override; extension vars
+  (`--card-soft/--line-soft/--well/--field/--tabbar`) promoted from the
+  white-alpha literals (Night values byte-identical); heroes/media art pinned
+  constant-dark (Android ContentArt rule) instead of the audit's class sweep —
+  deliberate; `.theme-night` scope pins Sleep, onboarding, signin and /crisis
+  to Night in every mode; Appearance picker (System/Night/Dawn) on /account
+  with a nonce'd pre-paint script (no flash, works under the enforced CSP);
+  `theme.spec.ts` e2e asserts Dawn-on-light, Night pinning, picker + reload
+  persistence, with screenshots for the visual pass. admin/web stay
+  Night-only (hand-duplicated globals — follow-up only if wanted). Web
+  analytics (item 14) stays decision-gated.
 
 ### Evidence-based redesign, Phases 1–2 (2026-07-12) — 6 implementation waves
 Research-driven redesign per docs/REDESIGN.md (verified findings F1–F11). All waves

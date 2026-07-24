@@ -41,11 +41,13 @@ function stepHref(symbol: string) {
   if (symbol === "mic" || symbol.startsWith("person") || symbol === "heart") return "/chat";
   return "/plan";
 }
+// Constant-dark tiles (white labels) — each tint sits on a literal night base
+// so the cards read identically in Night and Dawn.
 const JUMP = [
-  { label: "Talk now", href: "/chat", icon: Icon.talk, bg: "linear-gradient(160deg,rgba(138,123,240,0.35),rgba(255,255,255,0.02))" },
-  { label: "Breathe", href: "/games", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(143,230,238,0.28),rgba(255,255,255,0.02))" },
-  { label: "Sleep", href: "/sleep", icon: Icon.sleep, bg: "linear-gradient(160deg,rgba(166,139,255,0.32),rgba(255,255,255,0.02))" },
-  { label: "Journal", href: "/journal", icon: Icon.journal, bg: "linear-gradient(160deg,rgba(240,164,140,0.28),rgba(255,255,255,0.02))" },
+  { label: "Talk now", href: "/chat", icon: Icon.talk, bg: "linear-gradient(160deg,rgba(138,123,240,0.35),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Breathe", href: "/games", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(143,230,238,0.28),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Sleep", href: "/sleep", icon: Icon.sleep, bg: "linear-gradient(160deg,rgba(166,139,255,0.32),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Journal", href: "/journal", icon: Icon.journal, bg: "linear-gradient(160deg,rgba(240,164,140,0.28),rgba(255,255,255,0.02)), #14102c" },
 ];
 
 export default function Home() {
@@ -150,7 +152,9 @@ export default function Home() {
                   <Link key={s.id} href={s.done ? "/plan" : stepHref(s.symbol)} className="plan-row">
                     <span
                       className="plan-play"
-                      style={{ background: s.done ? "rgba(255,255,255,0.08)" : STEP_COLORS[i % STEP_COLORS.length], fontWeight: 700 }}
+                      style={s.done
+                        ? { background: "var(--well)", color: "var(--muted)", fontWeight: 700 }
+                        : { background: STEP_COLORS[i % STEP_COLORS.length], fontWeight: 700 }}
                     >
                       {s.done ? "✓" : <Icon.play size={16} />}
                     </span>

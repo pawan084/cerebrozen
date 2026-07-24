@@ -18,7 +18,7 @@ export const metadata = { title: "Urgent support — CereBro" };
 
 export default function Crisis() {
   return (
-    <div className="authwrap">
+    <div className="authwrap theme-night">
       <main className="authcard" style={{ maxWidth: 560 }}>
         <p className="eyebrow">You&apos;re not alone</p>
         <h1>Urgent support</h1>

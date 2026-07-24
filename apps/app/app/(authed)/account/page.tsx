@@ -13,6 +13,7 @@ import {
   type PushStatus,
 } from "@/lib/push";
 import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
+import { getThemeMode, setThemeMode, type ThemeMode } from "@/lib/theme";
 import { AppHeader } from "@/components/AppHeader";
 
 type Consent = {
@@ -54,6 +55,7 @@ export default function Account() {
   const [push, setPush] = useState<PushStatus | null>(null);
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
+  const [theme, setTheme] = useState<ThemeMode>("system");
   // DPDP s.5(3): the consent notice is readable in English or an
   // Eighth-Schedule language, picked right on the notice.
   const [noticeLang, setNoticeLang] = useState("en");
@@ -68,7 +70,13 @@ export default function Account() {
     api<Contact | null>("/users/me/trusted-contact").then((c) => c && setContact(c)).catch(() => {});
     getPushStatus().then(setPush).catch(() => {});
     isSubscribed().then(setPushOn).catch(() => {});
+    setTheme(getThemeMode());
   }, []);
+
+  function pickTheme(mode: ThemeMode) {
+    setThemeMode(mode);
+    setTheme(mode);
+  }
 
   async function toggleBrowserPush() {
     if (!push?.enabled) return;
@@ -232,6 +240,25 @@ export default function Account() {
           )}
         </section>
       )}
+
+      {/* Appearance — Android You→Appearance parity. Sleep, onboarding and the
+          signed-out pages deliberately stay Night in every mode. */}
+      <section className="card" aria-label="Appearance">
+        <h2>Appearance</h2>
+        <p className="sub">Dawn is a warm-light look; Sleep keeps its calm Night either way.</p>
+        <div className="ui-chips" style={{ marginTop: 10 }}>
+          {([["system", "System"], ["night", "Night"], ["dawn", "Dawn"]] as [ThemeMode, string][]).map(([mode, label]) => (
+            <button
+              key={mode}
+              className={theme === mode ? "ui-chip active" : "ui-chip"}
+              aria-pressed={theme === mode}
+              onClick={() => pickTheme(mode)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="card" aria-label="Privacy choices">
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>

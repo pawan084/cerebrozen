@@ -54,10 +54,11 @@ export default function Onboarding() {
     router.replace("/home");
   }
 
-  if (!ready) return <div className="onb-root" />;
+  if (!ready) return <div className="onb-root theme-night" />;
 
   return (
-    <div className="onb-root">
+    // theme-night: the signed-out funnel keeps Night in both themes.
+    <div className="onb-root theme-night">
       <div className="onb-stage" key={step}>
         {step === 0 && <Welcome onBegin={next} />}
         {step === 1 && <Disclosure onContinue={next} onBack={back} />}
