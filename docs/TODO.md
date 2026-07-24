@@ -195,8 +195,14 @@ The display-copy half of the "pure functions still returning English" ledger
   **Also found + fixed en route: the cc7cbd4 "ui" commit had silently reverted
   the private-by-default consent fix — mood_history/ai_memory were pre-ticked
   ON again in onboarding (restored all-off, matching iOS/web + the decided
-  DPDP posture).** OWNER: emulator smoke of the funnel + a values-hi visual
-  pass would be a good follow-up before the Hindi review.
+  DPDP posture).** Emulator-smoked 2026-07-25 (API-34 AVD, fresh install):
+  EN funnel walk — consent step shows ALL SIX toggles OFF (regression fix
+  verified on device); per-app locale `hi` walk — language chips show native
+  names, all six state options + notify options render the Hindi drafts,
+  "शाम 7 बजे" correctly pre-selected from the stable "evening" id, progress
+  bar shows real fractions in Hindi (the old eyebrow-matching would have
+  pinned 100%). Remaining before Hindi ship: the clinical/linguistic review
+  (owner) only.
 
 ### Analytics consent-gate parity, iOS + web (2026-07-24)
 The owner's 2026-07-13 decision ("no telemetry before consent", made for
