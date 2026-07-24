@@ -631,4 +631,31 @@
     <string name="ambience_mute_cd">एंबिएंस म्यूट करें</string>
     <string name="ambience_sound_off">ध्वनि बंद</string>
     <string name="ambience_label">एंबिएंस</string>
+
+    <!-- i18n plumbing (2026-07-24) — DRAFT machine translations like the rest
+         of this file; pending the same clinical/linguistic review. -->
+    <string name="duration_h_m">%1$dघं %2$02dमि</string>
+    <string name="duration_m">%1$dमि</string>
+    <string name="today_greeting_morning">सुप्रभात</string>
+    <string name="today_greeting_afternoon">शुभ दोपहर</string>
+    <string name="today_greeting_evening">शुभ संध्या</string>
+    <string name="today_milestone_line">🎉 %1$d दिन आप आए — बहुत सुंदर</string>
+    <string name="today_rail_morning">आज सुबह के लिए</string>
+    <string name="today_rail_midday">दोपहर में एक छोटा विराम</string>
+    <string name="today_rail_tonight">आज रात के लिए</string>
+    <string name="sleep_rhythm_vary">थोड़ा और नियमित सोने का समय — भले ही अपूर्ण — अतिरिक्त घंटों से ज़्यादा असर करता है।</string>
+    <string name="sleep_rhythm_steady">आपके सोने का समय स्थिर है — यही निरंतरता आपकी नींद के लिए सबसे मज़बूत चीज़ है।</string>
+    <string name="talk_transcript_me">मैं</string>
+    <string name="talk_transcript_bot">CereBro</string>
+    <string name="breathe_phase_in">साँस अंदर लें</string>
+    <string name="breathe_phase_hold">रोकें</string>
+    <string name="breathe_phase_out">साँस छोड़ें</string>
+    <string name="reminder_channel_name">दैनिक रिमाइंडर</string>
+    <string name="reminder_channel_desc">दिन में एक बार का कोमल चेक-इन संकेत।</string>
+    <string name="reminder_title">आपके लिए एक पल</string>
+    <string name="reminder_body">बीस सेकंड — आप सच में कैसे हैं?</string>
+    <string name="mixer_layer_rain">बारिश</string>
+    <string name="mixer_layer_ocean">समुद्र</string>
+    <string name="mixer_layer_wind">हवा</string>
+    <string name="mixer_layer_drone">गहरा स्वर</string>
 </resources>

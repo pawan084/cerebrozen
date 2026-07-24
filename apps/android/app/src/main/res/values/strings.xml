@@ -817,4 +817,33 @@
     <string name="ambience_mute_cd">Mute ambience</string>
     <string name="ambience_sound_off">Sound off</string>
     <string name="ambience_label">Ambience</string>
+
+    <!-- i18n plumbing (2026-07-24): copy that used to live in pure Kotlin
+         (greetings, milestone line, rail headings, sleep rhythm, durations,
+         breathe phase labels, talk transcript prefixes, reminder notification,
+         mixer layer names). -->
+    <string name="duration_h_m">%1$dh %2$02dm</string>
+    <string name="duration_m">%1$dm</string>
+    <string name="today_greeting_morning">Good morning</string>
+    <string name="today_greeting_afternoon">Good afternoon</string>
+    <string name="today_greeting_evening">Good evening</string>
+    <string name="today_milestone_line">🎉 %1$d days of showing up — beautifully done</string>
+    <string name="today_rail_morning">For this morning</string>
+    <string name="today_rail_midday">A midday reset</string>
+    <string name="today_rail_tonight">For tonight</string>
+    <string name="sleep_rhythm_vary">A steadier bedtime — even an imperfect one — does more for sleep than extra hours.</string>
+    <string name="sleep_rhythm_steady">Your bedtime is steady — that consistency is the strongest thing you\'re doing for your sleep.</string>
+    <string name="talk_transcript_me">Me</string>
+    <string name="talk_transcript_bot">CereBro</string>
+    <string name="breathe_phase_in">Breathe in</string>
+    <string name="breathe_phase_hold">Hold</string>
+    <string name="breathe_phase_out">Breathe out</string>
+    <string name="reminder_channel_name">Daily reminder</string>
+    <string name="reminder_channel_desc">A gentle once-a-day check-in nudge.</string>
+    <string name="reminder_title">A moment for you</string>
+    <string name="reminder_body">Twenty seconds — how are you, really?</string>
+    <string name="mixer_layer_rain">Rain</string>
+    <string name="mixer_layer_ocean">Ocean</string>
+    <string name="mixer_layer_wind">Wind</string>
+    <string name="mixer_layer_drone">Drone</string>
 </resources>

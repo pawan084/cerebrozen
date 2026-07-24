@@ -172,6 +172,22 @@ before shipping; UITest funnel + games-hub assertions were checked by hand.**
   → 8 canonical names (`age_gate`/`first_plan` never fire — backend list
   unchanged); progress fractions refit; all four funnel UITests re-walked.
 
+### Android Hindi i18n plumbing, pass 1 (2026-07-25)
+The display-copy half of the "pure functions still returning English" ledger
+(see the Phase-3 item above) — verified: `:app:check` green, coverage gate
+96.19% ≥ 95%.
+- [x] Res-driven now: `greetingResFor`/`milestoneFor`/`railKindFor` (Today),
+  `hoursMinutes` + `minutesLabel`/`spreadLabelText` + `isVariedRhythm` (Sleep),
+  `BreathKind` phase model + `phaseLabelRes` (Breathe engine — cues/haptics key
+  off the enum, not English labels), `talkTranscript` localized prefixes,
+  `Reminders` channel/notification copy, `SoundscapeMixer.Layer.nameRes`.
+  New strings in values/ + values-hi/ (hi = DRAFT, same review posture as W16).
+- [ ] Pass 2 still open (the label/value splits that touch persisted state):
+  Today `MOODS` (cross-stack taxonomy), Settings `COMPANIONS` (server value),
+  onboarding `STATE_OPTIONS`/`LANGUAGES`/`NOTIFY` (rememberSaveable keys +
+  server-persisted picks), the onboarding `Funnel` progress keyed off English
+  eyebrows, YouScreen profile fallbacks.
+
 ### Analytics consent-gate parity, iOS + web (2026-07-24)
 The owner's 2026-07-13 decision ("no telemetry before consent", made for
 Android) applied cross-client — closing WEB_PARITY item 14 and the parked

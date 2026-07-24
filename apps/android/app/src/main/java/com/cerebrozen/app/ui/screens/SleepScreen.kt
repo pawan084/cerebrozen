@@ -85,8 +85,20 @@ import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.roundToInt
 
-// i18n: pending — pure function, needs context plumbing ("7h 30m" format)
-internal fun minutesToLabel(total: Int): String = "%dh %02dm".format(total / 60, total % 60)
+/** Pure h/m split; the localized "7h 30m" copy resolves via [minutesLabel]. */
+internal fun hoursMinutes(total: Int): Pair<Int, Int> = total / 60 to total % 60
+
+/** Localized long-duration label ("7h 30m") — display sites only. */
+@Composable
+internal fun minutesLabel(total: Int): String {
+    val (h, m) = hoursMinutes(total)
+    return stringResource(R.string.duration_h_m, h, m)
+}
+
+/** A human-sized duration for prose ("45m", "1h 50m") — no zero-hour prefix. */
+@Composable
+internal fun spreadLabelText(min: Int): String =
+    if (min < 60) stringResource(R.string.duration_m, min) else minutesLabel(min)
 
 internal fun hhmm(minutes: Int): String {
     val m = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
@@ -147,18 +159,10 @@ internal fun bedtimeSpreadMinutes(logs: List<Night>): Int? {
     return anchored.max() - anchored.min()
 }
 
-/** The one gentle CBT-I principle the data supports — consistency over duration. */
-// i18n: pending — pure function, needs context plumbing
-internal fun rhythmPrinciple(spreadMin: Int): String =
-    if (spreadMin > 90) {
-        "A steadier bedtime — even an imperfect one — does more for sleep than extra hours."
-    } else {
-        "Your bedtime is steady — that consistency is the strongest thing you're doing for your sleep."
-    }
-
-/** A human-sized duration for prose ("45m", "1h 50m") — no zero-hour prefix. */
-// i18n: pending — pure function, needs context plumbing
-internal fun spreadLabel(min: Int): String = if (min < 60) "${min}m" else minutesToLabel(min)
+/** The one gentle CBT-I principle the data supports — consistency over
+ * duration. Pure boundary (>90 min = varied); the copy resolves at the
+ * composable via [R.string.sleep_rhythm_vary]/[R.string.sleep_rhythm_steady]. */
+internal fun isVariedRhythm(spreadMin: Int): Boolean = spreadMin > 90
 
 /** Sleep: morning check-in + honest weekly summary + diary, with a CBT-I-informed
  * layer on top — the job is improving sleep night by night, not measuring it. */
@@ -329,7 +333,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                     Text(
                         stringResource(
                             R.string.sleep_week_summary,
-                            minutesToLabel(s.optInt("avg_duration_min")),
+                            minutesLabel(s.optInt("avg_duration_min")),
                             "%.1f".format(s.optDouble("avg_quality")),
                             s.optString("trend"),
                         ),
@@ -356,10 +360,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 SleepGlassCard {
                     Text(stringResource(R.string.sleep_rhythm_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        stringResource(R.string.sleep_rhythm_line, spreadLabel(avgSleep), spreadLabel(spread)),
+                        stringResource(R.string.sleep_rhythm_line, spreadLabelText(avgSleep), spreadLabelText(spread)),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
-                    Text(rhythmPrinciple(spread), style = MaterialTheme.typography.bodyMedium, color = PeriwinkleSoft)
+                    Text(
+                        stringResource(if (isVariedRhythm(spread)) R.string.sleep_rhythm_vary else R.string.sleep_rhythm_steady),
+                        style = MaterialTheme.typography.bodyMedium, color = PeriwinkleSoft,
+                    )
                 }
             }
         }
@@ -430,7 +437,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 Text(stringResource(R.string.sleep_diary_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 nights.take(7).forEach { n ->
                     Text(
-                        stringResource(R.string.sleep_diary_line, n.date, minutesToLabel(n.duration), n.quality),
+                        stringResource(R.string.sleep_diary_line, n.date, minutesLabel(n.duration), n.quality),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -677,7 +684,7 @@ internal fun NightsChart(nights: List<Night>) {
     val reduceMotion = rememberReduceMotion()
     SleepGlassCard {
         Text(stringResource(R.string.sleep_chart_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        val chartCd = stringResource(R.string.sleep_chart_cd, recent.size, minutesToLabel(avg))
+        val chartCd = stringResource(R.string.sleep_chart_cd, recent.size, minutesLabel(avg))
         Row(
             Modifier.fillMaxWidth().height(120.dp)
                 .semantics { contentDescription = chartCd },
@@ -701,7 +708,7 @@ internal fun NightsChart(nights: List<Night>) {
                 )
             }
         }
-        Text(stringResource(R.string.sleep_chart_footer, minutesToLabel(avg), recent.size),
+        Text(stringResource(R.string.sleep_chart_footer, minutesLabel(avg), recent.size),
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
 }

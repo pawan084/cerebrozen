@@ -176,11 +176,17 @@ internal fun parseStarters(payload: JSONObject): List<String> =
 internal fun showTryTogether(messageCount: Int, lastRole: String?, busy: Boolean, streaming: Boolean): Boolean =
     messageCount >= 2 && lastRole == "assistant" && !busy && !streaming
 
-/** The last few turns as a journal body (mirrors iOS "Save to journal"). */
-// i18n: pending — pure function, needs context plumbing ("Me: " / "CereBro: " prefixes).
-internal fun talkTranscript(messages: List<Msg>, take: Int = 8): String =
+/** The last few turns as a journal body (mirrors iOS "Save to journal").
+ * Role prefixes are passed in localized by the composable caller (i18n);
+ * the defaults keep the pure function testable without resources. */
+internal fun talkTranscript(
+    messages: List<Msg>,
+    take: Int = 8,
+    meLabel: String = "Me",
+    botLabel: String = "CereBro",
+): String =
     messages.takeLast(take).joinToString("\n\n") { m ->
-        (if (m.role == "user") "Me: " else "CereBro: ") + m.text
+        (if (m.role == "user") "$meLabel: " else "$botLabel: ") + m.text
     }
 
 /** m:ss elapsed-session label — pure + testable. */
@@ -251,6 +257,8 @@ fun TalkScreen(
     val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
     val savedStatus = stringResource(R.string.talk_saved_status)
     val saveFailed = stringResource(R.string.talk_save_failed)
+    val transcriptMe = stringResource(R.string.talk_transcript_me)
+    val transcriptBot = stringResource(R.string.talk_transcript_bot)
     val voice = remember { VoiceEngine(context) }
     // Cloud voice (iOS-parity quality): Deepgram STT + ElevenLabs TTS via the
     // backend when the server has keys; the on-device engine stays fallback.
@@ -418,7 +426,7 @@ fun TalkScreen(
     fun saveToJournal() {
         if (messages.isEmpty()) return
         scope.launch {
-            runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
+            runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages, meLabel = transcriptMe, botLabel = transcriptBot)) }
                 .onSuccess { status = savedStatus; statusFailed = false }
                 .onFailure { status = saveFailed; statusFailed = true }
         }

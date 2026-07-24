@@ -143,20 +143,22 @@ internal fun moodAccent(mood: String): Color = when (mood) {
     else -> Periwinkle
 }
 
-// i18n: pending — pure function, needs context plumbing
-internal fun greetingFor(hour: Int): String = when (hour) {
-    in 5..11 -> "Good morning"
-    in 12..16 -> "Good afternoon"
-    else -> "Good evening"
+/** Pure hour → greeting resource (i18n: the copy resolves at the composable). */
+internal fun greetingResFor(hour: Int): Int = when (hour) {
+    in 5..11 -> R.string.today_greeting_morning
+    in 12..16 -> R.string.today_greeting_afternoon
+    else -> R.string.today_greeting_evening
 }
 
-private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+@Composable
+private fun greeting(): String =
+    stringResource(greetingResFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)))
 
-/** A gentle celebration line on milestone days — presence framing (REDESIGN
- * §3.6): counts showing up, never chains or misses. Calm, never punitive. */
-// i18n: pending — pure function, needs context plumbing
-internal fun milestoneLine(streak: Int): String? =
-    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak days of showing up — beautifully done" else null
+/** A gentle celebration on milestone days — presence framing (REDESIGN §3.6):
+ * counts showing up, never chains or misses. Returns the streak on milestone
+ * days (null otherwise); the composable formats the localized line. */
+internal fun milestoneFor(streak: Int): Int? =
+    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) streak else null
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -218,12 +220,12 @@ internal fun hasLastNightLog(dates: List<String>, today: LocalDate): Boolean =
         d == today || d == today.minusDays(1)
     }
 
-/** Time-matched rail kind + heading (mirrors the iOS Home rails). */
-// i18n: pending — pure function, needs context plumbing (headings are user copy)
-internal fun railKindFor(hour: Int): Pair<String, String> = when {
-    hour < 12 -> "meditation" to "For this morning"
-    hour < 17 -> "soundscape" to "A midday reset"
-    else -> "sleep" to "For tonight"
+/** Time-matched rail kind + heading resource (mirrors the iOS Home rails);
+ * the heading copy resolves at the composable (i18n). */
+internal fun railKindFor(hour: Int): Pair<String, Int> = when {
+    hour < 12 -> "meditation" to R.string.today_rail_morning
+    hour < 17 -> "soundscape" to R.string.today_rail_midday
+    else -> "sleep" to R.string.today_rail_tonight
 }
 
 // ── Components ───────────────────────────────────────────────────────────
@@ -441,7 +443,8 @@ private fun RailSkeleton() {
 /** A horizontal card rail of served content, matched to the time of day. */
 @Composable
 private fun ContentRail(onOpen: (String) -> Unit) {
-    val (kind, heading) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val (kind, headingRes) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val heading = stringResource(headingRes)
     val route = if (kind == "sleep") "sleep" else "sounds"
     var items by remember { mutableStateOf<JSONArray?>(null) }
     LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
@@ -1002,8 +1005,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     style = MaterialTheme.typography.titleLarge,
                     color = TextPrimary,
                 )
-                milestoneLine(streak)?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Ok)
+                milestoneFor(streak)?.let {
+                    Text(stringResource(R.string.today_milestone_line, it),
+                        style = MaterialTheme.typography.bodyMedium, color = Ok)
                 }
                 Text(
                     if (daysPresent > 0) {

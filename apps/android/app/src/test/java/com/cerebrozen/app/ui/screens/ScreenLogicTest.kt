@@ -14,10 +14,10 @@ class ScreenLogicTest {
 
     // ── Sleep time math ─────────────────────────────────────────────
     @Test
-    fun minutesToLabel_formats_hours_and_zero_padded_minutes() {
-        assertEquals("7h 30m", minutesToLabel(450))
-        assertEquals("8h 05m", minutesToLabel(485))
-        assertEquals("0h 00m", minutesToLabel(0))
+    fun hoursMinutes_splits_totals_for_the_localized_duration_format() {
+        assertEquals(7 to 30, hoursMinutes(450))
+        assertEquals(8 to 5, hoursMinutes(485))
+        assertEquals(0 to 0, hoursMinutes(0))
     }
 
     @Test
@@ -28,15 +28,15 @@ class ScreenLogicTest {
         assertEquals("23:30", hhmm(-30))        // −30m from midnight wraps back a day
     }
 
-    // ── Greeting buckets ────────────────────────────────────────────
+    // ── Greeting buckets (copy resolves via resources — i18n) ───────
     @Test
     fun greeting_buckets_by_hour() {
-        assertEquals("Good morning", greetingFor(5))
-        assertEquals("Good morning", greetingFor(11))
-        assertEquals("Good afternoon", greetingFor(12))
-        assertEquals("Good afternoon", greetingFor(16))
-        assertEquals("Good evening", greetingFor(17))
-        assertEquals("Good evening", greetingFor(2))   // small hours
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_morning, greetingResFor(5))
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_morning, greetingResFor(11))
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_afternoon, greetingResFor(12))
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_afternoon, greetingResFor(16))
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_evening, greetingResFor(17))
+        assertEquals(com.cerebrozen.app.R.string.today_greeting_evening, greetingResFor(2))   // small hours
     }
 
     // ── Parsers (JSON → model) ──────────────────────────────────────
@@ -138,12 +138,12 @@ class ScreenLogicTest {
 
     // ── Presence milestones (REDESIGN §3.6 — counts showing up, never misses) ──
     @Test
-    fun milestoneLine_fires_only_on_milestone_days() {
-        assertEquals("🎉 3 days of showing up — beautifully done", milestoneLine(3))
-        assertEquals("🎉 7 days of showing up — beautifully done", milestoneLine(7))
-        assertEquals(null, milestoneLine(0))
-        assertEquals(null, milestoneLine(4))
-        assertEquals(null, milestoneLine(15))
+    fun milestoneFor_fires_only_on_milestone_days() {
+        assertEquals(3, milestoneFor(3))
+        assertEquals(7, milestoneFor(7))
+        assertEquals(null, milestoneFor(0))
+        assertEquals(null, milestoneFor(4))
+        assertEquals(null, milestoneFor(15))
     }
 
     // ── Home banner slot (W9) — priority order, time windows, dismissal ──
@@ -305,11 +305,12 @@ class ScreenLogicTest {
     private fun freshStore() = com.cerebrozen.app.net.Session
         .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
 
-    // ── Breathe engine (one engine, three presets) ──────────────────
+    // ── Breathe engine (one engine, three presets; labels are res-driven) ──
     @Test
     fun breathePhases_box_paces_four_beats_of_four() {
         val phases = breathePhases(BreathePreset.Box)
-        assertEquals(listOf("Breathe in", "Hold", "Breathe out", "Hold"), phases.map { it.label })
+        assertEquals(listOf(BreathKind.IN, BreathKind.HOLD, BreathKind.OUT, BreathKind.HOLD),
+                     phases.map { it.kind })
         assertEquals(List(4) { 4 }, phases.map { it.seconds })
         assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
         assertEquals(phases, breathePhases(BreathePreset.Color))   // Color shares the pacing
@@ -318,7 +319,7 @@ class ScreenLogicTest {
     @Test
     fun breathePhases_reset_has_no_holds() {
         val phases = breathePhases(BreathePreset.Reset)
-        assertEquals(listOf("Breathe in", "Breathe out"), phases.map { it.label })
+        assertEquals(listOf(BreathKind.IN, BreathKind.OUT), phases.map { it.kind })
         assertEquals(listOf(true, false), phases.map { it.expanded })
     }
 

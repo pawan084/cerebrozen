@@ -102,25 +102,34 @@ import kotlinx.coroutines.delay
 /** Which pacing a breathe surface runs. */
 enum class BreathePreset { Box, Color, Reset }
 
+/** Stable phase id — pure data for pacing/cues; the USER copy resolves via
+ * [phaseLabelRes] at the composable (i18n: labels were English literals). */
+internal enum class BreathKind { IN, HOLD, OUT }
+
 /** One beat of a breathing cycle — pure data, so the pacing is unit-testable. */
-internal data class BreathPhase(val label: String, val seconds: Int, val expanded: Boolean)
+internal data class BreathPhase(val kind: BreathKind, val seconds: Int, val expanded: Boolean)
+
+/** Display copy for a phase — localized at the display site. */
+internal fun phaseLabelRes(kind: BreathKind): Int = when (kind) {
+    BreathKind.IN -> R.string.breathe_phase_in
+    BreathKind.HOLD -> R.string.breathe_phase_hold
+    BreathKind.OUT -> R.string.breathe_phase_out
+}
 
 /** The phase sequence per preset. Box and Color pace with holds; Reset is the
  * gentle onboarding rhythm — in, out, nothing to hold. W27 §4 (Calm study):
  * [secondsPerPhase] is user-selectable — Classic 4s (the long-standing
  * default), Gentle 6s, Slow 8s — scaling every phase equally. */
-// i18n: pending — pure function, needs context plumbing (phase labels are user copy;
-// unit tests assert them directly).
 internal fun breathePhases(preset: BreathePreset, secondsPerPhase: Int = 4): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
+        BreathPhase(BreathKind.IN, secondsPerPhase, expanded = true),
+        BreathPhase(BreathKind.OUT, secondsPerPhase, expanded = false),
     )
     BreathePreset.Box, BreathePreset.Color -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Hold", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
-        BreathPhase("Hold", secondsPerPhase, expanded = false),
+        BreathPhase(BreathKind.IN, secondsPerPhase, expanded = true),
+        BreathPhase(BreathKind.HOLD, secondsPerPhase, expanded = true),
+        BreathPhase(BreathKind.OUT, secondsPerPhase, expanded = false),
+        BreathPhase(BreathKind.HOLD, secondsPerPhase, expanded = false),
     )
 }
 
@@ -131,14 +140,13 @@ internal fun breatheTint(preset: BreathePreset, phase: Int): Color = when (prese
     else -> Cyan
 }
 
-// `label` is an internal, unlocalized phase id (see BreathPhase) — safe to match on.
 private fun playBreathingCue(phase: BreathPhase) {
-    when (phase.label) {
-        "Breathe in" -> Chime.playBreathCue(inhale = true)
-        "Breathe out" -> Chime.playBreathCue(inhale = false)
+    when (phase.kind) {
+        BreathKind.IN -> Chime.playBreathCue(inhale = true)
+        BreathKind.OUT -> Chime.playBreathCue(inhale = false)
         // Hold keeps the exact chime it has always rung; playHoldCue only deviates
         // if a real `breathe.hold` cue has been uploaded.
-        else -> Chime.playHoldCue()
+        BreathKind.HOLD -> Chime.playHoldCue()
     }
 }
 
@@ -178,7 +186,7 @@ fun BreatheEngine(
                 phase = next
                 count = phases[next].seconds
                 if (next == 0) breaths += 1
-                if (hapticsOn) Haptics.soft(if (phases[next].label.startsWith("Breathe")) 0.5f else 0.3f)
+                if (hapticsOn) Haptics.soft(if (phases[next].kind != BreathKind.HOLD) 0.5f else 0.3f)
                 if (chimeOn) playBreathingCue(phases[next])
             }
         }
@@ -235,16 +243,16 @@ fun BreatheEngine(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         AnimatedContent(
-            targetState = phases[phase].label,
+            targetState = phases[phase].kind,
             transitionSpec = {
                 if (reduceMotion) fadeIn(tween(1)) togetherWith fadeOut(tween(1))
                 else (fadeIn(tween(500)) + scaleIn(initialScale = 0.94f)) togetherWith
                     (fadeOut(tween(320)) + scaleOut(targetScale = 1.04f))
             },
             label = "breathingInstruction",
-        ) { instruction ->
+        ) { kind ->
             Text(
-                instruction,
+                stringResource(phaseLabelRes(kind)),
                 style = MaterialTheme.typography.headlineMedium.copy(fontSize = instructionSize, fontWeight = FontWeight.SemiBold),
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -299,7 +307,7 @@ fun BreatheEngine(
                     style = Stroke(width = 4.dp.toPx()),
                 )
             }
-            val orbCd = stringResource(R.string.breathe_orb_cd, phases[phase].label)
+            val orbCd = stringResource(R.string.breathe_orb_cd, stringResource(phaseLabelRes(phases[phase].kind)))
             Box(
                 Modifier
                     .size(orbSize)

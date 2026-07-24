@@ -919,7 +919,7 @@ private fun MixerSection() {
         val volume = SoundscapeMixer.volumes[index]
         MixerLayerCard(
             icon = layerIcon(layer.symbol),
-            title = layer.name,
+            title = stringResource(layer.nameRes),
             description = layerDescription(layer.symbol),
             volume = volume,
             playing = playing && volume > 0.02f,
@@ -1443,7 +1443,7 @@ private fun LegacyMixerSectionUnused() {
                     Icon(layerIcon(layer.symbol), contentDescription = null,
                         tint = if (on) Periwinkle else TextMuted, modifier = Modifier.size(20.dp))
                 }
-                Text(layer.name, style = MaterialTheme.typography.titleMedium,
+                Text(stringResource(layer.nameRes), style = MaterialTheme.typography.titleMedium,
                     color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
                 TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
                     Text(
