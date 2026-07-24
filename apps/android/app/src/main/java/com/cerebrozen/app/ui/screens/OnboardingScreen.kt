@@ -202,10 +202,12 @@ fun Onboarding() {
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
     var notify by rememberSaveable { mutableStateOf("Evening 7 PM") }
     // Private by default: NOTHING pre-ticked — consent must be an action
-    // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
+    // (EDPB/ICO; matches iOS ConsentScreen + web onboarding). The 38a63fa fix
+    // was silently reverted by the cc7cbd4 "ui" commit (same commit as the
+    // namespace slip) — restored 2026-07-25; keep every default false.
     val consent = rememberSaveable(saver = ConsentSaver) {
         mutableStateMapOf(
-            "mood_history" to true, "ai_memory" to true, "journal_memory" to false,
+            "mood_history" to false, "ai_memory" to false, "journal_memory" to false,
             "sleep_history" to false, "voice_storage" to false, "model_training" to false,
         )
     }
