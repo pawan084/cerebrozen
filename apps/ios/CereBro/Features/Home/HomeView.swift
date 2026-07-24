@@ -403,7 +403,7 @@ struct ProgramsView: View {
                                 Button("Start this journey") {
                                     Task { await backend.enrollProgram(contentId: p.id) }
                                 }
-                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.lavText)
                                 .buttonStyle(.pressable)
                             }
                         }
@@ -476,3 +476,4 @@ struct SearchView: View {
         .task { await backend.loadCatalogue() }
     }
 }
+

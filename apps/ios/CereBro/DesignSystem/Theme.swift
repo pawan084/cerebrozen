@@ -44,7 +44,10 @@ enum Theme {
         static let whiteText    = Color(hex: 0xF5F4FF)   // primary text on dark
         static let softText     = Color(hex: 0xDFE0FF)   // secondary text / accents
         static let mutedText    = Color(hex: 0xB0A9E0)   // tertiary text
-        static let captionText  = Color(hex: 0x8F88C0)   // captions / labels
+        // Brightened 0x8F88C0 → 0xA29CCC (2026-07-25 contrast audit): the old
+        // value hit 3.77:1 on a raised card over the top gradient — under the
+        // 4.5:1 AA floor. Computed worst-case now 4.77:1 (see ContrastTest).
+        static let captionText  = Color(hex: 0xA29CCC)   // captions / labels
         static let cream        = Color(hex: 0xECEEFB)   // light "primary" button fill
         static let amber        = Color(hex: 0xF0A48C)   // warm / crisis accent (coral)
         static let rose         = Color(hex: 0xE08A9A)   // stress / caution metric
@@ -66,7 +69,12 @@ enum Theme {
         static let muted2   = Brand.captionText    // captions / labels
 
         // Accents
-        static let lav      = Brand.periwinkle     // primary brand accent (orb ring)
+        static let lav      = Brand.periwinkle     // primary brand accent (orb ring) — FILLS only
+        /// Lavender AS TEXT/icon paint. The brand hue itself only reaches
+        /// 3.61:1 on a raised card over the top gradient (< 4.5 AA), so text
+        /// wears the lighter iris — the same in-family fix Android made
+        /// (Periwinkle → text-safe variant). Fills keep the true brand hue.
+        static let lavText  = Brand.iris
         static let danger   = Brand.danger         // safety / destructive
         static let success  = Brand.mint           // connected / healthy state
         static let stress   = Brand.rose           // stress / caution metric accent

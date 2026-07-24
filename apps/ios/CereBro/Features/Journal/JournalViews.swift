@@ -104,7 +104,7 @@ struct JournalLockScreen: View {
             AppBackground(accent: Theme.Palette.lav)
             VStack(spacing: 16) {
                 Image(systemName: "lock.fill")
-                    .appFont(38, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+                    .appFont(38, weight: .semibold).foregroundStyle(Theme.Palette.lavText)
                 Text("Journal locked").displayFont(24).foregroundStyle(Theme.Palette.text)
                 Text("Your reflections stay private. Unlock with Face ID or your passcode.")
                     .multilineTextAlignment(.center)
@@ -318,3 +318,4 @@ struct JournalHistoryView: View {
         return e.tags.isEmpty ? when : "\(e.tags.joined(separator: " · ")) · \(when)"
     }
 }
+

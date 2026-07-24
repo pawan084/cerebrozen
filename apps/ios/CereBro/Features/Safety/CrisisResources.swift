@@ -201,7 +201,7 @@ struct CrisisRegionView: View {
                             Spacer()
                             if state.crisisRegion == code {
                                 Image(systemName: "checkmark").appFont(14, weight: .bold)
-                                    .foregroundStyle(Theme.Palette.lav)
+                                    .foregroundStyle(Theme.Palette.lavText)
                             }
                         }
                         .padding(12).contentShape(Rectangle())
@@ -219,3 +219,4 @@ struct CrisisRegionView: View {
         }
     }
 }
+

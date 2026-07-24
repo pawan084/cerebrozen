@@ -48,7 +48,7 @@ struct ActivityWidgetCard: View {
             HStack(spacing: 12) {
                 Image(systemName: ActivityDestination.icon(widget.widget_kind))
                     .appFont(17, weight: .semibold)
-                    .foregroundStyle(Theme.Palette.lav)
+                    .foregroundStyle(Theme.Palette.lavText)
                     .frame(width: 42, height: 42)
                     .background(Theme.Palette.lav.opacity(0.16), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
@@ -58,7 +58,7 @@ struct ActivityWidgetCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                Image(systemName: "play.circle.fill").appFont(26).foregroundStyle(Theme.Palette.lav)
+                Image(systemName: "play.circle.fill").appFont(26).foregroundStyle(Theme.Palette.lavText)
             }
             .padding(13)
             .background(Theme.Palette.cardEmphasis)
@@ -121,7 +121,7 @@ struct ConversationStartersRail: View {
         if !topics.isEmpty {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.lav)
+                    Image(systemName: "sparkles").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.lavText)
                     Text("Start a conversation").eyebrow()
                 }
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -230,3 +230,4 @@ struct SuggestionChipRail: View {
         .overlay(Capsule().stroke(s.action == "crisis" ? Theme.Palette.danger.opacity(0.4) : Theme.Palette.line))
     }
 }
+

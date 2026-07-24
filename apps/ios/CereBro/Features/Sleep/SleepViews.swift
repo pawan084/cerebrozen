@@ -89,7 +89,7 @@ struct SleepHomeView: View {
                             .appFont(12.5).foregroundStyle(Theme.Palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(rhythmPrinciple(spreadMin: spread))
-                            .appFont(12.5).foregroundStyle(Theme.Palette.lav)
+                            .appFont(12.5).foregroundStyle(Theme.Palette.lavText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -156,7 +156,7 @@ struct WindDownTipRow: View {
                 HStack(spacing: 12) {
                     Image(systemName: tip.symbol)
                         .appFont(15, weight: .semibold)
-                        .foregroundStyle(Theme.Palette.lav)
+                        .foregroundStyle(Theme.Palette.lavText)
                         .frame(width: 40, height: 40)
                         .background(Theme.Stroke.iconWell, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
@@ -512,4 +512,5 @@ struct PlayerVisualizer: View {
         .onAppear { if !reduceMotion { animate = true } }   // static bars when reduced
     }
 }
+
 

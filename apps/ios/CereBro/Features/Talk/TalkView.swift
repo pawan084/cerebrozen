@@ -174,7 +174,7 @@ struct StreamingBubble: View {
             // animates — a smooth blink rather than a hard toggle.
             HStack(alignment: .bottom, spacing: 1) {
                 Text(text).appFont(12.5).foregroundStyle(Theme.Palette.soft)
-                Text("▍").appFont(12.5).foregroundStyle(Theme.Palette.lav)
+                Text("▍").appFont(12.5).foregroundStyle(Theme.Palette.lavText)
                     .opacity(caretVisible ? 1 : 0.15)
             }
             .padding(.horizontal, 13).padding(.vertical, 11)
@@ -387,3 +387,4 @@ struct ChatView: View {
         savedChat.toggle()
     }
 }
+

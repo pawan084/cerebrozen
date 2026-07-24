@@ -109,7 +109,7 @@ struct PrivacyPolicyView: View {
                 HStack(spacing: 6) {
                     Text("Read the full policy online").appFont(13, weight: .heavy)
                     Image(systemName: "arrow.up.right.square")
-                }.foregroundStyle(Theme.Palette.lav)
+                }.foregroundStyle(Theme.Palette.lavText)
             }
             .padding(.top, 4)
             DangerPanel {
@@ -267,3 +267,4 @@ struct DeleteDataView: View {
         dismiss()
     }
 }
+

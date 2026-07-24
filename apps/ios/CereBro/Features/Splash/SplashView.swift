@@ -49,7 +49,7 @@ struct SplashView: View {
                     Spacer()
 
                     HStack(spacing: 7) {
-                        Image(systemName: "heart.fill").appFont(13).foregroundStyle(Theme.Palette.lav)
+                        Image(systemName: "heart.fill").appFont(13).foregroundStyle(Theme.Palette.lavText)
                         Text("You matter. Always.")
                             .appFont(14, weight: .semibold).foregroundStyle(.white.opacity(0.7))
                     }
@@ -195,3 +195,4 @@ private struct MountainRidge: Shape {
         return p
     }
 }
+

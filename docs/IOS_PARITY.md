@@ -39,9 +39,22 @@
 > hand). Item 5 (Player audio-overlap) is a **listen test — macOS/device
 > only**, still open.
 >
-> **⚠ ALL THREE WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
-> `xcodebuild test` pass before shipping.** Wave D (contrast gate + Dawn
-> theme) remains — recommend running it only WITH a live build loop.
+> **Wave D item 17 (contrast gate) landed 2026-07-25** — computed the full
+> WCAG matrix (10 text roles × 7 composited surfaces): two failures found and
+> fixed in-family exactly as the spec predicted — `Brand.captionText`
+> 0x8F88C0 → 0xA29CCC (was 3.77:1 worst-case, now 4.77:1) and a new
+> `Palette.lavText = Brand.iris` for lavender-as-text (the brand periwinkle
+> only reaches 3.61:1 on a raised card over the top gradient; all 15
+> `foregroundStyle(.lav)` sites switched; fills keep the true hue —
+> Android's exact split). Post-fix matrix: 0 failures, tightest pair 4.77:1.
+> `CereBroTests/ContrastTest.swift` pins the palette byte-identical and
+> re-computes the gate — the unit-test TARGET must be added once in Xcode on
+> macOS (instructions in the file header). Item 16 (Dawn theme) is all that
+> remains of Wave D — run it only WITH a live build loop.
+>
+> **⚠ ALL WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
+> `xcodebuild test` pass before shipping** (ratios are host-independent math,
+> the rendering is not).
 
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,

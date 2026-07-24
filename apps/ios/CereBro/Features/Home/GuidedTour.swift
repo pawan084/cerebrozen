@@ -53,7 +53,7 @@ struct GuidedTourOverlay: View {
                     Button(isLast ? "Let's begin" : "Next") {
                         if isLast { finish() } else { withAnimation { idx += 1 } }
                     }
-                    .appFont(13, weight: .bold).foregroundStyle(Theme.Palette.lav)
+                    .appFont(13, weight: .bold).foregroundStyle(Theme.Palette.lavText)
                     .padding(.leading, 14)
                 }
                 .padding(.top, 4)
@@ -70,3 +70,4 @@ struct GuidedTourOverlay: View {
         .transition(.opacity)
     }
 }
+
