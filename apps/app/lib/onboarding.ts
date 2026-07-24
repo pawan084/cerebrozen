@@ -55,6 +55,7 @@ export type Consent = {
   voice_storage: boolean;
   journal_memory: boolean;
   sleep_history: boolean;
+  model_training: boolean;
 };
 
 export type Draft = {
@@ -79,6 +80,7 @@ export function freshDraft(): Draft {
       voice_storage: false,
       journal_memory: false,
       sleep_history: false,
+      model_training: false,
     },
     reminder: "Evening 7 PM",
   };
@@ -90,7 +92,12 @@ export function loadDraft(): Draft {
   if (typeof window === "undefined") return freshDraft();
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
-    return raw ? { ...freshDraft(), ...JSON.parse(raw) } : freshDraft();
+    if (!raw) return freshDraft();
+    const parsed = JSON.parse(raw);
+    // Deep-merge consent so drafts saved before a category existed (e.g.
+    // model_training) still carry every key, private-by-default.
+    const fresh = freshDraft();
+    return { ...fresh, ...parsed, consent: { ...fresh.consent, ...(parsed.consent ?? {}) } };
   } catch {
     return freshDraft();
   }

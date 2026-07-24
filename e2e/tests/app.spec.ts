@@ -80,13 +80,17 @@ test.describe("Web app (authenticated client)", () => {
       page.getByRole("heading", { level: 3, name: "Ease work stress" }),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Games: box breathing is genuinely playable — Start flips to Stop and the
-    // phase label appears (proves the game actually runs, not a dead button).
-    await nav(page, "Games").click();
+    // Toolkit (still at /games): box breathing is genuinely playable — Start
+    // flips to Stop and the phase label appears (not a dead button); the
+    // 5-4-3-2-1 grounding stepper advances.
+    await nav(page, "Toolkit").click();
     await expect(page.getByRole("heading", { name: "Box breathing" })).toBeVisible();
-    await page.getByRole("button", { name: "Start" }).click();
+    await page.getByRole("button", { name: "Start", exact: true }).click();
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
     await expect(page.getByText("Breathe in")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "5 things you can see" })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "4 things you can feel" })).toBeVisible();
 
     // Plan + Library (were built but orphaned) are now reachable from the nav.
     await nav(page, "Plan").click();

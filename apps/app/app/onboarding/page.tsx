@@ -376,10 +376,12 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
 
 /* ---------- 8 · Consent ---------- */
 
-// The onboarding notice shows the 5 categories about to collect data
-// (model_training stays a separate opt-in on the account page).
+// All 6 DPDP categories render here (Android redesign W3 precedent) — DPDP
+// "specific and informed" is better served by showing a category than by
+// silently defaulting it. The set-all row still excludes voice_storage and
+// model_training: sensitive opt-ins stay individual.
 const CONSENT_KEYS: (keyof Draft["consent"])[] = [
-  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage",
+  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];
 
 function ConsentStep({

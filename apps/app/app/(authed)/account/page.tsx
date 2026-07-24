@@ -336,6 +336,32 @@ export default function Account() {
         {status && <p className="success" role="status">{status}</p>}
       </section>
 
+      {/* Honesty cards — hand-synced with Android privacypolicy_* strings
+          (REDESIGN F9: say what's evidence, what CereBro is not, who's involved). */}
+      <section className="card" aria-label="How CereBro is built">
+        <h2>How CereBro is built</h2>
+        <div className="entry">
+          <strong>Evidence, labeled</strong>
+          <div className="meta">
+            Tools are labeled with why they work. Where something is comfort rather than
+            therapy, we say so.
+          </div>
+        </div>
+        <div className="entry">
+          <strong>What CereBro is not</strong>
+          <div className="meta">
+            A companion alongside care, never a replacement. It doesn&apos;t diagnose or treat.
+          </div>
+        </div>
+        <div className="entry">
+          <strong>Professional involvement</strong>
+          <div className="meta">
+            Built with published clinical research; a formal clinical advisory process is on
+            our roadmap.
+          </div>
+        </div>
+      </section>
+
       <section className="card" aria-label="Delete account">
         <h2>Delete account</h2>
         <p className="sub">

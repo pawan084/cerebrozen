@@ -17,7 +17,7 @@ const EXPLORE = [
   { href: "/plan", label: "Plan", icon: Icon.plan },
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
-  { href: "/games", label: "Games", icon: Icon.games },
+  { href: "/games", label: "Toolkit", icon: Icon.games },
   { href: "/account", label: "Settings", icon: Icon.settings },
   // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3): a calm, persistent
   // door — the /crisis page itself is static and works signed-out too.

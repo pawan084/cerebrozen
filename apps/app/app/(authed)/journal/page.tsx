@@ -6,7 +6,16 @@ import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 
 type Entry = { id: string; title: string; body: string; tags: string[]; risk_level: string; created_at: string };
-const REVISIT = ["What do you need more of this week?", "Name a worry, then set it down.", "Who made today a little easier?"];
+// Every prompt opens the composer prefilled (prompt-as-title, Android
+// JournalScreen pattern) — the last two absorb the old onegoodthing/intention
+// mini-tools as quick entries (REDESIGN IA consolidation).
+const REVISIT: { prompt: string; tag: string }[] = [
+  { prompt: "What do you need more of this week?", tag: "Reflection" },
+  { prompt: "Name a worry, then set it down.", tag: "Release" },
+  { prompt: "Who made today a little easier?", tag: "Gratitude" },
+  { prompt: "One good thing from today", tag: "Gratitude" },
+  { prompt: "Tonight's intention", tag: "Intention" },
+];
 
 export default function Journal() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -27,6 +36,13 @@ export default function Journal() {
       setSupport(["elevated", "crisis"].includes(entry.risk_level));
       setTitle(""); setBody(""); setTags(""); setOpen(false); await reload();
     } finally { setBusy(false); }
+  }
+
+  function usePrompt(p: { prompt: string; tag: string }) {
+    setTitle(p.prompt);
+    setTags(p.tag);
+    setOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const monthCount = entries.filter((e) => new Date(e.created_at).getMonth() === new Date().getMonth()).length;
@@ -80,7 +96,16 @@ export default function Journal() {
             <div className="rail-card">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>
               <div className="plist" style={{ marginTop: 8 }}>
-                {REVISIT.map((p) => <div key={p} className="prompt-item">{p}</div>)}
+                {REVISIT.map((p) => (
+                  <button
+                    key={p.prompt}
+                    className="prompt-item"
+                    onClick={() => usePrompt(p)}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}
+                  >
+                    {p.prompt}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

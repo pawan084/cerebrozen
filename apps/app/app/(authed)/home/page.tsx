@@ -21,7 +21,11 @@ type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
 type Plan = { id: string; title: string; steps: Step[] };
-type Program = { content_id: string; title: string; day: number; days: number; completed: boolean };
+// today_guide is additive/optional (W15) — omit-tolerant like Android.
+type Program = {
+  content_id: string; title: string; day: number; days: number; completed: boolean;
+  today_guide?: { title?: string; body?: string } | null;
+};
 
 // Step wells cycle these gradients; the step's SF-symbol name picks the web
 // surface that actually runs it (breathing → Games, wind-down → Sleep, …).
@@ -125,6 +129,11 @@ export default function Home() {
                 <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0" }}>
                   {program.completed ? "Complete — beautifully done." : "Showing up is the whole assignment today."}
                 </p>
+                {program.today_guide?.title?.trim() && (
+                  <p style={{ color: "var(--text)", fontSize: 13, margin: "8px 0 0" }}>
+                    <strong>Today&apos;s focus · </strong>{program.today_guide.title}
+                  </p>
+                )}
               </Link>
             )}
 
