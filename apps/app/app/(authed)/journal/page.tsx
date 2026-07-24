@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
@@ -37,7 +38,11 @@ export default function Journal() {
         {support && (
           <div className="crisis" role="alert">
             <strong>That sounded heavy — you deserve support right now.</strong><br />
-            In India: emergency <strong>112</strong> · KIRAN <strong>1800-599-0019</strong> · <a href="https://findahelpline.com" target="_blank" rel="noreferrer">findahelpline.com</a>. Your entry was saved — writing is never blocked.
+            In India: Tele-MANAS <a href="tel:14416" style={{ color: "inherit" }}><strong>14416</strong></a> (real people, 24/7) ·
+            emergency <a href="tel:112" style={{ color: "inherit" }}><strong>112</strong></a> ·
+            KIRAN <a href="tel:18005990019" style={{ color: "inherit" }}><strong>1800-599-0019</strong></a> ·{" "}
+            <Link href="/crisis" style={{ color: "inherit", fontWeight: 700 }}>all support options</Link>.
+            Your entry was saved — writing is never blocked.
           </div>
         )}
         <div className="dash-grid">

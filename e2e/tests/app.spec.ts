@@ -101,6 +101,10 @@ test.describe("Web app (authenticated client)", () => {
 
     // Settings (account): consent toggle flips, enforced server-side.
     await nav(page, "Settings").click();
+    // Safety: real human pathways render (Tele-MANAS leads), and the sidebar
+    // carries a persistent Support door (crisis ≤2 clicks from anywhere).
+    await expect(page.getByRole("heading", { name: "Talk to a human" })).toBeVisible({ timeout: 20_000 });
+    await expect(nav(page, "Support")).toBeVisible();
     const aiMemory = page.getByRole("switch", { name: "AI memory" });
     await expect(aiMemory).toBeVisible({ timeout: 20_000 });
     const before = await aiMemory.isChecked();
@@ -151,5 +155,17 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });
     await expect(page).toHaveURL(/\/home$/);
+  });
+
+  // The crisis page must work signed-out with a dead API: it's static JSX,
+  // Tele-MANAS first, numbers as real tel: links (never auto-called).
+  test("crisis page is public and Tele-MANAS-first", async ({ page }) => {
+    await page.goto(`${APP}/crisis`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Urgent support" })).toBeVisible();
+    const lines = page.getByRole("link", { name: /Tele-MANAS|Emergency|KIRAN/ });
+    await expect(lines).toHaveCount(3);
+    await expect(page.getByRole("link", { name: /Tele-MANAS/ })).toHaveAttribute("href", "tel:14416");
+    await expect(page.getByRole("link", { name: /Find a helpline/ })).toHaveAttribute(
+      "href", "https://findahelpline.com/in");
   });
 });

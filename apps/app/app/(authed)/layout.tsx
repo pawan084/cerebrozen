@@ -19,6 +19,9 @@ const EXPLORE = [
   { href: "/library", label: "Library", icon: Icon.library },
   { href: "/games", label: "Games", icon: Icon.games },
   { href: "/account", label: "Settings", icon: Icon.settings },
+  // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3): a calm, persistent
+  // door — the /crisis page itself is static and works signed-out too.
+  { href: "/crisis", label: "Support", icon: Icon.heart },
 ];
 // The mobile bottom bar keeps the five primary spaces (mirrors iOS).
 const MOBILE = [

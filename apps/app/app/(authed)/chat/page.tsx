@@ -12,6 +12,18 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
+// Offline fallback when the server sends no resources — mirrors backend
+// services/crisis.py IN (Tele-MANAS leads every crisis surface, REDESIGN §2.3).
+const CRISIS_FALLBACK = [
+  { name: "Tele-MANAS mental health support", number: "14416" },
+  { name: "Emergency services (India)", number: "112" },
+  { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
+  { name: "Find a helpline", number: "https://findahelpline.com" },
+];
+// Phone numbers open the dialler (never auto-call); anything with letters is a URL.
+const supportHref = (target: string) =>
+  target.startsWith("http") ? target : `tel:${target.replace(/[^0-9+]/g, "")}`;
+
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
 type CrisisInfo = { message?: string; resources?: { name: string; number: string }[] };
@@ -143,16 +155,19 @@ export default function Chat() {
           <br />
           {(crisis.resources && crisis.resources.length > 0
             ? crisis.resources
-            : [
-                { name: "Emergency services (India)", number: "112" },
-                { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
-                { name: "Find a helpline", number: "https://findahelpline.com" },
-              ]
+            : CRISIS_FALLBACK
           ).map((r) => (
             <span key={r.name}>
-              {r.name}: <strong>{r.number}</strong> ·{" "}
+              {r.name}:{" "}
+              <a href={supportHref(r.number)} style={{ color: "inherit" }}
+                target={r.number.startsWith("http") ? "_blank" : undefined}
+                rel={r.number.startsWith("http") ? "noreferrer" : undefined}>
+                <strong>{r.number}</strong>
+              </a>{" "}
+              ·{" "}
             </span>
           ))}
+          <Link href="/crisis" style={{ color: "inherit", fontWeight: 700 }}>All support options</Link>
           <button className="btn ghost" style={{ marginLeft: 8, padding: "4px 12px" }} onClick={() => setCrisis(null)}>
             Dismiss
           </button>

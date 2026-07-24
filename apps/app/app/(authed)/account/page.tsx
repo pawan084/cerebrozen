@@ -250,6 +250,42 @@ export default function Account() {
           ))}
       </section>
 
+      {/* Real human pathways — mirrors Android Settings.kt HumanSupportScreen.
+          No fake booking UI, ever; these lines reach real people today. */}
+      <section className="card" aria-label="Talk to a human">
+        <h2>Talk to a human</h2>
+        <p className="sub">
+          CereBro is a companion, not a clinician. When you want a real person, these connect
+          you with one.
+        </p>
+        <div className="entry row">
+          <div className="grow">
+            <strong>Tele-MANAS — call <a href="tel:14416" style={{ color: "var(--cyan)" }}>14416</a></strong>
+            <div className="meta">Free government mental-health line · 24/7</div>
+          </div>
+        </div>
+        <div className="entry row">
+          <div className="grow">
+            <strong>iCall — talk to a counsellor at <a href="tel:9152987821" style={{ color: "var(--cyan)" }}>9152987821</a></strong>
+            <div className="meta">Trained counsellors by phone</div>
+          </div>
+        </div>
+        <div className="entry row">
+          <div className="grow">
+            <strong>
+              <a href="https://findahelpline.com/in" target="_blank" rel="noreferrer" style={{ color: "var(--cyan)" }}>
+                Find a therapist or helpline
+              </a>
+            </strong>
+            <div className="meta">Directories of professional help near you</div>
+          </div>
+        </div>
+        <p className="footnote">
+          In a heavy moment? <Link href="/crisis" style={{ color: "var(--lav)" }}>Urgent support</Link> is
+          two taps from anywhere.
+        </p>
+      </section>
+
       <section className="card" aria-label="Crisis resources region">
         <h2>Crisis resources region</h2>
         <p className="sub">Sets which hotlines appear if a conversation gets heavy.</p>
