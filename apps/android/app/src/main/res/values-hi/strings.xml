@@ -658,4 +658,35 @@
     <string name="mixer_layer_ocean">समुद्र</string>
     <string name="mixer_layer_wind">हवा</string>
     <string name="mixer_layer_drone">गहरा स्वर</string>
+
+    <!-- i18n pass 2 (2026-07-25) — DRAFT machine translations, same review
+         posture as the rest of this file. Language names show native names. -->
+    <string name="ob_state_stressed">तनाव और खिंचाव महसूस हो रहा है</string>
+    <string name="ob_state_night">रात में दिमाग़ शांत नहीं होता</string>
+    <string name="ob_state_overthinking">हर बात पर ज़्यादा सोचना</string>
+    <string name="ob_state_doubting">खुद पर संदेह होना</string>
+    <string name="ob_state_distant">लोगों से दूरी महसूस होना</string>
+    <string name="ob_state_consistency">नियमित नहीं रह पाना</string>
+    <string name="lang_english">English</string>
+    <string name="lang_hindi">हिन्दी</string>
+    <string name="lang_hinglish">Hinglish</string>
+    <string name="lang_punjabi">ਪੰਜਾਬੀ</string>
+    <string name="lang_tamil">தமிழ்</string>
+    <string name="ob_notify_morning">सुबह 9 बजे</string>
+    <string name="ob_notify_evening">शाम 7 बजे</string>
+    <string name="ob_notify_previews">निजी प्रीव्यू</string>
+    <string name="ob_notify_none">कोई रिमाइंडर नहीं</string>
+    <string name="mood_good">अच्छा</string>
+    <string name="mood_anxious">बेचैन</string>
+    <string name="mood_low">उदास</string>
+    <string name="mood_tired">थका हुआ</string>
+    <string name="mood_okay">ठीक-ठाक</string>
+    <string name="companion_calm_guide">शांत मार्गदर्शक</string>
+    <string name="companion_calm_guide_detail">स्थिर और सुकून भरा — पहले आपको थाम लेता है, कभी जल्दी नहीं करता</string>
+    <string name="companion_warm_friend">गर्मजोश दोस्त</string>
+    <string name="companion_warm_friend_detail">हौसला देने वाला और अपनापन भरा — उस दोस्त की तरह जो समझता है</string>
+    <string name="companion_straight_talker">सीधी बात करने वाला</string>
+    <string name="companion_straight_talker_detail">साफ़ और सीधा — नरमी से, पर बिना घुमाए</string>
+    <string name="companion_quiet_coach">शांत कोच</string>
+    <string name="companion_quiet_coach_detail">काम पहले — एक बार में एक छोटा ठोस कदम</string>
 </resources>

@@ -83,9 +83,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name.ifBlank { stringResource(R.string.you_default_name) }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        // "Calm Guide"/"English" are server-profile fallback values
-                        // (cross-stack contract), so they stay literal for now.
-                        "${companion.ifBlank { "Calm Guide" }} · ${language.ifBlank { "English" }}",
+                        // Known taxonomy values localize for DISPLAY; the
+                        // server-side values stay English (contract).
+                        run {
+                            val comp = companion.ifBlank { "Calm Guide" }
+                            val lang = language.ifBlank { "English" }
+                            val compLabel = companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+                            val langLabel = languageLabelRes(lang)?.let { stringResource(it) } ?: lang
+                            "$compLabel · $langLabel"
+                        },
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -112,7 +118,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
 
         PremiumNavRow(stringResource(R.string.you_companion_title),
-            stringResource(R.string.you_companion_subtitle, companion.ifBlank { "Calm Guide" }),
+            stringResource(R.string.you_companion_subtitle, run {
+                val comp = companion.ifBlank { "Calm Guide" }
+                companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+            }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
         PremiumNavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }

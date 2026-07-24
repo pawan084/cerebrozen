@@ -846,4 +846,35 @@
     <string name="mixer_layer_ocean">Ocean</string>
     <string name="mixer_layer_wind">Wind</string>
     <string name="mixer_layer_drone">Drone</string>
+
+    <!-- i18n pass 2 (2026-07-25): display labels split from persisted values
+         (state options, languages, reminder picks, mood taxonomy, companions). -->
+    <string name="ob_state_stressed">Stressed and tense</string>
+    <string name="ob_state_night">Can\'t switch off at night</string>
+    <string name="ob_state_overthinking">Overthinking everything</string>
+    <string name="ob_state_doubting">Doubting myself</string>
+    <string name="ob_state_distant">Feeling distant from people</string>
+    <string name="ob_state_consistency">Can\'t stay consistent</string>
+    <string name="lang_english">English</string>
+    <string name="lang_hindi">Hindi</string>
+    <string name="lang_hinglish">Hinglish</string>
+    <string name="lang_punjabi">Punjabi</string>
+    <string name="lang_tamil">Tamil</string>
+    <string name="ob_notify_morning">Morning 9 AM</string>
+    <string name="ob_notify_evening">Evening 7 PM</string>
+    <string name="ob_notify_previews">Private previews</string>
+    <string name="ob_notify_none">No reminders</string>
+    <string name="mood_good">Good</string>
+    <string name="mood_anxious">Anxious</string>
+    <string name="mood_low">Low</string>
+    <string name="mood_tired">Tired</string>
+    <string name="mood_okay">Okay</string>
+    <string name="companion_calm_guide">Calm Guide</string>
+    <string name="companion_calm_guide_detail">Steady and soothing — grounds you first, never rushes</string>
+    <string name="companion_warm_friend">Warm Friend</string>
+    <string name="companion_warm_friend_detail">Encouraging and familiar — like a friend who gets it</string>
+    <string name="companion_straight_talker">Straight Talker</string>
+    <string name="companion_straight_talker_detail">Clear and direct — kind, but skips the padding</string>
+    <string name="companion_quiet_coach">Quiet Coach</string>
+    <string name="companion_quiet_coach_detail">Action-first — one small concrete step at a time</string>
 </resources>

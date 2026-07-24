@@ -142,33 +142,53 @@ private enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent,
 /** One feeling tap is the whole "assessment" — each maps into the shared
  * motivation/goal taxonomy (cross-stack: iOS StateCheckScreen.states ⇄ web
  * lib/onboarding.FEELINGS) so plans and conversation starters ground on it.
- * `mood` keys the first check-in into the shared mood taxonomy. */
-internal data class StateOption(val label: String, val motivation: String, val goal: String, val mood: String)
-
-// i18n: pending — labels double as the rememberSaveable key (StateOptionSaver)
-// and motivation/goal/mood are the cross-stack taxonomy; needs an id-based
-// split before the labels can localize.
-internal val STATE_OPTIONS = listOf(
-    StateOption("Stressed and tense", "Calm", "Reduce stress", "Anxious"),
-    StateOption("Can't switch off at night", "Calm", "Sleep better", "Tired"),
-    StateOption("Overthinking everything", "Focus", "Stop overthinking", "Anxious"),
-    StateOption("Doubting myself", "Confidence", "Build confidence", "Low"),
-    StateOption("Feeling distant from people", "Connection", "Feel less alone", "Low"),
-    StateOption("Can't stay consistent", "Discipline", "Strengthen willpower", "Okay"),
+ * `key` is the stable saveable id; `labelRes` is display copy (i18n);
+ * motivation/goal/mood stay the English cross-stack taxonomy values. */
+internal data class StateOption(
+    val key: String,
+    val labelRes: Int,
+    val motivation: String,
+    val goal: String,
+    val mood: String,
 )
 
-// i18n: pending — the picked value is the rememberSaveable default/state and
-// (for NOTIFY) drives startsWith("Morning"/"Evening") logic; needs an id-based
-// split before these display strings can localize.
-private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
-private val NOTIFY = listOf("Morning 9 AM", "Evening 7 PM", "Private previews", "No reminders")
+internal val STATE_OPTIONS = listOf(
+    StateOption("stressed", R.string.ob_state_stressed, "Calm", "Reduce stress", "Anxious"),
+    StateOption("night", R.string.ob_state_night, "Calm", "Sleep better", "Tired"),
+    StateOption("overthinking", R.string.ob_state_overthinking, "Focus", "Stop overthinking", "Anxious"),
+    StateOption("doubting", R.string.ob_state_doubting, "Confidence", "Build confidence", "Low"),
+    StateOption("distant", R.string.ob_state_distant, "Connection", "Feel less alone", "Low"),
+    StateOption("consistency", R.string.ob_state_consistency, "Discipline", "Strengthen willpower", "Okay"),
+)
+
+/** Language / reminder picks: a stable value (saveable id + any persisted use)
+ * with display copy resolved from resources (i18n label/value split). */
+internal data class PickOption(val value: String, val labelRes: Int)
+
+private val LANGUAGES = listOf(
+    PickOption("English", R.string.lang_english),
+    PickOption("Hindi", R.string.lang_hindi),
+    PickOption("Hinglish", R.string.lang_hinglish),
+    PickOption("Punjabi", R.string.lang_punjabi),
+    PickOption("Tamil", R.string.lang_tamil),
+)
+
+/** Display label for a persisted app-language value; unknown shows as stored. */
+internal fun languageLabelRes(value: String): Int? =
+    LANGUAGES.firstOrNull { it.value == value }?.labelRes
+private val NOTIFY = listOf(
+    PickOption("morning", R.string.ob_notify_morning),
+    PickOption("evening", R.string.ob_notify_evening),
+    PickOption("previews", R.string.ob_notify_previews),
+    PickOption("none", R.string.ob_notify_none),
+)
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
 
 // Savers so a rotation / process death mid-funnel keeps the user's place and their
 // selections instead of dropping them back to Welcome.
 private val StateOptionSaver = Saver<StateOption?, String>(
-    save = { it?.label ?: "" },
-    restore = { label -> STATE_OPTIONS.firstOrNull { it.label == label } },
+    save = { it?.key ?: "" },
+    restore = { key -> STATE_OPTIONS.firstOrNull { it.key == key } },
 )
 private val ConsentSaver = mapSaver(
     save = { it.toMap() },
@@ -200,7 +220,7 @@ fun Onboarding() {
 
     var language by rememberSaveable { mutableStateOf("English") }
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
-    var notify by rememberSaveable { mutableStateOf("Evening 7 PM") }
+    var notify by rememberSaveable { mutableStateOf("evening") }
     // Private by default: NOTHING pre-ticked — consent must be an action
     // (EDPB/ICO; matches iOS ConsentScreen + web onboarding). The 38a63fa fix
     // was silently reverted by the cc7cbd4 "ui" commit (same commit as the
@@ -219,9 +239,9 @@ fun Onboarding() {
     val notifyPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     fun applyReminderChoice() {
         val prefs = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
-        val hour = when {
-            notify.startsWith("Morning") -> 9
-            notify.startsWith("Evening") -> 19
+        val hour = when (notify) {
+            "morning" -> 9
+            "evening" -> 19
             else -> { prefs.edit().putBoolean("reminder_on", false).apply(); return }
         }
         prefs.edit().putBoolean("reminder_on", true).apply()
@@ -258,6 +278,7 @@ fun Onboarding() {
             stringResource(R.string.ob_disclosure_eyebrow), stringResource(R.string.ob_disclosure_title),
             stringResource(R.string.ob_disclosure_sub),
             stringResource(R.string.ob_disclosure_cta), onBack = { back() }, onPrimary = { next() },
+            progress = 0.25f,
         ) {
             ReferenceCard(borderColor = Warm.copy(alpha = 0.5f), fill = GratitudeCardFill) {
                 Text(stringResource(R.string.common_wellness_footer),
@@ -295,18 +316,26 @@ fun Onboarding() {
             stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
             stringResource(R.string.ob_language_sub),
             stringResource(R.string.common_continue), onBack = { back() }, onPrimary = { next() },
+            progress = 0.38f,
         ) {
-            ChipWrap(LANGUAGES, language) { language = it }
+            // Label/value split: chips show localized labels, state keeps the
+            // stable value (the saveable id).
+            val langLabels = LANGUAGES.map { stringResource(it.labelRes) }
+            val langSelected = LANGUAGES.indexOfFirst { it.value == language }.coerceAtLeast(0)
+            ChipWrap(langLabels, langLabels[langSelected]) { picked ->
+                language = LANGUAGES[langLabels.indexOf(picked)].value
+            }
         }
 
         OStep.State -> Funnel(
             stringResource(R.string.ob_state_eyebrow), stringResource(R.string.ob_state_title),
             stringResource(R.string.ob_state_sub),
             stringResource(R.string.common_continue), primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
+            progress = 0.50f,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 STATE_OPTIONS.forEach { option ->
-                    StateOptionRow(option.label, state?.label == option.label) { state = option }
+                    StateOptionRow(stringResource(option.labelRes), state?.key == option.key) { state = option }
                 }
             }
         }
@@ -320,6 +349,7 @@ fun Onboarding() {
             // Passing the consent step unlocks anonymous telemetry (DPDP posture:
             // nothing is counted before this moment — Analytics.track no-ops).
             onPrimary = { Analytics.unlock(); next() },
+            progress = 0.75f,
         ) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(InfoCardFill)
@@ -360,8 +390,13 @@ fun Onboarding() {
             stringResource(R.string.ob_notify_eyebrow), stringResource(R.string.ob_notify_title),
             stringResource(R.string.ob_notify_sub),
             stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
+            progress = 0.88f,
         ) {
-            ChipWrap(NOTIFY, notify) { notify = it }
+            val notifyLabels = NOTIFY.map { stringResource(it.labelRes) }
+            val notifySelected = NOTIFY.indexOfFirst { it.value == notify }.coerceAtLeast(0)
+            ChipWrap(notifyLabels, notifyLabels[notifySelected]) { picked ->
+                notify = NOTIFY[notifyLabels.indexOf(picked)].value
+            }
         }
 
         OStep.SignUp -> AuthScreen(
@@ -487,6 +522,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         stringResource(R.string.ob_reset_eyebrow), stringResource(R.string.ob_reset_title),
         stringResource(R.string.ob_reset_sub),
         stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
+        progress = 0.62f,
         compactTitle = true,
         secondary = {
             Box(
@@ -521,23 +557,15 @@ private fun Funnel(
     primaryLabel: String,
     onPrimary: () -> Unit,
     onBack: (() -> Unit)?,
+    /** Explicit step fraction — the bar used to key off the ENGLISH eyebrow
+     * copy, which broke the moment the eyebrows localized (i18n pass 2). */
+    progress: Float = 1f,
     primaryEnabled: Boolean = true,
     titleCentered: Boolean = false,
     compactTitle: Boolean = false,
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // i18n: pending — the progress fraction keys off the English eyebrow copy;
-    // needs a step-id parameter before the eyebrow strings can localize.
-    val progress = when (eyebrow.lowercase()) {
-        "honesty first" -> 0.25f
-        "speak your language" -> 0.38f
-        "one tap is enough" -> 0.50f
-        "your first reset" -> 0.62f
-        "privacy choices" -> 0.75f
-        "gentle reminders" -> 0.88f
-        else -> 1f
-    }
     Box(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)))

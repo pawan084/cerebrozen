@@ -113,17 +113,28 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Calendar
 
-/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
-private data class MoodOption(val name: String, val note: String, val symbol: String, val intensity: Int)
+/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). `name`/`note` are
+ * the English taxonomy values PERSISTED to the backend (contract — never
+ * localized); `labelRes` is the display copy (i18n label/value split). */
+private data class MoodOption(val name: String, val note: String, val symbol: String, val intensity: Int, val labelRes: Int)
 
-// i18n: pending — mood names/notes are the cross-stack mood taxonomy persisted
-// to the backend; needs a label/value split before display strings can localize.
 private val MOODS = listOf(
-    MoodOption("Good", "Clear", "sparkles", 2),
-    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
-    MoodOption("Low", "Heavy", "moon", 4),
-    MoodOption("Tired", "Need rest", "drop", 3),
+    MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good),
+    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious),
+    MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low),
+    MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired),
 )
+
+/** Display label for a PERSISTED mood name (recent check-ins render server
+ * data) — known taxonomy values localize, anything else shows as stored. */
+internal fun moodLabelRes(name: String): Int? = when (name) {
+    "Good" -> R.string.mood_good
+    "Anxious" -> R.string.mood_anxious
+    "Low" -> R.string.mood_low
+    "Tired" -> R.string.mood_tired
+    "Okay" -> R.string.mood_okay
+    else -> null
+}
 
 /**
  * Each mood gets a hue, and it is the SAME hue everywhere the mood appears — the
@@ -278,7 +289,7 @@ private fun MoodChip(isSelected: Boolean, mood: MoodOption, onClick: () -> Unit)
                 .border(1.dp, fg.copy(alpha = 0.40f), CircleShape),
         )
         Text(
-            mood.name,
+            stringResource(mood.labelRes),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = fg,
@@ -398,7 +409,9 @@ private fun RecentRow(mood: String, note: String, showDivider: Boolean) {
                     .background(moodAccent(mood)),
             )
             Text(
-                mood,
+                // Known taxonomy values localize; unknown server strings show
+                // as stored (never invent a translation for free-form data).
+                moodLabelRes(mood)?.let { stringResource(it) } ?: mood,
                 style = MaterialTheme.typography.titleSmall,
                 color = TextPrimary,
             )

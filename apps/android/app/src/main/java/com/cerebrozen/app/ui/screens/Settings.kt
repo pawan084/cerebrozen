@@ -114,15 +114,22 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
     }
 }
 
-// i18n: pending — the companion names double as the server-side `companion`
-// profile value (cross-stack contract), so this list needs a label/value split
-// before its display strings can be localized.
+/** Companion styles: `value` is the server-side `companion` profile string
+ * (cross-stack contract — stays English); labels/details are display copy
+ * (i18n label/value split). */
+private data class CompanionOption(val value: String, val labelRes: Int, val detailRes: Int)
+
 private val COMPANIONS = listOf(
-    "Calm Guide" to "Steady and soothing — grounds you first, never rushes",
-    "Warm Friend" to "Encouraging and familiar — like a friend who gets it",
-    "Straight Talker" to "Clear and direct — kind, but skips the padding",
-    "Quiet Coach" to "Action-first — one small concrete step at a time",
+    CompanionOption("Calm Guide", R.string.companion_calm_guide, R.string.companion_calm_guide_detail),
+    CompanionOption("Warm Friend", R.string.companion_warm_friend, R.string.companion_warm_friend_detail),
+    CompanionOption("Straight Talker", R.string.companion_straight_talker, R.string.companion_straight_talker_detail),
+    CompanionOption("Quiet Coach", R.string.companion_quiet_coach, R.string.companion_quiet_coach_detail),
 )
+
+/** Display label for a PERSISTED companion value (You header/rows render
+ * server data); unknown values show as stored. */
+internal fun companionLabelRes(value: String): Int? =
+    COMPANIONS.firstOrNull { it.value == value }?.labelRes
 
 @Composable
 fun CompanionStyleScreen(onBack: () -> Unit) {
@@ -132,12 +139,13 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     PremiumSubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
         Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        COMPANIONS.forEach { (name, detail) ->
-            SelectableRow(name, detail, selected = current == name) {
+        COMPANIONS.forEach { option ->
+            SelectableRow(stringResource(option.labelRes), stringResource(option.detailRes),
+                          selected = current == option.value) {
                 val prev = current
-                current = name
+                current = option.value
                 scope.launch {
-                    runCatching { Api.updateProfile(JSONObject().put("companion", name)) }
+                    runCatching { Api.updateProfile(JSONObject().put("companion", option.value)) }
                         .onFailure { current = prev }   // don't show a choice the server didn't accept
                 }
             }

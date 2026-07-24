@@ -182,11 +182,21 @@ The display-copy half of the "pure functions still returning English" ledger
   off the enum, not English labels), `talkTranscript` localized prefixes,
   `Reminders` channel/notification copy, `SoundscapeMixer.Layer.nameRes`.
   New strings in values/ + values-hi/ (hi = DRAFT, same review posture as W16).
-- [ ] Pass 2 still open (the label/value splits that touch persisted state):
-  Today `MOODS` (cross-stack taxonomy), Settings `COMPANIONS` (server value),
-  onboarding `STATE_OPTIONS`/`LANGUAGES`/`NOTIFY` (rememberSaveable keys +
-  server-persisted picks), the onboarding `Funnel` progress keyed off English
-  eyebrows, YouScreen profile fallbacks.
+- [x] Pass 2 (2026-07-25): the label/value splits that touch persisted state —
+  Today `MOODS` gains `labelRes` (API name/note stay English contract values;
+  `moodLabelRes` also localizes known names in Recent check-ins), Settings
+  `COMPANIONS` → `CompanionOption(value, labelRes, detailRes)` (server value
+  unchanged; You header/rows display-localize via `companionLabelRes`),
+  onboarding `STATE_OPTIONS` keyed by stable ids (saver stores the key, not the
+  English label), `LANGUAGES`/`NOTIFY` → `PickOption(value, labelRes)` (reminder
+  hour keys off "morning"/"evening" ids, not `startsWith("Morning")`), `Funnel`
+  takes an explicit `progress:` fraction (was matching English eyebrow copy).
+  ZERO `i18n: pending` markers remain. `:app:check` green, gate 96.19%.
+  **Also found + fixed en route: the cc7cbd4 "ui" commit had silently reverted
+  the private-by-default consent fix — mood_history/ai_memory were pre-ticked
+  ON again in onboarding (restored all-off, matching iOS/web + the decided
+  DPDP posture).** OWNER: emulator smoke of the funnel + a values-hi visual
+  pass would be a good follow-up before the Hindi review.
 
 ### Analytics consent-gate parity, iOS + web (2026-07-24)
 The owner's 2026-07-13 decision ("no telemetry before consent", made for
