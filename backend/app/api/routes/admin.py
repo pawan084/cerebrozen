@@ -37,7 +37,7 @@ from app.schemas.media import (
     MediaAssetUpdate,
 )
 from app.schemas.user import UserOut
-from app.services import media, metrics, nudges, voice
+from app.services import media, metrics, nudges, oracle_audit, voice
 from app.services import prompts as prompt_registry
 
 logger = logging.getLogger(__name__)
@@ -267,6 +267,52 @@ async def narrate_content(
     await db.commit()
     await db.refresh(item)
     return item
+
+
+# ── Oracle ops (the agent's audit trail + what it's waiting on) ─────────
+# The Oracle writes user data (mood, journal, sleep) behind an interrupt()
+# confirmation. These three endpoints are the operator's only view of that:
+# which tools ran, which writes were approved, and which confirmations are
+# stuck. Argument VALUES are never exposed — only their names (see the
+# OracleToolCall docstring for why).
+
+
+class OracleToolCallOut(BaseModel):
+    id: uuid.UUID
+    thread_id: str
+    tool: str
+    risk_tier: str
+    decision: str
+    arg_keys: list[str]
+    created_at: datetime
+    resolved_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/oracle/status")
+async def oracle_status(db: AsyncSession = Depends(get_db)):
+    """Live agent posture. `checkpointer` is the one worth watching: a
+    "memory" value in production means paused confirmations die on restart
+    and don't cross gunicorn workers — previously visible only in boot logs.
+    """
+    from app.agent.graph import checkpointer_kind
+
+    return {
+        "enabled": settings.oracle_available,
+        "checkpointer": checkpointer_kind(),
+        "counts": await oracle_audit.counts(db),
+    }
+
+
+@router.get("/oracle/pending", response_model=list[OracleToolCallOut])
+async def oracle_pending(db: AsyncSession = Depends(get_db)):
+    return list(await oracle_audit.pending(db))
+
+
+@router.get("/oracle/audit", response_model=list[OracleToolCallOut])
+async def oracle_audit_trail(limit: int = 20, db: AsyncSession = Depends(get_db)):
+    return list(await oracle_audit.recent(db, limit=max(1, min(200, limit))))
 
 
 # ── Media catalogue (the sounds/videos clients resolve by key) ───────────

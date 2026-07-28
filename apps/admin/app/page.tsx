@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { API_URL, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
-type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "nudges" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -13,6 +13,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "content", label: "Content" },
   { key: "media", label: "Media" },
   { key: "prompts", label: "Prompts" },
+  { key: "oracle", label: "Oracle" },
   { key: "nudges", label: "Nudges" },
   { key: "safety", label: "Safety" },
   { key: "waitlist", label: "Waitlist" },
@@ -76,6 +77,7 @@ export default function AdminPage() {
         {tab === "content" && <Content />}
         {tab === "media" && <Media />}
         {tab === "prompts" && <PromptsTab />}
+        {tab === "oracle" && <OracleTab />}
         {tab === "nudges" && <NudgesTab />}
         {tab === "safety" && <Safety />}
         {tab === "waitlist" && <WaitlistTab />}
@@ -1094,6 +1096,117 @@ function WaitlistTab() {
           </tbody>
         </table>
         {data && data.length === 0 && <div className="empty">No signups yet.</div>}
+      </div>
+    </>
+  );
+}
+
+// ── Oracle ops ──────────────────────────────────────────────────────────
+// The agent can WRITE user data (mood, journal, sleep) behind an in-chat
+// confirmation. This tab is the only operator view of that: what it ran, what
+// was approved, and what is still waiting. Argument VALUES are deliberately
+// never sent by the API — only their names.
+
+type OracleCall = {
+  id: string;
+  thread_id: string;
+  tool: string;
+  risk_tier: string;
+  decision: string;
+  arg_keys: string[];
+  created_at: string;
+  resolved_at: string | null;
+};
+
+function ago(iso: string) {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 90) return `${Math.round(secs)}s ago`;
+  if (secs < 5400) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 172800) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
+}
+
+function decisionTag(decision: string) {
+  const cls =
+    decision === "approved" ? "ok" : decision === "pending" ? "elevated" : "muted";
+  return <span className={`tag ${cls}`}>{decision}</span>;
+}
+
+function OracleTab() {
+  const { data: status, err: statusErr } = useData<any>(() => api("/admin/oracle/status"));
+  const { data: pending, err: pendingErr } = useData<OracleCall[]>(() => api("/admin/oracle/pending"));
+  const { data: trail, err: trailErr } = useData<OracleCall[]>(() => api("/admin/oracle/audit?limit=25"));
+
+  return (
+    <>
+      <h1 className="page-title serif">Oracle</h1>
+      <div className="page-sub">
+        What the agent did, and what it is still waiting on. Tool arguments are recorded
+        by name only — never their values.
+      </div>
+      {statusErr && <div className="empty">{statusErr}</div>}
+
+      <div className="stats">
+        <div className="stat"><div className="n">{status?.enabled ? "Live" : "Off"}</div><div className="l">Agent</div></div>
+        <div className="stat"><div className="n">{status?.checkpointer ?? "—"}</div><div className="l">Checkpointer</div></div>
+        <div className="stat"><div className="n">{status?.counts?.pending ?? 0}</div><div className="l">Pending</div></div>
+        <div className="stat"><div className="n">{status?.counts?.approved ?? 0}</div><div className="l">Approved</div></div>
+        <div className="stat"><div className="n">{status?.counts?.total ?? 0}</div><div className="l">Tool calls</div></div>
+      </div>
+
+      {status?.checkpointer === "memory" && (
+        <div className="card" style={{ borderColor: "var(--danger)", marginBottom: 20 }}>
+          Running on the in-process MemorySaver — paused confirmations will not survive a
+          restart and do not cross workers. Check the boot logs for why Postgres
+          checkpointing failed.
+        </div>
+      )}
+      {status?.checkpointer === "none" && (
+        <div className="page-sub" style={{ marginBottom: 20 }}>
+          The agent graph has not been built in this process — expected when no LLM key is
+          set, or before the first Oracle request of the process.
+        </div>
+      )}
+
+      <h3 className="serif" style={{ marginBottom: 10 }}>Awaiting a decision</h3>
+      {pendingErr && <div className="empty">{pendingErr}</div>}
+      <div className="card">
+        <table>
+          <thead><tr><th>Tool</th><th>Arguments</th><th>Thread</th><th>Waiting</th></tr></thead>
+          <tbody>
+            {(pending || []).map((r) => (
+              <tr key={r.id}>
+                <td className="mono">{r.tool}</td>
+                <td className="mono">{r.arg_keys.join(", ") || "—"}</td>
+                <td className="mono">{r.thread_id}</td>
+                <td>{ago(r.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {pending && pending.length === 0 && <div className="empty">Nothing stuck right now.</div>}
+      </div>
+
+      <h3 className="serif" style={{ marginTop: 24, marginBottom: 10 }}>Recent tool calls</h3>
+      {trailErr && <div className="empty">{trailErr}</div>}
+      <div className="card">
+        <table>
+          <thead><tr><th>Tool</th><th>Tier</th><th>Decision</th><th>Arguments</th><th>When</th></tr></thead>
+          <tbody>
+            {(trail || []).map((r) => (
+              <tr key={r.id}>
+                <td className="mono">{r.tool}</td>
+                <td><span className="tag muted">{r.risk_tier}</span></td>
+                <td>{decisionTag(r.decision)}</td>
+                <td className="mono">{r.arg_keys.join(", ") || "—"}</td>
+                <td>{ago(r.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {trail && trail.length === 0 && (
+          <div className="empty">No agent tool calls yet.</div>
+        )}
       </div>
     </>
   );

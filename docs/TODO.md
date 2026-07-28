@@ -124,6 +124,37 @@
 
 ## Done — recent
 
+### Oracle ops: agent audit trail + pending confirmations (2026-07-28)
+Adapted from the `workspace/cerebro` sibling build's **Oracle Studio** admin hub — see
+the assessment note under "Open — code/product work" for what was deliberately NOT taken.
+Closes a real blind spot: the Oracle *writes user data* (mood, journal, sleep) behind an
+`interrupt()` confirmation, and nothing recorded which tools ran, which writes were
+approved, or which confirmations were stuck.
+- [x] `oracle_tool_calls` table (Alembic `d7f4a2c9e631`, verified by applying the full
+  chain to a fresh DB) + `services/oracle_audit.py`. Read tools record `decision="auto"`;
+  write tools `open_pending` **before** `interrupt()` suspends the graph and resolve to
+  `approved`/`declined` on resume.
+- [x] `open_pending` is idempotent **by necessity** — LangGraph re-executes an interrupted
+  node from the top when it resumes, so everything before `interrupt()` runs a second
+  time; without the guard every confirmation left an orphan pending row that nothing
+  resolved. Pinned by a test that replays it three times.
+- [x] **Argument names only, never values.** A journal body or mood note copied into an
+  audit row would be a second copy of the user's most sensitive content, sitting outside
+  the consent flags governing the original, surviving a journal deletion, and needing
+  separate DPDP export/erasure. Tested, including that values don't leak through the API.
+- [x] Auditing never raises into a tool — observability must not fail a user's approved
+  write; a missing pending row logs and returns.
+- [x] `GET /admin/oracle/{status,pending,audit}` + an admin **Oracle** tab. `status.
+  checkpointer` (`postgres`|`memory`|`none`) surfaces the MemorySaver fallback that was
+  previously visible only in a boot log line — a production worker silently running
+  in-process (paused confirmations dying on restart, not crossing workers) looked
+  identical to a healthy one. The tab warns explicitly on `memory`.
+- [x] Audit rows carry `ondelete=CASCADE`; a test asserts `DELETE /users/me` takes the
+  agent's trail with it.
+- Verified in-container: **306 passed / 2 skipped, coverage 95.45 %** (gate 95, was
+  95.34); admin `tsc` clean; migration applied to a fresh DB and the table/indexes/FK
+  inspected.
+
 ### iOS Dawn/Night dual theme (2026-07-28) — IOS_PARITY.md item 16, closing the backport
 **⚠ Static-verified only (Windows host).** Contrast is host-independent math and is
 gated by test; *layout* in Dawn is not — OWNER: two-theme screenshot pass on macOS.
@@ -464,6 +495,40 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   settle-in) already existed on iOS at parity-or-better, so nothing else ported.
 
 ## Open — code/product work
+
+### Adopting from the `workspace/cerebro` sibling build (assessed 2026-07-28)
+The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mobile/infra,
+~120 API domains) sits beside this one and is a legitimate internal reference — unlike
+`calm/`, which is a competitor teardown and must never be a source of bytes. Assessment:
+- [x] **Oracle Studio** — NOT portable as code. It is a hub page over **8 endpoints**, of
+  which cerebroSG backed exactly one (`/admin/prompts`), plus links to ~10 admin surfaces
+  that don't exist here; it also assumes `@cerebro/ui` + TanStack + Tailwind against our
+  hand-rolled single-page admin. What *was* worth taking — the tool-call audit, pending
+  confirmations and an agent status band — shipped 2026-07-28 (see "Done — recent").
+  Deliberately not taken: the intent router, tool-override registry, and model-accuracy
+  card (the last needs an SME moderation-review pipeline that doesn't exist here).
+- [ ] **Interventions engine** (`api/app/domains/interventions` + `tool_sequences`,
+  ~68 KB of service code). The valuable shape is *recommend with a visible rationale* —
+  a rule fires, the user gets accept/dismiss, and the banner states **why**
+  ("Triggered by your recent ACE score"). That matches this product's honesty posture
+  better than the current silent nudges. **The engine shape ports; the rules do not** —
+  they key off ACE/ZER scores from a proprietary spec cerebroSG has no equivalent of, so
+  new rules must be designed over signals we actually hold (moods, sleep diary,
+  `/insights/patterns`).
+- [ ] **Tools** (`web/src/features/tools`): RitualBuilder (17 KB), Daily/Sleep rituals,
+  Guided imagery, Will training. Sleep Ritual is the closest fit — it lands next to the
+  CBT-I layer now shipped on all three clients.
+- [ ] **Games** — ⚠️ take at most 3–4, and **strip the efficacy claims**. The reference
+  ships 18 arcade games whose catalogue advertises `builds: "Working memory" /
+  "Selective attention" / "Cognitive flexibility"`. Importing them wholesale would (a)
+  reverse REDESIGN §2.2 / IOS_PARITY item 2, which deliberately killed four mini-games as
+  the weakest items against the F9 credibility bar and rebuilt the hub as "Toolkit ·
+  small ways to steady", and (b) make unevidenced cognitive-training claims — the exact
+  claim class the FTC fined Lumosity $2M for in 2016. Candidates that fit the existing
+  Toolkit sections without claims: **Thought Sort** (→ Reframe; genuinely CBT-shaped),
+  **Cloud Drift** / **Zen Sand** (→ Settle). Keep the catalogue's structure; drop
+  `builds:` or replace it with real provenance via the existing `WhyThisWorks` component.
+
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
 - [x] Backend: `content_items` gains `narration_script` (admin-authored) + `audio_url`

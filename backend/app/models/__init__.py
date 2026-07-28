@@ -9,6 +9,7 @@ from app.models.plan import Plan, PlanStep
 from app.models.content import ContentItem
 from app.models.nudge import Nudge
 from app.models.insight import Insight
+from app.models.oracle_audit import OracleToolCall
 from app.models.safety import SafetyEvent
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
@@ -32,6 +33,7 @@ __all__ = [
     "ContentItem",
     "Nudge",
     "Insight",
+    "OracleToolCall",
     "SafetyEvent",
     "SleepLog",
     "TrustedContact",

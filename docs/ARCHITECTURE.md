@@ -83,7 +83,7 @@ cere/
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist, `oracle/{status,pending,audit}` (agent posture + tool-call trail; argument names only, never values) |
 | `/billing` | Stripe Checkout + Billing-Portal sessions for the web app (`/checkout`, `/portal` — the cancel path; customer found via subscription `user_id` metadata; 503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
@@ -123,17 +123,31 @@ The graph warms in the app lifespan **before traffic**: checkpointer `setup()` i
 indefinitely — first-request init on a fresh DB hung forever until this (plus a 30 s
 setup timeout as the fallback).
 
+**Audit + ops visibility (2026-07-28).** Every tool call writes an `oracle_tool_calls`
+row via `services/oracle_audit.py`: read tools land as `decision="auto"`, write tools open
+`"pending"` *before* `interrupt()` suspends the graph and are closed to
+`"approved"`/`"declined"` on resume. `open_pending` is idempotent because LangGraph
+re-executes an interrupted node from the top when it resumes — everything before
+`interrupt()` runs twice. Argument **names** are stored, never their values, so the trail
+never becomes a second copy of journal/mood content sitting outside the consent flags that
+govern the originals. Auditing never raises into a tool: observability must not fail a
+user's approved write. `GET /admin/oracle/{status,pending,audit}` back the admin **Oracle**
+tab; `status.checkpointer` (`postgres`|`memory`|`none`) surfaces the MemorySaver fallback,
+which was previously visible only in a boot log line — a worker silently running
+in-process looked identical to a healthy one.
+
 ### Data model
 
 `users` (auth-hardening, subscription, compliance, region, push_token fields) with 1:1 `consents`,
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
-`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account).
+`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account),
+`oracle_tool_calls` (agent audit trail — argument names only, never values).
 Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
 immutable versions per name; the active row overrides the in-code default in
 `services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (15 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (20 revisions).
 
 ## iOS app (`apps/ios/CereBro`)
 
