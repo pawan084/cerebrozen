@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { GuidedTour } from "@/components/GuidedTour";
+import { InterventionCard } from "@/components/InterventionCard";
 import { Icon } from "@/components/icons";
 
 // 5-emoji check-in matching the ref; each maps into the shared mood taxonomy.
@@ -93,6 +94,9 @@ export default function Home() {
       <div className="page-body">
         <div className="dash-grid">
           <div>
+            {/* Above the check-in on purpose: if the engine noticed something,
+                saying so before asking for more data is the honest order. */}
+            <InterventionCard />
             {/* Check-in hero */}
             <section className="checkin-hero" aria-label="Daily check-in">
               <div className="checkin-orb" aria-hidden="true" />

@@ -81,6 +81,7 @@ cere/
 | `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
+| `/interventions` | `active` (lazy rule evaluation — returns the one open offer or **null**, never 404), history, accept/dismiss/complete. Every offer carries a plain-language `reason` derived from the user's own logged counts |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
 | `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist, `oracle/{status,pending,audit}` (agent posture + tool-call trail; argument names only, never values) |
@@ -99,6 +100,15 @@ cere/
 - `agentic.py` — daily plan from goals + recent mood + sleep diary (LLM or `_STEP_LIBRARY`;
   short/rough nights put a wind-down step first).
 - `activities.py` — deterministic chat → inline widget routing (`widget_kind` mirrors iOS `ActivityDestination`).
+- `interventions.py` — code-defined rules over the user's own logged signals; the first
+  match (priority order) becomes a single open offer carrying a plain-language `reason`.
+  Consent gates the inputs (`mood_history` / `sleep_history`) and the signal fields are
+  **None rather than 0** when a category is off, so a rule can't fire on data it isn't
+  allowed to see. Crisis is the one rule that offers a person, and it is never
+  consent-gated. There is deliberately **no re-engagement/"you've been away" rule** — that
+  is the loss framing REDESIGN removed when streaks became presence; a test pins its
+  absence. Rules live in code (prompt-registry precedent); DB-backed overrides are a
+  possible follow-up.
 - `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
 - `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
   `APPSTORE_ROOT_CERT_PATH` is set) + notification → tier mapping.
@@ -142,12 +152,14 @@ in-process looked identical to a healthy one.
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
 `web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account),
-`oracle_tool_calls` (agent audit trail — argument names only, never values).
+`oracle_tool_calls` (agent audit trail — argument names only, never values),
+`intervention_recommendations` (one open offer at a time; the reason + the counts behind
+it, frozen at fire time).
 Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
 immutable versions per name; the active row overrides the in-code default in
 `services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (20 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (21 revisions).
 
 ## iOS app (`apps/ios/CereBro`)
 

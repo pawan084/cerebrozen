@@ -124,6 +124,38 @@
 
 ## Done — recent
 
+### Interventions: recommend with a visible rationale (2026-07-28)
+Second adoption from the `workspace/cerebro` sibling build. The app already nudged; it
+never said **what it noticed**. Every offer now carries a plain-language reason computed
+from the user's own logged counts, frozen at fire time.
+- [x] `intervention_recommendations` (Alembic `e8a5b3d1c742`) + `services/interventions.py`
+  + `/interventions` router (`active` / history / accept / dismiss / complete).
+  Evaluation is **lazy** — no background job invents suggestions between visits.
+- [x] Five code-defined rules over signals we actually hold: `human_support` (unresolved
+  crisis flag in the last day → a real person, not a breathing exercise), `rough_sleep`
+  (→ the Sleep Reset program), `irregular_bedtime` (noon-anchored spread, the same math
+  the iOS/Android "Your rhythm" cards use), `stress_spike`, `low_mood_run`. First match
+  by priority wins; **one open offer at a time** (a stack of suggestions is noise).
+- [x] **Consent gates the inputs.** Mood rules need `mood_history`, sleep rules need
+  `sleep_history`, and the signal fields are `None` rather than `0` when a category is
+  off — so a rule can distinguish "no data" from "data says zero" and stay silent rather
+  than firing on an absence it isn't allowed to see. Crisis is never consent-gated.
+- [x] Mood rules count **days, not entries**: five check-ins in one hard afternoon is one
+  day, not a week-long pattern.
+- [x] `reason` and the action are frozen at fire time, so later rule edits don't rewrite
+  what a user was actually shown; `state_snapshot` holds the counts behind the sentence
+  (numbers only, never journal/chat text) so the rationale can be checked, not trusted.
+- [x] Dismissing starts a 72 h per-rule cooldown — a suggestion that bounces back the
+  moment it's waved away is the nagging pattern the OECD paywall checklist already
+  forbids elsewhere.
+- [x] **Deliberately absent: any "you haven't checked in for N days" rule.** That is the
+  loss/pressure framing REDESIGN removed when streaks became presence framing, and a test
+  pins the absence so it can't be added back by accident.
+- [x] `apps/app` renders the card above the Home check-in (saying what was noticed before
+  asking for more data). iOS/Android surfaces remain open.
+- Verified in-container: **330 passed / 2 skipped, coverage 95.65 %** (gate 95);
+  `apps/app` `tsc` clean; migration applied to a fresh DB.
+
 ### Oracle ops: agent audit trail + pending confirmations (2026-07-28)
 Adapted from the `workspace/cerebro` sibling build's **Oracle Studio** admin hub — see
 the assessment note under "Open — code/product work" for what was deliberately NOT taken.
@@ -507,14 +539,11 @@ The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mo
   confirmations and an agent status band — shipped 2026-07-28 (see "Done — recent").
   Deliberately not taken: the intent router, tool-override registry, and model-accuracy
   card (the last needs an SME moderation-review pipeline that doesn't exist here).
-- [ ] **Interventions engine** (`api/app/domains/interventions` + `tool_sequences`,
-  ~68 KB of service code). The valuable shape is *recommend with a visible rationale* —
-  a rule fires, the user gets accept/dismiss, and the banner states **why**
-  ("Triggered by your recent ACE score"). That matches this product's honesty posture
-  better than the current silent nudges. **The engine shape ports; the rules do not** —
-  they key off ACE/ZER scores from a proprietary spec cerebroSG has no equivalent of, so
-  new rules must be designed over signals we actually hold (moods, sleep diary,
-  `/insights/patterns`).
+- [x] **Interventions engine** — SHIPPED 2026-07-28 (see "Done — recent"). The rationale
+  and escalation-tier ideas ported; the reference's DB-backed ACE/ZER rules did not —
+  rules are code-defined over signals cerebroSG actually holds. Follow-ups left open:
+  DB-backed rule overrides (admin-editable without a deploy, like the prompt registry),
+  and the iOS/Android surfaces (only `apps/app` renders the card today).
 - [ ] **Tools** (`web/src/features/tools`): RitualBuilder (17 KB), Daily/Sleep rituals,
   Guided imagery, Will training. Sleep Ritual is the closest fit — it lands next to the
   CBT-I layer now shipped on all three clients.
