@@ -401,7 +401,7 @@ struct PlayerView: View {
 
             Button { audio.toggle() } label: {
                 Image(systemName: audio.isPlaying ? "pause.fill" : "play.fill")
-                    .appFont(24, weight: .bold).foregroundStyle(Theme.Palette.ink)
+                    .appFont(24, weight: .bold).foregroundStyle(Theme.Palette.onPrimary)
                     .frame(width: 68, height: 68)
                     .background(Theme.Gradient.primaryButton, in: Circle())
                     .shadow(color: Theme.Accent.sleep.opacity(0.4), radius: 16, y: 6)

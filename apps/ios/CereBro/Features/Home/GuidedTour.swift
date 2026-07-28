@@ -33,7 +33,7 @@ struct GuidedTourOverlay: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("GUIDED TOUR · \(idx + 1) OF \(Self.stops.count)")
                     .appFont(10.5, weight: .bold).kerning(1.2)
-                    .foregroundStyle(Theme.Brand.cyan)
+                    .foregroundStyle(Theme.Palette.accentCyan)
                 Text(stop.label)
                     .appFont(17, weight: .bold).foregroundStyle(Theme.Palette.text)
                 Text(stop.caption)

@@ -317,8 +317,8 @@ struct ChatView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 Button { send() } label: {
                     Image(systemName: sending ? "ellipsis" : "arrow.up")
-                        .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.ink)
-                        .frame(width: 46, height: 46).background(Theme.Palette.cream, in: Circle())
+                        .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.onPrimary)
+                        .frame(width: 46, height: 46).background(Theme.Palette.primaryPill, in: Circle())
                 }
                 .buttonStyle(.pressable)
                 .accessibilityLabel("Send message")

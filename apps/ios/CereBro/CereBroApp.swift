@@ -4,6 +4,7 @@ import SwiftUI
 struct CereBroApp: App {
     @StateObject private var state = AppState()
     @StateObject private var backend = BackendService()
+    @StateObject private var theme = AppTheme.shared
 
     init() {
         // Bare AsyncImage relies on URLCache.shared, whose default capacity is
@@ -18,8 +19,12 @@ struct CereBroApp: App {
             RootView()
                 .environmentObject(state)
                 .environmentObject(backend)
-                .preferredColorScheme(.dark)
-                .tint(Theme.Palette.soft)
+                .environmentObject(theme)
+                // nil under "Match device" on purpose — that is what lets
+                // RootView read the device's real scheme back out of the
+                // environment instead of reading its own override.
+                .preferredColorScheme(theme.preferredScheme)
+                .tint(Theme.Palette.tint)
                 // Support Dynamic Type, but cap scaling so the tightly-tuned
                 // fixed-height layouts don't clip at the largest sizes.
                 .dynamicTypeSize(.xSmall ... .accessibility1)

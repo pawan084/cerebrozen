@@ -51,11 +51,11 @@ struct SupportLinkRow: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
-                        Text(subtitle).appFont(12).foregroundStyle(Theme.Brand.cyan)
+                        Text(subtitle).appFont(12).foregroundStyle(Theme.Palette.accentCyan)
                     }
                     Spacer(minLength: 4)
                     Image(systemName: phone != nil ? "phone.fill" : "arrow.up.right")
-                        .appFont(15, weight: .bold).foregroundStyle(Theme.Brand.cyan)
+                        .appFont(15, weight: .bold).foregroundStyle(Theme.Palette.accentCyan)
                 }
                 .padding(16)
                 .background(Theme.Palette.card)

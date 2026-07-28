@@ -84,9 +84,9 @@ struct ToolConfirmCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button { onResolve(true) } label: {
-                    Text("Approve").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                    Text("Approve").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.onPrimary)
                         .frame(maxWidth: .infinity).frame(height: 42)
-                        .background(Theme.Palette.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Theme.Palette.primaryPill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }.buttonStyle(.pressable).accessibilityLabel("Approve action")
                 Button { onResolve(false) } label: {
                     Text("Not now").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.soft)
@@ -159,7 +159,7 @@ struct TryTogetherRail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 6) {
-                Image(systemName: "figure.2").appFont(11, weight: .bold).foregroundStyle(Theme.Brand.cyan)
+                Image(systemName: "figure.2").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.accentCyan)
                 Text("Try together").eyebrow()
             }
             ScrollView(.horizontal, showsIndicators: false) {

@@ -35,7 +35,9 @@ struct CloudSyncView: View {
     private var statusColor: Color {
         switch backend.status {
         case .connected: return Theme.Palette.success
-        case .connecting: return Theme.Palette.cream
+        // `primaryPill`, not `cream`: identical on Night, but a near-white dot
+        // would disappear against Dawn's warm white.
+        case .connecting: return Theme.Palette.primaryPill
         case .error: return Theme.Palette.danger
         case .signedOut: return Theme.Palette.muted
         }

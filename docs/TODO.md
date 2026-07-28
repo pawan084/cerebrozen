@@ -63,9 +63,17 @@
   You → Appearance persists `theme_mode` (System/Night/Dawn); Sleep, the splash and the
   signed-out funnel force Night; `ContrastTest` gates both palettes ≥4.5:1 and pins the
   Night palette byte-identical.
-- [ ] **iOS parity for the redesign** — the Android IA changes (Toolkit merge, breathe
-  engine, sounds consolidation, presence framing, onboarding trim) intentionally diverge
-  from iOS until backported.
+- [x] **iOS parity for the redesign** — DONE 2026-07-24 → 2026-07-28 across Waves A–D
+  (`docs/IOS_PARITY.md`): Toolkit merge, one breathe engine, presence framing, onboarding
+  10 → 8, Sleep CBT-I, safety/credibility/consent, the WCAG contrast gate and finally the
+  Dawn/Night dual theme. Every item is **static-verified only** (Windows host) — the
+  standing owner action is one macOS `xcodebuild test` + a two-theme screenshot pass.
+  Two things stay open and both need a Mac: item 5 (back-to-back `PlayerView` audio
+  overlap — a listen test) and the one-time `CereBroTests` unit-test target. One design
+  gap is recorded deliberately: **the Sleep tab does not force Night on iOS** (SwiftUI
+  can't scope global tokens to a subtree the way Compose snapshot state and CSS variables
+  do — the proper fix is an Environment-palette refactor; rationale + cost in
+  IOS_PARITY.md "Deliberate divergences").
 - [ ] **Phase 3 roadmap**: Hindi UI localization (externalize strings as they're touched),
   premium launch behind the OECD dark-pattern checklist. Android groundwork landed
   2026-07-12 (W11): ~370 user-facing strings across all Compose screens now live in
@@ -115,6 +123,43 @@
   now gates it and the Night pin was updated deliberately.
 
 ## Done — recent
+
+### iOS Dawn/Night dual theme (2026-07-28) — IOS_PARITY.md item 16, closing the backport
+**⚠ Static-verified only (Windows host).** Contrast is host-independent math and is
+gated by test; *layout* in Dawn is not — OWNER: two-theme screenshot pass on macOS.
+- [x] New `DesignSystem/AppTheme.swift`: `ThemeMode` (system/night/dawn) persisted as
+  `theme_mode` in the same vocabulary Android's `prefValue()` and web's `data-theme`
+  use, plus pure `themeMode(fromPref:)` / `resolveIsNight(mode:systemDark:forceNight:)`
+  seams that the test suite gates without rendering anything.
+- [x] `Theme.Palette` / `Stroke` / `Gradient` members became computed `static var`s
+  resolving a `ThemeSnapshot` global, so **no screen changed** — every screen still
+  reads `Theme.Palette.…`. RootView re-keys `.id(theme.generation)` when the resolved
+  theme actually flips, which is how SwiftUI is told to re-read global tokens (it has
+  no equivalent of Compose snapshot state or CSS variable scoping). `generation` only
+  moves when the *outcome* changes, so an input change that doesn't flip costs nothing.
+- [x] Dawn values hand-synced with the web app's `[data-theme="dawn"]` block (WEB_PARITY
+  Wave E) so phone and app.cerebrozen.in agree; the four roles web has no token for
+  (cyan/mint/rose/danger) are the same hues darkened until each cleared AA. Night was
+  **not touched** — that was the point of landing item 17 first.
+- [x] Surfaces swept: Dawn paints solid fills where Night paints white-alpha glass (a
+  white veil over warm white is invisible), veils/hairlines invert to ink, the aurora
+  dims through one multiplier, and the primary CTA deepens to a lavender pill with a
+  white label rather than staying a cream button with nothing to sit against. Paint that
+  sits on **constant-dark art** (hero photos and their scrims, the brand orb, the splash)
+  was deliberately left alone — same rule web's Wave E applied to heroes.
+- [x] You → Appearance picker (`AppearanceView`), honest about the two surfaces the
+  preference doesn't reach (splash + signed-out funnel, both bespoke night art).
+- [x] `ContrastTest` now gates BOTH palettes — 0 failures across 105 role×surface pairs,
+  tightest 4.51:1 (Dawn mint on the darkest page paint, the same value Android's own
+  gate independently measured for that hex) — plus the theme truth table and a
+  byte-identical Night pin that fails the build if a future Dawn tweak drifts Night.
+- [x] Under `-resetState` the theme is **pinned Night**, same gating posture as the
+  splash and the audio engine: a simulator booted in Light appearance would otherwise
+  flip to Dawn the instant onboarding finished, re-keying the root view mid-test and
+  re-rendering every marketing screenshot in the wrong theme.
+- Deliberate divergence recorded: **the Sleep tab does not force Night on iOS** (Android
+  and web both pin it). Full rationale and the proper fix — an Environment-palette
+  refactor — in IOS_PARITY.md; it carries a real wellness cost, not just a cosmetic one.
 
 ### iOS parity backport, Wave A (2026-07-24) — IOS_PARITY.md items 9,10,13,11,4,2,22,23
 **⚠ Static-verified only (Windows host) — OWNER: run `xcodebuild test` on macOS

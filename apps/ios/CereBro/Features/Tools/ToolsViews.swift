@@ -201,8 +201,8 @@ struct StepRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Text("\(number)")
-                .appFont(13, weight: .bold).foregroundStyle(Theme.Palette.ink)
-                .frame(width: 26, height: 26).background(Theme.Palette.cream, in: Circle())
+                .appFont(13, weight: .bold).foregroundStyle(Theme.Palette.onPrimary)
+                .frame(width: 26, height: 26).background(Theme.Palette.primaryPill, in: Circle())
             Text(text).appFont(13).foregroundStyle(Theme.Palette.soft)
             Spacer()
         }

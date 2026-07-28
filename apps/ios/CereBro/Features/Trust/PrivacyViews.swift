@@ -53,9 +53,9 @@ struct ExportReportView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
                 }
                 ShareLink(item: report, preview: SharePreview("CereBro report")) {
-                    Text("Share report").appFont(14, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                    Text("Share report").appFont(14, weight: .heavy).foregroundStyle(Theme.Palette.onPrimary)
                         .frame(maxWidth: .infinity).frame(height: 52)
-                        .background(Theme.Palette.cream, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(Theme.Palette.primaryPill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             }
         }
@@ -154,9 +154,9 @@ struct DataExportView: View {
                 ShareLink(item: text,
                           preview: SharePreview("CereBro data export")) {
                     Text("Share / save export")
-                        .appFont(14, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                        .appFont(14, weight: .heavy).foregroundStyle(Theme.Palette.onPrimary)
                         .frame(maxWidth: .infinity).frame(height: 52)
-                        .background(Theme.Palette.cream, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(Theme.Palette.primaryPill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             } else {
                 PrimaryButton(title: loading ? "Preparing…" : "Prepare export",

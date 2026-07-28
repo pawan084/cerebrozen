@@ -150,7 +150,7 @@ struct ProgramProgressCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("PROGRAM · DAY \(program.day) OF \(program.days)")
                     .appFont(10.5, weight: .bold).kerning(1.2)
-                    .foregroundStyle(Theme.Brand.cyan)
+                    .foregroundStyle(Theme.Palette.accentCyan)
                 Text(program.title)
                     .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.text)
                 ProgressView(value: Double(program.day), total: Double(max(1, program.days)))

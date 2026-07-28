@@ -49,12 +49,31 @@
 > Android's exact split). Post-fix matrix: 0 failures, tightest pair 4.77:1.
 > `CereBroTests/ContrastTest.swift` pins the palette byte-identical and
 > re-computes the gate — the unit-test TARGET must be added once in Xcode on
-> macOS (instructions in the file header). Item 16 (Dawn theme) is all that
-> remains of Wave D — run it only WITH a live build loop.
+> macOS (instructions in the file header).
+>
+> **Wave D item 16 (Dawn/Night dual theme) landed 2026-07-28** — closing the
+> last open code item of the backport. New `DesignSystem/AppTheme.swift`
+> (`ThemeMode` system/night/dawn, persisted `theme_mode` in the same vocabulary
+> Android and web write) + a `ThemeSnapshot` global the token getters resolve
+> against; `Theme.Palette`/`Stroke`/`Gradient` members became computed `static
+> var`s, so **no screen changed** — they still read `Theme.Palette.…`. Dawn's
+> values are hand-synced with the web app's `[data-theme="dawn"]` block, with
+> the four roles web has no token for (cyan/mint/rose/danger) darkened
+> in-family until each cleared AA. `.preferredColorScheme` follows the mode and
+> is deliberately `nil` under "Match device" — that is what lets RootView read
+> the device's real scheme back out of the environment rather than its own
+> override. You → Appearance ships the picker. `ContrastTest` now gates BOTH
+> palettes (0 failures across 105 pairs; tightest 4.51:1, Dawn mint on the
+> darkest page paint) plus the theme-resolution truth table, and asserts the
+> Night pins did not move while Dawn was tuned. Under `-resetState` the theme
+> is **pinned Night**, same posture as the splash and the audio engine: a
+> simulator booted Light would otherwise flip the app to Dawn the instant
+> onboarding finished, re-keying the root view mid-test.
 >
 > **⚠ ALL WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
 > `xcodebuild test` pass before shipping** (ratios are host-independent math,
-> the rendering is not).
+> the rendering is not). Item 16 especially: contrast is proven, *layout* in
+> Dawn is not — the two-theme screenshot pass is still owed.
 
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,
@@ -125,6 +144,22 @@
 
 ## Deliberate divergences & decisions taken in this spec
 
+- **The Sleep tab does NOT force Night on iOS** (item 16, decided 2026-07-28) — a real
+  divergence from Android and web, and the one part of item 16 that did not port.
+  Android pins Sleep to Night by flipping `AppTheme.forceNight` in a side effect, which
+  works because Compose token reads subscribe the reader and only one screen composes at
+  a time; web pins it with a `.theme-night` class, because CSS variables scope to a
+  subtree for free. SwiftUI has **neither** — the tokens are global statics, so the only
+  ways to paint one tab differently are (a) flip the global while Sleep is on screen,
+  which repaints the still-live sibling tabs and the shared tab bar, or (b) re-key the
+  root on tab change, which destroys every other tab's navigation stack. Both are worse
+  than the miss. Sleep therefore follows the chosen theme like every other tab.
+  **This has a wellness cost, not just a cosmetic one** — a bright screen at bedtime is
+  the opposite of what a sleep surface should do — so it is worth fixing properly: the
+  real fix is moving the tokens into an `Environment` palette (SwiftUI's actual analogue
+  of CSS variable scoping), after which any subtree can be pinned in one modifier. That
+  is the "more iOS-native, more churn" alternative item 16 flagged from the start; it is
+  a refactor of every colour read in the app and wants a live build loop.
 - **Kill the four mini-games on iOS too** (item 2) — spec-consistent; revisit only with usage data.
 - **Keep iOS real glass + aurora** (item 18) — Android's "fake glass" finding doesn't apply.
 - **ToolAmbience stays mix-with-others** (item 5) — it's a bed under tools by design; only the
@@ -149,3 +184,12 @@
 2. Wave B (IA): 1, 3, 6, 7, 8, 15 — Toolkit, Home, presence, Talk offers (one UITest re-record).
 3. Wave C (flagship): 14, 5, 12 — Sleep CBT-I, audio verify, onboarding trim (funnel-sensitive).
 4. Wave D (theme): 17 then 16 — contrast gate first so Dawn lands against a tested Night pin.
+   ✅ Both landed (2026-07-25 / 2026-07-28). The ordering paid off exactly as intended:
+   Dawn was tuned against pinned Night values, and `testNightPaletteIsPinnedByteIdentical`
+   now fails the build if a future palette edit drifts Night while chasing Dawn.
+
+**Remaining after Wave D — nothing static-verifiable is left.** What is open needs a Mac:
+item 5 (back-to-back `PlayerView` audio overlap — a listen test), the two-theme screenshot
+pass for item 16, the one-time `CereBroTests` unit-test target, and one full
+`xcodebuild test` run to validate Waves A–D together. The Sleep-pin follow-up above is the
+only outstanding *design* gap.

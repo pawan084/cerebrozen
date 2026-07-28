@@ -23,9 +23,9 @@ struct DBTSkillView: View {
                 Card(cornerRadius: 18) {
                     HStack(alignment: .top, spacing: 12) {
                         Text(s.letter)
-                            .appFont(18, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                            .appFont(18, weight: .heavy).foregroundStyle(Theme.Palette.onPrimary)
                             .frame(width: 38, height: 38)
-                            .background(Theme.Palette.cream, in: Circle())
+                            .background(Theme.Palette.primaryPill, in: Circle())
                         VStack(alignment: .leading, spacing: 4) {
                             Label(s.title, systemImage: s.symbol)
                                 .appFont(14.5, weight: .semibold).foregroundStyle(Theme.Palette.text)

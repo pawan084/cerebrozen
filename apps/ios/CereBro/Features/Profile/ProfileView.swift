@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
+    @EnvironmentObject var theme: AppTheme
     @State private var showReset = false
 
     /// Real account name when signed in; a neutral placeholder otherwise.
@@ -42,6 +43,8 @@ struct ProfileView: View {
                    systemImage: "person.crop.circle", imageURL: Dummy.Img.privacy, emphasis: true) { CloudSyncView() }
             NavRow(title: "Companion style", subtitle: "\(state.companion) · how CereBro talks with you",
                    systemImage: "bubble.left.and.text.bubble.right", imageURL: Dummy.Img.chat) { CompanionStyleView() }
+            NavRow(title: "Appearance", subtitle: "\(theme.mode.label) · Night or Dawn",
+                   systemImage: "circle.lefthalf.filled", imageURL: Dummy.Img.calm) { AppearanceView() }
             NavRow(title: "Daily reminder",
                    subtitle: state.reminderEnabled ? "On · gentle daily check-in" : "Off · tap to set a gentle nudge",
                    systemImage: "bell", imageURL: Dummy.Img.bell) { RemindersView() }

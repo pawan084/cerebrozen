@@ -14,8 +14,11 @@ struct Photo: View {
                 image.resizable().scaledToFill()
             default:
                 ZStack {
+                    // Constant-dark in both themes: this stands in for a photo,
+                    // and a photo does not become a light photo when the app
+                    // does (same rule the web app's Wave E pinned heroes to).
                     LinearGradient(
-                        colors: [Theme.Palette.lav.opacity(0.55), Theme.Palette.nightTop],
+                        colors: [Theme.Brand.periwinkle.opacity(0.55), Theme.Brand.indigoLift],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     )
                     Image(systemName: symbol)
@@ -306,13 +309,13 @@ struct PrimaryButton: View {
         Button { taps += 1; action() } label: {
             Label(title, systemImage: systemImage)
                 .appFont(14, weight: .heavy)
-                .foregroundStyle(Theme.Palette.ink)
+                .foregroundStyle(Theme.Palette.onPrimary)
                 .frame(maxWidth: .infinity).frame(minHeight: 52)
                 .background(Theme.Gradient.primaryButton,
                             in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                    .stroke(.white.opacity(0.7), lineWidth: 0.5))
-                .shadow(color: Theme.Palette.soft.opacity(0.28), radius: 14, y: 6)
+                    .stroke(Theme.Stroke.primaryEdge, lineWidth: 0.5))
+                .shadow(color: Theme.Palette.lift, radius: 14, y: 6)
         }
         .buttonStyle(.pressable)
         .sensoryFeedback(.impact(weight: .medium), trigger: taps)
@@ -332,7 +335,7 @@ struct SecondaryButton: View {
                 .frame(maxWidth: .infinity).frame(minHeight: 52)
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(.ultraThinMaterial).opacity(0.6))
                 .background(Theme.Palette.card, in: RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).stroke(Color.white.opacity(0.18)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).stroke(Theme.Stroke.secondaryEdge))
         }
         .buttonStyle(.pressable)
         .sensoryFeedback(.selection, trigger: taps)
@@ -360,9 +363,9 @@ struct ChipRow: View {
                 } label: {
                     Text(opt)
                         .appFont(12, weight: .heavy)
-                        .foregroundStyle(on ? Theme.Palette.ink : Theme.Palette.muted)
+                        .foregroundStyle(on ? Theme.Palette.chipSelectedInk : Theme.Palette.muted)
                         .padding(.horizontal, 12).frame(minHeight: 36)
-                        .background(on ? Theme.Palette.cream : Theme.Palette.card)
+                        .background(on ? Theme.Palette.chipSelectedFill : Theme.Palette.card)
                         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous).stroke(on ? .clear : Theme.Palette.line))
                         .scaleEffect(on ? 1.04 : 1)
@@ -597,7 +600,7 @@ struct GlowOrb: View {
                                      startRadius: 0, endRadius: size * 0.42))
                 .frame(width: size, height: size)
         }
-        .shadow(color: Theme.Palette.soft.opacity(0.5), radius: 30)
+        .shadow(color: Theme.Palette.orbGlow, radius: 30)
         .animation(pulses ? .easeInOut(duration: 2.6).repeatForever(autoreverses: true) : .default, value: anim)
         .onAppear { if pulses && !reduceMotion { anim = true } }
     }
@@ -610,7 +613,7 @@ struct Shimmer: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay(
             GeometryReader { geo in
-                LinearGradient(colors: [.clear, .white.opacity(0.35), .clear],
+                LinearGradient(colors: [.clear, Theme.Stroke.shimmer, .clear],
                                startPoint: .leading, endPoint: .trailing)
                     .frame(width: geo.size.width * 0.7)
                     .offset(x: phase * geo.size.width * 1.7)
@@ -791,7 +794,7 @@ struct WhyThisWorks: View {
     let text: String
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Why this works").appFont(11, weight: .heavy).foregroundStyle(Theme.Brand.cyan)
+            Text("Why this works").appFont(11, weight: .heavy).foregroundStyle(Theme.Palette.accentCyan)
             Text(text).appFont(11.5).foregroundStyle(Theme.Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
