@@ -61,10 +61,21 @@ shared, rotate it.
 
 | Suite | Command | Notes |
 | --- | --- | --- |
-| Backend | `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"` | ~138 async tests; needs live Postgres (fixtures call `init_db()`); `TESTING=1` set by conftest disables rate limits. CI gate: `--cov-fail-under=95` (`.coveragerc` omits prestart/seed/agent/oracle — LLM-streaming code is integration-only) |
+| Backend | `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"` | 330 async tests; needs live Postgres (fixtures call `init_db()`); `TESTING=1` set by conftest disables rate limits. CI gate: `--cov-fail-under=95` (`.coveragerc` omits prestart/seed/agent/oracle — LLM-streaming code is integration-only) |
 | iOS | `xcodebuild test -project apps/ios/CereBro.xcodeproj -scheme CereBro -destination '<simulator>'` or `bundle exec fastlane ios test` | XCUITest walk-throughs; pass `-resetState YES` for determinism (wipes state, seeds demo streak, skips splash, disables real audio engine). Cloud tests `XCTSkip` without a reachable backend |
 | Web+Admin e2e | `docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e` | Playwright; isolated network; asserts landing, waitlist, admin CRUD against seeded data |
 | Android | `cd apps/android && JAVA_HOME="<Android Studio>/jbr" ./gradlew :app:testDebugUnitTest :app:jacocoLogicCoverageVerification` | JVM + Robolectric unit tests (no emulator, no keys). **Coverage gate: ≥95% line coverage over the testable logic scope**, mirroring the backend's `--cov-fail-under=95`. The gate task prints total + per-package percentages and fails below 95; HTML report at `app/build/reports/jacoco/jacocoTestReport/html/`. The gate is also wired into `:app:check`, but `check` additionally runs `lintDebug` (currently red: untranslated Hindi strings) and `testReleaseUnitTest` (currently red: Robolectric Compose tests need the debug-only `ui-test-manifest`) — pre-existing debt, independent of the coverage gate |
+
+⚠️ **Backend suite wall-clock on a Windows/OneDrive checkout is meaningless — don't
+tune against it.** The same 330 tests measured 8, 10, 21 and 60 minutes across four runs
+on one machine with no code change between the last two. `--durations=25` shows why the
+number is not the tests: the slowest twenty-five sum to ~110 s (worst single test
+11.7 s), so ~98 % of a 60-minute run is outside test bodies entirely. The cause is the
+`./backend:/app` bind mount — Docker Desktop crossing the Windows filesystem is slow and
+highly variable, and a OneDrive-synced path makes it worse (the same class of problem as
+the read-only `media/` mode already documented in the Dockerfile). Linux CI is the
+meaningful timing signal; locally, run a single test file while iterating and treat the
+full suite as a pass/fail gate, not a benchmark.
 
 Android coverage scope (defined with rationale in `apps/android/app/build.gradle.kts`):
 the gate measures `net/**` (Session/Api/Analytics), the audio controllers
