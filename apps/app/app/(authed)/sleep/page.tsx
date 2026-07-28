@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, API_URL } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
@@ -138,6 +139,16 @@ export default function Sleep() {
           </section>
         </div>
         <WhyThisWorks text="From CBT-I (cognitive behavioural therapy for insomnia) — the best-evidenced approach in sleep apps (Lancet Digital Health, 2025)." />
+
+        {/* The guided version of the two cards above — a routine rather than
+            advice to remember at 1am. */}
+        <Link href="/sleep/ritual" className="card" style={{ display: "block", marginTop: 14 }}>
+          <h3 style={{ margin: "0 0 6px" }}>Tonight&apos;s wind-down ritual →</h3>
+          <p className="sub">
+            Four quiet steps, about ten minutes: empty your head, name what went right,
+            let the body go, then settle the breath.
+          </p>
+        </Link>
 
         <div className="sec-head"><h2 className="serif-h">Soundscapes</h2></div>
         <div className="media-grid">

@@ -124,6 +124,55 @@
 
 ## Done — recent
 
+### Thought Sort → the Toolkit's Reframe section (2026-07-28) — `apps/app` `/games`
+Fourth adoption from the sibling build, and the only one of its 18 games that teaches
+something: spotting the named cognitive distortions (all-or-nothing, catastrophising,
+"should" statements, labelling) is standard cognitive-restructuring psychoeducation.
+Web's Toolkit now covers Breathe · Ground · Reframe, matching three of the four sections
+iOS/Android ship.
+- [x] Three things deliberately dropped on the way in:
+  - **The efficacy claim.** The reference scores a "Thought awareness: 87 %" and
+    congratulates "Perfect cognitive awareness!". A ten-item quiz over pre-written
+    sentences measures no such faculty, and that is precisely the claim class behind the
+    2016 Lumosity FTC settlement. The summary now reports the count and explicitly says
+    the count isn't the point.
+  - **The reward loop** (trophies, praise ladder) — conflicts with F5, celebrate notable
+    moments rather than every rep.
+  - **The word "game"** — these are example thoughts about self-criticism.
+- [x] The thought bank was rewritten so each "why" names the actual distortion rather
+  than offering encouragement, and carries a real `WhyThisWorks` (Beck). **Nothing the
+  user has written is ever categorised for them** — only generic examples.
+- Not ported: **Cloud Drift** and **Zen Sand**. Both are calm-play canvases that would
+  duplicate the Zen Ripples already on iOS/Android, add no teaching value to a web
+  Toolkit that deliberately says "more lives in the apps", and — being purely visual —
+  could not be verified from this host. They belong on iOS/Android's Settle section,
+  on a device. The remaining 15 games stay rejected on the credibility grounds recorded
+  in the adoption assessment above.
+
+### Wind-down ritual (2026-07-28) — `apps/app` `/sleep/ritual`
+Third adoption from the sibling build (its `SleepRitualPage`). Four guided steps —
+empty your head → three good things → body scan → settle the breath — reachable from
+the Sleep tab's "Better nights, gently" section, so the CBT-I advice already on that
+page has a guided version instead of being something to remember at 1am.
+- [x] Two deliberate changes on the way in:
+  - The reference ends on **4-7-8 breathing**; that exact ratio is a popularised pattern
+    without much direct evidence, and every other exercise here carries a citation. The
+    final step reuses the **in-4 / out-6** pattern the iOS/Android breathe engines
+    already ship — a longer exhale than inhale is the part with real vagal-tone evidence
+    — rather than adding a fourth, unevidenced ratio to the app's vocabulary.
+  - The brain dump **never leaves the device** unless the user explicitly taps "Save to
+    journal", and the screen says so. "Write down everything on your mind" right before
+    bed invites the most unguarded writing a user will do all day; the reference
+    discards it silently, which is fine behaviour but silent about it.
+- [x] Every step carries a real `WhyThisWorks` source (Scullin 2018 for the brain dump,
+  Seligman 2005 for three good things, CBT-I relaxation for the body scan). Gratitude
+  and the body scan are both **skippable** — a night where only one good thing comes to
+  mind is exactly the night not to be blocked by a form.
+- [x] New `.onb-breathe-orb.slow-out` CSS so the orb's 3.8 s transition doesn't finish
+  early and sit still through a 6 s exhale. Reduce-motion already handled by the
+  existing orb rule. `tsc` clean.
+- Open: iOS/Android ports; RitualBuilder + guided imagery from the same folder.
+
 ### Interventions: recommend with a visible rationale (2026-07-28)
 Second adoption from the `workspace/cerebro` sibling build. The app already nudged; it
 never said **what it noticed**. Every offer now carries a plain-language reason computed
@@ -544,10 +593,18 @@ The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mo
   rules are code-defined over signals cerebroSG actually holds. Follow-ups left open:
   DB-backed rule overrides (admin-editable without a deploy, like the prompt registry),
   and the iOS/Android surfaces (only `apps/app` renders the card today).
-- [ ] **Tools** (`web/src/features/tools`): RitualBuilder (17 KB), Daily/Sleep rituals,
-  Guided imagery, Will training. Sleep Ritual is the closest fit — it lands next to the
-  CBT-I layer now shipped on all three clients.
-- [ ] **Games** — ⚠️ take at most 3–4, and **strip the efficacy claims**. The reference
+- [x] **Tools → wind-down ritual** — SHIPPED 2026-07-28 on `apps/app` (see "Done —
+  recent"). The reference's 27-item `ToolsPage` grid was **not** taken: an
+  everything-we-have hub is the opposite of the REDESIGN de-densification, and this app
+  already has one Toolkit. Still open from that folder: RitualBuilder (habit stacking /
+  implementation intentions — good evidence, Gollwitzer), Guided imagery. **Skipped on
+  evidence grounds:** Disidentification and Will Training are Psychosynthesis
+  (Assagioli) constructs with a much thinner evidence base than everything else this app
+  ships with a `WhyThisWorks` citation — they'd need a source we can't currently give.
+- [x] **Games** — Thought Sort adopted 2026-07-28 with the claims stripped (see "Done —
+  recent"); Cloud Drift / Zen Sand deferred to iOS/Android where they'd be verifiable on
+  a device. Original assessment, kept for the reasoning: ⚠️ take at most 3–4, and
+  **strip the efficacy claims**. The reference
   ships 18 arcade games whose catalogue advertises `builds: "Working memory" /
   "Selective attention" / "Cognitive flexibility"`. Importing them wholesale would (a)
   reverse REDESIGN §2.2 / IOS_PARITY item 2, which deliberately killed four mini-games as

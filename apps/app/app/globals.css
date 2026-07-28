@@ -346,6 +346,9 @@ select option { color: var(--ink); }
 }
 .onb-breathe-orb.in, .onb-breathe-orb.hold { transform: scale(1.24); }
 .onb-breathe-orb.out { transform: scale(0.78); }
+/* The wind-down ritual exhales for 6s, not 4 — without this the orb finishes
+   early and sits still for the last two seconds of the breath. */
+.onb-breathe-orb.slow-out { transition-duration: 5.8s; }
 @media (prefers-reduced-motion: reduce) { .onb-breathe-orb { transition: none; transform: none; } }
 
 /* First-plan hero card. */

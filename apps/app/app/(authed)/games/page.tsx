@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { WhyThisWorks } from "@/components/WhyThisWorks";
+import { ThoughtSort } from "@/components/ThoughtSort";
 import { Icon } from "@/components/icons";
 
 // Box breathing: four equal counts — in, hold, out, hold — the same pattern the
@@ -128,8 +129,14 @@ export default function Toolkit() {
           <WhyThisWorks text="Sensory grounding redirects attention from spiralling thoughts to the here-and-now — a widely taught anxiety-management skill." />
         </section>
 
+        <div className="sec-head"><h2 className="serif-h">Reframe</h2></div>
+        <section className="card">
+          <ThoughtSort />
+          <WhyThisWorks text="Learning to spot named thinking traps — all-or-nothing, catastrophising, 'should' statements — is the first step of cognitive restructuring, the core skill in CBT (Beck, Cognitive Therapy and the Emotional Disorders)." />
+        </section>
+
         <p className="footnote">
-          More of the Toolkit — reframing, TIPP and calm play — lives in the iOS &amp; Android apps.
+          More of the Toolkit — TIPP and calm play — lives in the iOS &amp; Android apps.
         </p>
         {/* Crisis stays ≤2 clicks from every tool surface (REDESIGN §2.3). */}
         <p className="footnote">
