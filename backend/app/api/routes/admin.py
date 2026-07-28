@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,8 @@ from app.schemas.media import (
 from app.schemas.user import UserOut
 from app.services import media, metrics, nudges, voice
 from app.services import prompts as prompt_registry
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -242,6 +245,25 @@ async def narrate_content(
         raise HTTPException(status_code=502, detail="Speech synthesis failed")
     item.audio_url = media.save_narration(item.id, audio)
     item.audio_generated_at = utcnow()
+    # For a narrated item the audio IS the content, so the displayed length
+    # should be the length of the file we just minted — not whatever minute
+    # count someone typed when the item was drafted. Only overwrite when the
+    # probe actually read the file: an unreadable MP3 leaves the authored
+    # number alone rather than replacing it with a guess.
+    seconds = media.mp3_duration_seconds(audio)
+    if seconds:
+        minutes = media.duration_minutes(seconds)
+        if minutes != item.duration_min:
+            logger.info(
+                "Narration for %s ran %.1fs — duration_min %d → %d",
+                item.id, seconds, item.duration_min, minutes,
+            )
+        item.duration_min = minutes
+    else:
+        logger.warning(
+            "Could not read a duration from the narration MP3 for %s — "
+            "leaving duration_min at %d", item.id, item.duration_min,
+        )
     await db.commit()
     await db.refresh(item)
     return item

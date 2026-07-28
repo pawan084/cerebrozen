@@ -726,6 +726,11 @@ function Content() {
           <div>
             <label>Duration (min)</label>
             <input type="number" min={0} value={form.duration_min} onChange={(e) => set("duration_min", e.target.value)} />
+            <small className="field-hint">
+              Generating audio overwrites this with the real length of the MP3 —
+              for a narrated item the file is the content, so the number clients
+              show has to match it.
+            </small>
           </div>
           <div className="full">
             <label>Image URL</label>

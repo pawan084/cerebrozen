@@ -492,11 +492,30 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   "Now playing · Narration" vs "· Ambient bed", driven by `SoundscapePlayer.isNarrating`
   (reactive, follows the honest fallback if narration fails). 2026-07-08. Not built on
   the Windows dev box — verify on a simulator before shipping.
-- [ ] Follow-ups: premium audio gating (signed short-lived media URLs) once a
-  premium narration catalogue exists; bulk "generate all missing" if the catalogue
-  outgrows per-row clicks (~25+); persistent web player; compute real `duration_min`
-  from the generated MP3 (needs a decoder dep). OWNER: click Generate per seeded item
-  (burns ElevenLabs credits, ~15–30k chars total).
+- [x] **Real `duration_min` from the generated MP3** — DONE 2026-07-28. `narrate`
+  minted the audio but never touched `duration_min`, so a hand-authored "8 min"
+  sat over whatever length the file actually was, on all three clients — a small
+  lie in a product that sells honesty. `services/media.mp3_duration_seconds()`
+  now reads it from the MPEG frame headers (skips ID3v2, prefers a Xing/Info VBR
+  frame count, falls back to the CBR byte-length calculation) and narrate writes
+  `duration_minutes()` (half-up, floor 1) into the item. **No new dependency** —
+  deliberately: the obvious library (mutagen) is GPL-2.0 and not worth linking
+  into a commercial backend for one integer, and tinytag is still a dependency
+  for ~60 lines of public-format parsing. Unreadable audio leaves the authored
+  number alone (never replace a human's value with a guess) and logs a warning,
+  so the stubbed-TTS tests and any odd provider output degrade cleanly. Admin
+  content form says the field gets overwritten. Verified in-container: 292
+  passed / 2 skipped, coverage 95.34 % (gate 95); admin tsc clean.
+- [ ] Follow-ups still open: premium audio gating (signed short-lived media URLs)
+  — **note the standing gap**: `/media` is a public StaticFiles mount, so every
+  narration MP3 is world-readable by URL today; that is fine while the whole
+  catalogue is free, and becomes a hole the moment premium narration exists.
+  Bulk "generate all missing" stays deliberately unbuilt — the trigger was "if
+  the catalogue outgrows per-row clicks (~25+)" and the seeded catalogue is 9
+  scripts, so it would be speculative. Persistent web player (playback stops on
+  navigation in `apps/app`, which uses a per-item `<audio controls>`). OWNER:
+  click Generate per seeded item (burns ElevenLabs credits, ~15–30k chars total)
+  — durations will now be correct automatically.
 
 ### Ref-mock audit follow-ups (ref/ design screens, audited 2026-07-07)
 - [x] Backend + Android: program enrollment (`/programs` router + `program_enrollments`
