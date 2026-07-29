@@ -145,6 +145,11 @@ final class AppState: ObservableObject {
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate, Key.ageConfirmed,
              Key.usageStats,
+             // The personal ritual is device-local (RitualStore), not an
+             // AppState field — but it still has to be wiped, or a saved
+             // ritual leaks between UITest runs and the builder screenshots
+             // stop being deterministic.
+             RitualStore.blocksKey, RitualStore.cueKey,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }

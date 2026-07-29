@@ -101,6 +101,11 @@ struct SleepHomeView: View {
             }
 
             SectionTitle(title: "Wind down tonight")
+            // The guided version of everything below it: the stimulus-control
+            // advice is something to remember at 1am, the ritual is something
+            // to follow.
+            NavRow(title: "Tonight's wind-down", subtitle: "Four guided steps — empty your head, then settle",
+                   systemImage: "moon.stars", imageURL: Dummy.Img.sleep, emphasis: true) { WindDownRitualView() }
             // Stimulus-control micro-education — non-diagnostic, hardcoded
             // (copy hand-synced with Android sleep_bed_* / sleep_waketime_*).
             Card {

@@ -36,6 +36,13 @@ struct ToolkitView: View {
                    systemImage: "bolt.heart", imageURL: Dummy.Img.support) { DBTSkillView() }
 
             SectionTitle(title: "Settle", trailing: nil)
+            NavRow(title: "A place you can go", subtitle: "Build somewhere calm, one sense at a time",
+                   systemImage: "moon.stars", imageURL: Dummy.Img.sleep) { GuidedImageryView() }
+            // The builder is a door, not a section of its own: it only
+            // sequences the tools above, and putting it first would suggest
+            // setup comes before use.
+            NavRow(title: "Your ritual", subtitle: "String a few of these together, on a cue you already have",
+                   systemImage: "sparkles", imageURL: Dummy.Img.meditate) { RitualBuilderView() }
             NavRow(title: "Gratitude garden", subtitle: "Plant one small joy at a time",
                    systemImage: "leaf.fill", imageURL: Dummy.Img.calm) { GratitudeGardenGame() }
             NavRow(title: "Pattern glow", subtitle: "Follow the light, one step at a time",

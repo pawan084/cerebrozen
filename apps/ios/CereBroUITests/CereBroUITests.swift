@@ -881,6 +881,57 @@ final class CereBroUITests: XCTestCase {
         }
     }
 
+    // MARK: - Guided routines (wind-down · imagery · builder)
+
+    /// The three guided routines ported from web/Android. Every auto-advancing
+    /// timer in them is gated off under `-resetState` (same posture as the
+    /// splash and the audio engine), so this walks them with the manual
+    /// controls only and never waits on a self-advancing screen.
+    func testGuidedRoutines() {
+        let app = makeApp()
+        launchIntoApp(app)
+
+        // Wind-down: the Sleep tab's guided version of the CBT-I advice below it.
+        openTab(app, "Sleep")
+        if tap(app, "Tonight's wind-down") {
+            XCTAssertTrue(app.staticTexts["A ritual for tonight"].waitForExistence(timeout: 4),
+                          "wind-down ritual did not open")
+            XCTAssertTrue(app.staticTexts["Step 1 of 4"].exists, "ritual progress missing")
+            // The privacy line must be visible BEFORE anything is written.
+            XCTAssertTrue(app.staticTexts.containing(NSPredicate(format:
+                "label CONTAINS[c] 'never sent anywhere'")).firstMatch.exists,
+                "brain dump must say where the text goes before you write it")
+            snapshot(app, "ritual-winddown")
+            back(app)
+        }
+
+        openTab(app, "Home")
+        if tap(app, "Toolkit") {
+            // Guided imagery: the caution is on the way IN, not after something
+            // goes wrong, and it points at grounding.
+            if tap(app, "A place you can go") {
+                XCTAssertTrue(app.staticTexts["If it stops feeling calm, stop."].waitForExistence(timeout: 4),
+                              "imagery caution must show before the exercise starts")
+                XCTAssertTrue(app.buttons.containing(NSPredicate(format:
+                    "label CONTAINS[c] '5-4-3-2-1'")).firstMatch.exists,
+                    "the caution must offer grounding as the way out")
+                snapshot(app, "imagery-intro")
+                back(app)
+            }
+            // The builder: the cue leads the page, and a fresh install has an
+            // empty ritual (the -resetState wipe covers RitualStore).
+            if tap(app, "Your ritual") {
+                XCTAssertTrue(app.staticTexts["Attach it to something you already do"].waitForExistence(timeout: 4),
+                              "ritual builder did not open")
+                XCTAssertTrue(app.staticTexts["Nothing picked yet."].exists,
+                              "a fresh install must start from an empty ritual")
+                snapshot(app, "ritual-builder")
+                back(app)
+            }
+            back(app)
+        }
+    }
+
     /// Tap a field, clear any pre-filled value, then type fresh text.
     private func clearAndType(_ field: XCUIElement, _ text: String) {
         field.tap()
