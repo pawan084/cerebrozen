@@ -732,4 +732,96 @@
     <string name="ambience_mute_cd">Mute ambience</string>
     <string name="ambience_sound_off">Sound off</string>
     <string name="ambience_label">Ambience</string>
+
+    <!-- ── Shared micro-copy ────────────────────────────────────────────── -->
+    <string name="common_got_it">Got it</string>
+    <string name="common_selected_cd">Selected</string>
+    <string name="unit_hour_short">h</string>
+    <string name="unit_minute_short">m</string>
+
+    <!-- ── Mood chips (labels only — the wire values stay in code) ───────── -->
+    <string name="mood_good">Good</string>
+    <string name="mood_good_note">Clear</string>
+    <string name="mood_anxious">Anxious</string>
+    <string name="mood_anxious_note">Loud thoughts</string>
+    <string name="mood_low">Low</string>
+    <string name="mood_low_note">Heavy</string>
+    <string name="mood_tired">Tired</string>
+    <string name="mood_tired_note">Need rest</string>
+
+    <!-- ── Home copy that used to live in pure functions ─────────────────── -->
+    <string name="today_greeting_morning">Good morning</string>
+    <string name="today_greeting_afternoon">Good afternoon</string>
+    <string name="today_greeting_evening">Good evening</string>
+    <string name="today_milestone">🎉 %1$d days of showing up — beautifully done</string>
+    <string name="today_rail_morning">For this morning</string>
+    <string name="today_rail_midday">A midday reset</string>
+    <string name="today_rail_tonight">For tonight</string>
+
+    <!-- ── Sleep copy that used to live in pure functions ────────────────── -->
+    <string name="sleep_rhythm_vary">A steadier bedtime — even an imperfect one — does more for sleep than extra hours.</string>
+    <string name="sleep_rhythm_steady">Your bedtime is steady — that consistency is the strongest thing you\'re doing for your sleep.</string>
+
+    <!-- ── Breathe phase guidance ────────────────────────────────────────── -->
+    <string name="breathe_phase_in">Breathe in</string>
+    <string name="breathe_phase_hold">Hold</string>
+    <string name="breathe_phase_out">Breathe out</string>
+
+    <!-- ── Onboarding pickers (display labels; wire values stay in code) ─── -->
+    <string name="ob_state_opt_stressed">Stressed and tense</string>
+    <string name="ob_state_opt_night">Can\'t switch off at night</string>
+    <string name="ob_state_opt_overthinking">Overthinking everything</string>
+    <string name="ob_state_opt_doubt">Doubting myself</string>
+    <string name="ob_state_opt_distant">Feeling distant from people</string>
+    <string name="ob_state_opt_consistent">Can\'t stay consistent</string>
+    <string name="ob_lang_english">English</string>
+    <string name="ob_lang_hindi">Hindi</string>
+    <string name="ob_lang_hinglish">Hinglish</string>
+    <string name="ob_lang_punjabi">Punjabi</string>
+    <string name="ob_lang_tamil">Tamil</string>
+    <string name="ob_notify_morning">Morning 9 AM</string>
+    <string name="ob_notify_evening">Evening 7 PM</string>
+    <string name="ob_notify_private">Private previews</string>
+    <string name="ob_notify_none">No reminders</string>
+
+    <!-- ── Companion styles (display labels; wire values stay in code) ───── -->
+    <string name="companion_calm_title">Calm Guide</string>
+    <string name="companion_calm_detail">Steady and soothing — grounds you first, never rushes</string>
+    <string name="companion_warm_title">Warm Friend</string>
+    <string name="companion_warm_detail">Encouraging and familiar — like a friend who gets it</string>
+    <string name="companion_direct_title">Straight Talker</string>
+    <string name="companion_direct_detail">Clear and direct — kind, but skips the padding</string>
+    <string name="companion_quiet_title">Quiet Coach</string>
+    <string name="companion_quiet_detail">Action-first — one small concrete step at a time</string>
+
+    <!-- ── Privacy: the honest word when a consent write never landed ────── -->
+    <string name="privacy_setup_sync_failed_title">Your setup choices didn\'t save</string>
+    <string name="privacy_setup_sync_failed_body">The privacy choices you made during setup never reached the server. The switches below show what\'s actually saved — please set them the way you want them.</string>
+
+    <!-- ── Voice failures (never a silent orb) ───────────────────────────── -->
+    <string name="talk_voice_network">Speech needs a connection right now — you can type below.</string>
+    <string name="talk_voice_busy">The microphone is busy — give it a moment, or type below.</string>
+    <string name="talk_voice_failed">Voice didn\'t work that time — you can type below.</string>
+    <string name="talk_voice_no_speech">Didn\'t hear anything — tap the orb to try again, or type below.</string>
+    <string name="talk_tts_unavailable">This device has no voice for reading replies aloud — they\'ll appear as text.</string>
+
+    <!-- ── Soundscape mixer layers ───────────────────────────────────────── -->
+    <string name="layer_rain">Rain</string>
+    <string name="layer_ocean">Ocean</string>
+    <string name="layer_wind">Wind</string>
+    <string name="layer_drone">Drone</string>
+
+    <!-- ── Playback notifications ────────────────────────────────────────── -->
+    <string name="notif_action_play">Play</string>
+    <string name="notif_action_pause">Pause</string>
+    <string name="notif_action_stop">Stop</string>
+    <string name="notif_soundscape_title">Soundscape</string>
+    <string name="notif_soundscape_text">CereBro · your own calm mix</string>
+    <string name="notif_channel_soundscape">Soundscape mix</string>
+    <string name="notif_channel_soundscape_desc">Controls for your layered ambient soundscape.</string>
+    <string name="notif_ambient_title">Ambient bed</string>
+    <string name="notif_ambient_bed">CereBro · ambient bed</string>
+    <string name="notif_ambient_narration">CereBro · narration</string>
+    <string name="notif_channel_ambient">Ambient playback</string>
+    <string name="notif_channel_ambient_desc">Controls for the calming ambient bed.</string>
 </resources>

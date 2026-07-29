@@ -5,7 +5,7 @@
 // and embedded inline in the onboarding "Save your space" step. Calls onAuthed()
 // once a session exists (the caller decides where to go next).
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   signIn, signUp, requestOtp, verifyOtp, signInApple, signInGoogle,
 } from "@/lib/api";
@@ -33,12 +33,27 @@ export default function AuthPanel({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // The last thing the user tried, so the error can offer a real retry instead
+  // of making them re-enter everything.
+  const lastAction = useRef<(() => Promise<void>) | null>(null);
+
   function reset(msg = "") {
     setError("");
     setNotice(msg);
   }
 
+  /** fetch() rejects with a bare TypeError when the API is unreachable — the
+   * browser's "Failed to fetch" is a developer string, never user copy. */
+  function friendlyError(err: any): string {
+    const raw = typeof err?.message === "string" ? err.message : "";
+    if (err instanceof TypeError || /failed to fetch|load failed|networkerror|network request/i.test(raw)) {
+      return "We couldn't reach CereBro just now — it's usually the connection.";
+    }
+    return raw || "That didn't go through.";
+  }
+
   async function withBusy(fn: () => Promise<void>) {
+    lastAction.current = fn;
     setBusy(true);
     reset();
     try {
@@ -46,9 +61,14 @@ export default function AuthPanel({
     } catch (err: any) {
       // A provider that isn't wired yet is an honest notice, not an error.
       if (err instanceof NotConfiguredError) setNotice(err.message);
-      else setError(err?.message || "Something went wrong. Try again.");
+      else setError(friendlyError(err));
       setBusy(false);
     }
+  }
+
+  function retry() {
+    const again = lastAction.current;
+    if (again) void withBusy(again);
   }
 
   const doApple = () =>
@@ -165,7 +185,14 @@ export default function AuthPanel({
         )}
 
         {notice && <p className="sub" role="status">{notice}</p>}
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && (
+          <div className="error-note" role="alert">
+            <p>{error}</p>
+            <button type="button" className="linklike" onClick={retry} disabled={busy}>
+              Try again
+            </button>
+          </div>
+        )}
 
         <button className="btn pill-cta" style={{ width: "100%" }} disabled={busy}>
           {busy ? "One moment…" : emailCta}

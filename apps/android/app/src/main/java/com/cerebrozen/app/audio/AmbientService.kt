@@ -48,7 +48,13 @@ class AmbientService : Service() {
 
     private var mp: ExoPlayer? = null
     private var session: MediaSession? = null
-    private var title = "Ambient bed"
+    /** Overwritten by EXTRA_TITLE on the play intent; the fallback is resolved
+     * from resources on first use (a field initialiser can't call getString). */
+    private var title: String? = null
+
+    /** The title to publish — the intent's, or the localized fallback (a field
+     * initialiser can't call getString, and the old literal was English). */
+    private fun displayTitle(): String = title ?: getString(R.string.notif_ambient_title)
     private var volume = 1f
     /** 1f normally; drops while the voice companion speaks so the bed ducks under it. */
     private var duckFactor = 1f
@@ -130,7 +136,7 @@ class AmbientService : Service() {
         // startForeground() within ~5s or the OS kills us with
         // ForegroundServiceDidNotStartInTimeException. Satisfy that contract FIRST,
         // before any player construction that could throw or return null.
-        Player.setState(title, true)
+        Player.setState(displayTitle(), true)
         updateSession(true)
         ServiceCompat.startForeground(
             this, NOTIF, buildNotification(true),
@@ -206,7 +212,7 @@ class AmbientService : Service() {
     private fun pause() {
         // W27 §1: publish the paused state immediately (UI + notification stay
         // honest), then let the audio tail out ~600ms before actually pausing.
-        Player.setState(title, false)
+        Player.setState(displayTitle(), false)
         updateSession(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         getSystemService(NotificationManager::class.java).notify(NOTIF, buildNotification(false))
@@ -268,21 +274,23 @@ class AmbientService : Service() {
 
     private fun buildNotification(playing: Boolean): Notification {
         val toggle =
-            if (playing) action("Pause", ACTION_PAUSE, android.R.drawable.ic_media_pause)
-            else action("Play", ACTION_PLAY, android.R.drawable.ic_media_play)
+            if (playing) action(getString(R.string.notif_action_pause), ACTION_PAUSE, android.R.drawable.ic_media_pause)
+            else action(getString(R.string.notif_action_play), ACTION_PLAY, android.R.drawable.ic_media_play)
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_orb)
-            .setContentTitle(title)
-            .setContentText(if (currentSrc.isBlank()) "CereBro · ambient bed" else "CereBro · narration")
+            .setContentTitle(displayTitle())
+            .setContentText(
+                if (currentSrc.isBlank()) getString(R.string.notif_ambient_bed) else getString(R.string.notif_ambient_narration),
+            )
             .setContentIntent(open)
             .setOngoing(playing)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .addAction(toggle)
-            .addAction(action("Stop", ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel))
+            .addAction(action(getString(R.string.notif_action_stop), ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel))
             .setStyle(
                 Notification.MediaStyle()
                     .setMediaSession(session?.sessionToken)
@@ -295,8 +303,8 @@ class AmbientService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Ambient playback", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Controls for the calming ambient bed."
+                NotificationChannel(CHANNEL, getString(R.string.notif_channel_ambient), NotificationManager.IMPORTANCE_LOW).apply {
+                    description = getString(R.string.notif_channel_ambient_desc)
                     setShowBadge(false)
                 },
             )

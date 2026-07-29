@@ -67,32 +67,49 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Calendar
 
-/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
-private data class MoodOption(val name: String, val note: String, val symbol: String, val intensity: Int)
-
-// i18n: pending — mood names/notes are the cross-stack mood taxonomy persisted
-// to the backend; needs a label/value split before display strings can localize.
-private val MOODS = listOf(
-    MoodOption("Good", "Clear", "sparkles", 2),
-    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
-    MoodOption("Low", "Heavy", "moon", 4),
-    MoodOption("Tired", "Need rest", "drop", 3),
+/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
+ *
+ * [name]/[note]/[symbol] are WIRE VALUES — they go to the backend and are
+ * hand-duplicated across iOS/web (see CLAUDE.md), so they are never translated.
+ * [labelRes]/[noteRes] are the display copy and localize freely. */
+private data class MoodOption(
+    val name: String,
+    val note: String,
+    val symbol: String,
+    val intensity: Int,
+    @androidx.annotation.StringRes val labelRes: Int,
+    @androidx.annotation.StringRes val noteRes: Int,
 )
 
-// i18n: pending — pure function, needs context plumbing
-internal fun greetingFor(hour: Int): String = when (hour) {
-    in 5..11 -> "Good morning"
-    in 12..16 -> "Good afternoon"
-    else -> "Good evening"
+private val MOODS = listOf(
+    MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note),
+    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note),
+    MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note),
+    MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note),
+)
+
+/** Which greeting the hour calls for. Returns the resource, not the copy, so
+ * the decision stays a pure unit-testable function AND localizes. */
+@androidx.annotation.StringRes
+internal fun greetingFor(hour: Int): Int = when (hour) {
+    in 5..11 -> R.string.today_greeting_morning
+    in 12..16 -> R.string.today_greeting_afternoon
+    else -> R.string.today_greeting_evening
 }
 
-private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+@Composable
+private fun greeting(): String =
+    stringResource(greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)))
 
-/** A gentle celebration line on milestone days — presence framing (REDESIGN
- * §3.6): counts showing up, never chains or misses. Calm, never punitive. */
-// i18n: pending — pure function, needs context plumbing
+/** Whether [streak] is a milestone worth a gentle line — presence framing
+ * (REDESIGN §3.6): counts showing up, never chains or misses. Pure; the copy
+ * itself lives in `today_milestone` so it can localize. */
+internal fun isMilestone(streak: Int): Boolean = streak in setOf(3, 7, 14, 21, 30, 50, 100)
+
+/** The milestone line, or null on an ordinary day. */
+@Composable
 internal fun milestoneLine(streak: Int): String? =
-    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak days of showing up — beautifully done" else null
+    if (isMilestone(streak)) stringResource(R.string.today_milestone, streak) else null
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -183,18 +200,20 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
     }
 }
 
-/** Time-matched rail kind + heading (mirrors the iOS Home rails). */
-// i18n: pending — pure function, needs context plumbing (headings are user copy)
-internal fun railKindFor(hour: Int): Pair<String, String> = when {
-    hour < 12 -> "meditation" to "For this morning"
-    hour < 17 -> "soundscape" to "A midday reset"
-    else -> "sleep" to "For tonight"
+/** Time-matched rail kind + heading (mirrors the iOS Home rails). The kind is a
+ * backend content-kind WIRE VALUE; the heading is a resource id, so the pairing
+ * stays a pure unit-testable function and the copy still localizes. */
+internal fun railKindFor(hour: Int): Pair<String, Int> = when {
+    hour < 12 -> "meditation" to R.string.today_rail_morning
+    hour < 17 -> "soundscape" to R.string.today_rail_midday
+    else -> "sleep" to R.string.today_rail_tonight
 }
 
 /** A horizontal card rail of served content, matched to the time of day. */
 @Composable
 private fun ContentRail(onOpen: (String) -> Unit) {
-    val (kind, heading) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val (kind, headingRes) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val heading = stringResource(headingRes)
     val route = if (kind == "sleep") "sleep" else "sounds"
     var items by remember { mutableStateOf<JSONArray?>(null) }
     LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
@@ -341,6 +360,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         // The one quiet banner slot (W9): at most one, by honest priority.
         val today = LocalDate.now().toString()
+        // Hoisted so a recomposition of Today doesn't hand every banner a fresh
+        // lambda identity (which defeats the banners' own skipping).
+        val openSleep = remember(onOpen) { { onOpen("sleep") } }
+        val openMixer = remember(onOpen) { { onOpen("sounds/mixer") } }
+        val openPrograms = remember(onOpen) { { onOpen("programs") } }
+        val dismissSleep: () -> Unit = remember(today) {
+            { Session.prefPut("sleepBannerDismissed", today); dismissTick++ }
+        }
+        val dismissWindDown: () -> Unit = remember(today) {
+            { Session.prefPut("windDownBannerDismissed", today); dismissTick++ }
+        }
         val dismissed = remember(dismissTick, today) {
             buildSet {
                 if (Session.prefGet("sleepBannerDismissed") == today) add("sleep")
@@ -364,15 +394,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 icon = Icons.Outlined.LightMode,
                 text = stringResource(R.string.today_banner_sleep),
                 actionLabel = stringResource(R.string.today_banner_sleep_action),
-                onAction = { onOpen("sleep") },
-                onDismiss = { Session.prefPut("sleepBannerDismissed", today); dismissTick++ },
+                onAction = openSleep,
+                onDismiss = dismissSleep,
             )
             HomeBanner.WIND_DOWN -> InfoBanner(
                 icon = Icons.Outlined.Bedtime,
                 text = stringResource(R.string.today_banner_winddown),
                 actionLabel = stringResource(R.string.today_banner_winddown_action),
-                onAction = { onOpen("sounds/mixer") },
-                onDismiss = { Session.prefPut("windDownBannerDismissed", today); dismissTick++ },
+                onAction = openMixer,
+                onDismiss = dismissWindDown,
                 artKind = "sleep",   // W21: content invitation → art medallion
             )
             HomeBanner.PROGRAM -> program?.let { prog ->
@@ -384,7 +414,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         prog.optInt("day"), prog.optInt("days"), prog.optString("title"),
                     ),
                     actionLabel = stringResource(R.string.common_open),
-                    onAction = { onOpen("programs") },
+                    onAction = openPrograms,
                     artKind = "program",   // W21: journey status → art medallion
                 )
             }
@@ -403,7 +433,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 // E7: the mood chips rise in with the shared staggered entrance.
                 MOODS.forEachIndexed { i, mood ->
                     Box(Modifier.appear(i, rise = 10f)) {
-                        PickChip(selected = picked == mood, label = mood.name) { picked = mood }
+                        PickChip(selected = picked == mood, label = stringResource(mood.labelRes)) { picked = mood }
                     }
                 }
             }

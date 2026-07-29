@@ -35,9 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -47,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -81,7 +80,6 @@ fun PatternGlowScreen(onBack: () -> Unit) {
     val noteSuccess = stringResource(R.string.patternglow_note_success)
     val noteReset = stringResource(R.string.patternglow_note_reset)
     var note by remember { mutableStateOf(noteStart) }
-    val haptics = LocalHapticFeedback.current
 
     // Replays the sequence on first show and after every change (success or reset).
     LaunchedEffect(replay) {
@@ -96,15 +94,20 @@ fun PatternGlowScreen(onBack: () -> Unit) {
 
     fun tap(pad: Int) {
         if (showing) return
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         if (pad == sequence[inputPos]) {
+            // A right tap ticks; completing the round earns the one success
+            // pulse; a wrong tap gets the softer warning — never the same
+            // feedback for "yes" and "no" (the haptic vocabulary, Haptics.kt).
+            Haptics.selection()
             inputPos++
             if (inputPos == sequence.size) {
                 best = maxOf(best, sequence.size)
                 note = noteSuccess.format(sequence.size)
+                Haptics.success()
                 sequence = sequence + Random.nextInt(4); replay++
             }
         } else {
+            Haptics.warning()
             note = noteReset.format(sequence.size)
             sequence = listOf(Random.nextInt(4)); replay++
         }
@@ -159,7 +162,14 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
     // Pump frames only while a ripple is still animating (they live ~3s); when the
     // water is still the loop exits, so we don't recompose the Canvas every frame
     // forever. A new tap changes `ripples` and relaunches the effect.
-    LaunchedEffect(ripples) {
+    // Reduce Motion: no frame pump. Each tap still paints its ring — the water
+    // simply holds still instead of animating outward (static, never blank).
+    val reduceMotion = rememberReduceMotion()
+    LaunchedEffect(ripples, reduceMotion) {
+        if (reduceMotion) {
+            now = System.nanoTime()
+            return@LaunchedEffect
+        }
         while (ripples.any { (System.nanoTime() - it.born) < 3_000_000_000L }) {
             withFrameNanos { now = it }
         }

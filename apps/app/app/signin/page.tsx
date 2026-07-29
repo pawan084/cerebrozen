@@ -27,6 +27,11 @@ export default function SignIn() {
         <p className="swap">
           New here? <Link href="/onboarding">Start with a 2-minute reset</Link>
         </p>
+        {/* Support stays reachable without an account — signing in is never a
+            condition of finding a helpline. */}
+        <p className="footnote">
+          Need urgent help? <Link href="/support">Support — real people, 24/7</Link>
+        </p>
       </div>
     </div>
   );

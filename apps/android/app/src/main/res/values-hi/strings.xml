@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   DRAFT — machine-assisted translation for human clinical review.
-  Safety/crisis/clinical strings are deliberately omitted (English fallback) pending review.
   Do not ship to production without a qualified reviewer sign-off.
 
-  Deliberately omitted categories (English serves via resource fallback):
-    - Crisis screen (crisis_*)
-    - Human support directory (humansupport_*)
-    - Talk AI-disclosure, in-chat crisis banner, SOS shortcut, reframe chip
+  CRISIS / SUPPORT COPY IS NOW TRANSLATED (2026-07). It was previously omitted so
+  English would serve as the fallback, but a Hindi-preferring user in crisis then
+  met an English wall at the worst possible moment. It is translated plainly and
+  formally, helpline numbers untouched, and it is the highest priority for the
+  clinical review this whole file is still waiting on.
+
+  Still deliberately omitted (English serves via resource fallback):
     - TIPP / DBT skill (tipp_*, toolkit_tipp_*)
     - CBT reframe tool (cbt_*, toolkit_cbt_*, toolkit_header_reframe)
     - "Why this works" provenance texts (common_why_this_works, *_why, programs_evidence)
@@ -15,11 +17,8 @@
     - sleep_hc_boundary_hint (Health Connect data boundary)
     - Onboarding disclosure / age gate / danger line (ob_disclosure_*, ob_danger_line,
       ob_confirmed_18, ob_can_help_*, ob_cant_do_*)
-    - Crisis region picker (crisisregion_*, region_*, you_crisisregion_*)
-    - Safety-adjacent lines elsewhere (common_wellness_footer, you_support_title,
-      you_humansupport_subtitle, toolkit_support_title, journal_support_*,
-      journal_telemanas, journal_private_body_title, journal_private_body,
-      journal_new_subtitle, tour_stop3_body)
+    - Journal privacy / risk education copy (journal_private_body_title,
+      journal_private_body, journal_new_subtitle, tour_stop3_body)
     - Privacy-policy clinical-positioning cards (privacypolicy_evidence_*,
       privacypolicy_not_*, privacypolicy_professional_*)
   Also omitted as language-neutral (identical to default): app_name,
@@ -629,4 +628,161 @@
     <string name="ambience_mute_cd">एंबिएंस म्यूट करें</string>
     <string name="ambience_sound_off">ध्वनि बंद</string>
     <string name="ambience_label">एंबिएंस</string>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SAFETY / CRISIS — added 2026-07 so a Hindi-preferring user in crisis
+         doesn't hit an English wall at the exact moment comprehension matters
+         most. Helpline NUMBERS are never translated (14416, 112, 9152987821).
+         These carry the same DRAFT status as the rest of this file and should
+         be FIRST in the queue for qualified clinical review.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <string name="common_wellness_footer">वेलनेस सहायता, आपातकालीन देखभाल नहीं।</string>
+
+    <!-- Crisis screen -->
+    <string name="crisis_eyebrow">आप अकेले नहीं हैं</string>
+    <string name="crisis_title">तत्काल सहायता</string>
+    <string name="crisis_hero_eyebrow">आप सहायता के हक़दार हैं</string>
+    <string name="crisis_hero_title">अगर आप तत्काल ख़तरे में हैं, तो कृपया अभी संपर्क करें।</string>
+    <string name="crisis_line_telemanas">टेली-मानस — असली लोग, चौबीसों घंटे</string>
+    <string name="crisis_line_emergency">आपातकालीन सेवाएँ</string>
+    <string name="crisis_line_kiran">किरण मानसिक स्वास्थ्य हेल्पलाइन</string>
+    <string name="crisis_line_find_helpline">हेल्पलाइन खोजें</string>
+    <string name="crisis_trusted_contact_title">भरोसेमंद संपर्क</string>
+    <string name="crisis_trusted_contact_empty">सेट नहीं है — सेटिंग्स में एक जोड़ें ताकि संकट के समय CereBro उन तक पहुँच सके (आपकी सहमति से)।</string>
+    <string name="crisis_open_cd">%1$s खोलें</string>
+    <string name="crisis_call_cd">%1$s %2$s पर कॉल करें</string>
+    <string name="crisis_telemanas_line">टेली-मानस 14416 · असली लोग, चौबीसों घंटे</string>
+
+    <!-- Human support directory -->
+    <string name="humansupport_eyebrow">ऐप से आगे</string>
+    <string name="humansupport_title">इंसानी सहायता</string>
+    <string name="humansupport_intro">CereBro एक साथी है, चिकित्सक नहीं। जब आप किसी असली इंसान से बात करना चाहें, ये आपको उनसे जोड़ते हैं।</string>
+    <string name="humansupport_telemanas_title">टेली-मानस — 14416 पर कॉल करें</string>
+    <string name="humansupport_telemanas_detail">निःशुल्क सरकारी मानसिक स्वास्थ्य लाइन · चौबीसों घंटे</string>
+    <string name="humansupport_icall_title">iCall — काउंसलर से बात करें</string>
+    <string name="humansupport_icall_detail">फ़ोन पर प्रशिक्षित काउंसलर · 9152987821</string>
+    <string name="humansupport_find_title">थेरेपिस्ट खोजें</string>
+    <string name="humansupport_find_detail">आपके आसपास पेशेवर मदद की निर्देशिकाएँ</string>
+    <string name="humansupport_coach_title">कोच से बात करें</string>
+    <string name="humansupport_coach_body">भारत के लिए जाँची-परखी कोच निर्देशिका हमारी योजना में है। जब तक वह तैयार नहीं होती, ऊपर दी गई लाइनें आज भी असली लोगों तक पहुँचाती हैं।</string>
+
+    <!-- Talk: AI disclosure + the in-chat crisis banner -->
+    <string name="talk_disclosure_pill">AI साथी — थेरेपिस्ट या संकट सेवा नहीं</string>
+    <string name="talk_disclosure_details">विवरण</string>
+    <string name="talk_crisis_title">आप मायने रखते हैं। सहायता अभी उपलब्ध है।</string>
+    <string name="talk_crisis_subtitle">संकट संसाधनों के लिए टैप करें — असली लोग, चौबीसों घंटे।</string>
+    <string name="talk_disclosure_dialog_title">आपके AI साथी के बारे में</string>
+    <string name="talk_disclosure_dialog_body">• यह AI है, कोई इंसान नहीं — जवाब मशीन से बनते हैं।\n• यह चिकित्सा देखभाल नहीं है और कभी निदान या दवा नहीं करता।\n• यह आपात स्थिति के लिए नहीं है — आपात स्थिति में स्थानीय सेवाओं से संपर्क करें।\n• बातचीत केवल सुरक्षा संकेतों के लिए देखी जाती है।</string>
+    <string name="talk_disclosure_ok">समझ गए</string>
+    <string name="talk_disclosure_crisis">संकट सहायता लें</string>
+    <string name="talk_sos_title">त्वरित SOS रीसेट</string>
+    <string name="talk_sos_subtitle">चिंता/तनाव के लिए तेज़ रीसेट — 2 मिनट</string>
+    <string name="talk_chip_reframe">किसी विचार को नए ढंग से देखें</string>
+
+    <!-- Support doors elsewhere in the app -->
+    <string name="you_support_title">सहायता, किसी भी समय</string>
+    <string name="you_crisisregion_title">संकट क्षेत्र</string>
+    <string name="you_crisisregion_subtitle">कौन-सी हेल्पलाइन दिखाई जाएँ</string>
+    <string name="you_humansupport_subtitle">कोच या थेरेपिस्ट तक पहुँच</string>
+    <string name="toolkit_support_title">क्या अभी सहायता चाहिए?</string>
+    <string name="journal_telemanas">भारत में टेली-मानस किसी भी समय उपलब्ध है — 14416 पर कॉल करें, निःशुल्क, दिन हो या रात।</string>
+    <string name="journal_support_title">आपको यह अकेले नहीं उठाना है</string>
+    <string name="journal_support_body">वह प्रविष्टि भारी लगी। अगर बात तत्काल की है, तो असली लोग अभी मदद कर सकते हैं — भारत में टेली-मानस को 14416 पर कॉल करें, या अपना स्थानीय आपातकालीन नंबर मिलाएँ।</string>
+    <string name="journal_support_badge">सहायता</string>
+
+    <!-- Crisis region picker -->
+    <string name="crisisregion_eyebrow">तत्काल सहायता इसी का उपयोग करती है</string>
+    <string name="crisisregion_title">संकट क्षेत्र</string>
+    <string name="crisisregion_intro">तय करता है कि संकट स्क्रीन कौन-सी आपातकालीन लाइनें दिखाए।</string>
+    <string name="region_auto">स्वचालित (डिवाइस)</string>
+    <string name="region_in">भारत</string>
+    <string name="region_us">संयुक्त राज्य अमेरिका</string>
+    <string name="region_gb">यूनाइटेड किंगडम</string>
+    <string name="region_ca">कनाडा</string>
+    <string name="region_au">ऑस्ट्रेलिया</string>
+    <string name="region_nz">न्यूज़ीलैंड</string>
+    <string name="region_eu">यूरोप</string>
+
+    <!-- ── Newly externalized copy (2026-07 i18n pass) ──────────────────── -->
+    <string name="common_got_it">समझ गए</string>
+    <string name="common_selected_cd">चयनित</string>
+    <string name="unit_hour_short">घं</string>
+    <string name="unit_minute_short">मि</string>
+
+    <string name="mood_good">अच्छा</string>
+    <string name="mood_good_note">साफ़</string>
+    <string name="mood_anxious">बेचैन</string>
+    <string name="mood_anxious_note">तेज़ चलते विचार</string>
+    <string name="mood_low">उदास</string>
+    <string name="mood_low_note">भारी</string>
+    <string name="mood_tired">थका हुआ</string>
+    <string name="mood_tired_note">आराम चाहिए</string>
+
+    <string name="today_greeting_morning">सुप्रभात</string>
+    <string name="today_greeting_afternoon">नमस्कार</string>
+    <string name="today_greeting_evening">शुभ संध्या</string>
+    <string name="today_milestone">🎉 %1$d दिन आते रहे — बहुत ख़ूब</string>
+    <string name="today_rail_morning">आज सुबह के लिए</string>
+    <string name="today_rail_midday">दोपहर का एक ठहराव</string>
+    <string name="today_rail_tonight">आज रात के लिए</string>
+
+    <string name="sleep_rhythm_vary">एक स्थिर सोने का समय — भले ही पूरा सटीक न हो — अतिरिक्त घंटों से ज़्यादा काम करता है।</string>
+    <string name="sleep_rhythm_steady">आपके सोने का समय स्थिर है — यही निरंतरता आपकी नींद के लिए सबसे मज़बूत चीज़ है।</string>
+
+    <string name="breathe_phase_in">साँस लें</string>
+    <string name="breathe_phase_hold">रोकें</string>
+    <string name="breathe_phase_out">साँस छोड़ें</string>
+
+    <string name="ob_state_opt_stressed">तनाव और खिंचाव महसूस होता है</string>
+    <string name="ob_state_opt_night">रात में मन शांत नहीं होता</string>
+    <string name="ob_state_opt_overthinking">हर बात पर ज़्यादा सोचता/सोचती हूँ</string>
+    <string name="ob_state_opt_doubt">ख़ुद पर संदेह होता है</string>
+    <string name="ob_state_opt_distant">लोगों से दूरी महसूस होती है</string>
+    <string name="ob_state_opt_consistent">नियमित नहीं रह पाता/पाती हूँ</string>
+    <string name="ob_lang_english">अंग्रेज़ी</string>
+    <string name="ob_lang_hindi">हिंदी</string>
+    <string name="ob_lang_hinglish">हिंग्लिश</string>
+    <string name="ob_lang_punjabi">पंजाबी</string>
+    <string name="ob_lang_tamil">तमिल</string>
+    <string name="ob_notify_morning">सुबह 9 बजे</string>
+    <string name="ob_notify_evening">शाम 7 बजे</string>
+    <string name="ob_notify_private">निजी झलक</string>
+    <string name="ob_notify_none">कोई रिमाइंडर नहीं</string>
+
+    <string name="companion_calm_title">शांत मार्गदर्शक</string>
+    <string name="companion_calm_detail">स्थिर और सुकून देने वाला — पहले ज़मीन पर लाता है, कभी जल्दी नहीं करता</string>
+    <string name="companion_warm_title">अपनापन भरा दोस्त</string>
+    <string name="companion_warm_detail">हौसला बढ़ाने वाला और जाना-पहचाना — जैसे कोई दोस्त जो समझता है</string>
+    <string name="companion_direct_title">सीधी बात</string>
+    <string name="companion_direct_detail">स्पष्ट और सीधा — दयालु, पर घुमाव-फिराव के बिना</string>
+    <string name="companion_quiet_title">शांत कोच</string>
+    <string name="companion_quiet_detail">काम पहले — एक बार में एक छोटा ठोस क़दम</string>
+
+    <string name="privacy_setup_sync_failed_title">आपकी सेटअप पसंद सहेजी नहीं गई</string>
+    <string name="privacy_setup_sync_failed_body">सेटअप के दौरान चुनी गई आपकी गोपनीयता पसंद सर्वर तक नहीं पहुँची। नीचे दिए स्विच वही दिखाते हैं जो वाक़ई सहेजा गया है — कृपया इन्हें अपनी इच्छा के अनुसार सेट करें।</string>
+
+    <string name="talk_voice_network">बोली पहचानने के लिए अभी कनेक्शन चाहिए — आप नीचे टाइप कर सकते हैं।</string>
+    <string name="talk_voice_busy">माइक्रोफ़ोन व्यस्त है — एक पल दें, या नीचे टाइप करें।</string>
+    <string name="talk_voice_failed">इस बार आवाज़ काम नहीं आई — आप नीचे टाइप कर सकते हैं।</string>
+    <string name="talk_voice_no_speech">कुछ सुनाई नहीं दिया — फिर से कोशिश के लिए ऑर्ब पर टैप करें, या नीचे टाइप करें।</string>
+    <string name="talk_tts_unavailable">इस डिवाइस में जवाब पढ़कर सुनाने वाली आवाज़ नहीं है — वे टेक्स्ट में दिखेंगे।</string>
+
+    <string name="layer_rain">बारिश</string>
+    <string name="layer_ocean">समुद्र</string>
+    <string name="layer_wind">हवा</string>
+    <string name="layer_drone">ड्रोन</string>
+
+    <string name="notif_action_play">चलाएँ</string>
+    <string name="notif_action_pause">रोकें</string>
+    <string name="notif_action_stop">बंद करें</string>
+    <string name="notif_soundscape_title">साउंडस्केप</string>
+    <string name="notif_soundscape_text">CereBro · आपका अपना शांत मिश्रण</string>
+    <string name="notif_channel_soundscape">साउंडस्केप मिश्रण</string>
+    <string name="notif_channel_soundscape_desc">आपके परतदार एंबिएंट साउंडस्केप के नियंत्रण।</string>
+    <string name="notif_ambient_title">एंबिएंट बेड</string>
+    <string name="notif_ambient_bed">CereBro · एंबिएंट बेड</string>
+    <string name="notif_ambient_narration">CereBro · वर्णन</string>
+    <string name="notif_channel_ambient">एंबिएंट प्लेबैक</string>
+    <string name="notif_channel_ambient_desc">शांत करने वाले एंबिएंट बेड के नियंत्रण।</string>
 </resources>

@@ -78,12 +78,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
@@ -730,7 +728,7 @@ private fun MixerSection() {
                     Icon(layerIcon(layer.symbol), contentDescription = null,
                         tint = if (on) Periwinkle else TextMuted, modifier = Modifier.size(20.dp))
                 }
-                Text(layer.name, style = MaterialTheme.typography.titleMedium,
+                Text(stringResource(layer.nameRes), style = MaterialTheme.typography.titleMedium,
                     color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
                 TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
                     Text(
@@ -1111,9 +1109,25 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var score by remember { mutableIntStateOf(0) }
     var nextId by remember { mutableLongStateOf(0L) }
     val hues = listOf(Periwinkle, Cyan, Warm)
-    val haptics = LocalHapticFeedback.current
+    // Reduce Motion is a contract: no spawn loop, no drift loop. The field
+    // still gets one static set of bubbles to pop — static, never blank.
+    val reduceMotion = rememberReduceMotion()
     // Spawn near the bottom…
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) {
+            if (bubbles.isEmpty()) {
+                bubbles = (0 until 7).map { i ->
+                    Bubble(
+                        nextId++,
+                        Random.nextFloat() * 0.78f + 0.04f,
+                        0.10f + i * 0.11f,
+                        (52..96).random(),
+                        hues[Random.nextInt(hues.size)],
+                    )
+                }
+            }
+            return@LaunchedEffect
+        }
         while (true) {
             delay(650)
             if (bubbles.size < 7) {
@@ -1128,7 +1142,8 @@ fun BubblePopScreen(onBack: () -> Unit) {
         }
     }
     // …and drift them gently upward, popping any that float off the top.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) return@LaunchedEffect
         while (true) {
             delay(40)
             bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
@@ -1165,7 +1180,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
                         .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
                         .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                         .clickable {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            com.cerebrozen.app.ui.Haptics.soft()
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
                         },
                 )

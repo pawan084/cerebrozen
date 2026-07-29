@@ -1,5 +1,8 @@
 package com.cerebrozen.app.ui.screens
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -47,6 +50,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,6 +101,7 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightPurple
+import com.cerebrozen.app.ui.theme.OnDanger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.SurfaceRaised
@@ -150,15 +155,30 @@ internal fun reduceMotionFromScale(animatorDurationScale: Float): Boolean = anim
 @Composable
 internal fun rememberReduceMotion(): Boolean {
     val context = LocalContext.current
-    return remember(context) {
-        reduceMotionFromScale(
-            Settings.Global.getFloat(
-                context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
+    // Observed, not sampled once: toggling "Remove animations" in Settings used
+    // to have no effect until the Activity was recreated. Settings.Global is a
+    // ContentProvider, so we register for the key and re-read on every change.
+    val resolver = context.contentResolver
+    var reduced by remember(context) {
+        mutableStateOf(
+            reduceMotionFromScale(
+                Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f),
             ),
         )
     }
+    DisposableEffect(resolver) {
+        val uri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                reduced = reduceMotionFromScale(
+                    Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f),
+                )
+            }
+        }
+        runCatching { resolver.registerContentObserver(uri, false, observer) }
+        onDispose { runCatching { resolver.unregisterContentObserver(observer) } }
+    }
+    return reduced
 }
 
 /** A soft press-in: the target scales down slightly while held and springs back on
@@ -617,7 +637,7 @@ internal fun DangerButton(
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Night else TextMuted2,
+            color = if (enabled) OnDanger else TextMuted2,
         )
     }
 }

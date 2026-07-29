@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
+import { CrisisLines } from "@/components/CrisisLines";
 
 type Entry = { id: string; title: string; body: string; tags: string[]; risk_level: string; created_at: string };
 type Checkin = { mood: string; created_at: string };
@@ -47,7 +49,21 @@ export default function Journal() {
     } finally { setBusy(false); }
   }
 
-  const monthCount = entries.filter((e) => new Date(e.created_at).getMonth() === new Date().getMonth()).length;
+  const monthEntries = entries.filter((e) => new Date(e.created_at).getMonth() === new Date().getMonth());
+  const monthCount = monthEntries.length;
+  // Derived from the entries actually written this month — never a stock claim.
+  // Needs at least three entries and a clear plurality before it says anything.
+  const whenLine = (() => {
+    if (monthCount < 3) return "";
+    const parts = ["at night", "in the morning", "in the afternoon", "in the evening"];
+    const tally = [0, 0, 0, 0];
+    for (const e of monthEntries) {
+      const h = new Date(e.created_at).getHours();
+      tally[h < 5 || h >= 22 ? 0 : h < 12 ? 1 : h < 17 ? 2 : 3] += 1;
+    }
+    const top = tally.indexOf(Math.max(...tally));
+    return tally[top] * 2 > monthCount ? `Most often ${parts[top]}.` : "";
+  })();
 
   return (
     <>
@@ -55,14 +71,20 @@ export default function Journal() {
       <div className="page-body">
         {support && (
           <div className="crisis" role="alert">
-            <strong>That sounded heavy — you deserve support right now.</strong><br />
-            In India: emergency <strong>112</strong> · KIRAN <strong>1800-599-0019</strong> · <a href="https://findahelpline.com" target="_blank" rel="noreferrer">findahelpline.com</a>. Your entry was saved — writing is never blocked.
+            <strong>That sounded heavy — you deserve support right now.</strong>
+            <CrisisLines compact />
+            <p className="footnote">
+              Your entry was saved — writing is never blocked.{" "}
+              <Link href="/support">More ways to get help</Link>
+            </p>
           </div>
         )}
         <div className="dash-grid">
           <div>
             <section className="prompt-hero cz-in">
-              <p className="eyebrow">{tuned ? tuned.eyebrow : "Today's prompt · shaped by your check-in"}</p>
+              {/* Only the tuned variant is actually shaped by a check-in — the
+                  default prompt says only what it is. */}
+              <p className="eyebrow">{tuned ? tuned.eyebrow : "Today's prompt"}</p>
               <h2>{tuned ? tuned.title : "What's one small thing that felt lighter today?"}</h2>
               {tuned && (
                 <p style={{ color: "rgba(255,255,255,0.78)", fontSize: 14, margin: "-8px 0 16px", maxWidth: "48ch" }}>
@@ -84,9 +106,15 @@ export default function Journal() {
             {entries.length === 0 && <p className="footnote">Nothing here yet — your entries collect below.</p>}
             {entries.map((e, i) => (
               <article className={`entry-card cz-in cz-d${Math.min(i + 1, 6)}`} key={e.id}>
-                <span className="emoji">{e.risk_level === "crisis" || e.risk_level === "elevated" ? "😔" : "🙂"}</span>
                 <span className="date">{new Date(e.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}</span>
                 <q>{e.body || e.title}</q>
+                {/* A flagged entry used to carry a bare 😔. A risk signal never
+                    shows without a route attached (design system §1). */}
+                {(e.risk_level === "crisis" || e.risk_level === "elevated") && (
+                  <Link href="/support" className="entry-support">
+                    That day read as a heavy one — support is here, any time →
+                  </Link>
+                )}
               </article>
             ))}
           </div>
@@ -95,7 +123,7 @@ export default function Journal() {
             <div className="rail-card cz-in cz-d1">
               <span className="kicker">This month</span>
               <div className="rail-big"><b>{monthCount}</b><span>{monthCount === 1 ? "entry" : "entries"}</span></div>
-              <p className="sub">Most often on quiet evenings.</p>
+              {whenLine && <p className="sub">{whenLine}</p>}
             </div>
             <div className="rail-card cz-in cz-d2">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>

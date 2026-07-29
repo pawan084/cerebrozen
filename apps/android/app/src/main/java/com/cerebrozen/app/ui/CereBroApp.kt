@@ -2,7 +2,7 @@ package com.cerebrozen.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,9 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -157,7 +156,13 @@ private fun BottomTabItem(
                 if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
                 RoundedCornerShape(20.dp),
             )
-            .clickable { onClick() }
+            // TalkBack must announce these as tabs, and say which one is
+            // selected — a bare clickable Column announces neither.
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                onClick = onClick,
+            )
             .padding(vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -172,7 +177,9 @@ private fun BottomTabItem(
         ) {
             Icon(
                 painterResource(tab.icon),
-                contentDescription = label,
+                // The label Text below carries the name; a description here
+                // would make TalkBack say it twice inside the tab node.
+                contentDescription = null,
                 tint = tint,
                 // Thin 2dp-line icons carry far less visual weight than filled
                 // glyphs — owner feedback (2026-07-13): 18dp read tiny on device.
@@ -254,7 +261,10 @@ fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
     // restore the persisted preference once, and keep the bar icons in step.
     AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    remember { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")); true }
+    // Restore the persisted Appearance choice exactly once. A `remember { … }`
+    // calc lambda must stay side-effect free (Compose may run it speculatively),
+    // so the write lives in a LaunchedEffect like the splash below.
+    LaunchedEffect(Unit) { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")) }
     SyncSystemBarIcons()
 
     // A brief branded splash on cold launch — always Night (brand moment).
@@ -288,7 +298,6 @@ fun CereBroApp() {
     val current = backStack?.destination?.route ?: Tab.Home.route
     // Sleep contexts always keep the night palette (REDESIGN §4.1).
     AppTheme.forceNight = current == Tab.Sleep.route
-    val haptics = LocalHapticFeedback.current
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
     // E6: the accent cross-fades between tabs instead of snapping; Reduce Motion
@@ -341,7 +350,9 @@ fun CereBroApp() {
                             compact = compactNav,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // One haptic vocabulary app-wide: the custom
+                                // Haptics object (see ui/Haptics.kt).
+                                if (current != tab.route) Haptics.selection()
                                 navController.navigate(tab.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true

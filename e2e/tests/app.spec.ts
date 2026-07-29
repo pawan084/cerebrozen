@@ -60,7 +60,7 @@ test.describe("Web app (authenticated client)", () => {
     // Talk: the landing opens the chat; an assistant bubble must land (Oracle
     // stream with a key, deterministic /chat fallback otherwise).
     await nav(page, "Talk").click();
-    await page.getByRole("button", { name: "Type instead" }).click();
+    await page.getByRole("button", { name: "Start talking" }).click();
     await page.getByLabel("Message").fill("I keep overthinking tomorrow's meeting.");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator(".msg.user").first()).toBeVisible();

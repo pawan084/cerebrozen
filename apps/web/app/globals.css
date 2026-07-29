@@ -21,19 +21,41 @@
 }
 /* @cerebro-tokens:end */
 
-/* Web-only layout token (not part of the shared palette). */
-:root { --maxw: 1080px; }
+/* Web-only layout tokens (not part of the shared palette).
+   Radius scale — the landing used to spread 13/14/16/20/22/28/46px by hand; every
+   corner now comes from this ladder so new surfaces stay in the family.
+     xs  icon tiles · sm  buttons/inputs · md  disclosures · lg  list rows
+     xl  cards & bento cells · 2xl  full-width bands & framed art
+     phone  device bezel (inner = bezel − 8px padding) · pill  fully round */
+:root {
+  --maxw: 1080px;
+  --r-xs: 13px;
+  --r-sm: 14px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 22px;
+  --r-2xl: 28px;
+  --r-phone: 46px;
+  --r-phone-inner: 38px;
+  --r-pill: 999px;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; overflow-x: hidden; }
+html { overflow-x: hidden; }
+/* Reduced-motion contract (see the note above the animation block at the end of
+   this file): even scroll smoothing is opt-in. */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 
 body {
   background:
     radial-gradient(1200px 600px at 20% -10%, rgba(166, 139, 255, 0.30), transparent 60%),
     radial-gradient(900px 500px at 90% 10%, rgba(224, 138, 154, 0.18), transparent 55%),
     linear-gradient(180deg, var(--night-top), var(--night));
-  background-attachment: fixed;
+  /* No `background-attachment: fixed` — it forces a repaint of the whole gradient
+     on every scroll frame and is ignored/janky on iOS Safari. */
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
@@ -51,6 +73,23 @@ h1, h2, h3, .serif {
 
 a { color: inherit; text-decoration: none; }
 
+/* Keyboard focus is visible everywhere — one ring, one place to change it.
+   :focus-visible so pointer users never see it, keyboard users always do. */
+:focus-visible {
+  outline: 2px solid var(--lav-2);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Skip link — first thing in the tab order, invisible until focused. */
+.skip-link {
+  position: absolute; left: 12px; top: -60px; z-index: 100;
+  background: var(--night-top); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 10px 16px; font-size: 14px; font-weight: 700;
+}
+.skip-link:focus-visible { top: 12px; }
+
 .container { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 
 /* Nav */
@@ -62,37 +101,90 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-serif), Georgia, serif; font-size: 20px; }
-.brand .dot {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, var(--lav) 55%, var(--lav-2));
-  box-shadow: 0 0 18px rgba(138, 123, 240, 0.8);
-}
 .nav-links { display: flex; gap: 28px; align-items: center; }
 .nav-links a { color: var(--muted); font-size: 14px; }
 .nav-links a:hover { color: var(--text); }
-/* Mobile: drop the inline text links (they overflow); keep the CTA. */
+
+/* Mobile nav — a plain <details> disclosure, rendered only below 640px (the
+   desktop links stay inline above it). No JS, no focus trap: it is a native
+   summary button plus real anchors, so keyboard and VoiceOver get it for free,
+   and nothing animates. */
+.nav-menu { display: none; }
+.nav-menu > summary {
+  list-style: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--text);
+  background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 9px 13px; min-height: 40px;
+}
+.nav-menu > summary::-webkit-details-marker { display: none; }
+.nav-menu > summary::after {
+  content: ""; width: 14px; height: 10px;
+  background: currentColor;
+  /* three stacked bars → an X when open, drawn with a mask so it inherits colour */
+  -webkit-mask: linear-gradient(currentColor 0 0) 0 0 / 100% 2px no-repeat,
+                linear-gradient(currentColor 0 0) 0 50% / 100% 2px no-repeat,
+                linear-gradient(currentColor 0 0) 0 100% / 100% 2px no-repeat;
+  mask: linear-gradient(currentColor 0 0) 0 0 / 100% 2px no-repeat,
+        linear-gradient(currentColor 0 0) 0 50% / 100% 2px no-repeat,
+        linear-gradient(currentColor 0 0) 0 100% / 100% 2px no-repeat;
+}
+.nav-menu[open] > summary::after {
+  -webkit-mask: linear-gradient(currentColor 0 0) 0 50% / 100% 2px no-repeat;
+  mask: linear-gradient(currentColor 0 0) 0 50% / 100% 2px no-repeat;
+}
+.nav-menu-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60;
+  display: flex; flex-direction: column; min-width: 190px;
+  background: var(--night-top); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 6px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+}
+.nav-menu-panel a {
+  color: var(--soft); font-size: 15px; font-weight: 600;
+  padding: 12px 14px; border-radius: var(--r-xs); min-height: 44px;
+  display: flex; align-items: center;
+}
+.nav-menu-panel a:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+
 @media (max-width: 640px) {
-  .nav-links { gap: 0; }
-  .nav-links a:not(.btn) { display: none; }
   .container { padding: 0 18px; }
+  .nav-inner { position: relative; }
+  .nav-menu { display: block; }
+  /* The homepage's long link set (CTA included) collapses into the disclosure —
+     brand + one menu button is all that fits at 360px. Short legal-page navs keep
+     their inline links. */
+  .nav-links--full { gap: 10px; }
+  .nav-links--full > a { display: none; }
+  .nav-menu-panel .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  .nav-links:not(.nav-links--full) { gap: 16px; }
 }
 
 /* Buttons */
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
   font-weight: 700; font-size: 14px; cursor: pointer;
-  padding: 12px 18px; border-radius: 14px; border: 0;
+  padding: 12px 18px; border-radius: var(--r-sm); border: 0;
+  min-height: 44px;
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
 .btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(1px) scale(0.985); opacity: 0.9; }
+.btn:disabled {
+  opacity: 0.55; cursor: not-allowed; transform: none;
+}
+.btn:disabled:hover, .btn:disabled:active { transform: none; }
 .btn-primary { background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink); }
 .btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--line); }
 
 /* Hero */
 .hero { padding: 96px 0 64px; text-align: center; position: relative; }
+/* --lav-2 rather than --lav: on the tinted surfaces this eyebrow sits on (the
+   #proactive band, the hero glow) --lav measures 3.4–4.3:1, under the 4.5:1 gate.
+   --lav-2 measures 4.7–6.0:1 on the same surfaces. */
 .eyebrow {
   font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--lav); font-weight: 700; margin-bottom: 18px;
+  color: var(--lav-2); font-weight: 700; margin-bottom: 18px;
 }
 .hero h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.05; }
 .hero p.lead { color: var(--muted); font-size: 19px; max-width: 620px; margin: 22px auto 30px; }
@@ -121,27 +213,30 @@ a { color: inherit; text-decoration: none; }
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 22px; padding: 26px;
+  border-radius: var(--r-xl); padding: 26px;
   backdrop-filter: blur(8px);
 }
 .card .icon {
-  width: 44px; height: 44px; border-radius: 13px;
+  width: 44px; height: 44px; border-radius: var(--r-xs);
   display: grid; place-items: center; font-size: 22px;
   background: rgba(138, 123, 240, 0.16); margin-bottom: 16px;
 }
 .card h3 { font-size: 19px; margin-bottom: 8px; }
 .card p { color: var(--muted); font-size: 15px; }
 
-/* Proactive band */
+/* Proactive band — the tint is deliberately light (0.14/0.07). Together with the
+   --lav-2 eyebrow this keeps the small uppercase text at ~5:1 against the band;
+   the previous 0.18/0.10 tint under --lav measured ~3.4:1. */
 .band {
-  background: linear-gradient(135deg, rgba(166, 139, 255,0.18), rgba(224, 138, 154,0.10));
-  border: 1px solid var(--line); border-radius: 28px; padding: 44px;
+  background: linear-gradient(135deg, rgba(166, 139, 255,0.14), rgba(224, 138, 154,0.07));
+  border: 1px solid var(--line); border-radius: var(--r-2xl); padding: 44px;
 }
+.band h2 { font-size: clamp(28px, 4vw, 40px); }
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 13px; color: var(--soft); font-weight: 600;
   background: rgba(255,255,255,0.06); border: 1px solid var(--line);
-  padding: 8px 14px; border-radius: 999px; margin: 6px 6px 0 0;
+  padding: 8px 14px; border-radius: var(--r-pill); margin: 6px 6px 0 0;
 }
 
 /* Pricing */
@@ -155,41 +250,97 @@ a { color: inherit; text-decoration: none; }
 .badge {
   position: absolute; top: -12px; right: 18px;
   background: linear-gradient(180deg,#fff,var(--cream)); color: var(--ink);
-  font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: var(--r-pill);
   text-transform: uppercase; letter-spacing: 0.06em;
+}
+/* Prices are quoted in ₹ only, so the region has to be on the page. */
+.price-note {
+  text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px;
 }
 
 /* Waitlist */
 .waitlist { text-align: center; }
 .wl-form { display: flex; gap: 10px; max-width: 460px; margin: 24px auto 0; }
 .wl-form input {
-  flex: 1; padding: 14px 16px; border-radius: 14px;
+  flex: 1; padding: 14px 16px; border-radius: var(--r-sm);
   background: rgba(255,255,255,0.08); border: 1px solid var(--line);
-  color: var(--text); font-size: 15px; outline: none;
+  color: var(--text); font-size: 15px;
+  transition: border-color 0.15s ease;
+}
+.wl-form input:focus-visible {
+  outline: 2px solid var(--lav-2); outline-offset: 2px;
+  border-color: rgba(166, 139, 255, 0.6);
 }
 .wl-form input::placeholder { color: var(--muted); }
-.wl-msg { margin-top: 14px; color: var(--lav); font-size: 14px; min-height: 20px; }
+.wl-msg { margin-top: 14px; color: var(--lav-2); font-size: 14px; min-height: 20px; }
+/* Success replaces the form (no second submit to fumble). */
+.wl-done {
+  max-width: 460px; margin: 24px auto 0;
+  background: var(--card); border: 1px solid rgba(138, 123, 240, 0.45);
+  border-radius: var(--r-md); padding: 20px 22px;
+}
+.wl-done .wl-done-title { font-weight: 700; font-size: 15px; color: var(--text); }
+.wl-done .wl-msg { margin-top: 6px; min-height: 0; }
 @media (max-width: 520px) { .wl-form { flex-direction: column; } }
+
+/* Honest proof — shipped commitments, no invented numbers. */
+.receipts {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px;
+  max-width: 720px; margin: 26px auto 0; list-style: none;
+}
+.receipt {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 11px 15px;
+  color: var(--soft); font-size: 13px; font-weight: 600; text-align: left;
+}
+.receipt svg { flex: none; color: var(--ok); }
+.receipts-note { color: var(--muted); font-size: 13px; margin-top: 14px; }
+.receipts-note a { color: var(--lav-2); text-decoration: underline; text-underline-offset: 3px; }
 
 /* Footer */
 .footer { border-top: 1px solid var(--line); padding: 32px 0; color: var(--muted); font-size: 14px; }
-.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; }
+.footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+/* ~44px targets: the footer links used to be 14px text with no padding. */
+.footer-links a {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: 0 12px; border-radius: var(--r-xs); color: var(--soft);
+}
+.footer-links a:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.footer-copy { display: inline-flex; align-items: center; min-height: 44px; }
 
 .disclaimer {
   text-align: center; color: var(--muted); font-size: 13px;
   max-width: 640px; margin: 28px auto 0;
 }
 
-/* App Store badge */
+/* App Store status chip. Deliberately NOT an imitation of Apple's black download
+   badge — the app isn't on the store yet, and a lookalike badge promises a
+   download that doesn't exist. It reads as a status pill in our own palette;
+   `.appstore.is-live` (set once NEXT_PUBLIC_APP_STORE_URL points at a real
+   listing) is where a genuine Apple-supplied badge asset should go. */
 .appstore {
   display: inline-flex; align-items: center; gap: 11px;
-  padding: 9px 18px; border-radius: 14px;
-  background: #000; color: #fff; border: 1px solid rgba(255,255,255,0.22);
+  padding: 10px 18px; border-radius: var(--r-sm); min-height: 44px;
+  background: rgba(255,255,255,0.05); color: var(--soft);
+  border: 1px dashed rgba(255,255,255,0.28);
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
-.appstore:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.45); }
-.appstore-txt { display: flex; flex-direction: column; line-height: 1.1; text-align: left; font-weight: 700; font-size: 18px; }
-.appstore-txt small { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; opacity: 0.9; }
+.appstore:hover { transform: translateY(-1px); border-color: rgba(166, 139, 255, 0.6); }
+.appstore-txt { display: flex; flex-direction: column; line-height: 1.15; text-align: left; font-weight: 700; font-size: 14px; }
+.appstore-txt small {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.appstore.is-live {
+  background: #000; color: #fff; border: 1px solid rgba(255,255,255,0.22);
+}
+.appstore.is-live .appstore-txt { font-size: 18px; }
+.appstore.is-live .appstore-txt small {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
+  text-transform: none; color: inherit; opacity: 0.9;
+}
 
 /* Hero app note + trust bar */
 .appnote {
@@ -198,18 +349,23 @@ a { color: inherit; text-decoration: none; }
 .trustbar {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 22px;
 }
+/* Trust chips carry the credibility signal, so they must not look like the
+   generic feature `.pill`: lavender-tinted fill, accent hairline, accent glyph. */
 .trust {
-  font-size: 12.5px; color: var(--muted); font-weight: 600;
-  background: rgba(255,255,255,0.05); border: 1px solid var(--line);
-  padding: 7px 13px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--soft); font-weight: 700; letter-spacing: 0.01em;
+  background: rgba(138, 123, 240, 0.14);
+  border: 1px solid rgba(138, 123, 240, 0.45);
+  padding: 7px 13px; border-radius: var(--r-pill);
 }
+.trust .trust-glyph { color: var(--lav-2); font-size: 11px; line-height: 1; }
 
 /* The five spaces */
 .spaces { display: grid; gap: 14px; }
 .space {
   display: flex; align-items: flex-start; gap: 18px;
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 20px; padding: 22px 24px; backdrop-filter: blur(8px);
+  border-radius: var(--r-lg); padding: 22px 24px; backdrop-filter: blur(8px);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .space:hover { border-color: rgba(138, 123, 240,0.5); transform: translateY(-2px); }
@@ -228,7 +384,7 @@ a { color: inherit; text-decoration: none; }
 .faq { display: grid; gap: 12px; }
 .faq-item {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 16px; padding: 4px 20px; backdrop-filter: blur(8px);
+  border-radius: var(--r-md); padding: 4px 20px; backdrop-filter: blur(8px);
 }
 .faq-item summary {
   cursor: pointer; list-style: none; padding: 16px 0;
@@ -257,15 +413,15 @@ a { color: inherit; text-decoration: none; }
 .phone {
   position: relative; z-index: 1;
   width: 300px; aspect-ratio: 640 / 1391;
-  border-radius: 46px; padding: 9px;
+  border-radius: var(--r-phone); padding: 9px;
   background: linear-gradient(165deg, #3a4488, #12163a 62%);
   box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.10),
               inset 0 1px 0 rgba(255,255,255,0.18);
 }
-.phone img { width: 100%; height: 100%; object-fit: cover; border-radius: 38px; display: block; }
+.phone img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-phone-inner); display: block; }
 .phone::before {
   content: ""; position: absolute; z-index: 2; top: 20px; left: 50%; transform: translateX(-50%);
-  width: 92px; height: 26px; background: #04060f; border-radius: 14px;
+  width: 92px; height: 26px; background: #04060f; border-radius: var(--r-sm);
 }
 .phone-float { animation: floaty 7s ease-in-out infinite; }
 @keyframes floaty { 0%,100% { transform: translateY(-9px); } 50% { transform: translateY(9px); } }
@@ -275,7 +431,7 @@ a { color: inherit; text-decoration: none; }
    in the page rather than on it. */
 .hero-banner {
   position: relative; z-index: 1;
-  width: min(440px, 100%); border-radius: 30px; overflow: hidden;
+  width: min(440px, 100%); border-radius: var(--r-2xl); overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 0 90px rgba(138, 123, 240, 0.22);
 }
@@ -301,21 +457,28 @@ a { color: inherit; text-decoration: none; }
 }
 .bento-cell {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 22px; padding: 24px; backdrop-filter: blur(8px);
+  border-radius: var(--r-xl); padding: 24px; backdrop-filter: blur(8px);
   display: flex; flex-direction: column;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .bento-cell:hover { border-color: rgba(138, 123, 240,0.5); transform: translateY(-3px); }
 .bento-cell .icon {
-  width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: var(--r-xs); display: grid; place-items: center;
   font-size: 22px; background: rgba(138, 123, 240,0.16); margin-bottom: 14px;
+  color: var(--lav-2);
 }
 .bento-cell h3 { font-size: 19px; margin-bottom: 8px; }
 .bento-cell p { color: var(--muted); font-size: 14.5px; }
-.bento .b-lg { grid-column: span 2; grid-row: span 2; justify-content: center; }
+/* The tall cell holds the least copy of any cell, so it centres its block and
+   gives the type room to breathe instead of stranding it in white space. */
+.bento .b-lg {
+  grid-column: span 2; grid-row: span 2;
+  justify-content: center; gap: 4px; padding: 32px;
+}
+.bento .b-lg .icon { width: 52px; height: 52px; font-size: 25px; margin-bottom: 20px; }
 .bento .b-wide { grid-column: span 2; }
-.bento .b-lg h3 { font-size: 27px; }
-.bento .b-lg p { font-size: 16px; }
+.bento .b-lg h3 { font-size: 27px; line-height: 1.2; margin-bottom: 12px; }
+.bento .b-lg p { font-size: 16px; line-height: 1.6; max-width: 34ch; }
 .bento .accent {
   background: linear-gradient(150deg, rgba(166, 139, 255,0.22), rgba(138, 123, 240,0.10));
   border-color: rgba(138, 123, 240,0.4);
@@ -332,6 +495,23 @@ a { color: inherit; text-decoration: none; }
 .shot-raise { margin-top: 44px; }
 .shot figcaption { color: var(--muted); font-size: 14px; text-align: center; max-width: 240px; }
 @media (max-width: 640px) { .shot-raise { margin-top: 0; } }
+
+/* ── Motion contract ───────────────────────────────────────────────────────
+   Reduce Motion is a contract, not a nicety (see .claude/skills/mobile-design
+   §4 — the iOS/Android clients enforce the same rule and have tests for it).
+   Every animation on this site must satisfy BOTH:
+     1. Guard it. Either wrap the rule in `@media (prefers-reduced-motion:
+        no-preference)` (preferred — the animation never exists for users who
+        asked for stillness) or pair it with a `@media (prefers-reduced-motion:
+        reduce) { … { animation: none } }` reset, as `.orb` and `.phone-float`
+        below do.
+     2. The static fallback must be the finished state — never blank, never
+        mid-transform. `.reveal` is the model: with reduced motion no animation
+        is attached at all, so content renders at full opacity.
+   Short, intent-carrying hover/press transitions (`transform`/`opacity` under
+   ~200ms on .btn, .card, .space) are exempt; looping and entrance animations
+   never are. Adding an unguarded @keyframes here is a review-blocking defect.
+   ────────────────────────────────────────────────────────────────────────── */
 
 /* ── Scroll-reveal (2026 scroll-driven animations; progressive enhancement) ── */
 @media (prefers-reduced-motion: no-preference) {

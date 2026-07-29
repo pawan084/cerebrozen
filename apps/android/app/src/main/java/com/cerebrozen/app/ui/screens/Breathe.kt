@@ -57,25 +57,33 @@ import kotlinx.coroutines.delay
 /** Which pacing a breathe surface runs. */
 enum class BreathePreset { Box, Color, Reset }
 
-/** One beat of a breathing cycle — pure data, so the pacing is unit-testable. */
-internal data class BreathPhase(val label: String, val seconds: Int, val expanded: Boolean)
+/** One beat of a breathing cycle — pure data, so the pacing is unit-testable.
+ * [labelRes] is the resource for the phase word, not the word itself, so the
+ * guidance localizes while the pacing stays a pure function. */
+internal data class BreathPhase(
+    @androidx.annotation.StringRes val labelRes: Int,
+    val seconds: Int,
+    val expanded: Boolean,
+) {
+    /** True for the two moving beats (in / out) — the holds are the still ones.
+     * Used for the haptic strength, so it must not read the localized word. */
+    val moving: Boolean get() = labelRes != R.string.breathe_phase_hold
+}
 
 /** The phase sequence per preset. Box and Color pace with holds; Reset is the
  * gentle onboarding rhythm — in, out, nothing to hold. W27 §4 (Calm study):
  * [secondsPerPhase] is user-selectable — Classic 4s (the long-standing
  * default), Gentle 6s, Slow 8s — scaling every phase equally. */
-// i18n: pending — pure function, needs context plumbing (phase labels are user copy;
-// unit tests assert them directly).
 internal fun breathePhases(preset: BreathePreset, secondsPerPhase: Int = 4): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_in, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_out, secondsPerPhase, expanded = false),
     )
     BreathePreset.Box, BreathePreset.Color -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Hold", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
-        BreathPhase("Hold", secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_in, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_hold, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_out, secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_hold, secondsPerPhase, expanded = false),
     )
 }
 
@@ -120,7 +128,7 @@ fun BreatheEngine(
                 phase = next
                 count = phases[next].seconds
                 if (next == 0) breaths += 1
-                if (hapticsOn) Haptics.soft(if (phases[next].label.startsWith("Breathe")) 0.5f else 0.3f)
+                if (hapticsOn) Haptics.soft(if (phases[next].moving) 0.5f else 0.3f)
                 if (chimeOn) Chime.play()
             }
         }
@@ -143,7 +151,7 @@ fun BreatheEngine(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            phases[phase].label,
+            stringResource(phases[phase].labelRes),
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
             textAlign = TextAlign.Center,
@@ -173,7 +181,7 @@ fun BreatheEngine(
                         .border(1.dp, LineStroke, CircleShape),
                 )
             }
-            val orbCd = stringResource(R.string.breathe_orb_cd, phases[phase].label)
+            val orbCd = stringResource(R.string.breathe_orb_cd, stringResource(phases[phase].labelRes))
             Box(
                 Modifier
                     .size(146.dp)

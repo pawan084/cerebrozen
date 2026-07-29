@@ -16,7 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -141,6 +142,22 @@ internal fun parseStarters(payload: JSONObject): List<String> =
         }
     } ?: emptyList()
 
+// ── AI-disclosure cadence (NY companion-law floor: re-disclose every 3h) ──
+
+/** Where the last full-sheet disclosure timestamp lives. A wall-clock stamp in
+ * prefs, so it survives tab switches, backgrounding and process death — the
+ * things a coroutine-scoped timer does not. */
+internal const val DISCLOSURE_LAST_SHOWN_KEY = "talk_disclosure_last_shown_ms"
+internal const val DISCLOSURE_INTERVAL_MS = 3L * 60 * 60 * 1000
+/** How often the Talk tab re-checks the clock while it's on screen. */
+internal const val DISCLOSURE_CHECK_INTERVAL_MS = 60L * 1000
+
+/** Whether the disclosure sheet is due. Pure + unit-tested. A clock that ran
+ * backwards (timezone/NTP correction) counts as due rather than silently
+ * postponing the disclosure — safety copy errs toward showing. */
+internal fun disclosureDue(lastShownMs: Long, nowMs: Long): Boolean =
+    lastShownMs <= 0L || nowMs < lastShownMs || nowMs - lastShownMs >= DISCLOSURE_INTERVAL_MS
+
 /** Whether the "Try together" exercise offers show mid-conversation (REDESIGN §3.3):
  * after the most recent assistant reply, once a real exchange exists, and never
  * while the companion is composing. Pure + unit-tested. */
@@ -172,10 +189,25 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // Sticky once a reply carries crisis risk — the affordance stays reachable
     // (saved so a rotation can't drop the safety banner).
     var crisis by rememberSaveable { mutableStateOf(false) }
+    // The clock is a PERSISTED timestamp, not this coroutine's lifetime: the tabs
+    // navigate with saveState/restoreState, so Talk's composition is thrown away
+    // and rebuilt on every tab switch — a composition-scoped 3h timer restarted
+    // each time and, for anyone who switches tabs, would never have fired.
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(3L * 60 * 60 * 1000)
-            showDisclosure = true
+            val last = runCatching { Session.prefGet(DISCLOSURE_LAST_SHOWN_KEY)?.toLongOrNull() }.getOrNull()
+            val now = System.currentTimeMillis()
+            when {
+                // First ever Talk visit: start the clock. The funnel already
+                // disclosed — don't interrupt the opening seconds to repeat it.
+                last == null || last <= 0L ->
+                    runCatching { Session.prefPut(DISCLOSURE_LAST_SHOWN_KEY, now.toString()) }
+                disclosureDue(last, now) -> {
+                    showDisclosure = true
+                    runCatching { Session.prefPut(DISCLOSURE_LAST_SHOWN_KEY, now.toString()) }
+                }
+            }
+            kotlinx.coroutines.delay(DISCLOSURE_CHECK_INTERVAL_MS)
         }
     }
     val scope = rememberCoroutineScope()
@@ -188,11 +220,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     val didntCatch = stringResource(R.string.talk_didnt_catch)
     val transcribeFailed = stringResource(R.string.talk_transcribe_failed)
     val micOff = stringResource(R.string.talk_mic_off)
+    // Voice failures used to be silent — the orb simply stopped. Each one now
+    // says something true, and always points at typing as the way through.
+    val voiceNetwork = stringResource(R.string.talk_voice_network)
+    val voiceBusy = stringResource(R.string.talk_voice_busy)
+    val voiceFailed = stringResource(R.string.talk_voice_failed)
+    val voiceNoSpeech = stringResource(R.string.talk_voice_no_speech)
     val voice = remember { VoiceEngine(context) }
     // Cloud voice (iOS-parity quality): Deepgram STT + ElevenLabs TTS via the
     // backend when the server has keys; the on-device engine stays fallback.
     val cloud = remember { CloudVoice(context) }
     var cloudVoice by remember { mutableStateOf(false) }
+    // The device's TTS refused every language it was offered — say so once,
+    // rather than letting the companion silently stop speaking back.
+    val ttsUnavailable = stringResource(R.string.talk_tts_unavailable)
+    LaunchedEffect(voice.ttsAvailable, cloudVoice) {
+        if (!voice.ttsAvailable && !cloudVoice) status = ttsUnavailable
+    }
     var transcribing by remember { mutableStateOf(false) }
     // Immersive live session (ref LIVE VOICE SESSION overlay): opens on the
     // first voice turn, stays up across turns until End/Text.
@@ -322,6 +366,18 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    // One place that turns a VoiceError into copy (never a bare silence).
+    fun onVoiceError(err: com.cerebrozen.app.audio.VoiceError) {
+        status = when (err) {
+            com.cerebrozen.app.audio.VoiceError.Permission -> micOff
+            com.cerebrozen.app.audio.VoiceError.Network -> voiceNetwork
+            com.cerebrozen.app.audio.VoiceError.NoSpeech -> voiceNoSpeech
+            com.cerebrozen.app.audio.VoiceError.Busy -> voiceBusy
+            com.cerebrozen.app.audio.VoiceError.Unavailable -> micUnavailable
+            com.cerebrozen.app.audio.VoiceError.Other -> voiceFailed
+        }
+    }
+
     // Now that send() exists, wire the post-speech resume: re-arm the mic for the
     // next turn while the voice session is still open (End/Text clears it).
     resumeTurn = {
@@ -329,7 +385,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             if (cloudVoice) {
                 if (!cloud.startRecording()) status = micUnavailable
             } else {
-                voice.startListening { t -> send(t, speak = true) }
+                voice.startListening({ t -> send(t, speak = true) }, ::onVoiceError)
             }
         }
     }
@@ -355,7 +411,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             else status = micUnavailable
         } else {
             voiceSession = true
-            voice.startListening { t -> send(t, speak = true) }
+            voice.startListening({ t -> send(t, speak = true) }, ::onVoiceError)
         }
     }
 
@@ -654,13 +710,10 @@ private fun VoiceSessionOverlay(
     Column(
         Modifier.fillMaxSize()
             .background(Night.copy(alpha = 0.97f))
-            // Actually swallow taps aimed behind the overlay (a disabled
-            // clickable does not intercept touches).
-            .clickable(
-                enabled = true,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-            ) {}
+            // Actually swallow taps aimed behind the overlay. A `clickable`
+            // would do it too, but it publishes an unlabeled clickable node over
+            // the whole background for TalkBack — a raw pointer filter doesn't.
+            .pointerInput(Unit) { detectTapGestures { } }
             .systemBarsPadding()
             .padding(horizontal = 24.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -140,6 +140,13 @@ val Warm: Color get() = if (AppTheme.isNight) NightPalette.warm else DawnPalette
 val Ok: Color get() = if (AppTheme.isNight) NightPalette.ok else DawnPalette.ok
 val Danger: Color get() = if (AppTheme.isNight) NightPalette.danger else DawnPalette.danger
 
+/** DangerButton's label over the [Danger] fill. It happens to resolve to the same
+ * paint as the page ground in both themes (deep indigo on Night's soft danger,
+ * cream on Dawn's deep danger) — but that is a *foreground* role, not a
+ * background one, so it gets its own name and its own contrast assertions
+ * (Night 7.42:1, Dawn 5.69:1). Screens must never reach for [Night] as ink. */
+val OnDanger: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPalette.night
+
 // Component tokens introduced by the Dawn pass (Night values byte-identical to
 // the literals the components used before — see NightPalette).
 /** PrimaryButton label — Ink on the Night white pill, white on the Dawn deep-periwinkle pill. */
@@ -231,6 +238,11 @@ val WelcomeSubtitleText = Color(0xFFBDB8D0)
 val WelcomeSecondaryText = Color(0xFFE4E1EC)
 val WelcomeOrbMid = Color(0xFFF4F1FF)
 val WelcomeOrbEdge = Color(0xFFC9C3FF)
+// The orb's outer halo — three soft indigo washes that fade the glow into the
+// funnel backdrop (inner → outer, then the wide ambient disc beneath it).
+val WelcomeOrbHaloInner = Color(0x334F46B9)
+val WelcomeOrbHaloOuter = Color(0x224D45A7)
+val WelcomeOrbHaloDisc = Color(0x183F3889)
 val PrimaryButtonFill = Color(0xFFFCFBFF)
 val PrimaryButtonInk = Color(0xFF211C50)
 val PrimaryButtonDisabledFill = Color(0xFF9998A7)

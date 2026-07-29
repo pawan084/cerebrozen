@@ -376,10 +376,12 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
 
 /* ---------- 8 · Consent ---------- */
 
-// The onboarding notice shows the 5 categories about to collect data
-// (model_training stays a separate opt-in on the account page).
+// All six DPDP categories are shown here, in the account page's order. Nothing
+// is pre-ticked, and the "remember my patterns" shortcut deliberately leaves
+// voice_storage + model_training alone — sensitive categories stay individual,
+// deliberate opt-ins (design system §8).
 const CONSENT_KEYS: (keyof Draft["consent"])[] = [
-  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage",
+  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];
 
 function ConsentStep({

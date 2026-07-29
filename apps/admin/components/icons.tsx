@@ -37,4 +37,8 @@ export const Icon: Record<string, () => JSX.Element> = {
   waitlist: () => s(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 7l8 6 8-6" /></>),
   signout: () => s(<><path d="M14 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4" /><path d="M10 12H3m0 0l3-3m-3 3l3 3" /></>),
   search: () => s(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></>),
+  menu: () => s(<path d="M4 7h16M4 12h16M4 17h16" />),
+  close: () => s(<path d="M6 6l12 12M18 6L6 18" />),
+  eye: () => s(<><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.6" /></>),
+  eyeOff: () => s(<><path d="M4 4l16 16" /><path d="M9.7 5.3A9.6 9.6 0 0112 5c6.4 0 10 6 10 6a17 17 0 01-3.4 3.9M6.5 7.6A16.9 16.9 0 002 11s3.6 6 10 6a9.8 9.8 0 004-.8" /><path d="M10.2 10.3a2.6 2.6 0 003.6 3.6" /></>),
 };

@@ -203,12 +203,33 @@ class SleepSummaryOut(BaseModel):
 
 # ── Safety ──────────────────────────────────────────────────────────────
 class SafetyEventOut(BaseModel):
+    """A row in the admin review queue.
+
+    Deliberately carries NO excerpt. The queue is a triage surface — listing it
+    would spray verbatim private journal/chat text across an ops screen on every
+    page load, for every row, whether or not anyone needed to read it. A reviewer
+    who needs the text fetches one row from ``/admin/safety/{id}/excerpt``, which
+    is a deliberate, per-row, logged act. ``excerpt_chars`` is here so the UI can
+    show that there IS text (and how much) without disclosing it.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     user_id: uuid.UUID
     source: str
     risk_level: str
     reason: str
-    excerpt: str
+    excerpt_chars: int = 0
     resolved: bool
+    resolved_by: uuid.UUID | None = None
+    resolved_at: datetime | None = None
+    resolution_note: str = ""
     created_at: datetime
+
+
+class SafetyExcerptOut(BaseModel):
+    """The verbatim text behind one flagged event — fetched on demand only."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    excerpt: str

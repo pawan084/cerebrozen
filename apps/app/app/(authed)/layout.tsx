@@ -20,27 +20,44 @@ const EXPLORE = [
   { href: "/games", label: "Games", icon: Icon.games },
   { href: "/account", label: "Settings", icon: Icon.settings },
 ];
-// The mobile bottom bar keeps the five primary spaces (mirrors iOS).
+// The mobile bottom bar keeps the primary spaces (mirrors iOS) plus the Support
+// door — crisis has to stay one tap away on a phone too (design system §1).
 const MOBILE = [
   { href: "/home", label: "Home", icon: Icon.home },
   { href: "/chat", label: "Talk", icon: Icon.talk },
   { href: "/sleep", label: "Sleep", icon: Icon.sleep },
   { href: "/journal", label: "Journal", icon: Icon.journal },
+  { href: "/support", label: "Support", icon: Icon.support },
   { href: "/account", label: "You", icon: Icon.account },
 ];
+
+// The upsell is dismissible per device — an always-on upgrade card in a wellness
+// app is the OECD "nagging" indicator (design system §8).
+const PREMIUM_DISMISSED = "cerebro_app_premium_dismissed";
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
+  const [tier, setTier] = useState<string | null>(null);
+  const [upsell, setUpsell] = useState(false);
 
   useEffect(() => {
     if (!hasSession()) { router.replace("/signin"); return; }
     setReady(true);
+    setUpsell(window.localStorage.getItem(PREMIUM_DISMISSED) !== "1");
     import("@/lib/api").then(({ api }) =>
-      api("/auth/me").then((me: any) => setName(me.name || "")).catch(() => {}));
+      api("/auth/me").then((me: any) => {
+        setName(me.name || "");
+        setTier(me.subscription_tier || "free");
+      }).catch(() => {}));
   }, [router]);
+
+  function dismissUpsell() {
+    window.localStorage.setItem(PREMIUM_DISMISSED, "1");
+    setUpsell(false);
+  }
 
   if (!ready) return null;
   const active = (href: string) => pathname.startsWith(href);
@@ -61,18 +78,30 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         <div className="nav-group-label">Explore</div>
         <nav className="nav-group">{EXPLORE.map(NavLink)}</nav>
 
-        <div className="premium-card">
-          <strong>Unlock Premium</strong>
-          <p>Unlimited talks, the full sleep library, and deeper insights.</p>
-          <Link href="/account" className="premium-btn">See plans</Link>
-        </div>
+        {/* A calm, always-there door — crisis stays ≤2 taps from every screen. */}
+        <Link href="/support" className={active("/support") ? "support-door active" : "support-door"}>
+          <Icon.support size={19} />
+          <span>
+            <strong>Support</strong>
+            <small>Real people, 24/7</small>
+          </span>
+        </Link>
+
+        {upsell && tier === "free" && (
+          <div className="premium-card">
+            <strong>Unlock Premium</strong>
+            <p>Unlimited talks, the full sleep library, and deeper insights.</p>
+            <Link href="/account" className="premium-btn">See plans</Link>
+            <button type="button" className="premium-dismiss" onClick={dismissUpsell}>Not now</button>
+          </div>
+        )}
 
         <div className="sidebar-foot">
           <div className="user-chip">
             <span className="user-avatar" aria-hidden="true" />
             <div className="user-meta">
               <strong>{name || "Your space"}</strong>
-              <small>Free plan</small>
+              {tier && <small>{tier === "free" ? "Free plan" : `${tier[0].toUpperCase()}${tier.slice(1)} plan`}</small>}
             </div>
           </div>
           <button

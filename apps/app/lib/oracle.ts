@@ -7,9 +7,20 @@ export type OracleWidget = { widget_kind: string; title: string; description: st
 
 export type OracleEvent =
   | { type: "token"; text: string }
-  | { type: "crisis"; resources?: { message?: string; resources?: { name: string; number: string }[] } }
+  // The server block is `{message, region, lines}` (services/crisis.py); older
+  // shapes used `resources`, so readers accept either and fall back to the
+  // static directory when neither is present.
+  | {
+      type: "crisis";
+      resources?: {
+        message?: string;
+        region?: string;
+        lines?: { name: string; number: string }[];
+        resources?: { name: string; number: string }[];
+      };
+    }
   | { type: "widget"; widget: OracleWidget }
-  | { type: "tool_confirm"; summary?: string; thread_id: string; tool?: string }
+  | { type: "tool_confirm"; summary?: string; thread_id: string; tool?: string; args?: Record<string, unknown> }
   | { type: "awaiting_confirm"; thread_id: string }
   | { type: "done"; text: string }
   | { type: "error"; detail: string };

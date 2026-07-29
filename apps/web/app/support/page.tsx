@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 
 export const metadata: Metadata = {
   title: "Support — CereBro",
   description: "Get help with CereBro. Reach our support team, find answers, and know where to turn in a crisis.",
+  alternates: { canonical: "/support" },
 };
 
 export default function Support() {
   return (
     <>
+      <a className="skip-link" href="#main">Skip to content</a>
+
       <nav className="nav">
         <div className="container nav-inner">
           <Link className="brand" href="/">
-            <span className="dot" /> CereBro
+            <BrandMark size={26} /> CereBro
           </Link>
           <div className="nav-links">
             <Link href="/">Home</Link>
@@ -22,7 +26,7 @@ export default function Support() {
         </div>
       </nav>
 
-      <main className="section">
+      <main className="section" id="main">
         <div className="container legal">
           <p className="eyebrow">We&apos;re here to help</p>
           <h1>Support</h1>
@@ -65,11 +69,13 @@ export default function Support() {
       <footer className="footer">
         <div className="container footer-inner">
           <Link className="brand" href="/" style={{ fontSize: 17 }}>
-            <span className="dot" /> CereBro
+            <BrandMark size={26} /> CereBro
           </Link>
-          <div>
-            © {new Date().getFullYear()} CereBro · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/terms">Terms</Link> · <Link href="/support">Support</Link>
+          <div className="footer-links">
+            <span className="footer-copy">© {new Date().getFullYear()} CereBro</span>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/support">Support</Link>
           </div>
         </div>
       </footer>

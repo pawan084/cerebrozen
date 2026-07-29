@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
 import { AppHeader } from "@/components/AppHeader";
+import { CrisisLines } from "@/components/CrisisLines";
+import type { CrisisLine } from "@/lib/crisis";
 
 const STARTERS = [
   "I feel anxious and I don't know why",
@@ -12,15 +14,35 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
-const RECENT = [
-  { title: "Late-night worries", when: "Yesterday · 14 min", c: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
-  { title: "Morning intention", when: "Mon · 6 min", c: "linear-gradient(135deg,#8fe6ee,#4fd8e0)" },
-  { title: "Work stress", when: "Sun · 21 min", c: "linear-gradient(135deg,#f0a48c,#e08a9a)" },
-];
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
-type CrisisInfo = { message?: string; resources?: { name: string; number: string }[] };
+type CrisisInfo = { message?: string; lines?: CrisisLine[] };
+// A paused write tool. `summary` is what the server *should* send; `tool`/`args`
+// are what it always sends, and the card falls back to them so nobody approves
+// an account write blind.
+type ConfirmReq = { thread_id: string; summary?: string; tool?: string; args?: Record<string, unknown> };
+
+const TOOL_ACTIONS: Record<string, string> = {
+  log_mood: "save a mood check-in",
+  save_journal: "save a journal entry",
+  log_sleep: "save last night's sleep diary",
+};
+
+function confirmHeadline(req: ConfirmReq): string {
+  if (req.summary?.trim()) return req.summary;
+  const action = req.tool && TOOL_ACTIONS[req.tool];
+  if (action) return `The companion wants to ${action}.`;
+  if (req.tool) return `The companion wants to run “${req.tool}” on your account.`;
+  return "The companion wants to change something in your account — it didn't say what.";
+}
+
+function confirmDetail(req: ConfirmReq): string {
+  const args = Object.entries(req.args ?? {}).filter(([, v]) => v !== "" && v !== null && v !== undefined);
+  if (args.length) return args.map(([k, v]) => `${k.replace(/_/g, " ")}: ${String(v)}`).join(" · ");
+  if (req.tool) return "No details came with this request.";
+  return "Nothing here describes the change — if you're unsure, choose Not now.";
+}
 
 // Where an inline activity lands on the web; unmapped kinds stay app-only.
 const WIDGET_LINKS: Record<string, string> = {
@@ -43,7 +65,7 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [useOracle, setUseOracle] = useState(false);
   const [threadId, setThreadId] = useState("web");
-  const [confirmReq, setConfirmReq] = useState<{ thread_id: string; summary?: string } | null>(null);
+  const [confirmReq, setConfirmReq] = useState<ConfirmReq | null>(null);
   const [crisis, setCrisis] = useState<CrisisInfo | null>(null);
   const [started, setStarted] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -74,9 +96,10 @@ export default function Chat() {
       } else if (ev.type === "widget") {
         widget = ev.widget;
       } else if (ev.type === "crisis") {
-        setCrisis(ev.resources ?? {});
+        const block = ev.resources;
+        setCrisis({ message: block?.message, lines: block?.lines ?? block?.resources });
       } else if (ev.type === "tool_confirm") {
-        setConfirmReq({ thread_id: ev.thread_id, summary: ev.summary });
+        setConfirmReq({ thread_id: ev.thread_id, summary: ev.summary, tool: ev.tool, args: ev.args });
       } else if (ev.type === "done" || ev.type === "error") {
         const text = ev.type === "done" ? ev.text || acc : acc || ev.detail;
         if (text.trim() || widget) {
@@ -146,52 +169,37 @@ export default function Chat() {
       {crisis && (
         <div className="crisis" role="alert">
           <strong>{crisis.message || "If things feel heavy right now, you deserve support."}</strong>
-          <br />
-          {(crisis.resources && crisis.resources.length > 0
-            ? crisis.resources
-            : [
-                { name: "Emergency services (India)", number: "112" },
-                { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
-                { name: "Find a helpline", number: "https://findahelpline.com" },
-              ]
-          ).map((r) => (
-            <span key={r.name}>
-              {r.name}: <strong>{r.number}</strong> ·{" "}
-            </span>
-          ))}
-          <button className="btn ghost" style={{ marginLeft: 8, padding: "4px 12px" }} onClick={() => setCrisis(null)}>
-            Dismiss
-          </button>
+          {/* Tele-MANAS leads, every number dials — and the conversation is never blocked. */}
+          <CrisisLines lines={crisis.lines?.length ? crisis.lines : undefined} compact />
+          <div className="row" style={{ gap: 10, marginTop: 10 }}>
+            <Link className="btn ghost" href="/support" style={{ padding: "6px 14px" }}>More ways to get help</Link>
+            <button className="btn ghost" style={{ padding: "6px 14px" }} onClick={() => setCrisis(null)}>
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
       {!started && messages.length === 0 ? (
         <>
+          {/* One honest CTA: there is no voice session on the web, so there is no
+              live affordance to imply one (the footnote below says where voice lives). */}
           <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
-            <p>Start a live conversation, or just type. No pressure to have the right words.</p>
+            <p>Type whatever's on your mind — no pressure to have the right words.</p>
             <div className="talk-actions">
-              <button className="pill-btn" onClick={() => begin()}><span className="live-dot" /> Start live session</button>
-              <button className="pill-btn ghost" onClick={() => begin()}>Type instead</button>
+              <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
+            <p className="footnote" style={{ marginTop: 14 }}>
+              Voice conversations live in the iOS app. Here, the companion listens in writing.
+            </p>
           </section>
-          <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
-            <div className="cz-in cz-d1">
-              <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
-              {STARTERS.map((s) => (
-                <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
-              ))}
-            </div>
-            <div className="cz-in cz-d2">
-              <h2 className="serif-h" style={{ marginBottom: 14 }}>Recent conversations</h2>
-              {RECENT.map((r) => (
-                <div key={r.title} className="convo-row">
-                  <span className="convo-dot" style={{ background: r.c }} />
-                  <div><strong>{r.title}</strong><small>{r.when}</small></div>
-                </div>
-              ))}
-            </div>
+          <div className="cz-in cz-d1">
+            <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
+            {STARTERS.map((s) => (
+              <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
+            ))}
           </div>
         </>
       ) : (
@@ -230,7 +238,8 @@ export default function Chat() {
         {confirmReq && (
           <div className="widgetcard" role="alertdialog" aria-label="Confirm action">
             <span className="eyebrow">The companion wants to act</span>
-            <strong>{confirmReq.summary || "Approve this action?"}</strong>
+            <strong>{confirmHeadline(confirmReq)}</strong>
+            <p className="sub">{confirmDetail(confirmReq)}</p>
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn" onClick={() => resolveConfirm(true)}>Approve</button>
               <button className="btn ghost" onClick={() => resolveConfirm(false)}>Not now</button>

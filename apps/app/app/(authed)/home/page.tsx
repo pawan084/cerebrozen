@@ -87,9 +87,9 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const days = ["S", "M", "T", "W", "T", "F", "S"];
-  // A gentle mood line for the rail chart (score by recency; fallback shape).
-  const scores = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
-  const pts = (scores.length >= 2 ? scores : [3, 4, 3, 4, 3, 4, 4]);
+  // A gentle mood line for the rail chart, scored by recency. When there aren't
+  // two real check-ins yet the card says so — it never draws an invented shape.
+  const pts = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
   // One honest line for the weekly-insights teaser, from the same mood fetch.
   const weekCheckins = moods.filter((m) => Date.now() - new Date(m.created_at).getTime() < 7 * 86400e3).length;
 
@@ -223,17 +223,12 @@ export default function Home() {
             <div className="rail-card cz-in cz-d2">
               <span className="kicker">Day rhythm</span>
               <div className="rail-big">
-                {/* Ring only on a milestone day, and only when the shown number IS the current streak. */}
-                <b
-                  className={
-                    MILESTONES.includes(streak?.current ?? 0) && (streak?.best ?? streak?.current) === streak?.current
-                      ? "cz-streak"
-                      : undefined
-                  }
-                >
-                  {streak?.best ?? streak?.current ?? 0}
+                {/* The number is always the CURRENT run of days present — a best-ever
+                    streak is never shown in its place (and never as a target). */}
+                <b className={MILESTONES.includes(streak?.current ?? 0) ? "cz-streak" : undefined}>
+                  {streak?.current ?? 0}
                 </b>
-                <span>day rhythm</span>
+                <span>{(streak?.current ?? 0) === 1 ? "day in a row" : "days in a row"}</span>
               </div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
               <div className="rhythm-bars">
@@ -251,13 +246,19 @@ export default function Home() {
                 <span className="serif-h" style={{ fontSize: 18 }}>Mood this week</span>
                 <Link href="/insights" className="link">Details</Link>
               </div>
-              <svg viewBox="0 0 300 90" style={{ width: "100%", height: 80, marginTop: 12 }} aria-hidden="true">
-                <polyline
-                  fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                  points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
-                />
-                <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="#8fe6ee" /><stop offset="1" stopColor="#8a7bf0" /></linearGradient></defs>
-              </svg>
+              {pts.length >= 2 ? (
+                <svg viewBox="0 0 300 90" style={{ width: "100%", height: 80, marginTop: 12 }} aria-hidden="true">
+                  <polyline
+                    fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                    points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
+                  />
+                  <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="var(--cyan)" /><stop offset="1" stopColor="var(--lav)" /></linearGradient></defs>
+                </svg>
+              ) : (
+                <p className="sub" style={{ marginTop: 12 }}>
+                  Your line starts after two check-ins — tap a face above and it begins.
+                </p>
+              )}
             </div>
 
             <div className="rail-card reflection cz-in cz-d4">

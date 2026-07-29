@@ -42,8 +42,6 @@ import androidx.fragment.app.FragmentActivity
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.Haptics
-import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -126,10 +124,8 @@ fun JournalScreen() {
     var query by remember { mutableStateOf("") }
     var mood by rememberSaveable { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(JournalMode.Home) }
-    // W10: one-shot bloom per saved entry (Reduce Motion never arms it), and the
-    // draft-safe banner — captured at FIRST composition, so it's true only when
+    // The draft-safe banner — captured at FIRST composition, so it's true only when
     // the fields arrived restored (rotation / process death), never after typing.
-    var bloom by remember { mutableIntStateOf(0) }
     val restoredDraft = remember { title.isNotBlank() || body.isNotBlank() }
     var draftBannerDismissed by remember { mutableStateOf(false) }
     val reduceMotion = rememberReduceMotion()
@@ -180,74 +176,69 @@ fun JournalScreen() {
                         onDismiss = { draftBannerDismissed = true },
                     )
                 }
-                Box {
-                SectionCard {
-                    Text(stringResource(R.string.journal_release_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    // Quick entries (REDESIGN §2.2): the old one-field tools live on
-                    // as prompt chips — tapping prefills the title, and only ever
-                    // replaces a blank title or the other prompt, never your words.
-                    val quick = quickPrompts()
+            SectionCard {
+                Text(stringResource(R.string.journal_release_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                // Quick entries (REDESIGN §2.2): the old one-field tools live on
+                // as prompt chips — tapping prefills the title, and only ever
+                // replaces a blank title or the other prompt, never your words.
+                val quick = quickPrompts()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    quick.forEach { prompt ->
+                        PickChip(selected = title == prompt, label = prompt) {
+                            if (title.isBlank() || title in quick) title = prompt
+                        }
+                    }
+                }
+                AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
+                AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
+                Text(stringResource(R.string.journal_feeling_label),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                journalMoods().chunked(3).forEach { rowMoods ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        quick.forEach { prompt ->
-                            PickChip(selected = title == prompt, label = prompt) {
-                                if (title.isBlank() || title in quick) title = prompt
+                        rowMoods.forEach { m ->
+                            PickChip(selected = mood == m, label = m) {
+                                mood = if (mood == m) null else m
                             }
                         }
                     }
-                    AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
-                    AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
-                    Text(stringResource(R.string.journal_feeling_label),
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    journalMoods().chunked(3).forEach { rowMoods ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            rowMoods.forEach { m ->
-                                PickChip(selected = mood == m, label = m) {
-                                    mood = if (mood == m) null else m
-                                }
-                            }
-                        }
-                    }
-                    val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
-                    val savedStatus = stringResource(R.string.journal_saved)
-                    val saveFailed = stringResource(R.string.common_save_failed)
-                    PrimaryButton(
-                        text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.journal_save_cta),
-                        enabled = !busy && title.isNotBlank() && body.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        busy = true; status = null
-                        scope.launch {
-                            try {
-                                // Persist the chosen feeling with the entry so the chip is real.
-                                val entryBody = body.trim().let { b ->
-                                    mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
-                                }
-                                val saved = Api.createJournal(title.trim(), entryBody)
-                                showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
-                                title = ""; body = ""; mood = null
-                                draftBannerDismissed = true   // the draft became an entry
-                                status = savedStatus
-                                // W10: the success pulse + a small bloom over the
-                                // composer (same calm reward as the Home check-in),
-                                // then home. Reduce Motion skips straight there —
-                                // the status line is the state change.
-                                Haptics.success()
-                                runCatching { entries = parseEntries(Api.journal()) }
-                                if (!reduceMotion) { bloom++; delay(650) }
-                                mode = JournalMode.Home
-                            } catch (e: Exception) {
-                                status = e.message ?: saveFailed
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    }
-                    status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
                 }
-                // W10: the one-shot bloom rides over the composer card; Reduce
-                // Motion never arms it (bloom stays 0).
-                if (bloom > 0) BloomRing(bloom, Accent.journal, Modifier.matchParentSize())
+                val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
+                val savedStatus = stringResource(R.string.journal_saved)
+                val saveFailed = stringResource(R.string.common_save_failed)
+                PrimaryButton(
+                    text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.journal_save_cta),
+                    enabled = !busy && title.isNotBlank() && body.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    busy = true; status = null
+                    scope.launch {
+                        try {
+                            // Persist the chosen feeling with the entry so the chip is real.
+                            val entryBody = body.trim().let { b ->
+                                mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
+                            }
+                            val saved = Api.createJournal(title.trim(), entryBody)
+                            showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
+                            title = ""; body = ""; mood = null
+                            draftBannerDismissed = true   // the draft became an entry
+                            status = savedStatus
+                            // The shared app-root flourish (Celebration is
+                            // reuse-only — Breathing/CBT fire the same one).
+                            // It owns the success haptic and its own Reduce
+                            // Motion branch, so nothing is re-implemented here.
+                            Celebrations.trigger()
+                            runCatching { entries = parseEntries(Api.journal()) }
+                            if (!reduceMotion) delay(650)
+                            mode = JournalMode.Home
+                        } catch (e: Exception) {
+                            status = e.message ?: saveFailed
+                        } finally {
+                            busy = false
+                        }
+                    }
                 }
+                status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            }
             }
             return
         }

@@ -106,7 +106,8 @@ class PlayerMixerStateTest {
 
     @Test
     fun mixer_ships_four_layers_with_rain_as_the_primary() {
-        assertEquals(listOf("Rain", "Ocean", "Wind", "Drone"), SoundscapeMixer.layers.map { it.name })
+        // The stable symbol keys are the contract; the names are display copy now.
+        assertEquals(listOf("rain", "ocean", "wind", "drone"), SoundscapeMixer.layers.map { it.symbol })
         assertEquals("rain", SoundscapeMixer.layers[0].symbol)
         assertEquals(4, SoundscapeMixer.volumes.size)
     }

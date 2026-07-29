@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,9 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
@@ -41,6 +42,7 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.ThemeMode
@@ -89,17 +91,21 @@ internal fun NavRow(
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
-            Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
+            // AutoMirrored so the affordance points the right way in RTL
+            // (the DPDP notice renders Urdu right-to-left — PrivacyScreen).
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = TextMuted2,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
 
 @Composable
 private fun SelectableRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    val haptics = LocalHapticFeedback.current
-    SectionCard(onClick = {
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
-    }) {
+    SectionCard(onClick = { Haptics.selection(); onClick() }) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,19 +115,30 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
                 Text(title, style = MaterialTheme.typography.titleMedium, color = if (selected) Cyan else TextSoft)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
-            if (selected) Text("✓", style = MaterialTheme.typography.titleMedium, color = Cyan)
+            if (selected) Icon(
+                Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.common_selected_cd),
+                tint = Cyan,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
-// i18n: pending — the companion names double as the server-side `companion`
-// profile value (cross-stack contract), so this list needs a label/value split
-// before its display strings can be localized.
+/** A companion style. [value] is the server-side `companion` profile value —
+ * a cross-stack contract with iOS/web, so it is NEVER translated; the title and
+ * detail are display copy and localize freely. */
+private data class CompanionStyle(
+    val value: String,
+    @androidx.annotation.StringRes val titleRes: Int,
+    @androidx.annotation.StringRes val detailRes: Int,
+)
+
 private val COMPANIONS = listOf(
-    "Calm Guide" to "Steady and soothing — grounds you first, never rushes",
-    "Warm Friend" to "Encouraging and familiar — like a friend who gets it",
-    "Straight Talker" to "Clear and direct — kind, but skips the padding",
-    "Quiet Coach" to "Action-first — one small concrete step at a time",
+    CompanionStyle("Calm Guide", R.string.companion_calm_title, R.string.companion_calm_detail),
+    CompanionStyle("Warm Friend", R.string.companion_warm_title, R.string.companion_warm_detail),
+    CompanionStyle("Straight Talker", R.string.companion_direct_title, R.string.companion_direct_detail),
+    CompanionStyle("Quiet Coach", R.string.companion_quiet_title, R.string.companion_quiet_detail),
 )
 
 @Composable
@@ -132,12 +149,15 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     SubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
         Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        COMPANIONS.forEach { (name, detail) ->
-            SelectableRow(name, detail, selected = current == name) {
+        COMPANIONS.forEach { style ->
+            SelectableRow(
+                stringResource(style.titleRes), stringResource(style.detailRes),
+                selected = current == style.value,
+            ) {
                 val prev = current
-                current = name
+                current = style.value
                 scope.launch {
-                    runCatching { Api.updateProfile(JSONObject().put("companion", name)) }
+                    runCatching { Api.updateProfile(JSONObject().put("companion", style.value)) }
                         .onFailure { current = prev }   // don't show a choice the server didn't accept
                 }
             }
@@ -203,6 +223,13 @@ fun PrivacyScreen(onBack: () -> Unit) {
     var noticeLang by remember { mutableStateOf("en") }
     var loaded by remember { mutableStateOf(false) }
     var consentError by remember { mutableStateOf<String?>(null) }
+    // Onboarding's consent write can fail after the funnel is gone; it leaves a
+    // flag rather than passing silently. These switches show what the server
+    // actually holds, so the honest thing is to say the setup choices were lost
+    // and let the user set them again here. Cleared once they've seen it.
+    var setupSyncFailed by remember {
+        mutableStateOf(runCatching { Session.prefGet(CONSENT_SYNC_FAILED_KEY) }.getOrNull() == "true")
+    }
     val notice = noticeFor(noticeLang)
     val activity = LocalContext.current as? FragmentActivity
     LaunchedEffect(Unit) {
@@ -218,6 +245,18 @@ fun PrivacyScreen(onBack: () -> Unit) {
         if (!loaded) {
             Text(stringResource(R.string.privacy_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
+            if (setupSyncFailed) {
+                SectionCard {
+                    Text(stringResource(R.string.privacy_setup_sync_failed_title),
+                        style = MaterialTheme.typography.titleMedium, color = Danger)
+                    Text(stringResource(R.string.privacy_setup_sync_failed_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    TextButton(onClick = {
+                        setupSyncFailed = false
+                        runCatching { Session.prefPut(CONSENT_SYNC_FAILED_KEY, "false") }
+                    }) { Text(stringResource(R.string.common_got_it), color = Periwinkle) }
+                }
+            }
             val consentSaveError = stringResource(R.string.privacy_consent_error)
             val layoutDir = if (noticeLang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {

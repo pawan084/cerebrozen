@@ -1,8 +1,10 @@
 package com.cerebrozen.app.ui.screens
 
+import com.cerebrozen.app.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -29,14 +31,16 @@ class ScreenLogicTest {
     }
 
     // ── Greeting buckets ────────────────────────────────────────────
+    // greetingFor returns the string RESOURCE for the bucket (so the copy can
+    // localize); the buckets themselves are what's under test.
     @Test
     fun greeting_buckets_by_hour() {
-        assertEquals("Good morning", greetingFor(5))
-        assertEquals("Good morning", greetingFor(11))
-        assertEquals("Good afternoon", greetingFor(12))
-        assertEquals("Good afternoon", greetingFor(16))
-        assertEquals("Good evening", greetingFor(17))
-        assertEquals("Good evening", greetingFor(2))   // small hours
+        assertEquals(R.string.today_greeting_morning, greetingFor(5))
+        assertEquals(R.string.today_greeting_morning, greetingFor(11))
+        assertEquals(R.string.today_greeting_afternoon, greetingFor(12))
+        assertEquals(R.string.today_greeting_afternoon, greetingFor(16))
+        assertEquals(R.string.today_greeting_evening, greetingFor(17))
+        assertEquals(R.string.today_greeting_evening, greetingFor(2))   // small hours
     }
 
     // ── Parsers (JSON → model) ──────────────────────────────────────
@@ -47,7 +51,7 @@ class ScreenLogicTest {
             .put(JSONObject().put("date", "2026-07-05").put("quality", 3))  // no duration_min
         val nights = parseNights(rows)
         assertEquals(2, nights.size)
-        assertEquals(Night("2026-07-04", 445, 4), nights[0])
+        assertEquals(SleepNight("2026-07-04", 445, 4), nights[0])
         assertEquals(0, nights[1].duration)   // optInt default
     }
 
@@ -138,12 +142,12 @@ class ScreenLogicTest {
 
     // ── Presence milestones (REDESIGN §3.6 — counts showing up, never misses) ──
     @Test
-    fun milestoneLine_fires_only_on_milestone_days() {
-        assertEquals("🎉 3 days of showing up — beautifully done", milestoneLine(3))
-        assertEquals("🎉 7 days of showing up — beautifully done", milestoneLine(7))
-        assertEquals(null, milestoneLine(0))
-        assertEquals(null, milestoneLine(4))
-        assertEquals(null, milestoneLine(15))
+    fun milestone_fires_only_on_milestone_days() {
+        assertEquals(true, isMilestone(3))
+        assertEquals(true, isMilestone(7))
+        assertEquals(false, isMilestone(0))
+        assertEquals(false, isMilestone(4))
+        assertEquals(false, isMilestone(15))
     }
 
     // ── Home banner slot (W9) — priority order, time windows, dismissal ──
@@ -305,11 +309,47 @@ class ScreenLogicTest {
     private fun freshStore() = com.cerebrozen.app.net.Session
         .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
 
+    // ── Onboarding funnel progress (must not key off translated copy) ──
+    @Test
+    fun funnelProgress_climbs_with_the_step_not_the_language() {
+        // The bug this replaced: the fraction matched the English eyebrow copy,
+        // so on a Hindi device every step after Language fell through to 1f.
+        val fractions = OStep.entries.map { funnelProgress(it) }
+        assertEquals(OStep.entries.size, fractions.size)
+        assertEquals(0f, funnelProgress(OStep.Welcome), 0.0001f)
+        assertEquals(1f, funnelProgress(OStep.SignUp), 0.0001f)
+        fractions.zipWithNext().forEach { (a, b) ->
+            assertTrue("the bar never goes backwards", b > a)
+        }
+    }
+
+    // ── AI-disclosure cadence (re-show every 3h, across tab switches) ──
+    @Test
+    fun disclosureDue_only_after_the_full_interval() {
+        val now = 1_000_000_000_000L
+        assertEquals(false, disclosureDue(now, now))
+        assertEquals(false, disclosureDue(now - DISCLOSURE_INTERVAL_MS + 1, now))
+        assertEquals(true, disclosureDue(now - DISCLOSURE_INTERVAL_MS, now))
+        assertEquals(true, disclosureDue(now - DISCLOSURE_INTERVAL_MS * 5, now))
+    }
+
+    @Test
+    fun disclosureDue_treats_an_unset_or_backwards_clock_as_due() {
+        val now = 1_000_000_000_000L
+        assertEquals(true, disclosureDue(0L, now))
+        assertEquals(true, disclosureDue(-1L, now))
+        assertEquals(true, disclosureDue(now + 60_000, now))   // clock stepped back
+    }
+
     // ── Breathe engine (one engine, three presets) ──────────────────
     @Test
     fun breathePhases_box_paces_four_beats_of_four() {
         val phases = breathePhases(BreathePreset.Box)
-        assertEquals(listOf("Breathe in", "Hold", "Breathe out", "Hold"), phases.map { it.label })
+        assertEquals(
+            listOf(R.string.breathe_phase_in, R.string.breathe_phase_hold,
+                R.string.breathe_phase_out, R.string.breathe_phase_hold),
+            phases.map { it.labelRes },
+        )
         assertEquals(List(4) { 4 }, phases.map { it.seconds })
         assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
         assertEquals(phases, breathePhases(BreathePreset.Color))   // Color shares the pacing
@@ -318,7 +358,7 @@ class ScreenLogicTest {
     @Test
     fun breathePhases_reset_has_no_holds() {
         val phases = breathePhases(BreathePreset.Reset)
-        assertEquals(listOf("Breathe in", "Breathe out"), phases.map { it.label })
+        assertEquals(listOf(R.string.breathe_phase_in, R.string.breathe_phase_out), phases.map { it.labelRes })
         assertEquals(listOf(true, false), phases.map { it.expanded })
     }
 

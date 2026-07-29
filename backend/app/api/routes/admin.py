@@ -1,8 +1,9 @@
+import logging
 import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,10 +27,13 @@ from app.schemas.content_data import (
     ContentCreate,
     ContentUpdate,
     SafetyEventOut,
+    SafetyExcerptOut,
 )
 from app.schemas.user import UserOut
 from app.services import media, metrics, nudges, voice
 from app.services import prompts as prompt_registry
+
+logger = logging.getLogger("cerebro.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -252,12 +256,57 @@ async def list_safety_events(
     return rows.all()
 
 
+@router.get("/safety/{event_id}/excerpt", response_model=SafetyExcerptOut)
+async def read_safety_excerpt(
+    event_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Serve the verbatim text behind one flagged event.
+
+    Separate from the list route on purpose: reading a person's private words is
+    a deliberate act, so it takes a deliberate request, and it leaves a log line
+    naming the admin who made it.
+    """
+    event = await db.get(SafetyEvent, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    logger.info(
+        "admin.safety.excerpt_read admin_id=%s event_id=%s risk=%s",
+        admin.id,
+        event.id,
+        event.risk_level,
+    )
+    return event
+
+
+class SafetyResolve(BaseModel):
+    # Required: an unattributed, unexplained close is not an audit trail.
+    note: str = Field(min_length=1, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def _note_has_substance(cls, v: str) -> str:
+        # A note of spaces satisfies min_length but says nothing.
+        if not v.strip():
+            raise ValueError("note cannot be blank")
+        return v
+
+
 @router.patch("/safety/{event_id}/resolve", response_model=SafetyEventOut)
-async def resolve_safety_event(event_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def resolve_safety_event(
+    event_id: uuid.UUID,
+    body: SafetyResolve,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
     event = await db.get(SafetyEvent, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     event.resolved = True
+    event.resolved_by = admin.id
+    event.resolved_at = utcnow()
+    event.resolution_note = body.note.strip()
     await db.commit()
     await db.refresh(event)
     return event

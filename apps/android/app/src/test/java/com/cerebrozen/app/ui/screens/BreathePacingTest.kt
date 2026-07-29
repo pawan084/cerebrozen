@@ -1,5 +1,6 @@
 package com.cerebrozen.app.ui.screens
 
+import com.cerebrozen.app.R
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -17,8 +18,12 @@ class BreathePacingTest {
         listOf(4, 6, 8).forEach { pace ->
             val phases = breathePhases(BreathePreset.Box, pace)
             assertEquals(List(4) { pace }, phases.map { it.seconds })
-            assertEquals("pace never changes the guidance",
-                listOf("Breathe in", "Hold", "Breathe out", "Hold"), phases.map { it.label })
+            assertEquals(
+                "pace never changes the guidance",
+                listOf(R.string.breathe_phase_in, R.string.breathe_phase_hold,
+                    R.string.breathe_phase_out, R.string.breathe_phase_hold),
+                phases.map { it.labelRes },
+            )
             assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
             assertEquals("Color shares Box pacing at every pace",
                 phases, breathePhases(BreathePreset.Color, pace))
@@ -29,7 +34,7 @@ class BreathePacingTest {
     fun pace_scales_the_reset_rhythm_and_it_still_has_no_holds() {
         val phases = breathePhases(BreathePreset.Reset, 8)
         assertEquals(listOf(8, 8), phases.map { it.seconds })
-        assertEquals(listOf("Breathe in", "Breathe out"), phases.map { it.label })
+        assertEquals(listOf(R.string.breathe_phase_in, R.string.breathe_phase_out), phases.map { it.labelRes })
     }
 
     @Test

@@ -6,9 +6,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,8 +49,11 @@ fun SearchScreen(onBack: () -> Unit) {
     var query by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf(false) }
+    var reload by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reload) {
+        loading = true
+        loadError = false
         val all = mutableListOf<SearchItem>()
         var failures = 0
         SEARCH_KINDS.forEach { kind ->
@@ -89,9 +94,15 @@ fun SearchScreen(onBack: () -> Unit) {
             loading ->
                 Text(stringResource(R.string.search_loading),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            loadError ->
+            loadError -> {
+                // Every error state pairs plain words with a way out (the same
+                // shape Patterns and Plan use).
                 Text(stringResource(R.string.search_error),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                TextButton(onClick = { reload++ }) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
+            }
             hits.isEmpty() ->
                 Text(stringResource(R.string.search_no_match, query.trim()),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
