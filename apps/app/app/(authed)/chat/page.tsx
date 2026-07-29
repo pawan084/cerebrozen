@@ -12,23 +12,43 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
-const RECENT = [
-  { title: "Late-night worries", when: "Yesterday · 14 min", c: "linear-gradient(135deg,#8a7bf0,#5b52c9)" },
-  { title: "Morning intention", when: "Mon · 6 min", c: "linear-gradient(135deg,#8fe6ee,#4fd8e0)" },
-  { title: "Work stress", when: "Sun · 21 min", c: "linear-gradient(135deg,#f0a48c,#e08a9a)" },
+// Offline fallback when the server sends no resources — mirrors backend
+// services/crisis.py IN (Tele-MANAS leads every crisis surface, REDESIGN §2.3).
+const CRISIS_FALLBACK = [
+  { name: "Tele-MANAS mental health support", number: "14416" },
+  { name: "Emergency services (India)", number: "112" },
+  { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
+  { name: "Find a helpline", number: "https://findahelpline.com" },
 ];
+// Phone numbers open the dialler (never auto-call); anything with letters is a URL.
+const supportHref = (target: string) =>
+  target.startsWith("http") ? target : `tel:${target.replace(/[^0-9+]/g, "")}`;
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
 type CrisisInfo = { message?: string; resources?: { name: string; number: string }[] };
 
-// Where an inline activity lands on the web; unmapped kinds stay app-only.
+// Where an inline activity lands on the web; unmapped kinds stay app-only
+// (mirror of Android TalkScreen widgetRoute — add mappings, never remove
+// kinds: the honest "lives in the app" fallback must survive).
 const WIDGET_LINKS: Record<string, string> = {
   mood_check: "/home",
   mini_journal: "/journal",
   journal: "/journal",
   sleep_checkin: "/sleep",
+  breathing: "/games",
+  grounding: "/games",
+  one_good_thing: "/journal",
+  intention_set: "/journal",
 };
+
+// "Try together" — rule-based structured exercises offered up front (evidence
+// F3: structure beats open-ended chat); client-only links, no LLM dependency.
+const TRY_TOGETHER = [
+  { label: "Box breathing", detail: "4·4·4·4 — follow the orb", href: "/games" },
+  { label: "5-4-3-2-1 grounding", detail: "Anchor through the senses", href: "/games" },
+  { label: "One good thing", detail: "A 30-second journal entry", href: "/journal" },
+];
 
 // crypto.randomUUID() needs a secure context (absent on plain-http origins
 // like the e2e stack) — local bubble keys don't need cryptographic ids anyway.
@@ -149,16 +169,19 @@ export default function Chat() {
           <br />
           {(crisis.resources && crisis.resources.length > 0
             ? crisis.resources
-            : [
-                { name: "Emergency services (India)", number: "112" },
-                { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
-                { name: "Find a helpline", number: "https://findahelpline.com" },
-              ]
+            : CRISIS_FALLBACK
           ).map((r) => (
             <span key={r.name}>
-              {r.name}: <strong>{r.number}</strong> ·{" "}
+              {r.name}:{" "}
+              <a href={supportHref(r.number)} style={{ color: "inherit" }}
+                target={r.number.startsWith("http") ? "_blank" : undefined}
+                rel={r.number.startsWith("http") ? "noreferrer" : undefined}>
+                <strong>{r.number}</strong>
+              </a>{" "}
+              ·{" "}
             </span>
           ))}
+          <Link href="/crisis" style={{ color: "inherit", fontWeight: 700 }}>All support options</Link>
           <button className="btn ghost" style={{ marginLeft: 8, padding: "4px 12px" }} onClick={() => setCrisis(null)}>
             Dismiss
           </button>
@@ -170,10 +193,9 @@ export default function Chat() {
           <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
-            <p>Start a live conversation, or just type. No pressure to have the right words.</p>
+            <p>Just type — no pressure to have the right words. Voice lives in the apps.</p>
             <div className="talk-actions">
-              <button className="pill-btn" onClick={() => begin()}><span className="live-dot" /> Start live session</button>
-              <button className="pill-btn ghost" onClick={() => begin()}>Type instead</button>
+              <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
           </section>
           <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
@@ -183,13 +205,17 @@ export default function Chat() {
                 <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
               ))}
             </div>
+            {/* Merge note: main's slot here was a hardcoded "Recent
+                conversations" list, deleted in WEB_PARITY Wave A as a fake.
+                v1's real "Try together" rail wins; main's entrance class is
+                kept so the motion system still staggers this column. */}
             <div className="cz-in cz-d2">
-              <h2 className="serif-h" style={{ marginBottom: 14 }}>Recent conversations</h2>
-              {RECENT.map((r) => (
-                <div key={r.title} className="convo-row">
-                  <span className="convo-dot" style={{ background: r.c }} />
-                  <div><strong>{r.title}</strong><small>{r.when}</small></div>
-                </div>
+              <h2 className="serif-h" style={{ marginBottom: 14 }}>Try together</h2>
+              {TRY_TOGETHER.map((t) => (
+                <Link key={t.label} href={t.href} className="suggest-row" style={{ display: "block", textDecoration: "none" }}>
+                  <strong>{t.label}</strong>
+                  <span style={{ color: "var(--muted)" }}> — {t.detail}</span>
+                </Link>
               ))}
             </div>
           </div>

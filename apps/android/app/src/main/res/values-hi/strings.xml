@@ -383,6 +383,8 @@
     <string name="mixer_preset_shoreline">समुद्र किनारा</string>
     <string name="mixer_preset_still_air">ठहरी हवा</string>
     <string name="sounds_timer_bell">अंत में एक हल्की घंटी</string>
+    <string name="sounds_activity">गतिविधि की ध्वनियाँ</string>
+    <string name="mixer_activity_description">शांत करने वाली गतिविधियों में हल्की ध्वनियाँ।</string>
     <string name="player_eyebrow">अभी चल रहा है</string>
     <string name="player_nothing">कुछ नहीं चल रहा</string>
     <string name="player_empty_hint">ध्वनियाँ सेक्शन से कोई साउंडस्केप या कहानी चुनें — वह यहाँ चलेगी।</string>
@@ -629,4 +631,62 @@
     <string name="ambience_mute_cd">एंबिएंस म्यूट करें</string>
     <string name="ambience_sound_off">ध्वनि बंद</string>
     <string name="ambience_label">एंबिएंस</string>
+
+    <!-- i18n plumbing (2026-07-24) — DRAFT machine translations like the rest
+         of this file; pending the same clinical/linguistic review. -->
+    <string name="duration_h_m">%1$dघं %2$02dमि</string>
+    <string name="duration_m">%1$dमि</string>
+    <string name="today_greeting_morning">सुप्रभात</string>
+    <string name="today_greeting_afternoon">शुभ दोपहर</string>
+    <string name="today_greeting_evening">शुभ संध्या</string>
+    <string name="today_milestone_line">🎉 %1$d दिन आप आए — बहुत सुंदर</string>
+    <string name="today_rail_morning">आज सुबह के लिए</string>
+    <string name="today_rail_midday">दोपहर में एक छोटा विराम</string>
+    <string name="today_rail_tonight">आज रात के लिए</string>
+    <string name="sleep_rhythm_vary">थोड़ा और नियमित सोने का समय — भले ही अपूर्ण — अतिरिक्त घंटों से ज़्यादा असर करता है।</string>
+    <string name="sleep_rhythm_steady">आपके सोने का समय स्थिर है — यही निरंतरता आपकी नींद के लिए सबसे मज़बूत चीज़ है।</string>
+    <string name="talk_transcript_me">मैं</string>
+    <string name="talk_transcript_bot">CereBro</string>
+    <string name="breathe_phase_in">साँस अंदर लें</string>
+    <string name="breathe_phase_hold">रोकें</string>
+    <string name="breathe_phase_out">साँस छोड़ें</string>
+    <string name="reminder_channel_name">दैनिक रिमाइंडर</string>
+    <string name="reminder_channel_desc">दिन में एक बार का कोमल चेक-इन संकेत।</string>
+    <string name="reminder_title">आपके लिए एक पल</string>
+    <string name="reminder_body">बीस सेकंड — आप सच में कैसे हैं?</string>
+    <string name="mixer_layer_rain">बारिश</string>
+    <string name="mixer_layer_ocean">समुद्र</string>
+    <string name="mixer_layer_wind">हवा</string>
+    <string name="mixer_layer_drone">गहरा स्वर</string>
+
+    <!-- i18n pass 2 (2026-07-25) — DRAFT machine translations, same review
+         posture as the rest of this file. Language names show native names. -->
+    <string name="ob_state_stressed">तनाव और खिंचाव महसूस हो रहा है</string>
+    <string name="ob_state_night">रात में दिमाग़ शांत नहीं होता</string>
+    <string name="ob_state_overthinking">हर बात पर ज़्यादा सोचना</string>
+    <string name="ob_state_doubting">खुद पर संदेह होना</string>
+    <string name="ob_state_distant">लोगों से दूरी महसूस होना</string>
+    <string name="ob_state_consistency">नियमित नहीं रह पाना</string>
+    <string name="lang_english">English</string>
+    <string name="lang_hindi">हिन्दी</string>
+    <string name="lang_hinglish">Hinglish</string>
+    <string name="lang_punjabi">ਪੰਜਾਬੀ</string>
+    <string name="lang_tamil">தமிழ்</string>
+    <string name="ob_notify_morning">सुबह 9 बजे</string>
+    <string name="ob_notify_evening">शाम 7 बजे</string>
+    <string name="ob_notify_previews">निजी प्रीव्यू</string>
+    <string name="ob_notify_none">कोई रिमाइंडर नहीं</string>
+    <string name="mood_good">अच्छा</string>
+    <string name="mood_anxious">बेचैन</string>
+    <string name="mood_low">उदास</string>
+    <string name="mood_tired">थका हुआ</string>
+    <string name="mood_okay">ठीक-ठाक</string>
+    <string name="companion_calm_guide">शांत मार्गदर्शक</string>
+    <string name="companion_calm_guide_detail">स्थिर और सुकून भरा — पहले आपको थाम लेता है, कभी जल्दी नहीं करता</string>
+    <string name="companion_warm_friend">गर्मजोश दोस्त</string>
+    <string name="companion_warm_friend_detail">हौसला देने वाला और अपनापन भरा — उस दोस्त की तरह जो समझता है</string>
+    <string name="companion_straight_talker">सीधी बात करने वाला</string>
+    <string name="companion_straight_talker_detail">साफ़ और सीधा — नरमी से, पर बिना घुमाए</string>
+    <string name="companion_quiet_coach">शांत कोच</string>
+    <string name="companion_quiet_coach_detail">काम पहले — एक बार में एक छोटा ठोस कदम</string>
 </resources>

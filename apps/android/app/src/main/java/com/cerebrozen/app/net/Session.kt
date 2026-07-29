@@ -547,6 +547,11 @@ object Api {
     suspend fun content(kind: String): JSONArray =
         JSONArray(Session.api("/content?kind=" + URLEncoder.encode(kind, "UTF-8")))
 
+    /** The keyed sound/video catalogue ([MediaCatalog]). Goes through the cached
+     * GET path, so a launch offline replays the last catalogue rather than
+     * dropping every sound back to its bundled fallback. */
+    suspend fun mediaCatalog(): JSONArray = JSONArray(Session.api("/media/catalog"))
+
     suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
 
     /** Transparent AI memory: honest learned statements + their data basis. */

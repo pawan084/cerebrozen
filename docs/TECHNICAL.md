@@ -38,7 +38,7 @@ Full list with placeholders: `backend/.env.example`. Everything degrades gracefu
 | LLM | `OPENAI_API_KEY` (`OPENAI_MODEL`) → `ANTHROPIC_API_KEY` (`AI_MODEL`) | deterministic local replies/plans/topics |
 | Oracle | `ORACLE_ENABLED` (+ an LLM key) | `/oracle` 503 → clients use `/chat` |
 | Voice | `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` | `/voice/status` reports disabled; admin narration generation (`POST /admin/content/{id}/narrate`) 503s |
-| Media | `MEDIA_ROOT` (default `media`, relative to the working dir) | generated narration MP3s land here, served publicly at `/media`; prod compose mounts the named `media` volume at `/app/media` so files survive redeploys (dev bind-mount writes to git-ignored `backend/media/`) |
+| Media | `MEDIA_ROOT` (default `media`, relative to the working dir) | generated narration MP3s (`/media/narration/`) and admin-uploaded catalogue assets (`/media/assets/`) land here, served publicly at `/media`; prod compose mounts the named `media` volume at `/app/media` so files survive redeploys (dev bind-mount writes to git-ignored `backend/media/`). **Route order:** `app.include_router` must stay above `app.mount("/media", …)` — the media router owns `GET /media/catalog` under the same prefix, and a Mount registered first would swallow it (`tests/test_media_catalog.py` locks this) |
 | Sign-in | `APPLE_CLIENT_ID`, `GOOGLE_CLIENT_ID` | social sign-in 400s; email auth works |
 | Subscriptions | `APPSTORE_BUNDLE_ID`, `APPSTORE_ROOT_CERT_PATH` | unpinned chain when blank (dev); prod template pins to the bundled `app/certs/AppleRootCA-G3.pem` |
 | Nudges | `NUDGE_DISPATCH_INTERVAL_MINUTES` | default 5; 0 = external cron via `POST /admin/nudges/dispatch` |
@@ -61,10 +61,21 @@ shared, rotate it.
 
 | Suite | Command | Notes |
 | --- | --- | --- |
-| Backend | `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"` | ~138 async tests; needs live Postgres (fixtures call `init_db()`); `TESTING=1` set by conftest disables rate limits. CI gate: `--cov-fail-under=95` (`.coveragerc` omits prestart/seed/agent/oracle — LLM-streaming code is integration-only) |
-| iOS | `xcodebuild test -project apps/ios/CereBro.xcodeproj -scheme CereBro -destination '<simulator>'` or `bundle exec fastlane ios test` | XCUITest walk-throughs; pass `-resetState YES` for determinism (wipes state, seeds demo streak, skips splash, disables real audio engine). Cloud tests `XCTSkip` without a reachable backend |
+| Backend | `docker compose run --rm api sh -c "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"` | 330 async tests; needs live Postgres (fixtures call `init_db()`); `TESTING=1` set by conftest disables rate limits. CI gate: `--cov-fail-under=95` (`.coveragerc` omits prestart/seed/agent/oracle — LLM-streaming code is integration-only) |
+| iOS | `xcodebuild test -project apps/ios/CereBro.xcodeproj -scheme CereBro -destination '<simulator>'` or `bundle exec fastlane ios test` | XCUITest walk-throughs; pass `-resetState YES` for determinism (wipes state, seeds demo streak, skips splash, disables the real audio engine, **and every auto-advancing timer in the guided routines** — an ungated one makes the suite wait forever). Cloud tests `XCTSkip` without a reachable backend. `apps/ios/CereBroTests/` (`ContrastTest`, `RitualsTest`) is written but **not yet in the project** — it needs a one-time Unit Testing Bundle target named `CereBroTests` in Xcode, after which synchronized file groups pick both files up |
 | Web+Admin e2e | `docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e` | Playwright; isolated network; asserts landing, waitlist, admin CRUD against seeded data |
 | Android | `cd apps/android && JAVA_HOME="<Android Studio>/jbr" ./gradlew :app:testDebugUnitTest :app:jacocoLogicCoverageVerification` | JVM + Robolectric unit tests (no emulator, no keys). **Coverage gate: ≥95% line coverage over the testable logic scope**, mirroring the backend's `--cov-fail-under=95`. The gate task prints total + per-package percentages and fails below 95; HTML report at `app/build/reports/jacoco/jacocoTestReport/html/`. The gate is also wired into `:app:check`, but `check` additionally runs `lintDebug` (currently red: untranslated Hindi strings) and `testReleaseUnitTest` (currently red: Robolectric Compose tests need the debug-only `ui-test-manifest`) — pre-existing debt, independent of the coverage gate |
+
+⚠️ **Backend suite wall-clock on a Windows/OneDrive checkout is meaningless — don't
+tune against it.** The same 330 tests measured 8, 10, 21 and 60 minutes across four runs
+on one machine with no code change between the last two. `--durations=25` shows why the
+number is not the tests: the slowest twenty-five sum to ~110 s (worst single test
+11.7 s), so ~98 % of a 60-minute run is outside test bodies entirely. The cause is the
+`./backend:/app` bind mount — Docker Desktop crossing the Windows filesystem is slow and
+highly variable, and a OneDrive-synced path makes it worse (the same class of problem as
+the read-only `media/` mode already documented in the Dockerfile). Linux CI is the
+meaningful timing signal; locally, run a single test file while iterating and treat the
+full suite as a pass/fail gate, not a benchmark.
 
 Android coverage scope (defined with rationale in `apps/android/app/build.gradle.kts`):
 the gate measures `net/**` (Session/Api/Analytics), the audio controllers

@@ -1,5 +1,80 @@
 # iOS Parity Backport — Android Redesign → iOS
 
+> **STATUS 2026-07-24: Wave A landed** (items 9, 10, 13, 11, 4, 2, 22, 23) —
+> Tele-MANAS-first IN crisis directory (voice line only: **no WhatsApp row** —
+> Android W25 proved wa.me/9114416 dead, superseding item 9's instruction;
+> backend crisis.py already matches), HumanSupport real links + CoachBookingView
+> deleted, ConsentScreen 6th category + the consent-wiping onAppear fixed
+> (one-shot `onb_consent_touched`, wiped under `-resetState`), WhyThisWorks
+> provenance footers + "How CereBro is built" cards, journal quick-prompt chips
+> + one_good_thing/intention_set remapped to JournalEntryView(prompt:) (kinds
+> kept routable), 4 mini-games killed, first-completion-only celebrations
+> (CelebrationGate) + Home reward-loop copy reframed, paywall
+> manage/cancel-subscriptions link.
+>
+> **Wave B also landed 2026-07-24** (items 1, 3, 6, 7, 8, 15): one
+> `BreathingPacer.Preset` engine (box 4-4-4-4 / color 4-2-6 / reset 4-6
+> no-holds — onboarding uses `.reset`); `GamesHubView` → **`ToolkitView`**
+> (Ground · Breathe · Reframe · Settle + Tele-MANAS crisis footer); Home
+> de-densified ~10 → 6 blocks (check-in first unless the hero is the mood ask;
+> sleep/baseline/Programs rows cut — baseline ask moved to Insights, Programs'
+> standing door to the Sleep tab, enrolled card links remain; collapsed
+> recent-check-ins card added); StreakCard → presence framing ("N days you
+> showed up this week", best never surfaced; computation untouched —
+> cross-stack contract); You-header Support door + Journal "If today feels
+> heavy" card; Talk `TryTogetherRail` in the empty state + Ground chip
+> mid-conversation and in the voice session. UITests updated by hand (hero
+> "Check in" CTA path, Toolkit rename + crisis-footer assert, Programs via
+> Sleep).
+>
+> **Wave C also landed 2026-07-24** (items 14, 12): Sleep reframed to
+> "Improve your sleep, night by night" with a "Your rhythm" card (pure
+> `averageSleepMinutes`/`bedtimeSpreadMinutes` noon-anchor helpers — Android's
+> unit-tested math ported; ≥3 nights) and two stimulus-control education cards
+> + the CBT-I WhyThisWorks footer; onboarding trimmed 10 → 8 (the fake
+> `FirstPlanScreen` deleted, the 18+ attest + underage exit merged into
+> `DisclosureScreen` — `confirmAge()`/`syncAgeConfirmation` preserved on its
+> Continue; `stepNames` now the 8 canonical names, `age_gate`/`first_plan`
+> never fire; progress fractions refit; every funnel UITest re-walked by
+> hand). Item 5 (Player audio-overlap) is a **listen test — macOS/device
+> only**, still open.
+>
+> **Wave D item 17 (contrast gate) landed 2026-07-25** — computed the full
+> WCAG matrix (10 text roles × 7 composited surfaces): two failures found and
+> fixed in-family exactly as the spec predicted — `Brand.captionText`
+> 0x8F88C0 → 0xA29CCC (was 3.77:1 worst-case, now 4.77:1) and a new
+> `Palette.lavText = Brand.iris` for lavender-as-text (the brand periwinkle
+> only reaches 3.61:1 on a raised card over the top gradient; all 15
+> `foregroundStyle(.lav)` sites switched; fills keep the true hue —
+> Android's exact split). Post-fix matrix: 0 failures, tightest pair 4.77:1.
+> `CereBroTests/ContrastTest.swift` pins the palette byte-identical and
+> re-computes the gate — the unit-test TARGET must be added once in Xcode on
+> macOS (instructions in the file header).
+>
+> **Wave D item 16 (Dawn/Night dual theme) landed 2026-07-28** — closing the
+> last open code item of the backport. New `DesignSystem/AppTheme.swift`
+> (`ThemeMode` system/night/dawn, persisted `theme_mode` in the same vocabulary
+> Android and web write) + a `ThemeSnapshot` global the token getters resolve
+> against; `Theme.Palette`/`Stroke`/`Gradient` members became computed `static
+> var`s, so **no screen changed** — they still read `Theme.Palette.…`. Dawn's
+> values are hand-synced with the web app's `[data-theme="dawn"]` block, with
+> the four roles web has no token for (cyan/mint/rose/danger) darkened
+> in-family until each cleared AA. `.preferredColorScheme` follows the mode and
+> is deliberately `nil` under "Match device" — that is what lets RootView read
+> the device's real scheme back out of the environment rather than its own
+> override. You → Appearance ships the picker. `ContrastTest` now gates BOTH
+> palettes (0 failures across 105 pairs; tightest 4.51:1, Dawn mint on the
+> darkest page paint) plus the theme-resolution truth table, and asserts the
+> Night pins did not move while Dawn was tuned. Under `-resetState` the theme
+> is **pinned Night**, same posture as the splash and the audio engine: a
+> simulator booted Light would otherwise flip the app to Dawn the instant
+> onboarding finished, re-keying the root view mid-test.
+>
+> **⚠ ALL WAVES STATIC-VERIFIED ONLY — Windows host; needs one macOS
+> `xcodebuild test` pass before shipping** (ratios are host-independent math,
+> the rendering is not). Item 16 especially: contrast is proven, *layout* in
+> Dawn is not — the two-theme screenshot pass is still owed.
+
 > Spec produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/TODO.md`
 > ("Done — recent", redesign waves), the full iOS client (`apps/ios/CereBro/**`, ~10.6k LOC,
 > all files read), and the shipped Android implementation (read-only). **Analysis only — no
@@ -69,6 +144,22 @@
 
 ## Deliberate divergences & decisions taken in this spec
 
+- **The Sleep tab does NOT force Night on iOS** (item 16, decided 2026-07-28) — a real
+  divergence from Android and web, and the one part of item 16 that did not port.
+  Android pins Sleep to Night by flipping `AppTheme.forceNight` in a side effect, which
+  works because Compose token reads subscribe the reader and only one screen composes at
+  a time; web pins it with a `.theme-night` class, because CSS variables scope to a
+  subtree for free. SwiftUI has **neither** — the tokens are global statics, so the only
+  ways to paint one tab differently are (a) flip the global while Sleep is on screen,
+  which repaints the still-live sibling tabs and the shared tab bar, or (b) re-key the
+  root on tab change, which destroys every other tab's navigation stack. Both are worse
+  than the miss. Sleep therefore follows the chosen theme like every other tab.
+  **This has a wellness cost, not just a cosmetic one** — a bright screen at bedtime is
+  the opposite of what a sleep surface should do — so it is worth fixing properly: the
+  real fix is moving the tokens into an `Environment` palette (SwiftUI's actual analogue
+  of CSS variable scoping), after which any subtree can be pinned in one modifier. That
+  is the "more iOS-native, more churn" alternative item 16 flagged from the start; it is
+  a refactor of every colour read in the app and wants a live build loop.
 - **Kill the four mini-games on iOS too** (item 2) — spec-consistent; revisit only with usage data.
 - **Keep iOS real glass + aurora** (item 18) — Android's "fake glass" finding doesn't apply.
 - **ToolAmbience stays mix-with-others** (item 5) — it's a bed under tools by design; only the
@@ -93,3 +184,44 @@
 2. Wave B (IA): 1, 3, 6, 7, 8, 15 — Toolkit, Home, presence, Talk offers (one UITest re-record).
 3. Wave C (flagship): 14, 5, 12 — Sleep CBT-I, audio verify, onboarding trim (funnel-sensitive).
 4. Wave D (theme): 17 then 16 — contrast gate first so Dawn lands against a tested Night pin.
+   ✅ Both landed (2026-07-25 / 2026-07-28). The ordering paid off exactly as intended:
+   Dawn was tuned against pinned Night values, and `testNightPaletteIsPinnedByteIdentical`
+   now fails the build if a future palette edit drifts Night while chasing Dawn.
+
+**Remaining after Wave D — nothing static-verifiable is left.** What is open needs a Mac:
+item 5 (back-to-back `PlayerView` audio overlap — a listen test), the two-theme screenshot
+pass for item 16, the one-time `CereBroTests` unit-test target, and one full
+`xcodebuild test` run to validate Waves A–D together. The Sleep-pin follow-up above is the
+only outstanding *design* gap.
+
+## Wave E — the three guided routines (2026-07-29)
+
+Not from the original audit: these came from the `workspace/cerebro` sibling build, landed
+first on web (`apps/app`), then Android, and now iOS, so all three clients carry the same
+routines. `Features/Tools/Rituals.swift`:
+
+- **`WindDownRitualView`** — Sleep tab → "Tonight's wind-down". Four steps (brain dump →
+  three good things → body scan → settle). The settle step reuses
+  `BreathingPacer.Preset.reset` rather than defining a fourth rhythm; the reference's
+  4-7-8 was rejected on web and stays rejected here.
+- **`RitualBuilderView`** — Toolkit → Settle. Eight blocks, all of them exercises the app
+  already ships with provenance. Three of the reference's eight are deliberately absent:
+  4-7-8, Disidentification (Psychosynthesis), and affirmation reading — generic positive
+  self-statements *lower* mood in people with low self-esteem (Wood, Perunovic & Lee,
+  Psychological Science, 2009), the population a wellness app selects for. `RitualsTest`
+  pins their absence. What the reference lacks and this adds is the **cue** (Gollwitzer &
+  Sheeran 2006), which leads the page; the ritual is device-local and says so, and there
+  is deliberately no reminder.
+- **`GuidedImageryView`** — Toolkit → Settle. Eight prompts, fifteen seconds each. The
+  reference's "You are safe here. Nothing can harm you." is **gone**: safe-place imagery is
+  exactly where that promise can break, so the screen keeps the mechanism and puts a
+  caution on the way *in* that points at 5-4-3-2-1 grounding.
+
+Test posture: every auto-advancing timer is gated on `-resetState` (the same posture as the
+splash and the audio engine — CLAUDE.md), so `testGuidedRoutines` walks all three with the
+manual controls and never waits on a self-advancing screen. `RitualStore`'s two keys join
+the `-resetState` wipe list so a saved ritual can't leak between runs.
+
+⚠ **Static-verified only (Windows host)** — as with Waves A–D. Owner: one macOS
+`xcodebuild test` pass; `CereBroTests/RitualsTest.swift` is ready for the same one-time
+unit-test-target add that `ContrastTest` needs.

@@ -1,12 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 
 type Entry = { id: string; title: string; body: string; tags: string[]; risk_level: string; created_at: string };
 type Checkin = { mood: string; created_at: string };
-const REVISIT = ["What do you need more of this week?", "Name a worry, then set it down.", "Who made today a little easier?"];
+// Every prompt opens the composer prefilled (prompt-as-title, Android
+// JournalScreen pattern) — the last two absorb the old onegoodthing/intention
+// mini-tools as quick entries (REDESIGN IA consolidation).
+const REVISIT: { prompt: string; tag: string }[] = [
+  { prompt: "What do you need more of this week?", tag: "Reflection" },
+  { prompt: "Name a worry, then set it down.", tag: "Release" },
+  { prompt: "Who made today a little easier?", tag: "Gratitude" },
+  { prompt: "One good thing from today", tag: "Gratitude" },
+  { prompt: "Tonight's intention", tag: "Intention" },
+];
 
 // State-tuned prompts (ref mock): the latest mood check-in shapes the hero.
 // The .eyebrow class uppercases, so "For a tense day" renders FOR A TENSE DAY.
@@ -47,6 +57,13 @@ export default function Journal() {
     } finally { setBusy(false); }
   }
 
+  function usePrompt(p: { prompt: string; tag: string }) {
+    setTitle(p.prompt);
+    setTags(p.tag);
+    setOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const monthCount = entries.filter((e) => new Date(e.created_at).getMonth() === new Date().getMonth()).length;
 
   return (
@@ -56,12 +73,20 @@ export default function Journal() {
         {support && (
           <div className="crisis" role="alert">
             <strong>That sounded heavy — you deserve support right now.</strong><br />
-            In India: emergency <strong>112</strong> · KIRAN <strong>1800-599-0019</strong> · <a href="https://findahelpline.com" target="_blank" rel="noreferrer">findahelpline.com</a>. Your entry was saved — writing is never blocked.
+            In India: Tele-MANAS <a href="tel:14416" style={{ color: "inherit" }}><strong>14416</strong></a> (real people, 24/7) ·
+            emergency <a href="tel:112" style={{ color: "inherit" }}><strong>112</strong></a> ·
+            KIRAN <a href="tel:18005990019" style={{ color: "inherit" }}><strong>1800-599-0019</strong></a> ·{" "}
+            <Link href="/crisis" style={{ color: "inherit", fontWeight: 700 }}>all support options</Link>.
+            Your entry was saved — writing is never blocked.
           </div>
         )}
         <div className="dash-grid">
           <div>
-            <section className="prompt-hero cz-in">
+            {/* Both sides kept: main's state-tuned prompt (the ARCHITECTURE
+                cross-stack row pairs it with iOS JournalPrompts.tuned) inside
+                v1's theme-night scope, so the hero stays dark in Dawn and the
+                composer's var-driven fields re-resolve to Night ink. */}
+            <section className="prompt-hero theme-night cz-in">
               <p className="eyebrow">{tuned ? tuned.eyebrow : "Today's prompt · shaped by your check-in"}</p>
               <h2>{tuned ? tuned.title : "What's one small thing that felt lighter today?"}</h2>
               {tuned && (
@@ -95,12 +120,21 @@ export default function Journal() {
             <div className="rail-card cz-in cz-d1">
               <span className="kicker">This month</span>
               <div className="rail-big"><b>{monthCount}</b><span>{monthCount === 1 ? "entry" : "entries"}</span></div>
-              <p className="sub">Most often on quiet evenings.</p>
+              <p className="sub">Every entry stays private by default.</p>
             </div>
             <div className="rail-card cz-in cz-d2">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>
               <div className="plist" style={{ marginTop: 8 }}>
-                {REVISIT.map((p) => <div key={p} className="prompt-item">{p}</div>)}
+                {REVISIT.map((p) => (
+                  <button
+                    key={p.prompt}
+                    className="prompt-item"
+                    onClick={() => usePrompt(p)}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}
+                  >
+                    {p.prompt}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { WhyThisWorks } from "@/components/WhyThisWorks";
 import { Icon } from "@/components/icons";
 import { API_URL, api } from "@/lib/api";
 
@@ -24,7 +25,12 @@ const THUMBS = [
   "linear-gradient(160deg,#7a4a7a,#301640)",
 ];
 
-type Active = { content_id: string; title: string; day: number; days: number; completed: boolean };
+// today_guide is additive/optional (W15): older servers and guide-less
+// programs simply omit it — tolerate absence, never require it.
+type Active = {
+  content_id: string; title: string; day: number; days: number; completed: boolean;
+  today_guide?: { title?: string; body?: string } | null;
+};
 
 export default function Programs() {
   const [programs, setPrograms] = useState<Item[]>([]);
@@ -72,7 +78,7 @@ export default function Programs() {
           className="media-hero cz-in"
           style={{
             background:
-              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), var(--night)",
+              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), #0e0c22",
           }}
         >
           <p className="eyebrow">Multi-day paths to a calmer baseline</p>
@@ -110,6 +116,15 @@ export default function Programs() {
                 ? "Complete — beautifully done. Start another whenever you like."
                 : "The day counts itself from when you started — showing up is the whole assignment."}
             </p>
+            {active.today_guide?.title?.trim() && (
+              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "var(--card-strong)" }}>
+                <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s focus</p>
+                <strong>{active.today_guide.title}</strong>
+                {active.today_guide.body?.trim() && (
+                  <p style={{ color: "var(--muted)", fontSize: 13, margin: "6px 0 0" }}>{active.today_guide.body}</p>
+                )}
+              </div>
+            )}
             <button
               onClick={leave}
               style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--muted)", padding: 0, marginTop: 10 }}
@@ -145,6 +160,7 @@ export default function Programs() {
           ))}
         </div>
 
+        <WhyThisWorks text="Programs are evidence-informed — built on CBT and sleep-science techniques." />
         <p className="footnote">
           Programs are curated from the same catalogue the iOS &amp; Android apps read. Your{" "}
           <Link href="/plan">daily plan</Link> adapts to them as you check in.

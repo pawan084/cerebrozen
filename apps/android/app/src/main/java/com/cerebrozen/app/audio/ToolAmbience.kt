@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.cerebrozen.app.R
 
 /**
  * A soft, fading ambient bed for the calming tool & game screens — the Android
@@ -28,14 +29,17 @@ object ToolAmbience {
     private var currentRes = 0
     private val handler = Handler(Looper.getMainLooper())
 
-    /** Begin (or switch to) a soft looping bed from a raw resource, fading in. */
+    /** Begin (or switch to) a soft looping bed from a raw resource, fading in.
+     * Plays the catalogue's asset for the matching key when one is uploaded, and
+     * the bundled resource otherwise ([ambientUri]). */
     fun start(context: Context, rawRes: Int) {
         if (player != null && currentRes == rawRes) return   // already on this bed
         release()
         currentRes = rawRes
+        val uri = ambientUri(context.packageName, keyFor(rawRes), rawRes)
         player = runCatching {
             ExoPlayer.Builder(context).build().apply {
-                setMediaItem(MediaItem.fromUri("android.resource://${context.packageName}/$rawRes"))
+                setMediaItem(MediaItem.fromUri(uri))
                 repeatMode = Player.REPEAT_MODE_ONE
                 volume = 0f
                 prepare()
@@ -44,6 +48,19 @@ object ToolAmbience {
         }.getOrNull()
         playing = player != null
         fadeTo(if (muted) 0f else BED_VOLUME)
+    }
+
+    /** The catalogue key whose server asset supersedes a given bundled loop. Kept
+     * here so tool screens keep naming the resource they want and pick the upload
+     * up for free. An unmapped resource resolves to "", which [ambientUri] reads as
+     * "no server asset" — it plays the bundled loop, exactly as before. */
+    internal fun keyFor(rawRes: Int): String = when (rawRes) {
+        R.raw.rain -> MediaCatalog.Keys.AMBIENCE_RAIN
+        R.raw.ocean -> MediaCatalog.Keys.AMBIENCE_OCEAN
+        R.raw.wind -> MediaCatalog.Keys.AMBIENCE_WIND
+        R.raw.drone -> MediaCatalog.Keys.AMBIENCE_DRONE
+        R.raw.ambient_bed -> MediaCatalog.Keys.AMBIENCE_BED
+        else -> ""
     }
 
     /** Fade out and tear down — call when the tool screen leaves. */

@@ -95,11 +95,27 @@ class ThemeTokensTest {
     }
 
     @Test
-    fun typography_ships_the_brand_serif_headings() {
-        assertNotNull(Typography.displaySmall.fontFamily)
-        assertEquals(Typography.displaySmall.fontFamily, Typography.headlineSmall.fontFamily)
+    fun typography_ships_one_rounded_family_across_the_scale() {
+        // The Serene pass replaced the display-serif + system-sans pairing with a
+        // single rounded family (Nunito), so headings and body share letterform
+        // DNA and vertical rhythm. Every role must resolve to that one family.
+        assertNotNull(Typography.displayLarge.fontFamily)
+        listOf(
+            Typography.displayMedium, Typography.displaySmall,
+            Typography.headlineMedium, Typography.headlineSmall,
+            Typography.titleLarge, Typography.titleMedium, Typography.titleSmall,
+            Typography.bodyLarge, Typography.bodyMedium, Typography.bodySmall,
+            Typography.labelLarge, Typography.labelMedium, Typography.labelSmall,
+        ).forEach { style ->
+            assertEquals(
+                "every type role shares the one rounded family",
+                Typography.displayLarge.fontFamily, style.fontFamily,
+            )
+        }
         assertTrue("display must be larger than headline",
             Typography.displaySmall.fontSize.value > Typography.headlineSmall.fontSize.value)
+        assertTrue("headline must be larger than body",
+            Typography.headlineSmall.fontSize.value > Typography.bodyMedium.fontSize.value)
     }
 
     @Test

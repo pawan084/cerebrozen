@@ -46,7 +46,20 @@ struct PremiumView: View {
                     .frame(maxWidth: .infinity)
             }
 
-            NavRow(title: "Human support option", subtitle: "Partner booking flow", systemImage: "person.2", imageURL: Dummy.Img.support) { HumanSupportView() }
+            // Cancelling must be as reachable as subscribing (OECD dark-pattern
+            // checklist) — Apple's manage-subscriptions page, right on the paywall.
+            if let manageURL = URL(string: "https://apps.apple.com/account/subscriptions") {
+                Link(destination: manageURL) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.uturn.left")
+                        Text("Manage or cancel anytime in your Apple ID subscriptions")
+                    }
+                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            NavRow(title: "Human support option", subtitle: "Real helplines and counsellors", systemImage: "person.2", imageURL: Dummy.Img.support) { HumanSupportView() }
         }
         .task {
             // Anonymous funnel: the paywall was seen (no products, no account).

@@ -47,6 +47,17 @@ SYSTEM_PROMPT = prompts.register(
 
 _graph = None
 _checkpointer = None
+# Which checkpointer actually initialised: "postgres" | "memory" | "none" (graph
+# never built). Until now the Postgres→MemorySaver fallback was visible ONLY in a
+# boot log line, so a production worker silently running in-process — paused
+# confirmations dying on restart and not crossing workers — looked identical to a
+# healthy one. The admin Oracle tab reads this.
+_checkpointer_kind = "none"
+
+
+def checkpointer_kind() -> str:
+    """What the compiled graph is checkpointing to, for operator visibility."""
+    return _checkpointer_kind
 
 
 def _chat_model():
@@ -62,6 +73,7 @@ def _chat_model():
 
 async def _make_checkpointer():
     """Durable Postgres checkpointer (multi-worker safe), MemorySaver fallback."""
+    global _checkpointer_kind
     try:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
         from psycopg.rows import dict_row
@@ -85,12 +97,14 @@ async def _make_checkpointer():
         # this pre-traffic; the timeout is the belt-and-braces fallback.
         await asyncio.wait_for(saver.setup(), timeout=30)
         logger.info("Oracle checkpointer: Postgres (durable, multi-worker safe)")
+        _checkpointer_kind = "postgres"
         return saver
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "Postgres checkpointer unavailable (%s) — using in-process MemorySaver; "
             "paused confirmations won't survive a restart or cross workers.", exc
         )
+        _checkpointer_kind = "memory"
         return MemorySaver()
 
 

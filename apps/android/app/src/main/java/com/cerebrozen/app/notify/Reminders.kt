@@ -25,8 +25,12 @@ object Reminders {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "A gentle once-a-day check-in nudge."
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(com.cerebrozen.app.R.string.reminder_channel_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = context.getString(com.cerebrozen.app.R.string.reminder_channel_desc)
                 },
             )
         }
@@ -62,8 +66,8 @@ object Reminders {
         )
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("A moment for you")
-            .setContentText("Twenty seconds — how are you, really?")
+            .setContentTitle(context.getString(com.cerebrozen.app.R.string.reminder_title))
+            .setContentText(context.getString(com.cerebrozen.app.R.string.reminder_body))
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()

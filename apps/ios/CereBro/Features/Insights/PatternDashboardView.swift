@@ -30,7 +30,7 @@ struct PatternDashboardView: View {
                                     Text("· \(p.statement)")
                                         .appFont(13.5).foregroundStyle(Theme.Palette.soft)
                                     Text(p.basis)
-                                        .appFont(11).foregroundStyle(Theme.Brand.cyan)
+                                        .appFont(11).foregroundStyle(Theme.Palette.accentCyan)
                                         .padding(.leading, 12)
                                 }
                             }

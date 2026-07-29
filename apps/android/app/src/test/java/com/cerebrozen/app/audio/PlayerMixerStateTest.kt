@@ -106,8 +106,13 @@ class PlayerMixerStateTest {
 
     @Test
     fun mixer_ships_four_layers_with_rain_as_the_primary() {
-        assertEquals(listOf("Rain", "Ocean", "Wind", "Drone"), SoundscapeMixer.layers.map { it.name })
-        assertEquals("rain", SoundscapeMixer.layers[0].symbol)
+        // Stable symbols pin the layer set; display names are res-driven (i18n).
+        assertEquals(listOf("rain", "ocean", "wind", "drone"), SoundscapeMixer.layers.map { it.symbol })
+        assertEquals(
+            listOf(com.cerebrozen.app.R.string.mixer_layer_rain, com.cerebrozen.app.R.string.mixer_layer_ocean,
+                   com.cerebrozen.app.R.string.mixer_layer_wind, com.cerebrozen.app.R.string.mixer_layer_drone),
+            SoundscapeMixer.layers.map { it.nameRes },
+        )
         assertEquals(4, SoundscapeMixer.volumes.size)
     }
 

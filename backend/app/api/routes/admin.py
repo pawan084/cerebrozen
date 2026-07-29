@@ -1,7 +1,9 @@
+import logging
 import uuid
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,7 @@ from app.models.chat import ChatMessage
 from app.models.consent import Consent
 from app.models.content import ContentItem
 from app.models.journal import JournalEntry
+from app.models.media import MediaAsset
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
 from app.models.prompt import PromptTemplate
@@ -27,9 +30,17 @@ from app.schemas.content_data import (
     ContentUpdate,
     SafetyEventOut,
 )
+from app.schemas.media import (
+    MEDIA_KINDS,
+    MediaAssetCreate,
+    MediaAssetOut,
+    MediaAssetUpdate,
+)
 from app.schemas.user import UserOut
-from app.services import media, metrics, nudges, voice
+from app.services import media, metrics, nudges, oracle_audit, voice
 from app.services import prompts as prompt_registry
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -234,9 +245,170 @@ async def narrate_content(
         raise HTTPException(status_code=502, detail="Speech synthesis failed")
     item.audio_url = media.save_narration(item.id, audio)
     item.audio_generated_at = utcnow()
+    # For a narrated item the audio IS the content, so the displayed length
+    # should be the length of the file we just minted — not whatever minute
+    # count someone typed when the item was drafted. Only overwrite when the
+    # probe actually read the file: an unreadable MP3 leaves the authored
+    # number alone rather than replacing it with a guess.
+    seconds = media.mp3_duration_seconds(audio)
+    if seconds:
+        minutes = media.duration_minutes(seconds)
+        if minutes != item.duration_min:
+            logger.info(
+                "Narration for %s ran %.1fs — duration_min %d → %d",
+                item.id, seconds, item.duration_min, minutes,
+            )
+        item.duration_min = minutes
+    else:
+        logger.warning(
+            "Could not read a duration from the narration MP3 for %s — "
+            "leaving duration_min at %d", item.id, item.duration_min,
+        )
     await db.commit()
     await db.refresh(item)
     return item
+
+
+# ── Oracle ops (the agent's audit trail + what it's waiting on) ─────────
+# The Oracle writes user data (mood, journal, sleep) behind an interrupt()
+# confirmation. These three endpoints are the operator's only view of that:
+# which tools ran, which writes were approved, and which confirmations are
+# stuck. Argument VALUES are never exposed — only their names (see the
+# OracleToolCall docstring for why).
+
+
+class OracleToolCallOut(BaseModel):
+    id: uuid.UUID
+    thread_id: str
+    tool: str
+    risk_tier: str
+    decision: str
+    arg_keys: list[str]
+    created_at: datetime
+    resolved_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/oracle/status")
+async def oracle_status(db: AsyncSession = Depends(get_db)):
+    """Live agent posture. `checkpointer` is the one worth watching: a
+    "memory" value in production means paused confirmations die on restart
+    and don't cross gunicorn workers — previously visible only in boot logs.
+    """
+    from app.agent.graph import checkpointer_kind
+
+    return {
+        "enabled": settings.oracle_available,
+        "checkpointer": checkpointer_kind(),
+        "counts": await oracle_audit.counts(db),
+    }
+
+
+@router.get("/oracle/pending", response_model=list[OracleToolCallOut])
+async def oracle_pending(db: AsyncSession = Depends(get_db)):
+    return list(await oracle_audit.pending(db))
+
+
+@router.get("/oracle/audit", response_model=list[OracleToolCallOut])
+async def oracle_audit_trail(limit: int = 20, db: AsyncSession = Depends(get_db)):
+    return list(await oracle_audit.recent(db, limit=max(1, min(200, limit))))
+
+
+# ── Media catalogue (the sounds/videos clients resolve by key) ───────────
+# Uploads are held in memory before being written, so cap them. Ambient loops
+# are the big ones (~700 KB/minute at our bitrate) and scene videos larger
+# still; 25 MB fits a few minutes of either with room to spare.
+_MAX_ASSET_BYTES = 25 * 1024 * 1024
+
+
+@router.get("/media", response_model=list[MediaAssetOut])
+async def admin_list_media(db: AsyncSession = Depends(get_db)):
+    rows = await db.scalars(select(MediaAsset).order_by(MediaAsset.key))
+    return rows.all()
+
+
+@router.post("/media", response_model=MediaAssetOut, status_code=201)
+async def create_media(payload: MediaAssetCreate, db: AsyncSession = Depends(get_db)):
+    if not media.valid_key(payload.key):
+        raise HTTPException(
+            status_code=422,
+            detail="Key must be a dotted lowercase slug, e.g. 'ambience.rain'",
+        )
+    if payload.kind not in MEDIA_KINDS:
+        raise HTTPException(status_code=422, detail=f"Kind must be one of {', '.join(MEDIA_KINDS)}")
+    existing = await db.scalar(select(MediaAsset).where(MediaAsset.key == payload.key))
+    if existing is not None:
+        raise HTTPException(status_code=409, detail=f"Key '{payload.key}' already exists")
+    asset = MediaAsset(**payload.model_dump())
+    db.add(asset)
+    await db.commit()
+    await db.refresh(asset)
+    return asset
+
+
+@router.patch("/media/{asset_id}", response_model=MediaAssetOut)
+async def update_media(asset_id: uuid.UUID, payload: MediaAssetUpdate, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+    fields = payload.model_dump(exclude_unset=True)
+    if "kind" in fields and fields["kind"] not in MEDIA_KINDS:
+        raise HTTPException(status_code=422, detail=f"Kind must be one of {', '.join(MEDIA_KINDS)}")
+    for field, value in fields.items():
+        setattr(asset, field, value)
+    await db.commit()
+    await db.refresh(asset)
+    return asset
+
+
+@router.delete("/media/{asset_id}", status_code=204)
+async def delete_media(asset_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+    if asset.url.startswith("/media/assets/"):
+        media.delete_asset(asset.key)
+    await db.delete(asset)
+    await db.commit()
+
+
+@router.post("/media/{asset_id}/upload", response_model=MediaAssetOut)
+async def upload_media(
+    asset_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Attach real bytes to a catalogue key — the whole point of the catalogue.
+
+    Until this runs, the row's `url` is empty and every client plays its bundled
+    or synthesized fallback. Uploading swaps the sound for everyone on next launch,
+    with no app release. Re-uploading overwrites in place.
+    """
+    asset = await db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Media asset not found")
+
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in media.ASSET_MIME_BY_EXT:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported format '{ext or 'none'}' — use {', '.join(media.ASSET_MIME_BY_EXT)}",
+        )
+    data = await file.read(_MAX_ASSET_BYTES + 1)
+    if not data:
+        raise HTTPException(status_code=400, detail="File is empty")
+    if len(data) > _MAX_ASSET_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds {_MAX_ASSET_BYTES // (1024 * 1024)} MB",
+        )
+
+    asset.url = media.save_asset(asset.key, ext, data)
+    asset.mime = media.ASSET_MIME_BY_EXT[ext]
+    await db.commit()
+    await db.refresh(asset)
+    return asset
 
 
 # ── Safety review queue ─────────────────────────────────────────────────

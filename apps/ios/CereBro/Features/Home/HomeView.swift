@@ -14,11 +14,6 @@ struct HomeView: View {
     private var moodSubtitle: String {
         state.moodLogs.first.map { "Last check-in: \($0.mood)" } ?? "Personalize your next best action"
     }
-    /// Reflect this morning's sleep entry once logged.
-    private var sleepSubtitle: String {
-        state.sleepEntry().map { "Logged · \($0.durationText) · feeling \($0.quality)/5" }
-            ?? "A 20-second morning check-in"
-    }
     /// Server-first rail: time-matched kinds from the served `/content`
     /// catalogue; the curated local list only when offline (same fallback
     /// pattern as the Sleep tab).
@@ -53,23 +48,27 @@ struct HomeView: View {
                        title: "\(part.greeting),\n\(Dummy.userName)",
                        trailingSystemImage: "magnifyingglass", trailingAction: { showSearch = true },
                        trailingAccessibilityLabel: "Search", isRoot: true) {
-            // Ref quick-links grid: the four explore spaces, one tap from the top.
-            QuickLinksGrid().entrance(0)
-
-            // One clear next action, chosen from the time of day + today's progress.
+            // De-densified Home (IOS_PARITY #6, Android 11→6 precedent):
+            // hero → check-in → plan → one rail → presence → quiet Toolkit row.
+            // Cut: sleep row (Sleep tab owns it), baseline row (Insights owns
+            // the ask), Programs row (Sleep tab door + the enrolled card here).
             HeroCard(tag: focus.tag, title: focus.title, subtitle: focus.subtitle,
                      cta: focus.cta, imageURL: Dummy.Img.calm) { route = focus.route }
                 .entrance(1, y: 22)
 
-            StreakCard(streak: state.currentStreak, best: state.bestStreak, week: state.last7Days())
-                .entrance(2)
+            // Check-in first — unless the hero is already the mood ask.
+            if focus.route != .mood {
+                NavRow(title: "Check how you feel", subtitle: moodSubtitle,
+                       systemImage: "heart", imageURL: Dummy.Img.mood, emphasis: true) { MoodCheckinView() }
+                    .entrance(1)
+            }
 
-            // Ref weekly-insight teaser: a one-line pull toward the weekly report.
-            NavRow(title: "This week", subtitle: "See what changed · weekly insights",
-                   systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
-                .entrance(2)
+            NavRow(title: "Today's plan", subtitle: planSubtitle,
+                   systemImage: "checkmark.circle", imageURL: Dummy.Img.plan) { DailyPlanView() }
+                .entrance(1)
 
-            // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card).
+            // Active multi-day journey (ref "PROGRAM · DAY 3 OF 7" card) — also
+            // the enrolled door to ProgramsView.
             if let prog = backend.program {
                 NavigationLink { ProgramsView() } label: { ProgramProgressCard(program: prog) }
                     .buttonStyle(.pressable)
@@ -88,29 +87,31 @@ struct HomeView: View {
                 }
             }
 
-            NavRow(title: "Check how you feel", subtitle: moodSubtitle,
-                   systemImage: "heart", imageURL: Dummy.Img.mood, emphasis: true) { MoodCheckinView() }
+            StreakCard(streak: state.currentStreak, best: state.bestStreak, week: state.last7Days())
                 .entrance(5)
-            // Gentle, contextual baseline ask: only after a few real check-ins
-            // (the habit exists) and only until answered — never in onboarding.
-            if !state.hasBaseline && state.moodLogs.count >= 3 {
-                NavRow(title: "Set your starting point",
-                       subtitle: "Two quick scales — so Insights can show real change",
-                       systemImage: "flag", imageURL: Dummy.Img.calm) { BaselineCheckView() }
-                    .entrance(5)
+
+            // Recent check-ins, collapsed — quiet continuity, not a dashboard.
+            if !state.moodLogs.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("RECENT CHECK-INS").appFont(10.5, weight: .bold).kerning(1.2)
+                            .foregroundStyle(Theme.Palette.muted2)
+                        ForEach(state.moodLogs.prefix(2), id: \.date) { log in
+                            HStack(spacing: 8) {
+                                Image(systemName: log.symbol).appFont(12).foregroundStyle(Theme.Palette.soft)
+                                Text(log.mood).appFont(12.5, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                                Spacer()
+                                Text(log.date, style: .relative).appFont(11).foregroundStyle(Theme.Palette.muted2)
+                            }
+                        }
+                    }
+                }
+                .entrance(6)
             }
-            NavRow(title: "How did you sleep?", subtitle: sleepSubtitle,
-                   systemImage: "moon.zzz", imageURL: Dummy.Img.sleep) { SleepCheckInView() }
+
+            NavRow(title: "Toolkit", subtitle: "Small ways to steady",
+                   systemImage: "wind", imageURL: Dummy.Img.breath) { ToolkitView() }
                 .entrance(6)
-            NavRow(title: "Today's plan", subtitle: planSubtitle,
-                   systemImage: "checkmark.circle", imageURL: Dummy.Img.plan) { DailyPlanView() }
-                .entrance(6)
-            NavRow(title: "Programs", subtitle: "Guided multi-day plans",
-                   systemImage: "sparkles", imageURL: Dummy.Img.premium) { ProgramsView() }
-                .entrance(7)
-            NavRow(title: "Calm games", subtitle: "Playful resets for a busy mind",
-                   systemImage: "gamecontroller", imageURL: Dummy.Img.breath) { GamesHubView() }
-                .entrance(8)
         }
         .navigationDestination(isPresented: $showSearch) { SearchView() }
         .navigationDestination(item: $route) { r in
@@ -190,7 +191,7 @@ struct ProgramProgressCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("PROGRAM · DAY \(program.day) OF \(program.days)")
                     .appFont(10.5, weight: .bold).kerning(1.2)
-                    .foregroundStyle(Theme.Brand.cyan)
+                    .foregroundStyle(Theme.Palette.accentCyan)
                 Text(program.title)
                     .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.text)
                 ProgressView(value: Double(program.day), total: Double(max(1, program.days)))
@@ -204,10 +205,11 @@ struct ProgramProgressCard: View {
     }
 }
 
-// MARK: - Streak ("mindful days")
-/// A calm, non-punitive consistency nudge: how many days in a row you've shown
-/// up, with a soft last-7-days ring. Deliberately gentle — "no pressure" framing,
-/// today is highlighted, and missed days simply rest rather than scold.
+// MARK: - Presence ("days you showed up")
+/// Presence framing (IOS_PARITY #7, Android/web parity): how many days you were
+/// here this week — never a chain to protect. Missed days simply rest; "best"
+/// is never surfaced as a target. Presentation-only: the streak COMPUTATION is
+/// a cross-stack contract (AppState ⇄ services/metrics.user_streak) — untouched.
 struct StreakCard: View {
     let streak: Int
     let best: Int
@@ -219,6 +221,7 @@ struct StreakCard: View {
     }
     private func isToday(_ date: Date) -> Bool { Calendar.current.isDateInToday(date) }
     private var isMilestone: Bool { AppState.milestones.contains(streak) }
+    private var presentDays: Int { week.filter(\.active).count }
 
     var body: some View {
         Card {
@@ -231,11 +234,11 @@ struct StreakCard: View {
                         .appFont(17, weight: .semibold).foregroundStyle(Theme.Palette.ink)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(streak == 0 ? "Begin your streak" : "\(streak)-day streak")
+                    Text(presentDays == 0 ? "This week starts fresh"
+                         : "\(presentDays) day\(presentDays == 1 ? "" : "s") you showed up this week")
                         .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.text)
-                    Text(isMilestone ? "🎉 \(streak)-day milestone — beautifully done"
-                         : (streak == 0 ? "Show up once today to start"
-                                        : "Best \(best) days · gentle, no pressure"))
+                    Text(isMilestone ? "🎉 \(streak) days of showing up — beautifully done"
+                         : "Gentle and consistent — no streaks to break")
                         .appFont(11.5).foregroundStyle(isMilestone ? Theme.Palette.lav : Theme.Palette.muted)
                 }
                 Spacer(minLength: 8)
@@ -256,9 +259,9 @@ struct StreakCard: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(streak == 0 ? "No active streak yet"
-                            : isMilestone ? "\(streak) day streak — milestone reached, best \(best) days"
-                            : "\(streak) day streak, best \(best) days")
+        .accessibilityLabel(presentDays == 0 ? "This week starts fresh"
+                            : isMilestone ? "\(presentDays) days present this week — \(streak)-day milestone reached"
+                            : "\(presentDays) days present this week")
     }
 }
 
@@ -338,11 +341,12 @@ struct MoodCheckinView: View {
                 backend.mirrorMood(log)
                 saved.toggle()
             }
-            // Light reward loop: the check-in ritual ends with an optional
-            // one-minute playful reset — offered, never forced.
+            // A quiet next step after the check-in — offered, never forced.
+            // (Was "A tiny reward · Seal it…" — reward-loop framing conflicts
+            // with the F5 gentle-gamification posture.)
             if saved {
-                NavRow(title: "A tiny reward", subtitle: "Seal it with a 1-minute calm game",
-                       systemImage: "gamecontroller") { GamesHubView() }
+                NavRow(title: "Settle for a minute", subtitle: "A calm reset, if you'd like one",
+                       systemImage: "wind") { BreathingView() }
                     .entrance(0)
             }
         }
@@ -442,7 +446,7 @@ struct ProgramsView: View {
                                 Button("Start this journey") {
                                     Task { await backend.enrollProgram(contentId: p.id) }
                                 }
-                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+                                .appFont(13.5, weight: .semibold).foregroundStyle(Theme.Palette.lavText)
                                 .buttonStyle(.pressable)
                             }
                         }
@@ -453,6 +457,7 @@ struct ProgramsView: View {
                     NavRow(title: p.title, subtitle: p.subtitle, systemImage: p.symbol, imageURL: p.imageURL) { DailyPlanView() }
                 }
             }
+            WhyThisWorks(text: "Programs are evidence-informed — built on CBT and sleep-science techniques.")
         }
         .task { await backend.loadCatalogue(); await backend.refresh() }
         .navigationDestination(isPresented: $startPlan) { DailyPlanView() }
@@ -514,3 +519,4 @@ struct SearchView: View {
         .task { await backend.loadCatalogue() }
     }
 }
+

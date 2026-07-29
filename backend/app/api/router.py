@@ -9,7 +9,9 @@ from app.api.routes import (
     content,
     events,
     insights,
+    interventions,
     journal,
+    media,
     moods,
     oracle,
     plans,
@@ -32,7 +34,9 @@ api_router.include_router(chat.router)
 api_router.include_router(plans.router)
 api_router.include_router(programs.router)
 api_router.include_router(content.router)
+api_router.include_router(media.router)
 api_router.include_router(insights.router)
+api_router.include_router(interventions.router)
 api_router.include_router(oracle.router)
 api_router.include_router(voice.router)
 api_router.include_router(waitlist.router)

@@ -68,17 +68,25 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.BrandPrimary
+import com.cerebrozen.app.ui.theme.Elevation
 import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.Radius
+import com.cerebrozen.app.ui.theme.Space
 import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.ButtonDisabled
@@ -115,17 +123,24 @@ internal fun isCompactWidth(): Boolean = LocalConfiguration.current.screenWidthD
 
 @Composable
 internal fun pageHorizontalPadding() = when {
-    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
-    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
-    else -> 20.dp
+    LocalConfiguration.current.screenWidthDp < 360 -> 18.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 22.dp
+    else -> 24.dp
 }
 
 @Composable
 internal fun cardPadding() = when {
-    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
-    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
-    else -> 18.dp
+    LocalConfiguration.current.screenWidthDp < 360 -> 16.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 18.dp
+    else -> 20.dp
 }
+
+/** The one section break. [Page] spaces its children by [Space.item] (12dp), so a
+ * SectionGap adds [Space.group] on top to reach the 28dp section rhythm. Three
+ * tiers of spacing, so proximity actually groups things instead of every element
+ * floating at an identical distance from every other. */
+@Composable
+internal fun SectionGap() = Spacer(Modifier.height(Space.group))
 
 /** The shared card surface treatment: a top-lit solid indigo fill, a soft lift, and
  * a *bevelled* hairline — the border is a vertical gradient (bright at the top edge,
@@ -133,7 +148,7 @@ internal fun cardPadding() = when {
  * reading as a flat outline. An honest soft-solid: the fill is opaque, so there is
  * no backdrop blur behind it (REDESIGN.md §4.1). */
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
-    .shadow(8.dp, shape, clip = false, ambientColor = Color(0x26000000), spotColor = Color(0x30000000))
+    .shadow(Elevation.card, shape, clip = false, ambientColor = Color(0x1F000000), spotColor = Color(0x29000000))
     .clip(shape)
     .background(Gradients.glass)
     .border(1.dp, Stroke.bevel, shape)
@@ -324,7 +339,12 @@ internal fun InfoBanner(
                 ContentArt(title = artKind, kind = artKind, modifier = Modifier.fillMaxSize())
             }
         } else {
-            Icon(icon, contentDescription = null, tint = Accent.default, modifier = Modifier.size(18.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Accent.default,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Text(
             text,
@@ -367,9 +387,21 @@ internal fun InfoBanner(
     }
 }
 
-/** Shared page frame for the live tabs: eyebrow + serif title + scroll column.
- * [trailing] renders as a soft icon well top-right — quiet ornamentation
- * mirroring iOS ScreenScaffold's trailingSystemImage, not a control. */
+
+/**
+ * Shared page frame for the live tabs: eyebrow + large rounded title + scroll column.
+ *
+ * [trailing] renders as a soft icon well top-right. Pass [onTrailingClick] to make
+ * it a real control (48dp target, Role.Button, labelled by [trailingLabel]);
+ * without it the well stays decorative at 40dp, as before. Home needed a *tappable*
+ * search here and so had forked its own header — this closes that fork, which is
+ * why the five tabs now share one frame rather than four sharing one and Home
+ * hand-rolling a fifth that drifted out of alignment by 4dp.
+ *
+ * [eyebrowColor] lets a screen tint its eyebrow with the section accent (Home
+ * carries the user's goal there — it earns the colour). Defaults to the quiet
+ * [EyebrowMuted] every other tab uses.
+ */
 @Composable
 internal fun Page(
     eyebrow: String,
@@ -377,6 +409,9 @@ internal fun Page(
     trailing: ImageVector? = null,
     accent: Color = Accent.default,
     scrollState: ScrollState = rememberScrollState(),
+    eyebrowColor: Color = EyebrowMuted,
+    trailingLabel: String? = null,
+    onTrailingClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -390,40 +425,140 @@ internal fun Page(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = pageHorizontalPadding(), vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(Space.item),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = EyebrowMuted)
-                Text(
-                    title,
-                    // A soft accent glow behind the serif title — subtle depth,
-                    // tinted per section (mirrors the iOS accent-tinted title shadow).
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontSize = 38.sp,
-                        lineHeight = 40.sp,
-                        shadow = Shadow(accent.copy(alpha = 0.35f), Offset.Zero, 22f),
-                    ),
-                    color = TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            trailing?.let { icon ->
-                Box(
-                    Modifier.padding(top = 6.dp).size(40.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Veil)
-                        .border(1.dp, LineStroke, RoundedCornerShape(50)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(icon, contentDescription = null, tint = TextSoft, modifier = Modifier.size(19.dp))
-                }
-            }
-        }
+        PageHeader(
+            eyebrow = eyebrow,
+            title = title,
+            trailing = trailing,
+            accent = accent,
+            eyebrowColor = eyebrowColor,
+            trailingLabel = trailingLabel,
+            onTrailingClick = onTrailingClick,
+        )
         content()
     }
+}
+
+/**
+ * The tab header on its own: eyebrow + large title + optional icon well.
+ *
+ * Extracted from [Page] so a screen that cannot live inside one scrolling Column —
+ * Talk, which must dock a composer above the keyboard while its thread scrolls
+ * independently — gets the identical header instead of hand-rolling a lookalike
+ * that drifts out of alignment. [Page] is now a thin wrapper over it.
+ */
+@Composable
+internal fun PageHeader(
+    eyebrow: String,
+    title: String,
+    trailing: ImageVector? = null,
+    accent: Color = Accent.default,
+    eyebrowColor: Color = EyebrowMuted,
+    trailingLabel: String? = null,
+    onTrailingClick: (() -> Unit)? = null,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.tight)) {
+            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = eyebrowColor)
+            Text(
+                title,
+                // A soft accent glow behind the title — subtle depth, tinted per
+                // section. The size comes from the type scale (displayLarge) rather
+                // than a per-call-site override.
+                style = MaterialTheme.typography.displayLarge.copy(
+                    shadow = Shadow(accent.copy(alpha = 0.28f), Offset.Zero, 24f),
+                ),
+                color = TextPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        trailing?.let { icon ->
+            val shape = RoundedCornerShape(Radius.round)
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            val tappable = onTrailingClick != null
+            Box(
+                Modifier
+                    .padding(top = 4.dp)
+                    .then(if (tappable) Modifier.pressScale(pressed) else Modifier)
+                    .size(if (tappable) 48.dp else 40.dp)
+                    .clip(shape)
+                    .background(Veil)
+                    .border(1.dp, LineStroke, shape)
+                    .then(
+                        if (onTrailingClick != null) {
+                            Modifier
+                                .clickable(
+                                    interactionSource = interaction,
+                                    indication = null,
+                                    role = Role.Button,
+                                ) { Haptics.soft(0.4f); onTrailingClick() }
+                                .semantics { trailingLabel?.let { contentDescription = it } }
+                        } else {
+                            Modifier
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = TextSoft, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+/**
+ * The primary-action card — one per screen, at most.
+ *
+ * Every card on Home used to be a [SectionCard]: the daily check-in (the one thing
+ * the product wants you to do) looked exactly like the read-only "Recent check-ins"
+ * list. Same fill, same radius, same title colour. FocusCard breaks that tie — a
+ * larger radius, a real lift, and a 10% brand wash rising from the bottom edge, so
+ * the eye lands on the action before it lands on anything else.
+ *
+ * The wash uses the BRAND hue (a fill, not a label), and every text role on the
+ * resulting blend is contrast-gated in both themes by
+ * `ContrastTest.focusCard_brandWash_keepsTextAA_inBothThemes`.
+ */
+@Composable
+internal fun FocusCard(
+    accent: Color = BrandPrimary,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(Radius.hero)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .shadow(
+                Elevation.focus, shape, clip = false,
+                ambientColor = accent.copy(alpha = 0.30f),
+                spotColor = accent.copy(alpha = 0.36f),
+            )
+            .clip(shape)
+            .background(Gradients.glass)
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    1f to accent.copy(alpha = 0.10f),
+                ),
+            )
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(accent.copy(alpha = 0.45f), accent.copy(alpha = 0.14f)),
+                ),
+                shape,
+            )
+            .padding(cardPadding()),
+        verticalArrangement = Arrangement.spacedBy(Space.item),
+    ) { content() }
 }
 
 /** Glass card container matching the design system. Pass [onClick] to make the
@@ -466,21 +601,35 @@ internal fun PrimaryButton(
     } else {
         Brush.horizontalGradient(listOf(ButtonDisabled, ButtonDisabled))
     }
+    val shape = RoundedCornerShape(Radius.pill)
     Box(
         modifier
             .pressScale(pressed, down = 0.97f)
-            .clip(RoundedCornerShape(Radius.pill))
+            // The one action that matters gets a real lift — a soft lavender glow
+            // rather than a grey drop shadow, so the CTA feels warm, not heavy.
+            .shadow(
+                if (enabled) Elevation.card else 0.dp, shape, clip = false,
+                ambientColor = BrandPrimary.copy(alpha = 0.40f),
+                spotColor = BrandPrimary.copy(alpha = 0.50f),
+            )
+            .clip(shape)
             .background(brush)
-            .clickable(enabled = enabled, interactionSource = interaction, indication = null) { Haptics.soft(0.6f); onClick() }
+            .heightIn(min = 52.dp)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+            ) { Haptics.soft(0.6f); onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            // OnPrimary: Ink on the Night white pill, white on the Dawn periwinkle
-            // pill. Disabled stays Ink — legible on ButtonDisabled in both themes.
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            // OnPrimary is white on the deep-lavender pill in BOTH themes (4.72:1
+            // on the top stop). Disabled stays Ink — legible on ButtonDisabled.
             color = if (enabled) OnPrimary else Ink,
         )
     }
@@ -549,6 +698,7 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
         if (selected) ChipSelectedFill else LineStroke, tween(220), label = "chipBorder",
     )
     val fg by animateColorAsState(if (selected) ChipSelectedInk else TextSoft, tween(220), label = "chipFg")
+    val isSelected = selected
     Box(
         Modifier
             .heightIn(min = 48.dp)   // a11y: >= 48dp touch target
@@ -556,14 +706,23 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
             .clip(shape)
             .background(bg)
             .border(1.dp, border, shape)
-            .clickable(interactionSource = interaction, indication = null) { Haptics.selection(); onClick() }
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                // Announces as a selectable control, not an unlabelled tappable Box —
+                // TalkBack now reads "Anxious, selected" instead of just "Anxious".
+                role = Role.Button,
+            ) { Haptics.selection(); onClick() }
+            // `this.` is load-bearing: a bare `selected` would bind to PickChip's
+            // own `selected` parameter (a val), not the semantics property.
+            .semantics { this.selected = isSelected }
             .padding(horizontal = 16.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = fg,
         )
     }

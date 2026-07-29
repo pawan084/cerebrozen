@@ -68,7 +68,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
     }
 
-    Page(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
+    PremiumPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
         SectionCard {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -83,9 +83,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name.ifBlank { stringResource(R.string.you_default_name) }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        // "Calm Guide"/"English" are server-profile fallback values
-                        // (cross-stack contract), so they stay literal for now.
-                        "${companion.ifBlank { "Calm Guide" }} · ${language.ifBlank { "English" }}",
+                        // Known taxonomy values localize for DISPLAY; the
+                        // server-side values stay English (contract).
+                        run {
+                            val comp = companion.ifBlank { "Calm Guide" }
+                            val lang = language.ifBlank { "English" }
+                            val compLabel = companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+                            val langLabel = languageLabelRes(lang)?.let { stringResource(it) } ?: lang
+                            "$compLabel · $langLabel"
+                        },
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -111,33 +117,36 @@ fun YouScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        NavRow(stringResource(R.string.you_companion_title),
-            stringResource(R.string.you_companion_subtitle, companion.ifBlank { "Calm Guide" }),
+        PremiumNavRow(stringResource(R.string.you_companion_title),
+            stringResource(R.string.you_companion_subtitle, run {
+                val comp = companion.ifBlank { "Calm Guide" }
+                companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+            }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
-        NavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
+        PremiumNavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
-        NavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
+        PremiumNavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
-        NavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
+        PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
-        NavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
+        PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
-        NavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
+        PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
-        NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+        PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
             icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
-        NavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
+        PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
-        NavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
+        PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
             icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 
         Text(stringResource(R.string.you_legal_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle,
             modifier = Modifier.padding(top = 8.dp))
-        NavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
+        PremiumNavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
             icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
-        NavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
+        PremiumNavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
             icon = Icons.Outlined.FileDownload) { onOpen("export") }
-        NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
+        PremiumNavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
             icon = Icons.Outlined.DeleteOutline) { onOpen("delete") }
 
         TextButton(onClick = { Session.signOut() }) { Text(stringResource(R.string.you_signout), color = TextMuted) }

@@ -77,7 +77,7 @@ fun PatternScreen(onBack: () -> Unit) {
         if (confirming) { delay(4000); confirming = false }
     }
 
-    SubPage(stringResource(R.string.patterns_eyebrow), stringResource(R.string.patterns_title), onBack) {
+    PremiumSubPage(stringResource(R.string.patterns_eyebrow), stringResource(R.string.patterns_title), onBack) {
         Text(
             stringResource(R.string.patterns_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,

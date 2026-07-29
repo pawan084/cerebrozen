@@ -2,6 +2,9 @@ package com.cerebrozen.app.ui.screens
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +73,7 @@ fun SearchScreen(onBack: () -> Unit) {
         loading = false
     }
 
-    SubPage(stringResource(R.string.search_eyebrow), stringResource(R.string.search_title), onBack) {
+    PremiumSubPage(stringResource(R.string.search_eyebrow), stringResource(R.string.search_title), onBack) {
         AppTextField(
             query, { query = it }, stringResource(R.string.search_field_label), singleLine = true,
             trailingIcon = if (query.isNotEmpty()) {
@@ -83,18 +86,25 @@ fun SearchScreen(onBack: () -> Unit) {
         )
         val hits = filterCatalogue(pool, query)
         when {
-            query.trim().length < 2 ->
-                Text(stringResource(R.string.search_hint),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            loading ->
-                Text(stringResource(R.string.search_loading),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            loadError ->
-                Text(stringResource(R.string.search_error),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            hits.isEmpty() ->
-                Text(stringResource(R.string.search_no_match, query.trim()),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            query.trim().length < 2 -> PremiumStateCard(
+                icon = Icons.Outlined.Search,
+                message = stringResource(R.string.search_hint),
+                accent = Periwinkle,
+            )
+            loading -> PremiumStateCard(
+                icon = Icons.Outlined.AutoAwesome,
+                message = stringResource(R.string.search_loading),
+            )
+            loadError -> PremiumStateCard(
+                icon = Icons.Outlined.CloudOff,
+                message = stringResource(R.string.search_error),
+                accent = com.cerebrozen.app.ui.theme.Danger,
+            )
+            hits.isEmpty() -> PremiumStateCard(
+                icon = Icons.Outlined.Search,
+                message = stringResource(R.string.search_no_match, query.trim()),
+                accent = Periwinkle,
+            )
             else -> {
                 Text(stringResource(R.string.search_results), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 hits.take(20).forEach { item ->

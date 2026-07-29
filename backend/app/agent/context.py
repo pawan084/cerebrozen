@@ -16,5 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 current_db: contextvars.ContextVar[AsyncSession] = contextvars.ContextVar("current_db")
 current_user_id: contextvars.ContextVar[uuid.UUID] = contextvars.ContextVar("current_user_id")
+# The LangGraph thread this turn belongs to. Tools stamp it on their audit rows,
+# which is how a paused write is matched to the /confirm that resolves it.
+current_thread_id: contextvars.ContextVar[str] = contextvars.ContextVar("current_thread_id")
 # Inline activity widgets emitted by tools during a run; drained by the route.
 emitted_widgets: contextvars.ContextVar[list[dict[str, Any]]] = contextvars.ContextVar("emitted_widgets")

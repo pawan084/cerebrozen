@@ -142,6 +142,9 @@ tasks.withType<Test>().configureEach {
 val coverageIncludes = listOf(
     "com/cerebrozen/app/net/**",                  // Session/Api/Analytics — auth, cache, SSE, events
     "com/cerebrozen/app/audio/MediaUrls*",        // pure URL registry/resolution
+    "com/cerebrozen/app/audio/MediaCatalog*",     // pure key→url catalogue + the empty-url fallback contract
+    "com/cerebrozen/app/audio/AmbientSource*",    // pure "uploaded asset else bundled loop" resolution
+    "com/cerebrozen/app/audio/SfxTones*",         // pure tone table (pentatonic pads, the never-scold reset)
     "com/cerebrozen/app/audio/Player*",           // controller state (service intents recorded by Robolectric)
     "com/cerebrozen/app/audio/SoundscapeMixer*",  // mixer state machine + timer/volume/preset logic
     "com/cerebrozen/app/audio/VolumeRamp*",       // W27 shared crossfade stepper (Robolectric drives its Handler)
@@ -183,6 +186,14 @@ val coverageExcludes = listOf(
 //    (MediaRecorder/MediaPlayer) and on-device SpeechRecognizer/TextToSpeech.
 //  * audio/Chime — framework AudioTrack synthesis (W27 chime/bell); every call is
 //    runCatching-guarded and its pref accessors are trivial Session delegations.
+//    The tones it renders ARE gated — as pure data, in audio/SfxTones.
+//  * audio/Sfx — SoundPool + the asset prefetch (HttpURLConnection to cacheDir);
+//    framework media and real network, neither hermetic. Its two decisions that
+//    aren't framework calls are gated elsewhere: which tone a key maps to
+//    (SfxTones) and whether a key has a server asset at all (MediaCatalog).
+//  * ui/screens/SceneVideo — ExoPlayer + PlayerView (AndroidView interop); needs
+//    a device. It renders nothing at all when the url is blank, which is the only
+//    branch that ships today.
 //  * auth/GoogleAuth — Credential Manager UI flow; needs Play services + a user.
 //  * MainActivity — Activity lifecycle + edge-to-edge window plumbing.
 

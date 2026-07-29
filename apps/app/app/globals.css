@@ -20,6 +20,69 @@
   --cyan: #8fe6ee;
 }
 /* @cerebro-tokens:end */
+
+/* ── Theme extension vars (apps/app only, OUTSIDE the synced block) ─────────
+   The white-alpha literals the dashboard was built from, promoted to vars so
+   Dawn can flip them. Night values are byte-identical to the old literals. */
+:root {
+  --card-soft: rgba(255, 255, 255, 0.028); /* resting dashboard card */
+  --line-soft: rgba(255, 255, 255, 0.075); /* hairline on resting cards */
+  --well: rgba(255, 255, 255, 0.06);       /* icon wells, hover washes, off-bars */
+  --field: rgba(255, 255, 255, 0.05);      /* inputs / selects */
+  --tabbar: rgba(20, 16, 44, 0.86);        /* mobile bottom pill */
+}
+
+/* ── Dawn (light) palette — WEB_PARITY item 17 / Wave E ─────────────────────
+   Values mirror the Android DawnPalette (ui/theme/Color.kt), whose text/accent
+   inks are WCAG-AA-verified on warm white (ContrastTest). Applied when the
+   user picks Dawn, or picks System (or hasn't chosen) and the OS is light.
+   Heroes/media art stay constant-dark by design (Android ContentArt rule) —
+   they carry their own literal dark paints. admin/web stay Night-only. */
+:root[data-theme="dawn"],
+:root.dawn-active {
+  --night: #fafafc; --night-top: #ecedf5;
+  --card: #ffffff; --card-strong: #eff0f7; --line: #dfe1ec;
+  --text: #1a1830; --soft: #45426b; --muted: #5a5680; --muted-2: #655f8a;
+  --lav: #5b4bc4; --lav-2: #6d5fe8;
+  --cream: #eceefb; --ink: #1a1830;
+  --danger: #a63f57; --ok: #1e7a5c; --warm: #9c4a2c; --cyan: #0e6e8c;
+  --card-soft: #ffffff; --line-soft: #dfe1ec;
+  --well: rgba(26, 24, 48, 0.06); --field: #ffffff;
+  --tabbar: rgba(250, 250, 252, 0.9);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="night"]):not([data-theme="dawn"]) {
+    --night: #fafafc; --night-top: #ecedf5;
+    --card: #ffffff; --card-strong: #eff0f7; --line: #dfe1ec;
+    --text: #1a1830; --soft: #45426b; --muted: #5a5680; --muted-2: #655f8a;
+    --lav: #5b4bc4; --lav-2: #6d5fe8;
+    --cream: #eceefb; --ink: #1a1830;
+    --danger: #a63f57; --ok: #1e7a5c; --warm: #9c4a2c; --cyan: #0e6e8c;
+    --card-soft: #ffffff; --line-soft: #dfe1ec;
+    --well: rgba(26, 24, 48, 0.06); --field: #ffffff;
+    --tabbar: rgba(250, 250, 252, 0.9);
+  }
+}
+
+/* Night-pinned scopes: the onboarding funnel, signed-out pages and the Sleep
+   surface keep the calm Night regardless of theme (audit item 17 rule). The
+   scope re-declares every var and paints its own ground, so it is correct
+   even when :root is Dawn. */
+.theme-night {
+  --night: #0e0c22; --night-top: #1a1440;
+  --card: rgba(255, 255, 255, 0.05); --card-strong: rgba(255, 255, 255, 0.085);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f5f4ff; --soft: #dfe0ff; --muted: #b0a9e0; --muted-2: #8f88c0;
+  --lav: #8a7bf0; --lav-2: #a68bff;
+  --cream: #eceefb; --ink: #1c1740;
+  --danger: #e08a9a; --ok: #7ee0a8; --warm: #f0a48c; --cyan: #8fe6ee;
+  --card-soft: rgba(255, 255, 255, 0.028); --line-soft: rgba(255, 255, 255, 0.075);
+  --well: rgba(255, 255, 255, 0.06); --field: rgba(255, 255, 255, 0.05);
+  --tabbar: rgba(20, 16, 44, 0.86);
+  background: linear-gradient(180deg, var(--night-top), var(--night));
+  color: var(--text);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background: linear-gradient(180deg, var(--night-top), var(--night));
@@ -69,7 +132,7 @@ main.page { max-width: 900px; margin: 0 auto; padding: 34px 30px 72px; }
 .field span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 input, textarea {
   width: 100%; padding: 11px 13px; border-radius: 12px;
-  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line); background: var(--field);
   color: var(--text); font: inherit;
 }
 input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: transparent; }
@@ -135,6 +198,7 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 .msg.user p { background: linear-gradient(135deg, var(--lav), var(--lav-2)); color: var(--cream); border-bottom-right-radius: 6px; }
 .msg.ai p { background: var(--card-strong); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
 .cursor { animation: blink 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
 @keyframes blink { 50% { opacity: 0; } }
 .widgetcard {
   border: 1px solid var(--line); background: var(--card);
@@ -155,7 +219,7 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 
 select {
   width: 100%; padding: 11px 13px; border-radius: 12px;
-  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line); background: var(--field);
   color: var(--text); font: inherit;
 }
 select option { color: var(--ink); }
@@ -282,6 +346,9 @@ select option { color: var(--ink); }
 }
 .onb-breathe-orb.in, .onb-breathe-orb.hold { transform: scale(1.24); }
 .onb-breathe-orb.out { transform: scale(0.78); }
+/* The wind-down ritual exhales for 6s, not 4 — without this the orb finishes
+   early and sits still for the last two seconds of the breath. */
+.onb-breathe-orb.slow-out { transition-duration: 5.8s; }
 @media (prefers-reduced-motion: reduce) { .onb-breathe-orb { transition: none; transform: none; } }
 
 /* First-plan hero card. */
@@ -342,7 +409,7 @@ select option { color: var(--ink); }
 .sidebar {
   flex: 0 0 264px; width: 264px; position: sticky; top: 0; align-self: flex-start;
   height: 100dvh; display: flex; flex-direction: column; padding: 24px 16px 16px;
-  background: linear-gradient(180deg, #17123a, var(--night));
+  background: linear-gradient(180deg, var(--night-top), var(--night));
   border-right: 1px solid var(--line); overflow-y: auto;
 }
 .sidebar-brand {
@@ -359,10 +426,10 @@ select option { color: var(--ink); }
   padding: 11px 13px; border-radius: 13px; border: none; background: none;
   font-size: 15px; font-weight: 600; color: var(--muted); text-decoration: none; transition: background 0.15s, color 0.15s;
 }
-.nav-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--soft); }
+.nav-item:hover { background: var(--well); color: var(--soft); }
 .nav-item.active { background: var(--card-strong); color: var(--text); }
 
-.premium-card { margin-top: 20px; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(138,123,240,0.15), rgba(255,255,255,0.03)); }
+.premium-card { margin-top: 20px; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(138, 123, 240, 0.15), transparent); }
 .premium-card strong { font-family: var(--font-serif), Georgia, serif; font-size: 16px; }
 .premium-card p { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin: 6px 0 12px; }
 .premium-btn { display: block; text-align: center; padding: 9px; border-radius: 11px; background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink); font-weight: 700; font-size: 13.5px; text-decoration: none; }
@@ -374,7 +441,7 @@ select option { color: var(--ink); }
 .user-meta strong { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-meta small { color: var(--muted-2); font-size: 11.5px; }
 .signout-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: none; border: 1px solid var(--line); color: var(--muted); flex: 0 0 34px; }
-.signout-icon:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.signout-icon:hover { color: var(--text); background: var(--well); }
 
 /* Top bar (per-page header) */
 .app-header {
@@ -386,10 +453,6 @@ select option { color: var(--ink); }
 .app-header-title .eyebrow { margin-bottom: 4px; }
 .app-header .page-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -0.01em; }
 .app-header-tools { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.search-field { display: flex; align-items: center; gap: 9px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--muted); min-width: 230px; }
-.search-field input { border: none; background: none; color: var(--text); font-size: 14px; outline: none; width: 100%; padding: 0; }
-.search-field input::placeholder { color: var(--muted-2); }
-.bell-btn { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--card); color: var(--soft); flex: 0 0 42px; }
 
 .page-body { padding: 6px 40px 70px; max-width: 1300px; }
 
@@ -399,20 +462,19 @@ select option { color: var(--ink); }
   .sidebar { display: none; }
   .app-header { padding: 20px 18px 14px; flex-wrap: wrap; }
   .app-header-tools { flex: 1; }
-  .search-field { min-width: 0; flex: 1; }
   .page-body { padding: 4px 18px 112px; }
   .mobile-tabs {
     display: flex; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom));
     z-index: 50; justify-content: space-around; gap: 2px; padding: 8px 6px;
     border-radius: 26px; border: 1px solid var(--line);
-    background: rgba(20, 16, 44, 0.86); backdrop-filter: blur(18px);
+    background: var(--tabbar); backdrop-filter: blur(18px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
   .mtab {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
     padding: 6px 2px; border-radius: 18px; color: var(--muted-2); font-size: 10.5px; font-weight: 600; text-decoration: none;
   }
-  .mtab.active { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+  .mtab.active { color: var(--text); background: var(--well); }
 }
 
 /* ============================================================
@@ -422,16 +484,18 @@ select option { color: var(--ink); }
 .page-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: clamp(28px, 5vw, 36px); line-height: 1.08; letter-spacing: -0.01em; margin-top: 4px; }
 .page-head-trailing { display: flex; gap: 10px; flex: 0 0 auto; padding-top: 6px; }
 
-/* Hero card — gradient panel, tag pill, serif headline, pill CTA. */
+/* Hero card — gradient panel, tag pill, serif headline, pill CTA.
+   Constant-dark in BOTH themes (Android ContentArt rule: art/hero surfaces
+   don't flip) — hence literal night paints, never the theme vars. */
 .hero-card {
   position: relative; overflow: hidden; border-radius: 26px; padding: 26px;
   border: 1px solid var(--line); margin-bottom: 22px; color: #fff;
   background:
     linear-gradient(150deg, rgba(138, 123, 240, 0.34), rgba(166, 139, 255, 0.12)),
-    linear-gradient(180deg, var(--night-top), var(--night));
+    linear-gradient(180deg, #1a1440, #0e0c22);
 }
-.hero-card.accent-sleep { background: linear-gradient(150deg, rgba(166, 139, 255, 0.4), rgba(90, 82, 201, 0.16)), linear-gradient(180deg, var(--night-top), var(--night)); }
-.hero-card.accent-warm { background: linear-gradient(150deg, rgba(240, 164, 140, 0.32), rgba(143, 230, 238, 0.12)), linear-gradient(180deg, var(--night-top), var(--night)); }
+.hero-card.accent-sleep { background: linear-gradient(150deg, rgba(166, 139, 255, 0.4), rgba(90, 82, 201, 0.16)), linear-gradient(180deg, #1a1440, #0e0c22); }
+.hero-card.accent-warm { background: linear-gradient(150deg, rgba(240, 164, 140, 0.32), rgba(143, 230, 238, 0.12)), linear-gradient(180deg, #1a1440, #0e0c22); }
 .hero-tag {
   display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; padding: 5px 12px; border-radius: 999px;
@@ -464,7 +528,7 @@ select option { color: var(--ink); }
 .ui-row.emphasis { border-color: var(--lav); background: var(--card-strong); }
 .ui-row-icon {
   flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.05); color: var(--soft); font-size: 18px;
+  background: var(--well); border: 1px solid var(--line-soft); color: var(--soft); font-size: 18px;
 }
 .ui-row-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ui-row-body strong { font-size: 15px; font-weight: 600; }
@@ -506,7 +570,7 @@ select option { color: var(--ink); }
    Reference design system — dashboard screens
    ============================================================ */
 .serif-h { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
-.card-dark { background: rgba(255,255,255,0.028); border: 1px solid rgba(255,255,255,0.075); border-radius: 20px; }
+.card-dark { background: var(--card-soft); border: 1px solid var(--line-soft); border-radius: 20px; }
 .section-gap { margin-top: 30px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 30px 0 14px; }
 .sec-head .link { color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: none; }
@@ -520,8 +584,8 @@ select option { color: var(--ink); }
 /* mood check-in hero */
 .checkin-hero {
   position: relative; overflow: hidden; border-radius: 22px; padding: 28px 30px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(115deg, rgba(90,82,201,0.55) 0%, rgba(138,123,240,0.18) 46%, rgba(14,12,34,0.2) 100%), var(--night);
+  border: 1px solid rgba(255,255,255,0.08); color: #fff;
+  background: linear-gradient(115deg, rgba(90,82,201,0.55) 0%, rgba(138,123,240,0.18) 46%, rgba(14,12,34,0.2) 100%), #0e0c22;
 }
 .checkin-hero .eyebrow { color: rgba(255,255,255,0.7); }
 .checkin-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 30px; margin: 6px 0 18px; }
@@ -534,8 +598,8 @@ select option { color: var(--ink); }
 
 /* Today's plan rows */
 .plan-list { display: flex; flex-direction: column; gap: 12px; }
-.plan-row { display: flex; align-items: center; gap: 15px; padding: 15px 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.028); text-decoration: none; color: var(--text); transition: background 0.15s; }
-.plan-row:hover { background: rgba(255,255,255,0.055); }
+.plan-row { display: flex; align-items: center; gap: 15px; padding: 15px 18px; border-radius: 16px; border: 1px solid var(--line-soft); background: var(--card-soft); text-decoration: none; color: var(--text); transition: background 0.15s; }
+.plan-row:hover { background: var(--well); }
 .plan-play { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: 0 0 42px; }
 .plan-body { flex: 1; min-width: 0; }
 .plan-body strong { display: block; font-size: 15px; }
@@ -563,7 +627,7 @@ select option { color: var(--ink); }
 .jump-card span { font-weight: 600; font-size: 14.5px; }
 
 /* right-rail cards */
-.rail-card { padding: 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.075); background: rgba(255,255,255,0.028); }
+.rail-card { padding: 20px; border-radius: 18px; border: 1px solid var(--line-soft); background: var(--card-soft); }
 .rail-card .kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-2); }
 .rail-big { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 4px; }
 .rail-big b { font-family: var(--font-serif), Georgia, serif; font-size: 40px; font-weight: 600; line-height: 1; }
@@ -572,7 +636,7 @@ select option { color: var(--ink); }
 .rhythm-bars { display: flex; gap: 8px; margin-top: 14px; }
 .rhythm-bars .b { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rhythm-bars .fill { width: 100%; height: 30px; border-radius: 7px; background: var(--lav); }
-.rhythm-bars .fill.off { background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.14); }
+.rhythm-bars .fill.off { background: var(--well); border: 1px dashed var(--line); }
 .rhythm-bars em { font-style: normal; font-size: 10.5px; color: var(--muted-2); }
 .reflection q { display: block; font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 16px; line-height: 1.5; color: var(--soft); }
 .reflection .link { display: inline-block; margin-top: 12px; color: var(--lav); font-weight: 600; font-size: 13.5px; text-decoration: none; }
@@ -585,7 +649,8 @@ select option { color: var(--ink); }
 .media-hero .hero-orb { position: absolute; top: 30px; right: 44px; width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle at 40% 36%, #fff, var(--lav) 58%, var(--lav-2)); opacity: 0.92; }
 .media-hero .pill-btn { align-self: flex-start; margin-top: 18px; }
 .pill-btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 999px; border: none; font-weight: 700; font-size: 14px; background: linear-gradient(180deg,#fff,var(--cream)); color: var(--ink); text-decoration: none; cursor: pointer; }
-.pill-btn.tinted { background: linear-gradient(180deg, var(--cyan), #6fd8e0); }
+/* Literal cyan: the Dawn --cyan is a dark AA text ink, wrong as a pill fill. */
+.pill-btn.tinted { background: linear-gradient(180deg, #8fe6ee, #6fd8e0); }
 .pill-btn.ghost { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.18); }
 
 /* media cards (soundscapes / games) */
@@ -599,7 +664,7 @@ select option { color: var(--ink); }
 .media-card > * { position: relative; z-index: 1; }
 
 /* row with PLAY (sleep stories) */
-.story-row { display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.028); margin-bottom: 12px; }
+.story-row { display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line-soft); background: var(--card-soft); margin-bottom: 12px; }
 .story-thumb { width: 52px; height: 52px; border-radius: 12px; flex: 0 0 52px; }
 .story-row .body { flex: 1; }
 .story-row .body strong { display: block; font-size: 15px; }
@@ -627,28 +692,23 @@ select option { color: var(--ink); }
 .pattern-ic { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 38px; display: grid; place-items: center; font-size: 17px; }
 .pattern-row strong { display: block; font-size: 14.5px; }
 .pattern-row p { color: var(--muted); font-size: 13px; line-height: 1.45; }
-.suggest-row { display: block; padding: 15px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.028); color: var(--soft); font-size: 14.5px; margin-bottom: 12px; text-align: left; width: 100%; cursor: pointer; }
-.suggest-row:hover { background: rgba(255,255,255,0.055); }
-.convo-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.028); margin-bottom: 12px; }
-.convo-dot { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px; }
-.convo-row strong { display: block; font-size: 14.5px; }
-.convo-row small { color: var(--muted); font-size: 12.5px; }
+.suggest-row { display: block; padding: 15px 18px; border-radius: 14px; border: 1px solid var(--line-soft); background: var(--card-soft); color: var(--soft); font-size: 14.5px; margin-bottom: 12px; text-align: left; width: 100%; cursor: pointer; }
+.suggest-row:hover { background: var(--well); }
 .prompt-item { padding: 12px 0; color: var(--soft); font-size: 14px; }
 .prompt-item + .prompt-item { border-top: 1px solid var(--line); }
 
 /* journal prompt hero + entries */
-.prompt-hero { padding: 26px 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(115deg, rgba(224,138,154,0.16), rgba(240,164,140,0.06)), var(--night); }
+.prompt-hero { padding: 26px 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); color: #fff; background: linear-gradient(115deg, rgba(224,138,154,0.16), rgba(240,164,140,0.06)), #0e0c22; }
 .prompt-hero .eyebrow { color: rgba(255,255,255,0.65); }
 .prompt-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 26px; margin: 8px 0 16px; }
-.entry-card { padding: 20px 22px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.028); margin-bottom: 14px; position: relative; }
+.entry-card { padding: 20px 22px; border-radius: 16px; border: 1px solid var(--line-soft); background: var(--card-soft); margin-bottom: 14px; position: relative; }
 .entry-card .date { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-2); }
 .entry-card q { display: block; font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 15.5px; line-height: 1.55; color: var(--soft); margin-top: 8px; }
-.entry-card .emoji { position: absolute; top: 18px; right: 20px; font-size: 20px; }
 
 /* program cards */
 .program-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 @media (max-width: 1000px) { .program-grid { grid-template-columns: repeat(2, 1fr); } }
-.program-card { border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.028); text-decoration: none; color: var(--text); }
+.program-card { border-radius: 16px; overflow: hidden; border: 1px solid var(--line-soft); background: var(--card-soft); text-decoration: none; color: var(--text); }
 .program-thumb { height: 150px; position: relative; }
 .program-body { padding: 14px 16px 18px; }
 .program-body .meta { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lav); }
@@ -656,7 +716,7 @@ select option { color: var(--ink); }
 .program-body p { color: var(--muted); font-size: 13px; line-height: 1.45; }
 
 /* Talk landing hero */
-.talk-hero { text-align: center; padding: 54px 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 26px; background: radial-gradient(circle at 50% 28%, rgba(138,123,240,0.35), transparent 55%), linear-gradient(180deg, rgba(90,82,201,0.22), var(--night)); }
+.talk-hero { text-align: center; padding: 54px 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 26px; color: #fff; background: radial-gradient(circle at 50% 28%, rgba(138,123,240,0.35), transparent 55%), linear-gradient(180deg, rgba(90,82,201,0.22), #0e0c22); }
 .talk-orb { width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 26px; background: radial-gradient(circle at 42% 38%, #fff, var(--lav) 56%, var(--lav-2)); box-shadow: 0 0 70px rgba(138,123,240,0.5); }
 .talk-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 34px; }
 .talk-hero p { color: rgba(255,255,255,0.78); font-size: 15px; max-width: 44ch; margin: 12px auto 0; }
@@ -729,4 +789,43 @@ select option { color: var(--ink); }
   .btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
   .premium-btn:active, .social-btn:active:not([disabled]),
   .quick-tile:hover, .quick-tile:active { transform: none; transition: none; }
+}
+
+/* Guided imagery stage (Toolkit → Settle). Constant-dark in both themes, the
+   same rule heroes and media art follow — it carries its own literal paints,
+   and a warm-white version of "a calm place at dusk" is a different exercise.
+   Text on it is therefore a fixed cream, not var(--text). */
+.imagery-stage {
+  position: relative; overflow: hidden; border-radius: 24px; margin-bottom: 16px;
+  min-height: 300px; padding: 40px 34px; display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.08);
+  /* The base layer is OPAQUE on purpose: a translucent one lets the warm-white
+     Dawn page through and the whole dusk washes out (and the cream text with
+     it). Same trap the hero paints avoid by carrying literal colours. */
+  background: radial-gradient(circle at 30% 22%, rgba(138,123,240,0.26), transparent 55%),
+              radial-gradient(circle at 76% 74%, rgba(143,230,238,0.14), transparent 52%),
+              linear-gradient(180deg, #1d1940, #0b0a1c);
+}
+.imagery-line {
+  position: relative; z-index: 1; text-align: center; max-width: 30ch;
+  font-family: var(--font-serif), Georgia, serif; font-size: 25px; line-height: 1.5;
+  color: rgba(255,255,255,0.9); animation: imageryIn 1s ease both;
+}
+.imagery-glow {
+  position: absolute; width: 260px; height: 260px; border-radius: 50%;
+  background: rgba(138,123,240,0.16); filter: blur(60px);
+  top: 8%; left: 6%; animation: imageryDrift 24s ease-in-out infinite;
+}
+.imagery-glow.two {
+  width: 200px; height: 200px; background: rgba(143,230,238,0.13);
+  top: auto; left: auto; bottom: 6%; right: 8%; animation-duration: 31s; animation-direction: reverse;
+}
+@keyframes imageryIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes imageryDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(38px, 26px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .imagery-line { animation: none; }
+  .imagery-glow { animation: none; }
 }

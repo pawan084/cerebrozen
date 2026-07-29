@@ -70,17 +70,19 @@ class SleepInsightTest {
 
     // ── The principle line follows the data ─────────────────────────
     @Test
-    fun rhythmPrinciple_switches_on_the_90_minute_boundary() {
-        assertEquals(true, rhythmPrinciple(91).startsWith("A steadier bedtime"))
-        assertEquals(true, rhythmPrinciple(90).startsWith("Your bedtime is steady"))
-        assertEquals(true, rhythmPrinciple(0).startsWith("Your bedtime is steady"))
+    fun rhythm_principle_switches_on_the_90_minute_boundary() {
+        assertEquals(true, isVariedRhythm(91))
+        assertEquals(false, isVariedRhythm(90))
+        assertEquals(false, isVariedRhythm(0))
     }
 
     @Test
-    fun spreadLabel_uses_plain_minutes_under_an_hour() {
-        assertEquals("45m", spreadLabel(45))
-        assertEquals("1h 50m", spreadLabel(110))
-        assertEquals("6h 40m", spreadLabel(400))
+    fun hoursMinutes_backs_the_localized_spread_labels() {
+        // Display copy resolves via R.string.duration_m / duration_h_m at the
+        // composable (spreadLabelText); the pure split stays pinned here.
+        assertEquals(0 to 45, hoursMinutes(45))
+        assertEquals(1 to 50, hoursMinutes(110))
+        assertEquals(6 to 40, hoursMinutes(400))
     }
 
     // ── Parser carries the new time fields (and stays backwards-safe) ─

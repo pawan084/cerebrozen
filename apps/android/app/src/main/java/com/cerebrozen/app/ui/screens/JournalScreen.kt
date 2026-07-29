@@ -146,7 +146,7 @@ fun JournalScreen() {
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
 
     if (!unlocked) {
-        Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
+        PremiumPage(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
             SectionCard {
                 Text(stringResource(R.string.journal_locked_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(stringResource(R.string.journal_locked_body),
@@ -161,7 +161,7 @@ fun JournalScreen() {
 
     when (mode) {
         JournalMode.Entry -> {
-            SubPage(stringResource(R.string.journal_entry_eyebrow), stringResource(R.string.journal_entry_title), onBack = { mode = JournalMode.Home }) {
+            PremiumSubPage(stringResource(R.string.journal_entry_eyebrow), stringResource(R.string.journal_entry_title), onBack = { mode = JournalMode.Home }) {
                 // Prompt rotation moved into the composer as a gentle guide.
                 SectionCard {
                     Text(stringResource(R.string.journal_prompt_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
@@ -252,7 +252,7 @@ fun JournalScreen() {
             return
         }
         JournalMode.History -> {
-            SubPage(stringResource(R.string.journal_history_eyebrow), stringResource(R.string.journal_history_title), onBack = { mode = JournalMode.Home }) {
+            PremiumSubPage(stringResource(R.string.journal_history_eyebrow), stringResource(R.string.journal_history_title), onBack = { mode = JournalMode.Home }) {
                 if (entries.isEmpty()) {
                     SectionCard {
                         // W24: a small one-shot art illustration above the copy.
@@ -276,7 +276,7 @@ fun JournalScreen() {
             return
         }
         JournalMode.Private -> {
-            SubPage(stringResource(R.string.journal_private_eyebrow), stringResource(R.string.journal_private_title), onBack = { mode = JournalMode.Home }) {
+            PremiumSubPage(stringResource(R.string.journal_private_eyebrow), stringResource(R.string.journal_private_title), onBack = { mode = JournalMode.Home }) {
                 SectionCard {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -328,7 +328,7 @@ fun JournalScreen() {
         JournalMode.Home -> Unit
     }
 
-    Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
+    PremiumPage(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
         HeroCard(
             kind = "journal",   // no dedicated motif — the brand orb family
             eyebrow = stringResource(R.string.journal_prompt_header),

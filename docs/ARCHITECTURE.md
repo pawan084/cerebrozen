@@ -37,7 +37,7 @@ offline with blank keys.
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
   apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
-                  docs/REDESIGN.md): 5 tabs + ~34 routes, unified breathe engine, Toolkit hub,
+                  docs/REDESIGN.md): 5 tabs + ~37 routes, unified breathe engine, Toolkit hub,
                   one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
                   Night/Dawn theme (theme-aware token getters in ui/theme, AppTheme state,
                   ContrastTest gate), InfoBanner slot on Home, crisis ≤2 taps (Tele-MANAS-first)
@@ -51,6 +51,14 @@ cere/
   docker-compose.yml / .e2e.yml / .prod.yml
   .github/workflows/  ci.yml · deploy.yml · testflight.yml
 ```
+
+The three **guided routines** (wind-down ritual · personal ritual builder · guided imagery)
+exist on all three clients and are hand-synced, not shared code: `apps/app`
+`(authed)/sleep/ritual` + `(authed)/games/{ritual,imagery}` over `components/RitualSteps.tsx`
+· android `ui/screens/Rituals.kt` · iOS `Features/Tools/Rituals.swift`. The ritual itself is
+**device-local on every client** (`RitualStore` over the `Session` pref seam on Android and
+`UserDefaults` on iOS, `localStorage` on web) — there is no server model for one, and each
+screen says so rather than letting the user assume it follows their account.
 
 ## Backend (`backend/app`)
 
@@ -81,10 +89,11 @@ cere/
 | `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
+| `/interventions` | `active` (lazy rule evaluation — returns the one open offer or **null**, never 404), history, accept/dismiss/complete. Every offer carries a plain-language `reason` derived from the user's own logged counts |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
 | `/events` | anonymous first-party product events (allowlisted names, random install id, deliberately NO auth so rows can't join to accounts; unknown names dropped) |
-| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist |
-| `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
+| `/admin` | stats, users (+ metadata-only detail view), first-party `metrics/overview` (DAU/WAU/MAU, Dn retention, funnel, engagement — aggregates only) + `metrics/funnel` (onboarding steps/paywall from anonymous events, unique installs), content CRUD (+ `content/{id}/narrate` — synchronous ElevenLabs narration from the item's `narration_script`, 3/min, 503 keyless), prompt registry (versioned LLM prompts: list / save-new-version / activate / revert-to-code-default), nudge authoring (one user or broadcast) + list, safety review queue, nudges/dispatch (manual cron), waitlist, `oracle/{status,pending,audit}` (agent posture + tool-call trail; argument names only, never values) |
+| `/billing` | Stripe Checkout + Billing-Portal sessions for the web app (`/checkout`, `/portal` — the cancel path; customer found via subscription `user_id` metadata; 503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
 | `/media` | StaticFiles mount over `MEDIA_ROOT` (public, like `/content`; Range/ETag so native players stream + seek) — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
@@ -99,6 +108,15 @@ cere/
 - `agentic.py` — daily plan from goals + recent mood + sleep diary (LLM or `_STEP_LIBRARY`;
   short/rough nights put a wind-down step first).
 - `activities.py` — deterministic chat → inline widget routing (`widget_kind` mirrors iOS `ActivityDestination`).
+- `interventions.py` — code-defined rules over the user's own logged signals; the first
+  match (priority order) becomes a single open offer carrying a plain-language `reason`.
+  Consent gates the inputs (`mood_history` / `sleep_history`) and the signal fields are
+  **None rather than 0** when a category is off, so a rule can't fire on data it isn't
+  allowed to see. Crisis is the one rule that offers a person, and it is never
+  consent-gated. There is deliberately **no re-engagement/"you've been away" rule** — that
+  is the loss framing REDESIGN removed when streaks became presence; a test pins its
+  absence. Rules live in code (prompt-registry precedent); DB-backed overrides are a
+  possible follow-up.
 - `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
 - `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
   `APPSTORE_ROOT_CERT_PATH` is set) + notification → tier mapping.
@@ -123,17 +141,33 @@ The graph warms in the app lifespan **before traffic**: checkpointer `setup()` i
 indefinitely — first-request init on a fresh DB hung forever until this (plus a 30 s
 setup timeout as the fallback).
 
+**Audit + ops visibility (2026-07-28).** Every tool call writes an `oracle_tool_calls`
+row via `services/oracle_audit.py`: read tools land as `decision="auto"`, write tools open
+`"pending"` *before* `interrupt()` suspends the graph and are closed to
+`"approved"`/`"declined"` on resume. `open_pending` is idempotent because LangGraph
+re-executes an interrupted node from the top when it resumes — everything before
+`interrupt()` runs twice. Argument **names** are stored, never their values, so the trail
+never becomes a second copy of journal/mood content sitting outside the consent flags that
+govern the originals. Auditing never raises into a tool: observability must not fail a
+user's approved write. `GET /admin/oracle/{status,pending,audit}` back the admin **Oracle**
+tab; `status.checkpointer` (`postgres`|`memory`|`none`) surfaces the MemorySaver fallback,
+which was previously visible only in a boot log line — a worker silently running
+in-process looked identical to a healthy one.
+
 ### Data model
 
 `users` (auth-hardening, subscription, compliance, region, push_token fields) with 1:1 `consents`,
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
-`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account).
+`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account),
+`oracle_tool_calls` (agent audit trail — argument names only, never values),
+`intervention_recommendations` (one open offer at a time; the reason + the counts behind
+it, frozen at fire time).
 Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
 immutable versions per name; the active row overrides the in-code default in
 `services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (15 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (21 revisions).
 
 ## iOS app (`apps/ios/CereBro`)
 
@@ -217,6 +251,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
 | Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` ⇄ web `WIDGET_LINKS` (chat page) ⇄ android `widgetRoute` (TalkScreen.kt) |
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
+| Breathe presets (box 4·4·4·4; reset = longer exhale, 4 in / 6 out) | — (client-side pacing) | `BreathingPacer.Preset` ⇄ android `breathePhases` (`RESET_EXHALE_EXTRA`) ⇄ web `.onb-breathe-orb` + `SLOW_EXHALE`/`BOX_BREATH` in `components/RitualSteps.tsx`. Android ran Reset symmetrically until 2026-07-29 — the same named "two-minute reset" breathed differently on the two phones |
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
@@ -227,6 +262,9 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Analytics event vocabulary + funnel step names | `routes/events.ALLOWED_EVENTS` (+ `source` enum incl. `android`) | iOS `Analytics.track` ⇄ android `net/Analytics.kt` (`funnelStepName` maps to `services/metrics.ONBOARDING_STEPS`) |
 | Narration audio (`audio_url` on `/content` items) | `models/content.py` — relative `/media/…` (backend-minted) or absolute (admin-pasted); empty ⇒ client ambient fallback; `narration_script` is admin-only (`AdminContentOut`), never public. NOTE the deliberate asymmetry with `image_url`, which is always absolute | iOS `RemoteContent.audio_url` → `BackendService.resolveMedia` → `SoundscapePlayer` AVPlayer branch ⇄ android `MediaUrls.resolve/register` → `AmbientService` stream-else-bed ⇄ web `mediaSrc()` + `<audio>` (library/sleep pages; CSP `media-src`) |
 | State-tuned journal prompt (mood name → tag/title/prompt; **today's check-in only**, else daily rotation) | — (client-side mapping over `GET /moods` mood names: Anxious / Low / Tired) | iOS `JournalPrompts.tuned(toMood:)` + `isDateInToday` gate ⇄ web `journal/page.tsx` `TUNED` + same-day gate |
+| **Media-catalogue keys** (`GET /media/catalog`) | `seed.py` `_MEDIA` — the canonical key list (`ambience.*`, `breathe.*`, `game.*`, `chime.*`, `scene.*`), seeded above the demo-data guard because prod admins need the rows to upload into. Keys become filenames, so `services/media.valid_key` is the traversal guard | android `audio/MediaCatalog.Keys` (hand-mirrored) → `Sfx` (one-shots, SoundPool) / `ambientUri` (loops) / `SceneVideo` (video). iOS + web do not consume it yet |
+| **The empty-`url` contract** (media catalogue) | A catalogue row with `url == ""` is *valid and expected*, not a failure — it says "no server bytes for this key yet". Only `POST /admin/media/{id}/upload` fills it | Every client must answer an empty url with its bundled loop or synthesized tone, never with silence. Android: `SfxTones` (synth) + `res/raw` (loops). **This is what lets the app ship fully audible with an empty catalogue, and lets an admin hot-swap any sound with no app release — breaking it makes every un-uploaded sound go silent** |
+| Scene video (`video_url` on `/content` items) | `models/content.py` — optional looping decorative video; empty ⇒ clients render their generative artwork | android `SceneVideo` (muted, no audio focus, suppressed under Reduce Motion); falls back to `AuroraBackground`. We ship no video: none is licensed yet |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 
@@ -244,6 +282,12 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   risk — never blocks), Sleep diary (morning check-in, honest weekly summary, history),
   Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
   Account (consent, crisis region, trusted contact, export download, typed DELETE).
+  Toolkit (`/games` — Breathe · Ground · Reframe · Settle, mirroring the iOS/Android
+  hub) with three guided routines under it: the wind-down ritual (`/sleep/ritual`),
+  a self-assembled ritual anchored to a cue (`/games/ritual`, localStorage-only) and
+  guided imagery (`/games/imagery`). Their step runners are shared —
+  `components/RitualSteps.tsx` — and the 5-4-3-2-1 copy inside it is hand-synced with
+  Android `strings.xml ground_step*`. `/crisis` is public and works signed-out.
   `noindex`.
 - **Admin** — one client component (`app/page.tsx`) with tabs
   overview/analytics/users/content/safety/waitlist. Analytics renders the first-party

@@ -1,5 +1,30 @@
 # Web Parity Audit — Android Redesign → Web App (apps/app)
 
+> **STATUS 2026-07-24: Waves A–D LANDED** (4 commits on `v1`): B1–B8 + item 3
+> (fakes killed), items 1–4 (public `/crisis` page, Tele-MANAS-first banners with
+> tappable `tel:` links, Support sidebar door, Talk-to-a-human card — **no
+> WhatsApp row**: Android W25 proved wa.me/9114416 dead, superseding item 1's
+> instruction), items 5–7/9/10/13/15/16 (6-category onboarding consent,
+> WhyThisWorks + honesty cards, Toolkit reframing + real 5-4-3-2-1 grounding,
+> clickable journal prompts, today_guide, Try-together rail, widget links), and
+> items 12/8/11/18 (Sleep rhythm + stimulus-control cards, 10→8 onboarding,
+> `POST /billing/portal` cancel path + free-only sidebar upsell, reduce-motion +
+> dead-CSS sweep). **Item 14 (web analytics) landed 2026-07-24** once its gate
+> had a decision: the owner's 2026-07-13 Android ruling (no telemetry before
+> consent) applied cross-client — `lib/analytics.ts` (anon install id, no auth,
+> allowlisted names, `source: "app"`), unlocked on Consent-step pass or an
+> authenticated session, canonical post-merge step names (`age_gate`/
+> `first_plan` never fire), paywall_view/cta on /account, "Anonymous usage
+> stats" opt-out. iOS got the identical gate in the same commit.
+> **Wave E (item 17) landed 2026-07-24**: Dawn palette (mirrors Android's
+> WCAG-verified DawnPalette) via `prefers-color-scheme` + `data-theme`;
+> System/Night/Dawn picker on /account with a nonce'd pre-paint script;
+> Sleep/onboarding/signed-out pinned Night; heroes stay constant-dark
+> (deliberate divergence from the item's "sweep gradients into classes" —
+> art surfaces don't flip, so only true surfaces were promoted to vars).
+> admin/web remain Night-only. e2e spec updated in the same commits; table
+> statuses below are as-audited (2026-07-12), kept for reference.
+
 > W19, produced 2026-07-12 by reading `docs/REDESIGN.md` (findings F1–F11), `docs/IOS_PARITY.md`
 > (format precedent), the full authenticated web client (`apps/app/**` — every page, component
 > and lib file), the shipped Android implementation (read-only), and the backend contract

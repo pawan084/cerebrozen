@@ -77,10 +77,35 @@ struct JournalHomeView: View {
                      subtitle: hero.prompt,
                      cta: "Write", imageURL: Dummy.Img.journal) { writeNew = true }
             NavRow(title: "New entry", subtitle: "Private writing with consent", systemImage: "square.and.pencil", imageURL: Dummy.Img.write, emphasis: true) { JournalEntryView() }
+            // Quick prompts — the old onegoodthing/intention micro-tools live
+            // on as guided entries (IOS_PARITY #4, Android IA precedent).
+            HStack(spacing: 8) {
+                quickPrompt("One good thing", prompt: "One good thing from today", symbol: "sparkles")
+                quickPrompt("Tonight's intention", prompt: "Tonight's intention", symbol: "target")
+            }
             NavRow(title: "History", subtitle: "Past entries and tags", systemImage: "clock", imageURL: Dummy.Img.journal) { JournalHistoryView() }
             NavRow(title: "Private mode", subtitle: "Choose what AI can read", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
+            // Pathway-attached support (F7): writing often surfaces heavy
+            // things — the door sits right where they surface.
+            NavRow(title: "If today feels heavy", subtitle: "Tele-MANAS 14416 · real people, 24/7",
+                   systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
         }
         .navigationDestination(isPresented: $writeNew) { JournalEntryView() }
+    }
+
+    /// A compact guided-entry chip: opens the composer prefilled with a prompt.
+    private func quickPrompt(_ label: String, prompt: String, symbol: String) -> some View {
+        NavigationLink { JournalEntryView(prompt: prompt) } label: {
+            HStack(spacing: 7) {
+                Image(systemName: symbol).appFont(12, weight: .semibold)
+                Text(label).appFont(12.5, weight: .semibold)
+            }
+            .foregroundStyle(Theme.Palette.soft)
+            .padding(.horizontal, 13).frame(height: 38).frame(maxWidth: .infinity)
+            .background(Theme.Palette.card).clipShape(Capsule())
+            .overlay(Capsule().stroke(Theme.Palette.line))
+        }
+        .buttonStyle(.pressable)
     }
 
     /// Face ID / passcode gate. If the device has no biometrics or passcode set
@@ -109,7 +134,7 @@ struct JournalLockScreen: View {
             AppBackground(accent: Theme.Palette.lav)
             VStack(spacing: 16) {
                 Image(systemName: "lock.fill")
-                    .appFont(38, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+                    .appFont(38, weight: .semibold).foregroundStyle(Theme.Palette.lavText)
                 Text("Journal locked").displayFont(24).foregroundStyle(Theme.Palette.text)
                 Text("Your reflections stay private. Unlock with Face ID or your passcode.")
                     .multilineTextAlignment(.center)
@@ -323,3 +348,4 @@ struct JournalHistoryView: View {
         return e.tags.isEmpty ? when : "\(e.tags.joined(separator: " · ")) · \(when)"
     }
 }
+

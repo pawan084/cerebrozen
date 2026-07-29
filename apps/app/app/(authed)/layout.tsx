@@ -17,8 +17,11 @@ const EXPLORE = [
   { href: "/plan", label: "Plan", icon: Icon.plan },
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
-  { href: "/games", label: "Games", icon: Icon.games },
+  { href: "/games", label: "Toolkit", icon: Icon.games },
   { href: "/account", label: "Settings", icon: Icon.settings },
+  // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3): a calm, persistent
+  // door — the /crisis page itself is static and works signed-out too.
+  { href: "/crisis", label: "Support", icon: Icon.heart },
 ];
 // The mobile bottom bar keeps the five primary spaces (mirrors iOS).
 const MOBILE = [
@@ -34,12 +37,19 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
+  const [tier, setTier] = useState("free");
 
   useEffect(() => {
     if (!hasSession()) { router.replace("/signin"); return; }
     setReady(true);
+    // A live session = established relationship → telemetry unlocked (the
+    // same rule iOS/Android apply on connect; the opt-out still governs).
+    import("@/lib/analytics").then(({ unlockAnalytics }) => unlockAnalytics());
     import("@/lib/api").then(({ api }) =>
-      api("/auth/me").then((me: any) => setName(me.name || "")).catch(() => {}));
+      api("/auth/me").then((me: any) => {
+        setName(me.name || "");
+        setTier(me.subscription_tier || "free");
+      }).catch(() => {}));
   }, [router]);
 
   if (!ready) return null;
@@ -61,18 +71,23 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         <div className="nav-group-label">Explore</div>
         <nav className="nav-group">{EXPLORE.map(NavLink)}</nav>
 
-        <div className="premium-card">
-          <strong>Unlock Premium</strong>
-          <p>Unlimited talks, the full sleep library, and deeper insights.</p>
-          <Link href="/account" className="premium-btn">See plans</Link>
-        </div>
+        {/* Shown to free accounts only — a permanent upsell in a wellness app
+            leans on the OECD "nagging" indicator, and premium users never
+            need it. */}
+        {tier === "free" && (
+          <div className="premium-card">
+            <strong>Unlock Premium</strong>
+            <p>Unlimited talks, the full sleep library, and deeper insights.</p>
+            <Link href="/account" className="premium-btn">See plans</Link>
+          </div>
+        )}
 
         <div className="sidebar-foot">
           <div className="user-chip">
             <span className="user-avatar" aria-hidden="true" />
             <div className="user-meta">
               <strong>{name || "Your space"}</strong>
-              <small>Free plan</small>
+              <small>{{ premium: "Premium", premium_human: "Premium + Human" }[tier] ?? "Free plan"}</small>
             </div>
           </div>
           <button
