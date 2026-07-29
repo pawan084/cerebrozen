@@ -73,6 +73,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Inline activity widgets + suggestion chips | ✅ | 8+ activities launch native screens |
 | Crisis banner on voice + text paths | ✅ | Backend risk scan; never blocks |
 | SOS reset, breathing pacer, grounding, CBT, micro-activities | ✅ | All with background ambience + mute toggle |
+| Guided routines: wind-down ritual, personal ritual builder, guided imagery | ✅ | Shipped 2026-07-29 on **all three clients** (web `apps/app`, Android, iOS — iOS static-verified only). Wind-down on the Sleep tab; builder + imagery in the Toolkit's Settle section. The builder is cue-first (implementation intentions, Gollwitzer & Sheeran 2006) and device-local with no reminder; imagery carries a stop-if-it-turns caution *before* the exercise. Three blocks from the source were rejected on evidence grounds — 4-7-8, Disidentification, and affirmations (Wood et al. 2009) |
 | Voice loading/error/free-limit states | 🟡 | Real states; "free voice minutes" copy vs actual server quota = 50 msgs/day |
 
 ### Journal

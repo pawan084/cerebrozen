@@ -124,6 +124,139 @@
 
 ## Done — recent
 
+### iOS: the three guided routines (2026-07-29) — `Features/Tools/Rituals.swift`
+**⚠ Static-verified only (Windows host)** — same caveat as every prior iOS wave. Full
+detail in [IOS_PARITY.md](IOS_PARITY.md) "Wave E". All three clients now carry the same
+routines, with the same three blocks deliberately absent and the same missing "nothing can
+harm you".
+- [x] Wind-down (Sleep tab), ritual builder + guided imagery (Toolkit → Settle), over one
+  parameterized set of step views. The settle step reuses `BreathingPacer.Preset.reset`
+  (already *in 4, out 6*) rather than inventing a fourth rhythm — which is exactly the
+  divergence Android had to be corrected to match.
+- [x] **Every auto-advancing timer is `-resetState`-gated**, the posture CLAUDE.md requires
+  for animated/async features (an ungated one hangs the UITest suite). `RitualStore`'s two
+  keys join the `-resetState` wipe list, so a saved ritual can't leak between runs and make
+  the builder screenshots nondeterministic.
+- [x] The runner is keyed by block (two writing steps in a row would otherwise share view
+  identity and the second would inherit the first's text), and the imagery countdown is
+  keyed on `paused` too, so pausing restarts the task with the new value rather than
+  trusting a running closure to observe it.
+- [x] New `CereBroUITests.testGuidedRoutines` walks all three with manual controls only,
+  asserting the brain dump's privacy line renders *before* anything is written and that
+  imagery's caution renders *before* the exercise starts.
+- [x] New `CereBroTests/RitualsTest.swift` pins the pure seams Android pins in
+  `ScreenLogicTest` — plus a test that the three rejected blocks stay rejected, so none can
+  be reintroduced without reading why. Needs the same one-time unit-test-target add as
+  `ContrastTest` (documented in both file headers).
+- Owner: one macOS `xcodebuild test` pass + a look at the three new screens in both themes.
+
+### Android: the three guided routines (2026-07-29) — `ui/screens/Rituals.kt`
+The web routines ported to the primary client, same day: wind-down ritual (Sleep tab →
+`winddown`), ritual builder (Toolkit → `ritual`) and guided imagery (Toolkit Settle →
+`imagery`). Copy hand-synced with `apps/app`, including every deliberate departure from
+the sibling build recorded there — the 4-7-8 rejection, the three dropped blocks
+(4-7-8 / Disidentification / affirmations, the last on Wood et al. 2009), the cue-first
+structure, and guided imagery's missing "nothing can harm you".
+- [x] One parameterized set of step composables (writing · three good things · body scan ·
+  paced breath · 5-4-3-2-1) drives all three screens; the words come from the caller,
+  because the wind-down speaks to someone already in bed and the builder to someone at
+  any hour. `groundSteps()` went `internal` so the 5-4-3-2-1 copy has one home.
+- [x] The runner is **keyed by block** — the same reconciliation bug the web version had:
+  two writing steps in a row otherwise inherit the first one's text.
+- [x] **Found and fixed a real cross-client divergence.** iOS `BreathingPacer.Preset.reset`
+  is *in 4, out 6*; Android's `Reset` was *in N, out N*. The same named "two-minute reset"
+  — including the onboarding first breath — paced differently on the two phones, and
+  Android's version dropped the one part of slow breathing with clear evidence (the
+  longer exhale). `breathePhases` now exhales `RESET_EXHALE_EXTRA` seconds longer at every
+  pace; the pinning test was updated deliberately and a second test pins iOS parity at the
+  default pace.
+- [x] Android's Toolkit grounding card had **no `WhyThisWorks`** — the one tool in the app
+  with no source, where web's equivalent has always carried one. Added.
+- [x] Ritual persistence is device-local (`RitualStore` on the same `Session` pref seam as
+  the gratitude garden) and the screen says so — there is no server model for a ritual and
+  inventing one to sync eight ids would be the wrong trade. Reads are **sanitized**:
+  unknown ids (older/newer install, hand-edited pref) and duplicates are dropped, since a
+  duplicate row's reorder arrows would fight over one index.
+- [x] Every string went to `values/strings.xml` (~90 new keys, zero literals). Deliberately
+  **not** translated in `values-hi`: these carry clinical framing and a safety caution —
+  the same class the Hindi draft leaves to the pending clinical review, so they fall back
+  to English by design.
+- [x] **Emulator smoke found a real usability gap**: only the 40 dp switch toggled a block —
+  tapping the block's name, which is what everyone tries, did nothing. The whole row is now
+  `toggleable(role = Role.Switch)` (the posture the plan-step rows already had) with the
+  switch cleared from the semantics tree, so a screen reader gets one control instead of
+  two. Re-verified on device: row taps select, numbering and reorder arrows appear, the
+  summary reads "2 steps · about 3 min".
+- Verified: `:app:check` green — compile, unit tests (new pure-seam tests for
+  `sanitizeRitual` / `moveBlock` / `ritualMinutes` / `nextPromptIndex` / `ritualProgress` /
+  the `RitualStore` round-trip), lint, coverage gate **96.19 %** ≥ 95. **Emulator-smoked
+  2026-07-29** (API-34, signed-in against the local dev API): wind-down walked all four
+  steps to the breathing orb, the builder's cue chips / row toggles / ordering / summary,
+  and guided imagery's caution card → running stage with its countdown.
+- Open: iOS ports of all three (IOS_PARITY follow-up). The physical device on this host
+  refused the install (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` — the resident build was signed
+  with another key, and uninstalling would have wiped its data), so the on-device pass ran
+  on the API-34 emulator.
+
+### Your ritual + guided imagery (2026-07-29) — `apps/app` `/games/ritual`, `/games/imagery`
+Fifth and sixth adoptions from the sibling build (`RitualBuilderPage`,
+`GuidedImageryPage`), closing that folder's open list. Web's Toolkit now covers all four
+sections iOS/Android ship — Ground · Breathe · Reframe · **Settle** — plus a door to a
+routine you assemble yourself.
+- [x] **Three of the reference's eight ritual blocks did not survive.** 4-7-8 breathing
+  (rejected once already when the wind-down landed — a popularised ratio without direct
+  evidence, and letting it back in through a side door defeats the point);
+  **Disidentification** (Psychosynthesis/Assagioli — recorded as skipped on evidence
+  grounds in the original assessment); and **affirmation reading** ("I am enough. I am
+  capable."). The last is the one worth spelling out: generic positive self-statements
+  *lower* mood and self-regard in people with low self-esteem (Wood, Perunovic & Lee,
+  Psychological Science, 2009) — i.e. precisely the users a wellness app selects for.
+  That makes it a small harm, not a taste call. Everything selectable is an exercise the
+  app already ships with its own provenance; the builder invents no new exercise.
+- [x] **The cue is the feature, and the reference has none.** A nicer sequence changes
+  nothing about whether it gets done; an if-then plan attached to something already in
+  the day roughly doubles follow-through (Gollwitzer & Sheeran, 2006, ~94 studies). So
+  "After I ___" leads the page, the plan sentence reads back, and the finish card repeats
+  the cue instead of awarding a trophy (F5: notable moments, not every rep).
+- [x] Honest about what is *not* built: **no reminder**. There is no web scheduler here,
+  and promising a nudge we can't send would be a fake — the screen says the cue is the
+  reminder, which is also how the mechanism works. The ritual saves to **localStorage
+  only** and says so ("not synced to your account").
+- [x] **Guided imagery: the absolute reassurance is gone.** The reference's sixth slide
+  reads "You are safe here. Nothing can harm you." Safe-place imagery is exactly the
+  exercise where that promise can break — for someone carrying trauma, going looking for
+  a calm interior place is a known route to intrusive material instead, and being told
+  "nothing can harm you" at that moment reads as the app being wrong about you. The
+  mechanism it reached for is kept ("nothing here needs anything from you"), and a
+  caution on the way **in** (not after something goes wrong) says stopping is a normal
+  outcome and points at 5-4-3-2-1 grounding, which works in the other direction.
+- [x] New `components/RitualSteps.tsx` — paced breath, prompt sequence, 5-4-3-2-1,
+  writing step, three good things — shared by the wind-down ritual, the Toolkit's
+  grounding card and the builder. The 5-4-3-2-1 copy is hand-synced with Android
+  `strings.xml ground_step*`, so a second copy was a second thing to forget.
+- [x] Two real bugs fixed on the way, both invisible in the reference because it never
+  hits them: the runner is **keyed by block** (two writing steps in a row otherwise
+  reconcile to the same component and the second inherits the first's text — for a brain
+  dump that is a privacy-shaped bug, verified in-browser before/after), and the paced
+  breath now derives phase+round from **one counter** instead of bumping a round counter
+  inside a state updater (impure updaters run twice under StrictMode, so the dev breath
+  count ran at double speed). The imagery countdown was restructured the same way.
+- [x] `.imagery-stage` is constant-dark in both themes, the hero/media-art rule — with an
+  **opaque** base layer, because a translucent one lets the warm-white Dawn page through
+  and washes out the dusk and its cream text with it (caught in a Dawn screenshot).
+  Reduce-motion gates the drifting glows and the line fade.
+- [x] Fixed en route: the Toolkit page carried **two buttons labelled "Start"** (the box
+  breather and Thought Sort, which landed 2026-07-28 without an e2e run). A real
+  screen-reader ambiguity as well as a strict-mode locator failure — Thought Sort's CTA is
+  now "Start sorting".
+- Verified: `next build` clean (types + lint), a real browser walk of both screens in
+  Dawn **and** Night — cue → reorder → save → reload-restore → run → finish, and the
+  imagery timer, skip, and close — and the **full e2e suite 15/15** in the Docker stack,
+  including the new ritual-builder and guided-imagery walk in `app.spec.ts`.
+- Open: iOS/Android ports of both. `CustomRitualsPage` (the sibling's server-backed
+  ritual CRUD) stays unadopted — it needs a backend model, and a browser-local ritual is
+  the honest version until there's a reason to sync one.
+
 ### Thought Sort → the Toolkit's Reframe section (2026-07-28) — `apps/app` `/games`
 Fourth adoption from the sibling build, and the only one of its 18 games that teaches
 something: spotting the named cognitive distortions (all-or-nothing, catastrophising,
@@ -171,7 +304,9 @@ page has a guided version instead of being something to remember at 1am.
 - [x] New `.onb-breathe-orb.slow-out` CSS so the orb's 3.8 s transition doesn't finish
   early and sit still through a 6 s exhale. Reduce-motion already handled by the
   existing orb rule. `tsc` clean.
-- Open: iOS/Android ports; RitualBuilder + guided imagery from the same folder.
+- Open: iOS/Android ports. (RitualBuilder + guided imagery from the same folder landed
+  2026-07-29 — see above; the step runners this page used were extracted to
+  `components/RitualSteps.tsx` and shared with them, copy unchanged.)
 
 ### Interventions: recommend with a visible rationale (2026-07-28)
 Second adoption from the `workspace/cerebro` sibling build. The app already nudged; it
@@ -593,14 +728,17 @@ The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mo
   rules are code-defined over signals cerebroSG actually holds. Follow-ups left open:
   DB-backed rule overrides (admin-editable without a deploy, like the prompt registry),
   and the iOS/Android surfaces (only `apps/app` renders the card today).
-- [x] **Tools → wind-down ritual** — SHIPPED 2026-07-28 on `apps/app` (see "Done —
-  recent"). The reference's 27-item `ToolsPage` grid was **not** taken: an
-  everything-we-have hub is the opposite of the REDESIGN de-densification, and this app
-  already has one Toolkit. Still open from that folder: RitualBuilder (habit stacking /
-  implementation intentions — good evidence, Gollwitzer), Guided imagery. **Skipped on
-  evidence grounds:** Disidentification and Will Training are Psychosynthesis
+- [x] **Tools → wind-down ritual, ritual builder, guided imagery** — ALL SHIPPED on
+  `apps/app` (wind-down 2026-07-28; builder + imagery 2026-07-29 — see "Done — recent").
+  The reference's 27-item `ToolsPage` grid was **not** taken: an everything-we-have hub is
+  the opposite of the REDESIGN de-densification, and this app already has one Toolkit.
+  **Skipped on evidence grounds:** Disidentification and Will Training are Psychosynthesis
   (Assagioli) constructs with a much thinner evidence base than everything else this app
-  ships with a `WhyThisWorks` citation — they'd need a source we can't currently give.
+  ships with a `WhyThisWorks` citation — they'd need a source we can't currently give;
+  and **affirmation reading**, which is worse than thin (Wood et al. 2009 — generic
+  positive self-statements lower mood in low-self-esteem readers). That folder's list is
+  now closed; what remains from it is `CustomRitualsPage`, deferred as server-backed CRUD
+  we have no model for.
 - [x] **Games** — Thought Sort adopted 2026-07-28 with the claims stripped (see "Done —
   recent"); Cloud Drift / Zen Sand deferred to iOS/Android where they'd be verifiable on
   a device. Original assessment, kept for the reasoning: ⚠️ take at most 3–4, and
@@ -615,6 +753,17 @@ The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mo
   **Cloud Drift** / **Zen Sand** (→ Settle). Keep the catalogue's structure; drop
   `builds:` or replace it with real provenance via the existing `WhyThisWorks` component.
 
+
+### `apps/app`: the `.meta` class has no global rule (found 2026-07-29)
+`className="meta"` is used on ~20 elements across Home, Account, Library, Plan, Programs,
+Sleep, the Toolkit and both ritual screens — durations, consent hints, sub-details, step
+counters — but `globals.css` only defines it *scoped*: `.entry .meta` and
+`.program-body .meta`. Everywhere else it renders as plain body text, so those lines sit
+at the same weight as the copy they're meant to sit under. The fix is one line
+(`.meta { color: var(--muted-2); font-size: 12px; }` — both scoped rules are more
+specific and keep winning), but it changes the look of six shipped, screenshot-reviewed
+pages, so it wants to land as its own change with a fresh visual pass rather than riding
+along inside a feature commit.
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
 - [x] Backend: `content_items` gains `narration_script` (admin-authored) + `audio_url`

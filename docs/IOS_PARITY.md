@@ -193,3 +193,35 @@ item 5 (back-to-back `PlayerView` audio overlap — a listen test), the two-them
 pass for item 16, the one-time `CereBroTests` unit-test target, and one full
 `xcodebuild test` run to validate Waves A–D together. The Sleep-pin follow-up above is the
 only outstanding *design* gap.
+
+## Wave E — the three guided routines (2026-07-29)
+
+Not from the original audit: these came from the `workspace/cerebro` sibling build, landed
+first on web (`apps/app`), then Android, and now iOS, so all three clients carry the same
+routines. `Features/Tools/Rituals.swift`:
+
+- **`WindDownRitualView`** — Sleep tab → "Tonight's wind-down". Four steps (brain dump →
+  three good things → body scan → settle). The settle step reuses
+  `BreathingPacer.Preset.reset` rather than defining a fourth rhythm; the reference's
+  4-7-8 was rejected on web and stays rejected here.
+- **`RitualBuilderView`** — Toolkit → Settle. Eight blocks, all of them exercises the app
+  already ships with provenance. Three of the reference's eight are deliberately absent:
+  4-7-8, Disidentification (Psychosynthesis), and affirmation reading — generic positive
+  self-statements *lower* mood in people with low self-esteem (Wood, Perunovic & Lee,
+  Psychological Science, 2009), the population a wellness app selects for. `RitualsTest`
+  pins their absence. What the reference lacks and this adds is the **cue** (Gollwitzer &
+  Sheeran 2006), which leads the page; the ritual is device-local and says so, and there
+  is deliberately no reminder.
+- **`GuidedImageryView`** — Toolkit → Settle. Eight prompts, fifteen seconds each. The
+  reference's "You are safe here. Nothing can harm you." is **gone**: safe-place imagery is
+  exactly where that promise can break, so the screen keeps the mechanism and puts a
+  caution on the way *in* that points at 5-4-3-2-1 grounding.
+
+Test posture: every auto-advancing timer is gated on `-resetState` (the same posture as the
+splash and the audio engine — CLAUDE.md), so `testGuidedRoutines` walks all three with the
+manual controls and never waits on a self-advancing screen. `RitualStore`'s two keys join
+the `-resetState` wipe list so a saved ritual can't leak between runs.
+
+⚠ **Static-verified only (Windows host)** — as with Waves A–D. Owner: one macOS
+`xcodebuild test` pass; `CereBroTests/RitualsTest.swift` is ready for the same one-time
+unit-test-target add that `ContrastTest` needs.

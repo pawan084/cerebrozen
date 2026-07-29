@@ -37,7 +37,7 @@ offline with blank keys.
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
   apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
-                  docs/REDESIGN.md): 5 tabs + ~34 routes, unified breathe engine, Toolkit hub,
+                  docs/REDESIGN.md): 5 tabs + ~37 routes, unified breathe engine, Toolkit hub,
                   one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
                   Night/Dawn theme (theme-aware token getters in ui/theme, AppTheme state,
                   ContrastTest gate), InfoBanner slot on Home, crisis ≤2 taps (Tele-MANAS-first)
@@ -51,6 +51,14 @@ cere/
   docker-compose.yml / .e2e.yml / .prod.yml
   .github/workflows/  ci.yml · deploy.yml · testflight.yml
 ```
+
+The three **guided routines** (wind-down ritual · personal ritual builder · guided imagery)
+exist on all three clients and are hand-synced, not shared code: `apps/app`
+`(authed)/sleep/ritual` + `(authed)/games/{ritual,imagery}` over `components/RitualSteps.tsx`
+· android `ui/screens/Rituals.kt` · iOS `Features/Tools/Rituals.swift`. The ritual itself is
+**device-local on every client** (`RitualStore` over the `Session` pref seam on Android and
+`UserDefaults` on iOS, `localStorage` on web) — there is no server model for one, and each
+screen says so rather than letting the user assume it follows their account.
 
 ## Backend (`backend/app`)
 
@@ -243,6 +251,7 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
 | Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` ⇄ web `WIDGET_LINKS` (chat page) ⇄ android `widgetRoute` (TalkScreen.kt) |
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |
+| Breathe presets (box 4·4·4·4; reset = longer exhale, 4 in / 6 out) | — (client-side pacing) | `BreathingPacer.Preset` ⇄ android `breathePhases` (`RESET_EXHALE_EXTRA`) ⇄ web `.onb-breathe-orb` + `SLOW_EXHALE`/`BOX_BREATH` in `components/RitualSteps.tsx`. Android ran Reset symmetrically until 2026-07-29 — the same named "two-minute reset" breathed differently on the two phones |
 | Crisis keywords (offline) | `safety.py` `_CRISIS_TERMS` | `LocalCompanion` |
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
@@ -272,6 +281,12 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   risk — never blocks), Sleep diary (morning check-in, honest weekly summary, history),
   Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
   Account (consent, crisis region, trusted contact, export download, typed DELETE).
+  Toolkit (`/games` — Breathe · Ground · Reframe · Settle, mirroring the iOS/Android
+  hub) with three guided routines under it: the wind-down ritual (`/sleep/ritual`),
+  a self-assembled ritual anchored to a cue (`/games/ritual`, localStorage-only) and
+  guided imagery (`/games/imagery`). Their step runners are shared —
+  `components/RitualSteps.tsx` — and the 5-4-3-2-1 copy inside it is hand-synced with
+  Android `strings.xml ground_step*`. `/crisis` is public and works signed-out.
   `noindex`.
 - **Admin** — one client component (`app/page.tsx`) with tabs
   overview/analytics/users/content/safety/waitlist. Analytics renders the first-party
