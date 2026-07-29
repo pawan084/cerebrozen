@@ -107,7 +107,10 @@ export function ThoughtSort() {
           person thinking it — and if you can&apos;t tell, &ldquo;Not sure&rdquo; is a real
           answer, not a cop-out.
         </p>
-        <button className="btn" onClick={start} style={{ marginTop: 12 }}>Start</button>
+        {/* Not just "Start": the Toolkit page also carries the box breather's
+            Start, and two identically-named buttons on one page is a real
+            screen-reader ambiguity (it broke the e2e locator the same way). */}
+        <button className="btn" onClick={start} style={{ marginTop: 12 }}>Start sorting</button>
       </div>
     );
   }

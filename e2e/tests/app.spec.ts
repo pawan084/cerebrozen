@@ -2,6 +2,10 @@ import { test, expect, Page } from "@playwright/test";
 
 const APP = process.env.APP_URL || "http://app:3002";
 
+// Guided imagery ships eight prompts; skipping through all of them lands on
+// the closing card (mirrors LINES in app/(authed)/games/imagery/page.tsx).
+const LINES_IN_IMAGERY = 8;
+
 // Sidebar nav items are links; scope to .sidebar so a label like "Journal"
 // hits the nav rather than a same-named card elsewhere on the page.
 function nav(page: Page, label: string) {
@@ -93,6 +97,47 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: "5 things you can see" })).toBeVisible();
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await expect(page.getByRole("heading", { name: "4 things you can feel" })).toBeVisible();
+
+    // Ritual builder: the cue (the part with the evidence) round-trips into the
+    // plan sentence, reordering actually reorders the run, and the routine runs
+    // to a finish that repeats the cue back.
+    await page.getByRole("link", { name: "Build yours" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Attach it to something you already do" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "close my laptop" }).click();
+    await expect(page.getByText("After I close my laptop, I'll run this.")).toBeVisible();
+    await page.getByRole("checkbox", { name: "One intention" }).check();
+    await page.getByRole("checkbox", { name: "Three good things" }).check();
+    await expect(page.getByText("2 steps · about 3 min")).toBeVisible();
+    await page.getByRole("button", { name: "Move Three good things earlier" }).click();
+    await expect(page.getByText("1. Three good things")).toBeVisible();
+    await page.getByRole("button", { name: "Save it" }).click();
+    await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+    await page.getByRole("button", { name: "Start the ritual" }).click();
+    await expect(page.getByRole("heading", { name: "What went right?" })).toBeVisible();
+    await page.getByRole("button", { name: "Skip this one" }).click();
+    await expect(page.getByRole("heading", { name: "What is this next stretch for?" })).toBeVisible();
+    await page.getByRole("button", { name: "Finish" }).click();
+    await expect(page.getByText("That's the ritual.")).toBeVisible();
+    await expect(page.getByText("Next time: after you close my laptop.")).toBeVisible();
+
+    // Guided imagery: the caution is on the way IN (not after something goes
+    // wrong), and the prompts advance to a close.
+    await page.getByRole("link", { name: "Back to the Toolkit" }).click();
+    await page.getByRole("link", { name: "Start the visualization" }).click();
+    await expect(page.getByText("If it stops feeling calm, stop.")).toBeVisible();
+    await page.getByRole("button", { name: "Begin" }).click();
+    await expect(page.getByText(/Let your shoulders drop/)).toBeVisible();
+    // Guarded rather than a flat 8 clicks: the 15s auto-advance can carry a
+    // line while the runner is between clicks, and the control disappears on
+    // the closing card.
+    const skip = page.getByRole("button", { name: "Skip ahead" });
+    for (let i = 0; i < LINES_IN_IMAGERY; i++) {
+      if (!(await skip.isVisible())) break;
+      await skip.click();
+    }
+    await expect(page.getByText("The place stays where it is.")).toBeVisible();
 
     // Plan + Library (were built but orphaned) are now reachable from the nav.
     await nav(page, "Plan").click();

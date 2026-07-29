@@ -708,3 +708,42 @@ select option { color: var(--ink); }
 .talk-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 34px; }
 .talk-hero p { color: rgba(255,255,255,0.78); font-size: 15px; max-width: 44ch; margin: 12px auto 0; }
 .talk-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+
+/* Guided imagery stage (Toolkit → Settle). Constant-dark in both themes, the
+   same rule heroes and media art follow — it carries its own literal paints,
+   and a warm-white version of "a calm place at dusk" is a different exercise.
+   Text on it is therefore a fixed cream, not var(--text). */
+.imagery-stage {
+  position: relative; overflow: hidden; border-radius: 24px; margin-bottom: 16px;
+  min-height: 300px; padding: 40px 34px; display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.08);
+  /* The base layer is OPAQUE on purpose: a translucent one lets the warm-white
+     Dawn page through and the whole dusk washes out (and the cream text with
+     it). Same trap the hero paints avoid by carrying literal colours. */
+  background: radial-gradient(circle at 30% 22%, rgba(138,123,240,0.26), transparent 55%),
+              radial-gradient(circle at 76% 74%, rgba(143,230,238,0.14), transparent 52%),
+              linear-gradient(180deg, #1d1940, #0b0a1c);
+}
+.imagery-line {
+  position: relative; z-index: 1; text-align: center; max-width: 30ch;
+  font-family: var(--font-serif), Georgia, serif; font-size: 25px; line-height: 1.5;
+  color: rgba(255,255,255,0.9); animation: imageryIn 1s ease both;
+}
+.imagery-glow {
+  position: absolute; width: 260px; height: 260px; border-radius: 50%;
+  background: rgba(138,123,240,0.16); filter: blur(60px);
+  top: 8%; left: 6%; animation: imageryDrift 24s ease-in-out infinite;
+}
+.imagery-glow.two {
+  width: 200px; height: 200px; background: rgba(143,230,238,0.13);
+  top: auto; left: auto; bottom: 6%; right: 8%; animation-duration: 31s; animation-direction: reverse;
+}
+@keyframes imageryIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes imageryDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(38px, 26px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .imagery-line { animation: none; }
+  .imagery-glow { animation: none; }
+}
