@@ -413,6 +413,14 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             emptyIcon = Icons.Outlined.Bedtime,
         )
 
+        // The guided version of everything below: the stimulus-control advice
+        // is something to remember at 1am, the ritual is something to follow.
+        SleepNavCard(
+            icon = Icons.Outlined.Bedtime,
+            title = stringResource(R.string.sleep_ritual_nav_title),
+            subtitle = stringResource(R.string.sleep_ritual_nav_subtitle),
+        ) { onOpen("winddown") }
+
         // Stimulus-control micro-education (CBT-I Phase 1) — two small, steady
         // ideas, each with an honest provenance footer.
         SleepGlassCard {

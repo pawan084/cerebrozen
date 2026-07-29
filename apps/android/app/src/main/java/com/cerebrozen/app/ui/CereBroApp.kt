@@ -78,6 +78,7 @@ import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
+import com.cerebrozen.app.ui.screens.GuidedImageryScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
@@ -86,6 +87,7 @@ import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
+import com.cerebrozen.app.ui.screens.RitualBuilderScreen
 import com.cerebrozen.app.ui.screens.SearchScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
@@ -99,6 +101,7 @@ import com.cerebrozen.app.ui.screens.TalkMode
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
+import com.cerebrozen.app.ui.screens.WindDownRitualScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.screens.AppearanceScreen
@@ -459,6 +462,11 @@ fun CereBroApp() {
             // The one parameterized breathe engine (box / two-minute reset).
             composable("breathe/box") { BreatheScreen(BreathePreset.Box, onBack = back) }
             composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
+            // The two guided routines (web parity): the Sleep tab's wind-down
+            // and the Toolkit's Settle visualization.
+            composable("winddown") { WindDownRitualScreen(onBack = back) }
+            composable("imagery") { GuidedImageryScreen(onOpen = open, onBack = back) }
+            composable("ritual") { RitualBuilderScreen(onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }

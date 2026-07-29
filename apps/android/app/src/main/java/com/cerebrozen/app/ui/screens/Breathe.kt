@@ -116,14 +116,25 @@ internal fun phaseLabelRes(kind: BreathKind): Int = when (kind) {
     BreathKind.OUT -> R.string.breathe_phase_out
 }
 
+/** How much longer the Reset exhale runs than its inhale, in seconds. */
+internal const val RESET_EXHALE_EXTRA = 2
+
 /** The phase sequence per preset. Box and Color pace with holds; Reset is the
  * gentle onboarding rhythm — in, out, nothing to hold. W27 §4 (Calm study):
  * [secondsPerPhase] is user-selectable — Classic 4s (the long-standing
- * default), Gentle 6s, Slow 8s — scaling every phase equally. */
+ * default), Gentle 6s, Slow 8s — scaling every phase equally.
+ *
+ * Reset exhales [RESET_EXHALE_EXTRA] seconds longer than it inhales. That is
+ * the whole mechanism — a longer exhale than inhale is the part of slow
+ * breathing with real vagal-tone evidence, and it is what iOS `BreathingPacer
+ * .Preset.reset` ("in for four, out for six") and the web wind-down ritual
+ * have always paced. Android alone ran it symmetrically, so the same named
+ * "two-minute reset" breathed differently on the two phones; corrected
+ * 2026-07-29, pace scaling preserved. */
 internal fun breathePhases(preset: BreathePreset, secondsPerPhase: Int = 4): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
         BreathPhase(BreathKind.IN, secondsPerPhase, expanded = true),
-        BreathPhase(BreathKind.OUT, secondsPerPhase, expanded = false),
+        BreathPhase(BreathKind.OUT, secondsPerPhase + RESET_EXHALE_EXTRA, expanded = false),
     )
     BreathePreset.Box, BreathePreset.Color -> listOf(
         BreathPhase(BreathKind.IN, secondsPerPhase, expanded = true),

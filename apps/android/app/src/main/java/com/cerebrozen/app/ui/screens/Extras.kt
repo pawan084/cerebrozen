@@ -1795,6 +1795,10 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitHeroHeader(onBack)
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80))
             Grounding()
+            // Provenance, same as every other tool carries (REDESIGN F9) — the
+            // web Toolkit's grounding card has always had it and Android's
+            // hadn't, which made this the one tool here with no source.
+            WhyThisWorks(stringResource(R.string.ground_why))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
@@ -1827,6 +1831,19 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ) { onOpen("tipp") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Color(0xFF9D7CFF))
+            ToolkitExerciseCard(
+                stringResource(R.string.toolkit_imagery_title), stringResource(R.string.toolkit_imagery_subtitle),
+                stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
+                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
+            ) { onOpen("imagery") }
+            // The builder is a door, not a section of its own: it only
+            // sequences the tools above, and putting it first would suggest
+            // setup comes before use.
+            ToolkitExerciseCard(
+                stringResource(R.string.toolkit_ritual_title), stringResource(R.string.toolkit_ritual_subtitle),
+                stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
+                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
+            ) { onOpen("ritual") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
@@ -2160,7 +2177,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
 
 /** The 5-4-3-2-1 grounding steps, resolved from resources in composition. */
 @Composable
-private fun groundSteps(): List<Pair<String, String>> = listOf(
+internal fun groundSteps(): List<Pair<String, String>> = listOf(
     stringResource(R.string.ground_step1_title) to stringResource(R.string.ground_step1_hint),
     stringResource(R.string.ground_step2_title) to stringResource(R.string.ground_step2_hint),
     stringResource(R.string.ground_step3_title) to stringResource(R.string.ground_step3_hint),

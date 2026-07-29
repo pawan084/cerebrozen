@@ -29,8 +29,19 @@ class BreathePacingTest {
     @Test
     fun pace_scales_the_reset_rhythm_and_it_still_has_no_holds() {
         val phases = breathePhases(BreathePreset.Reset, 8)
-        assertEquals(listOf(8, 8), phases.map { it.seconds })
+        // The exhale stays RESET_EXHALE_EXTRA seconds longer than the inhale at
+        // every pace — that asymmetry IS the exercise (and iOS's `.reset`), not
+        // a rounding of it. Pinned so a future pace tweak can't quietly flatten
+        // it back to a symmetric rhythm, which is what Android shipped until
+        // 2026-07-29.
+        assertEquals(listOf(8, 8 + RESET_EXHALE_EXTRA), phases.map { it.seconds })
         assertEquals(listOf(BreathKind.IN, BreathKind.OUT), phases.map { it.kind })
+    }
+
+    @Test
+    fun reset_matches_the_ios_preset_at_the_default_pace() {
+        // iOS: BreathingPacer.Preset.reset — ("Breathe in", 4), ("Breathe out", 6).
+        assertEquals(listOf(4, 6), breathePhases(BreathePreset.Reset).map { it.seconds })
     }
 
     @Test
