@@ -346,6 +346,29 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### B2C Tier 1 — SHIPPED 2026-07-30 (see the commits on `fix/ui-worldclass-103`)
+- [x] **Persisted, addressable memory** (`context_memories`) — closes the PRD note that
+  granular editing was "not implementable against the current schema". Only what the user
+  wrote or approved is stored; mined patterns stay computed and are *hidden* via a
+  tombstone, never persisted as facts. Per-item edit/delete on all three clients.
+- [x] **Personal safety plan** (Stanley-Brown, versioned, archive-not-delete) — **user-authored**;
+  the reference implementation's AI risk-classifier authorship was deliberately not copied.
+  Guided flow + offline copy on all three clients, print-ready page instead of a PDF dependency.
+- [x] **Weekly digest** — `compute_weekly` was computed but never delivered. Snapshots one
+  `Insight` row per ISO week (the model's first ever writer) and rides the existing dispatcher.
+  A quiet week is not sent.
+- [x] **Recommendations** — closes "an interventions engine that acts on mined patterns".
+  Hand-authored `practice_catalog`, every suggestion carries its reason verbatim, dismissing
+  is permanent. The reference's `interventions` rule engine was NOT ported (its own clinical
+  review puts it in the always-excluded tier).
+- [x] **Goals + habits** — the first things in the app the *user* defines. `decompose` feeds
+  the one existing plan; habits have no streak field by design.
+- [x] **Claims gate revived** (`scripts/check-claims.mjs` + `docs/CLAIMS_MAP.md`, in CI),
+  widened from the sibling's web-only scan to iOS Swift and Android strings.xml — where
+  every over-claim actually found here was living.
+- [ ] Remaining: recommendations + goals/habits on iOS and Android; rituals / commitments /
+  affirmations (check these aren't already covered before building parallel machinery).
+
 ### B2C feature candidates — plan in [B2C_BACKLOG.md](B2C_BACKLOG.md) (2026-07-30)
 Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different
 product**, `cerebrolearning.com`, 111 API domains). B2B/HR and clinical/EHR planes are
