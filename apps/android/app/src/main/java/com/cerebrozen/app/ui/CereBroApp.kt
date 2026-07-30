@@ -235,7 +235,15 @@ private fun ThemeGlideScrim() {
 }
 
 /** Keeps the status/navigation-bar icon appearance in step with the theme:
- * light icons over Night, dark icons over Dawn. */
+ * light icons over Night, dark icons over Dawn.
+ *
+ * **Call this AFTER the frame's `AppTheme.forceNight` decision.** It reads the
+ * theme during composition, so a call placed above the assignment sees the
+ * previous value. Found on a physical device: this used to sit at the top of
+ * [CereBroApp], above `forceNight = true`, and painted near-black clock and
+ * status icons over the deep-indigo Night splash for its full 1.1s — the very
+ * first frame of the app, on any phone whose system theme is light.
+ */
 @Composable
 private fun SyncSystemBarIcons() {
     val view = androidx.compose.ui.platform.LocalView.current
@@ -280,13 +288,19 @@ fun CereBroApp() {
     // calc lambda must stay side-effect free (Compose may run it speculatively),
     // so the write lives in a LaunchedEffect like the splash below.
     LaunchedEffect(Unit) { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")) }
-    SyncSystemBarIcons()
 
     // A brief branded splash on cold launch — always Night (brand moment).
+    // Reduce Motion gets the settled frame instantly, so holding it for the full
+    // animation length would just be a longer dead screen: shorten the hold too.
+    val splashReduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     var showSplash by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { delay(1100); showSplash = false }
+    LaunchedEffect(splashReduceMotion) {
+        delay(if (splashReduceMotion) 450 else 1100)
+        showSplash = false
+    }
     if (showSplash) {
         AppTheme.forceNight = true
+        SyncSystemBarIcons()
         Splash()
         return
     }
@@ -296,6 +310,7 @@ fun CereBroApp() {
     // bespoke night art doesn't theme, so it is always Night.
     if (!Session.signedIn) {
         AppTheme.forceNight = true
+        SyncSystemBarIcons()
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             AuroraBackground()
             Onboarding()
@@ -319,6 +334,7 @@ fun CereBroApp() {
     // — with the sleep timer running, from a Night tab. That is the exact harm
     // the rule exists to prevent, and it was invisible to every test.
     AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
+    SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
     // E6: the accent cross-fades between tabs instead of snapping; Reduce Motion

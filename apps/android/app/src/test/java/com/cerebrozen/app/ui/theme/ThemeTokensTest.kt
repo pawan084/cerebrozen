@@ -41,6 +41,24 @@ class ThemeTokensTest {
     }
 
     @Test
+    fun theWindowBackgroundResourceMatchesTheNightFloor() {
+        // res/values/colors.xml paints the window and, on Android 12+, the
+        // platform splash the launcher icon sits on. NightPalette.night is what
+        // Compose paints one frame later. When these disagree, every cold launch
+        // steps from one dark indigo to a different one — which is exactly what
+        // shipped: the resource still held the iOS #080B22 while the Android
+        // palette had moved to #100D2B.
+        val resource = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()
+            .getColor(com.cerebrozen.app.R.color.night)
+        assertEquals(
+            "@color/night must equal NightPalette.night",
+            NightPalette.night,
+            Color(resource),
+        )
+    }
+
+    @Test
     fun isNight_resolves_the_full_mode_matrix() {
         AppTheme.forceNight = false
         AppTheme.mode = ThemeMode.System
