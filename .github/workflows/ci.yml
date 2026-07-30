@@ -95,6 +95,10 @@ jobs:
             apps/app/package-lock.json
       - name: Design-token drift check
         run: node scripts/sync-tokens.mjs --check
+      # Copy honesty across all four clients (web, app, iOS Swift, Android
+      # strings.xml). Review alone let three over-claims ship; see CLAIMS_MAP.md.
+      - name: Claims check
+        run: node scripts/check-claims.mjs
       - name: Typecheck web
         working-directory: apps/web
         run: |

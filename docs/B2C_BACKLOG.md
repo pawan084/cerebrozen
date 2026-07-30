@@ -32,11 +32,11 @@ Two whole categories of the sibling are excluded by that decision — roughly 25
 | **Clinical / regulated** | `therapists`, `therapeutic_alliance`, `ehr`, `insurance_claims`, `intake`, `psych_profile`, `medical_docs`, `medical_profile` | Contradicts this product's stated line — "wellness support, not therapy, diagnosis, or a crisis service" — and App-Store-guidelines-first. PRD §2 already calls coach/therapist booking **"the sharpest honesty risk in the product"**; importing a booking plane makes that worse, not better |
 
 Anything that survives still has to pass the existing bar: it degrades cleanly without
-keys, safety never blocks, and copy states only what ships — today that last one is
-enforced by review plus PRD §2's honest ✅/🟡/⚪ status rows, **not** by a gate. (A
-phrase-based claims gate — `docs/CLAIMS_MAP.md` + `scripts/check-claims.mjs` — exists on
-`origin/main-sibling-legacy` and is worth reviving if this backlog is picked up; several
-items below add user-facing claims faster than review scales.)
+keys, safety never blocks, and copy states only what ships. That last one is now gated
+again: `docs/CLAIMS_MAP.md` + `scripts/check-claims.mjs` were revived 2026-07-30 and run in
+CI, widened from the sibling's web-only scan to all four clients — because every over-claim
+actually found here lived in Android `strings.xml` or Swift, which the original would have
+missed.
 
 ## 2. Tier 1 — each closes a gap this repo's own PRD documents
 
