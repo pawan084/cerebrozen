@@ -90,6 +90,9 @@ internal fun lastSevenDays(today: LocalDate = LocalDate.now()): List<LocalDate> 
  * broken-chain counter on mental-health activity is exactly what the
  * anti-dark-pattern rules here exist to prevent.
  */
+// FlowRow is still experimental; the codebase already opts in the same way in
+// OnboardingScreen.
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun GoalsScreen(onBack: () -> Unit) {
     var goals by remember { mutableStateOf<List<UserGoal>>(emptyList()) }
@@ -151,20 +154,23 @@ fun GoalsScreen(onBack: () -> Unit) {
                     if (goal.why.isNotBlank()) {
                         Text(goal.why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                     }
-                    Row(
-                        Modifier.heightIn(min = 48.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // FlowRow, not Row: three labelled actions do not fit one
+                    // 720px line (found on a real CPH2681 — "Let it go" broke
+                    // across three lines), and Hindi is longer still. Wrapping
+                    // is the only thing that survives both.
+                    androidx.compose.foundation.layout.FlowRow(
+                        Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         TextButton(onClick = { act { Api.decomposeGoal(goal.id) } }) {
-                            Text(stringResource(R.string.goals_make_plan), color = Periwinkle)
+                            Text(stringResource(R.string.goals_make_plan), color = Periwinkle, maxLines = 1)
                         }
                         TextButton(onClick = { act { Api.setGoalStatus(goal.id, "achieved") } }) {
-                            Text(stringResource(R.string.goals_done), color = Ok)
+                            Text(stringResource(R.string.goals_done), color = Ok, maxLines = 1)
                         }
                         // Letting a goal go is an outcome, not a failure.
                         TextButton(onClick = { act { Api.setGoalStatus(goal.id, "released") } }) {
-                            Text(stringResource(R.string.goals_release), color = TextMuted)
+                            Text(stringResource(R.string.goals_release), color = TextMuted, maxLines = 1)
                         }
                     }
                 }

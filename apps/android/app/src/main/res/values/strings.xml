@@ -887,7 +887,7 @@
     <string name="goals_section">What you\'re working towards</string>
     <string name="goals_empty">Nothing yet. One is plenty to start with.</string>
     <string name="goals_add_hint">Something you\'re working towards…</string>
-    <string name="goals_make_plan">Make this today\'s plan</string>
+    <string name="goals_make_plan">Make today\'s plan</string>
     <string name="goals_done">Done</string>
     <string name="goals_release">Let it go</string>
     <string name="goals_save_failed">Couldn\'t save that — try again.</string>
