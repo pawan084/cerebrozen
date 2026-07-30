@@ -219,6 +219,10 @@
     <string name="journal_no_entries_title">अभी कोई प्रविष्टि नहीं</string>
     <string name="journal_no_entries_body">आपकी सहेजी बातें यहाँ दिखेंगी — सिर्फ़ आपके लिए।</string>
     <string name="journal_search_label">प्रविष्टियाँ खोजें</string>
+    <string name="journal_untitled">बिना शीर्षक की प्रविष्टि</string>
+    <string name="journal_read_empty_title">इसमें कुछ लिखा नहीं गया</string>
+    <string name="journal_read_empty_body">यह प्रविष्टि केवल शीर्षक के साथ सहेजी गई थी।</string>
+    <string name="journal_open_entry_cd">प्रविष्टि खोलें: %1$s</string>
     <string name="journal_no_match">\"%1$s\" से मेल खाती कोई प्रविष्टि नहीं।</string>
     <string name="journal_private_eyebrow">निजी मोड</string>
     <string name="journal_private_title">आपकी निजता</string>

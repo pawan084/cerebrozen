@@ -246,13 +246,25 @@
     <string name="journal_no_entries_title">No entries yet</string>
     <string name="journal_no_entries_body">Your saved reflections will appear here — private to you.</string>
     <string name="journal_search_label">Search entries</string>
+    <!-- Reading one entry back in full. Android could write journal entries and
+         never read one: history rows were not tappable, so the only view of your
+         own writing was a 120-character preview. -->
+    <string name="journal_untitled">Untitled entry</string>
+    <string name="journal_read_empty_title">Nothing was written in this one</string>
+    <string name="journal_read_empty_body">The entry was saved with a title only.</string>
+    <string name="journal_open_entry_cd">Open entry: %1$s</string>
     <string name="journal_no_match">No entries match \"%1$s\".</string>
     <string name="journal_private_eyebrow">Private mode</string>
     <string name="journal_private_title">Your privacy</string>
     <string name="journal_lock_title">Lock the journal</string>
     <string name="journal_lock_hint">Require your screen lock to open</string>
     <string name="journal_private_body_title">Your entries stay private</string>
-    <string name="journal_private_body">Journal entries are yours. Safety scanning quietly surfaces support when something sounds heavy — it never blocks or shares your writing.</string>
+    <!-- "never blocks or shares your writing" was half true and half false. It never
+         blocks — that is a hard rule (safety adds resources, never rejects). But the
+         scan itself sends the entry to the model provider (services/safety.py →
+         ai.complete_json), so "never shares" was untrue on the very screen
+         reassuring the user about that scan. Say what actually happens. -->
+    <string name="journal_private_body">Journal entries are yours. Safety scanning reads an entry once to surface support when something sounds heavy — it never blocks your writing, and nobody at CereBro reads it. Like the companion, that check runs through our AI provider; nothing is sold, advertised against, or shown to another person.</string>
     <string name="journal_telemanas">In India, Tele-MANAS is available any time — call 14416, free, day or night.</string>
     <string name="journal_hero_subtitle">A gentle starting point — or write about anything.</string>
     <string name="journal_new_title">New entry</string>

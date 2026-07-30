@@ -39,6 +39,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -82,7 +85,7 @@ private fun quickPrompts(): List<String> = listOf(
 
 /** The journal's information architecture (mirrors the redesign): a hub plus three
  * pushed sub-screens for writing, reviewing history, and privacy. */
-private enum class JournalMode { Home, Entry, History, Private }
+private enum class JournalMode { Home, Entry, History, Private, Read }
 
 internal data class Entry(val title: String, val body: String, val date: String, val risk: String)
 
@@ -124,6 +127,11 @@ fun JournalScreen() {
     var query by remember { mutableStateOf("") }
     var mood by rememberSaveable { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(JournalMode.Home) }
+    // The entry being read in full. Android could WRITE journal entries and never
+    // read one back: history rows were not tappable, so the only view of your own
+    // writing was a 120-character, two-line preview. iOS has had JournalDetailView
+    // since the start; this is the missing half of the feature, not a new one.
+    var reading by remember { mutableStateOf<Entry?>(null) }
     // The draft-safe banner — captured at FIRST composition, so it's true only when
     // the fields arrived restored (rotation / process death), never after typing.
     val restoredDraft = remember { title.isNotBlank() || body.isNotBlank() }
@@ -193,9 +201,19 @@ fun JournalScreen() {
                 AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
                 Text(stringResource(R.string.journal_feeling_label),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                journalMoods().chunked(3).forEach { rowMoods ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowMoods.forEach { m ->
+                // FlowRow, not chunked(3) + Row: a fixed three-per-row grid has no
+                // way to give, so a longer translation or a large system font size
+                // pushes the third chip off the edge. (Not reproducible on this
+                // device — the OEM blocks both `settings put system font_scale`
+                // and `wm density` — so this is hardened by construction rather
+                // than from a screenshot.)
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                run {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        journalMoods().forEach { m ->
                             PickChip(selected = mood == m, label = m) {
                                 mood = if (mood == m) null else m
                             }
@@ -242,6 +260,31 @@ fun JournalScreen() {
             }
             return
         }
+        JournalMode.Read -> {
+            val e = reading
+            if (e == null) {
+                mode = JournalMode.History
+            } else {
+                SubPage(e.date, e.title.ifBlank { stringResource(R.string.journal_untitled) },
+                    onBack = { mode = JournalMode.History }) {
+                    if (e.body.isBlank()) {
+                        SectionCard {
+                            Text(stringResource(R.string.journal_read_empty_title),
+                                style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                            Text(stringResource(R.string.journal_read_empty_body),
+                                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        }
+                    } else {
+                        SectionCard {
+                            // The whole entry, never truncated — this screen exists
+                            // precisely because the preview was all there was.
+                            Text(e.body, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                        }
+                    }
+                }
+            }
+            return
+        }
         JournalMode.History -> {
             SubPage(stringResource(R.string.journal_history_eyebrow), stringResource(R.string.journal_history_title), onBack = { mode = JournalMode.Home }) {
                 if (entries.isEmpty()) {
@@ -257,7 +300,9 @@ fun JournalScreen() {
                         AppTextField(query, { query = it }, stringResource(R.string.journal_search_label), singleLine = true)
                     }
                     val shown = filterEntries(entries, query)
-                    shown.take(20).forEachIndexed { i, e -> JournalEntryCard(e, i) }
+                    shown.take(20).forEachIndexed { i, e ->
+                        JournalEntryCard(e, i) { reading = e; mode = JournalMode.Read }
+                    }
                     if (shown.isEmpty()) {
                         Text(stringResource(R.string.journal_no_match, query.trim()),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -361,13 +406,16 @@ fun JournalScreen() {
 /** A single history entry as a glass row: an accent bar (warm when the entry was
  * flagged for support), date, title, and a two-line preview. Real data only. */
 @Composable
-private fun JournalEntryCard(entry: Entry, index: Int) {
+private fun JournalEntryCard(entry: Entry, index: Int, onOpen: () -> Unit) {
     val elevated = entry.risk !in listOf("none", "low")
+    val openCd = stringResource(R.string.journal_open_entry_cd, entry.title.ifBlank { entry.date })
     Row(
         Modifier
             .fillMaxWidth()
             .appear(index, rise = 8f)
             .glass()
+            .clickable(onClick = onOpen)
+            .semantics { contentDescription = openCd }
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,

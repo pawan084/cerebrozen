@@ -73,6 +73,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-30 | home | Android (+backend seed) | **5** | 8 | `Home: a bright screen at bedtime, and a plan that said its own name twice` |
 | 2026-07-31 | sleep | Android (app-wide typography) | **6** | 8 | `Sleep: a row that broke a word in half, and advice printed twice` |
 | 2026-07-31 | talk | Android (`Page` gains a pinned footer) | **6** | 8 | `Talk: the composer travelled with the transcript` |
+| 2026-07-31 | journal | Android (+claims gate) | **3** | 8 | `Journal: you could write entries and never read one back` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -306,6 +307,49 @@ the scrolled text passes under the transparent status bar. Talk shows it plainly
 scroll; most screens are too short to reveal it. The fix is a status-bar inset on
 `Page`, which shifts every screen's header and needs the whole app re-verified —
 not something to slip into a Talk audit.
+
+### journal — Android, 2026-07-31 (3 → 8)
+
+Capped at 3 by one truthfulness finding, on the screen least able to afford it.
+
+1. **"Safety scanning … never blocks or shares your writing."** On the Private
+   mode / *Your privacy* screen — the one screen whose whole job is explaining
+   that scan. The "never blocks" half is true and is a hard rule. The "never
+   shares" half is not: `scan_and_record` → `safety.classify` →
+   `ai.complete_json` sends the entry body to OpenAI or Anthropic. Same falsehood
+   the Welcome screen carried, in a second place, found the same way. Rewritten to
+   say what happens, added to `CLAIMS_MAP.md`, and the phrase family is now
+   blocked by `check-claims`.
+2. **You could write journal entries and never read one back.** History rows were
+   not tappable, so the only view of your own writing was a 120-character,
+   two-line preview. iOS has had `JournalDetailView` from the start; Android was
+   missing the second half of its own feature. Tapping a row now opens the entry
+   in full — verified against a 600-character entry that rendered untruncated.
+3. **The mood chips were `chunked(3)` + `Row`** — a fixed three-per-row grid with
+   no way to give. Now a `FlowRow`. Stated honestly: this one is hardened by
+   construction, not from a screenshot, because this device would not let me
+   reproduce it (below).
+
+**Honest and left alone:** search appears only above three entries, which is the
+right call and still matches "searchable" on the door; the history card's third
+line really is the entry body ("Written"), not a stray label; Tele-MANAS 14416 is
+correct (free, 24/7, Government of India).
+
+**Test data:** a long entry was created through the API to verify the reader and
+deleted afterwards (`DELETE /journal/{id}` → 204, one entry left, as before).
+
+## Gotchas this device adds
+
+The OEM (OPPO ColorOS) blocks more than `pm grant`:
+
+- `pm clear` — `SecurityException: CLEAR_APP_USER_DATA`. Uninstall + reinstall
+  for a genuine first run.
+- `settings put system font_scale` — `WRITE_SETTINGS`. Large-font states cannot
+  be reproduced here.
+- `wm density` — `WRITE_SECURE_SETTINGS`. Neither can narrow-width states.
+
+So layout robustness against big text has to be argued from construction
+(FlowRow over fixed grids) and said to be argued that way, not claimed as seen.
 
 ## Device commands
 

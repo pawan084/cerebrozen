@@ -86,6 +86,13 @@ const CAPABILITY = [
   // the funnel flattened that into an absolute the product cannot keep.
   "nothing is ever shared",
   "never shared with anyone",
+  // Same falsehood, second location: the journal's Private-mode screen said
+  // safety scanning "never blocks or shares your writing". It never blocks —
+  // that part is a hard rule. But the scan sends the entry to the model
+  // provider (services/safety.py -> ai.complete_json), so the reassurance was
+  // untrue on the one screen whose whole job is explaining that scan.
+  "never shares your writing",
+  "shares your writing",
 ];
 
 const BANNED = [...MEDICAL, ...GUARANTEES, ...CAPABILITY];
