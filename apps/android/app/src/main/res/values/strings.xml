@@ -900,4 +900,9 @@
     <string name="habits_mark">Mark today</string>
     <string name="habits_done_today">Done today ✓</string>
     <string name="common_add">Add</string>
+
+    <!-- Free daily message cap (2026-07-30). Before this the cap surfaced as a
+         generic error and the server\'s explanation never reached anyone. -->
+    <string name="freelimit_title">Today\'s free messages are used</string>
+    <string name="freelimit_body">Free includes %1$d messages a day; your count resets at %2$s. Journal, sleep, breathing and your plan are all still here in the meantime.</string>
 </resources>

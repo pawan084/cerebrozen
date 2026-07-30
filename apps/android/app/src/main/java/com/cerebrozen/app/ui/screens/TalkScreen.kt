@@ -180,6 +180,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var draft by rememberSaveable { mutableStateOf("") }
     var chips by remember { mutableStateOf(listOf<String>()) }
     var status by remember { mutableStateOf<String?>(null) }
+    // Set when the free daily cap is hit; rendered as its own calm card rather
+    // than an error string. Never set by the IP rate limiter.
+    var freeLimit by remember { mutableStateOf<Session.FreeLimitException?>(null) }
     var busy by remember { mutableStateOf(false) }
     // Auto-scroll the conversation to the newest reply / streaming tokens.
     val chatScroll = rememberScrollState()
@@ -358,6 +361,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     if (hasCrisisSuggestion(suggestions)) crisis = true
                     if (speak) speakReply(replyText)
                 }
+            } catch (e: Session.FreeLimitException) {
+                // The cap is a product state, not a failure — say what it is,
+                // when it clears, and what still works. Never a bare error.
+                freeLimit = e
             } catch (e: Exception) {
                 status = e.message ?: sendFailed
             } finally {
@@ -663,6 +670,22 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             enabled = !busy && draft.isNotBlank(),
         ) { send(draft) }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+
+        // Free daily cap. Its own card, above the composer, saying the number,
+        // when it clears in LOCAL time, and what is still available meanwhile.
+        freeLimit?.let { limit ->
+            SectionCard {
+                Text(stringResource(R.string.freelimit_title),
+                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(
+                    stringResource(R.string.freelimit_body, limit.limit, localResetTime(limit.resetsAtUtc)),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+                TextButton(onClick = { freeLimit = null }) {
+                    Text(stringResource(R.string.common_dismiss), color = Periwinkle)
+                }
+            }
+        }
     }
 
     // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
@@ -967,3 +990,18 @@ private fun VoiceOrb(
         }
     }
 }
+
+
+/**
+ * Render the server's UTC reset instant in the device's own timezone.
+ *
+ * Copy that just says "midnight" is wrong for most of the world: the quota
+ * window is UTC, so in India it clears at 05:30 local. Falls back to the plain
+ * phrase only if the timestamp can't be parsed.
+ */
+internal fun localResetTime(iso: String): String = runCatching {
+    val instant = java.time.OffsetDateTime.parse(iso).toInstant()
+    java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+        .withZone(java.time.ZoneId.systemDefault())
+        .format(instant)
+}.getOrDefault("00:00 UTC")

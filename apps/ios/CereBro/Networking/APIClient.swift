@@ -243,8 +243,35 @@ struct RemoteInsight: Codable {
 
 // MARK: - Errors
 
+/// Everything the free-tier cap tells a client. `resetsAt` is a real
+/// timestamp, not the word "midnight": the window is UTC, so in India it
+/// clears at 05:30 local and copy claiming otherwise would be wrong.
+struct FreeLimitInfo: Equatable, Identifiable {
+    /// Sheet presentation keys off this; the reset time is what changes between
+    /// one cap event and the next.
+    var id: String { "\(limit)-\(used)-\(resetsAt?.timeIntervalSince1970 ?? 0)" }
+    let message: String
+    let limit: Int
+    let used: Int
+    let resetsAt: Date?
+
+    /// "resets at 5:30 am" in the user's own timezone.
+    var resetText: String {
+        guard let resetsAt else { return "resets at midnight UTC" }
+        let f = DateFormatter()
+        f.timeStyle = .short
+        f.dateStyle = .none
+        return "resets at \(f.string(from: resetsAt))"
+    }
+}
+
 enum APIError: LocalizedError {
     case unauthorized
+    /// The free-tier daily cap, specifically. Distinct from `.server(429, …)`
+    /// because the IP rate limiter also returns 429 and means something else
+    /// entirely — showing an upgrade prompt to someone who typed too fast
+    /// would be both wrong and manipulative.
+    case freeLimit(FreeLimitInfo)
     case server(Int, String)
     case invalidResponse
     case transport(String)
@@ -252,6 +279,7 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Your session expired. Please sign in again."
+        case let .freeLimit(info): return info.message
         case let .server(code, msg): return msg.isEmpty ? "Server error (\(code))." : msg
         case .invalidResponse: return "Unexpected response from server."
         case let .transport(m): return m
@@ -701,9 +729,33 @@ actor APIClient {
         case 401, 403:
             throw APIError.unauthorized
         default:
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
+            let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if http.statusCode == 429, let info = Self.freeLimit(from: body) {
+                throw APIError.freeLimit(info)
+            }
+            // `error` is slowapi's key for the IP rate limiter; without it a
+            // throttled user sees only "Server error (429)".
+            let detail = (body?["detail"] as? String) ?? (body?["error"] as? String)
             throw APIError.server(http.statusCode, detail ?? "")
         }
+    }
+
+    /// Recognise the quota 429 by its `code`, never by the status alone.
+    static func freeLimit(from body: [String: Any]?) -> FreeLimitInfo? {
+        guard let detail = body?["detail"] as? [String: Any],
+              detail["code"] as? String == "free_daily_limit"
+        else { return nil }
+        var resets: Date?
+        if let iso = detail["resets_at"] as? String {
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            resets = f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+        }
+        return FreeLimitInfo(
+            message: detail["message"] as? String ?? "You've reached today's free messages.",
+            limit: detail["limit"] as? Int ?? 0,
+            used: detail["used"] as? Int ?? 0,
+            resetsAt: resets)
     }
 
     // MARK: Oracle (streaming agent)

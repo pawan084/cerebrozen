@@ -98,6 +98,11 @@ struct TalkView: View {
         }
         .aiDisclosure(show: $showDisclosure)
         .celebration(trigger: $savedToJournal)
+        // The free daily cap is a product state, not an error. Presented as a
+        // sheet so the conversation is still behind it — nothing is taken away.
+        .sheet(item: $backend.freeLimit) { info in
+            NavigationStack { FreeLimitView(info: info) }
+        }
     }
 
     /// Capture the whole spoken exchange (every turn) into the journal.

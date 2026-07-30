@@ -863,4 +863,8 @@
     <string name="habits_mark">आज का निशान लगाएँ</string>
     <string name="habits_done_today">आज हो गया ✓</string>
     <string name="common_add">जोड़ें</string>
+
+    <!-- Free daily cap (2026-07-30). Machine-assisted; in the pending review. -->
+    <string name="freelimit_title">आज के फ्री मैसेज ख़त्म</string>
+    <string name="freelimit_body">फ्री में हर दिन %1$d मैसेज मिलते हैं; आपकी गिनती %2$s पर रीसेट होगी। तब तक जर्नल, नींद, ब्रीदिंग और आपकी योजना सब उपलब्ध हैं।</string>
 </resources>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { FreeLimitError, api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
 import { AppHeader } from "@/components/AppHeader";
 import { CrisisLines } from "@/components/CrisisLines";
@@ -67,6 +67,8 @@ export default function Chat() {
   const [threadId, setThreadId] = useState("web");
   const [confirmReq, setConfirmReq] = useState<ConfirmReq | null>(null);
   const [crisis, setCrisis] = useState<CrisisInfo | null>(null);
+  // The free daily cap, shown as its own calm card rather than an error bubble.
+  const [freeLimit, setFreeLimit] = useState<FreeLimitError | null>(null);
   const [started, setStarted] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -134,12 +136,19 @@ export default function Chat() {
         setSuggestions(sugg.filter((s) => s.action !== "crisis"));
       }
     } catch (err: any) {
-      push({
-        id: uid(),
-        role: "assistant",
-        text: err?.message === "unauthorized" ? "Your session expired — please sign in again."
-          : "I couldn't reach the companion just now — please try again.",
-      });
+      // The free cap is a product state, not a failure. Before this it fell
+      // into the generic branch below and the server's explanation — the
+      // number, the reset time — never reached anyone.
+      if (err instanceof FreeLimitError) {
+        setFreeLimit(err);
+      } else {
+        push({
+          id: uid(),
+          role: "assistant",
+          text: err?.message === "unauthorized" ? "Your session expired — please sign in again."
+            : "I couldn't reach the companion just now — please try again.",
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -166,6 +175,24 @@ export default function Chat() {
     <>
       <AppHeader eyebrow="Talk" title="A space to be heard" />
       <div className="page-body">
+      {/* Free daily cap. A card, not an error bubble: it states the number, when
+          the count clears in LOCAL time, and what still works meanwhile. */}
+      {freeLimit && (
+        <div className="card" style={{ marginBottom: 14 }} role="status">
+          <h2 style={{ fontSize: 17 }}>Today&apos;s free messages are used</h2>
+          <p className="sub" style={{ maxWidth: 560 }}>
+            {freeLimit.limit > 0 && <>Free includes {freeLimit.limit} messages a day; y</>}
+            {freeLimit.limit === 0 && <>Y</>}our count resets at {freeLimit.resetText}. Journal,
+            sleep, breathing and your plan are all still here in the meantime.
+          </p>
+          <div className="row" style={{ gap: 10, marginTop: 10 }}>
+            <Link className="btn" href="/account" style={{ padding: "6px 14px" }}>See plans</Link>
+            <button className="btn ghost" style={{ padding: "6px 14px" }} onClick={() => setFreeLimit(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {crisis && (
         <div className="crisis" role="alert">
           <strong>{crisis.message || "If things feel heavy right now, you deserve support."}</strong>

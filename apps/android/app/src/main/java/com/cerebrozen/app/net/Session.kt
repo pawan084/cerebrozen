@@ -112,6 +112,24 @@ object Session {
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
+    /**
+     * The free-tier daily cap, specifically.
+     *
+     * A subclass rather than a flag because the IP rate limiter ALSO returns
+     * 429 and means something entirely different — offering an upgrade to
+     * someone who merely typed too fast would be wrong and manipulative. The
+     * server marks this one with `detail.code`, and only that is trusted.
+     *
+     * [resetsAtUtc] is an ISO timestamp, not the word "midnight": the window is
+     * UTC, so in India it clears at 05:30 local.
+     */
+    class FreeLimitException(
+        message: String,
+        val limit: Int,
+        val used: Int,
+        val resetsAtUtc: String,
+    ) : Exception(message)
+
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
     private suspend fun raw(
@@ -124,8 +142,26 @@ object Session {
         val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
         logApiResponse(method, path, code, text)
         if (code !in 200..299) {
-            val detail = runCatching { JSONObject(text).optString("detail") }
-                .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
+            // `detail` may be an OBJECT (the free-tier cap) or a string. Reading
+            // it blindly with optString would print raw JSON at the user.
+            val body = runCatching { JSONObject(text) }.getOrNull()
+            val obj = body?.optJSONObject("detail")
+            if (code == 429 && obj?.optString("code") == "free_daily_limit") {
+                throw FreeLimitException(
+                    obj.optString("message"),
+                    obj.optInt("limit"),
+                    obj.optInt("used"),
+                    obj.optString("resets_at"),
+                )
+            }
+            // `error` is slowapi's key for the IP rate limiter — without it a
+            // throttled user just sees "Request failed (429)", which teaches
+            // them nothing about what to do.
+            val detail = listOfNotNull(
+                obj?.optString("message"),
+                body?.optString("detail"),
+                body?.optString("error"),
+            ).firstOrNull { it.isNotBlank() } ?: "Request failed ($code)"
             throw ApiException(code, detail)
         }
         return text

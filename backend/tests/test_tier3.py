@@ -21,7 +21,11 @@ async def test_free_quota_blocks_after_limit(auth_client, monkeypatch):
         assert r.status_code == 201, r.text
     blocked = await auth_client.post("/chat/messages", json={"text": "again"})
     assert blocked.status_code == 429
-    assert "limit" in blocked.json()["detail"].lower()
+    # `detail` became a structured object 2026-07-30 so clients can tell this
+    # apart from the IP rate limiter, which also 429s and means something else.
+    detail = blocked.json()["detail"]
+    assert detail["code"] == usage.FREE_LIMIT_CODE
+    assert "limit" in detail["message"].lower()
 
 
 async def test_premium_tier_is_unlimited(auth_client, monkeypatch):
