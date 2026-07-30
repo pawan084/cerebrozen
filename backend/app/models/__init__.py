@@ -4,6 +4,7 @@ from app.models.consent import Consent
 from app.models.deletion_ledger import DeletionLedger
 from app.models.mood import MoodLog
 from app.models.journal import JournalEntry
+from app.models.agent_action import AgentAction
 from app.models.chat import ChatMessage
 from app.models.plan import Plan, PlanStep
 from app.models.content import ContentItem
@@ -29,6 +30,7 @@ __all__ = [
     "DeletionLedger",
     "MoodLog",
     "JournalEntry",
+    "AgentAction",
     "ChatMessage",
     "Plan",
     "PlanStep",

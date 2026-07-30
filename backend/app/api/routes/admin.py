@@ -30,6 +30,7 @@ from app.schemas.content_data import (
     SafetyExcerptOut,
 )
 from app.schemas.user import UserOut
+from app.models.agent_action import AgentAction
 from app.services import digest, media, metrics, nudges, voice
 from app.services import prompts as prompt_registry
 
@@ -382,6 +383,29 @@ async def list_nudges(
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
     sent = await nudges.dispatch_due(db)
     return {"sent": sent}
+
+
+@router.get("/agent-actions")
+async def agent_action_stats(db: AsyncSession = Depends(get_db)):
+    """Per-tool proposal/approval counts — how often users accept what the
+    agent wants to write.
+
+    Counts only, never summaries: a summary can quote the user's own words
+    back ("Save a journal entry about your argument with…"), which is content,
+    not metadata. A persistently declined tool is the signal worth surfacing.
+    """
+    rows = (await db.scalars(select(AgentAction))).all()
+    by_tool: dict[str, dict] = {}
+    for row in rows:
+        entry = by_tool.setdefault(
+            row.tool, {"tool": row.tool, "proposed": 0, "approved": 0, "declined": 0}
+        )
+        entry["proposed"] += 1
+        if row.status == "approved":
+            entry["approved"] += 1
+        elif row.status == "declined":
+            entry["declined"] += 1
+    return sorted(by_tool.values(), key=lambda e: -e["proposed"])
 
 
 @router.post("/digest/run")

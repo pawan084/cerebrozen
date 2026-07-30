@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
+from app.models.agent_action import AgentAction
 from app.models.consent import Consent, consent_allows
 from app.models.deletion_ledger import DeletionLedger
 from app.models.habit import Goal
@@ -30,6 +31,7 @@ from app.schemas.content_data import (
     MemoryUpdate,
     MoodOut,
     NudgeOut,
+    AgentActionOut,
     GoalOut,
     PatternSuppress,
     SafetyPlanOut,
@@ -220,6 +222,7 @@ async def export_my_data(
         # Every version, not just the live one — the history is the record.
         "safety_plans": await rows(SafetyPlan, SafetyPlanOut, SafetyPlan.version),
         "goals": await rows(Goal, GoalOut, Goal.created_at),
+        "agent_actions": await rows(AgentAction, AgentActionOut, AgentAction.created_at),
         "sleep": await rows(SleepLog, SleepLogOut, SleepLog.date),
         "push_subscriptions": await rows(
             WebPushSubscription, WebPushSubscriptionOut, WebPushSubscription.created_at
@@ -268,6 +271,11 @@ async def delete_my_memory(
     mem = await db.execute(
         delete(ContextMemory).where(ContextMemory.user_id == user.id)
     )
+    # The agent's record of what it proposed writing to you is part of "what
+    # the AI remembers" — leaving it would make the button a half-truth.
+    acts = await db.execute(
+        delete(AgentAction).where(AgentAction.user_id == user.id)
+    )
     # LangGraph checkpoint tables exist once the Postgres saver initialised;
     # thread ids embed the user id (str(user.id) / "web-<id>" / client prefixes).
     from sqlalchemy import text as sql_text
@@ -285,6 +293,7 @@ async def delete_my_memory(
         "chat_messages": chat.rowcount or 0,
         "insights": ins.rowcount or 0,
         "memories": mem.rowcount or 0,
+        "agent_actions": acts.rowcount or 0,
         "oracle_threads_cleared": threads_cleared,
     }
 

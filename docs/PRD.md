@@ -43,7 +43,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Mini-plan before signup | ✅ | Gives the account ask its reason ("save this") |
 | Baseline (stress/sleep 1–5) | ✅ | Contextual Home ask after 3 check-ins; feeds Insights "Your starting point" |
 | Companion persona | ✅ | "Companion style" picker in You (4 styles); synced to the server profile |
-| Account step (Apple/Google/email embedded form, Maybe later) | 🟡 | Email + emailed one-time code ✅. **Apple: owner credential only** — `CereBro.entitlements` ships `com.apple.developer.applesignin`, backend verifies JWKS; needs the portal capability + `APPLE_CLIENT_ID`. **Google: credential *and* code** — `apps/ios/Info.plist` has no `GIDClientID` or reversed-URL scheme, so there is nowhere for the owner to drop the client id; `GoogleAuth.isConfigured` is false and the button degrades |
+| Account step (Apple/Google/email embedded form, Maybe later) | 🟡 | Email + emailed one-time code ✅. **Apple: owner credential only** — `CereBro.entitlements` ships `com.apple.developer.applesignin`, backend verifies JWKS; needs the portal capability + `APPLE_CLIENT_ID`. **Google: credential only** — `GoogleAuth.clientID` reads `GIDClientID` from `Info.plist`, so the slot exists; the key and its reversed-URL scheme both need the real id, so neither is committed (a placeholder scheme would be worse than absent — see TECHNICAL.md); `GoogleAuth.isConfigured` is false and the button degrades |
 | Consent — private by default, no pre-ticks, recommended card | ✅ | Enforced server-side (AI-memory off drops long-term history). All six DPDP categories are shown at the moment of consent; Android and the web client ‡ now default every toggle **off** |
 | Language (5 options, now before the value moment) | 🟡 | **Generated replies honour it as of 2026-07-30 ‡** — `services/language.py` supplies one shared directive to the chat reply, the agentic plan and the Oracle (which takes it via `configurable`, since the graph is compiled once and shared). English returns an empty directive so the majority's prompts are unchanged. Crisis hotlines are appended *after* the model and stay dialable in any language, pinned by a test. Still 🟡 because this is the *model's* output only: the iOS and web **UI** is not localized (zero `.lproj`/`next-intl`), so a Hindi user gets Hindi replies inside English chrome |
 | Notifications opt-in | ✅ | Single-select (one slot, one choice); inert "Private previews" removed |
@@ -189,11 +189,18 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
 11. ~~Chat/Oracle prompts honor `User.language`~~ — DONE 2026-07-30. One shared
     directive (`services/language.py`) applied to the chat reply, the agentic plan and
     the Oracle. Note what this does NOT do: localize the app's own UI strings.
-12. Add `GIDClientID` + reversed-URL scheme to `apps/ios/Info.plist` so the owner's
-    Google client id has somewhere to live.
-13. Persist Oracle tool confirmations (approve/decline) as an audit trail, and give admin
-    a pending-confirmations surface — today the only durable trace is the LangGraph
-    checkpoint.
+12. **Reclassified 2026-07-30 — owner-credential, not code.** The premise was wrong:
+    `GoogleAuth.clientID` already reads `GIDClientID` from Info.plist, so the slot
+    exists. Committing an empty key changes nothing (empty still reads as
+    unconfigured) and a placeholder reversed-URL scheme would register a bogus
+    scheme, which is worse than absent. Exactly what to add is now documented in
+    TECHNICAL.md's env table; it needs the real OAuth client id and nothing else.
+13. ~~Persist Oracle tool confirmations as an audit trail~~ — DONE 2026-07-30.
+    `agent_actions` records the proposal when it is *shown* and stamps the decision on
+    resume. The user gets their own history at `GET /oracle/actions` (not just admin —
+    "did the assistant write that, or did I?" is their question first); admin gets
+    per-tool counts only, never summaries, because a summary quotes the user's words
+    back. Declines are kept deliberately: a repeatedly refused tool is the signal.
 14. Post analytics events from the web clients so the browser funnel is not invisible.
 15. Stripe hardening: persist `stripe_customer_id`, dedupe webhooks by event id, add a
     billing-portal/cancel route.

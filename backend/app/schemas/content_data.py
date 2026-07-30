@@ -369,3 +369,21 @@ class HabitUpdate(BaseModel):
     cue: str | None = Field(default=None, max_length=255)
     target_per_week: int | None = Field(default=None, ge=1, le=7)
     archived: bool | None = None
+
+
+# ── Agent audit trail ───────────────────────────────────────────────────
+class AgentActionOut(BaseModel):
+    """One write the Oracle proposed and what the user decided.
+
+    No tool arguments: `save_journal` carries the journal body, and copying it
+    here would put private text in a second table with its own retention story.
+    `summary` is the same line the user already saw on the confirm card.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    tool: str
+    summary: str
+    status: str
+    decided_at: datetime | None = None
+    created_at: datetime
