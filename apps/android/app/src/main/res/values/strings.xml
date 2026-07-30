@@ -482,6 +482,17 @@
     <string name="programs_active_subtitle">Showing up is the whole assignment today.</string>
     <string name="programs_leave">Leave this journey</string>
     <string name="programs_guide_header">Today\'s focus</string>
+    <!-- Journey path (Programs). No "completed" anywhere: an enrollment counts
+         days from its start date and records nothing per day, so the app knows a
+         day has PASSED, never that anyone did it. -->
+    <string name="programs_path_header">The week ahead</string>
+    <string name="programs_path_sub">Every day is open — read ahead, or go back. Nothing here locks.</string>
+    <string name="programs_path_day_today">Day %1$d · today</string>
+    <string name="programs_path_day_passed">Day %1$d · earlier</string>
+    <string name="programs_path_day_ahead">Day %1$d · coming up</string>
+    <string name="programs_path_a11y_today">Day %1$d, today</string>
+    <string name="programs_path_a11y_passed">Day %1$d, earlier in this program</string>
+    <string name="programs_path_a11y_ahead">Day %1$d, later in this program</string>
     <string name="programs_start_new_header">Start something new</string>
     <string name="programs_default_subtitle">A few minutes a day</string>
     <string name="programs_enrolled_status">Enrolled — day 1 starts now.</string>

@@ -448,6 +448,21 @@ internal fun parseTodayGuide(program: org.json.JSONObject?): Pair<String, String
     return title to body
 }
 
+/** Every day of a program as (title, body), in order — the journey path's input.
+ *
+ * Additive like `today_guide`: a server that does not send `guides`, or a
+ * program with no day structure, yields an empty list and the caller falls back
+ * to the single today-only card. Pure. */
+internal fun parseDayGuides(program: org.json.JSONObject?): List<Pair<String, String>> {
+    val arr = program?.optJSONArray("guides") ?: return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        val g = arr.optJSONObject(i) ?: return@mapNotNull null
+        val title = g.optString("title").trim()
+        val body = g.optString("body").trim()
+        if (title.isEmpty() && body.isEmpty()) null else title to body
+    }
+}
+
 @Composable
 fun ProgramsScreen(onBack: () -> Unit) {
     // Real enrollment (ref "PROGRAM · DAY X OF Y"): one journey at a time,
@@ -523,14 +538,29 @@ fun ProgramsScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
                 }
             }
-            // W15: the current day's guide, when the program carries one —
-            // the journey card stops being day-blind.
-            parseTodayGuide(p)?.let { (guideTitle, guideBody) ->
+            // The journey path: every day of the program at once, today marked,
+            // nothing gated. Replaces the single today-only guide card, which
+            // made a "7-day wind-down" seven surprises — you could read the day
+            // you were on and nothing else.
+            val guides = parseDayGuides(p)
+            if (guides.isNotEmpty()) {
                 SectionCard {
-                    Text(stringResource(R.string.programs_guide_header),
-                        style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                    Text(guideTitle, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text(guideBody, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    Text(stringResource(R.string.programs_path_header),
+                        style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.programs_path_sub),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    JourneyPath(guides = guides, currentDay = day)
+                }
+            } else {
+                // Older server, or a program with no day structure: the current
+                // day's guide alone, exactly as before.
+                parseTodayGuide(p)?.let { (guideTitle, guideBody) ->
+                    SectionCard {
+                        Text(stringResource(R.string.programs_guide_header),
+                            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        Text(guideTitle, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(guideBody, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    }
                 }
             }
         }

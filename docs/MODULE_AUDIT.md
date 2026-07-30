@@ -72,6 +72,12 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-30 | onboarding | Android (+iOS/web copy) | **3** | 8 | `Onboarding: four things it told users that were not true` |
 | 2026-07-30 | home | Android (+backend seed) | **5** | 8 | `Home: a bright screen at bedtime, and a plan that said its own name twice` |
 
+Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
+00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
+offered "For this morning · Body scan" — a 10-minute meditation, to someone still
+awake past midnight. The rail now reads the same clock the theme does.
+
+
 ### splash — Android, 2026-07-30 (5 → 9)
 
 Six findings, all measured on an OPPO CPH2681 at 23:00 by frame-stepping a cold

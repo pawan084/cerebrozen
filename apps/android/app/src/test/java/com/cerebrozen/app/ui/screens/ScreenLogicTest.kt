@@ -323,6 +323,25 @@ class ScreenLogicTest {
         }
     }
 
+    // ── Home content rail follows the same clock the theme does ──
+    @Test
+    fun theSmallHoursBelongToTheNightBefore() {
+        // Seen on device at 00:09: the theme had gone Night for wind-down while
+        // the rail offered "For this morning · Body scan" — a 10-minute
+        // meditation, to someone still awake past midnight. The rail and the
+        // theme now read the same clock.
+        assertEquals("sleep", railKindFor(0).first)
+        assertEquals("sleep", railKindFor(3).first)
+        assertEquals("sleep", railKindFor(23).first)
+        assertEquals("sleep", railKindFor(21).first)
+        // Daytime is unchanged.
+        assertEquals("meditation", railKindFor(9).first)
+        assertEquals("soundscape", railKindFor(14).first)
+        assertEquals("sleep", railKindFor(19).first)
+        // 06:00 is the boundary: the night is over, the morning has started.
+        assertEquals("meditation", railKindFor(6).first)
+    }
+
     // ── Onboarding reminder options (every chip must mean something) ──
     @Test
     fun everyReminderChipResolvesToARealChoice() {

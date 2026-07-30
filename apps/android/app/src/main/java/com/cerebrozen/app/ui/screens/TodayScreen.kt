@@ -235,6 +235,11 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
  * backend content-kind WIRE VALUE; the heading is a resource id, so the pairing
  * stays a pure unit-testable function and the copy still localizes. */
 internal fun railKindFor(hour: Int): Pair<String, Int> = when {
+    // The small hours belong to the night before, not to the morning after.
+    // Seen on device at 00:09: the theme had gone Night for wind-down while this
+    // rail offered "For this morning · Body scan" — a 10-minute meditation, to
+    // someone still awake past midnight.
+    com.cerebrozen.app.ui.theme.isWindDownHour(hour) -> "sleep" to R.string.today_rail_tonight
     hour < 12 -> "meditation" to R.string.today_rail_morning
     hour < 17 -> "soundscape" to R.string.today_rail_midday
     else -> "sleep" to R.string.today_rail_tonight

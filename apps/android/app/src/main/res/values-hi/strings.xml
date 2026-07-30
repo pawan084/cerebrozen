@@ -418,6 +418,14 @@
     <string name="programs_completed_subtitle">पूरा हुआ — बहुत सुंदर। जब मन हो, कोई और शुरू करें।</string>
     <string name="programs_active_subtitle">आज बस आ जाना ही पूरा काम है।</string>
     <string name="programs_guide_header">आज का फ़ोकस</string>
+    <string name="programs_path_header">आगे का सप्ताह</string>
+    <string name="programs_path_sub">हर दिन खुला है — आगे पढ़ें या पीछे जाएँ। यहाँ कुछ भी बंद नहीं होता।</string>
+    <string name="programs_path_day_today">दिन %1$d · आज</string>
+    <string name="programs_path_day_passed">दिन %1$d · पहले</string>
+    <string name="programs_path_day_ahead">दिन %1$d · आगे</string>
+    <string name="programs_path_a11y_today">दिन %1$d, आज</string>
+    <string name="programs_path_a11y_passed">दिन %1$d, इस प्रोग्राम में पहले</string>
+    <string name="programs_path_a11y_ahead">दिन %1$d, इस प्रोग्राम में बाद में</string>
     <string name="programs_leave">यह यात्रा छोड़ें</string>
     <string name="programs_start_new_header">कुछ नया शुरू करें</string>
     <string name="programs_default_subtitle">दिन में बस कुछ मिनट</string>

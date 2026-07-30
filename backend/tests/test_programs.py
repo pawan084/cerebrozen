@@ -177,3 +177,51 @@ async def test_day_guides_reseed_backfills_only_null(client, monkeypatch):
         row = await s.scalar(select(ContentItem).where(ContentItem.title == "Sleep Reset"))
         assert row.day_guides and len(row.day_guides) == 7
         assert row.day_guides[0]["title"] == "A steady wake time"
+
+
+async def test_active_program_serves_every_day_not_just_today(client):
+    """The path needs the whole week. `today_guide` alone made clients day-blind
+    in the other direction — a 7-day wind-down was seven surprises."""
+    from sqlalchemy import select
+
+    from app.core.database import SessionLocal
+    from app.models.content import ContentItem
+
+    async with SessionLocal() as s:
+        item = await s.scalar(
+            select(ContentItem).where(ContentItem.title == "Sleep Reset")
+        )
+        assert item is not None and item.day_guides, "seed must ship day guides"
+        content_id, expected = str(item.id), list(item.day_guides)
+
+    await _signup(client)
+    r = await client.post("/programs/enroll", json={"content_id": content_id})
+    assert r.status_code == 201
+
+    active = (await client.get("/programs/active")).json()["program"]
+    assert active["guides"] is not None
+    assert len(active["guides"]) == len(expected)
+    assert active["guides"][0]["title"] == expected[0]["title"]
+    # today_guide stays, so older clients keep working unchanged.
+    assert active["today_guide"]["title"] == active["guides"][0]["title"]
+
+
+async def test_a_program_without_day_structure_omits_guides(client):
+    """Additive field: absent, not empty, so the client can tell them apart."""
+    from app.core.database import SessionLocal
+    from app.models.content import ContentItem
+
+    async with SessionLocal() as s:
+        plain = ContentItem(
+            title="Plain program", subtitle="No days", kind="program",
+            symbol="leaf", duration_min=0,
+        )
+        s.add(plain)
+        await s.commit()
+        plain_id = str(plain.id)
+
+    await _signup(client)
+    await client.post("/programs/enroll", json={"content_id": plain_id})
+    active = (await client.get("/programs/active")).json()["program"]
+    assert "guides" not in active
+    assert "today_guide" not in active

@@ -52,6 +52,24 @@ def _today_guide(item: ContentItem | None, day: int) -> dict | None:
     return {"title": str(g.get("title", "")), "body": str(g.get("body", ""))}
 
 
+def _all_guides(item: ContentItem | None) -> list[dict] | None:
+    """Every day of the program, in order — what the journey path draws.
+
+    `today_guide` alone made the clients day-blind in the other direction: a
+    user could read the day they are on and nothing else, so a "7-day wind-down"
+    was seven surprises. Nothing here is gated; a program is a suggested order,
+    not a syllabus, and a person who wants to read Friday on Monday may.
+    Additive, like `today_guide`: absent for programs with no day structure.
+    """
+    guides = (item.day_guides if item is not None else None) or []
+    if not guides:
+        return None
+    return [
+        {"title": str(g.get("title", "")), "body": str(g.get("body", ""))}
+        for g in guides
+    ]
+
+
 async def _active(db: AsyncSession, user: User) -> ProgramEnrollment | None:
     return await db.scalar(
         select(ProgramEnrollment)
@@ -68,9 +86,13 @@ async def active_program(
     if e is None:
         return {"program": None}
     view = _view(e)
-    guide = _today_guide(await db.get(ContentItem, e.content_id), view["day"])
+    item = await db.get(ContentItem, e.content_id)
+    guide = _today_guide(item, view["day"])
     if guide is not None:
         view["today_guide"] = guide
+    guides = _all_guides(item)
+    if guides is not None:
+        view["guides"] = guides
     return {"program": view}
 
 
