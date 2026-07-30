@@ -288,7 +288,7 @@
     <!-- ── Onboarding (OnboardingScreen.kt) ────────────────────────────── -->
     <string name="ob_welcome_title">Welcome to\nCereBro</string>
     <string name="ob_welcome_sub">Your quiet space for daily mental fitness,\nbetter sleep, and calmer focus.</string>
-    <string name="ob_welcome_privacy">Private by design — nothing is ever shared.</string>
+    <string name="ob_welcome_privacy">Private by design — no ads, nothing sold, and nothing remembered unless you allow it.</string>
     <string name="ob_welcome_cta">Try a 2-minute reset</string>
     <string name="auth_have_account">I already have an account</string>
     <string name="ob_disclosure_eyebrow">Honesty first</string>
@@ -296,8 +296,12 @@
     <string name="ob_disclosure_sub">Here\'s exactly what your AI companion can and can\'t do for you.</string>
     <string name="ob_disclosure_cta">I\'m 18+ — continue</string>
     <string name="ob_danger_line">If you are in immediate danger, call emergency services now.</string>
-    <string name="ob_confirmed_18">Confirmed: I am 18 or older</string>
-    <string name="ob_thank_you">Thank you</string>
+    <!-- The age gate STATES the requirement; the CTA below is where the user confirms it.
+         It used to read "Confirmed: I am 18 or older" / "Thank you" under a tick, on
+         arrival, before the user had done anything — a compliance surface showing a
+         pre-made affirmation. -->
+    <string name="ob_confirmed_18">CereBro is for adults — 18 and over</string>
+    <string name="ob_thank_you">Confirm with the button below</string>
     <string name="ob_can_help_title">Can help</string>
     <string name="ob_can_help_body">Listen, reflect, guide tools, suggest a plan.</string>
     <string name="ob_cant_do_title">Can\'t do</string>
@@ -332,6 +336,7 @@
     <string name="ob_notify_title">Notifications</string>
     <string name="ob_notify_sub">You\'ve had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.</string>
     <string name="ob_notify_cta">Enter CereBro</string>
+    <string name="ob_notify_sub_skipped">Want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off.</string>
 
     <!-- ── Auth (AuthScreen.kt) ────────────────────────────────────────── -->
     <string name="auth_eyebrow">PRIVATE BY DESIGN</string>

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -190,12 +192,33 @@ private val LANGUAGES = listOf(
     PickOption("Punjabi", R.string.ob_lang_punjabi),
     PickOption("Tamil", R.string.ob_lang_tamil),
 )
-private val NOTIFY = listOf(
+/** When the daily reminder fires. Single-select, so every option here must be a
+ * TIME — anything else silently means "none" once [applyReminderChoice] falls
+ * through its `when`.
+ *
+ * A "Private previews" chip used to sit in this group. Nothing read the value: it
+ * was never persisted, no preview setting exists anywhere in the app, and the
+ * reminder it would have hidden says only "A moment for you". What it actually
+ * did was turn reminders off — so a user who tapped it, wanting a *discreet*
+ * daily nudge, got no nudge at all and was told nothing. */
+internal val NOTIFY = listOf(
     PickOption("morning", R.string.ob_notify_morning),
     PickOption("evening", R.string.ob_notify_evening),
-    PickOption("private", R.string.ob_notify_private),
     PickOption("none", R.string.ob_notify_none),
 )
+
+/** The hour a reminder option schedules, or null for "no reminder".
+ *
+ * Pure and internal so the invariant is a TEST rather than a comment: every id
+ * in [NOTIFY] must resolve here. When it was an inline `when` with a silent
+ * `else`, an option was added to the chip group that this mapping had never
+ * heard of, and choosing it quietly meant "off". */
+internal fun reminderHourFor(option: String): Int? = when (option) {
+    "morning" -> 9
+    "evening" -> 19
+    "none" -> null
+    else -> null
+}
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
 
 /** Set when the post-sign-up consent write never reached the server, so Privacy
@@ -225,13 +248,27 @@ private val ConsentSaver = mapSaver(
  */
 @Composable
 fun Onboarding() {
-    var signIn by remember { mutableStateOf(false) }
-    if (signIn) { AuthScreen(onBack = { signIn = false }); return }
+    var signIn by rememberSaveable { mutableStateOf(false) }
+    if (signIn) {
+        androidx.activity.compose.BackHandler { signIn = false }
+        AuthScreen(onBack = { signIn = false })
+        return
+    }
 
     var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     val order = OStep.entries
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
     fun back() { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
+
+    // The system back gesture walks the funnel, exactly like the on-screen back.
+    // Without this it fell through to the Activity and FINISHED it: found on a
+    // device, a back swipe from any of the eight steps dropped the user onto the
+    // launcher, and relaunching restarted at Welcome — language, feeling and
+    // consent choices all gone, because rememberSaveable cannot survive an
+    // activity that was destroyed rather than recreated. Back is the most-used
+    // navigation control on Android; it was a trapdoor out of onboarding.
+    // Disabled on Welcome so back there still leaves the app, as expected.
+    androidx.activity.compose.BackHandler(enabled = step != OStep.Welcome) { back() }
 
     // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
@@ -239,6 +276,10 @@ fun Onboarding() {
     var language by rememberSaveable { mutableStateOf("English") }
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
     var notify by rememberSaveable { mutableStateOf("evening") }
+    // Did they actually breathe, or press "Skip for now"? The Notify step used
+    // to congratulate everyone on "your first win" either way — telling a user
+    // who skipped that they had achieved something they had just declined.
+    var resetDone by rememberSaveable { mutableStateOf(false) }
     // Private by default: NOTHING pre-ticked — consent must be an action
     // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
     val consent = rememberSaveable(saver = ConsentSaver) {
@@ -255,11 +296,8 @@ fun Onboarding() {
     val notifyPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     fun applyReminderChoice() {
         val prefs = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
-        val hour = when (notify) {
-            "morning" -> 9
-            "evening" -> 19
-            else -> { prefs.edit().putBoolean("reminder_on", false).apply(); return }
-        }
+        val hour = reminderHourFor(notify)
+            ?: run { prefs.edit().putBoolean("reminder_on", false).apply(); return }
         prefs.edit().putBoolean("reminder_on", true).apply()
         com.cerebrozen.app.notify.Reminders.schedule(context, hour)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -302,10 +340,14 @@ fun Onboarding() {
                 Text(stringResource(R.string.ob_danger_line),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
+            // The age gate STATES the requirement. It used to show a tick with
+            // "Confirmed: I am 18 or older / Thank you" the instant the step
+            // opened — a compliance surface asserting a confirmation the user had
+            // not made, and thanking them for it. The confirmation is the CTA.
             ReferenceCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.size(40.dp).clip(CircleShape).background(GratitudeAvatarFill), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.Person, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = Color.White)
@@ -314,16 +356,21 @@ fun Onboarding() {
                 }
             }
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // IntrinsicSize.Min sizes the Row to the taller tile and both fill it,
+            // so they stay a matched pair without either one cropping its body.
+            Row(
+                Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 DisclosureTile(
                     stringResource(R.string.ob_can_help_title), Cyan,
                     stringResource(R.string.ob_can_help_body),
-                    Modifier.weight(1f),
+                    Modifier.weight(1f).fillMaxHeight(),
                 )
                 DisclosureTile(
-                    stringResource(R.string.ob_cant_do_title), TextSoft,
+                    stringResource(R.string.ob_cant_do_title), Warm,
                     stringResource(R.string.ob_cant_do_body),
-                    Modifier.weight(1f),
+                    Modifier.weight(1f).fillMaxHeight(),
                 )
             }
         }
@@ -350,7 +397,11 @@ fun Onboarding() {
             }
         }
 
-        OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
+        OStep.Reset -> ResetStep(
+            onDone = { resetDone = true; next() },
+            onSkip = { next() },
+            onBack = { back() },
+        )
 
         OStep.Consent -> Funnel(
             OStep.Consent,
@@ -399,7 +450,7 @@ fun Onboarding() {
         OStep.Notify -> Funnel(
             OStep.Notify,
             stringResource(R.string.ob_notify_eyebrow), stringResource(R.string.ob_notify_title),
-            stringResource(R.string.ob_notify_sub),
+            stringResource(if (resetDone) R.string.ob_notify_sub else R.string.ob_notify_sub_skipped),
             stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
         ) {
             ChipWrapOptions(NOTIFY, notify) { notify = it }
@@ -529,7 +580,7 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
 }
 
 @Composable
-private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
+private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit) {
     // The orb, count and Reduce-Motion behaviour all come from the shared
     // BreatheEngine (Reset preset: four in, four out, no holds) — the same
     // engine every breathe surface in the app hosts.
@@ -542,7 +593,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         secondary = {
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
-                    .background(ResetDoneFill).clickable(onClick = onDone),
+                    .background(ResetDoneFill).clickable(onClick = onSkip),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = Color.White)
@@ -676,7 +727,14 @@ private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit
     }
 }
 
-/** One side of the two-up disclosure — a glass tile with an accent heading. */
+/** One side of the two-up disclosure — a glass tile with an accent heading.
+ *
+ * Grows to fit its body, never crops it. It used to be a fixed `.height(129.dp)`,
+ * and on a 720px device the "Can't do" tile cut the word "emergencies" in half —
+ * the single most important limitation on the screen whose entire job is stating
+ * limitations, silently truncated, in the shortest locale we ship. The caller
+ * pairs these in a Row at [IntrinsicSize.Min] so both sides still match height.
+ */
 @Composable
 private fun DisclosureTile(
     title: String,
@@ -685,11 +743,14 @@ private fun DisclosureTile(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier.height(129.dp).clip(RoundedCornerShape(17.dp)).background(ChipFill)
+        modifier.heightIn(min = 129.dp).clip(RoundedCornerShape(17.dp)).background(ChipFill)
             .border(1.dp, PickCardStroke, RoundedCornerShape(17.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 19.sp), color = Color.White)
+        // `accent` tints the heading — it was accepted and then never applied, so
+        // "Can help" and "Can't do" rendered identically in plain white despite
+        // the call site passing Cyan and TextSoft to tell them apart.
+        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 19.sp), color = accent)
         Text(body, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp), color = FunnelBodyText)
     }
 }

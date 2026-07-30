@@ -78,6 +78,14 @@ const CAPABILITY = [
   "offline playback",
   "download for offline",
   "available offline",
+  // Shipped on the Welcome screen of Android, iOS AND the browser client — the
+  // second sentence a first-time user ever read. It is not true: a Talk message
+  // goes to OpenAI or Anthropic (services/ai.py) and voice to Deepgram or
+  // ElevenLabs (services/voice.py). The app's own privacy screen was always
+  // careful ("Support tooling sees counts and account state — never the words");
+  // the funnel flattened that into an absolute the product cannot keep.
+  "nothing is ever shared",
+  "never shared with anyone",
 ];
 
 const BANNED = [...MEDICAL, ...GUARANTEES, ...CAPABILITY];

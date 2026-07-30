@@ -69,6 +69,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | Date | Module | Platform | Before | After | Commit |
 | --- | --- | --- | --- | --- | --- |
 | 2026-07-30 | splash | Android | **5** | 9 | `Splash: the first frame, fixed` |
+| 2026-07-30 | onboarding | Android (+iOS/web copy) | **3** | 8 | `Onboarding: four things it told users that were not true` |
 
 ### splash — Android, 2026-07-30 (5 → 9)
 
@@ -99,6 +100,61 @@ Not fixed, deliberately: the launch shows two brand screens back to back (the
 platform splash, then ours). Collapsing them into one via
 `setOnExitAnimationListener` would drop the wordmark, so it is a product call,
 not a defect. The remaining point is that cost.
+
+### onboarding — Android, 2026-07-30 (3 → 8)
+
+Capped at 3 by the rubric: four separate truthfulness findings. Walked all eight
+steps on an OPPO CPH2681 (`pm clear` is blocked by the OEM — uninstall and
+reinstall for a genuine first run).
+
+**Not true:**
+
+1. **"Private by design — nothing is ever shared."** The second sentence a new
+   user ever reads, on Android, iOS *and* the browser client. A Talk message goes
+   to OpenAI or Anthropic (`services/ai.py`); voice goes to Deepgram or
+   ElevenLabs (`services/voice.py`). The app's own privacy screen was always
+   careful — "Support tooling sees counts and account state, never the words" —
+   and the funnel flattened it into an absolute the product cannot keep. Replaced
+   with three things that are true and mechanised, added to `CLAIMS_MAP.md`, and
+   the phrase is now banned by `check-claims`.
+2. **The age gate showed a confirmation nobody had given.** A tick, "Confirmed: I
+   am 18 or older", and "Thank you" — rendered on arrival, before any input. A
+   compliance surface presenting a pre-made affirmation. It now states the
+   requirement; the CTA is the confirmation.
+3. **"Private previews" silently turned reminders off.** It sat in the
+   single-select reminder-*time* group, nothing ever read the value, no preview
+   setting exists, and `applyReminderChoice`'s `else` branch meant a user who
+   asked for a discreet daily nudge got none and was told nothing. Removed, and
+   the invariant is now `reminderHourFor` + a test rather than a comment.
+4. **"You've had your first win"** was shown to everyone — including users who
+   had just pressed "Skip for now". Now conditional on actually breathing.
+
+**Also fixed:** the "Can't do" tile was a fixed `129.dp` and cut the word
+*emergencies* in half — the most important limitation on the screen whose whole
+job is stating limitations, truncated in the shortest locale we ship; and
+`DisclosureTile.accent` was accepted and never applied, so the two tiles rendered
+identically in white despite the call site passing Cyan and TextSoft.
+
+**Behaviour:** the system back gesture fell through to the Activity and finished
+it. A back swipe from any of the eight steps dropped the user on the launcher,
+and relaunching restarted at Welcome with language, feeling and consent choices
+gone — `rememberSaveable` cannot survive an activity that was destroyed rather
+than recreated. Android's most-used navigation control was a trapdoor out of
+onboarding. Now a `BackHandler` walks the funnel.
+
+**Left deliberately:**
+
+- **"Try a 2-minute reset" / "Two minutes of guided breathing."** The Reset preset
+  has no timer — it cycles until tapped, and the same sentence then says "for a
+  few cycles". The claim is imprecise rather than false, and it lives on iOS too
+  with UI tests asserting the button label, so it needs one cross-client copy
+  pass rather than an Android-only edit.
+- Language's "Mix more than one if that's you" over single-select chips; the
+  State rows' chevron (a navigation affordance on a selection control); the large
+  dead space below short steps; "Continue with Google" as the visual primary
+  while Google sign-in is unconfigured. All design/product calls, not defects.
+- The daily reminder's own text is hardcoded English in `notify/Reminders.kt` — a
+  Hindi user gets an English notification. Belongs to the `notify` module.
 
 ## Device commands
 

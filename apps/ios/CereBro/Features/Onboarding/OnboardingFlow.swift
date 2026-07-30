@@ -117,7 +117,7 @@ private struct WelcomeScreen: View {
                     .appFont(14).foregroundStyle(Theme.Palette.muted)
                     .padding(.horizontal, 20)
                     .entrance(2)
-                Text("Private by design — nothing is ever shared.")
+                Text("Private by design — no ads, nothing sold, and nothing remembered unless you allow it.")
                     .multilineTextAlignment(.center)
                     .appFont(11.5, weight: .semibold).foregroundStyle(Theme.Palette.muted2)
                     .entrance(2)

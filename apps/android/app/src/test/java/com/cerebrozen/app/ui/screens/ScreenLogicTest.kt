@@ -323,6 +323,31 @@ class ScreenLogicTest {
         }
     }
 
+    // ── Onboarding reminder options (every chip must mean something) ──
+    @Test
+    fun everyReminderChipResolvesToARealChoice() {
+        // A "Private previews" chip shipped in this single-select group. Nothing
+        // read the value, no preview setting exists, and the reminder it would
+        // have hidden says only "A moment for you" — so what it actually did was
+        // fall through to the else branch and turn reminders OFF. A user who
+        // asked for a discreet daily nudge got no nudge, and was told nothing.
+        //
+        // The rule this pins: an option in NOTIFY is a TIME, or it is the
+        // explicit "none". There is no third, silent meaning.
+        val timed = NOTIFY.filter { it.id != "none" }
+        assertTrue("the group must still offer real times", timed.size >= 2)
+        timed.forEach { option ->
+            val hour = reminderHourFor(option.id)
+            assertTrue(
+                "NOTIFY option '${option.id}' silently means no-reminder",
+                hour != null && hour in 0..23,
+            )
+        }
+        assertEquals(null, reminderHourFor("none"))
+        assertEquals(9, reminderHourFor("morning"))
+        assertEquals(19, reminderHourFor("evening"))
+    }
+
     // ── AI-disclosure cadence (re-show every 3h, across tab switches) ──
     @Test
     fun disclosureDue_only_after_the_full_interval() {

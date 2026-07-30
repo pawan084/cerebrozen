@@ -256,10 +256,10 @@
     <!-- ── Onboarding ──────────────────────────────────────────────────── -->
     <string name="ob_welcome_title">CereBro में\nआपका स्वागत है</string>
     <string name="ob_welcome_sub">रोज़ की मानसिक फ़िटनेस, बेहतर नींद\nऔर शांत मन के लिए आपकी अपनी जगह।</string>
-    <string name="ob_welcome_privacy">निजता पहले — कुछ भी कभी साझा नहीं होता।</string>
+    <string name="ob_welcome_privacy">निजता पहले — कोई विज्ञापन नहीं, कुछ भी बेचा नहीं जाता, और आपकी अनुमति के बिना कुछ याद नहीं रखा जाता।</string>
     <string name="ob_welcome_cta">2 मिनट का रीसेट आज़माएँ</string>
     <string name="auth_have_account">मेरा खाता पहले से है</string>
-    <string name="ob_thank_you">धन्यवाद</string>
+    <string name="ob_thank_you">नीचे दिए बटन से पुष्टि करें</string>
     <string name="ob_language_eyebrow">अपनी भाषा में</string>
     <string name="ob_language_title">भाषा</string>
     <string name="ob_language_sub">जिस भाषा में सोचते हैं, उसी में बात करें और लिखें। चाहें तो एक से ज़्यादा मिलाएँ।</string>
@@ -288,6 +288,7 @@
     <string name="ob_consent_training_hint">आपके चालू किए बिना कभी नहीं</string>
     <string name="ob_notify_eyebrow">हल्के रिमाइंडर</string>
     <string name="ob_notify_title">सूचनाएँ</string>
+    <string name="ob_notify_sub_skipped">क्या आप कल लौटने के लिए एक शांत रिमाइंडर चाहेंगे? कभी शोर नहीं, बंद करना हमेशा आसान।</string>
     <string name="ob_notify_sub">पहली जीत हो गई — कल लौटने के लिए एक हल्की-सी याद दिला दें? कभी शोर नहीं, बंद करना हमेशा आसान।</string>
     <string name="ob_notify_cta">CereBro में आएँ</string>
 

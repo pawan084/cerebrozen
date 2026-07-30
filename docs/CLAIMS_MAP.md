@@ -48,6 +48,7 @@
 | "Patterns only appear once real check-ins support them — no guesses" | `compute_patterns` thresholds every rule and returns `[]` below them | `tests/test_patterns.py` |
 | "Edit or delete any of it" | `context_memories` is addressable: PATCH/DELETE per row | `tests/test_memory.py` |
 | "Works in your browser" | `apps/app` is a real authenticated client with public signup | `e2e/tests/app.spec.ts` |
+| "Private by design — no ads, nothing sold, and nothing remembered unless you allow it" | Three separate mechanisms: zero ad/third-party SDKs in any client; no data sale (first-party `/events` only); and all six consent categories default **off**, with reads/writes gated on them | `tests/test_events.py`, `tests/test_consent.py`, `ConsentDefaultsTest` (Android) |
 
 ## 4. Deliberately banned phrases
 
@@ -59,6 +60,7 @@ Currently blocked by the gate because they were, or would be, false here:
 | "downloaded soundscape" / "available offline" / "offline playback" / "download for offline" | **No client implements downloads** — no `AVAssetDownloadTask`, no ExoPlayer `DownloadService`, and `apps/app/public/sw.js` is push-only. Shipped in iOS `Dummy.offline` and the web library footnote until 2026-07-30. |
 | "clinically proven", "fda approved", "cures …", "treats depression" … | This is not a clinical product. False by construction, not merely unproven. |
 | "guaranteed to", "100% effective", "risk-free" | No wellness product can promise an outcome. |
+| "nothing is ever shared" / "never shared with anyone" | **False.** A Talk message goes to OpenAI or Anthropic (`services/ai.py`); voice goes to Deepgram or ElevenLabs (`services/voice.py`). Shipped as the second sentence on the Welcome screen of Android, iOS *and* the browser client until 2026-07-30 — the first privacy statement a new user ever read, and the strongest one the product cannot keep. The true version is the row above. |
 
 **Note on offline:** the app genuinely *is* local-first in places (curated
 fallbacks, on-device journal analysis, `LocalCompanion`, and a safety plan

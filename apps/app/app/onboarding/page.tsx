@@ -159,7 +159,7 @@ function Welcome({ onBegin }: { onBegin: () => void }) {
       <p className="onb-caption">
         Your quiet space for daily mental fitness, better sleep, and calmer focus.
       </p>
-      <p className="onb-fine">Private by design — nothing is ever shared.</p>
+      <p className="onb-fine">Private by design — no ads, nothing sold, and nothing remembered unless you allow it.</p>
       <div className="onb-footer">
         <Progress value={PROGRESS[0]} />
         <button className="btn pill-cta" onClick={onBegin}>
