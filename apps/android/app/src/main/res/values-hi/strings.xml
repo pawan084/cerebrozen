@@ -256,6 +256,9 @@
     <string name="you_export_subtitle">पूरी कॉपी डाउनलोड करें</string>
     <string name="you_delete_subtitle">सब कुछ स्थायी रूप से मिटाएँ</string>
     <string name="you_signout">साइन आउट</string>
+    <string name="you_signout_subtitle">इस डिवाइस पर यह सत्र समाप्त करें</string>
+    <string name="you_signout_confirm_title">साइन आउट करें?</string>
+    <string name="you_signout_confirm_body">आपका खाता और उसमें सब कुछ सुरक्षित रहता है। यह डिवाइस अपनी प्रति भूल जाता है — जो आपने लिखा पर सहेजा नहीं, वह भी।</string>
 
     <!-- ── Onboarding ──────────────────────────────────────────────────── -->
     <string name="ob_welcome_title">CereBro में\nआपका स्वागत है</string>

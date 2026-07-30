@@ -74,6 +74,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | sleep | Android (app-wide typography) | **6** | 8 | `Sleep: a row that broke a word in half, and advice printed twice` |
 | 2026-07-31 | talk | Android (`Page` gains a pinned footer) | **6** | 8 | `Talk: the composer travelled with the transcript` |
 | 2026-07-31 | journal | Android (+claims gate) | **3** | 8 | `Journal: you could write entries and never read one back` |
+| 2026-07-31 | you | Android | **6** | 8 | `You: sign out was a caption that signed you out` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -337,6 +338,35 @@ correct (free, 24/7, Government of India).
 
 **Test data:** a long entry was created through the API to verify the reader and
 deleted afterwards (`DELETE /journal/{id}` → 204, one entry left, as before).
+
+### you — Android, 2026-07-31 (6 → 8)
+
+Audited signed in at 02:13. Nothing fabricated; the cost was that the two
+account-destroying controls were the two that looked least like controls.
+
+1. **Sign out was a caption that signed you out.** A bare `TextButton` in
+   `TextMuted` — no border, no icon, no container — on a screen where every other
+   action is a bordered card, and it signed you out on the first tap.
+   `Session.signOut()` clears the local store, so a mis-tap took the cached reads
+   and any unsaved draft with it. Now a proper row with a subtitle, and a dialog
+   that says exactly what is and is not lost ("Your account and everything in it
+   stays safe. This device forgets its copy — including anything you have typed
+   but not saved").
+2. **"Delete account · Permanently erase everything" was pixel-identical to
+   "Privacy policy · How we handle your data"** — same card, same periwinkle
+   icon, same chevron. The most irreversible action in the app looked exactly
+   like a link to a document. `NavRow` gained a `tint`; the row is now coral.
+   Its destination was already safe (two-step confirm, `DangerButton`) — this is
+   about the doorway, not the room.
+3. **Two different chevrons on one screen.** The Support card used a literal "›"
+   glyph at a different size and colour from the `AutoMirrored` icon every NavRow
+   uses — and a literal glyph does not mirror in RTL, which this app needs (the
+   DPDP notice renders Urdu).
+
+**Honest and left alone:** "Companion style" is the only cyan row, but that is
+`emphasis = true` and deliberate. The Support card's subtitle wraps "24/7" onto a
+second line — cosmetic, and shortening a helpline's availability line to make it
+fit is the wrong trade.
 
 ## Gotchas this device adds
 

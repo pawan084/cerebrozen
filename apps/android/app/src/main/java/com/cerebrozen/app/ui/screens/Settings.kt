@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
@@ -69,6 +70,11 @@ internal fun NavRow(
     subtitle: String,
     icon: ImageVector? = null,
     emphasis: Boolean = false,
+    /** Overrides the icon tint. For rows whose destination is destructive: on
+     * You, "Delete account · Permanently erase everything" was pixel-identical
+     * to "Privacy policy · How we handle your data", so the single most
+     * irreversible action in the app looked exactly like a link to a document. */
+    tint: Color? = null,
     onClick: () -> Unit,
 ) {
     SectionCard(onClick = onClick) {
@@ -84,7 +90,7 @@ internal fun NavRow(
             ) {
                 if (icon != null) {
                     Icon(icon, contentDescription = null,
-                        tint = if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
+                        tint = tint ?: if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, color = if (emphasis) Cyan else TextSoft)
