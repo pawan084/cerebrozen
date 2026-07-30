@@ -64,7 +64,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 |---|---|---|
 | Player: real audio, mix layers, volume, auto-stop fade timer | ✅ | Bundled studio loops + synth fallback; lock-screen controls |
 | Favorites | ✅ | Persisted by title |
-| Narrated audio pipeline (TTS script → MP3 → `/media`) | 🟡 | Real end-to-end: `narration_script`/`audio_url`/`audio_generated_at` on `content_items` (migration `a7c4e9f2d310`), `POST /admin/content/{id}/narrate` calls ElevenLabs, `media.py` writes `media/narration/{id}.mp3`, `/media` is a mounted static dir, and all three clients stream it (iOS `AVPlayer` in `SoundscapePlayer.playNarration`, Android ExoPlayer in `AmbientService.createStream`, web `<audio>`), each falling back to the bundled bed on failure. **Gaps:** no batch/cron narrator — the seed writes scripts but never `audio_url`, so a fresh prod DB has **zero MP3s** until an admin clicks "Generate audio" per item; and `/media` is unauthenticated, so a premium item's MP3 is fetchable by URL without an entitlement check |
+| Narrated audio pipeline (TTS script → MP3 → `/media`) | 🟡 | Real end-to-end: `narration_script`/`audio_url`/`audio_generated_at` on `content_items` (migration `a7c4e9f2d310`), `POST /admin/content/{id}/narrate` calls ElevenLabs, `media.py` writes `media/narration/{id}.mp3`, `/media` is a mounted static dir, and all three clients stream it (iOS `AVPlayer` in `SoundscapePlayer.playNarration`, Android ExoPlayer in `AmbientService.createStream`, web `<audio>`), each falling back to the bundled bed on failure. **Gaps:** no batch/cron narrator — the seed writes scripts but never `audio_url`, so a fresh prod DB has **zero MP3s** until an admin clicks "Generate audio" per item; ~~and `/media` is unauthenticated~~ — **fixed ‡**: `/content` mints a signed, 12 h, single-item grant only for entitled callers and returns `""` otherwise (clients already treat that as "no narration" and use the bed), and `main.media_guard` 404s any narration request without a valid grant. Regression-tested in `test_content_audio.py` |
 | Stories/meditation catalogue | 🟡 | All rails (Sleep, Home, Programs, Search) server-driven via `/content` with local fallback (2026-07-04). Per-item `audio_url` is now the primary path and the keyword→bundled-loop map is only the fallback — but until items are narrated (above) every item still resolves to one of the 4 bundled loops in practice. Android's URL registry is title-keyed and unpopulated for the Sleep hero, which therefore always plays the bed |
 | Downloads | ⚪ | **No download code exists in any client** — no `AVAssetDownloadTask`, no ExoPlayer `DownloadService`, and `apps/app/public/sw.js` is explicitly "Web Push only (no fetch interception/caching)". Two shipped strings still assert otherwise: iOS `Dummy.offline` ("Downloaded soundscape · Available offline") and the web library footnote ("offline playback live in the iOS & Android apps") |
 | Sleep diary + morning check-in (manual, quality/bed/wake) | ✅ | Shipped 2026-07-03: iOS check-in (Home + Sleep tab), 7-night trend strip, diary history — local-first, mirrored to `/sleep` (`sleep_logs`); UITest-covered. Plan: [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
@@ -175,8 +175,9 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
    so server-computed sleep/mood actually reaches the screen users open.
 8. Render `today_guide` on iOS and web so "Sleep Reset" is a 7-day program everywhere,
    not only on Android.
-9. Narrate the seeded catalogue: a batch/cron narrator (or a seed-time pass), plus an
-    entitlement check in front of `/media` for premium items.
+9. Narrate the seeded catalogue: a batch/cron narrator (or a seed-time pass), so a fresh
+    prod DB isn't shipped with zero MP3s. (The `/media` entitlement check this item used
+    to also cover is done — see the narrated-audio row above.)
 10. Handle 429 in all clients and present the free-limit state (iOS `FreeLimitView` is
     dead code); state the actual cap and that the reset is UTC midnight.
 11. Chat/Oracle prompts honor `User.language` (today only starter generation does).

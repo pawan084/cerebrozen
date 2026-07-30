@@ -87,7 +87,7 @@ cere/
 | `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
-| `/media` | StaticFiles mount over `MEDIA_ROOT` (public, like `/content`; Range/ETag so native players stream + seek) — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
+| `/media` | StaticFiles mount over `MEDIA_ROOT`, fronted by `main.media_guard` (Range/ETag so native players stream + seek). Narration needs a signed per-item grant: `?t=` minted by `services.media.playback_url` when the caller is entitled, verified before the mount sees the request; no grant ⇒ 404. Players can't send headers, hence the URL-borne token — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
 
 ### Key services
 

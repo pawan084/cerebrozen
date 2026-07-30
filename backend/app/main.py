@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -15,6 +16,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.ratelimit import limiter
+from app.services import media
 from app.services import nudges as nudges_service
 
 __version__ = "0.1.0"
@@ -97,10 +99,31 @@ async def security_headers(request: Request, call_next) -> Response:
     return resp
 
 
+@app.middleware("http")
+async def media_guard(request: Request, call_next) -> Response:
+    """Require a signed grant for narration audio.
+
+    The files are served by a StaticFiles mount, which knows how to do Range and
+    ETag but nothing about who is asking — so the check happens here, in front of
+    it. Without this, a premium sleep story's MP3 was fetchable by anyone who
+    knew (or guessed) its URL, with no entitlement check anywhere in the path.
+
+    Grants are minted per item in ``services.media.playback_url`` and carried as
+    ``?t=``, because the players that fetch these files cannot send headers.
+    """
+    path = request.url.path
+    if path.startswith("/media/narration/") and request.method in {"GET", "HEAD"}:
+        if not media.token_authorizes(request.query_params.get("t"), path):
+            # 404, not 403: whether a given narration exists is itself not
+            # something an unauthorized caller should be able to probe.
+            return JSONResponse({"detail": "Not found"}, status_code=404)
+    return await call_next(request)
+
+
 app.include_router(api_router)
 
-# Generated media (narration MP3s) — public like /content; StaticFiles serves
-# Range/ETag so native players can stream and seek.
+# Generated media (narration MP3s). StaticFiles serves Range/ETag so native
+# players can stream and seek; `media_guard` above gates access.
 Path(settings.media_root).mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 

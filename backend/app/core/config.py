@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     # Generated media (narration MP3s) live here, served read-only at /media.
     # Relative to the working dir (/app in-container); prod mounts a named volume.
     media_root: str = "media"
+    # How long a minted narration URL stays playable. Long enough to start a
+    # sleep story and seek around inside it; short enough that a URL pasted
+    # somewhere public stops working on its own.
+    media_token_ttl_hours: int = 12
 
     # Sign in with Apple. `apple_client_id` is the token *audience* — your app's
     # bundle ID (or Services ID for web). Defaults to the APNs bundle id below.
