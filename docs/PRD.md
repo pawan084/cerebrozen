@@ -126,7 +126,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 |---|---|---|
 | Auth: email (+ lockout, revocation, verify/reset emails) | ✅ | Hardened |
 | Auth: emailed one-time code (passwordless) | ✅ | iOS + web sign-in; creates the account at verify |
-| First-party anonymous analytics (onboarding funnel, paywall) | 🟡 | Real and privacy-clean where it ships: allowlisted events only, random install id (never account-linked), zero third-party SDKs, opt-out toggle, admin funnel chart — on backend, iOS and Android. **Gap: the web clients never post to `/events`**, so the `source` values `web`/`app` are unused and the browser funnel is invisible in admin |
+| First-party anonymous analytics (onboarding funnel, paywall) | 🟡 | Real and privacy-clean where it ships: allowlisted events only, random install id (never account-linked), zero third-party SDKs, opt-out toggle, admin funnel chart — on backend, iOS and Android. The browser client posts too as of 2026-07-30 ‡ (`apps/app/lib/analytics.ts`), so `source=app` is live and the browser funnel is visible in admin. It inherits every rule the mobile clients follow — random per-install id, no auth header, allowlisted names, **nothing sent before the Consent step** — and adds the opt-out switch the web account page was missing, since shipping counting without one would have broken the promise the copy already makes. The landing site (`apps/web`) still sends nothing, deliberately: it has no consent surface, so there is nowhere honest to gate it |
 | Sign in with Apple / Google | 🟡 | Backend verification complete for both (JWKS, dual issuer, audience). Apple: iOS button + entitlement ship, **blocked on the portal capability + `APPLE_CLIENT_ID`**; Android has no Apple path at all (net-new code). Google: iOS/Android/web flows are written, **blocked on an OAuth client** *and*, on iOS, on adding `GIDClientID` + the reversed-URL scheme to `Info.plist` |
 | Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline (zero remote images — all `Dummy.Img` entries are `asset:` bundles) |
 | Offline mode | 🟡 | The behaviour is genuinely local-first (server-first with curated local fallback on Home/Sleep, on-device journal analysis, `LocalCompanion` chat). The unreachable "Offline Mode" showcase screen that claimed "downloaded sounds" was deleted 2026-07-30 ‡. Still 🟡 because the real offline story is undocumented in-product — nothing tells the user what does and does not work without a network. The other three views in `StateViews.swift` remain unreferenced dead code |
@@ -201,7 +201,10 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
     "did the assistant write that, or did I?" is their question first); admin gets
     per-tool counts only, never summaries, because a summary quotes the user's words
     back. Declines are kept deliberately: a repeatedly refused tool is the signal.
-14. Post analytics events from the web clients so the browser funnel is not invisible.
+14. ~~Post analytics events from the web clients~~ — DONE 2026-07-30 for `apps/app`
+    (`lib/analytics.ts`, same vocabulary and gates as mobile, plus the opt-out toggle the
+    account page lacked). `apps/web` (the landing site) deliberately still sends nothing:
+    it has no consent surface, so there is nowhere honest to gate it.
 15. Stripe hardening: persist `stripe_customer_id`, dedupe webhooks by event id, add a
     billing-portal/cancel route.
 16. UITest auto-dismiss for the iOS Local Network prompt (fresh-install device runs).
