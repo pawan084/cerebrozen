@@ -420,6 +420,8 @@ final class BackendService: ObservableObject {
         assistant.widget = reply.widget          // render the inline activity
         chat.append(assistant)
         suggestions = reply.suggestions
+        // The plain /chat path is not streamed, so nothing above announces it.
+        Announce.voiceOver(reply.reply.text)
         return reply.reply.text
     }
 
@@ -476,6 +478,10 @@ final class BackendService: ObservableObject {
 
     private func consume(_ request: URLRequest) async {
         isStreaming = true; streamingText = ""; streamingWidget = nil
+        // Sighted users see the typing dots. Without this, a VoiceOver user
+        // taps Send and hears nothing until the reply lands — which for an LLM
+        // can be many seconds of unexplained silence.
+        Announce.voiceOver("CereBro is replying")
         do {
             for try await event in oracleEventStream(request) {
                 switch event {
@@ -488,7 +494,12 @@ final class BackendService: ObservableObject {
                         suggestions.append(RemoteSuggestion(label: "Get crisis support", action: "crisis"))
                     }
                 case .widget(let w):      streamingWidget = w
-                case .toolConfirm(let c): pendingConfirm = c
+                case .toolConfirm(let c):
+                    pendingConfirm = c
+                    // The stream is now PAUSED until this is answered. Silence
+                    // here leaves a VoiceOver user waiting for a reply that
+                    // cannot arrive.
+                    Announce.voiceOver("CereBro needs your approval: \(c.summary)")
                 case .awaitingConfirm:    break
                 case .done(let final):    finishStreaming(text: final.isEmpty ? streamingText : final)
                 case .error(let e):       finishStreaming(text: streamingText.isEmpty ? e : streamingText)
@@ -515,9 +526,9 @@ final class BackendService: ObservableObject {
         streamingText = ""; streamingWidget = nil; isStreaming = false
         // VoiceOver hears the completed reply once, instead of token noise
         // (the live bubble is marked .updatesFrequently while it streams).
-        if UIAccessibility.isVoiceOverRunning, !t.isEmpty {
-            UIAccessibility.post(notification: .announcement, argument: t)
-        }
+        // Routed through Announce so it queues at high priority — the plain
+        // post this used to make is dropped whenever VoiceOver is mid-speech.
+        Announce.voiceOver(t)
     }
 
     // MARK: Plan step completion (server-driven plan)

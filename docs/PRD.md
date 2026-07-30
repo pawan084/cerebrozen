@@ -215,7 +215,17 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
     install), matches the alert text before tapping so a stray "OK" sheet can't be
     swallowed silently, and waits 0s on simulator runs — a real wait across 23 launches
     would have added over a minute to a ~22-minute suite.
-17. VoiceOver live announcements for streaming chat.
+17. ~~VoiceOver live announcements for streaming chat~~ — DONE 2026-07-30. Four moments
+    that were silent: the stream STARTING (Send was followed by unexplained seconds of
+    nothing), a paused tool confirmation (the worst — the stream stops until it is
+    answered, so silence left a VoiceOver user waiting for a reply that could not
+    arrive), and the plain non-streamed `/chat` reply. The completed-reply
+    announcement already existed but used the plain post, which iOS **drops** when
+    VoiceOver is mid-speech; all four now go through `Announce.voiceOver`, which posts
+    an attributed announcement at `.high` priority so it queues instead of vanishing.
+    The streaming bubble's label carries the text so far rather than a frozen "is
+    replying", for a user who focuses it mid-stream. Per-token announcing was
+    deliberately not done — it is unusable noise.
 18. Finish `values-hi` (69 keys) and get the clinical/linguistic sign-off the file header
     is waiting on.
 
