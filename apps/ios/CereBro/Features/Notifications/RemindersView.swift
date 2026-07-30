@@ -72,6 +72,8 @@ struct RemindersView: View {
                     state.reminderEnabled = ok
                     if ok { ReminderManager.scheduleDaily(hour: state.reminderHour) }
                 }
+                // Permission just granted → APNs can issue a token now.
+                if ok { await PushRegistrar.registerIfAuthorized() }
             }
         } else {
             state.reminderEnabled = false

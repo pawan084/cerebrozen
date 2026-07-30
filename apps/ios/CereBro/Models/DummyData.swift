@@ -99,38 +99,24 @@ enum Dummy {
         .init(title: "Body scan", subtitle: "Release tension · 10 min", symbol: "figure.mind.and.body", imageURL: Img.meditate)
     ]
 
-    // Insights metrics
-    static let weeklyMetrics: [Metric] = [
-        .init(label: "Calm sessions", value: "12", progress: 0.78),
-        .init(label: "Journal entries", value: "5", progress: 0.5),
-        .init(label: "Sleep consistency", value: "Improving", progress: 0.62),
-        .init(label: "Mood stability", value: "Steady", progress: 0.7)
-    ]
-
-    static let baselineMetrics: [Metric] = [
-        .init(label: "Stress this week", value: "High", progress: 0.72),
-        .init(label: "Sleep quality", value: "Needs support", progress: 0.44)
-    ]
+    // Insights metrics used to live here (`weeklyMetrics`, `baselineMetrics`).
+    // Deleted 2026-07-30: InsightsView now renders the server's real,
+    // consent-gated insight and falls back to locally-counted rows, so an
+    // illustrative "Sleep consistency: Improving / 0.62" has nowhere honest to
+    // appear. The onboarding baseline is shown from state.baselineStress/Sleep.
 
     // AI memory / patterns
-    static let memoryItems: [ContentItem] = [
-        .init(title: "Goal: ease work stress", subtitle: "Set during onboarding", symbol: "target", imageURL: Img.plan),
-        .init(title: "Pattern: stress spikes after meetings", subtitle: "Observed 4 times", symbol: "chart.line.uptrend.xyaxis", imageURL: Img.write),
-        .init(title: "Preference: calm guide voice", subtitle: "Soft, reflective tone", symbol: "waveform", imageURL: Img.voice)
-    ]
+    // `memoryItems` was deleted 2026-07-30. It backed two fabricated screens
+    // (Weekly Insights → "Pattern dashboard", Privacy → "Memory detail") and
+    // invented observations with counts — "Pattern: stress spikes after
+    // meetings · Observed 4 times". What the AI remembers is now only ever read
+    // from `/insights/patterns` via `PatternDashboardView`.
 
     // Pricing (fallback cards — StoreKit displayPrice is authoritative once live)
     static let plans: [PricePlan] = [
         .init(tier: "Free", price: "₹0", detail: "Daily check-ins, breathing & basic journal", featured: false),
         .init(tier: "Premium", price: "₹499/mo", detail: "Full sleep library & richer voice sessions · ₹3,999/yr (two months free)", featured: true),
         .init(tier: "Premium + Human", price: "₹1,499/mo", detail: "Everything, plus priority human handoff · ₹11,999/yr", featured: false)
-    ]
-
-    // Offline available items
-    static let offline: [ContentItem] = [
-        .init(title: "Saved breathing exercise", subtitle: "Available offline", symbol: "wind", imageURL: Img.breath),
-        .init(title: "Private journal draft", subtitle: "Saved locally", symbol: "book", imageURL: Img.write),
-        .init(title: "Downloaded soundscape", subtitle: "Available offline", symbol: "waveform", imageURL: Img.ocean)
     ]
 
     // Onboarding language / goals options

@@ -515,7 +515,7 @@
     <string name="privacy_lock_hint">Require phone PIN, password, pattern, or biometrics</string>
     <string name="premium_eyebrow">CereBro Premium</string>
     <string name="premium_title">Go deeper</string>
-    <string name="premium_intro">Unlock the full library, longer programs, and unlimited voice — same private-by-design promise.</string>
+    <string name="premium_intro">Unlock narrated sleep stories and unlimited daily conversations — free includes 50 messages a day, and the same private-by-design promise either way.</string>
     <string name="premium_annual">Annual</string>
     <string name="premium_annual_price">₹2,999 / year</string>
     <string name="premium_annual_note" formatted="false">Save 37% · 7-day free trial</string>

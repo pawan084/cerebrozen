@@ -21,7 +21,15 @@ type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
 type Plan = { id: string; title: string; steps: Step[] };
-type Program = { content_id: string; title: string; day: number; days: number; completed: boolean };
+// `today_guide` is additive — absent for programs with no day guides.
+type Program = {
+  content_id: string;
+  title: string;
+  day: number;
+  days: number;
+  completed: boolean;
+  today_guide?: { title: string; body: string } | null;
+};
 
 // Step wells cycle these gradients; the step's SF-symbol name picks the web
 // surface that actually runs it (breathing → Games, wind-down → Sleep, …).
@@ -165,6 +173,21 @@ export default function Home() {
                 <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0" }}>
                   {program.completed ? "Complete — beautifully done." : "Showing up is the whole assignment today."}
                 </p>
+                {/* The day's own guide, so the card is not day-blind. */}
+                {program.today_guide &&
+                  (program.today_guide.title.trim() || program.today_guide.body.trim()) && (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+                      <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s guide</p>
+                      {program.today_guide.title.trim() && (
+                        <h4 style={{ margin: "0 0 4px", fontSize: 14 }}>{program.today_guide.title}</h4>
+                      )}
+                      {program.today_guide.body.trim() && (
+                        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
+                          {program.today_guide.body}
+                        </p>
+                      )}
+                    </div>
+                  )}
               </Link>
             )}
 

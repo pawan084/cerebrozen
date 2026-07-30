@@ -493,6 +493,9 @@ private struct NotificationsScreen: View {
                     state.reminderEnabled = ok
                     if ok { ReminderManager.scheduleDaily(hour: state.reminderHour) }
                 }
+                // Permission just granted → APNs can issue a token now. It is
+                // cached until an account exists to attach it to.
+                if ok { await PushRegistrar.registerIfAuthorized() }
             }
         }
         onContinue()

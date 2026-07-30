@@ -56,12 +56,28 @@ struct RemoteMood: Codable, Identifiable {
 
 /// Active multi-day journey — the day is computed server-side from the start
 /// date (nothing to advance, nothing to fail).
+/// One day of a program — the `{title, body}` the server serves for the day the
+/// user is actually on (`routes/programs.py::_today_guide`, clamped to the last
+/// guide so a long enrollment never errors).
+struct RemoteDayGuide: Codable, Equatable {
+    let title: String
+    let body: String
+    /// Blank guides are treated as no guide, matching Android's `parseTodayGuide`.
+    var isEmpty: Bool {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 struct RemoteProgram: Codable, Equatable {
     let content_id: String
     let title: String
     let day: Int
     let days: Int
     let completed: Bool
+    /// Additive: omitted entirely for programs without day guides, and by
+    /// servers older than migration `b8e6d1a4f527`.
+    let today_guide: RemoteDayGuide?
 }
 
 struct RemoteProgramEnvelope: Codable { let program: RemoteProgram? }

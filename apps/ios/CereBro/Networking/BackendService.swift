@@ -62,6 +62,23 @@ final class BackendService: ObservableObject {
 
     init() {
         Task { await bootstrap() }
+        // A device token usually arrives while signed out (onboarding grants
+        // notification permission before an account exists), but it can also
+        // land mid-session — register it as soon as it does.
+        NotificationCenter.default.addObserver(
+            forName: PushRegistrar.tokenReceived, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.syncPushToken() }
+        }
+    }
+
+    /// Hand APNs' device token to the server so the nudge dispatcher can reach
+    /// this device. No-op when not connected, when there's no token yet, or
+    /// when the server already has this one.
+    func syncPushToken() async {
+        guard isConnected, let token = PushRegistrar.unsyncedToken() else { return }
+        guard (try? await APIClient.shared.registerPushToken(token)) != nil else { return }
+        PushRegistrar.markSynced(token)
     }
 
     /// Restore an existing session on launch (silent — no error surfaced).
@@ -74,6 +91,7 @@ final class BackendService: ObservableObject {
             status = .connected(email: me.email)
             await refresh()   // restored sessions should load the plan + insights too
             oracleAvailable = await APIClient.shared.oracleStatus()
+            await syncPushToken()
         } catch {
             // Token stale/unreachable — fall back to local silently.
             status = .signedOut
@@ -138,6 +156,7 @@ final class BackendService: ObservableObject {
         if let style = pendingCompanion {
             _ = try? await APIClient.shared.updateCompanion(style)
         }
+        await syncPushToken()
     }
 
     /// Cache the on-device 18+ confirmation time so attest() can carry it on
@@ -247,10 +266,22 @@ final class BackendService: ObservableObject {
     }
 
     func signOut() {
-        Task { await APIClient.shared.logout() }   // revoke server-side, then clear
+        // Release the device token BEFORE revoking the session — afterwards
+        // there is no credential to do it with, and the departing account would
+        // keep this device as its APNs destination (nudges for the person who
+        // just signed out, delivered to whoever holds the phone now). The
+        // server treats "" as no token and falls back to Web Push/email.
+        let releaseToken = PushRegistrar.deviceToken != nil
+        Task {
+            if releaseToken { try? await APIClient.shared.registerPushToken("") }
+            await APIClient.shared.logout()        // revoke server-side, then clear
+        }
         user = nil; plan = nil; insight = nil; program = nil; chat = []; suggestions = []; starters = []
         oracleAvailable = false; isStreaming = false; streamingText = ""
         streamingWidget = nil; pendingConfirm = nil
+        // This device is no longer that account's — the token must be
+        // re-registered against whoever signs in next.
+        PushRegistrar.clearSyncedMark()
         status = .signedOut
     }
 

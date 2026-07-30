@@ -198,6 +198,25 @@ struct ProgramProgressCard: View {
                 Text(program.completed ? "Complete — beautifully done."
                      : "Showing up is the whole assignment today.")
                     .appFont(11.5).foregroundStyle(Theme.Palette.muted)
+
+                // The day's own guide, when the program carries one — without
+                // it the card is day-blind ("day 3 of 7" and nothing about
+                // day 3). Matches Android's guide block.
+                if let guide = program.today_guide, !guide.isEmpty {
+                    Divider().overlay(Theme.Stroke.hairline).padding(.vertical, 2)
+                    Text("TODAY'S GUIDE")
+                        .appFont(9.5, weight: .bold).kerning(1.1)
+                        .foregroundStyle(Theme.Palette.muted2)
+                    if !guide.title.isEmpty {
+                        Text(guide.title)
+                            .appFont(13.5, weight: .bold).foregroundStyle(Theme.Palette.soft)
+                    }
+                    if !guide.body.isEmpty {
+                        Text(guide.body)
+                            .appFont(12).foregroundStyle(Theme.Palette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
         }
         .accessibilityElement(children: .combine)
