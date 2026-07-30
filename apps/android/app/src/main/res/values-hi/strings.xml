@@ -804,4 +804,32 @@
     <string name="notif_ambient_narration">CereBro · वर्णन</string>
     <string name="notif_channel_ambient">एंबिएंट प्लेबैक</string>
     <string name="notif_channel_ambient_desc">शांत करने वाले एंबिएंट बेड के नियंत्रण।</string>
+
+    <!-- ── Safety plan (2026-07-30). Crisis-adjacent copy, so translated rather
+         than left to English fallback — but machine-assisted like the rest of
+         this draft, and a priority for the pending review. -->
+    <string name="you_safetyplan_title">मेरी सुरक्षा योजना</string>
+    <string name="you_safetyplan_subtitle">आपके अपने शब्दों में \u00b7 ऑफ़लाइन भी काम करती है</string>
+    <string name="safetyplan_eyebrow">आपके अपने शब्दों में</string>
+    <string name="safetyplan_title">मेरी सुरक्षा योजना</string>
+    <string name="safetyplan_intro">यह योजना आप तब लिखते हैं जब मन स्थिर हो, ताकि कठिन दिन पर कम फ़ैसले लेने पड़ें। जितना चाहें उतना भरें — अधूरी योजना भी मदद करती है।</string>
+    <string name="safetyplan_privacy_note">CereBro इसे आपको सलाह बनाकर नहीं लौटाता, न इसका आकलन करता है, न साझा।</string>
+    <string name="safetyplan_offline">इस डिवाइस पर सहेजी कॉपी दिख रही है — सर्वर से संपर्क नहीं हो सका।</string>
+    <string name="safetyplan_saved">सहेजा गया।</string>
+    <string name="safetyplan_save_failed">यह हिस्सा सहेजा नहीं जा सका — लिखा हुआ यहीं है, थोड़ी देर में फिर कोशिश करें।</string>
+    <string name="safetyplan_version">वर्ज़न %1$d</string>
+    <string name="safetyplan_warning_signs">जो चेतावनी संकेत मुझे दिखते हैं</string>
+    <string name="safetyplan_warning_signs_hint">वे विचार, भावनाएँ या हालात जो बताते हैं कि चीज़ें कठिन हो रही हैं।</string>
+    <string name="safetyplan_internal_coping">जो मैं अकेले कर सकता/सकती हूँ</string>
+    <string name="safetyplan_internal_coping_hint">पहले जो मदद कर चुका है, बिना किसी और की ज़रूरत के।</string>
+    <string name="safetyplan_social_distractors">लोग और जगहें जो ध्यान हटा देते हैं</string>
+    <string name="safetyplan_social_distractors_hint">ऐसा साथ या माहौल जो मन बदल दे — बातचीत ज़रूरी नहीं।</string>
+    <string name="safetyplan_social_support">जिनसे मैं मदद माँग सकता/सकती हूँ</string>
+    <string name="safetyplan_social_support_hint">नाम और नंबर, ताकि बाद में सोचना न पड़े।</string>
+    <string name="safetyplan_professionals">पेशेवर और सेवाएँ जिनसे मैं संपर्क कर सकता/सकती हूँ</string>
+    <string name="safetyplan_professionals_hint">आपके डॉक्टर, कोई काउंसलर, या कोई हेल्पलाइन जिस पर आपको भरोसा हो।</string>
+    <string name="safetyplan_means_safety">अपनी जगह को सुरक्षित बनाना</string>
+    <string name="safetyplan_means_safety_hint">जो कुछ कठिन रात में पहुँच से दूर रखना चाहें, और कौन उसे संभाल सकता है।</string>
+    <string name="safetyplan_notes">और कुछ</string>
+    <string name="safetyplan_notes_hint">जो कुछ और आप भविष्य के अपने आप को पढ़वाना चाहें।</string>
 </resources>

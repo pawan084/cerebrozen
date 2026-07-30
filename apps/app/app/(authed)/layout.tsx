@@ -19,6 +19,9 @@ const EXPLORE = [
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
   { href: "/games", label: "Games", icon: Icon.games },
+  // A plan is written when things are steady, so it belongs in the calm part of
+  // the nav — not filed under crisis, where nobody browses.
+  { href: "/safety-plan", label: "Safety plan", icon: Icon.support },
   { href: "/account", label: "Settings", icon: Icon.settings },
 ];
 // The mobile bottom bar keeps the primary spaces (mirrors iOS) plus the Support

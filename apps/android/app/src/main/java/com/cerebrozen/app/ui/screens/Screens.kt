@@ -124,6 +124,8 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         NavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
+        NavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
+            icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
         NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
             icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
         NavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),

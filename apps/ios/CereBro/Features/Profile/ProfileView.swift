@@ -60,6 +60,9 @@ struct ProfileView: View {
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }
             NavRow(title: "Premium plan", subtitle: "Manage your subscription", systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }
+            // Written when things are steady, so it sits with the calm settings
+            // rather than filed under crisis, where nobody browses.
+            NavRow(title: "My safety plan", subtitle: "Yours, in your words · works offline", systemImage: "shield.lefthalf.filled", imageURL: Dummy.Img.privacy) { SafetyPlanView() }
             NavRow(title: "Urgent support", subtitle: "Emergency resources", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
             NavRow(title: "Crisis region", subtitle: CrisisDirectory.displayName(state.crisisRegion), systemImage: "globe", imageURL: Dummy.Img.privacy) { CrisisRegionView() }
             NavRow(title: "Human support", subtitle: "Coach or therapist handoff", systemImage: "person.2", imageURL: Dummy.Img.meditate) { HumanSupportView() }

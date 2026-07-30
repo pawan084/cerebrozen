@@ -79,6 +79,7 @@ import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
+import com.cerebrozen.app.ui.screens.SafetyPlanScreen
 import com.cerebrozen.app.ui.screens.SearchScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
@@ -403,6 +404,7 @@ fun CereBroApp() {
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }
+            composable("safetyplan") { SafetyPlanScreen(onBack = back) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.

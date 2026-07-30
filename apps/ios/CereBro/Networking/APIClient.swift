@@ -185,6 +185,21 @@ struct RemotePlan: Codable, Identifiable {
     let rationale: String; let source: String; let steps: [RemotePlanStep]
 }
 
+/// A personal safety plan — the six Stanley-Brown sections, in the user's own
+/// words. Codable so it can be cached on device: this is the one screen that
+/// must open without a network.
+struct RemoteSafetyPlan: Codable, Equatable {
+    let id: String
+    let version: Int
+    var warning_signs: String
+    var internal_coping: String
+    var social_distractors: String
+    var social_support: String
+    var professionals: String
+    var means_safety: String
+    var notes: String
+}
+
 struct RemoteMetric: Codable { let label: String; let value: String; let progress: Double }
 struct RemoteInsight: Codable {
     let period: String; let headline: String; let summary: String; let metrics: [RemoteMetric]
@@ -445,6 +460,21 @@ actor APIClient {
         let _: EmptyResponse = try await request(
             "/users/me/memory/suppress-pattern", method: "POST",
             json: ["statement": statement])
+    }
+
+    // MARK: Safety plan (user-authored; the model never writes one)
+
+    /// The live plan, or nil when the user hasn't written one. Nil is a normal
+    /// state — never surfaced as an error.
+    func safetyPlan() async throws -> RemoteSafetyPlan? {
+        try await request("/safety-plan/me", method: "GET")
+    }
+
+    /// Save one or more sections. Unset fields carry over server-side, so the
+    /// guided flow can save a single section without blanking the rest.
+    @discardableResult
+    func saveSafetyPlan(_ fields: [String: Any]) async throws -> RemoteSafetyPlan {
+        try await request("/safety-plan/me", method: "PUT", json: fields)
     }
 
     // MARK: Assessment (self-reflection → conversation topics)

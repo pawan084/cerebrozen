@@ -113,6 +113,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 ### Safety & crisis
 | Feature | Status | Notes |
 |---|---|---|
+| Personal safety plan (Stanley-Brown, user-authored) | ✅ | New 2026-07-30 ‡. Six sections the user writes themselves, versioned (archive-not-delete, so an edit made in distress can't erase what was written when well). `PUT` merges unset fields so the guided flow saves one section at a time. **The model never authors one** — the reference implementation this schema came from has an AI risk-classifier write the plan, which was deliberately not copied. Never gates anything: a test compares the crisis reply and SafetyEvent count with and without a plan. Readable offline on all three clients, plus a print-ready page (`/safety-plan/me/printable`) rather than a PDF dependency |
 | Region-aware crisis resources (7 regions + intl), override picker | ✅ | Mirrored backend/iOS/Android/web (cross-stack contract); Tele-MANAS 14416 leads every surface |
 | Always-available Support page (web client) | ✅‡ | New public `/support` route: no session guard, no fetch, no client JS, so it renders with a dead API or an expired session; static `lib/crisis.ts` directory mirrors iOS/Android/backend |
 | Trusted contact + consent-gated crisis escalation | ✅ | Email/SMS via SMTP/Twilio when configured, ops alert |

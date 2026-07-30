@@ -570,6 +570,19 @@ object Api {
         Session.api("/users/me/memory/$id", "DELETE")
     }
 
+    // ── Safety plan (user-authored; the model never writes one) ──
+    /** The live plan, or null when the user hasn't written one — a normal
+     * state, never an error. */
+    suspend fun safetyPlan(): JSONObject? {
+        val body = Session.api("/safety-plan/me")
+        if (body.isBlank() || body == "null") return null
+        return JSONObject(body)
+    }
+
+    /** Save one or more sections; unset fields carry over server-side. */
+    suspend fun saveSafetyPlan(fields: JSONObject): JSONObject =
+        JSONObject(Session.api("/safety-plan/me", "PUT", fields))
+
     /** Stop showing one computed pattern. Keyed by the statement — patterns
      * are derived per request and have no id of their own. */
     suspend fun suppressPattern(statement: String) {

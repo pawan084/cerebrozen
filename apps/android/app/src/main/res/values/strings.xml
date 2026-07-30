@@ -843,4 +843,30 @@
     <string name="notif_ambient_narration">CereBro · narration</string>
     <string name="notif_channel_ambient">Ambient playback</string>
     <string name="notif_channel_ambient_desc">Controls for the calming ambient bed.</string>
+
+    <!-- ── Safety plan (SafetyPlanScreen.kt, 2026-07-30) ───────────────── -->
+    <string name="you_safetyplan_title">My safety plan</string>
+    <string name="you_safetyplan_subtitle">Yours, in your words \u00b7 works offline</string>
+    <string name="safetyplan_eyebrow">Yours, in your words</string>
+    <string name="safetyplan_title">My safety plan</string>
+    <string name="safetyplan_intro">A plan you write while things are steady, so a harder day has fewer decisions in it. Fill in as much or as little as you like — a part-written plan still helps.</string>
+    <string name="safetyplan_privacy_note">CereBro doesn\'t read this back to you as advice, score it, or share it.</string>
+    <string name="safetyplan_offline">Showing the copy saved on this device — we couldn\'t reach the server.</string>
+    <string name="safetyplan_saved">Saved.</string>
+    <string name="safetyplan_save_failed">Couldn\'t save that section — it\'s still here, try again in a moment.</string>
+    <string name="safetyplan_version">Version %1$d</string>
+    <string name="safetyplan_warning_signs">Warning signs I notice</string>
+    <string name="safetyplan_warning_signs_hint">Thoughts, feelings or situations that tell you things are getting harder.</string>
+    <string name="safetyplan_internal_coping">Things I can do on my own</string>
+    <string name="safetyplan_internal_coping_hint">What has helped before, without needing anyone else.</string>
+    <string name="safetyplan_social_distractors">People and places that take my mind off it</string>
+    <string name="safetyplan_social_distractors_hint">Company or surroundings that shift the mood — no conversation required.</string>
+    <string name="safetyplan_social_support">People I can ask for help</string>
+    <string name="safetyplan_social_support_hint">Names and numbers, so you don\'t have to think of them later.</string>
+    <string name="safetyplan_professionals">Professionals and services I can contact</string>
+    <string name="safetyplan_professionals_hint">Your doctor, a counsellor, a helpline you trust.</string>
+    <string name="safetyplan_means_safety">Making my space safer</string>
+    <string name="safetyplan_means_safety_hint">Anything you\'d want out of reach on a hard night, and who could hold it.</string>
+    <string name="safetyplan_notes">Anything else</string>
+    <string name="safetyplan_notes_hint">Whatever else you want future-you to read.</string>
 </resources>
