@@ -18,6 +18,7 @@ from app.models.login_code import LoginCode
 from app.models.product_event import ProductEvent
 from app.models.program import ProgramEnrollment
 from app.models.prompt import PromptTemplate
+from app.models.recommendation import PracticeCatalog, Recommendation
 from app.models.waitlist import WaitlistEntry
 from app.models.web_push import WebPushSubscription
 
@@ -42,6 +43,8 @@ __all__ = [
     "ProductEvent",
     "ProgramEnrollment",
     "PromptTemplate",
+    "PracticeCatalog",
+    "Recommendation",
     "WaitlistEntry",
     "WebPushSubscription",
 ]

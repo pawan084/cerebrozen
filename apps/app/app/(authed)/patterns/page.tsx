@@ -20,6 +20,16 @@ type Memory = {
   source: string;
   created_at: string;
 };
+// A suggested practice + the pattern that prompted it. `reason` is never
+// omitted — a suggestion with no visible basis is what this screen exists to
+// avoid showing.
+type Rec = {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  reason: string;
+};
 
 const SOURCE_LABEL: Record<string, string> = {
   manual: "You added this",
@@ -31,6 +41,7 @@ export default function Patterns() {
   const [patterns, setPatterns] = useState<Pattern[] | null>(null);
   const [suppressed, setSuppressed] = useState(0);
   const [memories, setMemories] = useState<Memory[] | null>(null);
+  const [recs, setRecs] = useState<Rec[] | null>(null);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -53,10 +64,26 @@ export default function Patterns() {
       .catch(() => setMemories([]));
   }, []);
 
+  const loadRecs = useCallback(() => {
+    api<Rec[]>("/recommendations/mine")
+      .then(setRecs)
+      .catch(() => setRecs([]));
+  }, []);
+
   useEffect(() => {
     loadPatterns();
     loadMemories();
-  }, [loadPatterns, loadMemories]);
+    loadRecs();
+  }, [loadPatterns, loadMemories, loadRecs]);
+
+  async function resolveRec(id: string, how: "accept" | "dismiss") {
+    try {
+      await api(`/recommendations/${id}/${how}`, { method: "POST" });
+      loadRecs();
+    } catch {
+      setError("Couldn't record that — try again.");
+    }
+  }
 
   async function addMemory() {
     const body = draft.trim();
@@ -184,6 +211,40 @@ export default function Patterns() {
           )}
         </section>
 
+        {recs !== null && recs.length > 0 && (
+          <section className="card cz-in cz-d1" style={{ marginTop: 14 }}>
+            <h2>Something you could try</h2>
+            <p className="sub" style={{ maxWidth: 560 }}>
+              Suggested because of a pattern above — never a general prescription. Dismissing
+              one means it won&apos;t come back.
+            </p>
+            {recs.map((r) => (
+              <div key={r.id} style={{ borderTop: "1px solid var(--line)", padding: "12px 0" }}>
+                <strong>{r.title}</strong>
+                <p className="sub" style={{ margin: "4px 0 0" }}>{r.body}</p>
+                <p className="meta" style={{ marginTop: 6 }}>Because: {r.reason}</p>
+                <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
+                  <button
+                    className="btn"
+                    onClick={() => resolveRec(r.id, "accept")}
+                  >
+                    I&apos;ll try this
+                  </button>
+                  <button
+                    onClick={() => resolveRec(r.id, "dismiss")}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      font: "inherit", color: "var(--muted)",
+                    }}
+                  >
+                    Not for me
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
         <section className="card cz-in cz-d1" style={{ marginTop: 14 }}>
           <h2>What you asked it to remember</h2>
           <p className="sub" style={{ maxWidth: 560 }}>
@@ -267,7 +328,7 @@ export default function Patterns() {
           </div>
         </section>
 
-        <section className="card cz-in cz-d2" style={{ marginTop: 14 }}>
+        <section className="card cz-in cz-d3" style={{ marginTop: 14 }}>
           <h2 style={{ color: "var(--danger)" }}>Delete all memory</h2>
           <p className="sub" style={{ maxWidth: 560 }}>
             Removes chat history, computed insights, saved notes and the companion&apos;s thread

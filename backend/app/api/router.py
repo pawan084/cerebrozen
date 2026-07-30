@@ -14,6 +14,7 @@ from app.api.routes import (
     oracle,
     plans,
     programs,
+    recommendations,
     safety_plan,
     sleep,
     users,
@@ -34,6 +35,7 @@ api_router.include_router(plans.router)
 api_router.include_router(programs.router)
 api_router.include_router(content.router)
 api_router.include_router(insights.router)
+api_router.include_router(recommendations.router)
 api_router.include_router(safety_plan.router)
 api_router.include_router(oracle.router)
 api_router.include_router(voice.router)

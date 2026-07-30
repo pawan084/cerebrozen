@@ -306,3 +306,18 @@ class SafetyPlanUpdate(BaseModel):
     professionals: str | None = Field(default=None, max_length=4000)
     means_safety: str | None = Field(default=None, max_length=4000)
     notes: str | None = Field(default=None, max_length=4000)
+
+
+# ── Recommendations ─────────────────────────────────────────────────────
+class RecommendationOut(BaseModel):
+    """A suggested practice plus the pattern that prompted it. `reason` is
+    never omitted — a suggestion with no visible basis is what the Pattern
+    Dashboard exists to avoid."""
+
+    id: uuid.UUID
+    slug: str
+    title: str
+    body: str
+    action: str
+    reason: str
+    status: str
