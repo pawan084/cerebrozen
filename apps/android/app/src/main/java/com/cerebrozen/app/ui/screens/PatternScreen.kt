@@ -57,6 +57,24 @@ internal fun parsePatterns(payload: JSONObject): List<Learned> {
     }
 }
 
+/** A practice suggested because of a mined pattern. [reason] is the pattern
+ * statement verbatim — never dropped, because a suggestion with no visible
+ * basis is what this screen exists to avoid. */
+internal data class Suggested(
+    val id: String,
+    val title: String,
+    val body: String,
+    val reason: String,
+)
+
+internal fun parseRecommendations(arr: JSONArray): List<Suggested> =
+    (0 until arr.length()).mapNotNull { i ->
+        val r = arr.optJSONObject(i) ?: return@mapNotNull null
+        val id = r.optString("id")
+        if (id.isBlank()) null
+        else Suggested(id, r.optString("title"), r.optString("body"), r.optString("reason"))
+    }
+
 internal fun parseMemories(arr: JSONArray): List<Remembered> =
     (0 until arr.length()).mapNotNull { i ->
         val m = arr.optJSONObject(i) ?: return@mapNotNull null
@@ -73,6 +91,7 @@ fun PatternScreen(onBack: () -> Unit) {
     var learned by remember { mutableStateOf<List<Learned>?>(null) }
     var hiddenCount by remember { mutableIntStateOf(0) }
     var remembered by remember { mutableStateOf<List<Remembered>?>(null) }
+    var suggestions by remember { mutableStateOf<List<Suggested>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
     var editingId by remember { mutableStateOf<String?>(null) }
     var editText by remember { mutableStateOf("") }
@@ -97,6 +116,9 @@ fun PatternScreen(onBack: () -> Unit) {
         runCatching { parseMemories(Api.memories()) }
             .onSuccess { remembered = it }
             .onFailure { remembered = emptyList() }
+        runCatching { parseRecommendations(Api.recommendations()) }
+            .onSuccess { suggestions = it }
+            .onFailure { suggestions = emptyList() }
     }
 
     // Two-tap delete: fall back out of the armed state if left untouched.
@@ -138,6 +160,44 @@ fun PatternScreen(onBack: () -> Unit) {
             if (hiddenCount > 0) {
                 Text(stringResource(R.string.patterns_hidden_count, hiddenCount),
                     style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
+
+        // Suggestions sit directly under the patterns that produced them, so
+        // the basis is on the same screen as the advice.
+        if (suggestions.isNotEmpty()) {
+            SectionCard {
+                Text(stringResource(R.string.recs_title),
+                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.recs_body),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                suggestions.forEach { rec ->
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(rec.title, style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                        Text(rec.body, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        Text(stringResource(R.string.recs_because, rec.reason),
+                            style = MaterialTheme.typography.bodySmall, color = Cyan)
+                        Row(
+                            Modifier.heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching { Api.resolveRecommendation(rec.id, true) }
+                                    reload++
+                                }
+                            }) { Text(stringResource(R.string.recs_accept), color = Periwinkle) }
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching { Api.resolveRecommendation(rec.id, false) }
+                                    reload++
+                                }
+                            }) { Text(stringResource(R.string.recs_dismiss), color = TextMuted) }
+                        }
+                    }
+                }
             }
         }
 

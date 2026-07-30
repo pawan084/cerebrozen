@@ -570,6 +570,15 @@ object Api {
         Session.api("/users/me/memory/$id", "DELETE")
     }
 
+    // ── Recommendations (derived from the user's own patterns) ──
+    /** Pending suggestions. The server seeds from current patterns on read and
+     * returns [] for thin data, so this is safe to call unconditionally. */
+    suspend fun recommendations(): JSONArray = JSONArray(Session.api("/recommendations/mine"))
+
+    suspend fun resolveRecommendation(id: String, accept: Boolean) {
+        Session.api("/recommendations/$id/${if (accept) "accept" else "dismiss"}", "POST", JSONObject())
+    }
+
     // ── Safety plan (user-authored; the model never writes one) ──
     /** The live plan, or null when the user hasn't written one — a normal
      * state, never an error. */

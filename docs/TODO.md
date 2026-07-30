@@ -366,8 +366,9 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 - [x] **Claims gate revived** (`scripts/check-claims.mjs` + `docs/CLAIMS_MAP.md`, in CI),
   widened from the sibling's web-only scan to iOS Swift and Android strings.xml — where
   every over-claim actually found here was living.
-- [ ] Remaining: recommendations + goals/habits on iOS and Android; rituals / commitments /
-  affirmations (check these aren't already covered before building parallel machinery).
+- [x] Recommendations now render on iOS and Android too — all three clients in step.
+- [ ] Remaining: goals/habits on iOS and Android; rituals / commitments / affirmations
+  (check these aren't already covered before building parallel machinery).
 
 ### B2C feature candidates — plan in [B2C_BACKLOG.md](B2C_BACKLOG.md) (2026-07-30)
 Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different

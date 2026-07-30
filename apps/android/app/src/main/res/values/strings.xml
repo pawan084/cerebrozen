@@ -869,4 +869,11 @@
     <string name="safetyplan_means_safety_hint">Anything you\'d want out of reach on a hard night, and who could hold it.</string>
     <string name="safetyplan_notes">Anything else</string>
     <string name="safetyplan_notes_hint">Whatever else you want future-you to read.</string>
+
+    <!-- Recommendations on the Pattern Dashboard (2026-07-30) -->
+    <string name="recs_title">Something you could try</string>
+    <string name="recs_body">Suggested because of a pattern above — never a general prescription. Dismissing one means it won\'t come back.</string>
+    <string name="recs_because">Because: %1$s</string>
+    <string name="recs_accept">I\'ll try this</string>
+    <string name="recs_dismiss">Not for me</string>
 </resources>

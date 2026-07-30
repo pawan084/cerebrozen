@@ -8,6 +8,7 @@ struct PatternDashboardView: View {
     @EnvironmentObject var backend: BackendService
     @State private var patterns: [RemotePattern]?
     @State private var memories: [RemoteMemory]?
+    @State private var recommendations: [RemoteRecommendation] = []
     @State private var draft = ""
     @State private var editingID: String?
     @State private var editText = ""
@@ -65,6 +66,41 @@ struct PatternDashboardView: View {
                         Text(backend.isConnected ? "Looking at your data…"
                              : "Sign in to see what the AI has learned about you.")
                             .appFont(13).foregroundStyle(Theme.Palette.muted)
+                    }
+                }
+            }
+
+            // Suggestions, placed directly under the patterns that produced
+            // them so the basis is on the same screen as the advice.
+            if !recommendations.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Something you could try")
+                            .appFont(15, weight: .bold).foregroundStyle(Theme.Palette.soft)
+                        Text("Suggested because of a pattern above — never a general prescription. Dismissing one means it won't come back.")
+                            .appFont(11.5).foregroundStyle(Theme.Palette.muted2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(recommendations) { rec in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(rec.title)
+                                    .appFont(14, weight: .bold).foregroundStyle(Theme.Palette.text)
+                                Text(rec.body)
+                                    .appFont(12.5).foregroundStyle(Theme.Palette.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("Because: \(rec.reason)")
+                                    .appFont(11).foregroundStyle(Theme.Brand.cyan)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                HStack(spacing: 16) {
+                                    Button("I'll try this") { resolve(rec, accept: true) }
+                                        .appFont(13, weight: .semibold)
+                                        .foregroundStyle(Theme.Palette.lav)
+                                    Button("Not for me") { resolve(rec, accept: false) }
+                                        .appFont(13).foregroundStyle(Theme.Palette.muted)
+                                }
+                                .frame(minHeight: 44)
+                            }
+                            .padding(.top, 4)
+                        }
                     }
                 }
             }
@@ -171,6 +207,7 @@ struct PatternDashboardView: View {
         guard backend.isConnected else { return }
         patterns = (try? await APIClient.shared.patterns())?.patterns
         memories = (try? await APIClient.shared.memories()) ?? []
+        recommendations = (try? await APIClient.shared.recommendations()) ?? []
     }
 
     /// One failure message for every write here: the likeliest cause by far is
@@ -210,6 +247,15 @@ struct PatternDashboardView: View {
                 try await APIClient.shared.deleteMemory(id: id)
                 await reload()
             } catch { failed() }
+        }
+    }
+
+    /// Accepting or dismissing both remove it from the pending list; dismissing
+    /// is permanent server-side, so the UI never implies "maybe later".
+    private func resolve(_ rec: RemoteRecommendation, accept: Bool) {
+        Task {
+            _ = try? await APIClient.shared.resolveRecommendation(id: rec.id, accept: accept)
+            await reload()
         }
     }
 

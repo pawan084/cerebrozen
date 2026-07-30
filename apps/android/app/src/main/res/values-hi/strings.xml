@@ -832,4 +832,11 @@
     <string name="safetyplan_means_safety_hint">जो कुछ कठिन रात में पहुँच से दूर रखना चाहें, और कौन उसे संभाल सकता है।</string>
     <string name="safetyplan_notes">और कुछ</string>
     <string name="safetyplan_notes_hint">जो कुछ और आप भविष्य के अपने आप को पढ़वाना चाहें।</string>
+
+    <!-- Recommendations (2026-07-30). Machine-assisted; in the pending review. -->
+    <string name="recs_title">कुछ जो आप आज़मा सकते हैं</string>
+    <string name="recs_body">ऊपर दिखे किसी पैटर्न की वजह से सुझाया गया — कोई सामान्य नुस्ख़ा नहीं। हटाने पर यह दोबारा नहीं आएगा।</string>
+    <string name="recs_because">वजह: %1$s</string>
+    <string name="recs_accept">यह आज़माऊँगा/आज़माऊँगी</string>
+    <string name="recs_dismiss">मेरे लिए नहीं</string>
 </resources>

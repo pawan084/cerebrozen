@@ -185,6 +185,19 @@ struct RemotePlan: Codable, Identifiable {
     let rationale: String; let source: String; let steps: [RemotePlanStep]
 }
 
+/// A practice suggested because of a mined pattern. `reason` is the pattern
+/// statement verbatim — a suggestion with no visible basis is exactly what the
+/// Pattern Dashboard exists to avoid, so it is not optional here either.
+struct RemoteRecommendation: Codable, Identifiable, Equatable {
+    let id: String
+    let slug: String
+    let title: String
+    let body: String
+    let action: String
+    let reason: String
+    let status: String
+}
+
 /// A personal safety plan — the six Stanley-Brown sections, in the user's own
 /// words. Codable so it can be cached on device: this is the one screen that
 /// must open without a network.
@@ -460,6 +473,20 @@ actor APIClient {
         let _: EmptyResponse = try await request(
             "/users/me/memory/suppress-pattern", method: "POST",
             json: ["statement": statement])
+    }
+
+    // MARK: Recommendations (derived from the user's own patterns)
+
+    /// Pending suggestions. The server seeds from current patterns on read and
+    /// returns [] for thin data, so this is safe to call unconditionally.
+    func recommendations() async throws -> [RemoteRecommendation] {
+        try await request("/recommendations/mine", method: "GET")
+    }
+
+    @discardableResult
+    func resolveRecommendation(id: String, accept: Bool) async throws -> RemoteRecommendation {
+        try await request("/recommendations/\(id)/\(accept ? "accept" : "dismiss")",
+                          method: "POST", json: [:])
     }
 
     // MARK: Safety plan (user-authored; the model never writes one)
