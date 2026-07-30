@@ -3,6 +3,8 @@ import Waitlist from "@/components/Waitlist";
 import AppStoreBadge from "@/components/AppStoreBadge";
 import { BrandMark } from "@/components/BrandMark";
 import { PresenceGlyph, SupportGlyph } from "@/components/Glyphs";
+import { appHref } from "@/lib/appUrl";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const NAV_LINKS = [
   { href: "#features", label: "Features" },
@@ -11,15 +13,20 @@ const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-// One CTA wording everywhere (nav, hero, waitlist button) so it reads as one door.
+// The waitlist is now the *secondary* door — the browser app is real and open,
+// so the page stopped pretending the only way in is to wait.
 const CTA = "Join the waitlist";
+const APP_CTA = "Open the app";
 
 const SPACES = [
-  { tab: "Home", body: "One clear next step, tuned to the time of day and the goals you set." },
-  { tab: "Sleep", body: "Mixable soundscapes and a sleep-safe fade-out timer for a quiet mind." },
-  { tab: "Talk", body: "A voice and text AI companion that listens, reflects, and acts." },
-  { tab: "Journal", body: "Private reflection with gentle prompts — lock it behind Face ID if you like." },
-  { tab: "You", body: "Insights from your real check-ins, privacy controls, and real support." },
+  // `route` is the matching screen in the web app. A signed-out visitor is sent
+  // to sign-in and returned here afterwards (`?next=`), so the click keeps its
+  // intent instead of dumping everyone on the home screen.
+  { tab: "Home", route: "/home", body: "One clear next step, tuned to the time of day and the goals you set." },
+  { tab: "Sleep", route: "/sleep", body: "Mixable soundscapes and a sleep-safe fade-out timer for a quiet mind." },
+  { tab: "Talk", route: "/chat", body: "A voice and text AI companion that listens, reflects, and acts." },
+  { tab: "Journal", route: "/journal", body: "Private reflection with gentle prompts — lock it behind Face ID if you like." },
+  { tab: "You", route: "/account", body: "Insights from your real check-ins, privacy controls, and real support." },
 ];
 
 const PROACTIVE = [
@@ -56,9 +63,9 @@ const RECEIPTS = [
 const FAQ = [
   { q: "Is CereBro a therapist?", a: "No. CereBro is wellness support — it can listen, reflect, and guide gentle exercises, but it never diagnoses, prescribes, or replaces professional care or emergency help." },
   { q: "Is my data private?", a: "Yes. Memory is consent-first and off-limits unless you allow it. There are no ads or third-party trackers, and you can export or permanently delete everything from inside the app." },
-  { q: "When does it launch?", a: "We haven't committed to a public date, and we'd rather say that than invent one. iOS comes first, and we're inviting people from the waitlist in small batches as the build is ready." },
-  { q: "Does it work offline?", a: "Core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The AI companion needs to be online." },
-  { q: "What platforms is it on?", a: "iOS first, with Android to follow. Join the waitlist and we'll send a calm note the moment it's ready." },
+  { q: "When does it launch?", a: "The browser version is open now — create an account at app.cerebrozen.in and use it today, free. The iOS app has no public date yet, and we'd rather say that than invent one; the waitlist hears first." },
+  { q: "Does it work offline?", a: "In the mobile apps, core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The browser version needs to be online, and the AI companion always does." },
+  { q: "What platforms is it on?", a: "Any modern browser today, at app.cerebrozen.in. iOS is next, with Android to follow — join the waitlist and we'll send a calm note the moment it's ready." },
   { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a basic journal, and weekly insights. Premium adds the full sleep library and richer voice sessions." },
 ];
 
@@ -105,7 +112,8 @@ export default async function Home() {
             {NAV_LINKS.map((l) => (
               <a href={l.href} key={l.href}>{l.label}</a>
             ))}
-            <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
+            <a className="nav-signin" href={appHref("/signin")}>Sign in</a>
+            <a className="btn btn-primary" href={appHref("/")}>{APP_CTA}</a>
 
             {/* Mobile only (CSS): a native disclosure — no JS, no motion. */}
             <details className="nav-menu">
@@ -114,6 +122,8 @@ export default async function Home() {
                 {NAV_LINKS.map((l) => (
                   <a href={l.href} key={l.href}>{l.label}</a>
                 ))}
+                <a href={appHref("/signin")}>Sign in</a>
+                <a className="btn btn-primary" href={appHref("/")}>{APP_CTA}</a>
                 <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
               </div>
             </details>
@@ -133,11 +143,12 @@ export default async function Home() {
                 actually feel — not another feed to keep up with.
               </p>
               <div className="hero-cta">
-                <a className="btn btn-primary" href="#waitlist">{CTA}</a>
+                <a className="btn btn-primary" href={appHref("/")}>Open CereBro in your browser</a>
+                <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
                 <AppStoreBadge />
               </div>
               <div className="trustbar">
-                {["Private by design", "No ads, ever", "Crisis-aware", "Built for iOS"].map((t) => (
+                {["Private by design", "No ads, ever", "Crisis-aware", "Works in your browser"].map((t) => (
                   <span className="trust" key={t}>
                     <span className="trust-glyph" aria-hidden="true">✦</span>
                     {t}
@@ -236,10 +247,18 @@ export default async function Home() {
                   <div>
                     <h3>{s.tab}</h3>
                     <p>{s.body}</p>
+                    <a className="space-open" href={appHref(s.route)}>
+                      Open {s.tab}
+                      <span aria-hidden="true">→</span>
+                    </a>
                   </div>
                 </div>
               ))}
             </div>
+            <p className="spaces-note">
+              Each space opens in the browser app. New here?{" "}
+              <a href={appHref("/signup")}>Create a free account</a> — it takes a minute.
+            </p>
           </div>
         </section>
 
@@ -354,17 +373,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="footer">
-        <div className="container footer-inner">
-          <div className="brand" style={{ fontSize: 17 }}><BrandMark size={26} /> CereBro</div>
-          <div className="footer-links">
-            <span className="footer-copy">© {new Date().getFullYear()} CereBro</span>
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
-            <a href="/support">Support</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

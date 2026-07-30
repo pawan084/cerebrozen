@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { hasSession, signOut } from "@/lib/api";
+import { currentPath } from "@/lib/nextPath";
 import { BrandMark, Icon } from "@/components/icons";
 
 const MENU = [
@@ -44,7 +45,14 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   const [upsell, setUpsell] = useState(false);
 
   useEffect(() => {
-    if (!hasSession()) { router.replace("/signin"); return; }
+    if (!hasSession()) {
+      // Carry the destination through sign-in, so a landing-page link like
+      // "Open Sleep →" actually lands on Sleep instead of dumping everyone on
+      // Home. Read from `window` rather than the `pathname` hook so this effect
+      // keeps its one-shot deps and doesn't refetch /auth/me on every nav.
+      router.replace(`/signin?next=${encodeURIComponent(currentPath())}`);
+      return;
+    }
     setReady(true);
     setUpsell(window.localStorage.getItem(PREMIUM_DISMISSED) !== "1");
     import("@/lib/api").then(({ api }) =>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import { SiteFooter } from "@/components/SiteFooter";
 
 // Custom 404 — same nav, brand and palette as the rest of the site, and calm copy
 // (no "oops", no exclamation marks; house tone). Built from existing classes only.
@@ -43,19 +44,7 @@ export default function NotFound() {
         </div>
       </main>
 
-      <footer className="footer">
-        <div className="container footer-inner">
-          <Link className="brand" href="/" style={{ fontSize: 17 }}>
-            <BrandMark size={26} /> CereBro
-          </Link>
-          <div className="footer-links">
-            <span className="footer-copy">© {new Date().getFullYear()} CereBro</span>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/support">Support</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

@@ -47,6 +47,8 @@ services:
       args:
         # Public HTTPS URL of the API, inlined into the client bundle at build.
         NEXT_PUBLIC_API_URL: "${PUBLIC_API_URL:-https://api.cerebrozen.in}"
+        # Where the landing's app links point (the authenticated browser client).
+        NEXT_PUBLIC_APP_URL: "${PUBLIC_APP_URL:-https://app.cerebrozen.in}"
     expose:
       - "3000"
     depends_on:

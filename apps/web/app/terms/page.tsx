@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Terms of Use — CereBro",
@@ -90,19 +91,7 @@ export default function Terms() {
         </div>
       </main>
 
-      <footer className="footer">
-        <div className="container footer-inner">
-          <Link className="brand" href="/" style={{ fontSize: 17 }}>
-            <BrandMark size={26} /> CereBro
-          </Link>
-          <div className="footer-links">
-            <span className="footer-copy">© {new Date().getFullYear()} CereBro</span>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/support">Support</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
