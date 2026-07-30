@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -240,6 +243,17 @@ private val ConsentSaver = mapSaver(
     },
 )
 
+/** Whether the soft keyboard is showing.
+ *
+ * Every BackHandler in this funnel gates on it. Back's FIRST job on Android is
+ * to dismiss the keyboard, and a handler that is unconditionally enabled eats
+ * that press: on the sign-in step it navigated away instead, so a user closing
+ * the keyboard was thrown back to Welcome with the email and password they had
+ * just typed. Caught on a device the same evening the BackHandler was added. */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun imeVisible(): Boolean = WindowInsets.isImeVisible
+
 /**
  * Value-first onboarding funnel — the adult gate, honesty disclosure, a first
  * calming reset, then account + consent. New users flow through here; returning
@@ -250,7 +264,7 @@ private val ConsentSaver = mapSaver(
 fun Onboarding() {
     var signIn by rememberSaveable { mutableStateOf(false) }
     if (signIn) {
-        androidx.activity.compose.BackHandler { signIn = false }
+        androidx.activity.compose.BackHandler(enabled = !imeVisible()) { signIn = false }
         AuthScreen(onBack = { signIn = false })
         return
     }
@@ -267,8 +281,9 @@ fun Onboarding() {
     // consent choices all gone, because rememberSaveable cannot survive an
     // activity that was destroyed rather than recreated. Back is the most-used
     // navigation control on Android; it was a trapdoor out of onboarding.
-    // Disabled on Welcome so back there still leaves the app, as expected.
-    androidx.activity.compose.BackHandler(enabled = step != OStep.Welcome) { back() }
+    // Disabled on Welcome so back there still leaves the app, as expected, and
+    // while the keyboard is up so back still closes the keyboard first.
+    androidx.activity.compose.BackHandler(enabled = step != OStep.Welcome && !imeVisible()) { back() }
 
     // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }

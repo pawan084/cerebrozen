@@ -158,9 +158,40 @@ internal fun homeBannerPriority(
 ): HomeBanner = when {
     offline -> HomeBanner.OFFLINE
     hour < 11 && !lastNightLogged && "sleep" !in dismissed -> HomeBanner.SLEEP_CHECKIN
-    hour >= 21 && "winddown" !in dismissed -> HomeBanner.WIND_DOWN
+    hour >= com.cerebrozen.app.ui.theme.WIND_DOWN_FROM_HOUR && "winddown" !in dismissed -> HomeBanner.WIND_DOWN
     enrolledInProgram -> HomeBanner.PROGRAM
     else -> HomeBanner.NONE
+}
+
+/** One "Recent check-ins" line: "Good · Clear", or just "Good" when there is no
+ * note.
+ *
+ * Was `"${m.getString("mood")} · ${m.getString("note")}"`, which had two faults.
+ * A note-less check-in rendered as "anxious · " — a dangling separator pointing
+ * at nothing, seen on device. And `getString` THROWS on a null field, inside a
+ * `runCatching` that swallows it, so one null note would have made the whole
+ * section vanish rather than degrade. Pure. */
+internal fun checkInLine(m: JSONObject): String {
+    val mood = m.optString("mood").trim()
+    val note = m.optString("note").trim()
+    return if (note.isEmpty()) mood else "$mood · $note"
+}
+
+/** The line under the plan title on Home: never an echo of the title.
+ *
+ * `title` and `focus` come back identical for rule-generated plans (the
+ * generator names the plan after its focus goal), so rendering focus under the
+ * title repeated it verbatim. Prefer the rationale — the "why this, today" line
+ * — and fall back to focus only when it actually says something new. Pure. */
+internal fun planSubtitle(plan: JSONObject): String {
+    val title = plan.optString("title").trim()
+    val rationale = plan.optString("rationale").trim()
+    val focus = plan.optString("focus").trim()
+    return when {
+        rationale.isNotEmpty() && !rationale.equals(title, ignoreCase = true) -> rationale
+        focus.isNotEmpty() && !focus.equals(title, ignoreCase = true) -> focus
+        else -> ""
+    }
 }
 
 /** True when any sleep-log date covers "last night" — a log saved this morning
@@ -280,10 +311,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     val scope = rememberCoroutineScope()
 
     fun parseRecent(moods: JSONArray): List<String> =
-        (0 until minOf(moods.length(), 3)).map { i ->
-            val m = moods.getJSONObject(i)
-            "${m.getString("mood")} · ${m.getString("note")}"
-        }
+        (0 until minOf(moods.length(), 3)).map { i -> checkInLine(moods.getJSONObject(i)) }
 
     suspend fun reload() {
         runCatching {
@@ -483,7 +511,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 kind = "program",
                 eyebrow = stringResource(R.string.today_plan_eyebrow),
                 title = p.optString("title"),
-                subtitle = p.optString("focus"),
+                // The generator sets title = the focus goal, so "focus" was the
+                // SAME string and the card printed "Sleep before midnight" twice,
+                // one line under the other. `rationale` is the field worth the
+                // space — it says why today's plan looks like this — and it was
+                // being fetched and thrown away.
+                subtitle = planSubtitle(p),
                 height = 190.dp,
                 alive = true,   // W24: a slow glow pass walks the day dots
                 onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)

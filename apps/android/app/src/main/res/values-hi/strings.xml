@@ -119,8 +119,8 @@
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>
     <string name="today_banner_sleep">कल रात कैसी रही? 20 सेकंड का चेक-इन।</string>
     <string name="today_banner_sleep_action">दर्ज करें</string>
-    <string name="today_banner_winddown">दिन ढल रहा है — एक शांत मिक्स, या आज रात की विंड-डाउन गाइड?</string>
-    <string name="today_banner_winddown_action">विंड डाउन</string>
+    <string name="today_banner_winddown">दिन ढल रहा है।</string>
+    <string name="today_banner_winddown_action">शांत मिक्स</string>
     <string name="today_banner_program">दिन %1$d / %2$d · %3$s</string>
     <string name="today_checkin_title">आप सच में कैसे हैं?</string>
     <string name="today_checkin_subtitle">20 सेकंड का चेक-इन आज की योजना तय करता है।</string>

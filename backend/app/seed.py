@@ -472,6 +472,25 @@ async def seed(db: AsyncSession) -> None:
     if backfilled:
         logger.info("Backfilled narration scripts on %d content items", backfilled)
 
+    # Imagery honesty pass backfill (2026-07-04 changed _IMG to "" but only for
+    # rows created AFTER it, because seeding is additive by title). Every database
+    # seeded before that date still served the stock photos — found on a device
+    # 2026-07-30, where Home's "For tonight" rail illustrated the sleep story
+    # "Rain over quiet hills" with a sunlit desert canyon, and fetched it straight
+    # from a third-party CDN with the user's IP attached.
+    #
+    # Scoped to images.unsplash.com on purpose: that host can only have come from
+    # the old seed constant, so admin-attached licensed art is never touched.
+    unstocked = 0
+    stock = await db.scalars(
+        select(ContentItem).where(ContentItem.image_url.like("%images.unsplash.com%"))
+    )
+    for item in stock:
+        item.image_url = ""
+        unstocked += 1
+    if unstocked:
+        logger.info("Cleared stock imagery from %d content items", unstocked)
+
     # Same mechanic for per-day guides: fill only where still NULL, so an
     # admin-curated day list is never clobbered by a reboot.
     guided = 0

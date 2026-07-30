@@ -70,6 +70,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | --- | --- | --- | --- | --- | --- |
 | 2026-07-30 | splash | Android | **5** | 9 | `Splash: the first frame, fixed` |
 | 2026-07-30 | onboarding | Android (+iOS/web copy) | **3** | 8 | `Onboarding: four things it told users that were not true` |
+| 2026-07-30 | home | Android (+backend seed) | **5** | 8 | `Home: a bright screen at bedtime, and a plan that said its own name twice` |
 
 ### splash — Android, 2026-07-30 (5 → 9)
 
@@ -155,6 +156,63 @@ onboarding. Now a `BackHandler` walks the funnel.
   while Google sign-in is unconfigured. All design/product calls, not defects.
 - The daily reminder's own text is hardcoded English in `notify/Reminders.kt` — a
   Hindi user gets an English notification. Belongs to the `notify` module.
+
+### home — Android, 2026-07-30 (5 → 8)
+
+Audited signed in as the demo account at 23:43.
+
+1. **The whole screen was Dawn at 23:43 — under a banner reading "The day is
+   winding down."** REDESIGN §4.1 says "Sleep tab **and wind-down hours** always
+   Night"; only the Sleep half was ever built. This is the third time the same
+   harm has been found on hardware (the sleep player at 22:46 was the second).
+   Now `nightFor(mode, systemDark, hour)` in AppTheme, with the resolution
+   matrix as a test. It applies to **System mode only** — an explicit Dawn choice
+   is a choice, and the clock does not overrule it. The 21:00 boundary is one
+   shared constant with Home's banner so theme and copy cannot disagree about
+   when evening is.
+2. **The plan hero printed its own title twice.** The generator names a plan
+   after its focus goal, so `title` and `focus` come back identical and the card
+   rendered "Sleep before midnight" on two consecutive lines. `rationale` — the
+   "why this, today" line — was being fetched and thrown away. Now shown.
+3. **The wind-down banner truncated, and offered a door it does not open.** ~250px
+   of text column next to two controls, so "The day is winding down — a quieter
+   mix, or tonight's wind-down guide?" ellipsised away the entire offer. It also
+   named the wind-down guide while the button calls `openMixer`. Copy, label and
+   action now agree.
+4. **"anxious · "** — Recent check-ins emitted the separator whether or not there
+   was a note. The same line used `getString`, which throws on a null field
+   inside a `runCatching`, so one null note would have made the section silently
+   vanish instead of degrade.
+5. **The 2026-07-04 "imagery honesty pass" never reached existing data.** It set
+   `seed._IMG = ""` so clients render branded symbol wells instead of hotlinked
+   stock photos — but seeding is additive by title, so only rows created after
+   that date got it. Every earlier database still served Unsplash URLs: on device
+   the sleep story "Rain over quiet hills" was illustrated with a sunlit desert
+   canyon, fetched straight from a third-party CDN with the user's IP attached,
+   on the Home screen of a privacy-first product. Backfilled, scoped to
+   `images.unsplash.com` so admin-attached licensed art is never touched.
+
+**Honest and left alone:** the presence week ring shows seven empty days, and the
+backend agrees — the demo account's last check-in was three weeks ago. The client
+is telling the truth; that is the state working.
+
+**Left deliberately:**
+
+- The "For tonight" rail holds one card and leaves half a row empty, because
+  `/content?kind=sleep` genuinely has one item. Whether a one-item rail should
+  render full-width or stop being a rail is a design call.
+- Clients still load admin-attached art directly from whatever host the URL names
+  (Coil, no proxy), so a third party can learn a user's IP and which piece of
+  wellness content they were shown. Nothing seeded points off-domain any more,
+  but the capability is unchanged. Proxying media through the backend is an
+  architecture decision, not a Home fix.
+- Plan screen shows the plan name twice too — once as the screen title, once as
+  the hero title under "WHY THIS PLAN". Found from here; belongs to `plan`.
+- "Recent check-ins" carries no dates, so three-week-old entries read as recent.
+
+**Note:** two accidental taps during this pass toggled a plan step on the demo
+account. Both were reverted through the API (`PATCH /plans/steps/{id}`), and the
+plan is back at 1 of 3.
 
 ## Device commands
 

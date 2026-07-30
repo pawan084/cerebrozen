@@ -284,6 +284,14 @@ fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
     // restore the persisted preference once, and keep the bar icons in step.
     AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    // Wind-down hours need the clock, and the clock moves while the app is open —
+    // someone reading at 20:58 should not still be on a bright screen at 21:30.
+    LaunchedEffect(Unit) {
+        while (true) {
+            AppTheme.hour = java.time.LocalTime.now().hour
+            delay(60_000)
+        }
+    }
     // Restore the persisted Appearance choice exactly once. A `remember { … }`
     // calc lambda must stay side-effect free (Compose may run it speculatively),
     // so the write lives in a LaunchedEffect like the splash below.
