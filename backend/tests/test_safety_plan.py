@@ -177,3 +177,53 @@ async def test_account_delete_cascades_the_plan(client):
     async with SessionLocal() as s:
         rows = (await s.scalars(select(SafetyPlan).where(SafetyPlan.user_id == uid))).all()
     assert rows == []
+
+
+async def test_printable_needs_a_plan(client):
+    await _signup(client)
+    assert (await client.get("/safety-plan/me/printable")).status_code == 404
+
+
+async def test_printable_renders_the_live_plan(client):
+    await _signup(client)
+    await client.put(
+        "/safety-plan/me",
+        json={"warning_signs": "Not sleeping", "social_support": "Call Meera"},
+    )
+    r = await client.get("/safety-plan/me/printable")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    assert "Not sleeping" in r.text
+    assert "Call Meera" in r.text
+    # Sections the user left blank are shown as blank, not silently dropped —
+    # a gap in a safety plan is information.
+    assert "not filled in" in r.text
+    # It must not claim to be more than it is.
+    assert "therapy, diagnosis, or a crisis service" in r.text
+
+
+async def test_printable_escapes_user_text(client):
+    """The body is user-authored, served from the API origin — a plan must not
+    be able to smuggle markup or script into the page."""
+    await _signup(client)
+    await client.put(
+        "/safety-plan/me",
+        json={"internal_coping": "<script>alert('x')</script> & <b>bold</b>"},
+    )
+    r = await client.get("/safety-plan/me/printable")
+    assert "<script>alert" not in r.text
+    assert "&lt;script&gt;" in r.text
+    assert "&amp;" in r.text
+    # Belt and braces: the response forbids scripts outright.
+    assert "default-src 'none'" in r.headers["content-security-policy"]
+    assert r.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_printable_follows_the_live_version(client):
+    await _signup(client)
+    await client.put("/safety-plan/me", json={"warning_signs": "first draft"})
+    await client.put("/safety-plan/me", json={"warning_signs": "second draft"})
+    r = await client.get("/safety-plan/me/printable")
+    assert "second draft" in r.text
+    assert "first draft" not in r.text
+    assert "Version 2" in r.text
