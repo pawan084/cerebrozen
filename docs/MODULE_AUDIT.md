@@ -72,6 +72,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-30 | onboarding | Android (+iOS/web copy) | **3** | 8 | `Onboarding: four things it told users that were not true` |
 | 2026-07-30 | home | Android (+backend seed) | **5** | 8 | `Home: a bright screen at bedtime, and a plan that said its own name twice` |
 | 2026-07-31 | sleep | Android (app-wide typography) | **6** | 8 | `Sleep: a row that broke a word in half, and advice printed twice` |
+| 2026-07-31 | talk | Android (`Page` gains a pinned footer) | **6** | 8 | `Talk: the composer travelled with the transcript` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -268,6 +269,43 @@ across the app, so changing it here is a design-system decision, not a Sleep fix
   request, so "the fallback shows" was true because everything failed. Replaced
   with a pure `contentListState()` and a plain unit test. A test that cannot
   fail for the right reason is worse than no test.
+
+### talk — Android, 2026-07-31 (6 → 8)
+
+Audited signed in at 01:00 against a real seeded conversation. Nothing
+fabricated: the assistant's "I've logged your mood as anxious" is backed by an
+actual `anxious` row from the same minute, so the agentic write really happened.
+
+1. **The composer travelled with the transcript.** The whole screen was one
+   `verticalScroll`, message field and Send included, so after any real
+   conversation you had to scroll to the bottom to type. Worse, the
+   auto-scroll-on-new-reply targeted `maxValue` — the bottom of the *page*, which
+   was the composer — so the scroll meant to reveal the reply scrolled past it.
+   `Page` gained an optional `footer` rendered outside the scroll region.
+2. **The free-tier cap card rendered below the Send button**, though its own
+   comment said "above the composer". The one explanation of why a message was
+   refused was the last thing on a scrolling page. It is now pinned above the
+   field, where it is unmissable at exactly the moment it matters.
+3. **Send was a full-width pill stacked under the field.** Pinned above the
+   keyboard that is a lot of height for one word; it is now a 52dp circular
+   control beside the field.
+4. **"Save this conversation to my journal" read as a heading** — bare periwinkle
+   text, the same colour and weight as the "Try together" and "Type instead"
+   labels above and below it. The only way to keep a conversation looked like a
+   caption. Now an outlined row with a bookmark icon.
+
+**Fixed a regression I introduced in the same pass:** the pinned footer carried
+`imePadding()`, but the window already resizes for the keyboard, so the inset was
+counted twice — the composer flew to the top of the screen with an empty half
+screen beneath it. Caught by typing into it on the device, not by the build.
+
+**Left deliberately — app-wide, needs its own pass:** `Page` puts its 28dp
+vertical padding *inside* the scroll region, so on any screen with enough content
+the scrolled text passes under the transparent status bar. Talk shows it plainly
+(a message bubble behind the clock) because its transcript is long enough to
+scroll; most screens are too short to reveal it. The fix is a status-bar inset on
+`Page`, which shifts every screen's header and needs the whole app re-verified —
+not something to slip into a Talk audit.
 
 ## Device commands
 

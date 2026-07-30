@@ -72,6 +72,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.cerebrozen.app.ui.theme.ButtonDisabled
+import com.cerebrozen.app.ui.theme.Gradients
+import com.cerebrozen.app.ui.theme.OnPrimary
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.CloudVoice
 import com.cerebrozen.app.audio.Player
@@ -490,7 +497,51 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     Box(Modifier.fillMaxSize()) {
-    Page(stringResource(R.string.talk_eyebrow), stringResource(R.string.talk_title), trailing = Icons.Outlined.Mic, accent = Cyan, scrollState = chatScroll) {
+    Page(
+        stringResource(R.string.talk_eyebrow),
+        stringResource(R.string.talk_title),
+        trailing = Icons.Outlined.Mic,
+        accent = Cyan,
+        scrollState = chatScroll,
+        // The composer stays put while the transcript scrolls under it. It used
+        // to be the last item of the scrolling body, so after any real
+        // conversation you had to scroll to the bottom to type — and the
+        // auto-scroll-on-new-reply, aimed at revealing the reply, went to the
+        // page's maxValue, which was the composer.
+        footer = {
+            // The free-tier cap sits ABOVE the field, where the comment always
+            // said it did: it was rendered after the Send button, so the one
+            // explanation of why a message was refused was the last thing on a
+            // scrolling page. Says the number and when it clears in LOCAL time.
+            freeLimit?.let { limit ->
+                SectionCard {
+                    Text(stringResource(R.string.freelimit_title),
+                        style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        stringResource(R.string.freelimit_body, limit.limit, localResetTime(limit.resetsAtUtc)),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                    TextButton(onClick = { freeLimit = null }) {
+                        Text(stringResource(R.string.common_dismiss), color = Periwinkle)
+                    }
+                }
+            }
+            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                AppTextField(
+                    draft, { draft = it },
+                    if (voice.available) stringResource(R.string.talk_type_instead)
+                    else stringResource(R.string.talk_field_label),
+                    modifier = Modifier.weight(1f),
+                )
+                SendButton(enabled = !busy && draft.isNotBlank(), busy = busy) { send(draft) }
+            }
+        },
+    ) {
         // W10: honest offline truth for a connection-dependent surface — not
         // dismissible, and it points at what still works.
         if (Session.servedStale) {
@@ -620,14 +671,38 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
             val savedStatus = stringResource(R.string.talk_saved_status)
             val saveFailed = stringResource(R.string.talk_save_failed)
-            TextButton(onClick = {
-                scope.launch {
-                    runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
-                        .onSuccess { status = savedStatus }
-                        .onFailure { status = saveFailed }
-                }
-            }) {
-                Text(stringResource(R.string.talk_save_journal), color = Periwinkle)
+            // An outlined row with an icon, not bare periwinkle text: unstyled,
+            // it sat between two sections reading as a heading — the same weight
+            // and colour as the "Try together" / "Type instead" labels above and
+            // below it — so the one way to keep a conversation looked like a
+            // caption for the next thing.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, Periwinkle.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                    .clickable {
+                        scope.launch {
+                            runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
+                                .onSuccess { status = savedStatus }
+                                .onFailure { status = saveFailed }
+                        }
+                    }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Outlined.BookmarkBorder,
+                    contentDescription = null,
+                    tint = Periwinkle,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    stringResource(R.string.talk_save_journal),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Periwinkle,
+                )
             }
         }
 
@@ -662,30 +737,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         // Fast escape hatch when talking feels like too much (mirrors iOS).
         NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
 
-        Text(if (voice.available) stringResource(R.string.talk_type_instead) else stringResource(R.string.talk_type_message),
-            style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        AppTextField(draft, { draft = it }, stringResource(R.string.talk_field_label), modifier = Modifier.fillMaxWidth().imePadding())
-        PrimaryButton(
-            text = if (busy) stringResource(R.string.talk_hint_thinking) else stringResource(R.string.common_send),
-            enabled = !busy && draft.isNotBlank(),
-        ) { send(draft) }
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
-
-        // Free daily cap. Its own card, above the composer, saying the number,
-        // when it clears in LOCAL time, and what is still available meanwhile.
-        freeLimit?.let { limit ->
-            SectionCard {
-                Text(stringResource(R.string.freelimit_title),
-                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    stringResource(R.string.freelimit_body, limit.limit, localResetTime(limit.resetsAtUtc)),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
-                TextButton(onClick = { freeLimit = null }) {
-                    Text(stringResource(R.string.common_dismiss), color = Periwinkle)
-                }
-            }
-        }
     }
 
     // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
@@ -789,6 +840,39 @@ internal fun fmtSession(seconds: Int): String = "%d:%02d".format(seconds / 60, s
 
 /** A quiet row of structured exercises the companion can do with you — CBT
  * reframe, paced breathing, grounding (the evidenced spine; chat is the glue). */
+/** The circular send control beside the composer.
+ *
+ * A round icon button rather than the full-width PrimaryButton pill the composer
+ * used to stack beneath the field: pinned above the keyboard, a 56dp pill for
+ * one word wastes the height the transcript needs, and "Send" belongs next to
+ * what it sends. Disabled until there is something to send, so the control never
+ * lies about being actionable.
+ */
+@Composable
+private fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
+    val sendCd = stringResource(R.string.common_send)
+    Box(
+        Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(ButtonDisabled, ButtonDisabled)))
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = sendCd },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (busy) {
+            TypingDots()
+        } else {
+            Icon(
+                Icons.AutoMirrored.Outlined.Send,
+                contentDescription = null,
+                tint = if (enabled) OnPrimary else TextMuted,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun TryTogetherRow(onOpen: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

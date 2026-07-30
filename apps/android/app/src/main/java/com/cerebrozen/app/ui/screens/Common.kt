@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
@@ -397,6 +398,14 @@ internal fun Page(
     trailing: ImageVector? = null,
     accent: Color = Accent.default,
     scrollState: ScrollState = rememberScrollState(),
+    /** Pinned below the scrolling body, outside [scrollState].
+     *
+     * For a composer that must not travel with the transcript. Talk had its
+     * message field at the end of the scrolling content, so after any real
+     * conversation you had to scroll to the bottom to type — and worse, its
+     * auto-scroll-on-new-reply went to `maxValue`, the very bottom of the PAGE,
+     * which is the composer and not the reply it meant to reveal. */
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -405,9 +414,11 @@ internal fun Page(
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
     }
+    Column(Modifier.fillMaxSize()) {
     Column(
         Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .weight(1f)
             .verticalScroll(scrollState)
             .graphicsLayer { translationY = rise.value }
             .padding(horizontal = 24.dp, vertical = 28.dp),
@@ -443,6 +454,23 @@ internal fun Page(
             }
         }
         content()
+    }
+    footer?.let { pinned ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Night)))
+                // No imePadding here: the window already resizes for the
+                // keyboard (the Scaffold insets the NavHost), so adding it
+                // counted the keyboard height twice — the composer flew to the
+                // top of the screen with an empty half-screen beneath it, and
+                // the transcript slid under the status bar. Seen on device.
+                .padding(horizontal = 24.dp)
+                .padding(top = 10.dp, bottom = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = pinned,
+        )
+    }
     }
 }
 
