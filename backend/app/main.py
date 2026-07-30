@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.ratelimit import limiter
 from app.services import media
+from app.services import digest as digest_service
 from app.services import nudges as nudges_service
 
 __version__ = "0.1.0"
@@ -32,8 +33,19 @@ async def _nudge_dispatcher() -> None:
     """Periodic nudge delivery. Safe with multiple workers: dispatch_due claims
     due rows with FOR UPDATE SKIP LOCKED, so each nudge is sent exactly once."""
     interval = settings.nudge_dispatch_interval_minutes * 60
+    # The weekly digest rides the same loop rather than adding a second timer.
+    # `schedule_digest` is idempotent per ISO week and per pending nudge, so
+    # running the pass on every tick is cheap and self-correcting — a restart
+    # or a missed tick can't skip or duplicate a week.
     while True:
         await asyncio.sleep(interval)
+        try:
+            async with SessionLocal() as db:
+                queued = await digest_service.run_weekly_pass(db)
+            if queued:
+                logger.info("Weekly digest: %d queued", queued)
+        except Exception:  # noqa: BLE001 - keep the loop alive
+            logger.exception("Weekly digest pass failed")
         try:
             async with SessionLocal() as db:
                 sent = await nudges_service.dispatch_due(db)

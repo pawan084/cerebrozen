@@ -30,7 +30,7 @@ from app.schemas.content_data import (
     SafetyExcerptOut,
 )
 from app.schemas.user import UserOut
-from app.services import media, metrics, nudges, voice
+from app.services import digest, media, metrics, nudges, voice
 from app.services import prompts as prompt_registry
 
 logger = logging.getLogger("cerebro.admin")
@@ -382,6 +382,19 @@ async def list_nudges(
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
     sent = await nudges.dispatch_due(db)
     return {"sent": sent}
+
+
+@router.post("/digest/run")
+async def run_weekly_digest(db: AsyncSession = Depends(get_db)):
+    """Snapshot + queue this week's digest for every active user.
+
+    The in-process loop does this on its own; this is the manual pass for
+    deployments running the dispatcher on an external cron
+    (NUDGE_DISPATCH_INTERVAL_MINUTES=0), and for verifying a week by hand.
+    Idempotent per ISO week.
+    """
+    queued = await digest.run_weekly_pass(db)
+    return {"queued": queued}
 
 
 # ── Prompt registry (versioned LLM prompts; services/prompts.py) ─────────

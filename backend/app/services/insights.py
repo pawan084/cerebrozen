@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import utcnow
 from app.models.consent import consent_allows
 from app.models.journal import JournalEntry
+from app.models.memory import ContextMemory
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
 from app.models.sleep import SleepLog
@@ -230,8 +231,22 @@ async def compute_patterns(db: AsyncSession, user: User) -> dict:
                 "basis": f"{len(moods) - weekday} of {len(moods)} check-ins were Sat–Sun",
             })
 
+    # A user can hide a pattern they don't want reflected back at them. The
+    # hidden statement is stored as a tombstone (models/memory.py) rather than
+    # the pattern itself, so suppression never turns a guess into stored fact.
+    hidden = set((await db.scalars(
+        select(ContextMemory.body).where(
+            ContextMemory.user_id == user.id,
+            ContextMemory.source == "suppressed_pattern",
+        )
+    )).all())
+    if hidden:
+        patterns = [p for p in patterns if p["statement"] not in hidden]
+
     return {
         "patterns": patterns,
+        # Honest distinction: "we found nothing" vs "you hid what we found".
         "enough_data": bool(patterns),
+        "suppressed": len(hidden),
         "sources": {"mood_history": use_moods, "journal_memory": use_journal, "sleep_history": use_sleep},
     }

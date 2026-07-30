@@ -9,7 +9,9 @@ from app.models.plan import Plan, PlanStep
 from app.models.content import ContentItem
 from app.models.nudge import Nudge
 from app.models.insight import Insight
+from app.models.memory import ContextMemory
 from app.models.safety import SafetyEvent
+from app.models.safety_plan import SafetyPlan
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.login_code import LoginCode
@@ -31,7 +33,9 @@ __all__ = [
     "ContentItem",
     "Nudge",
     "Insight",
+    "ContextMemory",
     "SafetyEvent",
+    "SafetyPlan",
     "SleepLog",
     "TrustedContact",
     "LoginCode",

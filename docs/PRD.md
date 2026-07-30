@@ -5,12 +5,12 @@
 > (works, with stated gaps) · ⚪ concept (screen/copy exists, feature does not).
 >
 > **Provenance.** Originally derived from the 2026-07-03 full screen review. **Re-verified
-> against source on 2026-07-30**, at `main` = `5ef7416` (2026-07-13) **plus the uncommitted
-> working tree on branch `fix/ui-worldclass-103`** (63 modified + 10 new files; `HEAD ==
-> main`, so nothing on that branch is committed yet). **Rows and notes marked ‡ depend on
-> that uncommitted work — a reader must not treat them as merged reality.** Every 🟡/⚪ row
-> below was re-read in code this pass; notes state the specific remaining gap, and
-> distinguish *blocked on owner credentials* from *blocked on code still to write*.
+> against source on 2026-07-30**, at `main` = `5ef7416` (2026-07-13) **plus branch
+> `fix/ui-worldclass-103`**, which is committed but **not merged to `main`**. **Rows and
+> notes marked ‡ depend on that branch — a reader on `main` must not treat them as shipped
+> reality.** Every 🟡/⚪ row below was re-read in code this pass; notes state the specific
+> remaining gap, and distinguish *blocked on owner credentials* from *blocked on code still
+> to write*. Tally on 2026-07-30 after checklist #1/#6/#7/#8 landed: **53 ✅ / 16 🟡 / 3 ⚪**.
 >
 > Companions: [ARCHITECTURE.md](ARCHITECTURE.md) (how it's built), [TODO.md](TODO.md)
 > (debt), [SHIP_READINESS.md](SHIP_READINESS.md) (App Store runbook),
@@ -66,11 +66,11 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Favorites | ✅ | Persisted by title |
 | Narrated audio pipeline (TTS script → MP3 → `/media`) | 🟡 | Real end-to-end: `narration_script`/`audio_url`/`audio_generated_at` on `content_items` (migration `a7c4e9f2d310`), `POST /admin/content/{id}/narrate` calls ElevenLabs, `media.py` writes `media/narration/{id}.mp3`, `/media` is a mounted static dir, and all three clients stream it (iOS `AVPlayer` in `SoundscapePlayer.playNarration`, Android ExoPlayer in `AmbientService.createStream`, web `<audio>`), each falling back to the bundled bed on failure. **Gaps:** no batch/cron narrator — the seed writes scripts but never `audio_url`, so a fresh prod DB has **zero MP3s** until an admin clicks "Generate audio" per item; ~~and `/media` is unauthenticated~~ — **fixed ‡**: `/content` mints a signed, 12 h, single-item grant only for entitled callers and returns `""` otherwise (clients already treat that as "no narration" and use the bed), and `main.media_guard` 404s any narration request without a valid grant. Regression-tested in `test_content_audio.py` |
 | Stories/meditation catalogue | 🟡 | All rails (Sleep, Home, Programs, Search) server-driven via `/content` with local fallback (2026-07-04). Per-item `audio_url` is now the primary path and the keyword→bundled-loop map is only the fallback — but until items are narrated (above) every item still resolves to one of the 4 bundled loops in practice. Android's URL registry is title-keyed and unpopulated for the Sleep hero, which therefore always plays the bed |
-| Downloads | ⚪ | **No download code exists in any client** — no `AVAssetDownloadTask`, no ExoPlayer `DownloadService`, and `apps/app/public/sw.js` is explicitly "Web Push only (no fetch interception/caching)". Two shipped strings still assert otherwise: iOS `Dummy.offline` ("Downloaded soundscape · Available offline") and the web library footnote ("offline playback live in the iOS & Android apps") |
+| Downloads | ⚪ | **No download code exists in any client** — no `AVAssetDownloadTask`, no ExoPlayer `DownloadService`, and `apps/app/public/sw.js` is explicitly "Web Push only (no fetch interception/caching)". The two shipped strings that asserted otherwise are gone ‡ — iOS `Dummy.offline` and its unreachable `OfflineView` were deleted, and the web library footnote now scopes the claim to the soundscape mixer |
 | Sleep diary + morning check-in (manual, quality/bed/wake) | ✅ | Shipped 2026-07-03: iOS check-in (Home + Sleep tab), 7-night trend strip, diary history — local-first, mirrored to `/sleep` (`sleep_logs`); UITest-covered. Plan: [SLEEP_TRACKING.md](SLEEP_TRACKING.md) |
 | Wind-down program (CBT-I-informed, non-diagnostic) | ✅ | Shipped 2026-07-03: "Wind down tonight" guide (`wind_down` catalogue kind, admin-authorable, offline fallback; breathing tip opens the pacer). Evidence base: dCBT-I ISI SMD −0.85, depression −0.47 |
-| "Sleep Reset" 7-day CBT-I-informed program | 🟡 | Seeded as a first-class program with all seven day themes (`seed.py` `_DAY_GUIDES`), stored in `content_items.day_guides` (migration `b8e6d1a4f527`), served by `GET /programs/active` as `today_guide` (clamped to the last day), authorable in the admin day-guides editor, and covered by `tests/test_programs.py`. **Gap: only Android renders the guide.** iOS `RemoteProgram` and the web `Active` type have no `today_guide` field — both still show only "day N of 7" |
-| Real sleep insights (duration trends, sleep × mood) | 🟡 | Backend is real and consent-gated (`services/insights.py`: avg duration from `sleep_logs`; the sleep×mood sentence needs ≥3 sleep rows and ≥2 moods per bucket with a ≥0.5 gap). **Gap: the iOS Insights screen never shows it** — it renders `Dummy.weeklyMetrics` ("Sleep consistency / Improving / 0.62") and only overrides two rows locally; the server `insight` is rendered solely in `CloudSyncView` |
+| "Sleep Reset" 7-day CBT-I-informed program | ✅ | Seeded as a first-class program with all seven day themes (`seed.py` `_DAY_GUIDES`), stored in `content_items.day_guides` (migration `b8e6d1a4f527`), served by `GET /programs/active` as `today_guide` (clamped to the last day), authorable in the admin day-guides editor, and covered by `tests/test_programs.py`. All three clients now render the guide ‡ (2026-07-30): iOS `RemoteProgram.today_guide` → `ProgramProgressCard`, web `Active.today_guide` on the programs page, alongside Android's existing `parseTodayGuide`. Each treats a blank title+body as no guide, and the field stays additive, so a program without day guides simply shows "day N of 7" as before |
+| Real sleep insights (duration trends, sleep × mood) | ✅ | Backend is real and consent-gated (`services/insights.py`: avg duration from `sleep_logs`; the sleep×mood sentence needs ≥3 sleep rows and ≥2 moods per bucket with a ≥0.5 gap), and **iOS now renders it ‡** — `InsightsView` maps `backend.insight.metrics` straight through (2026-07-30). `Dummy.weeklyMetrics` is deleted; signed out, the screen shows only locally-counted rows (check-ins, entries, the sleep diary's own 7-day average) and an honest "nothing to measure yet" when there are none |
 | HealthKit / Health Connect sleep read (opt-in) | 🟡 | Both platforms shipped: iOS read-only `HKCategoryType(.sleepAnalysis)` with the entitlement + `NSHealthShareUsageDescription`; Android `SleepSessionRecord` with `READ_SLEEP` + rationale intent-filter. Off-by-default check-in pre-fill, user confirms, never a headline accuracy claim. **Blocked on an owner credential:** the App ID needs the HealthKit capability for physical-device iOS builds (simulator works without it). Manual-tap only — no background/observer query on either platform |
 
 ### Talk (voice + chat)
@@ -96,8 +96,8 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 ### Insights & memory
 | Feature | Status | Notes |
 |---|---|---|
-| Weekly insights (sessions, entries, sleep/mood trends) | 🟡 | Server-generated and consent-gated when connected. Same gap as sleep insights: the iOS Insights screen renders `Dummy.weeklyMetrics` rather than `backend.insight`, so a connected user still sees illustrative rows there |
-| Pattern dashboard ("stress spikes after meetings") | ✅ | **No longer illustrative.** `GET /insights/patterns` → `services/insights.compute_patterns` mines a 60-day window with four thresholded, consent-gated rules (hardest time of day, journaling→next-day calm, sleep→mood, weekday rhythm), each returning `{statement, basis}` where `basis` is the real supporting count; thin data returns `[]` with `enough_data: false`. Covered by `tests/test_patterns.py`; rendered on iOS (`PatternDashboardView`), Android (`PatternScreen`) and the web client ‡ (which this pass converted from three hardcoded cards to the live fetch + an honest empty state). Residual gap: clients ignore `enough_data`/`sources`, so "consent off" and "no data yet" read identically |
+| Weekly insights (sessions, entries, sleep/mood trends) | ✅ | Server-generated and consent-gated when connected, and rendered where users look for it: the iOS Insights hero is the server `headline`/`summary` and its bars are the server metrics ‡ (2026-07-30) |
+| Pattern dashboard ("stress spikes after meetings") | ✅ | **No longer illustrative** — and as of 2026-07-30 there is exactly one of it on iOS. ‡ Two *other* iOS entry points (Weekly Insights → "Pattern dashboard", Privacy & Memory → "Memory detail") opened a fabricated screen built from `Dummy.memoryItems` — invented observations with counts, plus Save/Delete buttons that only dismissed. Both now open the real `PatternDashboardView`; the dummy data and the fake editor are deleted. The row was ✅ while a user's most likely route to it was fake, which is the failure mode this table exists to prevent. `GET /insights/patterns` → `services/insights.compute_patterns` mines a 60-day window with four thresholded, consent-gated rules (hardest time of day, journaling→next-day calm, sleep→mood, weekday rhythm), each returning `{statement, basis}` where `basis` is the real supporting count; thin data returns `[]` with `enough_data: false`. Covered by `tests/test_patterns.py`; rendered on iOS (`PatternDashboardView`), Android (`PatternScreen`) and the web client ‡ (which this pass converted from three hardcoded cards to the live fetch + an honest empty state). Residual gap: clients ignore `enough_data`/`sources`, so "consent off" and "no data yet" read identically |
 | Memory detail / edit / delete | 🟡 | Viewing and an all-or-nothing wipe are real (`DELETE /users/me/memory` clears chat, insights and the LangGraph checkpoint rows). **Granular editing is not merely unbuilt — it is not implementable against the current schema:** patterns are computed on the fly and never persisted, so there is no addressable row to edit or suppress, and no per-item route exists |
 | Export report | ✅ | Full server export (`GET /users/me/export`) |
 
@@ -107,7 +107,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | 3 tiers (Free / ₹499 / ₹1,499), paywall, StoreKit 2 | ✅ | Server-side receipt verification, renewal webhook; needs ASC products |
 | Stripe web billing | 🟡 | Code-complete end-to-end and tested (`tests/test_stripe.py`): `POST /billing/checkout` (rate-limited, 503 when unconfigured), hand-rolled HMAC-SHA256 webhook verification with 300 s replay tolerance, price-id→tier map, downgrade on `deleted`/`canceled`/`unpaid`. Wired to the web client's account page. **Inert on owner credentials** (`stripe_enabled == bool(STRIPE_SECRET_KEY)`; all six `STRIPE_*` vars blank). **Code gaps regardless of keys:** no `stripe_customer_id` persisted (mapping relies on metadata surviving every event), no webhook event-id idempotency, no billing-portal/cancel route |
 | Free-tier quota (midnight-UTC daily cap, 429) | ✅ | Chat + Oracle; real DB-count enforcement at `FREE_DAILY_MESSAGES=50`. Server side only — no client renders the 429 (see the Talk row) |
-| Paywall copy honesty | 🟡 | The 2026-07-03 scrub held for the iOS paywall and the web landing pricing/FAQ. Three over-claims survive elsewhere: Android's "unlimited voice" upsell string, the web library's "offline playback live in the iOS & Android apps" footnote, and iOS `Dummy.offline`'s "Downloaded soundscape" |
+| Paywall copy honesty | ✅ | The 2026-07-03 scrub held for the iOS paywall and the web landing pricing/FAQ; the last three over-claims were fixed 2026-07-30 ‡. Android's upsell now names the benefit that is actually enforced ("unlimited daily conversations — free includes 50 messages a day", matching `services/usage.py`) instead of "unlimited voice", which implied a voice meter that does not exist; the web library footnote drops "offline playback"; iOS `Dummy.offline` and `OfflineView` are deleted |
 | Coach/therapist booking (Premium+Human) | ⚪ | No provider, no booking route, no model, no interest capture — iOS `CoachBookingView` is local state with hardcoded time chips and a "Notify me" button that discards the signal on teardown (it does say "nothing is scheduled yet"). **Sharpest honesty risk in the product:** `premium_human` passes the `billing.py` tier regex and is sellable through both Stripe and StoreKit, while buying only an unlimited chat quota |
 
 ### Safety & crisis
@@ -128,13 +128,13 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | First-party anonymous analytics (onboarding funnel, paywall) | 🟡 | Real and privacy-clean where it ships: allowlisted events only, random install id (never account-linked), zero third-party SDKs, opt-out toggle, admin funnel chart — on backend, iOS and Android. **Gap: the web clients never post to `/events`**, so the `source` values `web`/`app` are unused and the browser funnel is invisible in admin |
 | Sign in with Apple / Google | 🟡 | Backend verification complete for both (JWKS, dual issuer, audience). Apple: iOS button + entitlement ship, **blocked on the portal capability + `APPLE_CLIENT_ID`**; Android has no Apple path at all (net-new code). Google: iOS/Android/web flows are written, **blocked on an OAuth client** *and*, on iOS, on adding `GIDClientID` + the reversed-URL scheme to `Info.plist` |
 | Sync: plan, journal, check-ins, consent, region, assessment, attest | ✅ | Additive; app fully local offline (zero remote images — all `Dummy.Img` entries are `asset:` bundles) |
-| Offline mode | 🟡 | The behaviour is genuinely local-first (server-first with curated local fallback on Home/Sleep, on-device journal analysis, `LocalCompanion` chat). The static "Offline Mode" showcase screen is unchanged **and unreachable** — `OfflineView` (and the rest of `StateViews.swift`) has no reference anywhere in the app, and its copy still claims "downloaded sounds" |
+| Offline mode | 🟡 | The behaviour is genuinely local-first (server-first with curated local fallback on Home/Sleep, on-device journal analysis, `LocalCompanion` chat). The unreachable "Offline Mode" showcase screen that claimed "downloaded sounds" was deleted 2026-07-30 ‡. Still 🟡 because the real offline story is undocumented in-product — nothing tells the user what does and does not work without a network. The other three views in `StateViews.swift` remain unreferenced dead code |
 | Account deletion (typed DELETE, full cascade) | ✅ | |
 | Privacy policy + labels | ✅ | In-app + web + PRIVACY_LABELS.md |
 | Calm games (8) | ✅ | VoiceOver-labelled |
 | Local reminders (iOS `UNUserNotificationCenter`, Android `AlarmManager`) | ✅ | This is what "notifications" actually delivers today on both mobile clients |
 | Web Push (VAPID) | ✅ | The only fully wired remote-push channel: `services/webpush.py` (pywebpush, prunes 404/410 endpoints) + `apps/app/lib/push.ts` subscription registration. Self-generated keys — no vendor account needed |
-| Remote push (APNs / FCM) + nudge dispatch | 🟡 | Scheduler is real and production-shaped: in-process dispatcher on `NUDGE_DISPATCH_INTERVAL_MINUTES`, `SELECT … FOR UPDATE SKIP LOCKED` so multiple workers are safe, contextual/bedtime-derived scheduling, fallback chain web-push → email. The APNs sender is real (ES256 `.p8` JWT, HTTP/2). **This is not "just needs an APNs key":** iOS never registers a device token — there is no `AppDelegate`, no `registerForRemoteNotifications`, `APIClient.registerPushToken` has zero call sites, the entitlement has no `aps-environment` and `UIBackgroundModes` is `audio` only — so `user.push_token` can never be populated and the APNs branch is unreachable. FCM is 100% absent (no Firebase in Android, no sender in backend) |
+| Remote push (APNs / FCM) + nudge dispatch | 🟡 | Scheduler is real and production-shaped: in-process dispatcher on `NUDGE_DISPATCH_INTERVAL_MINUTES`, `SELECT … FOR UPDATE SKIP LOCKED` so multiple workers are safe, contextual/bedtime-derived scheduling, fallback chain web-push → email. The APNs sender is real (ES256 `.p8` JWT, HTTP/2). **iOS registration shipped 2026-07-30 ‡** (it previously had no `AppDelegate`, no `registerForRemoteNotifications` and zero `registerPushToken` call sites, so `user.push_token` could never be populated): `Features/Notifications/PushRegistrar.swift` adds the delegate and caches the device token, `BackendService.syncPushToken` PUTs it on every connect (and on sign-out clears the synced mark), and the entitlement carries `aps-environment`. Registration is gated on notification authorization the app already asked for — it never prompts on its own. `UIBackgroundModes` deliberately stays `audio`-only: the server sends `apns-push-type: alert`, so `remote-notification` would be an unused mode and an App Review flag. **Now genuinely just needs the key** (APNs `.p8` + Push Notifications on the App ID). FCM is 100% absent (no Firebase in Android, no sender in backend) |
 | Localization | 🟡 | Android has a DRAFT `values-hi` — **662 of 731 keys** translated (69 fall back to English, including the whole TIPP and CBT tools, the onboarding disclosure and privacy-policy cards), header-marked "pending qualified clinical review"; crisis/support copy was translated this pass ‡ so a Hindi-preferring user in crisis no longer meets an English wall. iOS and the web clients are **not** localized at all (zero `.lproj`/`.xcstrings`, zero `NSLocalizedString`, no `next-intl`). The one cross-platform exception is the consent notice, hand-shipped in 13 languages on iOS and web |
 
 ### Android (native client)
@@ -156,10 +156,11 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
 `ASC_*` secrets.
 
 **Code, ordered by impact:**
-1. ~~Honest paywall copy~~ — DONE 2026-07-03 for the iOS paywall and web pricing/FAQ.
-   **Reopened, narrowly:** three over-claims remain — Android's "unlimited voice",
-   the web library's "offline playback" footnote, and iOS `Dummy.offline`'s
-   "Downloaded soundscape". Delete or qualify all three.
+1. ~~Honest paywall copy~~ — DONE 2026-07-03 for the iOS paywall and web pricing/FAQ;
+   the narrow reopening (Android's "unlimited voice", the web library's "offline
+   playback" footnote, iOS `Dummy.offline`'s "Downloaded soundscape") is **closed
+   2026-07-30** — the first re-worded to the quota that is actually enforced, the
+   second scoped to the mixer, the third deleted along with `OfflineView`.
 2. ~~Server-driven content catalogue~~ — DONE 2026-07-04 (all rails via `/content`).
 3. ~~Bundle imagery for remaining hero/rail Unsplash URLs~~ — DONE; every `Dummy.Img`
    entry is now an `asset:` reference, zero remote images.
@@ -167,14 +168,18 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
    client-side attestation timestamp)~~ — DONE 2026-07-03.
 5. ~~Real pattern mining for the dashboard~~ — DONE: `/insights/patterns` with
    thresholded, consent-gated rules and honest empty states on all three clients.
-6. **iOS remote push is unreachable** — add an `AppDelegate`/`UIApplicationDelegateAdaptor`,
-   call `registerForRemoteNotifications()`, wire the existing `APIClient.registerPushToken`,
-   add `aps-environment` to the entitlement and `remote-notification` to `UIBackgroundModes`.
-   Without this the APNs key buys nothing.
-7. Wire the iOS Insights screen to `backend.insight` (Dummy only when `insight == nil`),
-   so server-computed sleep/mood actually reaches the screen users open.
-8. Render `today_guide` on iOS and web so "Sleep Reset" is a 7-day program everywhere,
-   not only on Android.
+6. ~~iOS remote push is unreachable~~ — DONE 2026-07-30: `PushRegistrar.swift` (delegate +
+   token cache), `BackendService.syncPushToken` on connect, `aps-environment` in the
+   entitlement. `remote-notification` was deliberately **not** added to `UIBackgroundModes`
+   — the server sends alert pushes only, so the mode would be unused (and unused background
+   modes draw App Review rejections). Remaining: the APNs key + the App ID capability.
+7. ~~Wire the iOS Insights screen to `backend.insight`~~ — DONE 2026-07-30. Went one step
+   further than the item asked: `Dummy.weeklyMetrics` was deleted rather than kept as the
+   `insight == nil` fallback, because two of its four rows ("Sleep consistency / Improving",
+   "Mood stability / Steady") were numbers nobody measured. Signed out, the screen now shows
+   only locally-counted rows, or an honest empty state.
+8. ~~Render `today_guide` on iOS and web~~ — DONE 2026-07-30. "Sleep Reset" is now a
+   7-day program on every client, not a day-blind progress bar on two of them.
 9. Narrate the seeded catalogue: a batch/cron narrator (or a seed-time pass), so a fresh
     prod DB isn't shipped with zero MP3s. (The `/media` entitlement check this item used
     to also cover is done — see the narrated-audio row above.)
@@ -200,7 +205,8 @@ that acts on mined patterns (today patterns are display-only).
 
 ## 4. Phase-wise roadmap
 
-**Phase 0 — TestFlight (days):** owner credentials above · checklist #1, #6, #7 ·
+**Phase 0 — TestFlight (days):** ~~checklist #1, #6, #7~~ (all three landed 2026-07-30) ·
+owner credentials above — Phase 0 is now **entirely** owner-blocked on the code side ·
 push commits + CI green · TestFlight via existing fastlane workflow.
 
 **Phase 1 — App Store v1 (1–2 weeks):** checklist #8–#12 · content depth (narrate the

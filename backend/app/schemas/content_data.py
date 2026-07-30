@@ -233,3 +233,76 @@ class SafetyExcerptOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     excerpt: str
+
+
+# ── Context memory ──────────────────────────────────────────────────────
+class MemoryOut(BaseModel):
+    """One remembered item the user can act on individually.
+
+    ``source`` is surfaced so a client can be honest about provenance — the
+    user's own words read differently from something they merely approved.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    body: str
+    source: str
+    salience: float
+    expires_at: datetime | None = None
+    dismissed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class MemoryCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+    source: str = "manual"
+    salience: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class MemoryUpdate(BaseModel):
+    """All fields optional — a PATCH may rewrite the text, re-weight it, or
+    hide it without deleting."""
+
+    body: str | None = Field(default=None, min_length=1, max_length=2000)
+    salience: float | None = Field(default=None, ge=0.0, le=1.0)
+    dismissed: bool | None = None
+
+
+class PatternSuppress(BaseModel):
+    """Hide one computed pattern. Identified by its statement — patterns are
+    derived on the fly and have no id of their own."""
+
+    statement: str = Field(min_length=1, max_length=2000)
+
+
+# ── Safety plan ─────────────────────────────────────────────────────────
+class SafetyPlanOut(BaseModel):
+    """A saved plan. Every section is plain text the user wrote — the API
+    never scores, ranks or interprets them."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    version: int
+    warning_signs: str
+    internal_coping: str
+    social_distractors: str
+    social_support: str
+    professionals: str
+    means_safety: str
+    notes: str
+    archived_at: datetime | None = None
+    created_at: datetime
+
+
+class SafetyPlanUpdate(BaseModel):
+    """All sections optional so the guided flow can save one at a time;
+    unset fields carry over from the live version rather than blanking it."""
+
+    warning_signs: str | None = Field(default=None, max_length=4000)
+    internal_coping: str | None = Field(default=None, max_length=4000)
+    social_distractors: str | None = Field(default=None, max_length=4000)
+    social_support: str | None = Field(default=None, max_length=4000)
+    professionals: str | None = Field(default=None, max_length=4000)
+    means_safety: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000)

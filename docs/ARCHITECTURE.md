@@ -108,7 +108,12 @@ cere/
   workers are safe); outcomes are `sent`/`skipped`/`failed`. Preference order for users
   without a native push token: browser Web Push (VAPID, `web_push_subscriptions`; dead
   404/410 endpoints pruned in place) → email when opted in (`users.email_nudges`) → honest
-  `skipped`. `POST /admin/nudges/dispatch` remains as a manual pass.
+  `skipped`. `POST /admin/nudges/dispatch` remains as a manual pass. The iOS half of the
+  APNs branch landed 2026-07-30 — `PushRegistrar` + `AppDelegate` obtain the device token
+  and `BackendService.syncPushToken` PUTs it to `/users/me/push-token` on every connect, so
+  `user.push_token` can finally be populated (previously the APNs path was unreachable and
+  every iOS user fell through to Web Push/email). Registration is gated on notification
+  authorization the user already granted, so it never prompts on its own.
 
 ### Oracle (LangGraph agent)
 
@@ -199,7 +204,7 @@ flowchart TD
     NOTIF -- "Enter CereBro" --> MAIN
 
     MAIN -. "You → Sign in<br>Talk → Sign in to talk live" .-> AUTH3["Auth sheet"]
-    AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region"]
+    AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region →<br>APNs device token"]
     SYNC -.-> MAIN
 ```
 
@@ -208,7 +213,10 @@ attestation, pushes the local self-reflection **only when actually answered**
 (`AppState.hasAssessment` — app defaults must never overwrite a returning user's server
 selection), then fetches plan/insights and re-applies consent + crisis region. If the local
 reflection was never answered but the server has one, it's adopted into `AppState` instead
-(returning-user restore).
+(returning-user restore). Finally it drains any cached APNs device token
+(`PushRegistrar.unsyncedToken`) — the token is normally issued during onboarding, long
+before an account exists, so it is cached and replayed at connect exactly like consent,
+region and companion style.
 
 ### Cross-stack contracts (keep manually in sync)
 
@@ -226,14 +234,24 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Consent-notice translations (DPDP s.5(3): 13 languages, keys = consent columns) | — (client-side text) | `Trust/ConsentNotice.swift` ⇄ web `apps/app/lib/consentNotice.ts` ⇄ android `ui/screens/ConsentNotice.kt` |
 | Analytics event vocabulary + funnel step names | `routes/events.ALLOWED_EVENTS` (+ `source` enum incl. `android`) | iOS `Analytics.track` ⇄ android `net/Analytics.kt` (`funnelStepName` maps to `services/metrics.ONBOARDING_STEPS`) |
 | Narration audio (`audio_url` on `/content` items) | `models/content.py` — relative `/media/…` (backend-minted) or absolute (admin-pasted); empty ⇒ client ambient fallback; `narration_script` is admin-only (`AdminContentOut`), never public. NOTE the deliberate asymmetry with `image_url`, which is always absolute | iOS `RemoteContent.audio_url` → `BackendService.resolveMedia` → `SoundscapePlayer` AVPlayer branch ⇄ android `MediaUrls.resolve/register` → `AmbientService` stream-else-bed ⇄ web `mediaSrc()` + `<audio>` (library/sleep pages; CSP `media-src`) |
+| Per-day program guide (`today_guide` on `/programs/active`) | `routes/programs.py::_today_guide` over `content_items.day_guides` (migration `b8e6d1a4f527`); additive — omitted when the program has no guides, and the day index clamps to the last one | iOS `RemoteProgram.today_guide` → `ProgramProgressCard` ⇄ android `parseTodayGuide` (Extras.kt) ⇄ web `Active.today_guide` (programs page). All three treat a blank title+body as no guide |
+| Push token (`PUT /users/me/push-token`) | `users.push_token` → `services/notifications.py` APNs sender (`apns-push-type: alert`; no silent pushes, so no `remote-notification` background mode on the client) | iOS `PushRegistrar` + `AppDelegate` → `BackendService.syncPushToken` (cached in UserDefaults, replayed at connect; sign-out PUTs `""` first, before the session is revoked, so the departing account stops naming this device). Android/web have no native token: Android has no Firebase, web uses the separate Web Push/VAPID path |
 | State-tuned journal prompt (mood name → tag/title/prompt; **today's check-in only**, else daily rotation) | — (client-side mapping over `GET /moods` mood names: Anxious / Low / Tired) | iOS `JournalPrompts.tuned(toMood:)` + `isDateInToday` gate ⇄ web `journal/page.tsx` `TUNED` + same-day gate |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 
 Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at build).
+The landing additionally consumes **`NEXT_PUBLIC_APP_URL`** (`apps/web/lib/appUrl.ts`, same
+build-arg seam) — the origin every "Open the app" link points at. It is a build arg in all
+three compose files; unset, it falls back to `http://localhost:3002` and a production build
+would strand every visitor on localhost, which is why `landing.spec.ts` asserts the hrefs.
 
 - **Web** — single-page landing (`app/page.tsx`, hardcoded content arrays) + `/privacy` + `/terms`
   + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
+  **Links into the app** (2026-07-30) from four places: nav (Sign in + Open the app), hero
+  (primary CTA, with the waitlist demoted to secondary), each of the five "calm spaces" cards
+  (`Open Sleep →` → `/sleep`, etc.), and a grouped footer. Deep links survive the sign-in wall
+  via `?next=` (below), so a click keeps its intent.
 - **App** — the authenticated browser client (`app.cerebrozen.in`, deliberately a subset of
   iOS — see WEB_APP_PLAN.md). Session model: access token **in memory only**, refresh token
   in localStorage, one `/auth/refresh` rotation retry per 401 (`lib/api.ts`;
@@ -244,7 +262,10 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   risk — never blocks), Sleep diary (morning check-in, honest weekly summary, history),
   Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
   Account (consent, crisis region, trusted contact, export download, typed DELETE).
-  `noindex`.
+  `noindex`. **Return-path (`?next=`)**: `(authed)/layout.tsx` sends a signed-out visitor to
+  `/signin?next=<path>` and `signin/page.tsx` lands them there afterwards. `lib/nextPath.ts`
+  is an allow-list — same-origin absolute paths only, so `//evil.com`, backslash variants and
+  auth-route loops are refused and fall back to `/home`; `app.spec.ts` pins both directions.
 - **Admin** — one client component (`app/page.tsx`) with tabs
   overview/analytics/users/content/safety/waitlist. Analytics renders the first-party
   aggregates (`services/metrics.py`); Users offers a metadata-only detail drill-down.
