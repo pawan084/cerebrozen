@@ -75,6 +75,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | talk | Android (`Page` gains a pinned footer) | **6** | 8 | `Talk: the composer travelled with the transcript` |
 | 2026-07-31 | journal | Android (+claims gate) | **3** | 8 | `Journal: you could write entries and never read one back` |
 | 2026-07-31 | you | Android | **6** | 8 | `You: sign out was a caption that signed you out` |
+| 2026-07-31 | crisis | Android (+API consent fix) | **4** | 8 | `Crisis: "add one in Settings" pointed at a setting that did not exist` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -367,6 +368,39 @@ account-destroying controls were the two that looked least like controls.
 `emphasis = true` and deliberate. The Support card's subtitle wraps "24/7" onto a
 second line — cosmetic, and shortening a helpline's availability line to make it
 fit is the wrong trade.
+
+### crisis — Android, 2026-07-31 (4 → 8)
+
+Audited at 05:11. The directory itself is in good shape — Tele-MANAS 14416,
+emergency 112, KIRAN 1800-599-0019 and findahelpline.com are all correct, all
+dial through `ACTION_DIAL` (never auto-call), and the removed WhatsApp row stays
+removed. The cost was everything around the one editable thing on the screen.
+
+1. **"Not set — add one in Settings" pointed at a setting that did not exist.**
+   The backend has had full CRUD for a trusted contact since the beginning, iOS
+   has an editor, the browser client has an editor, and the Android API layer
+   already had `setTrustedContact` — with no caller anywhere. So the crisis
+   screen instructed the user to go somewhere that was not there. Built
+   `TrustedContactScreen`, reachable from the crisis card (now a door, not an
+   inert notice) and from You.
+2. **`setTrustedContact` hardcoded `notify_consent = true`.** Naming someone
+   would have silently agreed to messaging them at the worst moment of your life.
+   It is now the user's switch, defaulting **off**, and the backend only
+   escalates when it is true (`services/escalation.py::on_crisis`). The existing
+   endpoint test asserted `assertTrue(notify_consent)` — it had pinned the bug in
+   place — and now asserts both answers reach the server unchanged.
+
+Verified end to end on the device: saved a contact with the switch off and
+confirmed the server stored `notify_consent: false`; reloaded and confirmed it
+reads back on both the crisis card and the editor; removed it and confirmed the
+server returned to `null`. No test data left behind.
+
+**Left deliberately:** `openSupportTarget` wraps `startActivity` in `runCatching`
+and swallows the failure. Not crashing a support surface is right; doing nothing
+visible is not — on a device with no dialer, tapping "Tele-MANAS 14416" is a dead
+tap on the one screen where a dead tap matters most. The fix (copy the number to
+the clipboard and say so) needs a device that can actually reproduce it, and this
+one has a dialer.
 
 ## Gotchas this device adds
 

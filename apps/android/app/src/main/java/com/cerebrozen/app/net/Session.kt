@@ -703,14 +703,25 @@ object Api {
         Session.api("/users/me/trusted-contact").let {
             if (it.isBlank() || it.trim() == "null") null else JSONObject(it)
         }
-    suspend fun setTrustedContact(name: String, method: String, value: String): JSONObject =
+    /** [notifyConsent] is the USER's answer, never assumed. This used to hardcode
+     * `true`, so naming a trusted contact silently agreed to messaging them at
+     * the worst moment of someone's life — and nothing on Android ever called
+     * this, so no one had been asked at all. */
+    suspend fun setTrustedContact(
+        name: String,
+        method: String,
+        value: String,
+        notifyConsent: Boolean,
+    ): JSONObject =
         JSONObject(
             Session.api(
                 "/users/me/trusted-contact", "PUT",
                 JSONObject().put("name", name).put("method", method)
-                    .put("value", value).put("notify_consent", true),
+                    .put("value", value).put("notify_consent", notifyConsent),
             ),
         )
+
+    suspend fun deleteTrustedContact() { Session.api("/users/me/trusted-contact", "DELETE") }
 
     /** Full personal-data export (privacy screen). Returns the raw JSON text. */
     suspend fun exportData(): String = Session.api("/users/me/export")

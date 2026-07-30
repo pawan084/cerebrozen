@@ -49,6 +49,26 @@
     <string name="crisis_line_kiran">KIRAN mental-health helpline</string>
     <string name="crisis_line_find_helpline">Find a helpline</string>
     <string name="crisis_trusted_contact_title">Trusted contact</string>
+    <!-- Trusted contact editor. The Crisis screen said "add one in Settings" and
+         Settings had no such setting: the backend and iOS and web all had it,
+         Android had only the read. -->
+    <string name="trusted_eyebrow">If things get hard</string>
+    <string name="trusted_title">Trusted contact</string>
+    <string name="you_trusted_subtitle">One person, only if things get hard</string>
+    <string name="trusted_intro">One person CereBro can reach out to if a conversation suggests you are in danger. Nothing is sent unless you switch it on below, and nothing is sent for an ordinary bad day.</string>
+    <string name="trusted_name_label">Their name (optional)</string>
+    <string name="trusted_method_label">How to reach them</string>
+    <string name="trusted_method_email">Email</string>
+    <string name="trusted_method_sms">Text message</string>
+    <string name="trusted_method_phone">Phone</string>
+    <string name="trusted_value_label">Email or number</string>
+    <string name="trusted_consent_title">Let CereBro contact them</string>
+    <string name="trusted_consent_hint">Only if a crisis is detected. Off means we keep the name and never use it.</string>
+    <string name="trusted_save">Save contact</string>
+    <string name="trusted_remove">Remove this contact</string>
+    <string name="trusted_saved">Saved.</string>
+    <string name="trusted_removed">Removed.</string>
+    <string name="trusted_failed">Couldn\'t save that — try again.</string>
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>

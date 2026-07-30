@@ -90,6 +90,7 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
+import com.cerebrozen.app.ui.screens.TrustedContactScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
@@ -432,6 +433,7 @@ fun CereBroApp() {
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
+            composable("trustedcontact") { TrustedContactScreen(onBack = back) }
             // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
             // a pill switch. `sounds/mixer` deep-links straight to the Mixer (the
             // old standalone `soundscape` route folded in here).
@@ -467,7 +469,7 @@ fun CereBroApp() {
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
-            composable("crisis") { CrisisScreen(onBack = back) }
+            composable("crisis") { CrisisScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }

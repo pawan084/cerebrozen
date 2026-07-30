@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.audio.MediaUrls
@@ -1328,7 +1329,7 @@ internal fun SupportLinkRow(title: String, detail: String, target: String) {
 }
 
 @Composable
-fun CrisisScreen(onBack: () -> Unit) {
+fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var contact by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         runCatching { Api.trustedContact() }.onSuccess { tc ->
@@ -1358,11 +1359,13 @@ fun CrisisScreen(onBack: () -> Unit) {
         lines.forEach { (name, number) ->
             SupportLinkRow(name, number, number)
         }
-        SectionCard {
-            Text(stringResource(R.string.crisis_trusted_contact_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(contact ?: stringResource(R.string.crisis_trusted_contact_empty),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        }
+        // A door, not a notice. It used to be an inert card telling the user to
+        // "add one in Settings" — where no such setting existed on Android.
+        NavRow(
+            stringResource(R.string.crisis_trusted_contact_title),
+            contact ?: stringResource(R.string.crisis_trusted_contact_empty),
+            icon = Icons.Outlined.PersonAddAlt,
+        ) { onOpen("trustedcontact") }
         Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }

@@ -47,6 +47,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material3.AlertDialog
 import com.cerebrozen.app.ui.theme.Danger
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -143,6 +144,9 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
         NavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
             icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
+        // The Crisis screen's "add one in Settings" now has a Settings to mean.
+        NavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
+            icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
         NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
             icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
         NavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),

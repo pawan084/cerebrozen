@@ -1,5 +1,6 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.ui.text.input.KeyboardType
 import com.cerebrozen.app.R
 import org.json.JSONArray
 import org.json.JSONObject
@@ -321,6 +322,27 @@ class ScreenLogicTest {
         fractions.zipWithNext().forEach { (a, b) ->
             assertTrue("the bar never goes backwards", b > a)
         }
+    }
+
+    // ── Trusted contact (the crisis surface's one editable thing) ──
+    @Test
+    fun aContactIsSavableOnceThereIsSomewhereToSendIt() {
+        // Name stays optional on purpose: the escalation mail addresses the
+        // person generically when it is blank, and demanding a name before
+        // someone can nominate a lifeline is friction in the wrong place.
+        assertEquals(true, trustedContactReady("someone@example.com"))
+        assertEquals(true, trustedContactReady("+91 98765 43210"))
+        assertEquals(false, trustedContactReady(""))
+        assertEquals(false, trustedContactReady("   "))
+    }
+
+    @Test
+    fun theKeyboardMatchesHowTheContactIsReached() {
+        assertEquals(KeyboardType.Email, trustedKeyboard("email"))
+        assertEquals(KeyboardType.Phone, trustedKeyboard("sms"))
+        assertEquals(KeyboardType.Phone, trustedKeyboard("phone"))
+        // An unknown method must not silently become an email keyboard.
+        assertEquals(KeyboardType.Phone, trustedKeyboard("carrier-pigeon"))
     }
 
     // ── ContentList fallback (the offline copy of a section's advice) ──
