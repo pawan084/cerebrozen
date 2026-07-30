@@ -55,6 +55,12 @@ class User(Base):
     subscription_tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free")
     # When the current subscription lapses (from the verified transaction).
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Stripe's own id for this customer. Persisted because the webhook mapping
+    # otherwise depends on `metadata.user_id` surviving on EVERY event — and it
+    # does not: subscriptions edited in the Stripe dashboard or through the
+    # billing portal arrive without the metadata we set at checkout. It is also
+    # what the billing-portal session needs.
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     # Compliance: when the user attested 18+ and acknowledged the AI disclosure.
     age_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -23,6 +23,7 @@ from app.models.prompt import PromptTemplate
 from app.models.recommendation import PracticeCatalog, Recommendation
 from app.models.waitlist import WaitlistEntry
 from app.models.web_push import WebPushSubscription
+from app.models.webhook_event import ProcessedWebhook
 
 __all__ = [
     "User",
@@ -53,4 +54,5 @@ __all__ = [
     "Recommendation",
     "WaitlistEntry",
     "WebPushSubscription",
+    "ProcessedWebhook",
 ]

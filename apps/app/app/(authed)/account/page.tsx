@@ -156,6 +156,16 @@ export default function Account() {
     }
   }
 
+  async function openPortal() {
+    setBillingMsg("");
+    try {
+      const { url } = await api<{ url: string }>("/billing/portal", { method: "POST" });
+      window.location.href = url;
+    } catch (err: any) {
+      setBillingMsg(err.message || "Couldn't open the billing portal.");
+    }
+  }
+
   async function upgrade() {
     track("paywall_cta", "premium");
     setBillingMsg("");
@@ -220,10 +230,19 @@ export default function Account() {
             />
             <span className="sub">Email me my nudges — gentle reminders arrive by email when no browser is subscribed.</span>
           </label>
-          {(me.subscription_tier ?? "free") === "free" && (
+          {(me.subscription_tier ?? "free") === "free" ? (
             <div style={{ marginTop: 12 }}>
               <PaywallSeen />
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
+              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {/* Stripe's own portal rather than a hand-rolled cancel: proration,
+                  trials and dunning are its rules, and a local reimplementation
+                  gets them subtly wrong in ways that cost real people money. */}
+              <button className="btn ghost" onClick={openPortal}>Manage billing</button>
+              <p className="footnote">Change your card, switch plan, or cancel.</p>
               {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
             </div>
           )}

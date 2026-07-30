@@ -105,7 +105,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Feature | Status | Notes |
 |---|---|---|
 | 3 tiers (Free / ₹499 / ₹1,499), paywall, StoreKit 2 | ✅ | Server-side receipt verification, renewal webhook; needs ASC products |
-| Stripe web billing | 🟡 | Code-complete end-to-end and tested (`tests/test_stripe.py`): `POST /billing/checkout` (rate-limited, 503 when unconfigured), hand-rolled HMAC-SHA256 webhook verification with 300 s replay tolerance, price-id→tier map, downgrade on `deleted`/`canceled`/`unpaid`. Wired to the web client's account page. **Inert on owner credentials** (`stripe_enabled == bool(STRIPE_SECRET_KEY)`; all six `STRIPE_*` vars blank). **Code gaps regardless of keys:** no `stripe_customer_id` persisted (mapping relies on metadata surviving every event), no webhook event-id idempotency, no billing-portal/cancel route |
+| Stripe web billing | 🟡 | Code-complete end-to-end and tested (`tests/test_stripe.py`): `POST /billing/checkout` (rate-limited, 503 when unconfigured), hand-rolled HMAC-SHA256 webhook verification with 300 s replay tolerance, price-id→tier map, downgrade on `deleted`/`canceled`/`unpaid`. Wired to the web client's account page. **Inert on owner credentials** (`stripe_enabled == bool(STRIPE_SECRET_KEY)`; all six `STRIPE_*` vars blank). All three code gaps closed 2026-07-30 ‡: `users.stripe_customer_id` is persisted and used to resolve events that arrive **without** our metadata (dashboard/portal edits do); `processed_webhooks` makes delivery idempotent at the DB, so a retried `subscription.deleted` landing after a re-subscribe can no longer downgrade a paying customer; and `POST /billing/portal` opens Stripe's own portal (card, plan, cancel) rather than a hand-rolled cancel, because proration/trial/dunning are Stripe's rules and a local version gets them wrong in ways that cost real money |
 | Free-tier quota (midnight-UTC daily cap, 429) | ✅ | Chat + Oracle; real DB-count enforcement at `FREE_DAILY_MESSAGES=50`. Server side only — no client renders the 429 (see the Talk row) |
 | Paywall copy honesty | ✅ | The 2026-07-03 scrub held for the iOS paywall and the web landing pricing/FAQ; the last three over-claims were fixed 2026-07-30 ‡. Android's upsell now names the benefit that is actually enforced ("unlimited daily conversations — free includes 50 messages a day", matching `services/usage.py`) instead of "unlimited voice", which implied a voice meter that does not exist; the web library footnote drops "offline playback"; iOS `Dummy.offline` and `OfflineView` are deleted |
 | Coach/therapist booking (Premium+Human) | ⚪ | No provider, no booking route, no model, no interest capture — iOS `CoachBookingView` is local state with hardcoded time chips and a "Notify me" button that discards the signal on teardown (it does say "nothing is scheduled yet"). **Sharpest honesty risk in the product:** `premium_human` passes the `billing.py` tier regex and is sellable through both Stripe and StoreKit, while buying only an unlimited chat quota |
@@ -205,8 +205,10 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
     (`lib/analytics.ts`, same vocabulary and gates as mobile, plus the opt-out toggle the
     account page lacked). `apps/web` (the landing site) deliberately still sends nothing:
     it has no consent surface, so there is nowhere honest to gate it.
-15. Stripe hardening: persist `stripe_customer_id`, dedupe webhooks by event id, add a
-    billing-portal/cancel route.
+15. ~~Stripe hardening~~ — DONE 2026-07-30, all three. Idempotency is enforced by a
+    unique constraint rather than an application check, because two concurrent
+    deliveries of the same event race and exactly one may win. Still inert without
+    `STRIPE_*` keys.
 16. UITest auto-dismiss for the iOS Local Network prompt (fresh-install device runs).
 17. VoiceOver live announcements for streaming chat.
 18. Finish `values-hi` (69 keys) and get the clinical/linguistic sign-off the file header
