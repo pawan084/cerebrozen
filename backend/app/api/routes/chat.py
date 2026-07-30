@@ -8,7 +8,7 @@ from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
-from app.services import activities, ai, crisis, safety, usage
+from app.services import activities, ai, crisis, language, safety, usage
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -78,6 +78,9 @@ async def send_message(
         transcript = f"user: {payload.text}"
 
     system = _SCIENTIFIC if user.companion == "Scientific" else _CALM_GUIDE
+    # Onboarding asks which language the user wants; until 2026-07-30 only
+    # starter-topic generation read the answer.
+    system += language.for_user(user)
     reply_text = await ai.complete(system, transcript, max_tokens=200) or _fallback_reply(payload.text)
 
     if risk == "crisis":

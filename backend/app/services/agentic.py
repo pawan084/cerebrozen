@@ -15,7 +15,7 @@ from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
 from app.models.sleep import SleepLog
 from app.models.user import User
-from app.services import ai, prompts
+from app.services import ai, language, prompts
 
 # Curated step library used by the deterministic fallback.
 _STEP_LIBRARY = {
@@ -170,7 +170,8 @@ async def generate_plan(db: AsyncSession, user: User, focus_goal: str = "") -> P
         f"Sleep diary (self-reported): {_sleep_note(sleep_rows) or 'none yet'}\n"
         f"Companion style: {user.companion}"
     )
-    ai_spec = await ai.complete_json(await prompts.get("agentic_plan", db), prompt, max_tokens=900)
+    plan_system = await prompts.get("agentic_plan", db) + language.for_user(user)
+    ai_spec = await ai.complete_json(plan_system, prompt, max_tokens=900)
     if isinstance(ai_spec, dict) and ai_spec.get("steps"):
         spec = ai_spec
         source = "ai"

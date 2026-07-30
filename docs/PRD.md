@@ -45,7 +45,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | Companion persona | ✅ | "Companion style" picker in You (4 styles); synced to the server profile |
 | Account step (Apple/Google/email embedded form, Maybe later) | 🟡 | Email + emailed one-time code ✅. **Apple: owner credential only** — `CereBro.entitlements` ships `com.apple.developer.applesignin`, backend verifies JWKS; needs the portal capability + `APPLE_CLIENT_ID`. **Google: credential *and* code** — `apps/ios/Info.plist` has no `GIDClientID` or reversed-URL scheme, so there is nowhere for the owner to drop the client id; `GoogleAuth.isConfigured` is false and the button degrades |
 | Consent — private by default, no pre-ticks, recommended card | ✅ | Enforced server-side (AI-memory off drops long-term history). All six DPDP categories are shown at the moment of consent; Android and the web client ‡ now default every toggle **off** |
-| Language (5 options, now before the value moment) | 🟡 | Persisted, but read in exactly one place: starter/topic generation (`services/assessment.py` — "Write every topic in {language}"). Chat and Oracle prompts never read `User.language`; iOS/web UI is not localized |
+| Language (5 options, now before the value moment) | 🟡 | **Generated replies honour it as of 2026-07-30 ‡** — `services/language.py` supplies one shared directive to the chat reply, the agentic plan and the Oracle (which takes it via `configurable`, since the graph is compiled once and shared). English returns an empty directive so the majority's prompts are unchanged. Crisis hotlines are appended *after* the model and stay dialable in any language, pinned by a test. Still 🟡 because this is the *model's* output only: the iOS and web **UI** is not localized (zero `.lproj`/`next-intl`), so a Hindi user gets Hindi replies inside English chrome |
 | Notifications opt-in | ✅ | Single-select (one slot, one choice); inert "Private previews" removed |
 | First plan | ✅ | Title keys off first goal (4 mapped, rest fall through) |
 
@@ -186,7 +186,9 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
     to also cover is done — see the narrated-audio row above.)
 10. Handle 429 in all clients and present the free-limit state (iOS `FreeLimitView` is
     dead code); state the actual cap and that the reset is UTC midnight.
-11. Chat/Oracle prompts honor `User.language` (today only starter generation does).
+11. ~~Chat/Oracle prompts honor `User.language`~~ — DONE 2026-07-30. One shared
+    directive (`services/language.py`) applied to the chat reply, the agentic plan and
+    the Oracle. Note what this does NOT do: localize the app's own UI strings.
 12. Add `GIDClientID` + reversed-URL scheme to `apps/ios/Info.plist` so the owner's
     Google client id has somewhere to live.
 13. Persist Oracle tool confirmations (approve/decline) as an audit trail, and give admin

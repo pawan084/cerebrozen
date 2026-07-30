@@ -32,7 +32,7 @@ from app.core.deps import get_current_user
 from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
-from app.services import crisis, safety, usage
+from app.services import crisis, language, safety, usage
 
 logger = logging.getLogger("cerebro.oracle")
 
@@ -59,10 +59,13 @@ async def status(user: User = Depends(get_current_user)):
 
 
 async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: str | None,
-               region: str = ""):
+               region: str = "", language_directive: str = ""):
     """Stream the graph run as SSE, managing request-scoped context + persistence."""
     graph = await get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    # The graph is compiled once and shared across users, so per-user context
+    # travels in `configurable` rather than the closure.
+    config = {"configurable": {"thread_id": thread_id,
+                               "language_directive": language_directive}}
 
     async with SessionLocal() as db:
         t_db = current_db.set(db)
@@ -132,7 +135,8 @@ async def messages(
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
     thread_id = payload.thread_id or str(user.id)
     gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id,
-               persist_user=payload.text, region=user.region)
+               persist_user=payload.text, region=user.region,
+               language_directive=language.for_user(user))
     return StreamingResponse(gen, media_type="text/event-stream")
 
 
@@ -141,5 +145,6 @@ async def messages(
 async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user)):
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
-    gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id, persist_user=None)
+    gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id,
+               persist_user=None, language_directive=language.for_user(user))
     return StreamingResponse(gen, media_type="text/event-stream")
