@@ -258,6 +258,19 @@ private fun SyncSystemBarIcons() {
     }
 }
 
+
+/** Routes that are a "sleep context" and therefore always Night (REDESIGN §4.1).
+ *
+ * Everything the Sleep tab can push, not just the tab: the full player and the
+ * soundscape mixer are used with the lights off, and a bright screen there is
+ * worse than anywhere else in the product. Keep this in step with the NavRows
+ * in SleepScreen — a new sleep destination that is not listed here will flip
+ * the theme mid-wind-down.
+ */
+private val SLEEP_CONTEXT_ROUTES = setOf(
+    Tab.Sleep.route, "player", "sounds", "sounds/mixer",
+)
+
 @Composable
 fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
@@ -299,7 +312,13 @@ fun CereBroApp() {
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
     // Sleep contexts always keep the night palette (REDESIGN §4.1).
-    AppTheme.forceNight = current == Tab.Sleep.route
+    //
+    // The TAB alone is not the context. Found on a physical device: playing a
+    // sleep story and tapping the now-playing bar pushed `player`, which fell
+    // out of this check and rendered a full-screen bright Dawn player at 22:46
+    // — with the sleep timer running, from a Night tab. That is the exact harm
+    // the rule exists to prevent, and it was invisible to every test.
+    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
     // E6: the accent cross-fades between tabs instead of snapping; Reduce Motion
