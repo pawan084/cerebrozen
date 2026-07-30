@@ -299,6 +299,29 @@ internal fun ContentRow(
 }
 
 /** Load a content kind and render it as a list; shows honest empty/error states. */
+/** What a [ContentList] shows: served rows, shimmer, or — when the catalogue
+ * gives nothing and the caller supplied one — its own offline copy. */
+internal enum class ContentListState { Loading, Items, Empty, Error, Fallback }
+
+/**
+ * Pure: the branch [ContentList] takes. Extracted so the rule that matters is a
+ * test rather than a rendering.
+ *
+ * Loading must NEVER resolve to Fallback — a caller's offline copy flashing for
+ * one frame before the real list arrives would be worse than the shimmer, and it
+ * is the mistake the ordering here prevents.
+ */
+internal fun contentListState(
+    error: String?,
+    items: JSONArray?,
+    hasFallback: Boolean,
+): ContentListState = when {
+    error != null -> if (hasFallback) ContentListState.Fallback else ContentListState.Error
+    items == null -> ContentListState.Loading
+    items.length() == 0 -> if (hasFallback) ContentListState.Fallback else ContentListState.Empty
+    else -> ContentListState.Items
+}
+
 @Composable
 internal fun ContentList(
     kind: String,
@@ -306,6 +329,15 @@ internal fun ContentList(
     onItemTap: ((String) -> Unit)? = null,
     favs: Set<String>? = null,
     onFav: ((String) -> Unit)? = null,
+    /** Shown INSTEAD of the empty/error line when the catalogue gives nothing.
+     *
+     * For sections whose advice is worth having with no network at all — the
+     * wind-down guidance is the case that prompted it, since 3am and a bad
+     * connection arrive together. Without this the caller's only option was to
+     * render its offline copy unconditionally, which is what Sleep did: two of
+     * the four served guides were repeated verbatim in substance a few hundred
+     * pixels below the list. */
+    fallback: (@Composable () -> Unit)? = null,
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -324,11 +356,14 @@ internal fun ContentList(
             MediaUrls.register(c.optString("title"), MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL))
         }
     }
-    when {
-        error != null -> Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        items == null -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
-        items!!.length() == 0 -> Text(stringResource(R.string.content_empty), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        else -> (0 until items!!.length()).forEach { i ->
+    when (contentListState(error, items, hasFallback = fallback != null)) {
+        ContentListState.Fallback -> fallback!!.invoke()
+        ContentListState.Error ->
+            Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        ContentListState.Loading -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
+        ContentListState.Empty ->
+            Text(stringResource(R.string.content_empty), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        ContentListState.Items -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
             val title = c.optString("title")
             ContentRow(
@@ -494,7 +529,7 @@ fun ProgramsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         // Credibility line (REDESIGN §2.4) — honest provenance, no overclaim.
         Text(stringResource(R.string.programs_evidence),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
 
         if (loading) {
             Text(stringResource(R.string.programs_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -649,7 +684,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
             onItemTap = playSleep, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_narration_note),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
     }
 }
 

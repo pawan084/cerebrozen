@@ -271,7 +271,7 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
         Text(
             if (entries.isEmpty()) stringResource(R.string.gratitude_first)
             else pluralStringResource(R.plurals.gratitude_flower_count, entries.size, entries.size),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted,
+            style = MaterialTheme.typography.bodySmall, color = TextMuted,
         )
         WhyThisWorks(stringResource(R.string.gratitude_why))
     }

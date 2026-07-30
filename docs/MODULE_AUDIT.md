@@ -71,6 +71,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-30 | splash | Android | **5** | 9 | `Splash: the first frame, fixed` |
 | 2026-07-30 | onboarding | Android (+iOS/web copy) | **3** | 8 | `Onboarding: four things it told users that were not true` |
 | 2026-07-30 | home | Android (+backend seed) | **5** | 8 | `Home: a bright screen at bedtime, and a plan that said its own name twice` |
+| 2026-07-31 | sleep | Android (app-wide typography) | **6** | 8 | `Sleep: a row that broke a word in half, and advice printed twice` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -219,6 +220,54 @@ is telling the truth; that is the state working.
 **Note:** two accidental taps during this pass toggled a plan step on the demo
 account. Both were reverted through the API (`PATCH /plans/steps/{id}`), and the
 plan is back at 1 of 3.
+
+### sleep — Android, 2026-07-31 (6 → 8)
+
+Audited signed in at 00:18. No fabrications, so no cap; the cost was layout,
+typography and duplication.
+
+1. **`TimeRow` broke a word in half.** A bare Row of five children with no
+   weights: at 720px the longer "Woke up around" pushed the last control off the
+   end and Compose wrapped "+30m" onto two lines, one glyph on the second. Label
+   now takes the slack against a fixed stepper, so the row cannot overflow and
+   the two rows line up with each other.
+2. **Ten paragraphs across the app were set in the small-caps eyebrow style.**
+   `labelSmall` is Bold 11sp with 1.6sp tracking and no lineHeight — built for
+   "WIND DOWN" and "TONIGHT", two to four words above a heading. It had drifted
+   onto the Health Connect **consent boundary** disclosure, TIPP's *"if the urge
+   to hurt yourself is present"* line, three privacy-policy bodies and the
+   programs evidence claim: precisely the credibility and safety paragraphs that
+   most need reading. Moved to `bodySmall`, and `labelSmall` now carries a
+   comment saying what it is for.
+3. **The wind-down guide shipped every idea twice.** Four served `wind_down`
+   guides, then two hardcoded cards repeating two of them in different words — a
+   user met "Bed is for sleep" twice within one screen — with the same CBT-I
+   citation printed under each. The hardcoded pair was nonetheless the only copy
+   that survives with no network, so it became `ContentList(fallback = …)`
+   instead of being deleted: gone when the catalogue answers, there when it does
+   not. One citation now covers the section.
+
+**Honest and left alone:** "This week" says "Log a few more nights and honest
+averages appear here — no guesses" because the demo account's last night was
+2026-07-04. Correct empty state. "Save night" stays disabled until a rating is
+picked.
+
+**Left deliberately:** "Pre-fill from Health Connect" is Cyan while the Sleep
+accent is Violet — but Cyan is the de facto secondary accent at ten call sites
+across the app, so changing it here is a design-system decision, not a Sleep fix.
+
+**Two process notes, both mine:**
+
+- The `labelSmall → bodySmall` sweep was mechanical (any `labelSmall` within
+  three lines of a >70-char string) and it took `privacypolicy_built_header`
+  — "HOW CEREBRO IS BUILT", a genuine eyebrow — by proximity. Caught by reading
+  the diff, reverted. Read the diff of a mechanical sweep.
+- The first version of the fallback test was a Robolectric Compose class that
+  polluted `Session` for every class after it in the JVM, and two of its three
+  cases passed for the wrong reason: `ensureAccess()` was throwing 401 before any
+  request, so "the fallback shows" was true because everything failed. Replaced
+  with a pure `contentListState()` and a plain unit test. A test that cannot
+  fail for the right reason is worse than no test.
 
 ## Device commands
 

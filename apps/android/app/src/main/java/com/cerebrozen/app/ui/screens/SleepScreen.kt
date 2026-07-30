@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -255,7 +257,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 // governs server-side memory. Nothing leaves the phone until Save.
                 Text(
                     stringResource(R.string.sleep_hc_boundary_hint),
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted,
                 )
             }
             val logged = stringResource(R.string.sleep_logged)
@@ -350,25 +352,37 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
 
         // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
         SleepSectionHeader("☾", stringResource(R.string.sleep_winddown_header))
-        ContentList("wind_down", { d -> if (d > 0) minutesTemplate.format(d) else guideMeta })
-
-        // Stimulus-control micro-education (CBT-I Phase 1) — two small, steady
-        // ideas, each with an honest provenance footer.
-        SectionCard {
-            Text(stringResource(R.string.sleep_bed_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(
-                stringResource(R.string.sleep_bed_body),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
-        }
-        WhyThisWorks(stringResource(R.string.sleep_cbti_why))
-        SectionCard {
-            Text(stringResource(R.string.sleep_waketime_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(
-                stringResource(R.string.sleep_waketime_body),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
-        }
+        // The served guides, falling back to the bundled stimulus-control pair
+        // (CBT-I Phase 1) when the catalogue is unreachable or empty — advice
+        // worth having at 3am on a bad connection.
+        //
+        // These used to render UNCONDITIONALLY under the list, so online users
+        // met "Bed is for sleep" twice within a screen: once as a served guide
+        // ("Awake 20+ minutes? Get up, reset gently, return sleepy") and again
+        // as a card ("If you're wide awake for 20+ minutes, get up, do something
+        // quiet and dim, come back sleepy"), with the same CBT-I citation
+        // printed under each. Same advice, twice, a few hundred pixels apart.
+        ContentList(
+            "wind_down",
+            { d -> if (d > 0) minutesTemplate.format(d) else guideMeta },
+            fallback = {
+                SectionCard {
+                    Text(stringResource(R.string.sleep_bed_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        stringResource(R.string.sleep_bed_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
+                SectionCard {
+                    Text(stringResource(R.string.sleep_waketime_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        stringResource(R.string.sleep_waketime_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
+            },
+        )
+        // One citation for the section, not one under each card.
         WhyThisWorks(stringResource(R.string.sleep_cbti_why))
 
         if (nights.isNotEmpty()) {
@@ -450,20 +464,63 @@ private fun SleepSectionHeader(glyph: String, title: String) {
     }
 }
 
+/** "In bed around   −30m  23:00  +30m" — label left, a fixed stepper right.
+ *
+ * The label takes the slack and the stepper is a fixed width, so the row cannot
+ * overflow and the two rows line up with each other. It used to be a bare Row of
+ * five children with no weights: at 720px the longer "Woke up around" pushed the
+ * last button off the end and Compose broke "+30m" across two lines, one glyph
+ * on the second. Seen on device.
+ */
 @Composable
 private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        val earlierCd = stringResource(R.string.sleep_time_earlier_cd, label)
-        val laterCd = stringResource(R.string.sleep_time_later_cd, label)
-        TextButton(
-            onClick = { onChange(minutes - 30) },
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = earlierCd },
-        ) { Text(stringResource(R.string.sleep_minus_30)) }
-        Text(hhmm(minutes), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        TextButton(
-            onClick = { onChange(minutes + 30) },
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = laterCd },
-        ) { Text(stringResource(R.string.sleep_plus_30)) }
+    val earlierCd = stringResource(R.string.sleep_time_earlier_cd, label)
+    val laterCd = stringResource(R.string.sleep_time_later_cd, label)
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSoft,
+            modifier = Modifier.weight(1f),
+        )
+        TimeStep(R.string.sleep_minus_30, earlierCd) { onChange(minutes - 30) }
+        Text(
+            hhmm(minutes),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextMuted,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.width(52.dp),
+        )
+        TimeStep(R.string.sleep_plus_30, laterCd) { onChange(minutes + 30) }
+    }
+}
+
+/** One −30m/+30m step: a 48dp touch target that stays one line. */
+@Composable
+private fun TimeStep(
+    @androidx.annotation.StringRes labelRes: Int,
+    contentDesc: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(52.dp, 48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = contentDesc },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            stringResource(labelRes),
+            style = MaterialTheme.typography.labelLarge,
+            color = Periwinkle,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }

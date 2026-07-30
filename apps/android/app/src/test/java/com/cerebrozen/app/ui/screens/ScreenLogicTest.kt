@@ -323,6 +323,34 @@ class ScreenLogicTest {
         }
     }
 
+    // ── ContentList fallback (the offline copy of a section's advice) ──
+    @Test
+    fun aSectionWithNothingToShowFallsBackToItsOwnCopy() {
+        // Sleep's wind-down guidance is why the slot exists. Its bundled CBT-I
+        // stimulus-control advice used to render UNCONDITIONALLY beneath the
+        // served list, so online users met the same two ideas twice within one
+        // screen — once as a served guide, once as a card, with the same
+        // citation printed under each.
+        val empty = JSONArray()
+        val one = JSONArray().put(JSONObject().put("title", "Dim the inputs"))
+
+        assertEquals(ContentListState.Items, contentListState(null, one, hasFallback = true))
+        assertEquals(ContentListState.Fallback, contentListState(null, empty, hasFallback = true))
+        assertEquals(ContentListState.Fallback, contentListState("boom", null, hasFallback = true))
+
+        // Without a fallback the caller still gets the honest empty/error line.
+        assertEquals(ContentListState.Empty, contentListState(null, empty, hasFallback = false))
+        assertEquals(ContentListState.Error, contentListState("boom", null, hasFallback = false))
+    }
+
+    @Test
+    fun loadingNeverShowsTheFallbackFirst() {
+        // A flash of the offline copy before the real list lands would be worse
+        // than the shimmer — the user would read advice, then watch it replaced.
+        assertEquals(ContentListState.Loading, contentListState(null, null, hasFallback = true))
+        assertEquals(ContentListState.Loading, contentListState(null, null, hasFallback = false))
+    }
+
     // ── Home content rail follows the same clock the theme does ──
     @Test
     fun theSmallHoursBelongToTheNightBefore() {

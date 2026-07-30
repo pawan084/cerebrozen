@@ -170,7 +170,7 @@ fun TippScreen(onBack: () -> Unit) {
             }
         }
         Text(stringResource(R.string.tipp_urge_note),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
         WhyThisWorks(stringResource(R.string.tipp_why))
     }
 }

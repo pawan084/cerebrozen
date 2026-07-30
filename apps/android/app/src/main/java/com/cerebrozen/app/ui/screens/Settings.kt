@@ -344,7 +344,7 @@ fun PremiumScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.premium_
         stringResource(R.string.premium_monthly_note), featured = false)
     PrimaryButton(text = stringResource(R.string.premium_cta), enabled = false, modifier = Modifier.fillMaxWidth()) {}
     Text(stringResource(R.string.premium_billing_note),
-        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        style = MaterialTheme.typography.bodySmall, color = TextMuted)
 }
 
 @Composable
@@ -429,7 +429,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.pr
     InfoCard(stringResource(R.string.privacypolicy_not_title), stringResource(R.string.privacypolicy_not_body))
     InfoCard(stringResource(R.string.privacypolicy_professional_title), stringResource(R.string.privacypolicy_professional_body))
 
-    Text(stringResource(R.string.privacypolicy_full_policy), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Text(stringResource(R.string.privacypolicy_full_policy), style = MaterialTheme.typography.bodySmall, color = TextMuted)
 }
 
 @Composable
