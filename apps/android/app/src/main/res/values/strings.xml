@@ -678,10 +678,29 @@
     <string name="patterns_loading">Looking at your data…</string>
     <string name="patterns_empty">Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.</string>
     <string name="patterns_delete_title">Delete all memory</string>
-    <string name="patterns_delete_body">Removes chat history, computed insights and the companion\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
-    <string name="patterns_cleared">Memory cleared — %1$d messages and %2$d insights forgotten.</string>
+    <string name="patterns_delete_body">Removes chat history, computed insights, saved notes and the companion\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
+    <string name="patterns_cleared">Memory cleared — %1$d messages, %2$d insights and %3$d saved notes forgotten.</string>
     <string name="patterns_delete_failed">Couldn\'t delete — try again.</string>
     <string name="patterns_confirm">Tap again to confirm</string>
+    <!-- Per-item memory (2026-07-30): patterns are computed and can only be
+         hidden; saved notes are the user's own words and are fully editable. -->
+    <string name="patterns_noticed_title">Patterns it noticed</string>
+    <string name="patterns_noticed_body">Worked out from your own check-ins each time you open this page — never stored. Hide one and it stops being shown or used.</string>
+    <string name="patterns_hide">Hide</string>
+    <string name="patterns_hidden_count">%1$d hidden. They stay hidden until you clear your memory.</string>
+    <string name="patterns_saved_title">What you asked it to remember</string>
+    <string name="patterns_saved_body">Your words, not its guesses. Edit or delete any of them.</string>
+    <string name="patterns_saved_empty">Nothing saved yet.</string>
+    <string name="patterns_add_hint">Something worth remembering…</string>
+    <string name="patterns_add">Remember this</string>
+    <string name="patterns_edit">Edit</string>
+    <string name="patterns_delete_one">Delete</string>
+    <string name="patterns_save">Save</string>
+    <string name="patterns_cancel">Cancel</string>
+    <string name="patterns_source_manual">You added this</string>
+    <string name="patterns_source_confirmed">You approved this</string>
+    <string name="patterns_source_onboarding">From onboarding</string>
+    <string name="patterns_memory_off">Couldn\'t save — is AI memory switched on in your privacy settings?</string>
 
     <!-- ── Search (SearchScreen.kt) ────────────────────────────────────── -->
     <string name="search_eyebrow">The whole library</string>

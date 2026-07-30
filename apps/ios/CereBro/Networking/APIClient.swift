@@ -97,6 +97,17 @@ struct RemotePatterns: Codable {
 struct RemoteMemoryWipe: Codable {
     let chat_messages: Int
     let insights: Int
+    // Added with per-item memory; older servers omit it.
+    let memories: Int?
+}
+
+/// One addressable thing the app remembers — the user's own words or something
+/// they approved. Unlike `RemotePattern` (computed per request) this has an id,
+/// so it can be edited and deleted individually.
+struct RemoteMemory: Codable, Identifiable, Equatable {
+    let id: String
+    let body: String
+    let source: String
 }
 
 /// One published catalogue item from the public `/content` route.
@@ -407,6 +418,34 @@ actor APIClient {
     func patterns() async throws -> RemotePatterns { try await request("/insights/patterns", method: "GET") }
 
     func deleteMemory() async throws -> RemoteMemoryWipe { try await request("/users/me/memory", method: "DELETE") }
+
+    // MARK: Per-item memory
+
+    func memories() async throws -> [RemoteMemory] {
+        try await request("/users/me/memory", method: "GET")
+    }
+
+    @discardableResult
+    func addMemory(_ body: String) async throws -> RemoteMemory {
+        try await request("/users/me/memory", method: "POST", json: ["body": body])
+    }
+
+    @discardableResult
+    func editMemory(id: String, body: String) async throws -> RemoteMemory {
+        try await request("/users/me/memory/\(id)", method: "PATCH", json: ["body": body])
+    }
+
+    func deleteMemory(id: String) async throws {
+        let _: EmptyResponse = try await request("/users/me/memory/\(id)", method: "DELETE")
+    }
+
+    /// Stop showing one computed pattern. Keyed by its statement — patterns are
+    /// derived per request and have no id of their own.
+    func suppressPattern(_ statement: String) async throws {
+        let _: EmptyResponse = try await request(
+            "/users/me/memory/suppress-pattern", method: "POST",
+            json: ["statement": statement])
+    }
 
     // MARK: Assessment (self-reflection → conversation topics)
 

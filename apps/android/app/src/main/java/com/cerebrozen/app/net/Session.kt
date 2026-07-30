@@ -552,8 +552,32 @@ object Api {
     /** Transparent AI memory: honest learned statements + their data basis. */
     suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))
 
-    /** Wipe the AI's memory (chat history + insights + Oracle thread state). */
+    /** Wipe the AI's memory (chat history + insights + saved notes + Oracle thread state). */
     suspend fun deleteMemory(): JSONObject = JSONObject(Session.api("/users/me/memory", "DELETE"))
+
+    // ── Per-item memory ──
+    // Patterns above are computed and can only be hidden; these are rows the
+    // user wrote or approved, so they can be edited and deleted individually.
+    suspend fun memories(): JSONArray = JSONArray(Session.api("/users/me/memory"))
+
+    suspend fun addMemory(body: String): JSONObject =
+        JSONObject(Session.api("/users/me/memory", "POST", JSONObject().put("body", body)))
+
+    suspend fun editMemory(id: String, body: String): JSONObject =
+        JSONObject(Session.api("/users/me/memory/$id", "PATCH", JSONObject().put("body", body)))
+
+    suspend fun deleteOneMemory(id: String) {
+        Session.api("/users/me/memory/$id", "DELETE")
+    }
+
+    /** Stop showing one computed pattern. Keyed by the statement — patterns
+     * are derived per request and have no id of their own. */
+    suspend fun suppressPattern(statement: String) {
+        Session.api(
+            "/users/me/memory/suppress-pattern", "POST",
+            JSONObject().put("statement", statement),
+        )
+    }
 
     // ── Programs (multi-day journeys — ref "DAY X OF Y" card) ──
     suspend fun activeProgram(): JSONObject? =
