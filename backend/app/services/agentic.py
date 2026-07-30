@@ -138,14 +138,25 @@ def _fallback_plan(user: User, moods: list[str], sleep_rows: list[SleepLog]) -> 
     }
 
 
-async def generate_plan(db: AsyncSession, user: User) -> Plan:
-    """Generate, persist, and return a fresh active plan (deactivating prior)."""
+async def generate_plan(db: AsyncSession, user: User, focus_goal: str = "") -> Plan:
+    """Generate, persist, and return a fresh active plan (deactivating prior).
+
+    `focus_goal` narrows the plan to one thing the user is working towards —
+    this is what `POST /goals/{id}/decompose` calls. A goal decomposes through
+    the planner that already exists rather than into a parallel to-do list, so
+    steps stay in the same place the user already checks them off.
+    """
     moods, journals, sleep_rows = await _recent_signals(db, user)
 
     spec = None
     source = "rule"
+    goal_line = (
+        f"The user wants this plan to serve one goal specifically: {focus_goal}\n"
+        if focus_goal else ""
+    )
     prompt = (
-        f"Goals: {user.goals or [_DEFAULT_GOAL]}\n"
+        goal_line
+        + f"Goals: {[focus_goal] if focus_goal else (user.goals or [_DEFAULT_GOAL])}\n"
         f"Recent moods (newest first): {moods or 'none yet'}\n"
         f"Recent journal titles: {journals or 'none yet'}\n"
         f"Sleep diary (self-reported): {_sleep_note(sleep_rows) or 'none yet'}\n"

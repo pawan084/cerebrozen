@@ -321,3 +321,51 @@ class RecommendationOut(BaseModel):
     action: str
     reason: str
     status: str
+
+
+# ── Goals + habits (the things the user defines) ────────────────────────
+class GoalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    why: str
+    status: str
+    created_at: datetime
+
+
+class GoalCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    why: str = Field(default="", max_length=2000)
+
+
+class GoalUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    why: str | None = Field(default=None, max_length=2000)
+    # active | achieved | released — "released" is a real outcome, not a failure.
+    status: str | None = None
+
+
+class HabitOut(BaseModel):
+    """`recent_days` is a 7-day window, not a streak. The absence of a streak
+    field is deliberate: the schema shouldn't be able to say "you broke it"."""
+
+    id: uuid.UUID
+    title: str
+    cue: str
+    target_per_week: int
+    archived: bool
+    recent_days: list[str] = Field(default_factory=list)
+    done_today: bool = False
+
+
+class HabitCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    cue: str = Field(default="", max_length=255)
+    target_per_week: int = Field(default=7, ge=1, le=7)
+
+
+class HabitUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    cue: str | None = Field(default=None, max_length=255)
+    target_per_week: int | None = Field(default=None, ge=1, le=7)
+    archived: bool | None = None

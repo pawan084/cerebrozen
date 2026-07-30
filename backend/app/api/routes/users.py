@@ -11,6 +11,7 @@ from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
 from app.models.consent import Consent, consent_allows
 from app.models.deletion_ledger import DeletionLedger
+from app.models.habit import Goal
 from app.models.insight import Insight
 from app.models.memory import EDITABLE_SOURCES, ContextMemory
 from app.models.safety_plan import SafetyPlan
@@ -29,6 +30,7 @@ from app.schemas.content_data import (
     MemoryUpdate,
     MoodOut,
     NudgeOut,
+    GoalOut,
     PatternSuppress,
     SafetyPlanOut,
     SleepLogOut,
@@ -217,6 +219,7 @@ async def export_my_data(
         "memory": await rows(ContextMemory, MemoryOut, ContextMemory.created_at),
         # Every version, not just the live one — the history is the record.
         "safety_plans": await rows(SafetyPlan, SafetyPlanOut, SafetyPlan.version),
+        "goals": await rows(Goal, GoalOut, Goal.created_at),
         "sleep": await rows(SleepLog, SleepLogOut, SleepLog.date),
         "push_subscriptions": await rows(
             WebPushSubscription, WebPushSubscriptionOut, WebPushSubscription.created_at

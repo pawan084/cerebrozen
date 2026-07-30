@@ -8,6 +8,7 @@ from app.api.routes import (
     chat,
     content,
     events,
+    habits,
     insights,
     journal,
     moods,
@@ -32,6 +33,7 @@ api_router.include_router(sleep.router)
 api_router.include_router(journal.router)
 api_router.include_router(chat.router)
 api_router.include_router(plans.router)
+api_router.include_router(habits.router)
 api_router.include_router(programs.router)
 api_router.include_router(content.router)
 api_router.include_router(insights.router)

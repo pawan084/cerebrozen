@@ -8,6 +8,7 @@ from app.models.chat import ChatMessage
 from app.models.plan import Plan, PlanStep
 from app.models.content import ContentItem
 from app.models.nudge import Nudge
+from app.models.habit import Goal, Habit, HabitCompletion
 from app.models.insight import Insight
 from app.models.memory import ContextMemory
 from app.models.safety import SafetyEvent
@@ -33,6 +34,9 @@ __all__ = [
     "PlanStep",
     "ContentItem",
     "Nudge",
+    "Goal",
+    "Habit",
+    "HabitCompletion",
     "Insight",
     "ContextMemory",
     "SafetyEvent",
