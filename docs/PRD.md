@@ -209,7 +209,12 @@ Google OAuth client · ASC subscription products + Server-Notifications URL · `
     unique constraint rather than an application check, because two concurrent
     deliveries of the same event race and exactly one may win. Still inert without
     `STRIPE_*` keys.
-16. UITest auto-dismiss for the iOS Local Network prompt (fresh-install device runs).
+16. ~~UITest auto-dismiss for the iOS Local Network prompt~~ — DONE 2026-07-30.
+    `allowLocalNetworkIfAsked` at every one of the 9 launch sites. It **allows** rather
+    than dismisses (denying would fail every live-backend test for the rest of that
+    install), matches the alert text before tapping so a stray "OK" sheet can't be
+    swallowed silently, and waits 0s on simulator runs — a real wait across 23 launches
+    would have added over a minute to a ~22-minute suite.
 17. VoiceOver live announcements for streaming chat.
 18. Finish `values-hi` (69 keys) and get the clinical/linguistic sign-off the file header
     is waiting on.
