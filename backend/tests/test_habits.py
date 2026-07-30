@@ -220,3 +220,15 @@ async def test_account_delete_cascades_habits(client):
         assert (await s.scalars(
             select(HabitCompletion).where(HabitCompletion.user_id == uid)
         )).all() == []
+
+
+async def test_decompose_names_the_goal_even_without_an_llm_key(client):
+    """CI and every keyless deployment take the rule fallback. If that path
+    ignores focus_goal, decomposing "Sleep before midnight" returns a plan
+    called "Ease work stress" — the app visibly ignoring what was asked."""
+    await _signup(client)
+    gid = (await client.post("/goals", json={"title": "Sleep before midnight"})).json()["id"]
+
+    plan = (await client.post(f"/goals/{gid}/decompose")).json()
+    assert plan["focus"] == "Sleep before midnight"
+    assert plan["title"] == "Sleep before midnight"

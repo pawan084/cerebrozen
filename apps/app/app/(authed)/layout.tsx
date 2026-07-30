@@ -16,6 +16,7 @@ const MENU = [
 ];
 const EXPLORE = [
   { href: "/plan", label: "Plan", icon: Icon.plan },
+  { href: "/goals", label: "Goals & habits", icon: Icon.spark },
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
   { href: "/games", label: "Games", icon: Icon.games },

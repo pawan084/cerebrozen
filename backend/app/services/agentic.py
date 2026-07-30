@@ -117,8 +117,15 @@ def _short_sleep(sleep_rows: list[SleepLog]) -> bool:
     return avg_dur < 390 or avg_q <= 2.5
 
 
-def _fallback_plan(user: User, moods: list[str], sleep_rows: list[SleepLog]) -> dict:
-    goal = (user.goals or [_DEFAULT_GOAL])[0]
+def _fallback_plan(
+    user: User, moods: list[str], sleep_rows: list[SleepLog], focus_goal: str = ""
+) -> dict:
+    """Keyless plan. Must still honour `focus_goal` — without this, decomposing
+    "Sleep before midnight" on a keyless deployment returns a plan titled "Ease
+    work stress", which reads as the app ignoring what the user asked for."""
+    goal = focus_goal or (user.goals or [_DEFAULT_GOAL])[0]
+    # The step library is keyed by the onboarding goal vocabulary; a free-text
+    # goal falls back to the default steps but keeps its own title and focus.
     steps = list(_STEP_LIBRARY.get(goal, _STEP_LIBRARY[_DEFAULT_GOAL]))
     stressed = any(m.lower() in {"anxious", "low", "tired"} for m in moods)
     rationale = (
@@ -131,7 +138,8 @@ def _fallback_plan(user: User, moods: list[str], sleep_rows: list[SleepLog]) -> 
         steps = [("Tonight's wind-down", "Lights low + slow breathing, 45 min before bed", "moon.zzz")] + steps[:2]
         rationale = "Your diary shows short or rough nights lately, so today protects the wind-down first."
     return {
-        "title": _TITLE_BY_GOAL.get(goal, "Your calm plan"),
+        # A goal the library doesn't know still names its own plan.
+        "title": _TITLE_BY_GOAL.get(goal) or (focus_goal or "Your calm plan"),
         "focus": goal,
         "rationale": rationale,
         "steps": [{"title": t, "detail": d, "symbol": s} for (t, d, s) in steps],
@@ -167,7 +175,7 @@ async def generate_plan(db: AsyncSession, user: User, focus_goal: str = "") -> P
         spec = ai_spec
         source = "ai"
     if spec is None:
-        spec = _fallback_plan(user, moods, sleep_rows)
+        spec = _fallback_plan(user, moods, sleep_rows, focus_goal)
 
     # Deactivate any existing active plans.
     existing = (await db.scalars(select(Plan).where(Plan.user_id == user.id, Plan.active.is_(True)))).all()
