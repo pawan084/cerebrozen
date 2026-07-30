@@ -154,6 +154,25 @@ reuse the `/content` + `/programs` machinery. **Each needs the non-clinical fram
 treatment protocol. Ship as *skills practice*, keep the "why this works" provenance copy,
 and give each a PRD row stating exactly what is and is not claimed.
 
+## 4b. Assessed and NOT built — 2026-07-30
+
+Each of these was in the Tier-2 list and was checked against what already
+exists here before building. Three did not earn their place. Recording the
+reasoning matters more than the verdict: the next person to read the sibling's
+domain list will feel the same pull to port them.
+
+| Candidate | Verdict | Why |
+| --- | --- | --- |
+| **`commitments`** | **Dropped** | The sibling exposes only `GET /commitments/me` and ships no model file — it is a read-only façade over other tables. Here, "things I committed to" is exactly `Goal` plus `PlanStep`, both of which now exist. A third noun for the same idea would make the product harder to explain, not richer. |
+| **Gratitude** (part of `rituals`) | **Dropped** | A gratitude entry is a journal entry with a prompt. `JournalEntry` + tags + the existing prompt rotation already do this. A `GratitudeEntry` table would be parallel machinery, and would fragment the journal's own privacy controls and export. |
+| **Daily quests / custom rituals** (part of `rituals`) | **Dropped** | `CustomRitual` is `Habit`, which shipped 2026-07-30. `DailyQuestCompletion` is the daily plan plus the "mindful days" streak, both of which predate this backlog. |
+| **`affirmations`** | **Not as three new tables** | The sibling has `AffirmationTemplate` + `DeliveredAffirmation` + `FavoriteAffirmation` with its own admin CRUD. `content_items` here is already a curated, admin-editable catalogue with a `kind` discriminator and favourites on the clients. If affirmations are wanted, they are a **new kind**, not a new subsystem. |
+| **Daily intention** (part of `rituals`) | **Open — the only survivor** | Genuinely distinct: the daily plan is *generated for* the user and `Plan.focus` is the model's word, whereas an intention is one line the user writes for themselves. Small (one row per UTC day, upsert). Not built because it overlaps `Plan.focus` closely enough to deserve a product call first: is the intention the user's replacement for the generated focus, or a separate thing sitting beside it? |
+
+**Breathing-session records** were also considered. The breathe tools exist and
+record nothing; adding a table would feed streaks and insights. Marginal, and it
+edges the product toward measuring what it currently just offers — left out.
+
 ## 5. Flagged — do not start without a decision
 
 - **`gamification` (XP) + `rewards` + leaderboard.** Buildable, but the premium/engagement

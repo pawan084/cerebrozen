@@ -367,8 +367,13 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   widened from the sibling's web-only scan to iOS Swift and Android strings.xml — where
   every over-claim actually found here was living.
 - [x] Recommendations now render on iOS and Android too — all three clients in step.
-- [ ] Remaining: goals/habits on iOS and Android; rituals / commitments / affirmations
-  (check these aren't already covered before building parallel machinery).
+- [x] Goals & habits on iOS and Android — all three clients in step.
+- [x] Rituals / commitments / affirmations **assessed and mostly dropped** — the reasoning
+  is in B2C_BACKLOG.md §4b. Commitments duplicate goals + plan steps; gratitude is a
+  journal entry; custom rituals are habits and daily quests are the plan + streak;
+  affirmations should be a `content_items` kind, not three new tables. One survivor left
+  open on purpose: a **daily intention**, which needs a product call first (does it replace
+  the generated `Plan.focus`, or sit beside it?).
 
 ### B2C feature candidates — plan in [B2C_BACKLOG.md](B2C_BACKLOG.md) (2026-07-30)
 Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different

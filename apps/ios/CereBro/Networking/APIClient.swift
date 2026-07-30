@@ -185,6 +185,29 @@ struct RemotePlan: Codable, Identifiable {
     let rationale: String; let source: String; let steps: [RemotePlanStep]
 }
 
+/// Something the user is working towards. `status` is active | achieved |
+/// **released** — letting a goal go is an outcome, not a failure.
+struct RemoteGoal: Codable, Identifiable, Equatable {
+    let id: String
+    let title: String
+    let why: String
+    let status: String
+}
+
+/// A small thing the user chose to repeat.
+///
+/// Note what is absent: there is no streak. `recent_days` is a 7-day window, so
+/// a gap is just a gap — the client cannot render "you broke it" because the
+/// server never says it.
+struct RemoteHabit: Codable, Identifiable, Equatable {
+    let id: String
+    let title: String
+    let cue: String
+    let target_per_week: Int
+    let recent_days: [String]
+    let done_today: Bool
+}
+
 /// A practice suggested because of a mined pattern. `reason` is the pattern
 /// statement verbatim — a suggestion with no visible basis is exactly what the
 /// Pattern Dashboard exists to avoid, so it is not optional here either.
@@ -473,6 +496,42 @@ actor APIClient {
         let _: EmptyResponse = try await request(
             "/users/me/memory/suppress-pattern", method: "POST",
             json: ["statement": statement])
+    }
+
+    // MARK: Goals + habits (the things the user defines)
+
+    func goals() async throws -> [RemoteGoal] { try await request("/goals", method: "GET") }
+
+    @discardableResult
+    func addGoal(_ title: String) async throws -> RemoteGoal {
+        try await request("/goals", method: "POST", json: ["title": title])
+    }
+
+    @discardableResult
+    func setGoalStatus(id: String, status: String) async throws -> RemoteGoal {
+        try await request("/goals/\(id)", method: "PATCH", json: ["status": status])
+    }
+
+    /// Turn a goal into today's plan. Replaces the active plan — the product
+    /// has exactly one at a time.
+    @discardableResult
+    func decomposeGoal(id: String) async throws -> RemotePlan {
+        try await request("/goals/\(id)/decompose", method: "POST", json: [:])
+    }
+
+    func habits() async throws -> [RemoteHabit] { try await request("/habits", method: "GET") }
+
+    @discardableResult
+    func addHabit(title: String, cue: String) async throws -> RemoteHabit {
+        try await request("/habits", method: "POST", json: ["title": title, "cue": cue])
+    }
+
+    /// Toggle today. Completing is idempotent server-side and undoable, so a
+    /// mis-tap is never permanent.
+    @discardableResult
+    func setHabitToday(id: String, done: Bool) async throws -> RemoteHabit {
+        try await request("/habits/\(id)/complete", method: done ? "POST" : "DELETE",
+                          json: done ? [:] : nil)
     }
 
     // MARK: Recommendations (derived from the user's own patterns)

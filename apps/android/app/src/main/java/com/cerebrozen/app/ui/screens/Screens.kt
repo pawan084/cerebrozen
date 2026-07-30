@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Diversity3
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -118,6 +119,9 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
         NavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        // The one screen the user fills in rather than reads.
+        NavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
+            icon = Icons.Outlined.Flag) { onOpen("goals") }
         NavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
         NavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),

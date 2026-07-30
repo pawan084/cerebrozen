@@ -876,4 +876,28 @@
     <string name="recs_because">Because: %1$s</string>
     <string name="recs_accept">I\'ll try this</string>
     <string name="recs_dismiss">Not for me</string>
+
+    <!-- ── Goals & habits (GoalsScreen.kt, 2026-07-30) ─────────────────── -->
+    <string name="you_goals_title">Goals &amp; habits</string>
+    <string name="you_goals_subtitle">The part you decide</string>
+    <string name="goals_eyebrow">Yours to define</string>
+    <string name="goals_title">Goals &amp; habits</string>
+    <string name="goals_intro">The rest of CereBro suggests things to you. This is the part you decide.</string>
+    <string name="goals_signed_out">Sign in to keep goals and habits in sync across your devices.</string>
+    <string name="goals_section">What you\'re working towards</string>
+    <string name="goals_empty">Nothing yet. One is plenty to start with.</string>
+    <string name="goals_add_hint">Something you\'re working towards…</string>
+    <string name="goals_make_plan">Make this today\'s plan</string>
+    <string name="goals_done">Done</string>
+    <string name="goals_release">Let it go</string>
+    <string name="goals_save_failed">Couldn\'t save that — try again.</string>
+    <string name="habits_section">Small things you repeat</string>
+    <string name="habits_body">The last seven days, so you can see the shape of it. No streak to break.</string>
+    <string name="habits_empty">Nothing yet.</string>
+    <string name="habits_add_hint">A small thing to repeat…</string>
+    <string name="habits_cue_hint">After I…</string>
+    <string name="habits_count">%1$d of the last 7 days</string>
+    <string name="habits_mark">Mark today</string>
+    <string name="habits_done_today">Done today ✓</string>
+    <string name="common_add">Add</string>
 </resources>

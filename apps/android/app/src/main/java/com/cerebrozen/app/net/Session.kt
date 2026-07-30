@@ -570,6 +570,37 @@ object Api {
         Session.api("/users/me/memory/$id", "DELETE")
     }
 
+    // ── Goals + habits (the things the user defines) ──
+    suspend fun goals(): JSONArray = JSONArray(Session.api("/goals"))
+
+    suspend fun addGoal(title: String): JSONObject =
+        JSONObject(Session.api("/goals", "POST", JSONObject().put("title", title)))
+
+    suspend fun setGoalStatus(id: String, status: String): JSONObject =
+        JSONObject(Session.api("/goals/$id", "PATCH", JSONObject().put("status", status)))
+
+    /** Turn a goal into today's plan — replaces the active plan, since the
+     * product has exactly one at a time. */
+    suspend fun decomposeGoal(id: String): JSONObject =
+        JSONObject(Session.api("/goals/$id/decompose", "POST", JSONObject()))
+
+    suspend fun habits(): JSONArray = JSONArray(Session.api("/habits"))
+
+    suspend fun addHabit(title: String, cue: String): JSONObject =
+        JSONObject(Session.api("/habits", "POST",
+            JSONObject().put("title", title).put("cue", cue)))
+
+    /** Toggle today. Idempotent server-side and undoable — a mis-tap is never
+     * permanent. */
+    suspend fun setHabitToday(id: String, done: Boolean): JSONObject {
+        val body = Session.api(
+            "/habits/$id/complete",
+            if (done) "POST" else "DELETE",
+            if (done) JSONObject() else null,
+        )
+        return JSONObject(body)
+    }
+
     // ── Recommendations (derived from the user's own patterns) ──
     /** Pending suggestions. The server seeds from current patterns on read and
      * returns [] for thin data, so this is safe to call unconditionally. */

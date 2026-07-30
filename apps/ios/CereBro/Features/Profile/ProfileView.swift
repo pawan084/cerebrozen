@@ -56,6 +56,8 @@ struct ProfileView: View {
                 GuidedTourOverlay.reset()
                 state.tourRequested = true
             }
+            // The one screen the user fills in rather than reads.
+            NavRow(title: "Goals & habits", subtitle: "The part you decide", systemImage: "target", imageURL: Dummy.Img.plan) { GoalsHabitsView() }
             NavRow(title: "Weekly insights", subtitle: "Your progress and patterns", systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }
