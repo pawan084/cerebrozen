@@ -80,6 +80,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | patterns | Android + backend | **3** | 8 | `Patterns: the Hide button did not exist` |
 | 2026-07-31 | privacy | Android | **5** | 8 | `Privacy: a failed read drew every consent switch off` |
 | 2026-07-31 | insights | Backend | **3** | 8 | `Insights: a mood reading invented from no check-ins` |
+| 2026-07-31 | goals | Android | **5** | 8 | `Goals: two taps that retired a goal with no way back` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -539,6 +540,39 @@ one line deeper.
 Also fixed a straggler from the Sleep pass: the Insights privacy footer was still
 in the small-caps eyebrow style — it is 62 characters, and that sweep only
 caught strings over 70.
+
+### goals — Android, 2026-07-31 (5 → 8)
+
+Nothing fabricated. The screen keeps its own promise well — "no streak to break",
+a seven-day window rather than a chain, and "letting a goal go is an outcome, not
+a failure" is carried through to a real `released` status rather than a delete.
+The cost was that two of its three buttons were one-way doors.
+
+1. **"Done" and "Let it go" retired a goal with no confirmation and no way
+   back.** Both sit one tap from "Make today's plan" in the same wrapped row, and
+   both made a user-authored goal vanish from the app — while the server kept it
+   and had always accepted `?include_resolved=true`, which the client never
+   asked for. The same shape as the Journal reader and the trusted contact: the
+   backend had the capability, the client used half of it.
+
+   Fixed with **undo rather than a confirm dialog**. Retiring a goal is usually
+   deliberate, so the right move is to make a mis-tap cheap, not to interrogate
+   everyone who means it. There is now a "Finished and let go" section — *"Nothing
+   here is lost"* — with a Bring it back on each entry.
+
+   The demo account proved the point immediately: it had an `achieved` goal from
+   a previous session that had been invisible in the app the whole time, and it
+   appeared the moment the section existed.
+
+2. **No boundary between goal entries.** `goals.forEach` drew them straight into
+   one card, which is unreadable when two share a title — and this account has
+   two called "Sleep before midnight". A hairline now separates them.
+
+**Test-data disclosure:** exercising the flow changed two goal statuses on the
+demo account. `54b95ca7` (released by me) was restored to `active`. A mis-tap on
+a "Bring it back" also moved `e484cbe9` from a resolved state to `active`; the
+pre-audit read proves it was not active before, but not which resolved state it
+held, so it was left `active` and flagged rather than guessed at.
 
 ## Gotchas this device adds
 

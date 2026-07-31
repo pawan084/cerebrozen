@@ -955,6 +955,11 @@
     <string name="goals_make_plan">Make today\'s plan</string>
     <string name="goals_done">Done</string>
     <string name="goals_release">Let it go</string>
+    <string name="goals_resolved_section">Finished and let go</string>
+    <string name="goals_resolved_body">Nothing here is lost. Bring one back if you tapped by mistake, or if it matters again.</string>
+    <string name="goals_status_achieved">You finished this</string>
+    <string name="goals_status_released">You let this go</string>
+    <string name="goals_restore">Bring it back</string>
     <string name="goals_save_failed">Couldn\'t save that — try again.</string>
     <string name="habits_section">Small things you repeat</string>
     <string name="habits_body">The last seven days, so you can see the shape of it. No streak to break.</string>

@@ -29,6 +29,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
+import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -44,7 +47,13 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.time.LocalDate
 
-internal data class UserGoal(val id: String, val title: String, val why: String)
+internal data class UserGoal(
+    val id: String,
+    val title: String,
+    val why: String,
+    /** active | achieved | released — the screen now asks for resolved ones too. */
+    val status: String = "active",
+)
 
 /** No streak field, deliberately: [recentDays] is a 7-day window, so a gap is
  * just a gap. The server never sends a chain and this screen never draws one. */
@@ -60,7 +69,11 @@ internal fun parseGoals(arr: JSONArray): List<UserGoal> =
     (0 until arr.length()).mapNotNull { i ->
         val g = arr.optJSONObject(i) ?: return@mapNotNull null
         val id = g.optString("id")
-        if (id.isBlank()) null else UserGoal(id, g.optString("title"), g.optString("why"))
+        if (id.isBlank()) null
+        else UserGoal(
+            id, g.optString("title"), g.optString("why"),
+            g.optString("status").ifBlank { "active" },
+        )
     }
 
 internal fun parseHabits(arr: JSONArray): List<UserHabit> =
@@ -108,7 +121,7 @@ fun GoalsScreen(onBack: () -> Unit) {
 
     LaunchedEffect(reload) {
         if (!Session.signedIn) { loading = false; return@LaunchedEffect }
-        runCatching { parseGoals(Api.goals()) }.onSuccess { goals = it }
+        runCatching { parseGoals(Api.goals(includeResolved = true)) }.onSuccess { goals = it }
         runCatching { parseHabits(Api.habits()) }.onSuccess { habits = it }
         loading = false
     }
@@ -140,14 +153,23 @@ fun GoalsScreen(onBack: () -> Unit) {
             return@SubPage
         }
 
+        val active = goals.filter { it.status == "active" }
+        val resolved = goals.filter { it.status != "active" }
+
         SectionCard {
             Text(stringResource(R.string.goals_section),
                 style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            if (goals.isEmpty()) {
+            if (active.isEmpty()) {
                 Text(stringResource(R.string.goals_empty),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
-            goals.forEach { goal ->
+            active.forEachIndexed { i, goal ->
+                // A hairline between entries: two goals used to run together with
+                // no boundary at all, which is unreadable when they share a title
+                // — and this account has two called "Sleep before midnight".
+                if (i > 0) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(LineStroke))
+                }
                 Column(Modifier.fillMaxWidth()) {
                     Text(goal.title, style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold, color = TextPrimary)
@@ -190,6 +212,46 @@ fun GoalsScreen(onBack: () -> Unit) {
                     goalDraft = ""
                 },
             ) { Text(stringResource(R.string.common_add), color = Periwinkle) }
+        }
+
+        // What you finished or let go, and the way back.
+        //
+        // "Done" and "Let it go" sit one tap away from "Make today's plan" and
+        // used to remove a goal from the app permanently — the server kept it and
+        // has always offered `include_resolved`, but nothing here ever asked. Undo
+        // rather than a confirm dialog: retiring a goal is usually deliberate, so
+        // the fix is to make a mis-tap cheap, not to interrogate everyone who
+        // means it.
+        if (resolved.isNotEmpty()) {
+            SectionCard {
+                Text(stringResource(R.string.goals_resolved_section),
+                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.goals_resolved_body),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                resolved.forEachIndexed { i, goal ->
+                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(LineStroke))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(goal.title, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                            Text(
+                                stringResource(
+                                    if (goal.status == "achieved") R.string.goals_status_achieved
+                                    else R.string.goals_status_released,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (goal.status == "achieved") Ok else TextMuted2,
+                            )
+                        }
+                        TextButton(onClick = { act { Api.setGoalStatus(goal.id, "active") } }) {
+                            Text(stringResource(R.string.goals_restore), color = Periwinkle, maxLines = 1)
+                        }
+                    }
+                }
+            }
         }
 
         SectionCard {

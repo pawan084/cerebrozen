@@ -607,7 +607,14 @@ object Api {
     }
 
     // ── Goals + habits (the things the user defines) ──
-    suspend fun goals(): JSONArray = JSONArray(Session.api("/goals"))
+    /** Active goals, or every goal including the ones finished and let go.
+     *
+     * The client only ever asked for active ones, so "Done" and "Let it go" —
+     * two one-tap buttons sitting beside "Make today's plan" — made a
+     * user-authored goal vanish from the app with no way back, while the server
+     * had been keeping it and offering this flag all along. */
+    suspend fun goals(includeResolved: Boolean = false): JSONArray =
+        JSONArray(Session.api("/goals" + if (includeResolved) "?include_resolved=true" else ""))
 
     suspend fun addGoal(title: String): JSONObject =
         JSONObject(Session.api("/goals", "POST", JSONObject().put("title", title)))
