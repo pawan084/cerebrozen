@@ -464,21 +464,36 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different
 product**, `cerebrolearning.com`, 111 API domains). B2B/HR and clinical/EHR planes are
 excluded by the B2C-only decision; the doc says why per category.
-- [ ] **Tier 1 (each closes a gap PRD.md already documents):** persisted addressable
-  `memory` (today's schema makes per-item edit/delete impossible) · `recommendations` +
-  practice catalogue (patterns are display-only) · **personal safety plan**
-  (Stanley-Brown six sections; take the schema, *not* the sibling's AI-authorship —
-  user-authored, per the doc) · weekly digest delivery.
-- [ ] **Tier 2 — the consumer habit loop:** habits, goals (+ `decompose` → feeds the
-  existing agentic planner), rituals/intention, commitments, affirmations. No `Habit` or
-  `Goal` model exists here at all.
-- [ ] **Tier 3 — skills content:** DBT skills, MBCT, behavioural activation, role-play,
-  guided imagery, dreams. Each needs the non-clinical framing pass + its own PRD row.
+> **Re-checked against the code 2026-07-31.** Tiers 1 and 2 below were written as a
+> plan and then shipped, but the checkboxes here were never ticked — so this section
+> claimed work was open that the section above records as done, and a "what's next?"
+> read landed on already-built features. Verified against `backend/app/models/`
+> rather than against the other section.
+
+- [x] **Tier 1 (each closes a gap PRD.md already documents)** — SHIPPED; see the
+  Tier 1 section above for the detail. `models/memory.py` (addressable per-item
+  memory), `models/recommendation.py` (recommendations + practice catalogue),
+  `models/safety_plan.py` (Stanley-Brown, user-authored — the sibling's
+  AI-authorship deliberately not copied), weekly digest delivery.
+- [x] **Tier 2 — the consumer habit loop** — SHIPPED. `models/habit.py` carries
+  `Goal`, `Habit` and `HabitCompletion`, and `POST /goals/{id}/decompose` feeds the
+  existing agentic planner. **The old parenthetical here — "No `Habit` or `Goal`
+  model exists here at all" — was simply out of date.** Rituals / commitments /
+  affirmations were assessed and mostly dropped with reasons (B2C_BACKLOG §4b).
+- [ ] **Tier 2's one survivor, still an owner call:** a **daily intention** — does it
+  replace the generated `Plan.focus` or sit beside it? (Note: the "Tomorrow's
+  intention" journaling tool added 2026-07-31 is *not* this. That one writes a
+  journal entry; this question is about what Home leads with.)
+- [ ] **Tier 3 — skills content:** genuinely open, and the only tier that is.
+  Shipped so far: DBT TIPP and CBT reframe. Absent from both `backend/app` and the
+  Android source: MBCT, behavioural activation, role-play, guided imagery, dreams.
+  Each needs the non-clinical framing pass + its own PRD row.
 - [ ] **Flagged, needs an owner decision before any code:** gamification/leaderboard vs
   the OECD dark-pattern checklist; peer community (24/7 moderation commitment —
   recommend deferring the whole category).
-- [ ] **Two owner decisions block the recommended first slice:** what memory persists
-  (privacy posture) and who authors the safety plan.
+- [x] **The two owner decisions that blocked the first slice were made** (2026-07-30,
+  recorded in the Tier 1 section): memory persists only what the user wrote or
+  approved, and the safety plan is user-authored.
 
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
