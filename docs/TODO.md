@@ -579,11 +579,15 @@ Remaining iOS deltas the mock still wins on — CLOSED for iOS + web 2026-07-09
     opacity, 2s ease-out) on the streak-milestone line, and `Modifier.sheen()` on the
     Premium row. Both Reduce-Motion-gated, and both take the gate as a *parameter* —
     an endless animation is how a Compose test stops going idle.
-- [ ] Follow-up from that pass: **the milestone halo is unverified on a device** —
-  it only draws when `milestoneLine(streak)` is non-null and the demo account's
-  streak is 1. Compile- and gate-verified only; wants a look at a real milestone.
-  (The sheen *was* caught on device in both themes — and needed fixing: a white
-  sweep is invisible on Dawn's near-white card, so the highlight is now theme-aware.)
+- [x] Follow-up from that pass, now closed: **the milestone halo is verified on a
+  device**. It only draws when `milestoneLine(streak)` is non-null, so the demo
+  account's streak of 1 could never show it; two backdated `mood_logs` rows took the
+  server-computed streak to 3 (`isMilestone` = 3/7/14/21/30/50/100), and four frames
+  0.7s apart caught the ring mid-swell, gone, mid-swell, gone — expanding and fading
+  on its 2s loop as designed. The seeded rows were deleted afterwards and the streak
+  confirmed back at 1. (The sheen was caught on device in both themes too — and
+  needed fixing: a white sweep is invisible on Dawn's near-white card, so the
+  highlight is now theme-aware.)
 - [ ] Splash consolidation nice-to-haves (review-2 deferrals, 2026-07-10):
   OrbMark's three breathing circles vs `RadiatingRing` are two names for one
   ring vocabulary; the Wordmark glint is a third shimmer implementation
