@@ -94,6 +94,16 @@ patch `ai.complete`/`ai.complete_json`, toggle `settings` key properties, assert
   (`tsc --noEmit` for apps/web + apps/admin + apps/app), `e2e` (Docker stack, live keys
   optional via repo secrets), `ios` (macos-15, picks a simulator via `simctl`), `android`
   (`continue-on-error`). Concurrency cancels in-progress runs.
+- **Copy and pricing gates** run in the `web` job, before the typechecks, because both
+  guard things review has already let through once:
+  - `scripts/check-claims.mjs` — banned phrases across all four clients (web, app, iOS
+    Swift, Android `strings.xml`). Every entry is there because it shipped; retire one by
+    fixing the copy or adding the claim to `docs/CLAIMS_MAP.md`, never by allowlisting.
+  - `scripts/check-prices.mjs` — every quoted `₹` price against
+    `apps/ios/CereBro/Products.storekit`, which is what a user is actually charged. Added
+    after the Android paywall drifted 25% under every other surface; prices are
+    hand-written in four places, so nothing else could notice. `₹0` (the free tier) is
+    ignored.
 - **deploy.yml** (manual): SSH → `git reset --hard origin/main` → prod compose up → health-check
   loop on `https://api.cerebrozen.in/health`. Secrets: `DEPLOY_HOST/USER/SSH_KEY`; var `DEPLOY_PATH`.
 - **testflight.yml** (manual): fastlane `ios beta` with App Store Connect API key
