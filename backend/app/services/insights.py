@@ -46,12 +46,26 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     ) or 0
 
     # Average intensity → mood stability (lower intensity of difficult moods = steadier).
+    #
+    # None when there is nothing to read from — no check-ins this week, or mood
+    # history switched off. It used to fall back to 0.7, which is above the
+    # "Steady" threshold, so the weekly insight told a user who had logged
+    # NOTHING that their mood was Steady, with a 70% bar under it. It said the
+    # same to a user who had explicitly switched mood history off. This product
+    # tells people elsewhere that "patterns only appear once real check-ins
+    # support them — no guesses, ever"; a reading invented from an empty set is
+    # the guess that rule exists to forbid. Sleep already models it correctly
+    # ("No diary yet") — mood stability now does the same.
     avg_intensity = None
     if use_moods:
         avg_intensity = await db.scalar(
             select(func.avg(MoodLog.intensity)).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
         )
-    stability = 0.7 if avg_intensity is None else max(0.2, min(1.0, 1.2 - float(avg_intensity) / 5))
+    stability = None if avg_intensity is None else max(0.2, min(1.0, 1.2 - float(avg_intensity) / 5))
+    if stability is None:
+        stability_value = "No check-ins yet"
+    else:
+        stability_value = "Steady" if stability >= 0.6 else "Variable"
 
     sessions = mood_count + steps_done
 
@@ -74,7 +88,7 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
         {"label": "Calm sessions", "value": str(sessions), "progress": min(1.0, sessions / 12)},
         {"label": "Journal entries", "value": str(journal_count), "progress": min(1.0, journal_count / 8)},
         {"label": "Sleep", "value": sleep_value, "progress": sleep_progress},
-        {"label": "Mood stability", "value": "Steady" if stability >= 0.6 else "Variable", "progress": stability},
+        {"label": "Mood stability", "value": stability_value, "progress": stability or 0.0},
         {
             "label": "Plan follow-through",
             "value": str(steps_done),
@@ -85,9 +99,13 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     if journal_count and sessions:
         headline = "Calmer evenings"
         summary = "Your stress eased on days you checked in and journaled before bed."
-    elif sessions:
+    elif sessions > 1:
         headline = "Building a rhythm"
         summary = "A few calm sessions this week — consistency is starting to form."
+    elif sessions:
+        # "A few" was said for exactly one, too.
+        headline = "A start made"
+        summary = "One session logged this week — that counts."
     else:
         headline = "A fresh start"
         summary = "No activity logged yet this week. One small check-in is a good first step."

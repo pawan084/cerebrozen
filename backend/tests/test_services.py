@@ -45,7 +45,13 @@ async def test_insights_with_activity_branches():
         s.add(MoodLog(user_id=user.id, mood="calm", note="", symbol="x", intensity=2))
         await s.flush()
         data = await insights.compute_weekly(s, user)
-        assert data["headline"] == "Building a rhythm"   # sessions but no journal
+        # One session is "A start made"; "Building a rhythm" needs more than one,
+        # since its summary says "a few calm sessions".
+        assert data["headline"] == "A start made"
+
+        s.add(MoodLog(user_id=user.id, mood="calm", note="", symbol="x", intensity=2))
+        await s.flush()
+        assert (await insights.compute_weekly(s, user))["headline"] == "Building a rhythm"
 
         s.add(JournalEntry(user_id=user.id, title="note", body="", tags=[], symbol="book", risk_level="none"))
         await s.flush()

@@ -469,7 +469,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             }
         }
         Text(stringResource(R.string.insights_privacy_footer),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
     }
 }
 

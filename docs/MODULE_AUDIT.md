@@ -79,6 +79,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | safety-plan | Android | **6** | 9 | `Safety plan: an empty screen that could not say why it was empty` |
 | 2026-07-31 | patterns | Android + backend | **3** | 8 | `Patterns: the Hide button did not exist` |
 | 2026-07-31 | privacy | Android | **5** | 8 | `Privacy: a failed read drew every consent switch off` |
+| 2026-07-31 | insights | Backend | **3** | 8 | `Insights: a mood reading invented from no check-ins` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -506,6 +507,38 @@ in twelve languages I cannot check is a worse risk than a weak hint.
 **Also noted, not changed:** the notice caption ends "Change any of this later in
 Settings" while being read *in* Settings. Odd, not false, and it lives in the
 same 13-language notice.
+
+### insights — backend, 2026-07-31 (3 → 8)
+
+The Android screen renders the server payload faithfully — nothing invented
+client-side, and "First-party — computed on your own data, never sold or shared"
+is true and now in `CLAIMS_MAP.md`: `services/insights.py` imports no AI module
+at all, the weekly read is pure SQL over the user's own rows. The fabrication was
+one line deeper.
+
+1. **A mood reading invented from no check-ins.** `stability` defaulted to `0.7`
+   when `avg_intensity` was None — above the "Steady" threshold — so a user who
+   had logged nothing all week was told **"Mood stability: Steady"** under a 70%
+   bar. Worse, `use_moods` gates the query, so the same thing was shown to a user
+   who had explicitly switched mood history **off**: a conclusion presented back
+   from data they had withheld. Sleep already models this correctly ("No diary
+   yet"); mood stability now reads "No check-ins yet" with an empty bar.
+
+   This is the rule the Pattern Dashboard states out loud — *"patterns only
+   appear once real check-ins support them, no guesses, ever"* — broken on the
+   screen next door.
+
+2. **Two existing tests had pinned it.** `test_weekly_insights_respect_itemized_
+   consent` asserted `Mood stability == "Steady"` with the comment *"neutral
+   default, not derived"* — in a test whose name is about respecting itemized
+   consent. Now asserts the withheld category reads as withheld, bar included.
+
+3. **"A few calm sessions this week" was said for exactly one.** One session now
+   gets its own headline.
+
+Also fixed a straggler from the Sleep pass: the Insights privacy footer was still
+in the small-caps eyebrow style — it is 62 characters, and that sweep only
+caught strings over 70.
 
 ## Gotchas this device adds
 
