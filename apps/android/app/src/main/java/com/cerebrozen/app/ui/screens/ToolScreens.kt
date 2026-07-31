@@ -140,6 +140,42 @@ fun CbtReframeScreen(onBack: () -> Unit) {
     )
 }
 
+/**
+ * Two one-field journaling tools, salvaged from PR #2 (3 weeks stale, pre-i18n and
+ * pre-Dawn, so the branch itself was not mergeable). Only the prompts survived; the
+ * rendering is today's [JournalingTool], the copy lives in strings.xml, and each
+ * carries the "why this works" provenance every other tool here has.
+ */
+@Composable
+fun OneGoodThingScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.onegood_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.onegood_eyebrow),
+        title = stringResource(R.string.onegood_title),
+        intro = stringResource(R.string.onegood_intro),
+        journalTitle = stringResource(R.string.onegood_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.onegood_field) to ""),
+        provenance = stringResource(R.string.onegood_why),
+    )
+}
+
+@Composable
+fun IntentionScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.intention_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.intention_eyebrow),
+        title = stringResource(R.string.intention_title),
+        intro = stringResource(R.string.intention_intro),
+        journalTitle = stringResource(R.string.intention_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.intention_field) to ""),
+        provenance = stringResource(R.string.intention_why),
+    )
+}
+
 /** DBT TIPP — a guided walkthrough, no data collected. */
 @Composable
 fun TippScreen(onBack: () -> Unit) {

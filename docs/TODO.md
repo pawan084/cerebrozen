@@ -99,6 +99,40 @@
 
 ## Done — recent
 
+### The three open PRs, resolved (2026-07-31)
+All three were opened 3 weeks ago off a base that `main` has since moved **135 commits**
+past. Dispositions, with the evidence for each:
+- **PR #3 (`cc7cbd4`, "ui")** — zero commits and an empty diff against `main`; already
+  contained. Nothing to merge.
+- **PR #1 (`9cb3da4`, ".gitignore")** — its two commits are both ancestors of PR #2, so it
+  is a strict subset. Superseded.
+- **PR #2 (`d5c20be`, "Add Android v1 updates")** — **not merged, deliberately.** It
+  predates two things that landed on `main` since: the string externalisation and the Dawn
+  theme. Measured, not guessed: PR #2's TodayScreen/SleepScreen/TalkScreen contain **0**
+  `stringResource` calls against main's 33/49/67, and its `Color.kt` has **0** `isNight`
+  references against main's 35. A test merge conflicts in 11 files — every major screen.
+  Merging it would put hardcoded English and raw hex back into the app and undo W11/W16
+  and the Dawn work.
+- [x] **Salvaged from PR #2 — the two prompts worth keeping**: "One good thing" and
+  "Tomorrow's intention", ported onto today's `main` rather than merged. They reuse the
+  existing `JournalingTool`, take their copy from `strings.xml`, and each carries a
+  "why this works" provenance line like CBT and TIPP do. Verified end to end on a
+  CPH2681 against the local API: `POST /journal 201`, and the row reads
+  `One good thing today: shipped the keyboard fix` — the compose template doing its job.
+- **Rejected from PR #2, on purpose:**
+  - `StressAlertCard` — a Home card reading "ELEVATED STRESS DETECTED / Your heart rate
+    variability dipped / From Apple Watch" with **no HRV source anywhere in the app**, on
+    Android. Fabricated data presented as a measurement; exactly what
+    `docs/CLAIMS_MAP.md` and `scripts/check-claims.mjs` exist to prevent. (The genuine
+    version of this idea is still open below under proactive stress detection.)
+  - `MorningCheckInScreen` — not a missing feature. `main`'s SleepScreen already does this
+    inline (quality chips, bed/wake times, `Api.logSleep`); PR #2's copy is the same
+    capability as a separate screen with 9 raw-hex values.
+  - Journal biometric lock — already on `main` in 5 files.
+- [ ] **The PRs still need closing on GitHub** — `gh` is not installed here and there is no
+  API token, so this could not be done from the CLI. #1 and #3 close as superseded/contained;
+  #2 closes with the note above. PR #1 would now also conflict with the `.gitignore` rewrite.
+
 ### main was unbuildable and unbootable for ~40 minutes (2026-07-31)
 `d40a3d4` was cut from an old `1a27bbf` and merged in via `009250f`. Three separate
 breakages, fixed in that order:

@@ -50,6 +50,8 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Waves
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -1135,6 +1137,10 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
         icon = Icons.Outlined.Spa) { onOpen("tipp") }
 
     ToolkitHeader(stringResource(R.string.toolkit_header_settle))
+    NavRow(stringResource(R.string.toolkit_onegood_title), stringResource(R.string.toolkit_onegood_subtitle),
+        icon = Icons.Outlined.WbSunny) { onOpen("onegoodthing") }
+    NavRow(stringResource(R.string.toolkit_intention_title), stringResource(R.string.toolkit_intention_subtitle),
+        icon = Icons.Outlined.Flag) { onOpen("intention") }
     NavRow(stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
         icon = Icons.Outlined.LocalFlorist) { onOpen("gratitude") }
     NavRow(stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
