@@ -141,7 +141,7 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 ### Android (native client)
 | Feature | Status | Notes |
 |---|---|---|
-| Feature parity with iOS | 🟡 | The full IA now exists in Compose — onboarding, Today, Talk, Journal, Sleep, Search, Plan, Programs, Patterns, Tools, Games, Settings, biometric gate, consent notice, guided tour. **Gaps: no billing/paywall** (strings say so plainly: "Billing isn't wired on Android yet — Play Billing lands with Play Console setup"), no remote push, no Sign in with Apple |
+| Feature parity with iOS | 🟡 | The full IA now exists in Compose — onboarding, Today, Talk, Journal, Sleep, Search, Plan, Programs, Patterns, Tools, Games, Settings, biometric gate, consent notice, guided tour. **Working order flipped 2026-07-31: Android now leads and iOS is updated after**, so some rows below are ahead on Android by design rather than behind on parity. Android-only as of this pass: the **journey path** (whole-program week, ungated — also on `apps/app`, not yet iOS), the **trusted-contact editor** (`TrustedContactScreen`; iOS and web already had one), reading a **journal entry** back in full, restoring a retired **goal**, and **undoing a check-in** (`DELETE /moods/{id}`). **Gaps: no billing/paywall** (strings say so plainly: "Billing isn't wired on Android yet — Play Billing lands with Play Console setup"), no remote push, no Sign in with Apple |
 | Dawn light theme + contrast gate | ✅ | Theme-aware token getters, so every screen got Dawn without a migration; `ContrastTest` gates both palettes ≥4.5:1 and pins the Night palette byte-identical |
 | Health Connect sleep read | ✅ | See the Sleep module row |
 | Hindi (`values-hi`) | 🟡 | See Localization above — DRAFT, pending clinical sign-off |
