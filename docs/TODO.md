@@ -99,6 +99,25 @@
 
 ## Done — recent
 
+### Android: the tab bar now yields its slot to the keyboard (2026-07-31)
+The last unblocked item from the 2026-07-31 audit list. `BottomNavBar` emitted the pill
+unconditionally, so with the IME up Scaffold still charged the body the bar's ~78dp for a
+bar the keyboard was covering — and every screen body also carries `imePadding()`
+(Common.kt `Page`), so the two stacked into an empty band above the keyboard. Measured on a
+CPH2681 (Android 14): ~90dp of dead space between the Talk composer and the keyboard.
+- [x] The pill is hoisted out of the Scaffold into `BottomNavBar`, which returns before
+  emitting anything when the IME is visible — Scaffold then reserves nothing. `imeVisible`
+  is a parameter defaulting to `WindowInsets.isImeVisible`, so the rule renders off-device.
+- [x] `BottomNavImeTest` (Robolectric) measures the **reserved slot**, not the pill's
+  presence: keyboard up → the body reaches the window bottom; keyboard down → ≥72dp is
+  reserved and the tabs are displayed. Confirmed to fail with the guard removed.
+- [x] Verified on the device both ways: composer flush against the keyboard while typing,
+  nav back and focus retained after dismissing it.
+- Note for whoever runs the suite cold: the first full `testDebugUnitTest` on a cold
+  Robolectric cache took 11m and threw 12 `AppNotIdleException`s across three unrelated
+  Compose classes. Warm runs are ~15s and green (229 tests). It's an Espresso idle timeout
+  under first-run load, not a real failure — re-run before chasing it.
+
 ### Landing → web app: the missing front door (2026-07-30)
 The landing had **zero** links to `apps/app`. Every CTA was "Join the waitlist" and the only
 other button was the App Store "coming soon" chip, so a visitor could not reach a product
@@ -1036,9 +1055,6 @@ left, each with the reason it was left rather than done.
   gradient axis within a kind (verified), but at 48dp it is incremental. Genuinely
   distinctive art needs commissioned illustration; that is an asset/budget decision, not
   a code change.
-- [ ] **Bottom nav reserves its space behind the keyboard** — with the IME up the nav
-  pill's slot stays allocated, leaving an empty band above the keyboard. Hiding the nav on
-  IME is a behaviour change on every screen, so it belongs in its own pass.
 - [ ] **Two DPDP consent hints describe the default, not the category** — "Voice storage ·
   Off by default", "Model training · Separate opt-in only". True, but they say nothing
   about what the data is for, and they are stale once someone switches one on. The fix is

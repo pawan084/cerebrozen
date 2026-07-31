@@ -6,10 +6,13 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -111,12 +114,73 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 
 // W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
 // instead of stock Material glyphs — one consistent 2dp rounded-line set.
-private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
+internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
     Home("home", R.string.tab_home, R.drawable.ic_tab_home),
     Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
     Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
+}
+
+/**
+ * The floating tab bar — and the rule that it yields to the keyboard.
+ *
+ * With the IME up this emits **nothing**, so Scaffold reserves no bottom slot for
+ * it. It used to emit the pill unconditionally: the keyboard drew over it, but
+ * Scaffold still charged the content that height, and every screen body already
+ * carries `imePadding()` (see Common.kt `Page`). The two stacked, so a composer
+ * floated ~78dp above the keyboard with an empty band under it — worst on Talk and
+ * Journal, the two screens where you type most. Nav that hides while typing is
+ * also the Material behaviour, and typing is the one moment nobody is navigating.
+ *
+ * [imeVisible] is a parameter, defaulting to the real inset, so the rule is
+ * renderable off-device (`BottomNavImeTest`).
+ */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+internal fun BottomNavBar(
+    currentRoute: String,
+    compact: Boolean,
+    imeVisible: Boolean = WindowInsets.isImeVisible,
+    onSelect: (Tab) -> Unit,
+) {
+    if (imeVisible) return
+    // A floating lavender pill over a dark scrim — the tabs read as a lifted
+    // capsule rather than a flat system bar.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
+            .navigationBarsPadding()
+            .padding(horizontal = 13.dp, vertical = 4.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(if (compact) 72.dp else 78.dp)
+                .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
+                    ),
+                )
+                .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
+                .padding(horizontal = 9.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tab.entries.forEach { tab ->
+                BottomTabItem(
+                    tab = tab,
+                    selected = currentRoute == tab.route,
+                    compact = compact,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelect(tab) },
+                )
+            }
+        }
+    }
 }
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
@@ -364,49 +428,14 @@ fun CereBroApp() {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            // A floating lavender pill over a dark scrim — the tabs read as a lifted
-            // capsule rather than a flat system bar.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
-                    .navigationBarsPadding()
-                    .padding(horizontal = 13.dp, vertical = 4.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(if (compactNav) 72.dp else 78.dp)
-                        .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
-                            ),
-                        )
-                        .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Tab.entries.forEach { tab ->
-                        BottomTabItem(
-                            tab = tab,
-                            selected = current == tab.route,
-                            compact = compactNav,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                // One haptic vocabulary app-wide: the custom
-                                // Haptics object (see ui/Haptics.kt).
-                                if (current != tab.route) Haptics.selection()
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                        )
-                    }
+            BottomNavBar(currentRoute = current, compact = compactNav) { tab ->
+                // One haptic vocabulary app-wide: the custom
+                // Haptics object (see ui/Haptics.kt).
+                if (current != tab.route) Haptics.selection()
+                navController.navigate(tab.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
                 }
             }
         },
