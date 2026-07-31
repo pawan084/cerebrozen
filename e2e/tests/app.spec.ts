@@ -126,8 +126,34 @@ test.describe("Web app (authenticated client)", () => {
     // Programs: enroll in a journey (ref "PROGRAM · DAY X OF Y") — the active
     // banner appears here and the journey card lands on Home.
     await nav(page, "Programs").click();
-    await page.getByRole("button", { name: "Start this journey" }).first().click();
+    // Sleep Reset specifically, not .first(): it is the one seeded program that
+    // ships day_guides, and the journey path only exists where a week does.
+    // Enrolling in "Ease work stress" instead renders no path and no guide,
+    // which is correct behaviour and tells us nothing.
+    await page
+      .locator(".program-card", { hasText: "Sleep Reset" })
+      .getByRole("button", { name: "Start this journey" })
+      .click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
+
+    // The journey path: the whole week, and none of it gated. Day 1 is today, so
+    // it carries aria-current="step"; every other day must still be reachable —
+    // that is the product rule, not a nicety, and a regression here would be a
+    // lock quietly appearing on a wellness programme.
+    await expect(page.getByText("Every day is open — read ahead, or go back. Nothing here locks."))
+      .toBeVisible();
+    await expect(page.getByRole("button", { name: "Day 1, today" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    const laterDay = page.getByRole("button", { name: "Day 5, later in this program" });
+    await expect(laterDay).toBeEnabled();
+    await laterDay.click();
+    await expect(page.getByText("Day 5 · coming up")).toBeVisible();
+    // And back again — nothing one-way.
+    await page.getByRole("button", { name: "Day 1, today" }).click();
+    await expect(page.getByText("Day 1 · today")).toBeVisible();
+
     await nav(page, "Home").click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
 
