@@ -791,6 +791,38 @@ expected: dark themes have less elevation contrast to work with.
 gradient blobs — the rail is three near-identical teal cards. That one has an
 asset dependency and is not a code change.
 
+### Content art variety (2026-07-31)
+
+Last of the three. My original critique — "procedural gradient blobs" — was too
+blunt: there was already a per-kind motif system (moon for sleep, waves for
+soundscape, rings for meditation, day dots for program). The real fault was
+narrower and worth stating precisely: **within a kind, siblings were nearly
+identical.** Every meditation drew the same concentric rings, in the same place,
+in the same teal, varied only by a hue nudge too small to read at 48dp. A rail of
+three looked like one design printed three times.
+
+Three changes, none of which needs an asset:
+
+1. `artVariant(title)` — a SECOND hash, independent of `artSeed`, choosing one of
+   three compositions per kind. Rings become concentric / nested arcs / an offset
+   pair; the anchor moves between three positions so neighbours never repeat one.
+2. `artHueShift` widened from a 0.25–0.70 band to 0.12–0.88, so siblings separate
+   by more than a few degrees.
+3. **The gradient axis varies by variant** — diagonal, counter-diagonal, vertical
+   — with the top-light following the gradient's own start corner. This is the
+   change that actually reads at thumbnail size; hue does not.
+
+Tested rather than eyeballed: the variant is deterministic, spread across all
+three (>60 of 300 each), independent of the hue seed, and the exact rail behind
+the complaint — Body scan / Morning calm / Soft focus — is asserted to give three
+different arrangements.
+
+**Honest limit.** This is a real improvement to procedural art and it is verified,
+but at 48dp it is incremental, not transformative — three of four seeded
+wind-down tiles still landed on the same variant, because a 3-way hash over four
+titles will do that. Genuinely distinctive imagery needs commissioned
+illustration; that is an asset decision, not a code one, and it remains open.
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:
