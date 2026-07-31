@@ -728,6 +728,40 @@ under every card where there was none.
 check-in is a form rather than a moment, and content art is procedural gradient
 blobs. Those are the next three slices if the feedback continues.
 
+### The check-in moment (Home, 2026-07-31)
+
+The second of the three things named in the Dawn pass, and the one I expected the
+client to point at next: the product's most important interaction rendered as a
+settings row.
+
+What was actually wrong, beyond taste:
+
+- **Four grey pills in a `horizontalScroll`.** On a 720px screen the fourth mood
+  ("Tired") was clipped off the right edge — one of four options half hidden on
+  the primary daily action.
+- **It took two taps**, behind a separate "Check in" button, while the code
+  comment directly above it called it "the 1-tap check-in" and the copy promised
+  a 20-second check-in.
+- **Nothing was undoable.** A mis-tap was permanent, and a stray "Anxious" sits
+  in the 60-day window `compute_patterns` and the weekly read compute from — so
+  it quietly skewed the honest insights too.
+
+Now a 2×2 grid of tinted tiles, each mood in its own themed accent with a soft
+orb, all four visible. One tap logs it and the card becomes the confirmation —
+the mood said back in its own colour — with Undo beside it. Same trade as Goals
+and Programs: no confirm on the way in, because a confirm on a feeling is
+friction in the wrong place; a cheap way out instead.
+
+Undo needed a capability the backend did not have, so `DELETE /moods/{id}` now
+exists, owner-scoped and 404 for anyone else's row, with tests including the
+cross-user case.
+
+Verified on device end to end: tap → server goes 3 moods to 4 → card shows
+"Good — noted" → Undo → server back to 3 and the picker returns.
+
+**Still open from that list:** the card-stack rhythm, and procedural content art
+(the "For this morning" rail is still two near-identical teal cards).
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:
