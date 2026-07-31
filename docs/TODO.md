@@ -99,6 +99,34 @@
 
 ## Done — recent
 
+### CI: the Android job was watching main break and saying nothing (2026-07-31)
+The root cause behind that morning's broken `main`, fixed rather than just cleaned up
+after. The `android` job already ran `testDebugUnitTest` + `assembleDebug`, so it
+*did* fail on the stray `/sdfsdkjfk` in `Session.kt` — but it carried
+`continue-on-error: true` from when `apps/android` was a scaffold, so the failure
+was a non-blocking annotation and the pipeline stayed green. The flag's own comment
+said "flip to blocking once it's built once green"; that condition had been met long
+ago, and Android is now the lead client.
+- [x] `continue-on-error` removed — the job that compiles the lead client is the one
+  job that was allowed to fail. Verified: it is now the only `continue-on-error` in
+  the file, and no job carries it.
+- [x] Added `:app:lintVitalRelease` to the same step (release-blocking lint was
+  running on nobody's machine but a developer's), and lint HTML is uploaded
+  alongside the test reports on failure.
+- [x] Switched `gradle` → `./gradlew`, dropping the separately pinned
+  `gradle-version: 8.11.1`. The wrapper already pins 8.11.1, and two pins that can
+  disagree is a drift waiting to happen; now CI runs exactly what everyone runs.
+- Verified by running CI's exact command locally: `./gradlew :app:testDebugUnitTest
+  :app:assembleDebug :app:lintVitalRelease --no-daemon --stacktrace` → BUILD
+  SUCCESSFUL, 244 tests.
+- [ ] **Unverified until the next push:** local is macOS + Android Studio's JBR, CI
+  is Linux + Temurin 17. If the job has been failing on Linux for something
+  platform-specific, this change is what will finally surface it — which is the
+  point, but expect the first red to be informative rather than a regression.
+- [ ] Still worth doing and needs GitHub access: a **branch-protection rule** so
+  these checks must pass before `main` accepts a push. CI going red does not
+  currently stop anything from landing.
+
 ### The three open PRs, resolved (2026-07-31)
 All three were opened 3 weeks ago off a base that `main` has since moved **135 commits**
 past. Dispositions, with the evidence for each:
