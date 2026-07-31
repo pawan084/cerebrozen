@@ -690,6 +690,44 @@ had.
 reserved behind it, leaving an empty band above the keyboard. Hiding the nav on
 IME is a behaviour change across every screen — its own pass.
 
+### Dawn depth pass (app-wide, 2026-07-31)
+
+Client feedback that the Android UI still was not world-class. It was right, and
+it did not contradict the module scores — that rubric grades truthfulness,
+layout defects and state coverage, none of which is visual craft. A screen can be
+honest, correct and ordinary.
+
+The measurable problem was Dawn, which is what anyone on a light system sees by
+day:
+
+- The page ground was `#ECEEFB` and a *raised* card was `#F7F8FE` — **1.09:1**.
+  A card was invisible except for its hairline, so every light screen read as one
+  flat sheet.
+- The palette comment said "warm cream" and the values were cool blue-lavender
+  (`#ECEEFB` has more blue than red). Dawn looked like washed-out lilac, not
+  paper.
+- `glass()` carried one hardcoded shadow, tuned for Night. On dark a card
+  separates by fill and the shadow is a hint; on light the fill *cannot* separate
+  — paper on paper is ~1.1:1 whatever the values — so shadow is the entire depth
+  cue, and Dawn had inherited one far too shy to lift it.
+
+Fixed by attacking hue and elevation rather than trying to widen a contrast that
+physically cannot widen: a genuinely warm ground (`#F5F2EC`) so cool-white cards
+separate by temperature, a deeper warm backdrop, and a theme-aware `CardShadow`
+(16dp and warm ink-brown on Dawn, unchanged 8dp black on Night).
+
+Every ratio was computed before the change and re-checked by `ContrastTest`; all
+nine text and accent pairings still clear 4.5:1 on the darkest page paint. Night
+is byte-identical — verified by `nightPalette_isByteIdentical` and confirmed on
+device by forcing Always night (floor still `#13102F`).
+
+Measured on device: card-versus-ground separation up ~47%, with a visible shadow
+under every card where there was none.
+
+**Not attempted here, and still true:** the card-stack rhythm is monotonous, the
+check-in is a form rather than a moment, and content art is procedural gradient
+blobs. Those are the next three slices if the feedback continues.
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:

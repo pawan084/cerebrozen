@@ -90,6 +90,7 @@ import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.ButtonDisabled
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.CardShadow
 import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.ChipSelectedFill
 import com.cerebrozen.app.ui.theme.ChipSelectedInk
@@ -141,7 +142,10 @@ internal fun cardPadding() = when {
  * reading as a flat outline. An honest soft-solid: the fill is opaque, so there is
  * no backdrop blur behind it (REDESIGN.md §4.1). */
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
-    .shadow(8.dp, shape, clip = false, ambientColor = Color(0x26000000), spotColor = Color(0x30000000))
+    .shadow(
+        CardShadow.elevation, shape, clip = false,
+        ambientColor = CardShadow.ambient, spotColor = CardShadow.spot,
+    )
     .clip(shape)
     .background(Gradients.glass)
     .border(1.dp, Stroke.bevel, shape)

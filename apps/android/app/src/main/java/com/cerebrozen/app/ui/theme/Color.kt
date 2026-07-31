@@ -70,24 +70,36 @@ internal object NightPalette {
 }
 
 /** Dawn — the warm cream light theme (REDESIGN.md §4.1, Phase 2). Same hue
- * family, inverted value scale; every ratio documented in ContrastTest. */
+ * family, inverted value scale; every ratio documented in ContrastTest.
+ *
+ * 2026-07-31 depth pass. Two things were wrong and they compounded. The doc said
+ * "warm cream" and the values were cool blue-lavender (#ECEEFB has more blue
+ * than red), so Dawn read as washed-out lilac rather than paper. And the raised
+ * card sat at #F7F8FE on an #ECEEFB ground — **1.09:1** — so a card was
+ * invisible except for its hairline, and the whole theme looked flat next to
+ * Night.
+ *
+ * Card-versus-ground contrast cannot be the answer in a light theme; those
+ * values are always close. The fixes are hue (a genuinely warm ground so a
+ * cool-white card separates by temperature) and elevation (see CardShadow* —
+ * shadow is what carries depth on light, and it was tuned for dark). */
 internal object DawnPalette {
-    val night = Color(0xFFECEEFB)       // the page ground (--cream)
-    val nightMid = Color(0xFFDDDBF0)    // backdrop gradient top
-    val nightPurple = Color(0xFFE4E2F4) // fields and secondary surfaces
+    val night = Color(0xFFF5F2EC)       // the page ground — warm paper, not lilac
+    val nightMid = Color(0xFFE4DDD1)    // backdrop gradient top — deeper warm sand
+    val nightPurple = Color(0xFFEDE7DD) // fields and secondary surfaces
     val textPrimary = Color(0xFF1C1740) // Ink (on bg 14.60:1, on CardFill 15.90:1)
     val textSoft = Color(0xFF37325E)    // on bg 10.22:1, on NightMid 8.69:1
     val textMuted = Color(0xFF4A4570)   // on bg 7.65:1, on NightMid 6.51:1
     val textMuted2 = Color(0xFF5C5684)  // on bg 5.83:1, on NightMid 4.96:1, on chip 5.28:1
-    val cardFill = Color(0xFFF7F8FE)    // raised paper card
-    val lineStroke = Color(0xFFC9C6E4)
+    val cardFill = Color(0xFFFFFDFA)    // raised paper card — near-white on warm ground
+    val lineStroke = Color(0xFFD8D0C2)
     val eyebrowMuted = Color(0xFF5C5684)   // on bg 5.83:1, on CardFill 6.35:1
-    val buttonDisabled = Color(0xFFB9B6CE) // Ink on it 8.54:1
+    val buttonDisabled = Color(0xFFC6BEB0) // Ink on it 8.54:1
     val fieldFill = Color(0xFFFFFFFF)
-    val chipFill = Color(0xFFE4E2F4)
-    val navPillTop = Color(0xFFF7F8FE)
-    val navPillBottom = Color(0xFFE8E6F7)
-    val navScrim = Color(0xFFECEEFB)
+    val chipFill = Color(0xFFEAE3D8)
+    val navPillTop = Color(0xFFFFFDFA)
+    val navPillBottom = Color(0xFFF0EAE0)
+    val navScrim = Color(0xFFF5F2EC)
     // Accents darkened to survive as TEXT on the cream grounds (gated on the
     // darkest page paint, NightMid 0xFFDDDBF0, and on CardFill/ChipFill):
     val periwinkle = Color(0xFF5545AD)  // on NightMid 5.44:1, on chip 5.80:1
