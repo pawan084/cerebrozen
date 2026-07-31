@@ -524,6 +524,7 @@
     <!-- ── Breathe engine + screens ────────────────────────────────────── -->
     <string name="breathe_orb_cd">साँस ऑर्ब — %1$s</string>
     <string name="breathe_settle">बैठ जाइए — लय खुद आपको मिल जाएगी</string>
+    <string name="breathe_two_minutes">यह दो मिनट हुए। यहीं रुकें, या चलते रहें — लय दोनों तरह बनी रहती है।</string>
     <plurals name="breathe_calm_breaths">
         <item quantity="one">%1$d शांत साँस</item>
         <item quantity="other">%1$d शांत साँसें</item>

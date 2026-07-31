@@ -665,6 +665,7 @@
     <!-- ── Breathe engine + screens (Breathe.kt) ───────────────────────── -->
     <string name="breathe_orb_cd">Breathing orb — %1$s</string>
     <string name="breathe_settle">Settle in — the rhythm finds you</string>
+    <string name="breathe_two_minutes">That’s two minutes. Stop here, or keep going — the rhythm holds either way.</string>
     <plurals name="breathe_calm_breaths">
         <item quantity="one">%1$d calm breath</item>
         <item quantity="other">%1$d calm breaths</item>

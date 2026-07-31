@@ -2,6 +2,8 @@ package com.cerebrozen.app.ui.screens
 
 import com.cerebrozen.app.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /**
@@ -41,5 +43,34 @@ class BreathePacingTest {
     fun the_default_pace_is_the_classic_four() {
         assertEquals(breathePhases(BreathePreset.Box, 4), breathePhases(BreathePreset.Box))
         assertEquals(breathePhases(BreathePreset.Reset, 4), breathePhases(BreathePreset.Reset))
+    }
+
+    // ── The two minutes the app promises on five surfaces ──
+    @Test
+    fun theTwoMinuteMarkIsRealAndArrivesWhenItShould() {
+        // "Two-minute reset" / "Try a 2-minute reset" / "Fast anxiety-stress
+        // reset — 2 minutes" all point at this preset, and nothing measured it:
+        // Reset is an open-ended in/out cycle. Reset at 4s a phase is 8s a
+        // breath, so two minutes is fifteen of them.
+        assertEquals(8, breatheElapsedSeconds(BreathePreset.Reset, 4, 1))
+        assertEquals(120, breatheElapsedSeconds(BreathePreset.Reset, 4, 15))
+        assertFalse(twoMinutesReached(BreathePreset.Reset, 4, 14))
+        assertTrue(twoMinutesReached(BreathePreset.Reset, 4, 15))
+    }
+
+    @Test
+    fun aSlowerPaceReachesTwoMinutesInFewerBreaths() {
+        // W27 lets the user pick 6s or 8s a phase; the mark must follow the
+        // clock, not a fixed breath count.
+        assertTrue(twoMinutesReached(BreathePreset.Reset, 8, 8))    // 16s x 8 = 128
+        assertFalse(twoMinutesReached(BreathePreset.Reset, 8, 7))   // 112
+    }
+
+    @Test
+    fun onlyTheResetPresetClaimsTwoMinutes() {
+        // Box and Color are open-ended by design and promise no duration
+        // anywhere, so they must not start announcing one.
+        assertFalse(twoMinutesReached(BreathePreset.Box, 4, 100))
+        assertFalse(twoMinutesReached(BreathePreset.Color, 4, 100))
     }
 }

@@ -82,6 +82,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | insights | Backend | **3** | 8 | `Insights: a mood reading invented from no check-ins` |
 | 2026-07-31 | goals | Android | **5** | 8 | `Goals: two taps that retired a goal with no way back` |
 | 2026-07-31 | programs | Backend | **6** | 8 | `Programs: leaving a journey forfeited the week` |
+| 2026-07-31 | toolkit | Android | **6** | 9 | `Toolkit: the two minutes it promised in five places` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -595,6 +596,35 @@ over, not drop the user at "day 92" clamped to the last day and instantly
 complete, which would be its own lie.
 
 Verified on the demo account: day 2 of 7 → leave → rejoin → day 2 of 7.
+
+### toolkit — Android, 2026-07-31 (6 → 9)
+
+A strong hub. The 5-4-3-2-1 grounding widget completes correctly through all five
+senses on device (see → feel → hear → smell → taste, then Start over / Back);
+"Pop gently — no timer, no losing" is the product's voice and is true; and the
+crisis door is present here as it is everywhere.
+
+**The two minutes it promised in five places.** "Two-minute reset" (toolkit and
+the breathe screen), "Try a 2-minute reset" (onboarding), "Fast anxiety-stress
+reset — 2 minutes" (Talk), "Two minutes of guided breathing" (onboarding) — and
+nothing measured or marked two minutes. The Reset preset is an open-ended in/out
+cycle that runs until you tap away. I had already found this during the
+onboarding pass and left it, because the copy also lives on iOS where UI tests
+assert the button label; that was the wrong call twice over — a claim on five
+surfaces is not a copy nit, and deleting it would throw away information a user
+genuinely wants when deciding whether they have time.
+
+So the claim is now **true** instead of removed: `twoMinutesReached` derives
+elapsed seconds from completed cycles at the user's chosen pace (Classic 4s,
+Gentle 6s, Slow 8s) and marks the moment once. Deliberately not a timer and not a
+stop — this product tells people there is "no streak to break", and putting a
+clock on a calming exercise would be the same mistake in miniature. The line
+reads *"That's two minutes. Stop here, or keep going — the rhythm holds either
+way."*
+
+Verified in real time on hardware: the mark appeared at 18 calm breaths on the
+Classic pace, and the breathing carried on. Every iOS string is untouched, so no
+iOS test moves. Now in `CLAIMS_MAP.md`.
 
 ## Gotchas this device adds
 
