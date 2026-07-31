@@ -300,9 +300,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         if (text.isBlank()) { resumeTurn(); return }
         com.cerebrozen.app.ui.Haptics.success()   // a felt "reply's here" in voice mode
         if (cloudVoice) {
-            val spoke = runCatching { cloud.play(Api.tts(text)) }.isSuccess
-            if (spoke) resumeTurn()
-            else voice.speak(text) { scope.launch { resumeTurn() } }
+            // Resume the mic only after playback actually completes. CloudVoice
+            // reports setup/start failures so the keyless device TTS can speak
+            // instead of silently treating a swallowed MediaPlayer error as success.
+            val spoke = runCatching {
+                cloud.play(Api.tts(text)) { scope.launch { resumeTurn() } }
+            }.getOrDefault(false)
+            if (!spoke) voice.speak(text) { scope.launch { resumeTurn() } }
         } else {
             voice.speak(text) { scope.launch { resumeTurn() } }
         }
