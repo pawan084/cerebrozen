@@ -512,6 +512,8 @@
     <string name="programs_evidence">Programs are evidence-informed — built on CBT and sleep-science techniques.</string>
     <string name="programs_loading">Loading journeys…</string>
     <string name="programs_error_fallback">Couldn\'t load journeys — try again shortly.</string>
+    <string name="programs_active_unknown_title">We couldn’t check your journey</string>
+    <string name="programs_active_unknown_body">If you had one running, it is still there — we just could not reach the server to read it. Nothing below has started or replaced it.</string>
     <string name="programs_day_eyebrow">Program · Day %1$d of %2$d</string>
     <string name="programs_completed_subtitle">Complete — beautifully done. Start another whenever you like.</string>
     <string name="programs_active_subtitle">Showing up is the whole assignment today.</string>

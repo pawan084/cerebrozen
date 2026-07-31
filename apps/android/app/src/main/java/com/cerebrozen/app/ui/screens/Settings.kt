@@ -489,7 +489,7 @@ fun DataExportScreen(onBack: () -> Unit) {
             scope.launch {
                 runCatching { Api.exportData() }
                     .onSuccess { exportOk = true; status = successTemplate.format(it.length) }
-                    .onFailure { exportOk = false; status = it.message ?: exportFailed }
+                    .onFailure { exportOk = false; status = it.userMessage(exportFailed) }
                 busy = false
             }
         }
@@ -523,7 +523,7 @@ fun AccountDeletionScreen(onBack: () -> Unit) {
                             .onSuccess { Session.signOut() }
                             .onFailure {
                                 busy = false
-                                error = it.message ?: deleteFailed
+                                error = it.userMessage(deleteFailed)
                             }
                     }
                 }

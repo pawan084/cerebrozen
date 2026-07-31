@@ -346,7 +346,7 @@ internal fun ContentList(
     LaunchedEffect(kind) {
         runCatching { Api.content(kind) }
             .onSuccess { items = it }
-            .onFailure { error = it.message ?: loadFailed }
+            .onFailure { error = it.userMessage(loadFailed) }
     }
     // Register narration URLs as a side effect of loading, not during render — the
     // registry is shared mutable state and must not be written on every recomposition.
@@ -397,7 +397,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 summary = it.optString("summary")
                 metrics = it.optJSONArray("metrics")
             }
-            .onFailure { error = it.message ?: loadFailed }
+            .onFailure { error = it.userMessage(loadFailed) }
         loading = false
     }
     SubPage(stringResource(R.string.insights_eyebrow), headline, onBack) {
@@ -508,19 +508,30 @@ fun ProgramsScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Whether we actually KNOW there is no journey, or merely failed to ask.
+    //
+    // The enrollment read was a bare runCatching with no failure branch: if it
+    // threw while the catalogue read succeeded, `active` stayed null and the
+    // screen drew "Start something new" — so a user on day 5 of 7 was shown the
+    // sign-up list with nothing to say their journey still existed. Third time
+    // this shape has come up (the safety plan and the consent switches were the
+    // other two): a failed read rendering as a confident empty state.
+    var activeUnknown by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val loadFailed = stringResource(R.string.programs_error_fallback)
 
     suspend fun refresh() {
         error = null
         runCatching { active = Api.activeProgram() }
+            .onSuccess { activeUnknown = false }
+            .onFailure { active = null; activeUnknown = true }
         runCatching {
             val arr = Api.content("program")
             rows = (0 until arr.length()).map { i ->
                 val c = arr.getJSONObject(i)
                 Triple(c.optString("id"), c.optString("title"), c.optString("subtitle"))
             }
-        }.onFailure { error = it.message ?: loadFailed }
+        }.onFailure { error = it.userMessage(loadFailed) }
         loading = false
     }
     LaunchedEffect(Unit) { refresh() }
@@ -539,6 +550,18 @@ fun ProgramsScreen(onBack: () -> Unit) {
         error?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
+        }
+
+        if (activeUnknown) {
+            SectionCard {
+                Text(stringResource(R.string.programs_active_unknown_title),
+                    style = MaterialTheme.typography.titleMedium, color = Danger)
+                Text(stringResource(R.string.programs_active_unknown_body),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                TextButton(onClick = { scope.launch { refresh() } }) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
+            }
         }
 
         active?.let { p ->
@@ -624,7 +647,7 @@ fun ProgramsScreen(onBack: () -> Unit) {
                                 scope.launch {
                                     runCatching { Api.enrollProgram(id) }
                                         .onSuccess { status = enrolledStatus }
-                                        .onFailure { status = it.message ?: enrollFailed }
+                                        .onFailure { status = it.userMessage(enrollFailed) }
                                     refresh()
                                 }
                             }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {

@@ -128,7 +128,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
             scope.launch {
                 runCatching { Api.setTrustedContact(name.trim(), method, value.trim(), consent) }
                     .onSuccess { status = savedMsg }
-                    .onFailure { status = it.message ?: failedMsg }
+                    .onFailure { status = it.userMessage(failedMsg) }
                 busy = false
             }
         }
@@ -144,7 +144,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                                 name = ""; value = ""; consent = false
                                 status = removedMsg
                             }
-                            .onFailure { status = it.message ?: failedMsg }
+                            .onFailure { status = it.userMessage(failedMsg) }
                         busy = false
                     }
                 },

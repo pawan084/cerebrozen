@@ -73,6 +73,10 @@ async def upsert_my_plan(
 
     Fields left unset carry over from the live plan, so a client can save one
     section at a time through the guided flow without blanking the rest.
+
+    An explicit `null` is NOT the same as unset: it is a request to clear that
+    section, and it is honoured (stored as "" — the column default — and
+    versioned like any other edit). Only omission carries the old value over.
     """
     current = await _live_plan(db, user)
     changes = payload.model_dump(exclude_unset=True)
