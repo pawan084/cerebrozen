@@ -99,6 +99,38 @@
 
 ## Done — recent
 
+### main was unbuildable and unbootable for ~40 minutes (2026-07-31)
+`d40a3d4` was cut from an old `1a27bbf` and merged in via `009250f`. Three separate
+breakages, fixed in that order:
+- [x] **Build**: `/sdfsdkjfk` between `SENSITIVE_KEYS` and `signedIn` in `Session.kt` —
+  a stray keystroke that failed `compileDebugKotlin`, so nothing Android could build.
+  Line removed, nothing around it touched.
+- [x] **Boot**: two alembic heads. `c93f2b7a5e18` (media_assets) claimed
+  `b8e6d1a4f527` as its parent, which `c7a4e91b6d38` already held, and `prestart.py`
+  runs `upgrade head` at boot — which refuses to choose. Merge revision
+  `8c27b8990a90` joins them; empty on purpose (the branches touch disjoint tables).
+  **Generated with `alembic merge`, not hand-written** — this is exactly the case the
+  CLAUDE.md gotcha warns about. Verified by applying the whole chain to a virgin
+  database: both branches converge, `media_assets` + `content_items.video_url` exist,
+  `alembic_version` = the merge.
+- [x] **Repo hygiene**: 14,270 tracked junk files removed — two Windows virtualenvs
+  (`env/` 4,624 and `backend/env/` 6,180, including `Scripts/*.exe`) and 3,466
+  `__MACOSX/` AppleDouble stubs from an unpacked third-party APK. Nothing tracked
+  referenced them. `.gitignore` now covers `env/` (it only had `venv/`/`.venv/`),
+  `__MACOSX/`, and `*.xapk`/`*.apk`/`*.aab`.
+  **History is not rewritten** — `.git` stays ~233 MB. Recovering that needs a
+  force-push and every clone re-made; left as the owner's call.
+- Checked and clean: no secrets entered history (no `.env`/`.pem`/`.key`), and the
+  decompiled Calm APK's audio was never committed — only the `__MACOSX/._*` metadata
+  stubs that name it.
+- [ ] **Follow-up: `media_assets` is schema with no code behind it** — the migration
+  landed without a SQLAlchemy model, a route, or a seed, and nothing in `backend/app`
+  references `media_assets` or `video_url`. Harmless (the column has a server default)
+  but dead until the model lands. Whoever owns the media work should either bring the
+  ORM side or drop the table.
+- Verified after all three: backend **379 passed, 2 skipped, 95% coverage**; Android
+  **229 unit tests green**; claims gate clean.
+
 ### Android: the tab bar now yields its slot to the keyboard (2026-07-31)
 The last unblocked item from the 2026-07-31 audit list. `BottomNavBar` emitted the pill
 unconditionally, so with the IME up Scaffold still charged the body the bar's ~78dp for a
