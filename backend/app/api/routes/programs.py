@@ -114,6 +114,33 @@ async def enroll(
     ).all()
     for row in rows:
         row.active = False
+
+    # Coming back to a program you left RESUMES it, rather than restarting.
+    #
+    # Leaving only flips `active`, so the original `started_at` survives — but
+    # enrolling always minted a fresh row, so one unconfirmed tap on "Leave this
+    # journey" silently reset day 5 of 7 back to day 1, with the real start date
+    # still sitting in the table. Nobody who taps away from a wind-down program
+    # on a bad evening means to forfeit the week.
+    #
+    # Only while the old window is still running. Rejoining a program abandoned
+    # months ago must start over, not drop the user at "day 92" — clamped to the
+    # last day and instantly complete, which would be its own lie.
+    prior = await db.scalar(
+        select(ProgramEnrollment)
+        .where(
+            ProgramEnrollment.user_id == user.id,
+            ProgramEnrollment.content_id == item.id,
+            ProgramEnrollment.active.is_(False),
+        )
+        .order_by(ProgramEnrollment.started_at.desc())
+    )
+    if prior is not None and (utcnow().date() - prior.started_at.date()).days < prior.days:
+        prior.active = True
+        await db.commit()
+        await db.refresh(prior)
+        return {"program": _view(prior)}
+
     e = ProgramEnrollment(
         user_id=user.id, content_id=item.id, title=item.title, days=payload.days
     )
