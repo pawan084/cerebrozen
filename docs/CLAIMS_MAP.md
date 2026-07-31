@@ -50,6 +50,7 @@
 | "Works in your browser" | `apps/app` is a real authenticated client with public signup | `e2e/tests/app.spec.ts` |
 | "Private by design — no ads, nothing sold, and nothing remembered unless you allow it" | Three separate mechanisms: zero ad/third-party SDKs in any client; no data sale (first-party `/events` only); and all six consent categories default **off**, with reads/writes gated on them | `tests/test_events.py`, `tests/test_consent.py`, `ConsentDefaultsTest` (Android) |
 | "Safety scanning … never blocks your writing, and nobody at CereBro reads it" | `services/safety.py::scan_and_record` only ever RAISES a risk level and attaches resources — no code path rejects or edits an entry; admin surfaces project counts, and an excerpt read is a separate, logged, per-row GET | `tests/test_safety.py`, `tests/test_admin_metrics.py` |
+| "My safety plan — yours, in your words · works offline" | `Session.api` caches every GET and serves the last copy when a read fails; the screen shows the cached plan with an honest "saved on this device" banner, and says so plainly when there is no cached copy rather than showing empty boxes | `SafetyPlanTest`, `tests/test_safety_plan.py`; the three network states verified on hardware 2026-07-31 |
 
 ## 4. Deliberately banned phrases
 

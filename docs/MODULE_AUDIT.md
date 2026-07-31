@@ -76,6 +76,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | journal | Android (+claims gate) | **3** | 8 | `Journal: you could write entries and never read one back` |
 | 2026-07-31 | you | Android | **6** | 8 | `You: sign out was a caption that signed you out` |
 | 2026-07-31 | crisis | Android (+API consent fix) | **4** | 8 | `Crisis: "add one in Settings" pointed at a setting that did not exist` |
+| 2026-07-31 | safety-plan | Android | **6** | 9 | `Safety plan: an empty screen that could not say why it was empty` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -401,6 +402,38 @@ visible is not — on a device with no dialer, tapping "Tele-MANAS 14416" is a d
 tap on the one screen where a dead tap matters most. The fix (copy the number to
 the clipboard and say so) needs a device that can actually reproduce it, and this
 one has a dialer.
+
+### safety-plan — Android, 2026-07-31 (6 → 9)
+
+The one claim on the door — **"works offline"** — is true, and now verified on
+hardware rather than assumed. With `adb reverse` removed, the plan renders from
+the encrypted GET cache with an honest "saved on this device" banner. The two
+findings were both about what happens when it *cannot*.
+
+1. **A failed load was indistinguishable from an empty plan.** `onFailure` set
+   `values = emptyMap()` and said nothing — `error` was declared but that path
+   never set it. So a user who opened the screen offline before it had ever
+   cached was shown seven blank boxes where their safety plan should be, with no
+   explanation. The only available conclusion is that it is gone. There is now an
+   explicit card — *"Nothing has been deleted — your plan is still on your
+   account"* — and a Try again.
+2. **The "showing the copy saved on this device" banner read a GLOBAL flag.**
+   `Session.servedStale` is about the last GET anywhere in the app, so with Home
+   having served stale the safety plan announced it was showing a saved copy
+   while displaying seven empty boxes — two contradictory banners at once, on
+   this screen of all screens. Found only because fixing (1) put them side by
+   side. The banner now reflects this screen's own read.
+3. **Save failures rendered at the top of a seven-section page while successes
+   rendered beside the button.** Edit the sixth section, fail to save, and the
+   only notice is off-screen above. Errors are keyed by field now.
+
+Verified on device across all three network states: offline with a warm cache
+(plan + banner), offline with no cache (explicit failure card, no banner),
+and Try again with the network restored (plan returns, no banner).
+
+**Left alone:** the plan is saved per section rather than all at once. That reads
+oddly next to a single Save, but it means a half-filled plan is never lost to one
+failed write — the right trade on this screen.
 
 ## Gotchas this device adds
 

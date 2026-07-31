@@ -848,6 +848,8 @@
     <string name="safetyplan_intro">यह योजना आप तब लिखते हैं जब मन स्थिर हो, ताकि कठिन दिन पर कम फ़ैसले लेने पड़ें। जितना चाहें उतना भरें — अधूरी योजना भी मदद करती है।</string>
     <string name="safetyplan_privacy_note">CereBro इसे आपको सलाह बनाकर नहीं लौटाता, न इसका आकलन करता है, न साझा।</string>
     <string name="safetyplan_offline">इस डिवाइस पर सहेजी कॉपी दिख रही है — सर्वर से संपर्क नहीं हो सका।</string>
+    <string name="safetyplan_load_failed_title">आपकी योजना लोड नहीं हो सकी</string>
+    <string name="safetyplan_load_failed_body">इस डिवाइस पर अभी कोई प्रति सहेजी नहीं है, इसलिए नीचे के बॉक्स खाली हैं। कुछ भी हटाया नहीं गया — आपकी योजना आपके खाते में सुरक्षित है।</string>
     <string name="safetyplan_saved">सहेजा गया।</string>
     <string name="safetyplan_save_failed">यह हिस्सा सहेजा नहीं जा सका — लिखा हुआ यहीं है, थोड़ी देर में फिर कोशिश करें।</string>
     <string name="safetyplan_version">वर्ज़न %1$d</string>

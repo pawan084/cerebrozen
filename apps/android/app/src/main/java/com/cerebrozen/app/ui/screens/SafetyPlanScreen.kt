@@ -64,7 +64,25 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var savingField by remember { mutableStateOf<String?>(null) }
     var savedField by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    // Keyed BY FIELD. A save error used to render once at the top of the page
+    // while the "Saved" confirmation rendered beside the button — so on a screen
+    // seven sections long, success was local and failure was somewhere off
+    // screen above. On a safety plan that is exactly backwards: the outcome you
+    // must not miss is the one that did not work.
+    var error by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // Distinguishes "your plan is empty" from "we could not load it". Without
+    // this the failure path set values to emptyMap() and said nothing, so a user
+    // opening the screen offline before it had ever cached would be shown seven
+    // blank boxes where their plan should be — and could only conclude it was
+    // gone.
+    var loadFailed by remember { mutableStateOf(false) }
+    // Whether THIS read came from the cache, captured at the moment it returned.
+    // `Session.servedStale` is a global flag about the last GET anywhere in the
+    // app, so reading it here announced "showing the copy saved on this device"
+    // because Home had served stale — even when this screen had no copy at all
+    // and was showing seven empty boxes. Two contradictory banners at once, on
+    // the safety plan. Seen on device.
+    var servedFromCache by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val saveFailed = stringResource(R.string.safetyplan_save_failed)
 
@@ -92,9 +110,24 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
             .onSuccess { plan ->
                 values = parseSafetyPlan(plan)
                 version = plan?.optInt("version")
+                servedFromCache = Session.servedStale
             }
-            .onFailure { values = emptyMap() }
+            .onFailure { values = emptyMap(); loadFailed = true; servedFromCache = false }
         loading = false
+    }
+
+    fun reload() {
+        loading = true; loadFailed = false
+        scope.launch {
+            runCatching { Api.safetyPlan() }
+                .onSuccess { plan ->
+                    values = parseSafetyPlan(plan)
+                    version = plan?.optInt("version")
+                    servedFromCache = Session.servedStale
+                }
+                .onFailure { values = emptyMap(); loadFailed = true; servedFromCache = false }
+            loading = false
+        }
     }
 
     LaunchedEffect(savedField) {
@@ -111,11 +144,21 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
         Text(stringResource(R.string.safetyplan_privacy_note),
             style = MaterialTheme.typography.bodySmall, color = TextMuted)
 
-        if (Session.servedStale) {
+        if (servedFromCache) {
             Text(stringResource(R.string.safetyplan_offline),
                 style = MaterialTheme.typography.bodySmall, color = Periwinkle)
         }
-        error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Danger) }
+        if (loadFailed) {
+            SectionCard {
+                Text(stringResource(R.string.safetyplan_load_failed_title),
+                    style = MaterialTheme.typography.titleMedium, color = Danger)
+                Text(stringResource(R.string.safetyplan_load_failed_body),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                TextButton(onClick = { reload() }) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
+            }
+        }
 
         if (loading) {
             Text(stringResource(R.string.patterns_loading),
@@ -152,7 +195,7 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                                             version = it.optInt("version")
                                             savedField = field
                                         }
-                                        .onFailure { error = it.message ?: saveFailed }
+                                        .onFailure { error = field to (it.message ?: saveFailed) }
                                     savingField = null
                                 }
                             },
@@ -167,6 +210,10 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                             Text(stringResource(R.string.safetyplan_saved),
                                 style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
+                    }
+                    // Beside the section it belongs to, not at the top of the page.
+                    error?.takeIf { it.first == field }?.let { (_, message) ->
+                        Text(message, style = MaterialTheme.typography.bodySmall, color = Danger)
                     }
                 }
             }
