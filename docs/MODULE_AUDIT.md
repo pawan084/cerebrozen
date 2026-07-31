@@ -657,6 +657,39 @@ It reads `Products.storekit` and fails if any client quotes a price the catalogu
 does not contain. Proved both ways before committing: it passes on the corrected
 copy, and re-introducing ₹399 makes it fail with the file and line.
 
+### Follow-up: content behind the status bar (app-wide, 2026-07-31)
+
+Deferred during the Talk audit because it touches every screen. Fixed here, and
+the diagnosis was wrong twice before it was right.
+
+The symptom was a Talk bubble drawn straight through the clock, but **only with
+the keyboard up** — the same screen is clear otherwise. So it was never really
+about `Page`'s padding, which was the first theory. Adding `statusBarsPadding()`
+to the scroll containers moved headers down and changed nothing about the
+overlap.
+
+The cause was in the manifest: `MainActivity` set no `windowSoftInputMode`, so
+the system picked **pan** for our scrolling screens. Opening the keyboard slid
+the entire window upward, carrying content that sat correctly below the status
+bar up behind it. No padding inside the app can fix a window the OS is
+translating.
+
+`adjustResize` fixes that — and immediately exposed the other half: under
+edge-to-edge the window does not literally resize, the IME arrives as an inset,
+so the composer ended up behind the keyboard. Both halves are needed:
+`adjustResize` in the manifest, `statusBarsPadding().imePadding()` on the outer
+container of `Page` and `SubPage`. Top content padding dropped 28dp→6dp (Page)
+and 22dp→4dp (SubPage) so headers land roughly where they always did.
+
+Verified on device: all five tabs clear the bar, a `SubPage` with a text field
+and the keyboard up clears it, and Talk's composer is reachable above the
+keyboard. Headers moved down ~16dp, which is the breathing room they should have
+had.
+
+**Left:** while the keyboard is up, the bottom-nav pill's space is still
+reserved behind it, leaving an empty band above the keyboard. Hiding the nav on
+IME is a behaviour change across every screen — its own pass.
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:

@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
@@ -432,14 +433,29 @@ internal fun Page(
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
     }
-    Column(Modifier.fillMaxSize()) {
+    // statusBarsPadding on the CONTAINER, before verticalScroll, so the scrolling
+    // viewport itself starts below the status bar. It used to sit behind it, and
+    // only the 28dp of content padding — which scrolls away with everything else
+    // — kept text clear. Seen on device: with the keyboard up, a Talk bubble was
+    // drawn straight through the clock and the signal icons.
+    //
+    // The top content padding drops to 6dp to compensate, so headers land where
+    // they always did rather than every screen shifting down by a status bar.
+    // The aurora backdrop is drawn behind the Scaffold, so it stays edge to edge.
+    // statusBarsPadding + imePadding on the OUTER container, so the scroll body
+    // and any pinned footer both shrink to the space the keyboard leaves. Under
+    // edge-to-edge, adjustResize does not literally resize the window — the IME
+    // arrives as an inset — so this is the half that keeps a composer reachable,
+    // while the manifest's adjustResize is the half that stops the OS panning
+    // content up behind the status bar. Neither works without the other.
+    Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
     Column(
         Modifier
             .fillMaxWidth()
             .weight(1f)
             .verticalScroll(scrollState)
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 24.dp, vertical = 28.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -478,11 +494,9 @@ internal fun Page(
             Modifier
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Night)))
-                // No imePadding here: the window already resizes for the
-                // keyboard (the Scaffold insets the NavHost), so adding it
-                // counted the keyboard height twice — the composer flew to the
-                // top of the screen with an empty half-screen beneath it, and
-                // the transcript slid under the status bar. Seen on device.
+                // imePadding lives on the outer container, not here: applying
+                // it at both levels counts the keyboard twice and throws the
+                // composer to the top of the screen. Seen on device.
                 .padding(horizontal = 24.dp)
                 .padding(top = 10.dp, bottom = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),

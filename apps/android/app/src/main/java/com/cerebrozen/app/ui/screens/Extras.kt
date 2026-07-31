@@ -92,6 +92,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
 import androidx.compose.material.icons.outlined.PersonAddAlt
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.audio.MediaUrls
@@ -130,10 +132,13 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
     }
+    // Same fix as Page: inset the scrolling VIEWPORT, not the content, so
+    // scrolled text cannot pass behind the status bar. Top padding drops from
+    // 22dp to 4dp so every pushed screen's header stays where it was.
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(horizontal = 20.dp, vertical = 22.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(

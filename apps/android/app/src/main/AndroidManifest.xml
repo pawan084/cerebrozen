@@ -38,10 +38,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CereBro">
 
+        <!-- windowSoftInputMode=adjustResize, not the default adjustUnspecified.
+             Left unset, the system chose PAN for our scrolling screens: opening
+             the keyboard slid the whole window upward, so content that sat
+             correctly below the status bar was pushed behind it — a Talk bubble
+             drawn straight through the clock. No padding inside the app can fix
+             a window the OS is translating; resizing keeps the insets meaningful. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.CereBro">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
