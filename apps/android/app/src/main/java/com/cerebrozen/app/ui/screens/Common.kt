@@ -78,6 +78,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
@@ -141,6 +143,48 @@ internal fun cardPadding() = when {
  * fading down) so the pane catches light like a real bevelled edge rather than
  * reading as a flat outline. An honest soft-solid: the fill is opaque, so there is
  * no backdrop blur behind it (REDESIGN.md §4.1). */
+/**
+ * Let a child run past the page's horizontal padding, to the screen edges.
+ *
+ * For horizontal rails. Inside the 24dp inset a rail's last card stops short of
+ * the edge, so a scrolling row reads as a finished two-column grid — the one
+ * universal signal that there is more sideways is a card cut off by the screen.
+ * It also breaks the uniform inset every other element shares, which is most of
+ * why the screen felt like one stack of identical rectangles.
+ *
+ * Measures the child wider by [horizontal] on each side and places it back at
+ * the negative offset, so the parent's layout is unchanged.
+ */
+internal fun Modifier.bleed(horizontal: Dp): Modifier = this.layout { measurable, constraints ->
+    val extra = horizontal.roundToPx() * 2
+    val placeable = measurable.measure(
+        constraints.copy(
+            minWidth = (constraints.minWidth + extra).coerceAtLeast(0),
+            maxWidth = if (constraints.maxWidth == Constraints.Infinity) {
+                constraints.maxWidth
+            } else {
+                constraints.maxWidth + extra
+            },
+        ),
+    )
+    layout(placeable.width - extra, placeable.height) {
+        placeable.place(-horizontal.roundToPx(), 0)
+    }
+}
+
+/**
+ * A secondary surface: the fill and hairline, without the lift.
+ *
+ * Hierarchy, not decoration. Every card on Home used [glass], so the check-in,
+ * the plan hero, a nav row and a list of past check-ins all claimed the same
+ * importance — which is another way of saying none of them did. Quiet cards
+ * carry the things you read after you have done the thing the screen asked for.
+ */
+internal fun Modifier.quiet(shape: Shape = CardShape): Modifier = this
+    .clip(shape)
+    .background(Veil)
+    .border(1.dp, Stroke.hairline, shape)
+
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
     .shadow(
         CardShadow.elevation, shape, clip = false,
@@ -515,18 +559,21 @@ internal fun Page(
 @Composable
 internal fun SectionCard(
     onClick: (() -> Unit)? = null,
+    /** Secondary content: the same card, without the lift. See [Modifier.quiet]. */
+    quiet: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val surface: Modifier.() -> Modifier = if (quiet) ({ quiet() }) else ({ glass() })
     val mod = if (onClick != null) {
         // A whisper of press-in — cards are large, so the scale is tiny on purpose.
         Modifier.fillMaxWidth()
             .pressScale(pressed, down = 0.985f)
-            .glass()
+            .surface()
             .clickable(interactionSource = interaction, indication = null) { Haptics.soft(0.4f); onClick() }
     } else {
-        Modifier.fillMaxWidth().glass()
+        Modifier.fillMaxWidth().surface()
     }
     Column(
         mod.padding(cardPadding()),

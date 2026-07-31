@@ -541,6 +541,11 @@ object Api {
     suspend fun me(): JSONObject = JSONObject(Session.api("/auth/me"))
     suspend fun streak(): JSONObject = JSONObject(Session.api("/users/me/streak"))
     suspend fun moods(): JSONArray = JSONArray(Session.api("/moods"))
+
+    /** Take back a check-in. The tap that logs one is single, so the tap that
+     * undoes it has to exist — and a stray mood otherwise sits in the 60-day
+     * window that patterns and the weekly read are computed from. */
+    suspend fun deleteMood(id: String) { Session.api("/moods/$id", "DELETE") }
     suspend fun checkIn(mood: String, note: String, symbol: String, intensity: Int): JSONObject =
         JSONObject(
             Session.api(

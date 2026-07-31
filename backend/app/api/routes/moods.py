@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,3 +40,29 @@ async def create_mood(
     await db.commit()
     await db.refresh(log)
     return log
+
+
+@router.delete("/{mood_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mood(
+    mood_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove one check-in.
+
+    A check-in is one tap, so a mis-tap is one tap too, and until now there was
+    no way back — you could delete a journal entry or a remembered note, but a
+    mood you logged by accident was permanent. That also made honest insights
+    worse: a stray "Anxious" sits in the 60-day window that patterns and the
+    weekly read are computed from.
+
+    Scoped to the caller, and a 404 for anyone else's row.
+    """
+    row = await db.scalar(
+        select(MoodLog).where(MoodLog.id == mood_id, MoodLog.user_id == user.id)
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    await db.delete(row)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

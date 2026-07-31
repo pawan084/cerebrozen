@@ -728,6 +728,101 @@ under every card where there was none.
 check-in is a form rather than a moment, and content art is procedural gradient
 blobs. Those are the next three slices if the feedback continues.
 
+### The check-in moment (Home, 2026-07-31)
+
+The second of the three things named in the Dawn pass, and the one I expected the
+client to point at next: the product's most important interaction rendered as a
+settings row.
+
+What was actually wrong, beyond taste:
+
+- **Four grey pills in a `horizontalScroll`.** On a 720px screen the fourth mood
+  ("Tired") was clipped off the right edge — one of four options half hidden on
+  the primary daily action.
+- **It took two taps**, behind a separate "Check in" button, while the code
+  comment directly above it called it "the 1-tap check-in" and the copy promised
+  a 20-second check-in.
+- **Nothing was undoable.** A mis-tap was permanent, and a stray "Anxious" sits
+  in the 60-day window `compute_patterns` and the weekly read compute from — so
+  it quietly skewed the honest insights too.
+
+Now a 2×2 grid of tinted tiles, each mood in its own themed accent with a soft
+orb, all four visible. One tap logs it and the card becomes the confirmation —
+the mood said back in its own colour — with Undo beside it. Same trade as Goals
+and Programs: no confirm on the way in, because a confirm on a feeling is
+friction in the wrong place; a cheap way out instead.
+
+Undo needed a capability the backend did not have, so `DELETE /moods/{id}` now
+exists, owner-scoped and 404 for anyone else's row, with tests including the
+cross-user case.
+
+Verified on device end to end: tap → server goes 3 moods to 4 → card shows
+"Good — noted" → Undo → server back to 3 and the picker returns.
+
+**Still open from that list:** the card-stack rhythm, and procedural content art
+(the "For this morning" rail is still two near-identical teal cards).
+
+### Card-stack rhythm (Home, 2026-07-31)
+
+Third of the three named in the Dawn pass. "Monotonous rhythm" is the vaguest of
+them, so it needed turning into something answerable: every element on Home was
+the same rounded rectangle, at the same 24dp inset, with the same lift — so the
+check-in, the plan hero, a nav row and a list of past check-ins all claimed equal
+importance, which is another way of saying none of them led.
+
+Two changes, both of which also fix something real rather than only looking
+better:
+
+1. **The content rail runs to the screen edges** (`Modifier.bleed`). Inside the
+   page inset its last card stopped neatly short, so a horizontally scrolling row
+   read as a finished two-column grid — the affordance was simply missing. A card
+   cut off by the screen is the one signal that reliably says "more this way",
+   and it breaks the uniform inset every other element shares.
+2. **An elevation ladder instead of one plane** (`Modifier.quiet`,
+   `SectionCard(quiet = true)`). Primary cards stay raised; presence and past
+   check-ins — the things you read *after* doing what the screen asked — sit
+   recessed. On Dawn that reads as a well against paper, which is a genuine
+   hierarchy cue rather than decoration.
+
+Verified in both themes on device. The effect is stronger on Dawn, which is
+expected: dark themes have less elevation contrast to work with.
+
+**Not attempted, and the last of the three:** content art is still procedural
+gradient blobs — the rail is three near-identical teal cards. That one has an
+asset dependency and is not a code change.
+
+### Content art variety (2026-07-31)
+
+Last of the three. My original critique — "procedural gradient blobs" — was too
+blunt: there was already a per-kind motif system (moon for sleep, waves for
+soundscape, rings for meditation, day dots for program). The real fault was
+narrower and worth stating precisely: **within a kind, siblings were nearly
+identical.** Every meditation drew the same concentric rings, in the same place,
+in the same teal, varied only by a hue nudge too small to read at 48dp. A rail of
+three looked like one design printed three times.
+
+Three changes, none of which needs an asset:
+
+1. `artVariant(title)` — a SECOND hash, independent of `artSeed`, choosing one of
+   three compositions per kind. Rings become concentric / nested arcs / an offset
+   pair; the anchor moves between three positions so neighbours never repeat one.
+2. `artHueShift` widened from a 0.25–0.70 band to 0.12–0.88, so siblings separate
+   by more than a few degrees.
+3. **The gradient axis varies by variant** — diagonal, counter-diagonal, vertical
+   — with the top-light following the gradient's own start corner. This is the
+   change that actually reads at thumbnail size; hue does not.
+
+Tested rather than eyeballed: the variant is deterministic, spread across all
+three (>60 of 300 each), independent of the hue seed, and the exact rail behind
+the complaint — Body scan / Morning calm / Soft focus — is asserted to give three
+different arrangements.
+
+**Honest limit.** This is a real improvement to procedural art and it is verified,
+but at 48dp it is incremental, not transformative — three of four seeded
+wind-down tiles still landed on the same variant, because a 3-way hash over four
+titles will do that. Genuinely distinctive imagery needs commissioned
+illustration; that is an asset decision, not a code one, and it remains open.
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:

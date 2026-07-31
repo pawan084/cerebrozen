@@ -1024,5 +1024,33 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [x] Transaction ownership — reviewed: services `flush()`, routes `commit()`; the flagged
   double-commit did not exist (dispatch_due commits by design — it's a job, not a route).
 
+## Open after the 2026-07-31 module-audit run
+
+Everything the audits found is fixed and merged; these are the items deliberately
+left, each with the reason it was left rather than done.
+
+- [ ] **iOS catch-up** — iOS still reads `today_guide` only, so it has no journey path;
+  the backend already sends `guides`. Parked by the user: Android leads, iOS follows once
+  Android is finished. First item in the iOS queue.
+- [ ] **Content art needs real imagery** — `artVariant` now varies composition, anchor and
+  gradient axis within a kind (verified), but at 48dp it is incremental. Genuinely
+  distinctive art needs commissioned illustration; that is an asset/budget decision, not
+  a code change.
+- [ ] **Bottom nav reserves its space behind the keyboard** — with the IME up the nav
+  pill's slot stays allocated, leaving an empty band above the keyboard. Hiding the nav on
+  IME is a behaviour change on every screen, so it belongs in its own pass.
+- [ ] **Two DPDP consent hints describe the default, not the category** — "Voice storage ·
+  Off by default", "Model training · Separate opt-in only". True, but they say nothing
+  about what the data is for, and they are stale once someone switches one on. The fix is
+  26 strings inside a hand-shipped 13-language notice — legally-operative text that needs a
+  translator, not a coder.
+- [ ] **Goal `e484cbe9` on the demo account** — a mis-tap during the Goals audit moved it
+  from a resolved state to `active`. The pre-audit read proves it was not active before but
+  not which resolved state it held, so it was flagged rather than guessed at. One PATCH if
+  anyone knows.
+- [ ] **`services/engine/.env` in the working tree** — gitignored (never entered history),
+  but if it holds live keys the "rotate anything exposed" rule may apply. Whoever put that
+  checkout there should decide.
+
 Verification: backend **177 passed, 95% coverage** (in-container, live Postgres); web +
 admin `tsc --noEmit` clean; iOS `xcodebuild build` succeeded with the new entitlement.
