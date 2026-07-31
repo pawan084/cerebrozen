@@ -81,6 +81,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | privacy | Android | **5** | 8 | `Privacy: a failed read drew every consent switch off` |
 | 2026-07-31 | insights | Backend | **3** | 8 | `Insights: a mood reading invented from no check-ins` |
 | 2026-07-31 | goals | Android | **5** | 8 | `Goals: two taps that retired a goal with no way back` |
+| 2026-07-31 | programs | Backend | **6** | 8 | `Programs: leaving a journey forfeited the week` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -573,6 +574,27 @@ demo account. `54b95ca7` (released by me) was restored to `active`. A mis-tap on
 a "Bring it back" also moved `e484cbe9` from a resolved state to `active`; the
 pre-audit read proves it was not active before, but not which resolved state it
 held, so it was left `active` and flagged rather than guessed at.
+
+### programs — backend, 2026-07-31 (6 → 8)
+
+Nothing fabricated. The day count derives from the start date with nothing to
+advance or fail; the evidence line is properly scoped ("evidence-informed — built
+on CBT and sleep-science techniques", not "clinically proven"); and the journey
+path added earlier this session renders correctly in Dawn as well as Night.
+
+**"Leave this journey" forfeited the week.** One unconfirmed tap inside the hero
+card. Leaving only flips `active` — the original `started_at` survives in the
+table — but enrolling always minted a fresh enrollment, so tapping away from a
+wind-down program on a bad evening silently reset day 5 of 7 to day 1, with the
+real start date sitting there unused.
+
+Fixed as Goals was, by making the mistake cheap rather than interrogating the
+intent: re-enrolling now RESUMES the prior enrollment while its window is still
+running. Only while running — rejoining something abandoned months ago must start
+over, not drop the user at "day 92" clamped to the last day and instantly
+complete, which would be its own lie.
+
+Verified on the demo account: day 2 of 7 → leave → rejoin → day 2 of 7.
 
 ## Gotchas this device adds
 
