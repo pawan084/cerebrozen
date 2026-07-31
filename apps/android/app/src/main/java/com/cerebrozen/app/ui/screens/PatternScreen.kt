@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
@@ -325,10 +327,29 @@ fun PatternScreen(onBack: () -> Unit) {
 /** One learned statement, rendered as a soft lavender gradient row (teammate look,
  * rebuilt on our tokens). Shows the real statement and, when present, its supporting
  * count [basis]. Still no EDIT affordance — a pattern is computed per request and has
- * no row to rewrite — but it can be hidden, which is the honest equivalent. */
+ * no row to rewrite — but it can be hidden, which is the honest equivalent.
+ *
+ * The hide control is the point. This composable used to ACCEPT [onHide], the caller
+ * used to pass a working one wired to `POST /users/me/memory/suppress-pattern`, and
+ * the body rendered nothing that could ever call it — while the section above
+ * promised "Hide one and it stops being shown or used". A capability the backend
+ * supported, the client had wired, the copy advertised, and the user could not
+ * reach. It stayed invisible because the row only renders when patterns exist, and
+ * they need weeks of check-ins to appear.
+ *
+ * Two taps, because it does not come back: the tombstone's source is not in
+ * `EDITABLE_SOURCES`, so the server refuses to delete it and the only undo really
+ * is clearing all memory — exactly what the copy says.
+ */
 @Composable
 private fun MemoryRow(index: Int, statement: String, basis: String, onHide: () -> Unit) {
     val shape = RoundedCornerShape(13.dp)
+    var armed by remember(statement) { mutableStateOf(false) }
+    LaunchedEffect(armed) { if (armed) { delay(4000); armed = false } }
+    val hideCd = stringResource(
+        if (armed) R.string.patterns_hide_confirm_cd else R.string.patterns_hide_cd,
+        statement,
+    )
     Row(
         Modifier
             .fillMaxWidth()
@@ -341,7 +362,7 @@ private fun MemoryRow(index: Int, statement: String, basis: String, onHide: () -
                 ),
             )
             .border(1.dp, LineStroke, shape)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
+            .padding(start = 16.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -354,6 +375,16 @@ private fun MemoryRow(index: Int, statement: String, basis: String, onHide: () -
             if (basis.isNotBlank()) {
                 Text(basis, style = MaterialTheme.typography.bodySmall, color = Cyan)
             }
+        }
+        TextButton(
+            onClick = { if (armed) onHide() else armed = true },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = hideCd },
+        ) {
+            Text(
+                stringResource(if (armed) R.string.patterns_hide_confirm else R.string.patterns_hide),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (armed) Danger else TextMuted,
+            )
         }
     }
 }

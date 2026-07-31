@@ -77,6 +77,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | you | Android | **6** | 8 | `You: sign out was a caption that signed you out` |
 | 2026-07-31 | crisis | Android (+API consent fix) | **4** | 8 | `Crisis: "add one in Settings" pointed at a setting that did not exist` |
 | 2026-07-31 | safety-plan | Android | **6** | 9 | `Safety plan: an empty screen that could not say why it was empty` |
+| 2026-07-31 | patterns | Android + backend | **3** | 8 | `Patterns: the Hide button did not exist` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -434,6 +435,42 @@ and Try again with the network restored (plan returns, no banner).
 **Left alone:** the plan is saved per section rather than all at once. That reads
 oddly next to a single Save, but it means a half-filled plan is never lost to one
 failed write — the right trade on this screen.
+
+### patterns — Android + backend, 2026-07-31 (3 → 8)
+
+The screen the fabricated Pattern Dashboard was found on. That fix has held: the
+empty state reads "Patterns only appear once a few weeks of real check-ins
+support them — no guesses, ever", the statements are computed per request and
+never stored, and every one carries its own basis ("7 of your 7 difficult
+check-ins landed there"). Capped at 3 anyway, because the section's own promise
+— **"Hide one and it stops being shown or used"** — was false twice over.
+
+1. **The Hide control did not exist.** `MemoryRow` accepted an `onHide` lambda,
+   the caller passed a working one wired to `POST /users/me/memory/
+   suppress-pattern`, the string `patterns_hide` was already translated in both
+   locales, the KDoc said "it can be hidden, which is the honest equivalent" —
+   and the composable body rendered nothing that could ever call it. A capability
+   the backend supported, the client had wired, the copy advertised, and the user
+   could not reach. It stayed invisible because the row only renders when
+   patterns exist, and patterns need weeks of check-ins.
+2. **Hiding did not retract what the pattern had already justified.**
+   `compute_patterns` honours the tombstone, so no NEW suggestion is seeded from
+   a hidden pattern — but one seeded earlier keeps `reason` set to the statement
+   verbatim, and the dashboard renders it as "Because: …". Seen on device: the
+   pattern vanished from the top of the screen and went on justifying a live
+   suggestion halfway down it. Suppressing now dismisses **pending**
+   recommendations with that reason. Only pending: a practice the user accepted
+   is theirs, and withdrawing it because they tidied away the observation behind
+   it would be taking something they chose.
+
+Hide is two-tap, because it does not come back — the tombstone's source is not in
+`EDITABLE_SOURCES`, so the server refuses to delete it and the only undo really
+is clearing all memory, exactly as the copy says.
+
+**Method note:** the demo account has no patterns, so none of this was reachable
+on it. Verified instead on three throwaway accounts seeded through the API until
+a real pattern fired, then deleted (`DELETE /users/me` → 204 each). The demo
+account ends the pass exactly as it started: 0 patterns, 1 hidden.
 
 ## Gotchas this device adds
 

@@ -734,6 +734,10 @@
     <string name="patterns_error_fallback">Couldn\'t load your patterns — try again.</string>
     <string name="patterns_loading">Looking at your data…</string>
     <string name="patterns_empty">Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.</string>
+    <string name="patterns_hide">Hide</string>
+    <string name="patterns_hide_confirm">Tap to confirm</string>
+    <string name="patterns_hide_cd">Hide the pattern: %1$s</string>
+    <string name="patterns_hide_confirm_cd">Confirm hiding the pattern: %1$s</string>
     <string name="patterns_delete_title">Delete all memory</string>
     <string name="patterns_delete_body">Removes chat history, computed insights, saved notes and the companion\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
     <string name="patterns_cleared">Memory cleared — %1$d messages, %2$d insights and %3$d saved notes forgotten.</string>
@@ -743,7 +747,6 @@
          hidden; saved notes are the user's own words and are fully editable. -->
     <string name="patterns_noticed_title">Patterns it noticed</string>
     <string name="patterns_noticed_body">Worked out from your own check-ins each time you open this page — never stored. Hide one and it stops being shown or used.</string>
-    <string name="patterns_hide">Hide</string>
     <string name="patterns_hidden_count">%1$d hidden. They stay hidden until you clear your memory.</string>
     <string name="patterns_saved_title">What you asked it to remember</string>
     <string name="patterns_saved_body">Your words, not its guesses. Edit or delete any of them.</string>

@@ -590,13 +590,16 @@
     <string name="patterns_error_fallback">आपके पैटर्न लोड नहीं हो पाए — फिर कोशिश करें।</string>
     <string name="patterns_loading">आपका डेटा देख रहे हैं…</string>
     <string name="patterns_empty">अभी कुछ नहीं। पैटर्न तभी दिखते हैं जब कुछ हफ़्तों के असली चेक-इन उन्हें पक्का करें — अंदाज़ा कभी नहीं।</string>
+    <string name="patterns_hide">छिपाएँ</string>
+    <string name="patterns_hide_confirm">पुष्टि के लिए टैप करें</string>
+    <string name="patterns_hide_cd">यह पैटर्न छिपाएँ: %1$s</string>
+    <string name="patterns_hide_confirm_cd">पैटर्न छिपाने की पुष्टि करें: %1$s</string>
     <string name="patterns_delete_title">सारी मेमोरी मिटाएँ</string>
     <string name="patterns_delete_body">चैट इतिहास, बनी हुई इनसाइट, सहेजे गए नोट और साथी की थ्रेड-मेमोरी हट जाती है — वह नए सिरे से शुरू करता है। आपका जर्नल, चेक-इन और नींद डायरी रहते हैं: वे आपकी सामग्री हैं, अपने अलग नियंत्रणों के साथ।</string>
     <!-- Per-item memory (2026-07-30). Machine-assisted like the rest of this
          draft file — include in the pending review. -->
     <string name="patterns_noticed_title">इसने जो पैटर्न देखे</string>
     <string name="patterns_noticed_body">हर बार यह पेज खोलने पर आपके अपने चेक-इन से निकाले जाते हैं — कभी सहेजे नहीं जाते। छिपाने पर दिखना और इस्तेमाल होना दोनों बंद।</string>
-    <string name="patterns_hide">छिपाएँ</string>
     <string name="patterns_hidden_count">%1$d छिपाए गए। मेमोरी साफ़ करने तक छिपे रहेंगे।</string>
     <string name="patterns_saved_title">आपने जो याद रखने को कहा</string>
     <string name="patterns_saved_body">आपके शब्द, इसके अनुमान नहीं। किसी को भी बदलें या हटाएँ।</string>

@@ -15,6 +15,7 @@ from app.models.deletion_ledger import DeletionLedger
 from app.models.habit import Goal
 from app.models.insight import Insight
 from app.models.memory import EDITABLE_SOURCES, ContextMemory
+from app.models.recommendation import Recommendation
 from app.models.safety_plan import SafetyPlan
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
@@ -435,7 +436,33 @@ async def suppress_pattern(
             user_id=user.id, body=statement,
             source="suppressed_pattern", salience=0.0, dismissed_at=utcnow(),
         ))
-        await db.commit()
+
+    # Retract any PENDING suggestion that was derived from this pattern.
+    #
+    # The client tells the user "hide one and it stops being shown or used", and
+    # `compute_patterns` honours the tombstone so no NEW recommendation is ever
+    # seeded from it. But one seeded earlier keeps its `reason` — the pattern
+    # statement, verbatim — and the dashboard renders it as "Because: …". Seen on
+    # a device: the pattern vanished from the top of the screen and went on
+    # justifying a live suggestion halfway down it.
+    #
+    # Only pending ones. A practice the user already accepted is theirs now, and
+    # withdrawing it because they tidied away the observation behind it would be
+    # taking something they chose.
+    pending = (
+        await db.scalars(
+            select(Recommendation).where(
+                Recommendation.user_id == user.id,
+                Recommendation.reason == statement,
+                Recommendation.status == "pending",
+            )
+        )
+    ).all()
+    for row in pending:
+        row.status = "dismissed"
+        row.resolved_at = utcnow()
+
+    await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
