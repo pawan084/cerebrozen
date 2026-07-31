@@ -78,6 +78,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | crisis | Android (+API consent fix) | **4** | 8 | `Crisis: "add one in Settings" pointed at a setting that did not exist` |
 | 2026-07-31 | safety-plan | Android | **6** | 9 | `Safety plan: an empty screen that could not say why it was empty` |
 | 2026-07-31 | patterns | Android + backend | **3** | 8 | `Patterns: the Hide button did not exist` |
+| 2026-07-31 | privacy | Android | **5** | 8 | `Privacy: a failed read drew every consent switch off` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -471,6 +472,40 @@ is clearing all memory, exactly as the copy says.
 on it. Verified instead on three throwaway accounts seeded through the API until
 a real pattern fired, then deleted (`DELETE /users/me` → 204 each). The demo
 account ends the pass exactly as it started: 0 patterns, 1 hidden.
+
+### privacy — Android, 2026-07-31 (5 → 8)
+
+The consent surface. Much of it is careful already: the toggle write is
+optimistic but reconciled — verified on device that flipping one really reaches
+the server, and the code reverts and says so if the write fails — and "Anonymous
+usage stats · counts only, never your content or account" matches what
+`net/Analytics` actually sends.
+
+1. **A failed consent read drew every switch OFF, silently.** The load was a bare
+   `runCatching` with no failure branch: if the GET threw and no cached copy
+   existed, the map stayed empty, all six switches rendered off, and the screen
+   said nothing. On a consent surface that is not a blank state — it is a false
+   statement about what the user has agreed to, and the obvious reaction
+   (re-toggling) writes consents they already had. There is now an explicit card
+   — *"The switches below are not showing what you have agreed to… Nothing has
+   changed. Try again before you touch them"* — and a retry. Verified on device
+   by signing out to clear the cache and opening the screen with no network; the
+   user's stored consent was untouched throughout, then confirmed byte-for-byte.
+2. **Thirteen unlabelled language chips filled the first screen.** Nothing said
+   what they changed, so they read as the app's language rather than the notice's
+   — on the screen where DPDP s.5(3) makes that distinction the point. Labelled.
+
+**Left deliberately — needs a translator, not a coder:** two of the six category
+hints describe the DEFAULT rather than the category ("Voice storage · Off by
+default", "Model training · Separate opt-in only"). They are true but tell the
+user nothing about what the data is for, and on a settings screen they are
+stale the moment someone turns one on. The fix is 26 strings inside a
+hand-shipped 13-language DPDP notice — legally-operative text — and rewriting it
+in twelve languages I cannot check is a worse risk than a weak hint.
+
+**Also noted, not changed:** the notice caption ends "Change any of this later in
+Settings" while being read *in* Settings. Odd, not false, and it lives in the
+same 13-language notice.
 
 ## Gotchas this device adds
 

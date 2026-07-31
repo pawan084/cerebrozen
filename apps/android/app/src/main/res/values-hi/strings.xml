@@ -459,6 +459,9 @@
     <string name="theme_dawn_hint">दिन के लिए एक गर्म, हल्का रूप</string>
     <string name="privacy_loading">आपके विकल्प लोड हो रहे हैं…</string>
     <string name="privacy_consent_error">यह बदलाव सहेजा नहीं जा सका — कनेक्शन देखें और फिर कोशिश करें।</string>
+    <string name="privacy_notice_language_label">यह सूचना इस भाषा में पढ़ें</string>
+    <string name="privacy_consent_load_failed_title">आपकी पसंद लोड नहीं हो सकी</string>
+    <string name="privacy_consent_load_failed_body">नीचे के स्विच वह नहीं दिखा रहे जो आपने चुना है — सर्वर से संपर्क नहीं हो सका। कुछ भी बदला नहीं है। इन्हें छूने से पहले फिर कोशिश करें।</string>
     <string name="privacy_stats_title">गुमनाम उपयोग आँकड़े</string>
     <string name="privacy_stats_hint">सिर्फ़ गिनती — कभी आपकी सामग्री या खाता नहीं</string>
     <string name="privacy_unlock_journal">जर्नल अनलॉक करें</string>

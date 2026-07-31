@@ -238,13 +238,33 @@ fun PrivacyScreen(onBack: () -> Unit) {
     }
     val notice = noticeFor(noticeLang)
     val activity = LocalContext.current as? FragmentActivity
-    LaunchedEffect(Unit) {
-        runCatching { val c = Api.consent(); CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
-        runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
-        loaded = true
+    // A failed read must not render as "you consented to nothing".
+    //
+    // This used to be a bare runCatching with no failure branch: if the GET threw
+    // and there was no cached copy, the map stayed empty, every switch drew OFF,
+    // and the screen said nothing. On a consent surface that is not a blank
+    // state, it is a false statement about what the user has agreed to — and the
+    // obvious reaction, re-toggling, would write consents they already had.
+    var consentLoadFailed by remember { mutableStateOf(false) }
+    fun loadConsent() {
+        consentLoadFailed = false
+        scope.launch {
+            runCatching { Api.consent() }
+                .onSuccess { c -> CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
+                .onFailure { consentLoadFailed = true }
+            runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
+            loaded = true
+        }
     }
+    LaunchedEffect(Unit) { loadConsent() }
     SubPage(stringResource(R.string.privacy_control_line), notice.title, onBack) {
         Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        // The picker was thirteen unlabelled chips filling the first screen, with
+        // nothing saying what they change — easily read as the app's language
+        // rather than the notice's (DPDP s.5(3): the notice must be readable in
+        // English or an Eighth-Schedule language, which is what this is for).
+        Text(stringResource(R.string.privacy_notice_language_label),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
         ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
             noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
         }
@@ -261,6 +281,17 @@ fun PrivacyScreen(onBack: () -> Unit) {
                         setupSyncFailed = false
                         runCatching { Session.prefPut(CONSENT_SYNC_FAILED_KEY, "false") }
                     }) { Text(stringResource(R.string.common_got_it), color = Periwinkle) }
+                }
+            }
+            if (consentLoadFailed) {
+                SectionCard {
+                    Text(stringResource(R.string.privacy_consent_load_failed_title),
+                        style = MaterialTheme.typography.titleMedium, color = Danger)
+                    Text(stringResource(R.string.privacy_consent_load_failed_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    TextButton(onClick = { loadConsent() }) {
+                        Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                    }
                 }
             }
             val consentSaveError = stringResource(R.string.privacy_consent_error)

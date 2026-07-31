@@ -564,6 +564,9 @@
     <string name="region_eu">Europe</string>
     <string name="privacy_loading">Loading your choices…</string>
     <string name="privacy_consent_error">Couldn\'t save that change — check your connection and try again.</string>
+    <string name="privacy_notice_language_label">Read this notice in</string>
+    <string name="privacy_consent_load_failed_title">We couldn’t load your choices</string>
+    <string name="privacy_consent_load_failed_body">The switches below are not showing what you have agreed to — we could not reach the server. Nothing has changed. Try again before you touch them.</string>
     <string name="privacy_stats_title">Anonymous usage stats</string>
     <string name="privacy_stats_hint">Counts only — never your content or account</string>
     <string name="privacy_unlock_journal">Unlock journal</string>
