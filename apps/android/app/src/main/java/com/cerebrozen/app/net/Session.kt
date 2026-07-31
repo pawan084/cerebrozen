@@ -39,6 +39,7 @@ object Session {
         "password",
         "authorization",
     )
+    /sdfsdkjfk
 
     /** Compose-observable auth state; gates the whole UI in CereBroApp. */
     var signedIn by mutableStateOf(false)

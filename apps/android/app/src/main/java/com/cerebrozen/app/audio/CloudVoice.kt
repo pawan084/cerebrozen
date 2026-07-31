@@ -73,18 +73,38 @@ class CloudVoice(private val context: Context) {
      * write and prepare run off the main thread (this is called from a coroutine),
      * but the MediaPlayer is created on the caller's Looper so completion callbacks
      * still fire. The reply file is deleted once played. */
-    suspend fun play(mp3: ByteArray, onDone: () -> Unit = {}) {
+    suspend fun play(mp3: ByteArray, onDone: () -> Unit = {}): Boolean {
         stopPlayback()
-        runCatching {
+        return runCatching {
             withContext(Dispatchers.IO) { reply.writeBytes(mp3) }
             val p = MediaPlayer()
             p.setDataSource(reply.absolutePath)
-            p.setOnCompletionListener { speaking = false; reply.delete(); onDone() }
+            p.setOnCompletionListener {
+                speaking = false
+                player = null
+                it.release()
+                reply.delete()
+                onDone()
+            }
+            p.setOnErrorListener { failed, _, _ ->
+                speaking = false
+                player = null
+                failed.release()
+                reply.delete()
+                true
+            }
             withContext(Dispatchers.IO) { p.prepare() }   // the blocking step
             player = p
             speaking = true
             p.start()
-        }.onFailure { speaking = false; reply.delete(); onDone() }
+            true
+        }.getOrElse {
+            player?.release()
+            player = null
+            speaking = false
+            reply.delete()
+            false
+        }
     }
 
     /** Tap-to-interrupt (mirrors the iOS barge-in affordance). */

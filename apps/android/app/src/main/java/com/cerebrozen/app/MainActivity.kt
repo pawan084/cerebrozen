@@ -12,6 +12,7 @@ import com.cerebrozen.app.ui.theme.CereBroTheme
 
 // FragmentActivity (still a ComponentActivity) so androidx.biometric can
 // attach its prompt — needed by the journal lock.
+//skdfjklsdjfkldsjf
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Transparent system bars so the app's gradient backgrounds run edge to edge.
