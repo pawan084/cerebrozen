@@ -114,7 +114,7 @@ fun PatternScreen(onBack: () -> Unit) {
                 learned = parsePatterns(it)
                 hiddenCount = it.optInt("suppressed")
             }
-            .onFailure { patternsError = it.message ?: loadFailed }
+            .onFailure { patternsError = it.userMessage(loadFailed) }
         runCatching { parseMemories(Api.memories()) }
             .onSuccess { remembered = it }
             .onFailure { remembered = emptyList() }
@@ -154,7 +154,7 @@ fun PatternScreen(onBack: () -> Unit) {
                         scope.launch {
                             runCatching { Api.suppressPattern(p.statement) }
                                 .onSuccess { reload++ }
-                                .onFailure { memoryError = it.message ?: memoryOff }
+                                .onFailure { memoryError = it.userMessage(memoryOff) }
                         }
                     }
                 }
@@ -230,14 +230,19 @@ fun PatternScreen(onBack: () -> Unit) {
                             label = { Text(stringResource(R.string.patterns_edit)) },
                             singleLine = false,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // FlowRow: Save/Cancel beside a memory whose text can be
+                        // long, and both labels grow in Hindi.
+                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             TextButton(onClick = {
                                 val body = editText.trim()
                                 if (body.isEmpty()) return@TextButton
                                 scope.launch {
                                     runCatching { Api.editMemory(m.id, body) }
                                         .onSuccess { editingId = null; reload++ }
-                                        .onFailure { memoryError = it.message ?: memoryOff }
+                                        .onFailure { memoryError = it.userMessage(memoryOff) }
                                 }
                             }) { Text(stringResource(R.string.patterns_save), color = Periwinkle) }
                             TextButton(onClick = { editingId = null }) {
@@ -261,7 +266,7 @@ fun PatternScreen(onBack: () -> Unit) {
                                 scope.launch {
                                     runCatching { Api.deleteOneMemory(m.id) }
                                         .onSuccess { reload++ }
-                                        .onFailure { memoryError = it.message ?: memoryOff }
+                                        .onFailure { memoryError = it.userMessage(memoryOff) }
                                 }
                             }) { Text(stringResource(R.string.patterns_delete_one), color = Danger) }
                         }
@@ -282,7 +287,7 @@ fun PatternScreen(onBack: () -> Unit) {
                     scope.launch {
                         runCatching { Api.addMemory(body) }
                             .onSuccess { draft = ""; memoryError = null; reload++ }
-                            .onFailure { memoryError = it.message ?: memoryOff }
+                            .onFailure { memoryError = it.userMessage(memoryOff) }
                     }
                 },
             ) { Text(stringResource(R.string.patterns_add), color = Periwinkle) }
@@ -310,7 +315,7 @@ fun PatternScreen(onBack: () -> Unit) {
                                 remembered = emptyList()
                                 status = clearedTemplate.format(it.optInt("chat_messages"), it.optInt("insights"), it.optInt("memories"))
                             }
-                            .onFailure { status = it.message ?: deleteFailed }
+                            .onFailure { status = it.userMessage(deleteFailed) }
                     }
                 },
             ) {

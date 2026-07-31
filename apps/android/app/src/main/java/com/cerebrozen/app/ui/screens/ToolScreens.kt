@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Alignment
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
@@ -55,7 +56,7 @@ fun BreathingScreen(onBack: () -> Unit) {
                     scope.launch {
                         runCatching { Api.createJournal(journalTitle, journalBody) }
                             .onSuccess { saved = true; Celebrations.trigger() }
-                            .onFailure { status = it.message ?: saveFailed }
+                            .onFailure { status = it.userMessage(saveFailed) }
                     }
                 }
             },
@@ -111,7 +112,7 @@ private fun JournalingTool(
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
                     .onSuccess { saved = true; Celebrations.trigger() }
-                    .onFailure { status = it.message ?: saveFailed }
+                    .onFailure { status = it.userMessage(saveFailed) }
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
@@ -160,13 +161,29 @@ fun TippScreen(onBack: () -> Unit) {
             Text(how, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             Text(why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = idx > 0, onClick = { idx-- }) { Text(stringResource(R.string.tipp_previous), color = TextMuted) }
-            Text(stringResource(R.string.tipp_progress, idx + 1, steps.size), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        // maxLines/weight rather than a bare SpaceBetween: three labelled controls
+        // on one line is the shape that broke the Goals row and the sleep TimeRow
+        // at 720px, and every label here is longer in Hindi.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(enabled = idx > 0, onClick = { idx-- }) {
+                Text(stringResource(R.string.tipp_previous), color = TextMuted, maxLines = 1)
+            }
+            Text(
+                stringResource(R.string.tipp_progress, idx + 1, steps.size),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted, maxLines = 1,
+            )
             if (idx < steps.size - 1) {
-                TextButton(onClick = { idx++ }) { Text(stringResource(R.string.common_next), color = Periwinkle) }
+                TextButton(onClick = { idx++ }) {
+                    Text(stringResource(R.string.common_next), color = Periwinkle, maxLines = 1)
+                }
             } else {
-                TextButton(onClick = onBack) { Text(stringResource(R.string.tipp_done), color = Ok) }
+                TextButton(onClick = onBack) {
+                    Text(stringResource(R.string.tipp_done), color = Ok, maxLines = 1)
+                }
             }
         }
         Text(stringResource(R.string.tipp_urge_note),

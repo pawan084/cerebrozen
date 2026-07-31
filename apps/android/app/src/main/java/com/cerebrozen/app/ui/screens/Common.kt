@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Gradients
@@ -391,6 +392,23 @@ internal fun InfoBanner(
 /** Shared page frame for the live tabs: eyebrow + serif title + scroll column.
  * [trailing] renders as a soft icon well top-right — quiet ornamentation
  * mirroring iOS ScreenScaffold's trailingSystemImage, not a control. */
+/**
+ * A failure message that is safe to put in front of a user.
+ *
+ * `it.userMessage(fallback)` was the idiom at 19 call sites, and it leaks whatever
+ * the JVM threw: pulling the plug on the dev stack put "Failed to connect to
+ * localhost/127.0.0.1:8000" on the Programs screen, and in the field it would be
+ * "Unable to resolve host ..." or a JSON parse error. None of that means anything
+ * to someone who just lost signal.
+ *
+ * [Session.ApiException] is the exception: its message is the server's own
+ * `detail`, already curated for humans in `Session.raw` (including the free-tier
+ * cap and the rate limiter). Everything else falls back to the caller's own
+ * localized line, which is specific to the screen and says something useful.
+ */
+internal fun Throwable.userMessage(fallback: String): String =
+    (this as? Session.ApiException)?.message?.takeIf { it.isNotBlank() } ?: fallback
+
 @Composable
 internal fun Page(
     eyebrow: String,

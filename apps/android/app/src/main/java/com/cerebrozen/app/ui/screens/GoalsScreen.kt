@@ -130,7 +130,7 @@ fun GoalsScreen(onBack: () -> Unit) {
         scope.launch {
             runCatching { block() }
                 .onSuccess { error = null }
-                .onFailure { error = it.message ?: saveFailed }
+                .onFailure { error = it.userMessage(saveFailed) }
             reload++
         }
     }

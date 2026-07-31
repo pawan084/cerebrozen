@@ -324,6 +324,33 @@ class ScreenLogicTest {
         }
     }
 
+    // ── Failure text a user is actually allowed to see ──
+    @Test
+    fun aNetworkFailureShowsOurWordsNotTheJvmS() {
+        // Pulling the plug on the dev stack used to put "Failed to connect to
+        // localhost/127.0.0.1:8000" on the Programs screen, because 19 call
+        // sites did `it.message ?: fallback`. In the field that reads "Unable to
+        // resolve host ..." — true, and meaningless to someone who lost signal.
+        val fallback = "We couldn't reach the server."
+        assertEquals(fallback, java.net.ConnectException("Failed to connect to localhost/127.0.0.1:8000").userMessage(fallback))
+        assertEquals(fallback, java.net.UnknownHostException("api.cerebrozen.in").userMessage(fallback))
+        assertEquals(fallback, org.json.JSONException("End of input at character 0").userMessage(fallback))
+    }
+
+    @Test
+    fun theServersOwnDetailIsKeptBecauseItIsWrittenForPeople() {
+        // Session.raw already curates ApiException's message from the server's
+        // `detail` — including the free-tier cap and the rate limiter — so that
+        // one must survive rather than be flattened into a generic line.
+        val fallback = "generic"
+        assertEquals(
+            "You've used your 50 messages for today.",
+            com.cerebrozen.app.net.Session.ApiException(429, "You've used your 50 messages for today.").userMessage(fallback),
+        )
+        // A blank server detail is no better than nothing — fall back.
+        assertEquals(fallback, com.cerebrozen.app.net.Session.ApiException(500, "").userMessage(fallback))
+    }
+
     // ── Trusted contact (the crisis surface's one editable thing) ──
     @Test
     fun aContactIsSavableOnceThereIsSomewhereToSendIt() {

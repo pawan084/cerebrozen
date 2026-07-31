@@ -195,7 +195,7 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                                             version = it.optInt("version")
                                             savedField = field
                                         }
-                                        .onFailure { error = field to (it.message ?: saveFailed) }
+                                        .onFailure { error = field to (it.userMessage(saveFailed)) }
                                     savingField = null
                                 }
                             },

@@ -421,6 +421,8 @@
     <string name="programs_intro">शांत आधार की ओर कई दिनों के रास्ते। कभी भी शुरू करें; अपनी रफ़्तार से चलें।</string>
     <string name="programs_loading">यात्राएँ लोड हो रही हैं…</string>
     <string name="programs_error_fallback">यात्राएँ लोड नहीं हो पाईं — थोड़ी देर में फिर कोशिश करें।</string>
+    <string name="programs_active_unknown_title">आपकी यात्रा जाँची नहीं जा सकी</string>
+    <string name="programs_active_unknown_body">अगर कोई यात्रा चल रही थी, तो वह अब भी वहीं है — हम बस सर्वर से पढ़ नहीं सके। नीचे कुछ भी शुरू या प्रतिस्थापित नहीं हुआ है।</string>
     <string name="programs_day_eyebrow">प्रोग्राम · दिन %1$d / %2$d</string>
     <string name="programs_completed_subtitle">पूरा हुआ — बहुत सुंदर। जब मन हो, कोई और शुरू करें।</string>
     <string name="programs_active_subtitle">आज बस आ जाना ही पूरा काम है।</string>

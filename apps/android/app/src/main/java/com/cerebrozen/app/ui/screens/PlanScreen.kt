@@ -178,7 +178,7 @@ fun PlanScreen(onBack: () -> Unit) {
                 busy = true; status = null
                 scope.launch {
                     runCatching { adopt(Api.regeneratePlan()) }
-                        .onFailure { status = it.message ?: updateFailed }
+                        .onFailure { status = it.userMessage(updateFailed) }
                     busy = false
                 }
             }
