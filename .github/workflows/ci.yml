@@ -39,6 +39,29 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: pip install -r requirements-dev.txt
+      # The suite builds its schema with Base.metadata.create_all (init_db), so it
+      # never executes a migration — meaning a broken or forked Alembic history is
+      # invisible to pytest and green CI can still ship an API that cannot boot.
+      # That happened on 2026-07-31: two revisions claimed the same parent, and
+      # `prestart.py`'s `upgrade head` refuses to choose between heads.
+      # Runs against its own database so the pytest path is untouched.
+      - name: Migrations — single head, applies from scratch
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@localhost:5432/migrations_ci
+          SECRET_KEY: ci-secret
+          PGPASSWORD: cerebro
+        run: |
+          set -euo pipefail
+          psql -h localhost -U cerebro -d cerebro -c 'CREATE DATABASE migrations_ci;'
+          heads=$(alembic heads | grep -c '(head)' || true)
+          if [ "$heads" -ne 1 ]; then
+            alembic heads
+            echo "::error::${heads} Alembic heads — prestart runs 'upgrade head' and cannot pick one. Run 'alembic merge' to join them."
+            exit 1
+          fi
+          # Proves the whole chain applies to an empty database, not just that it parses.
+          alembic upgrade head
       - name: Run pytest
         working-directory: backend
         env:

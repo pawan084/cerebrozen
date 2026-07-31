@@ -123,6 +123,15 @@ ago, and Android is now the lead client.
   is Linux + Temurin 17. If the job has been failing on Linux for something
   platform-specific, this change is what will finally surface it — which is the
   point, but expect the first red to be informative rather than a regression.
+- [x] **And the second breakage was invisible too.** The two-heads incident could
+  never have failed CI: the suite builds its schema with `Base.metadata.create_all`
+  (`init_db`), so pytest never executes a migration — a forked or broken Alembic
+  history is simply not exercised, and green CI could ship an API that won't boot.
+  The backend job now asserts a single head and runs `alembic upgrade head` against
+  its own scratch database (`migrations_ci`, so the pytest path is untouched),
+  proving the chain applies from empty rather than merely parsing.
+  Verified by reproducing the failure: with `8c27b8990a90` moved aside, `alembic
+  heads` reports **2** and the step fails; restored, it reports **1** and passes.
 - [ ] Still worth doing and needs GitHub access: a **branch-protection rule** so
   these checks must pass before `main` accepts a push. CI going red does not
   currently stop anything from landing.
