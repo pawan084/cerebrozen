@@ -78,13 +78,15 @@ async def _active(db: AsyncSession, user: User) -> ProgramEnrollment | None:
     )
 
 
-@router.get("/active")
-async def active_program(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
-    e = await _active(db, user)
-    if e is None:
-        return {"program": None}
+async def _full_view(db: AsyncSession, e: ProgramEnrollment) -> dict:
+    """The enrollment WITH its day guides.
+
+    Both /active and /enroll return "the program", so both must return the same
+    program. They did not: enroll returned the bare `_view`, so a client that
+    rendered straight from the enroll response — the web app does — saw no
+    guides at all until something else refetched. The journey path simply did not
+    appear after enrolling, which an e2e run caught and code review had not.
+    """
     view = _view(e)
     item = await db.get(ContentItem, e.content_id)
     guide = _today_guide(item, view["day"])
@@ -93,7 +95,17 @@ async def active_program(
     guides = _all_guides(item)
     if guides is not None:
         view["guides"] = guides
-    return {"program": view}
+    return view
+
+
+@router.get("/active")
+async def active_program(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    e = await _active(db, user)
+    if e is None:
+        return {"program": None}
+    return {"program": await _full_view(db, e)}
 
 
 @router.post("/enroll", status_code=201)
@@ -139,7 +151,7 @@ async def enroll(
         prior.active = True
         await db.commit()
         await db.refresh(prior)
-        return {"program": _view(prior)}
+        return {"program": await _full_view(db, prior)}
 
     e = ProgramEnrollment(
         user_id=user.id, content_id=item.id, title=item.title, days=payload.days
@@ -147,7 +159,7 @@ async def enroll(
     db.add(e)
     await db.commit()
     await db.refresh(e)
-    return {"program": _view(e)}
+    return {"program": await _full_view(db, e)}
 
 
 @router.delete("/active", status_code=200)

@@ -94,3 +94,39 @@ async def test_a_different_program_is_always_a_fresh_start(client):
 
     other = (await client.post("/programs/enroll", json={"content_id": second})).json()["program"]
     assert other["day"] == 1, "another program must not inherit the first one's position"
+
+
+async def test_enroll_returns_the_same_shape_as_active(client):
+    """Both endpoints return "the program", so both must return the same program.
+
+    Enroll used to return the bare view with no `guides`, so a client rendering
+    straight from the enroll response — the web app does — showed no journey
+    path until something else refetched. Caught by an e2e run, not by review.
+    """
+    from sqlalchemy import select as _select
+
+    from app.models.content import ContentItem as _ContentItem
+
+    async with SessionLocal() as s:
+        seeded = await s.scalar(
+            _select(_ContentItem).where(
+                _ContentItem.kind == "program", _ContentItem.day_guides.isnot(None)
+            )
+        )
+        if seeded is None:  # hermetic DB without the seeded catalogue
+            seeded = _ContentItem(
+                title=f"Guided {uuid.uuid4().hex[:6]}", subtitle="7 days", kind="program",
+                day_guides=[{"title": "Day one", "body": "Settle in."},
+                            {"title": "Day two", "body": "Keep going."}],
+            )
+            s.add(seeded)
+            await s.commit()
+        cid = str(seeded.id)
+
+    await _signup(client)
+    enrolled = (await client.post("/programs/enroll", json={"content_id": cid})).json()["program"]
+    active = (await client.get("/programs/active")).json()["program"]
+
+    assert enrolled.get("guides"), "enroll must carry the week, not just the day count"
+    assert enrolled["guides"] == active["guides"]
+    assert enrolled.get("today_guide") == active.get("today_guide")
