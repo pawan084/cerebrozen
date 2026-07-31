@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -77,6 +78,30 @@ internal fun artAccents(kind: String): Pair<Color, Color> = when (kind) {
 /** The single accent a kind contributes to surrounding chrome (banner wash). */
 internal fun artAccent(kind: String): Color = artAccents(kind).first
 
+/**
+ * Which composition a title gets WITHIN its kind — 0, 1 or 2.
+ *
+ * The kind decides the motif family (a moon means sleep); this decides how that
+ * family is arranged. Without it every meditation drew the same concentric
+ * rings in the same place, so a rail of three read as one design printed three
+ * times — the "procedural gradient blobs" complaint, and it was fair.
+ *
+ * Derived from a SECOND hash of the title rather than [artSeed], so the
+ * composition and the hue vary independently: two siblings that land on close
+ * hues will still be laid out differently. Deterministic — the same title is
+ * always the same picture, on every device and every run.
+ */
+internal fun artVariant(title: String): Int {
+    var h = 0x811C9DC5.toInt()
+    for (ch in title) h = (h xor ch.code) * 0x01000193
+    return ((h ushr 8) and 0x7FFFFFFF) % 3
+}
+
+/** How far a title wanders from its kind's lead hue. Widened from the original
+ * 0.25..0.70 band: siblings were separating by only a few degrees, which reads
+ * as "the same teal" at tile size. */
+internal fun artHueShift(title: String): Float = 0.12f + 0.76f * artSeed(title)
+
 /** The three diagonal-gradient stops for a piece: a clearly-hued top-left
  * settling through a deep mid into a near-night floor. The per-title seed
  * rotates the hue inside the family and nudges the depth, so every title is
@@ -86,7 +111,7 @@ internal fun artStops(title: String, kind: String): List<Color> {
     val seed = artSeed(title)
     // Wander well inside the family so siblings are clearly distinct hues, and
     // keep the lead stop rich (light darkening) — muddiness kills the art.
-    val lead = lerp(a, b, 0.25f + 0.45f * seed)
+    val lead = lerp(a, b, artHueShift(title))
     val mid = lerp(b, a, 0.35f * (1f - seed))
     return listOf(
         lerp(lead, ArtScrim, 0.22f + 0.10f * seed),
@@ -159,40 +184,57 @@ private fun orbBreath(phase: Float?): Float =
     if (phase == null) 1f else 1f + 0.03f * sin(TAU * 2f * phase)
 
 private fun DrawScope.drawContentArt(title: String, kind: String, motifScale: Float, phase: Float? = null) {
-    // Base: the kind-family diagonal gradient, drifted per title.
-    drawRect(
-        Brush.linearGradient(
-            artStops(title, kind),
-            start = Offset.Zero,
-            end = Offset(size.width, size.height),
-        ),
-    )
-    // A subtle top-light — white 8% radial at top-left. Constant: the art base
-    // is always deep, so this reads on both themes.
+    val seed = artSeed(title)
+    val variant = artVariant(title)
+    // Base: the kind-family gradient, drifted per title AND run along a
+    // different axis per variant.
+    //
+    // Direction is the cheapest visible difference at thumbnail size. A 48dp
+    // tile is too small to read a hue nudge, so before this every tile of a kind
+    // looked like the same teal square whatever the seed did — the axis is what
+    // actually separates them at the size they are usually seen.
+    val (gStart, gEnd) = when (variant) {
+        0 -> Offset.Zero to Offset(size.width, size.height)                     // ↘ diagonal
+        1 -> Offset(size.width, 0f) to Offset(0f, size.height)                  // ↙ counter-diagonal
+        else -> Offset(size.width * 0.5f, 0f) to Offset(size.width * 0.5f, size.height)  // ↓ vertical
+    }
+    drawRect(Brush.linearGradient(artStops(title, kind), start = gStart, end = gEnd))
+    // A subtle top-light — white 8% radial, from the corner the gradient starts
+    // at so the light and the fall always agree.
     drawRect(
         Brush.radialGradient(
             listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
-            center = Offset.Zero,
+            center = gStart,
             radius = maxOf(size.width, size.height) * 0.9f,
         ),
     )
-    val seed = artSeed(title)
     when (kind) {
-        "sleep" -> drawMoonMotif(seed, motifScale, phase)
-        "soundscape" -> drawWaveMotif(seed, motifScale, phase)
-        "meditation", "wind_down" -> drawRingsMotif(seed, motifScale, phase)
+        "sleep" -> drawMoonMotif(seed, motifScale, phase, variant)
+        "soundscape" -> drawWaveMotif(seed, motifScale, phase, variant)
+        "meditation", "wind_down" -> drawRingsMotif(seed, motifScale, phase, variant)
         "program" -> drawDayDotsMotif(seed, motifScale, phase)
         else -> drawOrbMotif(seed, motifScale, phase)
     }
+}
+
+/** Where a motif sits, by variant: right-of-centre, high-left, or low-right.
+ * Three anchors is enough — a rail shows two or three tiles at a time, so
+ * neighbours never repeat a position. */
+private fun DrawScope.anchorFor(variant: Int, seed: Float): Offset = when (variant) {
+    0 -> Offset(size.width * (0.62f + 0.10f * seed), size.height * 0.40f)
+    1 -> Offset(size.width * (0.26f + 0.10f * seed), size.height * 0.30f)
+    else -> Offset(size.width * (0.72f + 0.08f * seed), size.height * 0.66f)
 }
 
 // ── Motifs — soft translucent white geometry, abstract and thin ─────────────
 
 /** Sleep: a moon crescent in a soft halo + two small stars (alive: the stars
  * twinkle 0.5→1 of their resting alpha on long, offset periods). */
-private fun DrawScope.drawMoonMotif(seed: Float, m: Float, phase: Float? = null) {
+private fun DrawScope.drawMoonMotif(seed: Float, m: Float, phase: Float? = null, variant: Int = 0) {
     val r = size.minDimension * 0.17f * m
-    val c = Offset(size.width * (0.66f + 0.10f * seed), size.height * 0.34f)
+    // Anchored by variant so two sleep stories side by side do not put their
+    // moons in the same corner.
+    val c = anchorFor(variant, seed)
     drawCircle(
         Brush.radialGradient(
             listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
@@ -230,7 +272,7 @@ private fun DrawScope.drawStar(center: Offset, r: Float, alpha: Float) {
 /** Soundscape: three layered sine waves, phase-shifted by the seed (alive:
  * the whole set drifts one full wavelength per 22s loop — near-imperceptible;
  * alternate layers drift opposite ways so the water shimmers, not scrolls). */
-private fun DrawScope.drawWaveMotif(seed: Float, m: Float, phase: Float? = null) {
+private fun DrawScope.drawWaveMotif(seed: Float, m: Float, phase: Float? = null, variant: Int = 0) {
     val stroke = Stroke(width = (size.minDimension * 0.020f * m).coerceAtLeast(1f))
     val drift = (phase ?: 0f) * TAU
     listOf(0.40f to 0.24f, 0.55f to 0.16f, 0.70f to 0.10f).forEachIndexed { i, (yFrac, alpha) ->
@@ -250,18 +292,41 @@ private fun DrawScope.drawWaveMotif(seed: Float, m: Float, phase: Float? = null)
 
 /** Meditation / wind-down: concentric breathing rings around a still core
  * (alive: each ring swells ±2% on a slow offset breath; the core stays still). */
-private fun DrawScope.drawRingsMotif(seed: Float, m: Float, phase: Float? = null) {
-    val c = Offset(size.width * (0.60f + 0.12f * seed), size.height * 0.42f)
+private fun DrawScope.drawRingsMotif(seed: Float, m: Float, phase: Float? = null, variant: Int = 0) {
+    val c = anchorFor(variant, seed)
     val base = size.minDimension * 0.14f * m
     val stroke = Stroke(width = (size.minDimension * 0.016f * m).coerceAtLeast(1f))
-    listOf(1f to 0.30f, 1.7f to 0.17f, 2.4f to 0.09f).forEachIndexed { i, (k, alpha) ->
-        drawCircle(
-            Color.White.copy(alpha = alpha),
-            radius = base * k * ringBreath(phase, i * 0.21f),
-            center = c, style = stroke,
-        )
+    when (variant) {
+        // Concentric — the original.
+        0 -> {
+            listOf(1f to 0.30f, 1.7f to 0.17f, 2.4f to 0.09f).forEachIndexed { i, (k, alpha) ->
+                drawCircle(Color.White.copy(alpha = alpha), base * k * ringBreath(phase, i * 0.21f), c, style = stroke)
+            }
+            drawCircle(Color.White.copy(alpha = 0.20f), base * 0.30f, c)
+        }
+        // Nested arcs — the same idea opened out, so it reads as a sibling
+        // rather than a repeat.
+        1 -> {
+            listOf(1.1f to 0.28f, 1.9f to 0.16f, 2.7f to 0.08f).forEachIndexed { i, (k, alpha) ->
+                val r = base * k * ringBreath(phase, i * 0.19f)
+                drawArc(
+                    Color.White.copy(alpha = alpha),
+                    startAngle = -150f + 22f * i, sweepAngle = 210f, useCenter = false,
+                    topLeft = Offset(c.x - r, c.y - r), size = Size(r * 2, r * 2), style = stroke,
+                )
+            }
+            drawCircle(Color.White.copy(alpha = 0.18f), base * 0.26f, c)
+        }
+        // Offset pair — two overlapping rings, quieter and wider.
+        else -> {
+            val d = base * 0.62f
+            listOf(c.copy(x = c.x - d), c.copy(x = c.x + d)).forEachIndexed { i, o2 ->
+                drawCircle(Color.White.copy(alpha = if (i == 0) 0.26f else 0.15f),
+                    base * 1.5f * ringBreath(phase, i * 0.25f), o2, style = stroke)
+            }
+            drawCircle(Color.White.copy(alpha = 0.16f), base * 0.24f, c)
+        }
     }
-    drawCircle(Color.White.copy(alpha = 0.20f), radius = base * 0.30f, center = c)
 }
 
 /** Program: a rising diagonal path of day dots — the journey shape, filled to
