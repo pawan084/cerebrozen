@@ -2,6 +2,7 @@ package com.cerebrozen.app.ui.theme
 
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /** Corner-radius ladder — mirrors the iOS Radius scale so shapes stay consistent
@@ -54,6 +55,25 @@ object Stroke {
 }
 
 /** Common gradient fills — `get()` properties for the same per-theme reason. */
+/**
+ * Card elevation. Theme-aware, because a shadow does different work in each.
+ *
+ * On Night a card separates by fill — a lighter indigo pane on a near-black
+ * ground — and the shadow is barely a hint. On Dawn the fill cannot separate at
+ * all: paper on paper is about 1.1:1 whatever the values, so the shadow IS the
+ * depth. It was tuned once, for dark, and Dawn inherited a shadow far too shy to
+ * lift a near-white card off a near-white page — which is most of why the light
+ * theme looked flat beside the dark one.
+ *
+ * Warm-toned on Dawn (an ink-brown rather than pure black) so the shade reads as
+ * paper light rather than a grey smudge.
+ */
+object CardShadow {
+    val elevation: Dp get() = if (AppTheme.isNight) 8.dp else 16.dp
+    val ambient: Color get() = if (AppTheme.isNight) Color(0x26000000) else Color(0x1C4A3A28)
+    val spot: Color get() = if (AppTheme.isNight) Color(0x30000000) else Color(0x38493826)
+}
+
 object Gradients {
     /** Primary CTA sweep. Night: the near-white pill (paired with [Ink] text via
      * [OnPrimary]). Dawn: a white pill disappears into the cream ground, so the
@@ -73,7 +93,7 @@ object Gradients {
         get() = if (AppTheme.isNight) {
             Brush.verticalGradient(listOf(Color(0xFF39355F), Color(0xFF2D294F)))
         } else {
-            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFF3F2FB)))
+            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFFBF7F1)))
         }
 
     /** The page backdrop base — deep night, or a pale dawn sky. */
@@ -81,6 +101,6 @@ object Gradients {
         get() = if (AppTheme.isNight) {
             Brush.verticalGradient(listOf(NightMid, Night))
         } else {
-            Brush.verticalGradient(listOf(Color(0xFFF7F8FE), Color(0xFFECEEFB)))
+            Brush.verticalGradient(listOf(Color(0xFFFBF9F5), Color(0xFFEDE7DC)))
         }
 }
