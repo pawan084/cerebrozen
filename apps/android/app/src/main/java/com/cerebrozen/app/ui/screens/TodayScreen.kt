@@ -48,12 +48,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material3.TextButton
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.CardFill
+import androidx.compose.ui.graphics.Color
+import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -79,13 +86,18 @@ private data class MoodOption(
     val intensity: Int,
     @androidx.annotation.StringRes val labelRes: Int,
     @androidx.annotation.StringRes val noteRes: Int,
+    /** The tile's own hue. Four identically grey pills made the most important
+     * interaction in the product read as a settings row; colour is the fastest
+     * way to make a feeling look like a feeling. Every value is a themed token,
+     * so both palettes stay contrast-gated. */
+    val tint: @Composable () -> Color,
 )
 
 private val MOODS = listOf(
-    MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note),
-    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note),
-    MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note),
-    MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note),
+    MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note) { Ok },
+    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note) { Warm },
+    MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note) { Periwinkle },
+    MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note) { Cyan },
 )
 
 /** Which greeting the hour calls for. Returns the resource, not the copy, so
@@ -294,6 +306,41 @@ private fun ContentRail(onOpen: (String) -> Unit) {
     }
 }
 
+/**
+ * One mood, as a tile you can hit without aiming.
+ *
+ * A soft orb in the mood's own colour over a tinted well — large enough to be
+ * the thing you look at, rather than a pill in a row of four. Tapping it IS the
+ * check-in; there is no second step.
+ */
+@Composable
+private fun MoodTile(mood: MoodOption, enabled: Boolean, onPick: () -> Unit) {
+    val tint = mood.tint()
+    val shape = RoundedCornerShape(18.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .pressScale(pressed, down = 0.96f)
+            .clip(shape)
+            .background(tint.copy(alpha = 0.14f))
+            .border(1.dp, tint.copy(alpha = 0.35f), shape)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
+                Haptics.tap(); onPick()
+            }
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            Modifier.size(28.dp).clip(CircleShape)
+                .background(Brush.radialGradient(listOf(tint.copy(alpha = 0.95f), tint.copy(alpha = 0.30f)))),
+        )
+        Text(stringResource(mood.labelRes), style = MaterialTheme.typography.titleMedium, color = TextSoft, maxLines = 1)
+        Text(stringResource(mood.noteRes), style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
+    }
+}
+
 /** Today, de-densified (REDESIGN §3.1): greeting → mood check-in → plan hero →
  * one content rail → presence → recent check-ins. One quiet Toolkit row instead
  * of a tile grid. */
@@ -303,7 +350,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var streak by remember { mutableIntStateOf(0) }
     var recent by remember { mutableStateOf(listOf<String>()) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
-    var picked by remember { mutableStateOf<MoodOption?>(null) }
+    // What was just logged, and its row id, so the tap can be taken back.
+    var loggedMood by remember { mutableStateOf<MoodOption?>(null) }
+    var loggedId by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
@@ -457,42 +506,73 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         // The primary daily action leads (REDESIGN §3.1): the 1-tap check-in.
         Box {
         SectionCard {
-            Text(stringResource(R.string.today_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(stringResource(R.string.today_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // E7: the mood chips rise in with the shared staggered entrance.
-                MOODS.forEachIndexed { i, mood ->
-                    Box(Modifier.appear(i, rise = 10f)) {
-                        PickChip(selected = picked == mood, label = stringResource(mood.labelRes)) { picked = mood }
+            val checkinFailed = stringResource(R.string.today_checkin_failed)
+            if (loggedMood == null) {
+                Text(stringResource(R.string.today_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.today_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // A 2x2 grid of tinted tiles, and ONE tap logs it.
+                //
+                // This was four grey pills in a horizontalScroll behind a
+                // separate "Check in" button: the fourth mood was clipped off
+                // the right edge on a 720px screen, the product's most important
+                // interaction took two taps, and the code comment above it had
+                // called it "the 1-tap check-in" the whole time. It is one tap
+                // now, and undoable — the same trade taken for Goals and
+                // Programs, because a confirm on a feeling is friction in the
+                // wrong place while a mis-tap needs to cost nothing.
+                MOODS.chunked(2).forEachIndexed { row, pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        pair.forEachIndexed { col, mood ->
+                            Box(Modifier.weight(1f).appear(row * 2 + col, rise = 10f)) {
+                                MoodTile(mood, enabled = !busy) {
+                                    busy = true; status = null
+                                    scope.launch {
+                                        try {
+                                            val row2 = Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
+                                            Haptics.success()
+                                            if (!reduceMotion) bloom++
+                                            loggedId = row2.optString("id")
+                                            loggedMood = mood
+                                            reload()
+                                        } catch (e: Exception) {
+                                            status = e.userMessage(checkinFailed)
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-            val checkedIn = stringResource(R.string.today_checkin_done)
-            val checkinFailed = stringResource(R.string.today_checkin_failed)
-            PrimaryButton(
-                text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.today_checkin_cta),
-                enabled = picked != null && !busy,
-            ) {
-                val mood = picked ?: return@PrimaryButton
-                busy = true; status = null
-                scope.launch {
-                    try {
-                        Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                        // E2: a small inline bloom + the success pulse — a calm
-                        // daily reward, not the full-screen celebration.
-                        Haptics.success()
-                        if (!reduceMotion) bloom++
-                        status = checkedIn
-                        picked = null
-                        reload()
-                    } catch (e: Exception) {
-                        status = e.message ?: checkinFailed
-                    } finally {
-                        busy = false
+            } else {
+                // The confirmation IS the moment — the mood said back in its own
+                // colour, with the way out beside it.
+                val mood = loggedMood!!
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(46.dp).clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(mood.tint().copy(alpha = 0.85f), mood.tint().copy(alpha = 0.25f)))),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.today_checkin_logged, stringResource(mood.labelRes)),
+                            style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(stringResource(mood.noteRes), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                     }
+                    TextButton(
+                        enabled = !busy,
+                        onClick = {
+                            val id = loggedId
+                            busy = true
+                            scope.launch {
+                                if (!id.isNullOrBlank()) runCatching { Api.deleteMood(id) }
+                                loggedMood = null; loggedId = null; status = null
+                                busy = false
+                                reload()
+                            }
+                        },
+                    ) { Text(stringResource(R.string.today_checkin_undo), color = Periwinkle, maxLines = 1) }
                 }
             }
             // The confirmation eases in rather than popping — a small, calm reward.

@@ -167,6 +167,8 @@
     <string name="today_checkin_subtitle">A 20-second check-in shapes today\'s plan.</string>
     <string name="today_checkin_cta">Check in</string>
     <string name="today_checkin_done">Checked in — noted gently.</string>
+    <string name="today_checkin_logged">%1$s — noted</string>
+    <string name="today_checkin_undo">Undo</string>
     <string name="today_checkin_failed">Couldn\'t check in.</string>
     <string name="today_plan_eyebrow">Today\'s plan</string>
     <string name="today_plan_next">Next: %1$s</string>

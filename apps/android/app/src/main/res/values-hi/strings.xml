@@ -126,6 +126,8 @@
     <string name="today_checkin_subtitle">20 सेकंड का चेक-इन आज की योजना तय करता है।</string>
     <string name="today_checkin_cta">चेक-इन करें</string>
     <string name="today_checkin_done">चेक-इन हो गया — धीरे से दर्ज कर लिया।</string>
+    <string name="today_checkin_logged">%1$s — दर्ज</string>
+    <string name="today_checkin_undo">पूर्ववत करें</string>
     <string name="today_checkin_failed">चेक-इन नहीं हो पाया।</string>
     <string name="today_plan_eyebrow">आज की योजना</string>
     <string name="today_plan_next">अगला: %1$s</string>
