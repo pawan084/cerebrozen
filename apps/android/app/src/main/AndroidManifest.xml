@@ -25,8 +25,11 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
+    <!-- enableOnBackInvokedCallback: targetSdk 35 opt-in to predictive back —
+         the system back gesture previews the destination instead of cutting. -->
     <application
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"

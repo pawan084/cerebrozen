@@ -67,32 +67,49 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Calendar
 
-/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy). */
-private data class MoodOption(val name: String, val note: String, val symbol: String, val intensity: Int)
-
-// i18n: pending — mood names/notes are the cross-stack mood taxonomy persisted
-// to the backend; needs a label/value split before display strings can localize.
-private val MOODS = listOf(
-    MoodOption("Good", "Clear", "sparkles", 2),
-    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
-    MoodOption("Low", "Heavy", "moon", 4),
-    MoodOption("Tired", "Need rest", "drop", 3),
+/** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
+ *
+ * [name]/[note]/[symbol] are WIRE VALUES — they go to the backend and are
+ * hand-duplicated across iOS/web (see CLAUDE.md), so they are never translated.
+ * [labelRes]/[noteRes] are the display copy and localize freely. */
+private data class MoodOption(
+    val name: String,
+    val note: String,
+    val symbol: String,
+    val intensity: Int,
+    @androidx.annotation.StringRes val labelRes: Int,
+    @androidx.annotation.StringRes val noteRes: Int,
 )
 
-// i18n: pending — pure function, needs context plumbing
-internal fun greetingFor(hour: Int): String = when (hour) {
-    in 5..11 -> "Good morning"
-    in 12..16 -> "Good afternoon"
-    else -> "Good evening"
+private val MOODS = listOf(
+    MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note),
+    MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note),
+    MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note),
+    MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note),
+)
+
+/** Which greeting the hour calls for. Returns the resource, not the copy, so
+ * the decision stays a pure unit-testable function AND localizes. */
+@androidx.annotation.StringRes
+internal fun greetingFor(hour: Int): Int = when (hour) {
+    in 5..11 -> R.string.today_greeting_morning
+    in 12..16 -> R.string.today_greeting_afternoon
+    else -> R.string.today_greeting_evening
 }
 
-private fun greeting(): String = greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+@Composable
+private fun greeting(): String =
+    stringResource(greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)))
 
-/** A gentle celebration line on milestone days — presence framing (REDESIGN
- * §3.6): counts showing up, never chains or misses. Calm, never punitive. */
-// i18n: pending — pure function, needs context plumbing
+/** Whether [streak] is a milestone worth a gentle line — presence framing
+ * (REDESIGN §3.6): counts showing up, never chains or misses. Pure; the copy
+ * itself lives in `today_milestone` so it can localize. */
+internal fun isMilestone(streak: Int): Boolean = streak in setOf(3, 7, 14, 21, 30, 50, 100)
+
+/** The milestone line, or null on an ordinary day. */
+@Composable
 internal fun milestoneLine(streak: Int): String? =
-    if (streak in setOf(3, 7, 14, 21, 30, 50, 100)) "🎉 $streak days of showing up — beautifully done" else null
+    if (isMilestone(streak)) stringResource(R.string.today_milestone, streak) else null
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -141,9 +158,40 @@ internal fun homeBannerPriority(
 ): HomeBanner = when {
     offline -> HomeBanner.OFFLINE
     hour < 11 && !lastNightLogged && "sleep" !in dismissed -> HomeBanner.SLEEP_CHECKIN
-    hour >= 21 && "winddown" !in dismissed -> HomeBanner.WIND_DOWN
+    hour >= com.cerebrozen.app.ui.theme.WIND_DOWN_FROM_HOUR && "winddown" !in dismissed -> HomeBanner.WIND_DOWN
     enrolledInProgram -> HomeBanner.PROGRAM
     else -> HomeBanner.NONE
+}
+
+/** One "Recent check-ins" line: "Good · Clear", or just "Good" when there is no
+ * note.
+ *
+ * Was `"${m.getString("mood")} · ${m.getString("note")}"`, which had two faults.
+ * A note-less check-in rendered as "anxious · " — a dangling separator pointing
+ * at nothing, seen on device. And `getString` THROWS on a null field, inside a
+ * `runCatching` that swallows it, so one null note would have made the whole
+ * section vanish rather than degrade. Pure. */
+internal fun checkInLine(m: JSONObject): String {
+    val mood = m.optString("mood").trim()
+    val note = m.optString("note").trim()
+    return if (note.isEmpty()) mood else "$mood · $note"
+}
+
+/** The line under the plan title on Home: never an echo of the title.
+ *
+ * `title` and `focus` come back identical for rule-generated plans (the
+ * generator names the plan after its focus goal), so rendering focus under the
+ * title repeated it verbatim. Prefer the rationale — the "why this, today" line
+ * — and fall back to focus only when it actually says something new. Pure. */
+internal fun planSubtitle(plan: JSONObject): String {
+    val title = plan.optString("title").trim()
+    val rationale = plan.optString("rationale").trim()
+    val focus = plan.optString("focus").trim()
+    return when {
+        rationale.isNotEmpty() && !rationale.equals(title, ignoreCase = true) -> rationale
+        focus.isNotEmpty() && !focus.equals(title, ignoreCase = true) -> focus
+        else -> ""
+    }
 }
 
 /** True when any sleep-log date covers "last night" — a log saved this morning
@@ -183,18 +231,25 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
     }
 }
 
-/** Time-matched rail kind + heading (mirrors the iOS Home rails). */
-// i18n: pending — pure function, needs context plumbing (headings are user copy)
-internal fun railKindFor(hour: Int): Pair<String, String> = when {
-    hour < 12 -> "meditation" to "For this morning"
-    hour < 17 -> "soundscape" to "A midday reset"
-    else -> "sleep" to "For tonight"
+/** Time-matched rail kind + heading (mirrors the iOS Home rails). The kind is a
+ * backend content-kind WIRE VALUE; the heading is a resource id, so the pairing
+ * stays a pure unit-testable function and the copy still localizes. */
+internal fun railKindFor(hour: Int): Pair<String, Int> = when {
+    // The small hours belong to the night before, not to the morning after.
+    // Seen on device at 00:09: the theme had gone Night for wind-down while this
+    // rail offered "For this morning · Body scan" — a 10-minute meditation, to
+    // someone still awake past midnight.
+    com.cerebrozen.app.ui.theme.isWindDownHour(hour) -> "sleep" to R.string.today_rail_tonight
+    hour < 12 -> "meditation" to R.string.today_rail_morning
+    hour < 17 -> "soundscape" to R.string.today_rail_midday
+    else -> "sleep" to R.string.today_rail_tonight
 }
 
 /** A horizontal card rail of served content, matched to the time of day. */
 @Composable
 private fun ContentRail(onOpen: (String) -> Unit) {
-    val (kind, heading) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val (kind, headingRes) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    val heading = stringResource(headingRes)
     val route = if (kind == "sleep") "sleep" else "sounds"
     var items by remember { mutableStateOf<JSONArray?>(null) }
     LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
@@ -261,10 +316,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     val scope = rememberCoroutineScope()
 
     fun parseRecent(moods: JSONArray): List<String> =
-        (0 until minOf(moods.length(), 3)).map { i ->
-            val m = moods.getJSONObject(i)
-            "${m.getString("mood")} · ${m.getString("note")}"
-        }
+        (0 until minOf(moods.length(), 3)).map { i -> checkInLine(moods.getJSONObject(i)) }
 
     suspend fun reload() {
         runCatching {
@@ -341,6 +393,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         // The one quiet banner slot (W9): at most one, by honest priority.
         val today = LocalDate.now().toString()
+        // Hoisted so a recomposition of Today doesn't hand every banner a fresh
+        // lambda identity (which defeats the banners' own skipping).
+        val openSleep = remember(onOpen) { { onOpen("sleep") } }
+        val openMixer = remember(onOpen) { { onOpen("sounds/mixer") } }
+        val openPrograms = remember(onOpen) { { onOpen("programs") } }
+        val dismissSleep: () -> Unit = remember(today) {
+            { Session.prefPut("sleepBannerDismissed", today); dismissTick++ }
+        }
+        val dismissWindDown: () -> Unit = remember(today) {
+            { Session.prefPut("windDownBannerDismissed", today); dismissTick++ }
+        }
         val dismissed = remember(dismissTick, today) {
             buildSet {
                 if (Session.prefGet("sleepBannerDismissed") == today) add("sleep")
@@ -364,15 +427,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 icon = Icons.Outlined.LightMode,
                 text = stringResource(R.string.today_banner_sleep),
                 actionLabel = stringResource(R.string.today_banner_sleep_action),
-                onAction = { onOpen("sleep") },
-                onDismiss = { Session.prefPut("sleepBannerDismissed", today); dismissTick++ },
+                onAction = openSleep,
+                onDismiss = dismissSleep,
             )
             HomeBanner.WIND_DOWN -> InfoBanner(
                 icon = Icons.Outlined.Bedtime,
                 text = stringResource(R.string.today_banner_winddown),
                 actionLabel = stringResource(R.string.today_banner_winddown_action),
-                onAction = { onOpen("sounds/mixer") },
-                onDismiss = { Session.prefPut("windDownBannerDismissed", today); dismissTick++ },
+                onAction = openMixer,
+                onDismiss = dismissWindDown,
                 artKind = "sleep",   // W21: content invitation → art medallion
             )
             HomeBanner.PROGRAM -> program?.let { prog ->
@@ -384,7 +447,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         prog.optInt("day"), prog.optInt("days"), prog.optString("title"),
                     ),
                     actionLabel = stringResource(R.string.common_open),
-                    onAction = { onOpen("programs") },
+                    onAction = openPrograms,
                     artKind = "program",   // W21: journey status → art medallion
                 )
             }
@@ -403,7 +466,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 // E7: the mood chips rise in with the shared staggered entrance.
                 MOODS.forEachIndexed { i, mood ->
                     Box(Modifier.appear(i, rise = 10f)) {
-                        PickChip(selected = picked == mood, label = mood.name) { picked = mood }
+                        PickChip(selected = picked == mood, label = stringResource(mood.labelRes)) { picked = mood }
                     }
                 }
             }
@@ -453,7 +516,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 kind = "program",
                 eyebrow = stringResource(R.string.today_plan_eyebrow),
                 title = p.optString("title"),
-                subtitle = p.optString("focus"),
+                // The generator sets title = the focus goal, so "focus" was the
+                // SAME string and the card printed "Sleep before midnight" twice,
+                // one line under the other. `rationale` is the field worth the
+                // space — it says why today's plan looks like this — and it was
+                // being fetched and thrown away.
+                subtitle = planSubtitle(p),
                 height = 190.dp,
                 alive = true,   // W24: a slow glow pass walks the day dots
                 onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)

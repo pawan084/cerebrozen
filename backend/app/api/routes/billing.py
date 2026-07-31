@@ -40,3 +40,26 @@ async def create_checkout(request: Request, payload: CheckoutBody,
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
                             detail="Couldn't start checkout. Try again shortly.")
     return {"url": url}
+
+
+@router.post("/portal")
+@limiter.limit("10/minute")
+async def create_portal(request: Request, user: User = Depends(get_current_user)):
+    """Open Stripe's billing portal — change card, switch plan, cancel.
+
+    409 rather than 502 when the account has never checked out: there is
+    genuinely nothing to manage yet, which is a state, not a failure.
+    """
+    if not settings.stripe_enabled:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Web billing isn't available yet — subscriptions live in the iOS app for now.")
+    if not user.stripe_customer_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="No billing account yet — subscribe first.")
+    try:
+        url = await stripe_billing.create_portal_session(user.stripe_customer_id)
+    except stripe_billing.StripeError as exc:
+        logger.warning("Portal failed for %s: %s", user.id, exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="Couldn't open the billing portal — try again shortly.")
+    return {"url": url}

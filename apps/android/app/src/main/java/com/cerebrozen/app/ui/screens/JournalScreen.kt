@@ -39,11 +39,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
-import com.cerebrozen.app.ui.Haptics
-import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -84,7 +85,7 @@ private fun quickPrompts(): List<String> = listOf(
 
 /** The journal's information architecture (mirrors the redesign): a hub plus three
  * pushed sub-screens for writing, reviewing history, and privacy. */
-private enum class JournalMode { Home, Entry, History, Private }
+private enum class JournalMode { Home, Entry, History, Private, Read }
 
 internal data class Entry(val title: String, val body: String, val date: String, val risk: String)
 
@@ -126,10 +127,13 @@ fun JournalScreen() {
     var query by remember { mutableStateOf("") }
     var mood by rememberSaveable { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(JournalMode.Home) }
-    // W10: one-shot bloom per saved entry (Reduce Motion never arms it), and the
-    // draft-safe banner — captured at FIRST composition, so it's true only when
+    // The entry being read in full. Android could WRITE journal entries and never
+    // read one back: history rows were not tappable, so the only view of your own
+    // writing was a 120-character, two-line preview. iOS has had JournalDetailView
+    // since the start; this is the missing half of the feature, not a new one.
+    var reading by remember { mutableStateOf<Entry?>(null) }
+    // The draft-safe banner — captured at FIRST composition, so it's true only when
     // the fields arrived restored (rotation / process death), never after typing.
-    var bloom by remember { mutableIntStateOf(0) }
     val restoredDraft = remember { title.isNotBlank() || body.isNotBlank() }
     var draftBannerDismissed by remember { mutableStateOf(false) }
     val reduceMotion = rememberReduceMotion()
@@ -180,73 +184,103 @@ fun JournalScreen() {
                         onDismiss = { draftBannerDismissed = true },
                     )
                 }
-                Box {
-                SectionCard {
-                    Text(stringResource(R.string.journal_release_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    // Quick entries (REDESIGN §2.2): the old one-field tools live on
-                    // as prompt chips — tapping prefills the title, and only ever
-                    // replaces a blank title or the other prompt, never your words.
-                    val quick = quickPrompts()
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        quick.forEach { prompt ->
-                            PickChip(selected = title == prompt, label = prompt) {
-                                if (title.isBlank() || title in quick) title = prompt
-                            }
+            SectionCard {
+                Text(stringResource(R.string.journal_release_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                // Quick entries (REDESIGN §2.2): the old one-field tools live on
+                // as prompt chips — tapping prefills the title, and only ever
+                // replaces a blank title or the other prompt, never your words.
+                val quick = quickPrompts()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    quick.forEach { prompt ->
+                        PickChip(selected = title == prompt, label = prompt) {
+                            if (title.isBlank() || title in quick) title = prompt
                         }
                     }
-                    AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
-                    AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
-                    Text(stringResource(R.string.journal_feeling_label),
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    journalMoods().chunked(3).forEach { rowMoods ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            rowMoods.forEach { m ->
-                                PickChip(selected = mood == m, label = m) {
-                                    mood = if (mood == m) null else m
-                                }
-                            }
-                        }
-                    }
-                    val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
-                    val savedStatus = stringResource(R.string.journal_saved)
-                    val saveFailed = stringResource(R.string.common_save_failed)
-                    PrimaryButton(
-                        text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.journal_save_cta),
-                        enabled = !busy && title.isNotBlank() && body.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        busy = true; status = null
-                        scope.launch {
-                            try {
-                                // Persist the chosen feeling with the entry so the chip is real.
-                                val entryBody = body.trim().let { b ->
-                                    mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
-                                }
-                                val saved = Api.createJournal(title.trim(), entryBody)
-                                showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
-                                title = ""; body = ""; mood = null
-                                draftBannerDismissed = true   // the draft became an entry
-                                status = savedStatus
-                                // W10: the success pulse + a small bloom over the
-                                // composer (same calm reward as the Home check-in),
-                                // then home. Reduce Motion skips straight there —
-                                // the status line is the state change.
-                                Haptics.success()
-                                runCatching { entries = parseEntries(Api.journal()) }
-                                if (!reduceMotion) { bloom++; delay(650) }
-                                mode = JournalMode.Home
-                            } catch (e: Exception) {
-                                status = e.message ?: saveFailed
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    }
-                    status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
                 }
-                // W10: the one-shot bloom rides over the composer card; Reduce
-                // Motion never arms it (bloom stays 0).
-                if (bloom > 0) BloomRing(bloom, Accent.journal, Modifier.matchParentSize())
+                AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
+                AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
+                Text(stringResource(R.string.journal_feeling_label),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // FlowRow, not chunked(3) + Row: a fixed three-per-row grid has no
+                // way to give, so a longer translation or a large system font size
+                // pushes the third chip off the edge. (Not reproducible on this
+                // device — the OEM blocks both `settings put system font_scale`
+                // and `wm density` — so this is hardened by construction rather
+                // than from a screenshot.)
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                run {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        journalMoods().forEach { m ->
+                            PickChip(selected = mood == m, label = m) {
+                                mood = if (mood == m) null else m
+                            }
+                        }
+                    }
+                }
+                val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
+                val savedStatus = stringResource(R.string.journal_saved)
+                val saveFailed = stringResource(R.string.common_save_failed)
+                PrimaryButton(
+                    text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.journal_save_cta),
+                    enabled = !busy && title.isNotBlank() && body.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    busy = true; status = null
+                    scope.launch {
+                        try {
+                            // Persist the chosen feeling with the entry so the chip is real.
+                            val entryBody = body.trim().let { b ->
+                                mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
+                            }
+                            val saved = Api.createJournal(title.trim(), entryBody)
+                            showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
+                            title = ""; body = ""; mood = null
+                            draftBannerDismissed = true   // the draft became an entry
+                            status = savedStatus
+                            // The shared app-root flourish (Celebration is
+                            // reuse-only — Breathing/CBT fire the same one).
+                            // It owns the success haptic and its own Reduce
+                            // Motion branch, so nothing is re-implemented here.
+                            Celebrations.trigger()
+                            runCatching { entries = parseEntries(Api.journal()) }
+                            if (!reduceMotion) delay(650)
+                            mode = JournalMode.Home
+                        } catch (e: Exception) {
+                            status = e.message ?: saveFailed
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
+                status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            }
+            }
+            return
+        }
+        JournalMode.Read -> {
+            val e = reading
+            if (e == null) {
+                mode = JournalMode.History
+            } else {
+                SubPage(e.date, e.title.ifBlank { stringResource(R.string.journal_untitled) },
+                    onBack = { mode = JournalMode.History }) {
+                    if (e.body.isBlank()) {
+                        SectionCard {
+                            Text(stringResource(R.string.journal_read_empty_title),
+                                style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                            Text(stringResource(R.string.journal_read_empty_body),
+                                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        }
+                    } else {
+                        SectionCard {
+                            // The whole entry, never truncated — this screen exists
+                            // precisely because the preview was all there was.
+                            Text(e.body, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                        }
+                    }
                 }
             }
             return
@@ -266,7 +300,9 @@ fun JournalScreen() {
                         AppTextField(query, { query = it }, stringResource(R.string.journal_search_label), singleLine = true)
                     }
                     val shown = filterEntries(entries, query)
-                    shown.take(20).forEachIndexed { i, e -> JournalEntryCard(e, i) }
+                    shown.take(20).forEachIndexed { i, e ->
+                        JournalEntryCard(e, i) { reading = e; mode = JournalMode.Read }
+                    }
                     if (shown.isEmpty()) {
                         Text(stringResource(R.string.journal_no_match, query.trim()),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -370,13 +406,16 @@ fun JournalScreen() {
 /** A single history entry as a glass row: an accent bar (warm when the entry was
  * flagged for support), date, title, and a two-line preview. Real data only. */
 @Composable
-private fun JournalEntryCard(entry: Entry, index: Int) {
+private fun JournalEntryCard(entry: Entry, index: Int, onOpen: () -> Unit) {
     val elevated = entry.risk !in listOf("none", "low")
+    val openCd = stringResource(R.string.journal_open_entry_cd, entry.title.ifBlank { entry.date })
     Row(
         Modifier
             .fillMaxWidth()
             .appear(index, rise = 8f)
             .glass()
+            .clickable(onClick = onOpen)
+            .semantics { contentDescription = openCd }
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,

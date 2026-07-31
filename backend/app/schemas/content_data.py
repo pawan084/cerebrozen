@@ -203,12 +203,187 @@ class SleepSummaryOut(BaseModel):
 
 # ── Safety ──────────────────────────────────────────────────────────────
 class SafetyEventOut(BaseModel):
+    """A row in the admin review queue.
+
+    Deliberately carries NO excerpt. The queue is a triage surface — listing it
+    would spray verbatim private journal/chat text across an ops screen on every
+    page load, for every row, whether or not anyone needed to read it. A reviewer
+    who needs the text fetches one row from ``/admin/safety/{id}/excerpt``, which
+    is a deliberate, per-row, logged act. ``excerpt_chars`` is here so the UI can
+    show that there IS text (and how much) without disclosing it.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     user_id: uuid.UUID
     source: str
     risk_level: str
     reason: str
-    excerpt: str
+    excerpt_chars: int = 0
     resolved: bool
+    resolved_by: uuid.UUID | None = None
+    resolved_at: datetime | None = None
+    resolution_note: str = ""
+    created_at: datetime
+
+
+class SafetyExcerptOut(BaseModel):
+    """The verbatim text behind one flagged event — fetched on demand only."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    excerpt: str
+
+
+# ── Context memory ──────────────────────────────────────────────────────
+class MemoryOut(BaseModel):
+    """One remembered item the user can act on individually.
+
+    ``source`` is surfaced so a client can be honest about provenance — the
+    user's own words read differently from something they merely approved.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    body: str
+    source: str
+    salience: float
+    expires_at: datetime | None = None
+    dismissed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class MemoryCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+    source: str = "manual"
+    salience: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class MemoryUpdate(BaseModel):
+    """All fields optional — a PATCH may rewrite the text, re-weight it, or
+    hide it without deleting."""
+
+    body: str | None = Field(default=None, min_length=1, max_length=2000)
+    salience: float | None = Field(default=None, ge=0.0, le=1.0)
+    dismissed: bool | None = None
+
+
+class PatternSuppress(BaseModel):
+    """Hide one computed pattern. Identified by its statement — patterns are
+    derived on the fly and have no id of their own."""
+
+    statement: str = Field(min_length=1, max_length=2000)
+
+
+# ── Safety plan ─────────────────────────────────────────────────────────
+class SafetyPlanOut(BaseModel):
+    """A saved plan. Every section is plain text the user wrote — the API
+    never scores, ranks or interprets them."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    version: int
+    warning_signs: str
+    internal_coping: str
+    social_distractors: str
+    social_support: str
+    professionals: str
+    means_safety: str
+    notes: str
+    archived_at: datetime | None = None
+    created_at: datetime
+
+
+class SafetyPlanUpdate(BaseModel):
+    """All sections optional so the guided flow can save one at a time;
+    unset fields carry over from the live version rather than blanking it."""
+
+    warning_signs: str | None = Field(default=None, max_length=4000)
+    internal_coping: str | None = Field(default=None, max_length=4000)
+    social_distractors: str | None = Field(default=None, max_length=4000)
+    social_support: str | None = Field(default=None, max_length=4000)
+    professionals: str | None = Field(default=None, max_length=4000)
+    means_safety: str | None = Field(default=None, max_length=4000)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+# ── Recommendations ─────────────────────────────────────────────────────
+class RecommendationOut(BaseModel):
+    """A suggested practice plus the pattern that prompted it. `reason` is
+    never omitted — a suggestion with no visible basis is what the Pattern
+    Dashboard exists to avoid."""
+
+    id: uuid.UUID
+    slug: str
+    title: str
+    body: str
+    action: str
+    reason: str
+    status: str
+
+
+# ── Goals + habits (the things the user defines) ────────────────────────
+class GoalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    why: str
+    status: str
+    created_at: datetime
+
+
+class GoalCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    why: str = Field(default="", max_length=2000)
+
+
+class GoalUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    why: str | None = Field(default=None, max_length=2000)
+    # active | achieved | released — "released" is a real outcome, not a failure.
+    status: str | None = None
+
+
+class HabitOut(BaseModel):
+    """`recent_days` is a 7-day window, not a streak. The absence of a streak
+    field is deliberate: the schema shouldn't be able to say "you broke it"."""
+
+    id: uuid.UUID
+    title: str
+    cue: str
+    target_per_week: int
+    archived: bool
+    recent_days: list[str] = Field(default_factory=list)
+    done_today: bool = False
+
+
+class HabitCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    cue: str = Field(default="", max_length=255)
+    target_per_week: int = Field(default=7, ge=1, le=7)
+
+
+class HabitUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    cue: str | None = Field(default=None, max_length=255)
+    target_per_week: int | None = Field(default=None, ge=1, le=7)
+    archived: bool | None = None
+
+
+# ── Agent audit trail ───────────────────────────────────────────────────
+class AgentActionOut(BaseModel):
+    """One write the Oracle proposed and what the user decided.
+
+    No tool arguments: `save_journal` carries the journal body, and copying it
+    here would put private text in a second table with its own retention story.
+    `summary` is the same line the user already saw on the confirm card.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    tool: str
+    summary: str
+    status: str
+    decided_at: datetime | None = None
     created_at: datetime

@@ -24,7 +24,17 @@ const THUMBS = [
   "linear-gradient(160deg,#7a4a7a,#301640)",
 ];
 
-type Active = { content_id: string; title: string; day: number; days: number; completed: boolean };
+// `today_guide` is additive — omitted for programs with no day guides, and by
+// servers older than migration b8e6d1a4f527.
+type DayGuide = { title: string; body: string };
+type Active = {
+  content_id: string;
+  title: string;
+  day: number;
+  days: number;
+  completed: boolean;
+  today_guide?: DayGuide | null;
+};
 
 export default function Programs() {
   const [programs, setPrograms] = useState<Item[]>([]);
@@ -110,6 +120,22 @@ export default function Programs() {
                 ? "Complete — beautifully done. Start another whenever you like."
                 : "The day counts itself from when you started — showing up is the whole assignment."}
             </p>
+            {/* The day's own guide — without it the card is day-blind. Blank
+                titles and bodies count as no guide, matching the mobile clients. */}
+            {active.today_guide &&
+              (active.today_guide.title.trim() || active.today_guide.body.trim()) && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                  <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s guide</p>
+                  {active.today_guide.title.trim() && (
+                    <h4 style={{ margin: "0 0 4px", fontSize: 14 }}>{active.today_guide.title}</h4>
+                  )}
+                  {active.today_guide.body.trim() && (
+                    <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
+                      {active.today_guide.body}
+                    </p>
+                  )}
+                </div>
+              )}
             <button
               onClick={leave}
               style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--muted)", padding: 0, marginTop: 10 }}

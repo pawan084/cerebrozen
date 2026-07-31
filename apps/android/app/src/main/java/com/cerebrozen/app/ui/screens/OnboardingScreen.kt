@@ -25,11 +25,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -45,6 +50,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -118,6 +124,9 @@ import com.cerebrozen.app.ui.theme.WelcomeSubtitleText
 import com.cerebrozen.app.ui.theme.WelcomeSecondaryText
 import com.cerebrozen.app.ui.theme.WelcomeOrbMid
 import com.cerebrozen.app.ui.theme.WelcomeOrbEdge
+import com.cerebrozen.app.ui.theme.WelcomeOrbHaloInner
+import com.cerebrozen.app.ui.theme.WelcomeOrbHaloOuter
+import com.cerebrozen.app.ui.theme.WelcomeOrbHaloDisc
 import com.cerebrozen.app.ui.theme.PrimaryButtonFill
 import com.cerebrozen.app.ui.theme.PrimaryButtonInk
 import com.cerebrozen.app.ui.theme.PrimaryButtonDisabledFill
@@ -135,38 +144,95 @@ import com.cerebrozen.app.ui.theme.DotUnselectedFill
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
+internal enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
+
+/** How far along the funnel a step sits. Keyed off the step itself — never off
+ * the eyebrow copy, which is translated (a Hindi device used to fall through to
+ * 1f and snap the bar to full from the Language step on). Pure + unit-tested. */
+internal fun funnelProgress(step: OStep): Float = when (step) {
+    OStep.Welcome -> 0f
+    OStep.Disclosure -> 0.25f
+    OStep.Language -> 0.38f
+    OStep.State -> 0.50f
+    OStep.Reset -> 0.62f
+    OStep.Consent -> 0.75f
+    OStep.Notify -> 0.88f
+    OStep.SignUp -> 1f
+}
 
 /** One feeling tap is the whole "assessment" — each maps into the shared
  * motivation/goal taxonomy (cross-stack: iOS StateCheckScreen.states ⇄ web
  * lib/onboarding.FEELINGS) so plans and conversation starters ground on it.
- * `mood` keys the first check-in into the shared mood taxonomy. */
-internal data class StateOption(val label: String, val motivation: String, val goal: String, val mood: String)
-
-// i18n: pending — labels double as the rememberSaveable key (StateOptionSaver)
-// and motivation/goal/mood are the cross-stack taxonomy; needs an id-based
-// split before the labels can localize.
-internal val STATE_OPTIONS = listOf(
-    StateOption("Stressed and tense", "Calm", "Reduce stress", "Anxious"),
-    StateOption("Can't switch off at night", "Calm", "Sleep better", "Tired"),
-    StateOption("Overthinking everything", "Focus", "Stop overthinking", "Anxious"),
-    StateOption("Doubting myself", "Confidence", "Build confidence", "Low"),
-    StateOption("Feeling distant from people", "Connection", "Feel less alone", "Low"),
-    StateOption("Can't stay consistent", "Discipline", "Strengthen willpower", "Okay"),
+ * `mood` keys the first check-in into the shared mood taxonomy.
+ *
+ * [id] is our own stable key (saver / selection identity); [labelRes] is the
+ * display copy and localizes freely. motivation/goal/mood are WIRE VALUES of the
+ * cross-stack taxonomy — never translate them. */
+internal data class StateOption(
+    val id: String,
+    @androidx.annotation.StringRes val labelRes: Int,
+    val motivation: String,
+    val goal: String,
+    val mood: String,
 )
 
-// i18n: pending — the picked value is the rememberSaveable default/state and
-// (for NOTIFY) drives startsWith("Morning"/"Evening") logic; needs an id-based
-// split before these display strings can localize.
-private val LANGUAGES = listOf("English", "Hindi", "Hinglish", "Punjabi", "Tamil")
-private val NOTIFY = listOf("Morning 9 AM", "Evening 7 PM", "Private previews", "No reminders")
+internal val STATE_OPTIONS = listOf(
+    StateOption("stressed", R.string.ob_state_opt_stressed, "Calm", "Reduce stress", "Anxious"),
+    StateOption("night", R.string.ob_state_opt_night, "Calm", "Sleep better", "Tired"),
+    StateOption("overthinking", R.string.ob_state_opt_overthinking, "Focus", "Stop overthinking", "Anxious"),
+    StateOption("doubt", R.string.ob_state_opt_doubt, "Confidence", "Build confidence", "Low"),
+    StateOption("distant", R.string.ob_state_opt_distant, "Connection", "Feel less alone", "Low"),
+    StateOption("consistency", R.string.ob_state_opt_consistent, "Discipline", "Strengthen willpower", "Okay"),
+)
+
+/** A pickable chip: a stable [id] the code branches on, plus localizable copy. */
+internal data class PickOption(val id: String, @androidx.annotation.StringRes val labelRes: Int)
+
+private val LANGUAGES = listOf(
+    PickOption("English", R.string.ob_lang_english),
+    PickOption("Hindi", R.string.ob_lang_hindi),
+    PickOption("Hinglish", R.string.ob_lang_hinglish),
+    PickOption("Punjabi", R.string.ob_lang_punjabi),
+    PickOption("Tamil", R.string.ob_lang_tamil),
+)
+/** When the daily reminder fires. Single-select, so every option here must be a
+ * TIME — anything else silently means "none" once [applyReminderChoice] falls
+ * through its `when`.
+ *
+ * A "Private previews" chip used to sit in this group. Nothing read the value: it
+ * was never persisted, no preview setting exists anywhere in the app, and the
+ * reminder it would have hidden says only "A moment for you". What it actually
+ * did was turn reminders off — so a user who tapped it, wanting a *discreet*
+ * daily nudge, got no nudge at all and was told nothing. */
+internal val NOTIFY = listOf(
+    PickOption("morning", R.string.ob_notify_morning),
+    PickOption("evening", R.string.ob_notify_evening),
+    PickOption("none", R.string.ob_notify_none),
+)
+
+/** The hour a reminder option schedules, or null for "no reminder".
+ *
+ * Pure and internal so the invariant is a TEST rather than a comment: every id
+ * in [NOTIFY] must resolve here. When it was an inline `when` with a silent
+ * `else`, an option was added to the chip group that this mapping had never
+ * heard of, and choosing it quietly meant "off". */
+internal fun reminderHourFor(option: String): Int? = when (option) {
+    "morning" -> 9
+    "evening" -> 19
+    "none" -> null
+    else -> null
+}
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
+
+/** Set when the post-sign-up consent write never reached the server, so Privacy
+ * can say so instead of letting a failed write pass silently. */
+internal const val CONSENT_SYNC_FAILED_KEY = "consent_sync_failed"
 
 // Savers so a rotation / process death mid-funnel keeps the user's place and their
 // selections instead of dropping them back to Welcome.
 private val StateOptionSaver = Saver<StateOption?, String>(
-    save = { it?.label ?: "" },
-    restore = { label -> STATE_OPTIONS.firstOrNull { it.label == label } },
+    save = { it?.id ?: "" },
+    restore = { id -> STATE_OPTIONS.firstOrNull { it.id == id } },
 )
 private val ConsentSaver = mapSaver(
     save = { it.toMap() },
@@ -177,6 +243,17 @@ private val ConsentSaver = mapSaver(
     },
 )
 
+/** Whether the soft keyboard is showing.
+ *
+ * Every BackHandler in this funnel gates on it. Back's FIRST job on Android is
+ * to dismiss the keyboard, and a handler that is unconditionally enabled eats
+ * that press: on the sign-in step it navigated away instead, so a user closing
+ * the keyboard was thrown back to Welcome with the email and password they had
+ * just typed. Caught on a device the same evening the BackHandler was added. */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun imeVisible(): Boolean = WindowInsets.isImeVisible
+
 /**
  * Value-first onboarding funnel — the adult gate, honesty disclosure, a first
  * calming reset, then account + consent. New users flow through here; returning
@@ -185,25 +262,44 @@ private val ConsentSaver = mapSaver(
  */
 @Composable
 fun Onboarding() {
-    var signIn by remember { mutableStateOf(false) }
-    if (signIn) { AuthScreen(onBack = { signIn = false }); return }
+    var signIn by rememberSaveable { mutableStateOf(false) }
+    if (signIn) {
+        androidx.activity.compose.BackHandler(enabled = !imeVisible()) { signIn = false }
+        AuthScreen(onBack = { signIn = false })
+        return
+    }
 
     var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     val order = OStep.entries
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
     fun back() { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
 
+    // The system back gesture walks the funnel, exactly like the on-screen back.
+    // Without this it fell through to the Activity and FINISHED it: found on a
+    // device, a back swipe from any of the eight steps dropped the user onto the
+    // launcher, and relaunching restarted at Welcome — language, feeling and
+    // consent choices all gone, because rememberSaveable cannot survive an
+    // activity that was destroyed rather than recreated. Back is the most-used
+    // navigation control on Android; it was a trapdoor out of onboarding.
+    // Disabled on Welcome so back there still leaves the app, as expected, and
+    // while the keyboard is up so back still closes the keyboard first.
+    androidx.activity.compose.BackHandler(enabled = step != OStep.Welcome && !imeVisible()) { back() }
+
     // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
 
     var language by rememberSaveable { mutableStateOf("English") }
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
-    var notify by rememberSaveable { mutableStateOf("Evening 7 PM") }
+    var notify by rememberSaveable { mutableStateOf("evening") }
+    // Did they actually breathe, or press "Skip for now"? The Notify step used
+    // to congratulate everyone on "your first win" either way — telling a user
+    // who skipped that they had achieved something they had just declined.
+    var resetDone by rememberSaveable { mutableStateOf(false) }
     // Private by default: NOTHING pre-ticked — consent must be an action
     // (EDPB/ICO; matches iOS ConsentScreen + web onboarding).
     val consent = rememberSaveable(saver = ConsentSaver) {
         mutableStateMapOf(
-            "mood_history" to true, "ai_memory" to true, "journal_memory" to false,
+            "mood_history" to false, "ai_memory" to false, "journal_memory" to false,
             "sleep_history" to false, "voice_storage" to false, "model_training" to false,
         )
     }
@@ -215,11 +311,8 @@ fun Onboarding() {
     val notifyPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     fun applyReminderChoice() {
         val prefs = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
-        val hour = when {
-            notify.startsWith("Morning") -> 9
-            notify.startsWith("Evening") -> 19
-            else -> { prefs.edit().putBoolean("reminder_on", false).apply(); return }
-        }
+        val hour = reminderHourFor(notify)
+            ?: run { prefs.edit().putBoolean("reminder_on", false).apply(); return }
         prefs.edit().putBoolean("reminder_on", true).apply()
         com.cerebrozen.app.notify.Reminders.schedule(context, hour)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -251,6 +344,7 @@ fun Onboarding() {
         OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
 
         OStep.Disclosure -> Funnel(
+            OStep.Disclosure,
             stringResource(R.string.ob_disclosure_eyebrow), stringResource(R.string.ob_disclosure_title),
             stringResource(R.string.ob_disclosure_sub),
             stringResource(R.string.ob_disclosure_cta), onBack = { back() }, onPrimary = { next() },
@@ -261,10 +355,14 @@ fun Onboarding() {
                 Text(stringResource(R.string.ob_danger_line),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
+            // The age gate STATES the requirement. It used to show a tick with
+            // "Confirmed: I am 18 or older / Thank you" the instant the step
+            // opened — a compliance surface asserting a confirmation the user had
+            // not made, and thanking them for it. The confirmation is the CTA.
             ReferenceCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.size(40.dp).clip(CircleShape).background(GratitudeAvatarFill), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.Person, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = Color.White)
@@ -273,43 +371,55 @@ fun Onboarding() {
                 }
             }
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // IntrinsicSize.Min sizes the Row to the taller tile and both fill it,
+            // so they stay a matched pair without either one cropping its body.
+            Row(
+                Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 DisclosureTile(
                     stringResource(R.string.ob_can_help_title), Cyan,
                     stringResource(R.string.ob_can_help_body),
-                    Modifier.weight(1f),
+                    Modifier.weight(1f).fillMaxHeight(),
                 )
                 DisclosureTile(
-                    stringResource(R.string.ob_cant_do_title), TextSoft,
+                    stringResource(R.string.ob_cant_do_title), Warm,
                     stringResource(R.string.ob_cant_do_body),
-                    Modifier.weight(1f),
+                    Modifier.weight(1f).fillMaxHeight(),
                 )
             }
         }
 
         OStep.Language -> Funnel(
+            OStep.Language,
             stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
             stringResource(R.string.ob_language_sub),
             stringResource(R.string.common_continue), onBack = { back() }, onPrimary = { next() },
         ) {
-            ChipWrap(LANGUAGES, language) { language = it }
+            ChipWrapOptions(LANGUAGES, language) { language = it }
         }
 
         OStep.State -> Funnel(
+            OStep.State,
             stringResource(R.string.ob_state_eyebrow), stringResource(R.string.ob_state_title),
             stringResource(R.string.ob_state_sub),
             stringResource(R.string.common_continue), primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 STATE_OPTIONS.forEach { option ->
-                    StateOptionRow(option.label, state?.label == option.label) { state = option }
+                    StateOptionRow(stringResource(option.labelRes), state?.id == option.id) { state = option }
                 }
             }
         }
 
-        OStep.Reset -> ResetStep(onDone = { next() }, onBack = { back() })
+        OStep.Reset -> ResetStep(
+            onDone = { resetDone = true; next() },
+            onSkip = { next() },
+            onBack = { back() },
+        )
 
         OStep.Consent -> Funnel(
+            OStep.Consent,
             stringResource(R.string.ob_consent_eyebrow), stringResource(R.string.ob_consent_title),
             stringResource(R.string.ob_consent_sub),
             stringResource(R.string.common_continue), onBack = { back() },
@@ -353,11 +463,12 @@ fun Onboarding() {
         }
 
         OStep.Notify -> Funnel(
+            OStep.Notify,
             stringResource(R.string.ob_notify_eyebrow), stringResource(R.string.ob_notify_title),
-            stringResource(R.string.ob_notify_sub),
+            stringResource(if (resetDone) R.string.ob_notify_sub else R.string.ob_notify_sub_skipped),
             stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
         ) {
-            ChipWrap(NOTIFY, notify) { notify = it }
+            ChipWrapOptions(NOTIFY, notify) { notify = it }
         }
 
         OStep.SignUp -> AuthScreen(
@@ -366,7 +477,16 @@ fun Onboarding() {
             onAccountCreated = {
                 Analytics.track("onboarding_done")
                 runCatching { Api.attest() }
-                runCatching { Api.updateConsent(JSONObject().apply { consent.forEach { (k, v) -> put(k, v) } }) }
+                // Consent is the one write here that must never fail silently
+                // (DPDP integrity — we may not imply choices the server never
+                // took). The funnel's own composition is gone by now, so: retry
+                // once, and if it still doesn't land, flag it so Privacy tells
+                // the user their setup choices didn't save.
+                val consentBody = JSONObject().apply { consent.forEach { (k, v) -> put(k, v) } }
+                val consentSaved = runCatching { Api.updateConsent(consentBody) }
+                    .recoverCatching { Api.updateConsent(consentBody) }
+                    .isSuccess
+                runCatching { Session.prefPut(CONSENT_SYNC_FAILED_KEY, (!consentSaved).toString()) }
                 val selectedState = state
                 if (selectedState != null) {
                     runCatching {
@@ -455,13 +575,13 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
         val radius = this.size.minDimension * 0.38f
         drawCircle(
             Brush.radialGradient(
-                0.55f to Color(0x334F46B9), 0.82f to Color(0x224D45A7), 1f to Color.Transparent,
+                0.55f to WelcomeOrbHaloInner, 0.82f to WelcomeOrbHaloOuter, 1f to Color.Transparent,
                 center = center, radius = this.size.minDimension / 2f,
             ),
             this.size.minDimension / 2f,
             center,
         )
-        drawCircle(Color(0x183F3889), radius * 1.27f, center)
+        drawCircle(WelcomeOrbHaloDisc, radius * 1.27f, center)
         drawCircle(
             Brush.radialGradient(
                 0f to Color.White, 0.22f to WelcomeOrbMid, 1f to WelcomeOrbEdge,
@@ -475,11 +595,12 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
 }
 
 @Composable
-private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
+private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit) {
     // The orb, count and Reduce-Motion behaviour all come from the shared
     // BreatheEngine (Reset preset: four in, four out, no holds) — the same
     // engine every breathe surface in the app hosts.
     Funnel(
+        OStep.Reset,
         stringResource(R.string.ob_reset_eyebrow), stringResource(R.string.ob_reset_title),
         stringResource(R.string.ob_reset_sub),
         stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
@@ -487,7 +608,7 @@ private fun ResetStep(onDone: () -> Unit, onBack: () -> Unit) {
         secondary = {
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
-                    .background(ResetDoneFill).clickable(onClick = onDone),
+                    .background(ResetDoneFill).clickable(onClick = onSkip),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = Color.White)
@@ -506,6 +627,7 @@ private object FunnelProgressMemory { var last = 0f }
 
 @Composable
 private fun Funnel(
+    step: OStep,
     eyebrow: String,
     title: String,
     sub: String,
@@ -517,17 +639,7 @@ private fun Funnel(
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // i18n: pending — the progress fraction keys off the English eyebrow copy;
-    // needs a step-id parameter before the eyebrow strings can localize.
-    val progress = when (eyebrow.lowercase()) {
-        "honesty first" -> 0.25f
-        "speak your language" -> 0.38f
-        "one tap is enough" -> 0.50f
-        "your first reset" -> 0.62f
-        "privacy choices" -> 0.75f
-        "gentle reminders" -> 0.88f
-        else -> 1f
-    }
+    val progress = funnelProgress(step)
     Box(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)))
@@ -630,7 +742,14 @@ private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit
     }
 }
 
-/** One side of the two-up disclosure — a glass tile with an accent heading. */
+/** One side of the two-up disclosure — a glass tile with an accent heading.
+ *
+ * Grows to fit its body, never crops it. It used to be a fixed `.height(129.dp)`,
+ * and on a 720px device the "Can't do" tile cut the word "emergencies" in half —
+ * the single most important limitation on the screen whose entire job is stating
+ * limitations, silently truncated, in the shortest locale we ship. The caller
+ * pairs these in a Row at [IntrinsicSize.Min] so both sides still match height.
+ */
 @Composable
 private fun DisclosureTile(
     title: String,
@@ -639,11 +758,14 @@ private fun DisclosureTile(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier.height(129.dp).clip(RoundedCornerShape(17.dp)).background(ChipFill)
+        modifier.heightIn(min = 129.dp).clip(RoundedCornerShape(17.dp)).background(ChipFill)
             .border(1.dp, PickCardStroke, RoundedCornerShape(17.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 19.sp), color = Color.White)
+        // `accent` tints the heading — it was accepted and then never applied, so
+        // "Can help" and "Can't do" rendered identically in plain white despite
+        // the call site passing Cyan and TextSoft to tell them apart.
+        Text(title, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 19.sp), color = accent)
         Text(body, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp), color = FunnelBodyText)
     }
 }
@@ -658,7 +780,7 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
         options.forEach { opt ->
             val isSelected = selected == opt
             Box(
-                Modifier.height(47.dp).clip(RoundedCornerShape(14.dp))
+                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp))
                     .background(if (isSelected) Color.White else DotUnselectedFill)
                     .clickable { onPick(opt) }.padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center,
@@ -670,5 +792,16 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
                 )
             }
         }
+    }
+}
+
+/** [ChipWrap] over stable-id options: the chips show localized copy while the
+ * caller keeps branching on the id (reminder hour, language code). */
+@Composable
+internal fun ChipWrapOptions(options: List<PickOption>, selectedId: String?, onPick: (String) -> Unit) {
+    val labels = options.map { stringResource(it.labelRes) }
+    val selectedLabel = options.indexOfFirst { it.id == selectedId }.takeIf { it >= 0 }?.let { labels[it] }
+    ChipWrap(labels, selectedLabel) { label ->
+        labels.indexOf(label).takeIf { it >= 0 }?.let { onPick(options[it].id) }
     }
 }

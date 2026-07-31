@@ -48,6 +48,22 @@ async def test_admin_user_detail_is_metadata_only(admin_client):
     assert "Private thing" not in r.text
 
 
+async def test_admin_never_sees_context_memory(admin_client):
+    """`context_memories.body` is free text the user wrote about themselves —
+    the same firewall as journal bodies applies. Added with the table (2026-07-30)
+    so a new user-scoped text column can't quietly appear in a support view."""
+    me = (await admin_client.get("/auth/me")).json()
+    secret = "Remembers: I cannot sleep after arguing with my father"
+    assert (await admin_client.post("/users/me/memory", json={"body": secret})).status_code == 201
+
+    detail = await admin_client.get(f"/admin/users/{me['id']}")
+    assert detail.status_code == 200
+    assert secret not in detail.text
+
+    overview = await admin_client.get("/admin/metrics")
+    assert secret not in overview.text
+
+
 async def test_admin_user_detail_404(admin_client):
     r = await admin_client.get(f"/admin/users/{uuid.uuid4()}")
     assert r.status_code == 404

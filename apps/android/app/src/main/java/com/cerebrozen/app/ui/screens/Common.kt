@@ -1,5 +1,8 @@
 package com.cerebrozen.app.ui.screens
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -47,6 +50,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
@@ -97,6 +102,7 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightPurple
+import com.cerebrozen.app.ui.theme.OnDanger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.SurfaceRaised
@@ -150,15 +156,30 @@ internal fun reduceMotionFromScale(animatorDurationScale: Float): Boolean = anim
 @Composable
 internal fun rememberReduceMotion(): Boolean {
     val context = LocalContext.current
-    return remember(context) {
-        reduceMotionFromScale(
-            Settings.Global.getFloat(
-                context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
+    // Observed, not sampled once: toggling "Remove animations" in Settings used
+    // to have no effect until the Activity was recreated. Settings.Global is a
+    // ContentProvider, so we register for the key and re-read on every change.
+    val resolver = context.contentResolver
+    var reduced by remember(context) {
+        mutableStateOf(
+            reduceMotionFromScale(
+                Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f),
             ),
         )
     }
+    DisposableEffect(resolver) {
+        val uri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                reduced = reduceMotionFromScale(
+                    Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f),
+                )
+            }
+        }
+        runCatching { resolver.registerContentObserver(uri, false, observer) }
+        onDispose { runCatching { resolver.unregisterContentObserver(observer) } }
+    }
+    return reduced
 }
 
 /** A soft press-in: the target scales down slightly while held and springs back on
@@ -377,6 +398,14 @@ internal fun Page(
     trailing: ImageVector? = null,
     accent: Color = Accent.default,
     scrollState: ScrollState = rememberScrollState(),
+    /** Pinned below the scrolling body, outside [scrollState].
+     *
+     * For a composer that must not travel with the transcript. Talk had its
+     * message field at the end of the scrolling content, so after any real
+     * conversation you had to scroll to the bottom to type — and worse, its
+     * auto-scroll-on-new-reply went to `maxValue`, the very bottom of the PAGE,
+     * which is the composer and not the reply it meant to reveal. */
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Gentle content-rise on entry (complements the NavHost cross-fade).
@@ -385,9 +414,11 @@ internal fun Page(
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
     }
+    Column(Modifier.fillMaxSize()) {
     Column(
         Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .weight(1f)
             .verticalScroll(scrollState)
             .graphicsLayer { translationY = rise.value }
             .padding(horizontal = 24.dp, vertical = 28.dp),
@@ -423,6 +454,23 @@ internal fun Page(
             }
         }
         content()
+    }
+    footer?.let { pinned ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Night)))
+                // No imePadding here: the window already resizes for the
+                // keyboard (the Scaffold insets the NavHost), so adding it
+                // counted the keyboard height twice — the composer flew to the
+                // top of the screen with an empty half-screen beneath it, and
+                // the transcript slid under the status bar. Seen on device.
+                .padding(horizontal = 24.dp)
+                .padding(top = 10.dp, bottom = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = pinned,
+        )
+    }
     }
 }
 
@@ -617,7 +665,7 @@ internal fun DangerButton(
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Night else TextMuted2,
+            color = if (enabled) OnDanger else TextMuted2,
         )
     }
 }

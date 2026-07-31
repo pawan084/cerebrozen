@@ -60,7 +60,7 @@ test.describe("Web app (authenticated client)", () => {
     // Talk: the landing opens the chat; an assistant bubble must land (Oracle
     // stream with a key, deterministic /chat fallback otherwise).
     await nav(page, "Talk").click();
-    await page.getByRole("button", { name: "Type instead" }).click();
+    await page.getByRole("button", { name: "Start talking" }).click();
     await page.getByLabel("Message").fill("I keep overthinking tomorrow's meeting.");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator(".msg.user").first()).toBeVisible();
@@ -151,5 +151,40 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });
     await expect(page).toHaveURL(/\/home$/);
+  });
+
+  // The landing deep-links into app screens ("Open Sleep →"), which only works
+  // if a signed-out visitor is carried through sign-in back to what they
+  // clicked. Without this the links resolve but every one of them lands on Home.
+  test("a signed-out deep link returns to where it pointed after sign-in", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = `e2e-next-${Date.now()}@test.app`;
+
+    await page.goto(`${APP}/sleep`, { waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/signin\?next=%2Fsleep$/);
+
+    await page.getByRole("tab", { name: "Create account" }).click();
+    await page.locator('input[autocomplete="name"]').fill("E2E Next");
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill("password123");
+    await page.getByRole("button", { name: "Create my account" }).click();
+
+    await expect(page).toHaveURL(/\/sleep$/, { timeout: 20_000 });
+  });
+
+  // `next` is attacker-controlled, so it is an allow-list: same-origin absolute
+  // paths only. A protocol-relative URL must not become an open redirect.
+  test("refuses an off-origin next and falls back to Home", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = `e2e-evil-${Date.now()}@test.app`;
+
+    await page.goto(`${APP}/signin?next=//example.com/evil`, { waitUntil: "networkidle" });
+    await page.getByRole("tab", { name: "Create account" }).click();
+    await page.locator('input[autocomplete="name"]').fill("E2E Evil");
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill("password123");
+    await page.getByRole("button", { name: "Create my account" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`^${APP}/(home|onboarding)`), { timeout: 20_000 });
   });
 });

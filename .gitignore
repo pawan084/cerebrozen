@@ -76,3 +76,13 @@ apps/ios/Gemfile.lock
 
 # Local design reference / mockups (large, not source)
 ref/
+
+# Dev-stack PID file written by `npm run stack:up` — runtime state, not source.
+/.launch-dev.pids
+
+# A stray working copy of the SIBLING codebase (the services/engine +
+# services/platform layout lives on origin/main-sibling-legacy, not here).
+# 754 MB, referenced by nothing tracked in this repo, and it carries a real
+# services/engine/.env plus .venv/.next/*.db — none of which may enter history.
+# Ignored rather than deleted: it is not this project's to remove.
+/services/

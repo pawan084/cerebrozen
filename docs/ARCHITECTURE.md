@@ -78,7 +78,7 @@ cere/
 | `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
 | `/plans` | active (lazily generated), generate, step patch |
-| `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave |
+| `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave. **Enroll resumes**: re-enrolling in a program you LEFT reactivates the prior enrollment (keeping its `started_at`) while its window is still running, and starts fresh otherwise — so a stray tap on "Leave this journey" no longer forfeits the week, and a program abandoned months ago does not resume at "day 92" clamped to complete (`tests/test_program_resume.py`) |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
@@ -87,7 +87,7 @@ cere/
 | `/billing` | Stripe Checkout session for the web app (503 until `STRIPE_*` configured; iOS stays on StoreKit) |
 | `/webhooks/appstore` | App Store Server Notifications V2 (JWS-authenticated, keyed by `appAccountToken`) |
 | `/webhooks/stripe` | Stripe subscription lifecycle (HMAC `Stripe-Signature`, user via checkout `client_reference_id`/subscription metadata) — same `subscription_tier` contract |
-| `/media` | StaticFiles mount over `MEDIA_ROOT` (public, like `/content`; Range/ETag so native players stream + seek) — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
+| `/media` | StaticFiles mount over `MEDIA_ROOT`, fronted by `main.media_guard` (Range/ETag so native players stream + seek). Narration needs a signed per-item grant: `?t=` minted by `services.media.playback_url` when the caller is entitled, verified before the mount sees the request; no grant ⇒ 404. Players can't send headers, hence the URL-borne token — generated narration MP3s live at `/media/narration/{content_id}.mp3` (prod: named `media` volume) |
 
 ### Key services
 
@@ -108,7 +108,12 @@ cere/
   workers are safe); outcomes are `sent`/`skipped`/`failed`. Preference order for users
   without a native push token: browser Web Push (VAPID, `web_push_subscriptions`; dead
   404/410 endpoints pruned in place) → email when opted in (`users.email_nudges`) → honest
-  `skipped`. `POST /admin/nudges/dispatch` remains as a manual pass.
+  `skipped`. `POST /admin/nudges/dispatch` remains as a manual pass. The iOS half of the
+  APNs branch landed 2026-07-30 — `PushRegistrar` + `AppDelegate` obtain the device token
+  and `BackendService.syncPushToken` PUTs it to `/users/me/push-token` on every connect, so
+  `user.push_token` can finally be populated (previously the APNs path was unreachable and
+  every iOS user fell through to Web Push/email). Registration is gated on notification
+  authorization the user already granted, so it never prompts on its own.
 
 ### Oracle (LangGraph agent)
 
@@ -199,7 +204,7 @@ flowchart TD
     NOTIF -- "Enter CereBro" --> MAIN
 
     MAIN -. "You → Sign in<br>Talk → Sign in to talk live" .-> AUTH3["Auth sheet"]
-    AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region"]
+    AUTH3 -- connect --> SYNC["finishConnect: attest →<br>push reflection (only if hasAssessment) →<br>refresh plan/insights → consent + region →<br>APNs device token"]
     SYNC -.-> MAIN
 ```
 
@@ -208,7 +213,10 @@ attestation, pushes the local self-reflection **only when actually answered**
 (`AppState.hasAssessment` — app defaults must never overwrite a returning user's server
 selection), then fetches plan/insights and re-applies consent + crisis region. If the local
 reflection was never answered but the server has one, it's adopted into `AppState` instead
-(returning-user restore).
+(returning-user restore). Finally it drains any cached APNs device token
+(`PushRegistrar.unsyncedToken`) — the token is normally issued during onboarding, long
+before an account exists, so it is cached and replayed at connect exactly like consent,
+region and companion style.
 
 ### Cross-stack contracts (keep manually in sync)
 
@@ -224,16 +232,37 @@ reflection was never answered but the server has one, it's adopted into `AppStat
 | Onboarding funnel step names | `services/metrics.ONBOARDING_STEPS` | `OnboardingFlow.stepNames` |
 | Consent categories (6 flags, per-purpose) | `models/consent.py` + read-site gates | `Models.Consent` + Consent/Privacy screens (web: account page labels) |
 | Consent-notice translations (DPDP s.5(3): 13 languages, keys = consent columns) | — (client-side text) | `Trust/ConsentNotice.swift` ⇄ web `apps/app/lib/consentNotice.ts` ⇄ android `ui/screens/ConsentNotice.kt` |
-| Analytics event vocabulary + funnel step names | `routes/events.ALLOWED_EVENTS` (+ `source` enum incl. `android`) | iOS `Analytics.track` ⇄ android `net/Analytics.kt` (`funnelStepName` maps to `services/metrics.ONBOARDING_STEPS`) |
+| Analytics event vocabulary + funnel step names | `routes/events.ALLOWED_EVENTS` (+ `source` enum incl. `android`/`app`); `services/metrics.ONBOARDING_STEPS` is pinned by a test because the admin funnel joins on those strings and a rename drops a bar silently | web `apps/app/lib/analytics.ts` (`source=app`, gated on the Consent step, opt-out on the account page) ⇄ iOS `Analytics.track` ⇄ android `net/Analytics.kt` (`funnelStepName` maps to `services/metrics.ONBOARDING_STEPS`) |
 | Narration audio (`audio_url` on `/content` items) | `models/content.py` — relative `/media/…` (backend-minted) or absolute (admin-pasted); empty ⇒ client ambient fallback; `narration_script` is admin-only (`AdminContentOut`), never public. NOTE the deliberate asymmetry with `image_url`, which is always absolute | iOS `RemoteContent.audio_url` → `BackendService.resolveMedia` → `SoundscapePlayer` AVPlayer branch ⇄ android `MediaUrls.resolve/register` → `AmbientService` stream-else-bed ⇄ web `mediaSrc()` + `<audio>` (library/sleep pages; CSP `media-src`) |
+| Stripe webhook idempotency | `processed_webhooks` (provider, event_id) with a UNIQUE constraint — the guarantee is the database's, not the handler's, so concurrent deliveries race and one wins. Checked before any write; a duplicate returns `{"handled": false, "reason": "duplicate"}` | — (server-only) |
+| Stripe customer mapping | `users.stripe_customer_id`, learned from any event that carries one. Events edited in the Stripe dashboard or billing portal arrive WITHOUT our checkout metadata, so customer id is the fallback lookup — and what `POST /billing/portal` needs | web account page: "Manage billing" for subscribers, upgrade CTA for free |
+| Oracle write audit (`agent_actions`) | Proposal rows written by `routes/oracle.py` the moment a confirm card is emitted; `_record_decision` stamps approved/declined on resume, scoped to the caller's own rows so a guessed `thread_id` cannot mark someone else's proposal. Tool ARGUMENTS are never stored (`save_journal` carries the journal body). Covered by wipe + export; admin sees per-tool counts only | `GET /oracle/actions` is the user's own trail. No client renders it yet |
+| Reply language (`User.language`) | `services/language.py::for_user` — one directive shared by `routes/chat.py`, `services/agentic.generate_plan` and the Oracle. English returns `""` deliberately. The Oracle graph is compiled once, so its copy rides `config["configurable"]["language_directive"]`, not a closure | No client change: the preference already syncs via the profile. The app's own UI strings are a separate, unfinished job (Android `values-hi` only) |
+| VoiceOver announcements | — (client-only) | iOS `DesignSystem/Announce.swift` — attributed post at `.high` priority so announcements QUEUE rather than being dropped mid-speech, which the plain string form is. Fired on stream start, tool-confirm pause, stream completion and plain `/chat` replies. Android's equivalent is not yet wired |
+| Free-tier daily cap (429) | `services/usage.py` — `FREE_LIMIT_CODE = "free_daily_limit"` plus `limit`/`used`/`resets_at` in a STRUCTURED `detail`. The IP rate limiter (slowapi) also 429s but answers `{"error": …}` with no `detail`, so the two are distinguishable without guessing | iOS `APIError.freeLimit` → `FreeLimitView` ⇄ android `Session.FreeLimitException` → Talk card ⇄ web `FreeLimitError` → chat card. All three match on `detail.code`, never on the status, and render `resets_at` in the device's own timezone (the window is UTC — "midnight" is wrong outside it) |
+| Per-item AI memory (`/users/me/memory`) | `models/memory.py` `ContextMemory` — sources manual/confirmed/onboarding are user prose (editable); `suppressed_pattern` is a tombstone whose `body` is a computed statement to hide, filtered in `insights.compute_patterns`. Reads/writes gate on the `ai_memory` consent flag; DELETE never does, so switching memory off cannot trap data. Wipe-all and `/users/me/export` both cover the table | iOS `RemoteMemory` + `PatternDashboardView` ⇄ android `parseMemories` + `PatternScreen.kt` ⇄ web `/patterns`. All three show patterns and saved notes as SEPARATE sections: a pattern can only be hidden (nothing is stored to rewrite), a note can be edited |
+| Goals + habits (`/goals`, `/habits`) | `models/habit.py` — `Goal` (status active/achieved/**released**), `Habit` + `HabitCompletion` (unique per habit per day). `POST /goals/{id}/decompose` calls `agentic.generate_plan(focus_goal=…)`, so a goal feeds the ONE existing plan rather than a second to-do list. **No streak field anywhere:** completions are dated rows and the API returns a 7-day window, so the schema cannot express "you broke it" | iOS `GoalsHabitsView` ⇄ android `GoalsScreen.kt` ⇄ web `/goals`. All three render seven day-dots plus "N of the last 7 days" and no streak — the server sends no chain and no client computes one |
+| Pattern-driven recommendations (`/recommendations/mine`) | `models/recommendation.py` + `services/recommendations.py` — a hand-authored `practice_catalog` (seeded, admin-editable) plus a fragment-matched rule from pattern statement → practice slug. Every row stores `reason` = the pattern verbatim. Dismissing is permanent, not a snooze | iOS `PatternDashboardView` ⇄ android `PatternScreen.kt` ⇄ web `/patterns` — all three render "Something you could try" directly beneath the patterns section, so the basis sits on the same screen as the advice, and both actions resolve server-side (dismissal is permanent, never a snooze) |
+| Safety plan (`/safety-plan/me`) | `models/safety_plan.py` — the six Stanley-Brown sections, versioned, archive-not-delete; PUT merges unset fields so a guided flow can save one section at a time. **User-authored: there is no path for the model to persist a plan.** Never gates a crisis reply | iOS `SafetyPlanView` ⇄ android `SafetyPlanScreen.kt` ⇄ web `/safety-plan` — a guided section-at-a-time flow on each. An absent plan is `null` and renders as an invitation, never an error. **Offline is a requirement, not a nicety:** iOS mirrors the plan to `UserDefaults`, Android leans on `Session`'s encrypted GET cache (`servedStale` labels it), web mirrors to `localStorage` — each says plainly when it is showing the on-device copy. `GET /me/printable` is fetched with the authed client and opened as a blob, because the access token is in memory and a plain link would 401 |
+| Per-day program guide (`today_guide` on `/programs/active`) | `routes/programs.py::_today_guide` over `content_items.day_guides` (migration `b8e6d1a4f527`); additive — omitted when the program has no guides, and the day index clamps to the last one | iOS `RemoteProgram.today_guide` → `ProgramProgressCard` ⇄ android `parseTodayGuide` (Extras.kt) ⇄ web `Active.today_guide` (programs page). All three treat a blank title+body as no guide |
+| Whole-program guides (`guides` on `/programs/active`) | `routes/programs.py::_all_guides` over the same `content_items.day_guides`; additive and **absent** (not empty) when a program has no day structure, so a client can tell "no days" from "no data". `today_guide` is unchanged and still sent, so older clients are untouched | android `parseDayGuides` → `JourneyPath` (the ungated journey path). iOS and web still read `today_guide` only — porting the path is open work. **Nothing here is ever gated:** see the `DayState` doc comment for why a lock is a product-level no, not an oversight |
+| Push token (`PUT /users/me/push-token`) | `users.push_token` → `services/notifications.py` APNs sender (`apns-push-type: alert`; no silent pushes, so no `remote-notification` background mode on the client) | iOS `PushRegistrar` + `AppDelegate` → `BackendService.syncPushToken` (cached in UserDefaults, replayed at connect; sign-out PUTs `""` first, before the session is revoked, so the departing account stops naming this device). Android/web have no native token: Android has no Firebase, web uses the separate Web Push/VAPID path |
 | State-tuned journal prompt (mood name → tag/title/prompt; **today's check-in only**, else daily rotation) | — (client-side mapping over `GET /moods` mood names: Anxious / Low / Tired) | iOS `JournalPrompts.tuned(toMood:)` + `isDateInToday` gate ⇄ web `journal/page.tsx` `TUNED` + same-day gate |
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 
 Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at build).
+The landing additionally consumes **`NEXT_PUBLIC_APP_URL`** (`apps/web/lib/appUrl.ts`, same
+build-arg seam) — the origin every "Open the app" link points at. It is a build arg in all
+three compose files; unset, it falls back to `http://localhost:3002` and a production build
+would strand every visitor on localhost, which is why `landing.spec.ts` asserts the hrefs.
 
 - **Web** — single-page landing (`app/page.tsx`, hardcoded content arrays) + `/privacy` + `/terms`
   + robots/sitemap/OG images. `components/Waitlist.tsx` → `POST /waitlist`. Domain `cerebrozen.in`.
+  **Links into the app** (2026-07-30) from four places: nav (Sign in + Open the app), hero
+  (primary CTA, with the waitlist demoted to secondary), each of the five "calm spaces" cards
+  (`Open Sleep →` → `/sleep`, etc.), and a grouped footer. Deep links survive the sign-in wall
+  via `?next=` (below), so a click keeps its intent.
 - **App** — the authenticated browser client (`app.cerebrozen.in`, deliberately a subset of
   iOS — see WEB_APP_PLAN.md). Session model: access token **in memory only**, refresh token
   in localStorage, one `/auth/refresh` rotation retry per 401 (`lib/api.ts`;
@@ -244,7 +273,10 @@ Next.js 14 App Router, React 18, TS. All consume `NEXT_PUBLIC_API_URL` (baked at
   risk — never blocks), Sleep diary (morning check-in, honest weekly summary, history),
   Plan (optimistic step toggles, regenerate), Insights (metrics + upcoming nudges),
   Account (consent, crisis region, trusted contact, export download, typed DELETE).
-  `noindex`.
+  `noindex`. **Return-path (`?next=`)**: `(authed)/layout.tsx` sends a signed-out visitor to
+  `/signin?next=<path>` and `signin/page.tsx` lands them there afterwards. `lib/nextPath.ts`
+  is an allow-list — same-origin absolute paths only, so `//evil.com`, backslash variants and
+  auth-route loops are refused and fall back to `/home`; `app.spec.ts` pins both directions.
 - **Admin** — one client component (`app/page.tsx`) with tabs
   overview/analytics/users/content/safety/waitlist. Analytics renders the first-party
   aggregates (`services/metrics.py`); Users offers a metadata-only detail drill-down.

@@ -120,13 +120,24 @@ struct PriceCard: View {
 }
 
 // MARK: - Free limit state
+/// Shown when the free daily message cap is hit. Was dead code until
+/// 2026-07-30 — declared but never presented, so the cap surfaced as a generic
+/// failure and the server's explanation never reached anyone.
+///
+/// The copy now states the real number and the real reset time. It used to say
+/// "resets at midnight", which is wrong outside UTC: the window is UTC, so in
+/// India it clears at 05:30 local. `info.resetText` renders the server's
+/// timestamp in the user's own timezone.
 struct FreeLimitView: View {
+    let info: FreeLimitInfo
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        ScreenScaffold(eyebrow: "Usage limit state", title: "Free Limit Reached", trailingSystemImage: "lock") {
-            InsightCard(label: "Today's free messages are used", title: "Upgrade for more time together",
-                        detail: "You've reached the free daily limit — it resets at midnight. Premium raises the cap.")
-            NavRow(title: "See premium plans", subtitle: "Full sleep library, richer voice", systemImage: "crown", imageURL: Dummy.Img.sleep, emphasis: true) { PremiumView() }
+        ScreenScaffold(eyebrow: "Today's free messages are used", title: "Back tomorrow, or sooner", trailingSystemImage: "clock") {
+            InsightCard(
+                label: info.limit > 0 ? "\(info.limit) messages a day on Free" : "Free daily limit",
+                title: "You've used today's messages",
+                detail: "Your count \(info.resetText). Everything else — journal, sleep, breathing, your plan — is still here in the meantime.")
+            NavRow(title: "See premium plans", subtitle: "Unlimited daily conversations", systemImage: "crown", imageURL: Dummy.Img.sleep, emphasis: true) { PremiumView() }
             SecondaryButton(title: "Continue with free", systemImage: "checkmark") { dismiss() }
         }
     }

@@ -49,12 +49,16 @@ export const PLAN_STEPS = [
   { title: "Reminder timing", detail: "Evening private nudge", emoji: "🔔" },
 ];
 
+// All six DPDP categories — the same set the account page and the 13-language
+// notice carry. "Specific and informed" means the category is shown at the
+// moment of consent, not defaulted quietly and surfaced later.
 export type Consent = {
   mood_history: boolean;
   ai_memory: boolean;
   voice_storage: boolean;
   journal_memory: boolean;
   sleep_history: boolean;
+  model_training: boolean;
 };
 
 export type Draft = {
@@ -79,6 +83,7 @@ export function freshDraft(): Draft {
       voice_storage: false,
       journal_memory: false,
       sleep_history: false,
+      model_training: false,
     },
     reminder: "Evening 7 PM",
   };
@@ -90,7 +95,12 @@ export function loadDraft(): Draft {
   if (typeof window === "undefined") return freshDraft();
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
-    return raw ? { ...freshDraft(), ...JSON.parse(raw) } : freshDraft();
+    if (!raw) return freshDraft();
+    // Deep-merge `consent` so a draft saved before a category existed still
+    // yields a boolean for it (an undefined toggle would go uncontrolled).
+    const base = freshDraft();
+    const saved = JSON.parse(raw) as Partial<Draft>;
+    return { ...base, ...saved, consent: { ...base.consent, ...(saved.consent ?? {}) } };
   } catch {
     return freshDraft();
   }

@@ -15,6 +15,7 @@ import {
   loadDraft, planTitle, PLAN_STEPS, REMINDER_TIMES, saveDraft,
 } from "@/lib/onboarding";
 import { CONSENT_NOTICE, defaultNoticeLang, NOTICE_LANGS } from "@/lib/consentNotice";
+import { ONBOARDING_STEPS, track, unlockAnalytics } from "@/lib/analytics";
 
 const PROGRESS = [0.08, 0.15, 0.25, 0.35, 0.45, 0.58, 0.7, 0.8, 0.88, 0.96];
 
@@ -41,12 +42,20 @@ export default function Onboarding() {
     });
   }
 
+  // One event per step reached. `track` no-ops until the Consent step calls
+  // unlockAnalytics(), so earlier steps stay uncounted by design rather than
+  // being buffered and sent retroactively (the 2026-07-13 decision).
+  useEffect(() => {
+    track("onboarding_step", ONBOARDING_STEPS[step] ?? "");
+  }, [step]);
+
   const next = () => setStep((s) => Math.min(s + 1, PROGRESS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   async function finish() {
     await applyOnboarding(draft);
     setOnboarded();
+    track("onboarding_done");
     clearDraft();
     router.replace("/home");
   }
@@ -69,7 +78,17 @@ export default function Onboarding() {
         {step === 6 && <FirstPlan draft={draft} onContinue={next} onBack={back} />}
         {step === 7 && <Signup onAuthed={next} onBack={back} />}
         {step === 8 && (
-          <ConsentStep draft={draft} update={update} onContinue={next} onBack={back} />
+          <ConsentStep
+            draft={draft}
+            update={update}
+            onContinue={() => {
+              // Passing Consent is what unlocks counting at all.
+              unlockAnalytics();
+              track("onboarding_step", "consent");
+              next();
+            }}
+            onBack={back}
+          />
         )}
         {step === 9 && (
           <Notifications draft={draft} update={update} onFinish={finish} onBack={back} />
@@ -140,7 +159,7 @@ function Welcome({ onBegin }: { onBegin: () => void }) {
       <p className="onb-caption">
         Your quiet space for daily mental fitness, better sleep, and calmer focus.
       </p>
-      <p className="onb-fine">Private by design — nothing is ever shared.</p>
+      <p className="onb-fine">Private by design — no ads, nothing sold, and nothing remembered unless you allow it.</p>
       <div className="onb-footer">
         <Progress value={PROGRESS[0]} />
         <button className="btn pill-cta" onClick={onBegin}>
@@ -376,10 +395,12 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
 
 /* ---------- 8 · Consent ---------- */
 
-// The onboarding notice shows the 5 categories about to collect data
-// (model_training stays a separate opt-in on the account page).
+// All six DPDP categories are shown here, in the account page's order. Nothing
+// is pre-ticked, and the "remember my patterns" shortcut deliberately leaves
+// voice_storage + model_training alone — sensitive categories stay individual,
+// deliberate opt-ins (design system §8).
 const CONSENT_KEYS: (keyof Draft["consent"])[] = [
-  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage",
+  "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];
 
 function ConsentStep({

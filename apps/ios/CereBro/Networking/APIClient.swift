@@ -56,12 +56,28 @@ struct RemoteMood: Codable, Identifiable {
 
 /// Active multi-day journey — the day is computed server-side from the start
 /// date (nothing to advance, nothing to fail).
+/// One day of a program — the `{title, body}` the server serves for the day the
+/// user is actually on (`routes/programs.py::_today_guide`, clamped to the last
+/// guide so a long enrollment never errors).
+struct RemoteDayGuide: Codable, Equatable {
+    let title: String
+    let body: String
+    /// Blank guides are treated as no guide, matching Android's `parseTodayGuide`.
+    var isEmpty: Bool {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 struct RemoteProgram: Codable, Equatable {
     let content_id: String
     let title: String
     let day: Int
     let days: Int
     let completed: Bool
+    /// Additive: omitted entirely for programs without day guides, and by
+    /// servers older than migration `b8e6d1a4f527`.
+    let today_guide: RemoteDayGuide?
 }
 
 struct RemoteProgramEnvelope: Codable { let program: RemoteProgram? }
@@ -81,6 +97,17 @@ struct RemotePatterns: Codable {
 struct RemoteMemoryWipe: Codable {
     let chat_messages: Int
     let insights: Int
+    // Added with per-item memory; older servers omit it.
+    let memories: Int?
+}
+
+/// One addressable thing the app remembers — the user's own words or something
+/// they approved. Unlike `RemotePattern` (computed per request) this has an id,
+/// so it can be edited and deleted individually.
+struct RemoteMemory: Codable, Identifiable, Equatable {
+    let id: String
+    let body: String
+    let source: String
 }
 
 /// One published catalogue item from the public `/content` route.
@@ -158,6 +185,57 @@ struct RemotePlan: Codable, Identifiable {
     let rationale: String; let source: String; let steps: [RemotePlanStep]
 }
 
+/// Something the user is working towards. `status` is active | achieved |
+/// **released** — letting a goal go is an outcome, not a failure.
+struct RemoteGoal: Codable, Identifiable, Equatable {
+    let id: String
+    let title: String
+    let why: String
+    let status: String
+}
+
+/// A small thing the user chose to repeat.
+///
+/// Note what is absent: there is no streak. `recent_days` is a 7-day window, so
+/// a gap is just a gap — the client cannot render "you broke it" because the
+/// server never says it.
+struct RemoteHabit: Codable, Identifiable, Equatable {
+    let id: String
+    let title: String
+    let cue: String
+    let target_per_week: Int
+    let recent_days: [String]
+    let done_today: Bool
+}
+
+/// A practice suggested because of a mined pattern. `reason` is the pattern
+/// statement verbatim — a suggestion with no visible basis is exactly what the
+/// Pattern Dashboard exists to avoid, so it is not optional here either.
+struct RemoteRecommendation: Codable, Identifiable, Equatable {
+    let id: String
+    let slug: String
+    let title: String
+    let body: String
+    let action: String
+    let reason: String
+    let status: String
+}
+
+/// A personal safety plan — the six Stanley-Brown sections, in the user's own
+/// words. Codable so it can be cached on device: this is the one screen that
+/// must open without a network.
+struct RemoteSafetyPlan: Codable, Equatable {
+    let id: String
+    let version: Int
+    var warning_signs: String
+    var internal_coping: String
+    var social_distractors: String
+    var social_support: String
+    var professionals: String
+    var means_safety: String
+    var notes: String
+}
+
 struct RemoteMetric: Codable { let label: String; let value: String; let progress: Double }
 struct RemoteInsight: Codable {
     let period: String; let headline: String; let summary: String; let metrics: [RemoteMetric]
@@ -165,8 +243,35 @@ struct RemoteInsight: Codable {
 
 // MARK: - Errors
 
+/// Everything the free-tier cap tells a client. `resetsAt` is a real
+/// timestamp, not the word "midnight": the window is UTC, so in India it
+/// clears at 05:30 local and copy claiming otherwise would be wrong.
+struct FreeLimitInfo: Equatable, Identifiable {
+    /// Sheet presentation keys off this; the reset time is what changes between
+    /// one cap event and the next.
+    var id: String { "\(limit)-\(used)-\(resetsAt?.timeIntervalSince1970 ?? 0)" }
+    let message: String
+    let limit: Int
+    let used: Int
+    let resetsAt: Date?
+
+    /// "resets at 5:30 am" in the user's own timezone.
+    var resetText: String {
+        guard let resetsAt else { return "resets at midnight UTC" }
+        let f = DateFormatter()
+        f.timeStyle = .short
+        f.dateStyle = .none
+        return "resets at \(f.string(from: resetsAt))"
+    }
+}
+
 enum APIError: LocalizedError {
     case unauthorized
+    /// The free-tier daily cap, specifically. Distinct from `.server(429, …)`
+    /// because the IP rate limiter also returns 429 and means something else
+    /// entirely — showing an upgrade prompt to someone who typed too fast
+    /// would be both wrong and manipulative.
+    case freeLimit(FreeLimitInfo)
     case server(Int, String)
     case invalidResponse
     case transport(String)
@@ -174,6 +279,7 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Your session expired. Please sign in again."
+        case let .freeLimit(info): return info.message
         case let .server(code, msg): return msg.isEmpty ? "Server error (\(code))." : msg
         case .invalidResponse: return "Unexpected response from server."
         case let .transport(m): return m
@@ -392,6 +498,99 @@ actor APIClient {
 
     func deleteMemory() async throws -> RemoteMemoryWipe { try await request("/users/me/memory", method: "DELETE") }
 
+    // MARK: Per-item memory
+
+    func memories() async throws -> [RemoteMemory] {
+        try await request("/users/me/memory", method: "GET")
+    }
+
+    @discardableResult
+    func addMemory(_ body: String) async throws -> RemoteMemory {
+        try await request("/users/me/memory", method: "POST", json: ["body": body])
+    }
+
+    @discardableResult
+    func editMemory(id: String, body: String) async throws -> RemoteMemory {
+        try await request("/users/me/memory/\(id)", method: "PATCH", json: ["body": body])
+    }
+
+    func deleteMemory(id: String) async throws {
+        let _: EmptyResponse = try await request("/users/me/memory/\(id)", method: "DELETE")
+    }
+
+    /// Stop showing one computed pattern. Keyed by its statement — patterns are
+    /// derived per request and have no id of their own.
+    func suppressPattern(_ statement: String) async throws {
+        let _: EmptyResponse = try await request(
+            "/users/me/memory/suppress-pattern", method: "POST",
+            json: ["statement": statement])
+    }
+
+    // MARK: Goals + habits (the things the user defines)
+
+    func goals() async throws -> [RemoteGoal] { try await request("/goals", method: "GET") }
+
+    @discardableResult
+    func addGoal(_ title: String) async throws -> RemoteGoal {
+        try await request("/goals", method: "POST", json: ["title": title])
+    }
+
+    @discardableResult
+    func setGoalStatus(id: String, status: String) async throws -> RemoteGoal {
+        try await request("/goals/\(id)", method: "PATCH", json: ["status": status])
+    }
+
+    /// Turn a goal into today's plan. Replaces the active plan — the product
+    /// has exactly one at a time.
+    @discardableResult
+    func decomposeGoal(id: String) async throws -> RemotePlan {
+        try await request("/goals/\(id)/decompose", method: "POST", json: [:])
+    }
+
+    func habits() async throws -> [RemoteHabit] { try await request("/habits", method: "GET") }
+
+    @discardableResult
+    func addHabit(title: String, cue: String) async throws -> RemoteHabit {
+        try await request("/habits", method: "POST", json: ["title": title, "cue": cue])
+    }
+
+    /// Toggle today. Completing is idempotent server-side and undoable, so a
+    /// mis-tap is never permanent.
+    @discardableResult
+    func setHabitToday(id: String, done: Bool) async throws -> RemoteHabit {
+        try await request("/habits/\(id)/complete", method: done ? "POST" : "DELETE",
+                          json: done ? [:] : nil)
+    }
+
+    // MARK: Recommendations (derived from the user's own patterns)
+
+    /// Pending suggestions. The server seeds from current patterns on read and
+    /// returns [] for thin data, so this is safe to call unconditionally.
+    func recommendations() async throws -> [RemoteRecommendation] {
+        try await request("/recommendations/mine", method: "GET")
+    }
+
+    @discardableResult
+    func resolveRecommendation(id: String, accept: Bool) async throws -> RemoteRecommendation {
+        try await request("/recommendations/\(id)/\(accept ? "accept" : "dismiss")",
+                          method: "POST", json: [:])
+    }
+
+    // MARK: Safety plan (user-authored; the model never writes one)
+
+    /// The live plan, or nil when the user hasn't written one. Nil is a normal
+    /// state — never surfaced as an error.
+    func safetyPlan() async throws -> RemoteSafetyPlan? {
+        try await request("/safety-plan/me", method: "GET")
+    }
+
+    /// Save one or more sections. Unset fields carry over server-side, so the
+    /// guided flow can save a single section without blanking the rest.
+    @discardableResult
+    func saveSafetyPlan(_ fields: [String: Any]) async throws -> RemoteSafetyPlan {
+        try await request("/safety-plan/me", method: "PUT", json: fields)
+    }
+
     // MARK: Assessment (self-reflection → conversation topics)
 
     /// Persist onboarding choices (goals + motivations) to the user's profile.
@@ -530,9 +729,33 @@ actor APIClient {
         case 401, 403:
             throw APIError.unauthorized
         default:
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
+            let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if http.statusCode == 429, let info = Self.freeLimit(from: body) {
+                throw APIError.freeLimit(info)
+            }
+            // `error` is slowapi's key for the IP rate limiter; without it a
+            // throttled user sees only "Server error (429)".
+            let detail = (body?["detail"] as? String) ?? (body?["error"] as? String)
             throw APIError.server(http.statusCode, detail ?? "")
         }
+    }
+
+    /// Recognise the quota 429 by its `code`, never by the status alone.
+    static func freeLimit(from body: [String: Any]?) -> FreeLimitInfo? {
+        guard let detail = body?["detail"] as? [String: Any],
+              detail["code"] as? String == "free_daily_limit"
+        else { return nil }
+        var resets: Date?
+        if let iso = detail["resets_at"] as? String {
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            resets = f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+        }
+        return FreeLimitInfo(
+            message: detail["message"] as? String ?? "You've reached today's free messages.",
+            limit: detail["limit"] as? Int ?? 0,
+            used: detail["used"] as? Int ?? 0,
+            resetsAt: resets)
     }
 
     // MARK: Oracle (streaming agent)

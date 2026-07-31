@@ -13,6 +13,8 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 - [docs/TODO.md](docs/TODO.md) — prioritized known debt + open work (update it when you fix or find something)
 - [docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md) / [docs/SHIP_READINESS.md](docs/SHIP_READINESS.md) / [docs/PRIVACY_LABELS.md](docs/PRIVACY_LABELS.md) — launch runbooks
 - [docs/SLEEP_TRACKING.md](docs/SLEEP_TRACKING.md) / [docs/WEB_APP_PLAN.md](docs/WEB_APP_PLAN.md) / [docs/INVESTOR_READINESS.md](docs/INVESTOR_READINESS.md) / [docs/DPDP_COMPLIANCE.md](docs/DPDP_COMPLIANCE.md) — research-validated plans (sleep module, web client + admin v2, investor benchmarks/gaps, India data-protection checklist)
+- [docs/CLAIMS_MAP.md](docs/CLAIMS_MAP.md) — every doubtable user-facing claim → the mechanism + test that makes it true; `scripts/check-claims.mjs` fails CI on a banned phrase across web/app/iOS/Android copy
+- [docs/B2C_BACKLOG.md](docs/B2C_BACKLOG.md) — consumer-only feature candidates drawn from the *other* CereBro codebase at `~/Desktop/workspace/cerebro` (a different product on `cerebrolearning.com` — not an older version of this repo, and not a merge)
 
 ## Layout
 
@@ -49,6 +51,9 @@ Dev logins (dev only; prod boot guard rejects them): `admin@cerebro.app/admin123
 - **Everything degrades without keys** — LLM/voice/push/email/SMS integrations must no-op
   cleanly and be stubbed in hermetic tests (CI runs with blank keys).
 - **Safety never blocks** — crisis scanning adds resources/escalation, never rejects a message.
+- **Claims map to mechanisms** — any user-facing claim that could be doubted needs a row in
+  `docs/CLAIMS_MAP.md` naming the code that makes it true and the test that pins it.
+  `scripts/check-claims.mjs` (CI) blocks the phrases that were false here before.
 - **Cross-stack contracts are duplicated by hand** (assessment taxonomy, widget kinds, crisis
   regions, product ids) — change backend + iOS in the same commit; table in ARCHITECTURE.md.
 - **Schema changes = Alembic revision** (applied by `prestart.py` at boot).

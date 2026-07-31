@@ -8,12 +8,15 @@ from app.api.routes import (
     chat,
     content,
     events,
+    habits,
     insights,
     journal,
     moods,
     oracle,
     plans,
     programs,
+    recommendations,
+    safety_plan,
     sleep,
     users,
     voice,
@@ -30,9 +33,12 @@ api_router.include_router(sleep.router)
 api_router.include_router(journal.router)
 api_router.include_router(chat.router)
 api_router.include_router(plans.router)
+api_router.include_router(habits.router)
 api_router.include_router(programs.router)
 api_router.include_router(content.router)
 api_router.include_router(insights.router)
+api_router.include_router(recommendations.router)
+api_router.include_router(safety_plan.router)
 api_router.include_router(oracle.router)
 api_router.include_router(voice.router)
 api_router.include_router(waitlist.router)

@@ -36,7 +36,10 @@ export function middleware(request: NextRequest) {
     // a future script-src change ('strict-dynamic' would ignore 'self').
     `worker-src 'self'`,
     `style-src 'self' 'unsafe-inline'`, // Next injects inline styles (styled-jsx / next/font)
-    `img-src 'self' data: blob:`,
+    // `https:` is admin-only: the content library previews the artwork an
+    // operator pasted into Image URL, which lives on a third-party CDN. The
+    // other two apps stay on the tighter 'self' data: blob: policy.
+    `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
     `connect-src 'self' ${API_ORIGIN}`,
     `frame-ancestors 'self'`,

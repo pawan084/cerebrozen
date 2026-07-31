@@ -57,25 +57,33 @@ import kotlinx.coroutines.delay
 /** Which pacing a breathe surface runs. */
 enum class BreathePreset { Box, Color, Reset }
 
-/** One beat of a breathing cycle — pure data, so the pacing is unit-testable. */
-internal data class BreathPhase(val label: String, val seconds: Int, val expanded: Boolean)
+/** One beat of a breathing cycle — pure data, so the pacing is unit-testable.
+ * [labelRes] is the resource for the phase word, not the word itself, so the
+ * guidance localizes while the pacing stays a pure function. */
+internal data class BreathPhase(
+    @androidx.annotation.StringRes val labelRes: Int,
+    val seconds: Int,
+    val expanded: Boolean,
+) {
+    /** True for the two moving beats (in / out) — the holds are the still ones.
+     * Used for the haptic strength, so it must not read the localized word. */
+    val moving: Boolean get() = labelRes != R.string.breathe_phase_hold
+}
 
 /** The phase sequence per preset. Box and Color pace with holds; Reset is the
  * gentle onboarding rhythm — in, out, nothing to hold. W27 §4 (Calm study):
  * [secondsPerPhase] is user-selectable — Classic 4s (the long-standing
  * default), Gentle 6s, Slow 8s — scaling every phase equally. */
-// i18n: pending — pure function, needs context plumbing (phase labels are user copy;
-// unit tests assert them directly).
 internal fun breathePhases(preset: BreathePreset, secondsPerPhase: Int = 4): List<BreathPhase> = when (preset) {
     BreathePreset.Reset -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_in, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_out, secondsPerPhase, expanded = false),
     )
     BreathePreset.Box, BreathePreset.Color -> listOf(
-        BreathPhase("Breathe in", secondsPerPhase, expanded = true),
-        BreathPhase("Hold", secondsPerPhase, expanded = true),
-        BreathPhase("Breathe out", secondsPerPhase, expanded = false),
-        BreathPhase("Hold", secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_in, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_hold, secondsPerPhase, expanded = true),
+        BreathPhase(R.string.breathe_phase_out, secondsPerPhase, expanded = false),
+        BreathPhase(R.string.breathe_phase_hold, secondsPerPhase, expanded = false),
     )
 }
 
@@ -90,6 +98,28 @@ internal fun breatheTint(preset: BreathePreset, phase: Int): Color = when (prese
  * a quiet breaths tally below. The orb is a function of the phase (expand on
  * inhale, hold, contract on exhale) — never a free-running pulse — and holds a
  * steady size under Reduce Motion while the label and count keep guiding. */
+/** Seconds of guided breathing after [breaths] complete cycles. Pure. */
+internal fun breatheElapsedSeconds(preset: BreathePreset, secondsPerPhase: Int, breaths: Int): Int =
+    breathePhases(preset, secondsPerPhase).sumOf { it.seconds } * breaths
+
+/**
+ * Whether the two minutes the app keeps promising have actually passed.
+ *
+ * "Two-minute reset" / "Try a 2-minute reset" / "Fast anxiety-stress reset — 2
+ * minutes" appear on five surfaces, and nothing measured or marked two minutes:
+ * the Reset preset is an open-ended in/out cycle that runs until you tap away.
+ * Rather than delete a genuinely useful piece of information from five places,
+ * the claim is now kept — once, quietly, and only for the preset that makes it.
+ *
+ * Deliberately NOT a running timer or a breath counter. This product tells users
+ * elsewhere there is "no streak to break"; putting a clock on a calming exercise
+ * would be the same mistake in miniature. One line, at the moment it becomes
+ * true, and the breathing carries on either way.
+ */
+internal fun twoMinutesReached(preset: BreathePreset, secondsPerPhase: Int, breaths: Int): Boolean =
+    preset == BreathePreset.Reset &&
+        breatheElapsedSeconds(preset, secondsPerPhase, breaths) >= 120
+
 @Composable
 fun BreatheEngine(
     preset: BreathePreset,
@@ -120,7 +150,7 @@ fun BreatheEngine(
                 phase = next
                 count = phases[next].seconds
                 if (next == 0) breaths += 1
-                if (hapticsOn) Haptics.soft(if (phases[next].label.startsWith("Breathe")) 0.5f else 0.3f)
+                if (hapticsOn) Haptics.soft(if (phases[next].moving) 0.5f else 0.3f)
                 if (chimeOn) Chime.play()
             }
         }
@@ -143,7 +173,7 @@ fun BreatheEngine(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            phases[phase].label,
+            stringResource(phases[phase].labelRes),
             style = MaterialTheme.typography.displaySmall,
             color = TextPrimary,
             textAlign = TextAlign.Center,
@@ -173,7 +203,7 @@ fun BreatheEngine(
                         .border(1.dp, LineStroke, CircleShape),
                 )
             }
-            val orbCd = stringResource(R.string.breathe_orb_cd, phases[phase].label)
+            val orbCd = stringResource(R.string.breathe_orb_cd, stringResource(phases[phase].labelRes))
             Box(
                 Modifier
                     .size(146.dp)
@@ -193,6 +223,15 @@ fun BreatheEngine(
             style = MaterialTheme.typography.labelSmall,
             color = TextMuted,
         )
+        // The moment the app's "two minutes" becomes true — said once, then the
+        // breathing carries on. See twoMinutesReached for why this is not a timer.
+        if (twoMinutesReached(preset, secondsPerPhase, breaths)) {
+            Text(
+                stringResource(R.string.breathe_two_minutes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Cyan,
+            )
+        }
     }
 }
 

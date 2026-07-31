@@ -15,6 +15,14 @@ import {
 import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
 import { AppHeader } from "@/components/AppHeader";
 import { resetTour } from "@/components/GuidedTour";
+import { analyticsEnabled, setAnalyticsEnabled, track } from "@/lib/analytics";
+
+/** Fires `paywall_view` once, when the upgrade block is actually rendered —
+ *  mounting is the honest definition of "seen", not opening the page. */
+function PaywallSeen() {
+  useEffect(() => { track("paywall_view"); }, []);
+  return null;
+}
 import { Icon } from "@/components/icons";
 
 type Consent = {
@@ -45,6 +53,9 @@ export default function Account() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [consent, setConsent] = useState<Consent | null>(null);
+  // Local-only preference (localStorage): analytics never touches the account,
+  // so it is not a server consent flag.
+  const [usageStats, setUsageStats] = useState(true);
   const [region, setRegion] = useState("");
   const [contact, setContact] = useState<Contact>({
     name: "", method: "email", value: "", relationship: "", notify_consent: false,
@@ -62,6 +73,7 @@ export default function Account() {
   const notice = CONSENT_NOTICE[noticeLang] ?? CONSENT_NOTICE.en;
 
   useEffect(() => {
+    setUsageStats(analyticsEnabled());
     api("/auth/me").then((u) => {
       setMe(u);
       setRegion(u.region ?? "");
@@ -144,7 +156,18 @@ export default function Account() {
     }
   }
 
+  async function openPortal() {
+    setBillingMsg("");
+    try {
+      const { url } = await api<{ url: string }>("/billing/portal", { method: "POST" });
+      window.location.href = url;
+    } catch (err: any) {
+      setBillingMsg(err.message || "Couldn't open the billing portal.");
+    }
+  }
+
   async function upgrade() {
+    track("paywall_cta", "premium");
     setBillingMsg("");
     try {
       const { url } = await api<{ url: string }>("/billing/checkout", {
@@ -207,9 +230,19 @@ export default function Account() {
             />
             <span className="sub">Email me my nudges — gentle reminders arrive by email when no browser is subscribed.</span>
           </label>
-          {(me.subscription_tier ?? "free") === "free" && (
+          {(me.subscription_tier ?? "free") === "free" ? (
             <div style={{ marginTop: 12 }}>
+              <PaywallSeen />
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
+              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {/* Stripe's own portal rather than a hand-rolled cancel: proration,
+                  trials and dunning are its rules, and a local reimplementation
+                  gets them subtly wrong in ways that cost real people money. */}
+              <button className="btn ghost" onClick={openPortal}>Manage billing</button>
+              <p className="footnote">Change your card, switch plan, or cancel.</p>
               {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
             </div>
           )}
@@ -268,6 +301,33 @@ export default function Account() {
               />
             </div>
           ))}
+
+        {/* Analytics is NOT a consent category — it never touches account data.
+            It lives here because this is where someone looks for the off
+            switch, and shipping counting without one would break the promise
+            the copy already makes. */}
+        <div className="row" style={{ marginTop: 14, gap: 12, alignItems: "flex-start" }}>
+          <div className="grow">
+            <strong>Anonymous usage stats</strong>
+            <div className="sub">
+              Counts only — which onboarding step was reached, whether the plans page was
+              opened. Tied to a random id for this browser, never to your account, and never
+              shared. Switch it off and nothing is sent.
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={usageStats}
+            onChange={() => {
+              const next = !usageStats;
+              setUsageStats(next);
+              setAnalyticsEnabled(next);
+            }}
+            aria-label="Anonymous usage stats"
+            style={{ width: 20, height: 20 }}
+          />
+        </div>
       </section>
 
       <section className="card cz-in cz-d3" aria-label="Crisis resources region">

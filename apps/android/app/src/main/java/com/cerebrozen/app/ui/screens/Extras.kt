@@ -78,12 +78,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
@@ -93,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.BuildConfig
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.audio.MediaUrls
@@ -301,6 +300,29 @@ internal fun ContentRow(
 }
 
 /** Load a content kind and render it as a list; shows honest empty/error states. */
+/** What a [ContentList] shows: served rows, shimmer, or — when the catalogue
+ * gives nothing and the caller supplied one — its own offline copy. */
+internal enum class ContentListState { Loading, Items, Empty, Error, Fallback }
+
+/**
+ * Pure: the branch [ContentList] takes. Extracted so the rule that matters is a
+ * test rather than a rendering.
+ *
+ * Loading must NEVER resolve to Fallback — a caller's offline copy flashing for
+ * one frame before the real list arrives would be worse than the shimmer, and it
+ * is the mistake the ordering here prevents.
+ */
+internal fun contentListState(
+    error: String?,
+    items: JSONArray?,
+    hasFallback: Boolean,
+): ContentListState = when {
+    error != null -> if (hasFallback) ContentListState.Fallback else ContentListState.Error
+    items == null -> ContentListState.Loading
+    items.length() == 0 -> if (hasFallback) ContentListState.Fallback else ContentListState.Empty
+    else -> ContentListState.Items
+}
+
 @Composable
 internal fun ContentList(
     kind: String,
@@ -308,6 +330,15 @@ internal fun ContentList(
     onItemTap: ((String) -> Unit)? = null,
     favs: Set<String>? = null,
     onFav: ((String) -> Unit)? = null,
+    /** Shown INSTEAD of the empty/error line when the catalogue gives nothing.
+     *
+     * For sections whose advice is worth having with no network at all — the
+     * wind-down guidance is the case that prompted it, since 3am and a bad
+     * connection arrive together. Without this the caller's only option was to
+     * render its offline copy unconditionally, which is what Sleep did: two of
+     * the four served guides were repeated verbatim in substance a few hundred
+     * pixels below the list. */
+    fallback: (@Composable () -> Unit)? = null,
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -326,11 +357,14 @@ internal fun ContentList(
             MediaUrls.register(c.optString("title"), MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL))
         }
     }
-    when {
-        error != null -> Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        items == null -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
-        items!!.length() == 0 -> Text(stringResource(R.string.content_empty), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        else -> (0 until items!!.length()).forEach { i ->
+    when (contentListState(error, items, hasFallback = fallback != null)) {
+        ContentListState.Fallback -> fallback!!.invoke()
+        ContentListState.Error ->
+            Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        ContentListState.Loading -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
+        ContentListState.Empty ->
+            Text(stringResource(R.string.content_empty), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        ContentListState.Items -> (0 until items!!.length()).forEach { i ->
             val c = items!!.getJSONObject(i)
             val title = c.optString("title")
             ContentRow(
@@ -435,7 +469,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             }
         }
         Text(stringResource(R.string.insights_privacy_footer),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
     }
 }
 
@@ -448,6 +482,21 @@ internal fun parseTodayGuide(program: org.json.JSONObject?): Pair<String, String
     val body = g.optString("body").trim()
     if (title.isEmpty() && body.isEmpty()) return null
     return title to body
+}
+
+/** Every day of a program as (title, body), in order — the journey path's input.
+ *
+ * Additive like `today_guide`: a server that does not send `guides`, or a
+ * program with no day structure, yields an empty list and the caller falls back
+ * to the single today-only card. Pure. */
+internal fun parseDayGuides(program: org.json.JSONObject?): List<Pair<String, String>> {
+    val arr = program?.optJSONArray("guides") ?: return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        val g = arr.optJSONObject(i) ?: return@mapNotNull null
+        val title = g.optString("title").trim()
+        val body = g.optString("body").trim()
+        if (title.isEmpty() && body.isEmpty()) null else title to body
+    }
 }
 
 @Composable
@@ -481,7 +530,7 @@ fun ProgramsScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         // Credibility line (REDESIGN §2.4) — honest provenance, no overclaim.
         Text(stringResource(R.string.programs_evidence),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
 
         if (loading) {
             Text(stringResource(R.string.programs_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -525,14 +574,29 @@ fun ProgramsScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
                 }
             }
-            // W15: the current day's guide, when the program carries one —
-            // the journey card stops being day-blind.
-            parseTodayGuide(p)?.let { (guideTitle, guideBody) ->
+            // The journey path: every day of the program at once, today marked,
+            // nothing gated. Replaces the single today-only guide card, which
+            // made a "7-day wind-down" seven surprises — you could read the day
+            // you were on and nothing else.
+            val guides = parseDayGuides(p)
+            if (guides.isNotEmpty()) {
                 SectionCard {
-                    Text(stringResource(R.string.programs_guide_header),
-                        style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                    Text(guideTitle, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text(guideBody, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    Text(stringResource(R.string.programs_path_header),
+                        style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.programs_path_sub),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    JourneyPath(guides = guides, currentDay = day)
+                }
+            } else {
+                // Older server, or a program with no day structure: the current
+                // day's guide alone, exactly as before.
+                parseTodayGuide(p)?.let { (guideTitle, guideBody) ->
+                    SectionCard {
+                        Text(stringResource(R.string.programs_guide_header),
+                            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        Text(guideTitle, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(guideBody, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    }
                 }
             }
         }
@@ -621,7 +685,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
             onItemTap = playSleep, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_narration_note),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
     }
 }
 
@@ -730,7 +794,7 @@ private fun MixerSection() {
                     Icon(layerIcon(layer.symbol), contentDescription = null,
                         tint = if (on) Periwinkle else TextMuted, modifier = Modifier.size(20.dp))
                 }
-                Text(layer.name, style = MaterialTheme.typography.titleMedium,
+                Text(stringResource(layer.nameRes), style = MaterialTheme.typography.titleMedium,
                     color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
                 TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
                     Text(
@@ -1111,9 +1175,25 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var score by remember { mutableIntStateOf(0) }
     var nextId by remember { mutableLongStateOf(0L) }
     val hues = listOf(Periwinkle, Cyan, Warm)
-    val haptics = LocalHapticFeedback.current
+    // Reduce Motion is a contract: no spawn loop, no drift loop. The field
+    // still gets one static set of bubbles to pop — static, never blank.
+    val reduceMotion = rememberReduceMotion()
     // Spawn near the bottom…
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) {
+            if (bubbles.isEmpty()) {
+                bubbles = (0 until 7).map { i ->
+                    Bubble(
+                        nextId++,
+                        Random.nextFloat() * 0.78f + 0.04f,
+                        0.10f + i * 0.11f,
+                        (52..96).random(),
+                        hues[Random.nextInt(hues.size)],
+                    )
+                }
+            }
+            return@LaunchedEffect
+        }
         while (true) {
             delay(650)
             if (bubbles.size < 7) {
@@ -1128,7 +1208,8 @@ fun BubblePopScreen(onBack: () -> Unit) {
         }
     }
     // …and drift them gently upward, popping any that float off the top.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) return@LaunchedEffect
         while (true) {
             delay(40)
             bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
@@ -1165,7 +1246,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
                         .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
                         .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                         .clickable {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            com.cerebrozen.app.ui.Haptics.soft()
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
                         },
                 )
@@ -1248,7 +1329,7 @@ internal fun SupportLinkRow(title: String, detail: String, target: String) {
 }
 
 @Composable
-fun CrisisScreen(onBack: () -> Unit) {
+fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var contact by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         runCatching { Api.trustedContact() }.onSuccess { tc ->
@@ -1278,11 +1359,13 @@ fun CrisisScreen(onBack: () -> Unit) {
         lines.forEach { (name, number) ->
             SupportLinkRow(name, number, number)
         }
-        SectionCard {
-            Text(stringResource(R.string.crisis_trusted_contact_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(contact ?: stringResource(R.string.crisis_trusted_contact_empty),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        }
+        // A door, not a notice. It used to be an inert card telling the user to
+        // "add one in Settings" — where no such setting existed on Android.
+        NavRow(
+            stringResource(R.string.crisis_trusted_contact_title),
+            contact ?: stringResource(R.string.crisis_trusted_contact_empty),
+            icon = Icons.Outlined.PersonAddAlt,
+        ) { onOpen("trustedcontact") }
         Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }

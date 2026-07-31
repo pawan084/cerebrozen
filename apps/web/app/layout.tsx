@@ -4,10 +4,12 @@ import "./globals.css";
 
 // Self-hosted at build time (no runtime request to Google — CSP-safe). Exposed
 // as --font-serif; globals.css falls back to Georgia if it fails to load.
+// Upright only: the serif is used for display type (h1–h3, the wordmark, prices)
+// and nothing on the site is set in italic, so shipping the italic faces was
+// dead weight in the build.
 const serif = Newsreader({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
   variable: "--font-serif",
   display: "swap",
 });
@@ -24,6 +26,9 @@ export const metadata: Metadata = {
     "mental wellness", "calm", "sleep", "meditation", "journal", "anxiety",
     "stress", "mindfulness", "AI companion", "breathing",
   ],
+  // Home's canonical. Every other route sets its own (child metadata wins), so
+  // add one to any new page you create.
+  alternates: { canonical: "/" },
   openGraph: {
     title,
     description,

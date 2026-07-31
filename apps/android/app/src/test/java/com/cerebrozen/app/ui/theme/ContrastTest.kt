@@ -133,8 +133,9 @@ class ContrastTest {
 
     @Test
     fun night_dangerButton_meetsAA() = night {
-        // DangerButton draws the Night token over the Danger fill.
-        assertContrast("Night on Danger", Night, Danger) // 7.42:1
+        // DangerButton draws the OnDanger role over the Danger fill.
+        assertContrast("OnDanger on Danger", OnDanger, Danger) // 7.42:1
+        assertEquals("OnDanger(Night)", Night.toArgb(), OnDanger.toArgb())
     }
 
     @Test
@@ -257,8 +258,9 @@ class ContrastTest {
 
     @Test
     fun dawn_dangerButton_meetsAA() = dawn {
-        // DangerButton text is the Night token — cream on Dawn's deep danger fill.
-        assertContrast("Night(bg) on Danger", Night, Danger) // 5.69:1
+        // DangerButton text is the OnDanger role — cream on Dawn's deep danger fill.
+        assertContrast("OnDanger on Danger", OnDanger, Danger) // 5.69:1
+        assertEquals("OnDanger(Dawn)", Night.toArgb(), OnDanger.toArgb())
     }
 
     @Test

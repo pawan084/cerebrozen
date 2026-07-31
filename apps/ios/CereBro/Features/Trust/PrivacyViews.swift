@@ -24,8 +24,13 @@ struct PrivacyView: View {
             Text("Usage stats are allowlisted counts (like which onboarding step was reached) tied to a random install id on our own servers — no third-party SDKs, never linked to you or your content.")
                 .appFont(11.5).foregroundStyle(Theme.Palette.muted2)
                 .fixedSize(horizontal: false, vertical: true)
-            NavRow(title: "Memory detail", subtitle: "Editable AI memory", systemImage: "brain", imageURL: Dummy.Img.write) {
-                MemoryDetailView(item: Dummy.memoryItems[0])
+            // Was "Memory detail · Editable AI memory" → a fabricated editor
+            // (`MemoryDetailView(item: Dummy.memoryItems[0])`) whose Save and
+            // Delete buttons did nothing. On the privacy screen of all places.
+            // Now the real, server-backed dashboard.
+            NavRow(title: "What CereBro remembers", subtitle: "Everything it has noticed · delete anytime",
+                   systemImage: "brain", imageURL: Dummy.Img.write) {
+                PatternDashboardView()
             }
             NavRow(title: "Export report", subtitle: "Choose sections and date range", systemImage: "square.and.arrow.up", imageURL: Dummy.Img.plan) { ExportReportView() }
             NavRow(title: "Delete memory", subtitle: "Typed confirmation required", systemImage: "trash", imageURL: Dummy.Img.privacy) { DeleteDataView() }

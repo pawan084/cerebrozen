@@ -22,17 +22,20 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.context import current_db, current_user_id, emitted_widgets
 from app.agent.graph import get_graph
 from app.core.config import settings
-from app.core.database import SessionLocal, get_db
+from app.core.database import SessionLocal, get_db, utcnow
 from app.core.deps import get_current_user
 from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
-from app.services import crisis, safety, usage
+from app.models.agent_action import AgentAction
+from app.schemas.content_data import AgentActionOut
+from app.services import crisis, language, safety, usage
 
 logger = logging.getLogger("cerebro.oracle")
 
@@ -59,10 +62,13 @@ async def status(user: User = Depends(get_current_user)):
 
 
 async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: str | None,
-               region: str = ""):
+               region: str = "", language_directive: str = ""):
     """Stream the graph run as SSE, managing request-scoped context + persistence."""
     graph = await get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    # The graph is compiled once and shared across users, so per-user context
+    # travels in `configurable` rather than the closure.
+    config = {"configurable": {"thread_id": thread_id,
+                               "language_directive": language_directive}}
 
     async with SessionLocal() as db:
         t_db = current_db.set(db)
@@ -94,6 +100,18 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
                     intr = chunk["__interrupt__"][0]
                     payload = dict(intr.value) if isinstance(intr.value, dict) else {"summary": str(intr.value)}
                     payload.update({"type": "tool_confirm", "thread_id": thread_id})
+                    # Audit: the proposal is durable from the moment it is
+                    # shown, not from the moment it is approved. A user who is
+                    # repeatedly asked to approve something they never want is
+                    # exactly what this table has to be able to reveal.
+                    db.add(AgentAction(
+                        user_id=user_id,
+                        thread_id=thread_id,
+                        tool=str(payload.get("tool", ""))[:64],
+                        summary=str(payload.get("summary", ""))[:2000],
+                        status="proposed",
+                    ))
+                    await db.commit()
                     yield _sse(payload)
 
             for widget in emitted_widgets.get():
@@ -132,14 +150,61 @@ async def messages(
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
     thread_id = payload.thread_id or str(user.id)
     gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id,
-               persist_user=payload.text, region=user.region)
+               persist_user=payload.text, region=user.region,
+               language_directive=language.for_user(user))
     return StreamingResponse(gen, media_type="text/event-stream")
+
+
+@router.get("/actions", response_model=list[AgentActionOut])
+async def my_agent_actions(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """What the assistant has proposed writing on your behalf, and what you said.
+
+    The user's own audit trail, not just the admin's — "did the assistant write
+    that, or did I?" is a question they should be able to answer themselves.
+    """
+    return (
+        await db.scalars(
+            select(AgentAction)
+            .where(AgentAction.user_id == user.id)
+            .order_by(AgentAction.created_at.desc())
+            .limit(100)
+        )
+    ).all()
+
+
+async def _record_decision(db: AsyncSession, user: User, thread_id: str, approved: bool) -> None:
+    """Stamp the outcome on the newest still-undecided proposal for this thread.
+
+    Scoped to the caller's own rows, so a guessed thread_id cannot mark someone
+    else's proposal as approved. A decision with no matching proposal is a no-op
+    rather than an error — the stream is the source of truth for what runs, and
+    the audit trail must never be able to block it.
+    """
+    row = await db.scalar(
+        select(AgentAction)
+        .where(
+            AgentAction.user_id == user.id,
+            AgentAction.thread_id == thread_id,
+            AgentAction.status == "proposed",
+        )
+        .order_by(AgentAction.created_at.desc())
+    )
+    if row is None:
+        return
+    row.status = "approved" if approved else "declined"
+    row.decided_at = utcnow()
+    await db.commit()
 
 
 @router.post("/confirm")
 @limiter.limit("30/minute")
-async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user)):
+async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user),
+                  db: AsyncSession = Depends(get_db)):
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
-    gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id, persist_user=None)
+    await _record_decision(db, user, payload.thread_id, payload.approved)
+    gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id,
+               persist_user=None, language_directive=language.for_user(user))
     return StreamingResponse(gen, media_type="text/event-stream")

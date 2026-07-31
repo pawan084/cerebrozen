@@ -103,8 +103,8 @@ class ReduceMotionComposeTest {
         setAnimatorScale(0f)
         // Equal durations → every bar's fraction is 1.0 of the 120dp chart row.
         val nights = listOf(
-            Night("2026-07-10", 480, 4),
-            Night("2026-07-09", 480, 3),
+            SleepNight("2026-07-10", 480, 4),
+            SleepNight("2026-07-09", 480, 3),
         )
         compose.setContent { NightsChart(nights) }
         // W10: the grow-in is skipped — bars sit at full height on the first

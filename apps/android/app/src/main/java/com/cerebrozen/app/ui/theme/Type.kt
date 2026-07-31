@@ -67,6 +67,12 @@ val Typography = Typography(
         fontSize = 14.sp,
         lineHeight = 18.sp,
     ),
+    // The small-caps EYEBROW: "WIND DOWN", "TONIGHT", "TODAY'S PLAN". Two to four
+    // words, above a heading. It is not a body style — 1.6sp of tracking on bold
+    // 11sp with no lineHeight is close to unreadable over three lines, and it had
+    // drifted onto ten paragraphs, among them the Health Connect consent boundary
+    // and TIPP's "if the urge to hurt yourself is present" line. Paragraphs use
+    // [bodySmall]; see the 2026-07-31 Sleep audit.
     labelSmall = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 11.sp,

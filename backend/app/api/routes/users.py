@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from datetime import timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -8,9 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_user
 from app.models.chat import ChatMessage
-from app.models.consent import Consent
+from app.models.agent_action import AgentAction
+from app.models.consent import Consent, consent_allows
 from app.models.deletion_ledger import DeletionLedger
+from app.models.habit import Goal
 from app.models.insight import Insight
+from app.models.memory import EDITABLE_SOURCES, ContextMemory
+from app.models.recommendation import Recommendation
+from app.models.safety_plan import SafetyPlan
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.nudge import Nudge
@@ -21,8 +27,15 @@ from app.schemas.content_data import (
     ChatOut,
     InsightOut,
     JournalOut,
+    MemoryCreate,
+    MemoryOut,
+    MemoryUpdate,
     MoodOut,
     NudgeOut,
+    AgentActionOut,
+    GoalOut,
+    PatternSuppress,
+    SafetyPlanOut,
     SleepLogOut,
 )
 from app.schemas.plan import PlanOut
@@ -205,6 +218,12 @@ async def export_my_data(
         "plans": await rows(Plan, PlanOut, Plan.created_at),
         "nudges": await rows(Nudge, NudgeOut, Nudge.scheduled_for),
         "insights": await rows(Insight, InsightOut),
+        # Portability: a table the user can see in-app must appear here too.
+        "memory": await rows(ContextMemory, MemoryOut, ContextMemory.created_at),
+        # Every version, not just the live one — the history is the record.
+        "safety_plans": await rows(SafetyPlan, SafetyPlanOut, SafetyPlan.version),
+        "goals": await rows(Goal, GoalOut, Goal.created_at),
+        "agent_actions": await rows(AgentAction, AgentActionOut, AgentAction.created_at),
         "sleep": await rows(SleepLog, SleepLogOut, SleepLog.date),
         "push_subscriptions": await rows(
             WebPushSubscription, WebPushSubscriptionOut, WebPushSubscription.created_at
@@ -248,6 +267,16 @@ async def delete_my_memory(
     """
     chat = await db.execute(delete(ChatMessage).where(ChatMessage.user_id == user.id))
     ins = await db.execute(delete(Insight).where(Insight.user_id == user.id))
+    # Per-item memories are exactly "what the AI remembers", so a wipe that
+    # left them would make this button a lie on all three clients.
+    mem = await db.execute(
+        delete(ContextMemory).where(ContextMemory.user_id == user.id)
+    )
+    # The agent's record of what it proposed writing to you is part of "what
+    # the AI remembers" — leaving it would make the button a half-truth.
+    acts = await db.execute(
+        delete(AgentAction).where(AgentAction.user_id == user.id)
+    )
     # LangGraph checkpoint tables exist once the Postgres saver initialised;
     # thread ids embed the user id (str(user.id) / "web-<id>" / client prefixes).
     from sqlalchemy import text as sql_text
@@ -264,8 +293,177 @@ async def delete_my_memory(
     return {
         "chat_messages": chat.rowcount or 0,
         "insights": ins.rowcount or 0,
+        "memories": mem.rowcount or 0,
+        "agent_actions": acts.rowcount or 0,
         "oracle_threads_cleared": threads_cleared,
     }
+
+
+# ── Per-item memory ─────────────────────────────────────────────────────
+# The Pattern Dashboard has always told the user "you can edit or delete any of
+# it". Until these routes existed the only control was the all-or-nothing wipe
+# above, because mined patterns are computed on the fly and had no row to point
+# at. See app/models/memory.py for why inferences are still never persisted.
+
+def _memory_allowed(user: User) -> None:
+    """Memory is the `ai_memory` consent category. Switched off, the store is
+    not merely hidden — it must not be read or written."""
+    if not consent_allows(user, "ai_memory"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI memory is switched off in your privacy settings.",
+        )
+
+
+async def _owned_memory(db: AsyncSession, user: User, memory_id: uuid.UUID) -> ContextMemory:
+    row = await db.get(ContextMemory, memory_id)
+    # 404 rather than 403 on someone else's row: whether an id exists is not
+    # something another account should be able to probe.
+    if row is None or row.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
+@router.get("/me/memory", response_model=list[MemoryOut])
+async def list_my_memory(
+    include_dismissed: bool = False,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Everything remembered about this user, newest first.
+
+    Suppression tombstones are internal bookkeeping, never shown as memories.
+    Expired rows are filtered on read so a lapsed item stops being recalled
+    even before any sweep removes it.
+    """
+    stmt = select(ContextMemory).where(
+        ContextMemory.user_id == user.id,
+        ContextMemory.source != "suppressed_pattern",
+    )
+    if not include_dismissed:
+        stmt = stmt.where(ContextMemory.dismissed_at.is_(None))
+    rows = (await db.scalars(stmt.order_by(ContextMemory.created_at.desc()))).all()
+    now = utcnow()
+    return [r for r in rows if r.expires_at is None or r.expires_at > now]
+
+
+@router.post("/me/memory", response_model=MemoryOut, status_code=status.HTTP_201_CREATED)
+async def create_my_memory(
+    payload: MemoryCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add something to remember. `source` is clamped to the user-authored
+    kinds — nothing can post itself in as an inference."""
+    _memory_allowed(user)
+    source = payload.source if payload.source in EDITABLE_SOURCES else "manual"
+    row = ContextMemory(
+        user_id=user.id, body=payload.body.strip(),
+        source=source, salience=payload.salience,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+@router.patch("/me/memory/{memory_id}", response_model=MemoryOut)
+async def update_my_memory(
+    memory_id: uuid.UUID,
+    payload: MemoryUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _memory_allowed(user)
+    row = await _owned_memory(db, user, memory_id)
+    if payload.body is not None:
+        # A suppression tombstone is not the user's prose; rewriting its body
+        # would silently re-point which pattern is hidden.
+        if row.source not in EDITABLE_SOURCES:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This entry can be removed but not rewritten.",
+            )
+        row.body = payload.body.strip()
+    if payload.salience is not None:
+        row.salience = payload.salience
+    if payload.dismissed is not None:
+        row.dismissed_at = utcnow() if payload.dismissed else None
+    row.updated_at = utcnow()
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+@router.delete("/me/memory/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_one_memory(
+    memory_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete one remembered item. Deliberately NOT consent-gated: switching
+    `ai_memory` off must never trap data the user is trying to remove."""
+    row = await _owned_memory(db, user, memory_id)
+    await db.delete(row)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/me/memory/suppress-pattern", status_code=status.HTTP_204_NO_CONTENT)
+async def suppress_pattern(
+    payload: PatternSuppress,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop showing one computed pattern.
+
+    Patterns are derived per request and have no id, so the statement itself is
+    the key. Writing a tombstone (rather than persisting the pattern) keeps the
+    rule intact that the product never stores its own guesses as user facts.
+    Idempotent — suppressing twice is not an error.
+    """
+    _memory_allowed(user)
+    statement = payload.statement.strip()
+    existing = await db.scalar(
+        select(ContextMemory).where(
+            ContextMemory.user_id == user.id,
+            ContextMemory.source == "suppressed_pattern",
+            ContextMemory.body == statement,
+        )
+    )
+    if existing is None:
+        db.add(ContextMemory(
+            user_id=user.id, body=statement,
+            source="suppressed_pattern", salience=0.0, dismissed_at=utcnow(),
+        ))
+
+    # Retract any PENDING suggestion that was derived from this pattern.
+    #
+    # The client tells the user "hide one and it stops being shown or used", and
+    # `compute_patterns` honours the tombstone so no NEW recommendation is ever
+    # seeded from it. But one seeded earlier keeps its `reason` — the pattern
+    # statement, verbatim — and the dashboard renders it as "Because: …". Seen on
+    # a device: the pattern vanished from the top of the screen and went on
+    # justifying a live suggestion halfway down it.
+    #
+    # Only pending ones. A practice the user already accepted is theirs now, and
+    # withdrawing it because they tidied away the observation behind it would be
+    # taking something they chose.
+    pending = (
+        await db.scalars(
+            select(Recommendation).where(
+                Recommendation.user_id == user.id,
+                Recommendation.reason == statement,
+                Recommendation.status == "pending",
+            )
+        )
+    ).all()
+    for row in pending:
+        row.status = "dismissed"
+        row.resolved_at = utcnow()
+
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/me/push-token", response_model=UserOut)

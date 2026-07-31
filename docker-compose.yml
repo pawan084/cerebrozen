@@ -39,6 +39,8 @@ services:
       args:
         # Inlined into the client bundle at build time.
         NEXT_PUBLIC_API_URL: http://localhost:8000
+        # The landing links into the web app; prod uses https://app.cerebrozen.in.
+        NEXT_PUBLIC_APP_URL: http://localhost:3002
     ports:
       - "3000:3000"
     depends_on:

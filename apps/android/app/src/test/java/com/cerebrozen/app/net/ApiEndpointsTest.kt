@@ -299,14 +299,22 @@ class ApiEndpointsTest {
                     val json = JSONObject(reqBody!!)
                     assertEquals("Mum", json.getString("name"))
                     assertEquals("sms", json.getString("method"))
-                    assertTrue(json.getBoolean("notify_consent"))
-                    200 to """{"name":"Mum"}"""
+                    // The CALLER's answer, echoed back for the assertions below.
+                    // This used to assert `true` unconditionally, because the
+                    // client hardcoded it — the test pinned the bug in place.
+                    // Naming a trusted contact must not silently consent to
+                    // messaging them at the worst moment of someone's life.
+                    200 to """{"name":"Mum","notify_consent":${json.getBoolean("notify_consent")}}"""
                 }
                 else -> 200 to body
             }
         }
         assertNull(Api.trustedContact())
-        assertEquals("Mum", Api.setTrustedContact("Mum", "sms", "+65 8123").getString("name"))
+        val consented = Api.setTrustedContact("Mum", "sms", "+65 8123", notifyConsent = true)
+        assertEquals("Mum", consented.getString("name"))
+        assertTrue("an explicit yes must reach the server", consented.getBoolean("notify_consent"))
+        val declined = Api.setTrustedContact("Mum", "sms", "+65 8123", notifyConsent = false)
+        assertFalse("and so must an explicit no", declined.getBoolean("notify_consent"))
         // A blank body would JSON-crash without the isBlank guard.
         Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to ""

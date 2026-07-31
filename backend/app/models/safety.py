@@ -23,6 +23,23 @@ class SafetyEvent(Base):
     reason: Mapped[str] = mapped_column(String(255), default="")
     excerpt: Mapped[str] = mapped_column(Text, default="")
     resolved: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # Who closed this flag, when, and why. A crisis flag closing with no
+    # attribution is not an audit trail — the reviewer is required to say
+    # something, so a resolved row can always answer "who decided, and why".
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution_note: Mapped[str] = mapped_column(String(500), default="", server_default="")
     # Set when a crisis event triggered a trusted-contact notification.
     escalated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def excerpt_chars(self) -> int:
+        """How much text is behind this flag, without disclosing any of it.
+
+        Lets the review queue show "217 characters, hidden" so a reviewer knows
+        there is something to read before choosing to read it.
+        """
+        return len(self.excerpt or "")

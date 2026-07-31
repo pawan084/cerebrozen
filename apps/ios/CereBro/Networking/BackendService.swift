@@ -19,6 +19,9 @@ final class BackendService: ObservableObject {
     @Published private(set) var user: RemoteUser?
     @Published private(set) var plan: RemotePlan?
     @Published private(set) var insight: RemoteInsight?
+    /// Set when the free daily message cap is hit; the Talk screen presents the
+    /// limit state and clears it. Never set by the IP rate limiter.
+    @Published var freeLimit: FreeLimitInfo?
     /// Active multi-day journey ("PROGRAM · DAY X OF Y" Home card).
     @Published private(set) var program: RemoteProgram?
     /// Served program catalogue with backend ids (enrollment needs them).
@@ -62,6 +65,23 @@ final class BackendService: ObservableObject {
 
     init() {
         Task { await bootstrap() }
+        // A device token usually arrives while signed out (onboarding grants
+        // notification permission before an account exists), but it can also
+        // land mid-session — register it as soon as it does.
+        NotificationCenter.default.addObserver(
+            forName: PushRegistrar.tokenReceived, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.syncPushToken() }
+        }
+    }
+
+    /// Hand APNs' device token to the server so the nudge dispatcher can reach
+    /// this device. No-op when not connected, when there's no token yet, or
+    /// when the server already has this one.
+    func syncPushToken() async {
+        guard isConnected, let token = PushRegistrar.unsyncedToken() else { return }
+        guard (try? await APIClient.shared.registerPushToken(token)) != nil else { return }
+        PushRegistrar.markSynced(token)
     }
 
     /// Restore an existing session on launch (silent — no error surfaced).
@@ -74,6 +94,7 @@ final class BackendService: ObservableObject {
             status = .connected(email: me.email)
             await refresh()   // restored sessions should load the plan + insights too
             oracleAvailable = await APIClient.shared.oracleStatus()
+            await syncPushToken()
         } catch {
             // Token stale/unreachable — fall back to local silently.
             status = .signedOut
@@ -138,6 +159,7 @@ final class BackendService: ObservableObject {
         if let style = pendingCompanion {
             _ = try? await APIClient.shared.updateCompanion(style)
         }
+        await syncPushToken()
     }
 
     /// Cache the on-device 18+ confirmation time so attest() can carry it on
@@ -247,10 +269,22 @@ final class BackendService: ObservableObject {
     }
 
     func signOut() {
-        Task { await APIClient.shared.logout() }   // revoke server-side, then clear
+        // Release the device token BEFORE revoking the session — afterwards
+        // there is no credential to do it with, and the departing account would
+        // keep this device as its APNs destination (nudges for the person who
+        // just signed out, delivered to whoever holds the phone now). The
+        // server treats "" as no token and falls back to Web Push/email.
+        let releaseToken = PushRegistrar.deviceToken != nil
+        Task {
+            if releaseToken { try? await APIClient.shared.registerPushToken("") }
+            await APIClient.shared.logout()        // revoke server-side, then clear
+        }
         user = nil; plan = nil; insight = nil; program = nil; chat = []; suggestions = []; starters = []
         oracleAvailable = false; isStreaming = false; streamingText = ""
         streamingWidget = nil; pendingConfirm = nil
+        // This device is no longer that account's — the token must be
+        // re-registered against whoever signs in next.
+        PushRegistrar.clearSyncedMark()
         status = .signedOut
     }
 
@@ -369,12 +403,25 @@ final class BackendService: ObservableObject {
     /// companion so it can speak the response). Appends both messages to `chat`.
     func sendChatGetReply(_ text: String) async -> String? {
         guard isConnected else { return nil }
-        guard let reply = try? await APIClient.shared.sendChat(text) else { return nil }
+        let reply: RemoteChatReply
+        do {
+            reply = try await APIClient.shared.sendChat(text)
+        } catch APIError.freeLimit(let info) {
+            // The cap is a product state, not a failure. Surfacing it as a
+            // generic error — which is what happened before 2026-07-30 — meant
+            // the server's explanation never reached the user at all.
+            freeLimit = info
+            return nil
+        } catch {
+            return nil
+        }
         chat.append(reply.user_message)
         var assistant = reply.reply
         assistant.widget = reply.widget          // render the inline activity
         chat.append(assistant)
         suggestions = reply.suggestions
+        // The plain /chat path is not streamed, so nothing above announces it.
+        Announce.voiceOver(reply.reply.text)
         return reply.reply.text
     }
 
@@ -431,6 +478,10 @@ final class BackendService: ObservableObject {
 
     private func consume(_ request: URLRequest) async {
         isStreaming = true; streamingText = ""; streamingWidget = nil
+        // Sighted users see the typing dots. Without this, a VoiceOver user
+        // taps Send and hears nothing until the reply lands — which for an LLM
+        // can be many seconds of unexplained silence.
+        Announce.voiceOver("CereBro is replying")
         do {
             for try await event in oracleEventStream(request) {
                 switch event {
@@ -443,7 +494,12 @@ final class BackendService: ObservableObject {
                         suggestions.append(RemoteSuggestion(label: "Get crisis support", action: "crisis"))
                     }
                 case .widget(let w):      streamingWidget = w
-                case .toolConfirm(let c): pendingConfirm = c
+                case .toolConfirm(let c):
+                    pendingConfirm = c
+                    // The stream is now PAUSED until this is answered. Silence
+                    // here leaves a VoiceOver user waiting for a reply that
+                    // cannot arrive.
+                    Announce.voiceOver("CereBro needs your approval: \(c.summary)")
                 case .awaitingConfirm:    break
                 case .done(let final):    finishStreaming(text: final.isEmpty ? streamingText : final)
                 case .error(let e):       finishStreaming(text: streamingText.isEmpty ? e : streamingText)
@@ -470,9 +526,9 @@ final class BackendService: ObservableObject {
         streamingText = ""; streamingWidget = nil; isStreaming = false
         // VoiceOver hears the completed reply once, instead of token noise
         // (the live bubble is marked .updatesFrequently while it streams).
-        if UIAccessibility.isVoiceOverRunning, !t.isEmpty {
-            UIAccessibility.post(notification: .announcement, argument: t)
-        }
+        // Routed through Announce so it queues at high priority — the plain
+        // post this used to make is dropped whenever VoiceOver is mid-speech.
+        Announce.voiceOver(t)
     }
 
     // MARK: Plan step completion (server-driven plan)

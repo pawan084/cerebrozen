@@ -99,6 +99,98 @@
 
 ## Done — recent
 
+### Landing → web app: the missing front door (2026-07-30)
+The landing had **zero** links to `apps/app`. Every CTA was "Join the waitlist" and the only
+other button was the App Store "coming soon" chip, so a visitor could not reach a product
+that has been live at `app.cerebrozen.in` the whole time. Structure borrowed from the Aira
+HTML reference (nav sign-in + pill CTA, hero primary/secondary, per-feature "Open X →",
+grouped footer); **palette deliberately unchanged** — CereBro's dark indigo tokens stay, so
+the landing still matches the app a visitor clicks into and the "web mirrors the iOS palette"
+rule in CLAUDE.md holds.
+- [x] `apps/web/lib/appUrl.ts` + `NEXT_PUBLIC_APP_URL` build arg in all three compose files
+  (default `http://localhost:3002`, prod `https://app.cerebrozen.in` via `PUBLIC_APP_URL`).
+  **This fails silently if unset** — the page builds fine and points every link at localhost
+  — so `landing.spec.ts` now asserts the hrefs against `APP_URL`.
+- [x] Links from four places: nav (Sign in · Open the app), hero (primary CTA; waitlist
+  demoted to secondary), the five space cards (Home/Sleep/Talk/Journal/You → their routes),
+  and a grouped footer (Open the app · Account · Trust).
+- [x] **`?next=` return path in `apps/app`** — without it every deep link resolved and then
+  dumped the visitor on Home, so the links would have been a lie. `(authed)/layout.tsx`
+  redirects to `/signin?next=<path>`; `signin/page.tsx` returns there. `lib/nextPath.ts` is
+  an allow-list (same-origin absolute paths only) because `next` is attacker-controlled —
+  `//evil.com`, backslash variants and auth-route loops all fall back to `/home`. Both
+  directions pinned in `app.spec.ts`.
+- [x] Copy that the change would have made false: the FAQ said "iOS comes first" and "no
+  committed public date" — now states the browser version is open today and iOS is next; the
+  offline answer is scoped to the mobile apps (the browser client has no offline caching —
+  `sw.js` is push-only); hero trust chip "Built for iOS" → "Works in your browser".
+- Verified: `tsc --noEmit` on web + app, both containers rebuilt, and a live browser check of
+  the whole hand-off (landing link → signed-out bounce → sign-in → lands on /sleep, and an
+  off-origin `next` refused). Full e2e suite green.
+- [x] Found doing this: `/privacy`, `/terms`, `/support` and the 404 each carried their own
+  hand-copied footer, so the app links would have existed on the landing alone — a reader of
+  the privacy policy had no door. All five now render one `components/SiteFooter.tsx`.
+- [ ] Not done: **admin (:3001) is deliberately not linked** from a public landing page.
+- [ ] Follow-up: the App Store badge is still a "coming soon" chip pointing at `#waitlist`;
+  when iOS ships, `NEXT_PUBLIC_APP_STORE_URL` turns it into a real listing link.
+
+### PRD checklist #1 / #6 / #7 — the last Phase-0 code (2026-07-30)
+Phase 0 (TestFlight) is now entirely owner-blocked; no code is left in it.
+- [x] **#6 iOS remote push made reachable.** The server half was always real (ES256
+  APNs sender + nudge dispatcher), but nothing populated `user.push_token`:
+  no `AppDelegate`, no `registerForRemoteNotifications()`, and
+  `APIClient.registerPushToken` had zero call sites. New
+  `Features/Notifications/PushRegistrar.swift` (delegate + hex token + UserDefaults
+  cache), `@UIApplicationDelegateAdaptor` in `CereBroApp`,
+  `BackendService.syncPushToken()` drained on every connect (and on the
+  `tokenReceived` notification, for a token that arrives mid-session),
+  `aps-environment` in the entitlement. Two rules kept from `ReminderManager`:
+  registration never prompts on its own (it is gated on authorization the user
+  already granted, and re-attempted right after they grant it), and it is a no-op
+  under `-resetState`. Sign-out clears the synced mark so the next account
+  re-registers — and, found while reviewing this change, sign-out now also PUTs an empty
+  token *before* revoking the session: otherwise the departing account keeps this device as
+  its APNs destination and its nudges arrive for whoever holds the phone next (the server
+  reads `""` as no token and falls back to Web Push/email). **Deliberate deviation from the
+  checklist text:**
+  `remote-notification` was NOT added to `UIBackgroundModes` — the server sends
+  `apns-push-type: alert` only, so the mode would be unused, and unused background
+  modes draw App Review rejections. Still owner-blocked: APNs `.p8` + the Push
+  Notifications capability on the App ID (adding `aps-environment` means device
+  builds will not sign until that capability exists — simulator is unaffected).
+- [x] **#7 iOS Insights wired to the real insight.** `InsightsView` renders
+  `backend.insight` — server `headline`/`summary` as the hero, server metrics as the
+  bars. Went further than the item asked and **deleted `Dummy.weeklyMetrics`** instead
+  of keeping it as the `insight == nil` fallback: two of its four rows ("Sleep
+  consistency / Improving / 0.62", "Mood stability / Steady / 0.7") were numbers
+  nobody measured. Signed out, the screen now counts only what is on the device
+  (check-ins + plan steps, journal entries, the sleep diary's own 7-day average) and
+  says "Nothing to measure yet" when there is none. `Dummy.baselineMetrics` went with
+  it (also unused; the real baseline comes from `state.baselineStress/Sleep`).
+- [x] **#1 the last three paywall/feature over-claims.** Android `premium_intro` said
+  "unlimited voice", implying a voice meter that does not exist — voice is not metered
+  at all; it now names the quota `services/usage.py` actually enforces ("unlimited
+  daily conversations — free includes 50 messages a day"), en + hi. The web library
+  footnote no longer promises "offline playback"; it scopes the claim to the mixer.
+  iOS `Dummy.offline` and its unreachable `OfflineView` are deleted rather than
+  reworded — no client implements downloads. Note the Hindi `premium_intro` now carries a
+  numeric entitlement claim ("हर दिन 50 मैसेज"); it is machine-assisted like the rest of
+  the draft `values-hi`, so add it to the reviewer's list — a mistranslated quota is a
+  pricing claim, not a tone problem.
+- [ ] Follow-up found while doing this: the other three views in
+  `apps/ios/CereBro/Features/States/StateViews.swift` (`EmptyJournalView`,
+  `VoiceLoadingView`, `VoiceErrorView`) are also unreferenced. Their copy is honest,
+  so they were left alone — but they are dead code either way.
+- [x] **#8 `today_guide` on iOS and web** (checklist item 8, Phase 1) — "Sleep Reset" was a
+  7-day program only on Android; iOS and web showed "day N of 7" and nothing about day N.
+  iOS `RemoteProgram.today_guide` → a guide block in `ProgramProgressCard`; web
+  `Active.today_guide` → a guide section on the programs page. Additive on all three:
+  no `day_guides` ⇒ the field is absent ⇒ the card renders exactly as before, and a blank
+  title+body counts as no guide (matching Android's `parseTodayGuide`). New contract row
+  in ARCHITECTURE.
+- Verified: iOS `BUILD SUCCEEDED` + UITest suite, Android `testDebugUnitTest` green,
+  `tsc --noEmit` clean on `apps/app`. Backend untouched.
+
 ### Evidence-based redesign, Phases 1–2 (2026-07-12) — 6 implementation waves
 Research-driven redesign per docs/REDESIGN.md (verified findings F1–F11). All waves
 compile/test-green; emulator smoke-verified end-to-end (Home, Toolkit, breathe engine,
@@ -253,6 +345,56 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   settle-in) already existed on iOS at parity-or-better, so nothing else ported.
 
 ## Open — code/product work
+
+### B2C Tier 1 — SHIPPED 2026-07-30 (see the commits on `fix/ui-worldclass-103`)
+- [x] **Persisted, addressable memory** (`context_memories`) — closes the PRD note that
+  granular editing was "not implementable against the current schema". Only what the user
+  wrote or approved is stored; mined patterns stay computed and are *hidden* via a
+  tombstone, never persisted as facts. Per-item edit/delete on all three clients.
+- [x] **Personal safety plan** (Stanley-Brown, versioned, archive-not-delete) — **user-authored**;
+  the reference implementation's AI risk-classifier authorship was deliberately not copied.
+  Guided flow + offline copy on all three clients, print-ready page instead of a PDF dependency.
+- [x] **Weekly digest** — `compute_weekly` was computed but never delivered. Snapshots one
+  `Insight` row per ISO week (the model's first ever writer) and rides the existing dispatcher.
+  A quiet week is not sent.
+- [x] **Recommendations** — closes "an interventions engine that acts on mined patterns".
+  Hand-authored `practice_catalog`, every suggestion carries its reason verbatim, dismissing
+  is permanent. The reference's `interventions` rule engine was NOT ported (its own clinical
+  review puts it in the always-excluded tier).
+- [x] **Goals + habits** — the first things in the app the *user* defines. `decompose` feeds
+  the one existing plan; habits have no streak field by design.
+- [x] **Claims gate revived** (`scripts/check-claims.mjs` + `docs/CLAIMS_MAP.md`, in CI),
+  widened from the sibling's web-only scan to iOS Swift and Android strings.xml — where
+  every over-claim actually found here was living.
+- [x] Recommendations now render on iOS and Android too — all three clients in step.
+- [x] Goals & habits on iOS and Android — all three clients in step.
+- [x] Rituals / commitments / affirmations **assessed and mostly dropped** — the reasoning
+  is in B2C_BACKLOG.md §4b. Commitments duplicate goals + plan steps; gratitude is a
+  journal entry; custom rituals are habits and daily quests are the plan + streak;
+  affirmations should be a `content_items` kind, not three new tables. One survivor left
+  open on purpose: a **daily intention**, which needs a product call first (does it replace
+  the generated `Plan.focus`, or sit beside it?).
+
+### B2C feature candidates — plan in [B2C_BACKLOG.md](B2C_BACKLOG.md) (2026-07-30)
+Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different
+product**, `cerebrolearning.com`, 111 API domains). B2B/HR and clinical/EHR planes are
+excluded by the B2C-only decision; the doc says why per category.
+- [ ] **Tier 1 (each closes a gap PRD.md already documents):** persisted addressable
+  `memory` (today's schema makes per-item edit/delete impossible) · `recommendations` +
+  practice catalogue (patterns are display-only) · **personal safety plan**
+  (Stanley-Brown six sections; take the schema, *not* the sibling's AI-authorship —
+  user-authored, per the doc) · weekly digest delivery.
+- [ ] **Tier 2 — the consumer habit loop:** habits, goals (+ `decompose` → feeds the
+  existing agentic planner), rituals/intention, commitments, affirmations. No `Habit` or
+  `Goal` model exists here at all.
+- [ ] **Tier 3 — skills content:** DBT skills, MBCT, behavioural activation, role-play,
+  guided imagery, dreams. Each needs the non-clinical framing pass + its own PRD row.
+- [ ] **Flagged, needs an owner decision before any code:** gamification/leaderboard vs
+  the OECD dark-pattern checklist; peer community (24/7 moderation commitment —
+  recommend deferring the whole category).
+- [ ] **Two owner decisions block the recommended first slice:** what memory persists
+  (privacy posture) and who authors the safety plan.
+
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
 - [x] Backend: `content_items` gains `narration_script` (admin-authored) + `audio_url`

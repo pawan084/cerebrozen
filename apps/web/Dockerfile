@@ -8,6 +8,9 @@ RUN npm ci
 COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Where the landing's "Open the app" links point (apps/app). Same inlining rule.
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3002
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NODE_ENV=production
 RUN npm run build
 

@@ -92,7 +92,9 @@ test.describe("Admin dashboard", () => {
       editedRow.getByText("narrated", { exact: true }).or(page.getByText(/isn't configured/i)),
     ).toBeVisible({ timeout: 30_000 });
 
-    await editedRow.getByRole("button", { name: "Delete" }).click();
+    // Deleting content is a two-step confirm (destructive = two-step + Danger).
+    await editedRow.getByRole("button", { name: "Delete", exact: true }).click();
+    await editedRow.getByRole("button", { name: "Yes, delete" }).click();
     await expect(page.locator("tr", { hasText: edited })).toHaveCount(0);
   });
 

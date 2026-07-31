@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.models.consent import Consent
 from app.models.content import ContentItem
+from app.models.recommendation import PracticeCatalog
 from app.models.user import User
 from app.services import nudges
 
@@ -368,6 +369,63 @@ async def _ensure_user(db: AsyncSession, email: str, password: str, *, name: str
     return user
 
 
+
+# Practices offered when a mined pattern supports them (services/recommendations).
+# Hand-authored on purpose: a suggestion about someone's mental health should be
+# something a person wrote and an admin can retire, not model output. Each maps
+# to a pattern rule; the copy states what to try, never what is wrong with them.
+_PRACTICES = [
+    {
+        "slug": "anchor-the-hard-hour",
+        "title": "Put one small thing in your hardest hour",
+        "body": "You don't have to fix the hour — just give it something to hold. "
+                "A two-minute breath, a walk to the window, one line in the journal.",
+        "action": "breathe",
+    },
+    {
+        "slug": "keep-the-journal-streak",
+        "title": "Keep the writing going",
+        "body": "Your own check-ins read calmer the day after you write. "
+                "That's your pattern, not a general claim — worth protecting.",
+        "action": "journal",
+    },
+    {
+        "slug": "protect-the-wind-down",
+        "title": "Protect the wind-down",
+        "body": "Mornings after a longer night land differently for you. "
+                "A short, boring routine before bed is usually what buys those hours.",
+        "action": "sleep",
+    },
+    {
+        "slug": "one-weekend-anchor",
+        "title": "One weekend anchor",
+        "body": "Weekdays carry you; weekends drift. Pick one small thing that "
+                "happens on a Saturday whatever else does.",
+        "action": "plan",
+    },
+    {
+        "slug": "carry-one-into-the-week",
+        "title": "Carry one thing into the week",
+        "body": "Weekends are when you make the time. Take the smallest piece of "
+                "that and put it on a Tuesday.",
+        "action": "plan",
+    },
+]
+
+
+async def _seed_practices(db: AsyncSession) -> None:
+    """Insert-only: never overwrite copy an admin edited."""
+    have = set((await db.scalars(select(PracticeCatalog.slug))).all())
+    added = 0
+    for practice in _PRACTICES:
+        if practice["slug"] in have:
+            continue
+        db.add(PracticeCatalog(**practice))
+        added += 1
+    if added:
+        logger.info("Seeded %d practice catalogue entries", added)
+
+
 async def seed(db: AsyncSession) -> None:
     if not settings.seed_demo_data:
         return
@@ -414,6 +472,25 @@ async def seed(db: AsyncSession) -> None:
     if backfilled:
         logger.info("Backfilled narration scripts on %d content items", backfilled)
 
+    # Imagery honesty pass backfill (2026-07-04 changed _IMG to "" but only for
+    # rows created AFTER it, because seeding is additive by title). Every database
+    # seeded before that date still served the stock photos — found on a device
+    # 2026-07-30, where Home's "For tonight" rail illustrated the sleep story
+    # "Rain over quiet hills" with a sunlit desert canyon, and fetched it straight
+    # from a third-party CDN with the user's IP attached.
+    #
+    # Scoped to images.unsplash.com on purpose: that host can only have come from
+    # the old seed constant, so admin-attached licensed art is never touched.
+    unstocked = 0
+    stock = await db.scalars(
+        select(ContentItem).where(ContentItem.image_url.like("%images.unsplash.com%"))
+    )
+    for item in stock:
+        item.image_url = ""
+        unstocked += 1
+    if unstocked:
+        logger.info("Cleared stock imagery from %d content items", unstocked)
+
     # Same mechanic for per-day guides: fill only where still NULL, so an
     # admin-curated day list is never clobbered by a reboot.
     guided = 0
@@ -428,5 +505,7 @@ async def seed(db: AsyncSession) -> None:
         guided += 1
     if guided:
         logger.info("Backfilled day guides on %d content items", guided)
+
+    await _seed_practices(db)
 
     await db.commit()
