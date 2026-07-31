@@ -176,6 +176,15 @@
     <string name="today_rail_ambient">Ambient</string>
     <string name="today_toolkit_title">Toolkit</string>
     <string name="today_toolkit_subtitle">Small practices for right now</string>
+    <!-- Weekly-insights teaser (iOS/web parity). The subtitle states the real
+         last-7-days check-in count when there is one, and promises nothing when
+         there isn't. -->
+    <string name="today_insights_title">This week</string>
+    <string name="today_insights_subtitle">See what changed</string>
+    <plurals name="today_insights_count">
+        <item quantity="one">%1$d check-in in the last 7 days — see what changed.</item>
+        <item quantity="other">%1$d check-ins in the last 7 days — see what changed.</item>
+    </plurals>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">
@@ -289,6 +298,18 @@
     <string name="journal_private_body">Journal entries are yours. Safety scanning reads an entry once to surface support when something sounds heavy — it never blocks your writing, and nobody at CereBro reads it. Like the companion, that check runs through our AI provider; nothing is sold, advertised against, or shown to another person.</string>
     <string name="journal_telemanas">In India, Tele-MANAS is available any time — call 14416, free, day or night.</string>
     <string name="journal_hero_subtitle">A gentle starting point — or write about anything.</string>
+    <!-- State-tuned journal hero (iOS parity: JournalPrompts.tuned(toMood:)). Shown
+         only when today's check-in named one of these feelings; otherwise the
+         rotating prompts stand. -->
+    <string name="journal_tuned_anxious_tag">For a tense day</string>
+    <string name="journal_tuned_anxious_title">Name the worry</string>
+    <string name="journal_tuned_anxious_prompt">Write the thought that keeps circling — then one truer thought beside it.</string>
+    <string name="journal_tuned_low_tag">For a heavy day</string>
+    <string name="journal_tuned_low_title">One kind sentence</string>
+    <string name="journal_tuned_low_prompt">Write to yourself as you would to a friend who had this exact day.</string>
+    <string name="journal_tuned_tired_tag">For a tired day</string>
+    <string name="journal_tuned_tired_title">Put the day down</string>
+    <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing, safety-aware</string>
     <string name="journal_history_subtitle">Your past entries, searchable</string>
@@ -307,6 +328,8 @@
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
+    <string name="you_tour_title">Take a quick tour</string>
+    <string name="you_tour_subtitle">Replay the four-stop walkthrough of Home</string>
     <string name="you_reminder_title">Daily reminder</string>
     <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>

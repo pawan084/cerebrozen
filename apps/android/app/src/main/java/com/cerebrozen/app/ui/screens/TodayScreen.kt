@@ -214,6 +214,28 @@ internal fun hasLastNightLog(dates: List<String>, today: LocalDate): Boolean =
         d == today || d == today.minusDays(1)
     }
 
+/**
+ * How many check-ins landed in the last seven local days — the honest number
+ * behind the Insights teaser (web states the same count).
+ *
+ * Seven days *including today*, so the window matches the presence ring beside
+ * it rather than quietly counting an eighth day. Rows whose timestamp will not
+ * parse are not counted: a teaser that inflates the number is worse than one
+ * that says nothing. Pure.
+ */
+internal fun checkInsThisWeek(moods: JSONArray, today: LocalDate): Int {
+    val cutoff = today.minusDays(6)
+    return (0 until moods.length()).count { i ->
+        val iso = moods.optJSONObject(i)?.optString("created_at")
+        val day = runCatching {
+            java.time.OffsetDateTime.parse(iso)
+                .atZoneSameInstant(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+        }.getOrNull()
+        day != null && !day.isBefore(cutoff) && !day.isAfter(today)
+    }
+}
+
 // E2's one-shot save bloom now lives in Common.kt as the shared [BloomRing]
 // (W10) — Home and Journal arm the same calm ring.
 
@@ -354,6 +376,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var userName by remember { mutableStateOf("") }
     var streak by remember { mutableIntStateOf(0) }
     var recent by remember { mutableStateOf(listOf<String>()) }
+    var weekCheckIns by remember { mutableIntStateOf(0) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     // What was just logged, and its row id, so the tap can be taken back.
     var loggedMood by remember { mutableStateOf<MoodOption?>(null) }
@@ -383,7 +406,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             streak = s.optInt("current")
             week = parseWeek(s)
         }
-        runCatching { recent = parseRecent(Api.moods()) }
+        runCatching {
+            // One fetch feeds both the recent-check-ins list and the teaser count.
+            val moods = Api.moods()
+            recent = parseRecent(moods)
+            weekCheckIns = checkInsThisWeek(moods, LocalDate.now())
+        }
         runCatching { plan = Api.activePlan() }
         runCatching { program = Api.activeProgram() }
         // One extra GET (cached like every read) so the morning banner knows
@@ -631,6 +659,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         NavRow(stringResource(R.string.today_toolkit_title), stringResource(R.string.today_toolkit_subtitle)) { onOpen("toolkit") }
 
+        // Weekly-insights teaser (iOS/web parity). Insights was reachable only
+        // from You, so the one screen that answers "did any of this help?" was
+        // two taps off the main surface. The subtitle carries the real count
+        // when there is one and claims nothing when there isn't.
+        NavRow(
+            stringResource(R.string.today_insights_title),
+            if (weekCheckIns > 0)
+                pluralStringResource(R.plurals.today_insights_count, weekCheckIns, weekCheckIns)
+            else stringResource(R.string.today_insights_subtitle),
+        ) { onOpen("insights") }
+
         // Presence (REDESIGN §3.6): count the days you showed up, never the
         // days you didn't. The ring fills; it never breaks or resets.
         //
@@ -645,7 +684,16 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
             )
             milestoneLine(streak)?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                // The halo marks the milestone the line beside it already states —
+                // decoration on top of words, never instead of them (iOS parity).
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        RadiatingRing(size = 22.dp, color = Cyan)
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Cyan))
+                    }
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                }
             }
             Text(
                 if (daysPresent > 0)

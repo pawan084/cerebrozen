@@ -558,9 +558,32 @@ Remaining iOS deltas the mock still wins on — CLOSED for iOS + web 2026-07-09
   entrance staggers on all authed pages, selection pop, orb breathe, premium
   sheen, streak ring, button press springs, one `prefers-reduced-motion` kill
   switch.
-- [ ] Android parity for the new bits it lacks (insights teaser card,
-  state-tuned journal prompt, tour re-trigger row, ring/sheen accents) —
-  quick-grid it already has.
+- [x] Android parity for the new bits it lacks — DONE 2026-07-31. All four, each
+  verified on the `cere_smoke` emulator against the local API:
+  - **Weekly-insights teaser on Home.** Insights was reachable only from You, so the
+    one screen answering "did any of this help?" sat two taps off the main surface.
+    The subtitle carries the real last-7-days count (`checkInsThisWeek`, seven days
+    *inclusive* so it matches the presence ring beside it) and falls back to plain
+    copy at zero. Seen live: "1 check-in in the last 7 days".
+  - **State-tuned journal prompt.** Mirrors `JournalPrompts.tuned(toMood:)`; an
+    Anxious check-in turns the hero into "For a tense day / Name the worry". Two
+    deliberate divergences from iOS, both pinned in `TunedPromptTest`: the match is
+    **case-insensitive** (mobile posts "Anxious", the browser client posts "anxious",
+    and iOS's exact-string `switch` silently misses the latter — both castings are in
+    the dev database), and "today" is resolved in the **reader's timezone**, not the
+    UTC one the server stamps, so a late-night entry still tunes. "Try another" opts
+    out into the rotation.
+  - **Tour re-trigger row in You.** `TourState.reset()` clears only `tour_done`;
+    verified the four-stop overlay re-runs from stop 1.
+  - **Motion accents.** `RadiatingRing` (iOS's numbers exactly: 0.6→1.35, 0.5→0
+    opacity, 2s ease-out) on the streak-milestone line, and `Modifier.sheen()` on the
+    Premium row. Both Reduce-Motion-gated, and both take the gate as a *parameter* —
+    an endless animation is how a Compose test stops going idle.
+- [ ] Follow-up from that pass: **the milestone halo is unverified on a device** —
+  it only draws when `milestoneLine(streak)` is non-null and the demo account's
+  streak is 1. Compile- and gate-verified only; wants a look at a real milestone.
+  (The sheen *was* caught on device in both themes — and needed fixing: a white
+  sweep is invisible on Dawn's near-white card, so the highlight is now theme-aware.)
 - [ ] Splash consolidation nice-to-haves (review-2 deferrals, 2026-07-10):
   OrbMark's three breathing circles vs `RadiatingRing` are two names for one
   ring vocabulary; the Wordmark glint is a third shimmer implementation

@@ -16,6 +16,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -86,6 +87,7 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Accent
+import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Gradients
 import com.cerebrozen.app.ui.theme.Radius
 import com.cerebrozen.app.ui.theme.Stroke
@@ -302,6 +304,99 @@ internal fun BloomRing(trigger: Int, color: Color, modifier: Modifier = Modifier
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()),
         )
     }
+}
+
+/**
+ * The streak-milestone halo (iOS parity: `RadiatingRing` in Components.swift) —
+ * a single hairline ring that swells outward and fades, forever, slowly. Marks a
+ * milestone the presence card *already* announces in words; it adds no claim of
+ * its own, which is why it is safe to run unattended.
+ *
+ * Same numbers as iOS so the two feel like one product: 0.6 → 1.35 scale, 0.5 → 0
+ * opacity, 2s, ease-out, no reversal.
+ *
+ * [enabled] is a parameter rather than a bare Reduce-Motion read for the reason
+ * iOS gates on `-resetState`: this is an *endless* animation, and a composition
+ * that never goes idle is a test that never finishes. Nothing renders Home in the
+ * unit suite today; the seam is here so that stays a choice rather than a trap.
+ */
+@Composable
+internal fun RadiatingRing(
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    color: Color = Periwinkle,
+    enabled: Boolean = !rememberReduceMotion(),
+) {
+    if (!enabled) return
+    val transition = rememberInfiniteTransition(label = "radiating-ring")
+    val p by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "radiate",
+    )
+    Canvas(modifier.size(size)) {
+        drawCircle(
+            color = color.copy(alpha = 0.5f * (1f - p)),
+            radius = this.size.minDimension / 2f * (0.6f + 0.75f * p),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
+        )
+    }
+}
+
+/**
+ * An occasional diagonal light sweep (iOS parity: `sheen()`), for the one upsell
+ * surface — distinct from [ShimmerBox], which means "still loading". A sheen on
+ * something that is not loading would otherwise read as a stuck spinner.
+ *
+ * Deliberately sparse: the sweep itself takes ~1.1s of a [periodMillis] cycle, so
+ * the row rests still most of the time. Reduce Motion removes it entirely rather
+ * than slowing it — there is no information in it to preserve.
+ *
+ * The highlight is theme-aware, which iOS does not need to be. A white sweep is
+ * what reads on Night, and it is invisible on Dawn's near-white card — checked on
+ * a device, where the row was indistinguishable from its neighbours. Dawn gets the
+ * lavender accent instead, so the row actually catches light in both themes.
+ */
+@Composable
+internal fun Modifier.sheen(
+    periodMillis: Int = 5500,
+    shape: Shape = RoundedCornerShape(20.dp),
+    enabled: Boolean = !rememberReduceMotion(),
+): Modifier {
+    if (!enabled) return this
+    val transition = rememberInfiniteTransition(label = "sheen")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(periodMillis, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "sheen-phase",
+    )
+    // The sweep occupies the first fifth of the cycle; the rest is stillness.
+    val sweep = (phase / 0.2f).coerceAtMost(1f)
+    val visible = phase < 0.2f
+    val highlight = if (AppTheme.isNight) Color.White.copy(alpha = 0.13f)
+                    else Periwinkle.copy(alpha = 0.20f)
+    return this.drawWithContent {
+        drawContent()
+        if (!visible) return@drawWithContent
+        val band = size.width * 0.35f
+        val x = -band + (size.width + band * 2f) * sweep
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(Color.Transparent, highlight, Color.Transparent),
+                startX = x - band / 2f,
+                endX = x + band / 2f,
+            ),
+            size = size,
+        )
+    }.clip(shape)
 }
 
 /** W24 D2: a small kind-matched art medallion for empty states — the same

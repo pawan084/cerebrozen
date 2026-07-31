@@ -54,6 +54,7 @@ import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import java.time.LocalDate
 
 /** The rotating writing prompts, resolved from resources in composition. */
 @Composable
@@ -64,6 +65,63 @@ private fun journalPrompts(): List<String> = listOf(
     stringResource(R.string.journal_prompt_4),
     stringResource(R.string.journal_prompt_5),
 )
+
+/**
+ * The three string resources a state-tuned hero needs: an eyebrow that names the
+ * day, a title, and the prompt itself.
+ */
+internal data class TunedPrompt(
+    @androidx.annotation.StringRes val tag: Int,
+    @androidx.annotation.StringRes val title: Int,
+    @androidx.annotation.StringRes val prompt: Int,
+)
+
+/**
+ * Today's check-in reshapes the Journal hero (iOS parity —
+ * `JournalPrompts.tuned(toMood:)` in JournalViews.swift). Returns null for any
+ * other feeling, and the rotating prompts stand.
+ *
+ * **Case-insensitive on purpose.** The clients disagree about casing: Android and
+ * iOS post "Anxious", the browser client posts "anxious", and both land in the
+ * same `mood_logs.mood` column — seen in the dev database. iOS's `switch` on the
+ * exact string silently misses the lowercase rows, so a web check-in tunes
+ * nothing. Matching on the lowercased value means whichever client logged the
+ * feeling, the journal responds to it.
+ */
+internal fun tunedPromptFor(mood: String?): TunedPrompt? = when (mood?.trim()?.lowercase()) {
+    "anxious" -> TunedPrompt(
+        R.string.journal_tuned_anxious_tag,
+        R.string.journal_tuned_anxious_title,
+        R.string.journal_tuned_anxious_prompt,
+    )
+    "low" -> TunedPrompt(
+        R.string.journal_tuned_low_tag,
+        R.string.journal_tuned_low_title,
+        R.string.journal_tuned_low_prompt,
+    )
+    "tired" -> TunedPrompt(
+        R.string.journal_tuned_tired_tag,
+        R.string.journal_tuned_tired_title,
+        R.string.journal_tuned_tired_prompt,
+    )
+    else -> null
+}
+
+/**
+ * True when [iso] falls on today's date **in the reader's own timezone**.
+ *
+ * `created_at` arrives in UTC, so comparing its date directly would be wrong for
+ * anyone east or west of it: a 22:00 IST check-in is stamped 16:30 UTC the same
+ * day, but an 02:00 IST one is stamped the *previous* UTC day and would stop
+ * tuning the hero exactly when someone journals late at night. Unparseable or
+ * missing input is simply not today.
+ */
+internal fun isToday(iso: String?, today: LocalDate = LocalDate.now()): Boolean =
+    runCatching {
+        java.time.OffsetDateTime.parse(iso)
+            .atZoneSameInstant(java.time.ZoneId.systemDefault())
+            .toLocalDate() == today
+    }.getOrDefault(false)
 
 /** Optional feeling chips for a new entry. Single-select; when chosen the mood is
  * persisted with the entry (appended to the saved body via [Api.createJournal]),
@@ -148,6 +206,20 @@ fun JournalScreen() {
     val prompts = journalPrompts()
 
     LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
+
+    // Today's check-in reshapes the hero (iOS parity). Best-effort: if the call
+    // fails the rotation stands, so an offline journal never loses its prompt.
+    var todayMood by remember { mutableStateOf<String?>(null) }
+    // "Try another" opts out of the tuned prompt into the rotation — the tuned
+    // hero is a starting point, not a verdict about the day.
+    var tunedDismissed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        runCatching {
+            val latest = Api.moods().optJSONObject(0)
+            todayMood = latest?.takeIf { isToday(it.optString("created_at")) }?.optString("mood")
+        }
+    }
+    val tuned = if (tunedDismissed) null else tunedPromptFor(todayMood)
 
     if (!unlocked) {
         Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
@@ -367,13 +439,19 @@ fun JournalScreen() {
     Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
         HeroCard(
             kind = "journal",   // no dedicated motif — the brand orb family
-            eyebrow = stringResource(R.string.journal_prompt_header),
-            title = prompts[promptIdx],
-            subtitle = stringResource(R.string.journal_hero_subtitle),
+            eyebrow = stringResource(tuned?.tag ?: R.string.journal_prompt_header),
+            title = if (tuned != null) stringResource(tuned.title) else prompts[promptIdx],
+            subtitle = if (tuned != null) stringResource(tuned.prompt)
+                       else stringResource(R.string.journal_hero_subtitle),
             height = 220.dp,
         ) {
             TextButton(
-                onClick = { promptIdx = (promptIdx + 1) % prompts.size },
+                onClick = {
+                    // From a tuned hero the first tap moves to the rotation; after
+                    // that it advances through it as it always did.
+                    if (tuned != null) tunedDismissed = true
+                    else promptIdx = (promptIdx + 1) % prompts.size
+                },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
             ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
         }

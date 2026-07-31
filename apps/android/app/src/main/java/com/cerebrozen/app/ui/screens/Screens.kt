@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -133,6 +134,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
         NavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        // Re-run the four-stop Home tour (iOS parity). Clears only `tour_done`
+        // and lands on Home, where the overlay re-arms itself.
+        NavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
+            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
         // The one screen the user fills in rather than reads.
         NavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
             icon = Icons.Outlined.Flag) { onOpen("goals") }
@@ -147,8 +152,13 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // The Crisis screen's "add one in Settings" now has a Settings to mean.
         NavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
             icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
-        NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
-            icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        // The one upsell surface carries an occasional sheen (iOS parity) — the
+        // rest of You stays still, which is what makes this row read as the
+        // offer rather than as another setting.
+        Box(Modifier.sheen()) {
+            NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        }
         NavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
         NavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
