@@ -575,12 +575,21 @@
     <string name="privacy_lock_hint">Require phone PIN, password, pattern, or biometrics</string>
     <string name="premium_eyebrow">CereBro Premium</string>
     <string name="premium_title">Go deeper</string>
-    <string name="premium_intro">Unlock narrated sleep stories and unlimited daily conversations — free includes 50 messages a day, and the same private-by-design promise either way.</string>
+    <!-- Says what paying actually gets you TODAY. It used to lead with "narrated
+         sleep stories": exactly one item in the catalogue is narrated, and it is
+         free — both premium items have no audio at all, so subscribing unlocked
+         zero narrated content. Narration is a per-item admin action, not a tier
+         benefit; it can be sold once the batch narrator (docs/TODO #9) has run. -->
+    <string name="premium_intro">Unlock the full library and unlimited daily conversations — free includes 50 messages a day, and the same private-by-design promise either way.</string>
     <string name="premium_annual">Annual</string>
-    <string name="premium_annual_price">₹2,999 / year</string>
-    <string name="premium_annual_note" formatted="false">Save 37% · 7-day free trial</string>
+    <!-- Prices mirror apps/ios/CereBro/Products.storekit, which is what a user is
+         actually charged. Android had ₹399/₹2,999 against a real ₹499/₹3,999 —
+         a paywall quoting 25% under every other surface. Gated by
+         scripts/check-prices.mjs. -->
+    <string name="premium_annual_price">₹3,999 / year</string>
+    <string name="premium_annual_note" formatted="false">Save 33% · 7-day free trial</string>
     <string name="premium_monthly">Monthly</string>
-    <string name="premium_monthly_price">₹399 / month</string>
+    <string name="premium_monthly_price">₹499 / month</string>
     <string name="premium_monthly_note">Cancel anytime</string>
     <string name="premium_cta">Start free trial</string>
     <string name="premium_billing_note">Billing isn\'t wired on Android yet — Play Billing lands with Play Console setup. On iOS this is live via StoreKit.</string>

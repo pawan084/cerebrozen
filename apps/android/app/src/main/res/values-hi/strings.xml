@@ -470,12 +470,12 @@
     <string name="privacy_lock_hint">फ़ोन का PIN, पासवर्ड, पैटर्न या बायोमेट्रिक ज़रूरी</string>
     <string name="premium_eyebrow">CereBro प्रीमियम</string>
     <string name="premium_title">और गहराई तक</string>
-    <string name="premium_intro">नैरेट की गई स्लीप स्टोरीज़ और असीमित रोज़ाना बातचीत खोलें — फ्री में हर दिन 50 मैसेज, और निजता-पहले वादा दोनों में वही।</string>
+    <string name="premium_intro">पूरी लाइब्रेरी और असीमित दैनिक बातचीत अनलॉक करें — मुफ़्त में रोज़ 50 संदेश शामिल हैं, और निजता का वही वादा दोनों में।</string>
     <string name="premium_annual">वार्षिक</string>
-    <string name="premium_annual_price">₹2,999 / वर्ष</string>
-    <string name="premium_annual_note" formatted="false">37% बचत · 7 दिन का निःशुल्क ट्रायल</string>
+    <string name="premium_annual_price">₹3,999 / वर्ष</string>
+    <string name="premium_annual_note" formatted="false">33% बचत · 7 दिन का निःशुल्क ट्रायल</string>
     <string name="premium_monthly">मासिक</string>
-    <string name="premium_monthly_price">₹399 / माह</string>
+    <string name="premium_monthly_price">₹499 / माह</string>
     <string name="premium_monthly_note">कभी भी रद्द करें</string>
     <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
     <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी। iOS पर यह StoreKit के ज़रिये चालू है।</string>

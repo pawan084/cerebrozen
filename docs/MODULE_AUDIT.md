@@ -83,6 +83,7 @@ can be right on one platform and wrong on another — the Pattern Dashboard was.
 | 2026-07-31 | goals | Android | **5** | 8 | `Goals: two taps that retired a goal with no way back` |
 | 2026-07-31 | programs | Backend | **6** | 8 | `Programs: leaving a journey forfeited the week` |
 | 2026-07-31 | toolkit | Android | **6** | 9 | `Toolkit: the two minutes it promised in five places` |
+| 2026-07-31 | premium | Android (+price gate) | **3** | 8 | `Premium: a paywall quoting the wrong price` |
 
 Follow-up from the Home pass, shipped with the journey path: `railKindFor` treated
 00:09 as morning, so at 00:14 the theme had gone Night for wind-down while the rail
@@ -625,6 +626,36 @@ way."*
 Verified in real time on hardware: the mark appeared at 18 calm breaths on the
 Classic pace, and the breathing carried on. Every iOS string is untouched, so no
 iOS test moves. Now in `CLAIMS_MAP.md`.
+
+### premium — Android, 2026-07-31 (3 → 8)
+
+The short screen I expected to be dull. It carried the two worst findings of the
+run, because a paywall is the one surface where being wrong costs money.
+
+1. **The prices were wrong.** Android quoted ₹399/month and ₹2,999/year. The
+   catalogue — `apps/ios/CereBro/Products.storekit`, which is what a user is
+   actually charged — says **₹499 and ₹3,999**. iOS and the landing page both
+   agreed with the catalogue; only Android had drifted, roughly 25% under. "Save
+   37%" was computed from the wrong pair too (the real annual saving is 33%).
+   Nothing could have caught it: prices are hand-written strings in four places.
+2. **"Unlock narrated sleep stories" unlocked no narrated anything.** Exactly one
+   item in the catalogue has audio — "Rain over quiet hills" — and it is **free**.
+   Both premium items have none. Narration is a per-item admin action, not a tier
+   benefit, and on a fresh production database there are zero MP3s at all
+   (PRD, narrated-audio row). The headline promise of the payment screen
+   delivered nothing. It now says what paying gets you today: the full library
+   and unlimited daily conversations, both real and already backed in
+   `CLAIMS_MAP.md`.
+
+**Verified as true and left alone:** the 7-day free trial is real —
+`Products.storekit` declares `paymentMode: free, subscriptionPeriod: P1W` on both
+premium tiers. The CTA is disabled and the note under it says plainly that
+billing is not wired on Android.
+
+**New gate: `scripts/check-prices.mjs`,** wired into CI beside the claims check.
+It reads `Products.storekit` and fails if any client quotes a price the catalogue
+does not contain. Proved both ways before committing: it passes on the corrected
+copy, and re-introducing ₹399 makes it fail with the file and line.
 
 ## Gotchas this device adds
 

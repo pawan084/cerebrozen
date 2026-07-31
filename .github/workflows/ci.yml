@@ -99,6 +99,11 @@ jobs:
       # strings.xml). Review alone let three over-claims ship; see CLAIMS_MAP.md.
       - name: Claims check
         run: node scripts/check-claims.mjs
+      # Every quoted price against Products.storekit — what a user is really
+      # charged. The Android paywall drifted 25% under every other surface and
+      # nothing could notice, because prices are hand-written in four places.
+      - name: Price consistency check
+        run: node scripts/check-prices.mjs
       - name: Typecheck web
         working-directory: apps/web
         run: |
