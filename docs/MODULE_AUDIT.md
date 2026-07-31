@@ -762,6 +762,35 @@ Verified on device end to end: tap → server goes 3 moods to 4 → card shows
 **Still open from that list:** the card-stack rhythm, and procedural content art
 (the "For this morning" rail is still two near-identical teal cards).
 
+### Card-stack rhythm (Home, 2026-07-31)
+
+Third of the three named in the Dawn pass. "Monotonous rhythm" is the vaguest of
+them, so it needed turning into something answerable: every element on Home was
+the same rounded rectangle, at the same 24dp inset, with the same lift — so the
+check-in, the plan hero, a nav row and a list of past check-ins all claimed equal
+importance, which is another way of saying none of them led.
+
+Two changes, both of which also fix something real rather than only looking
+better:
+
+1. **The content rail runs to the screen edges** (`Modifier.bleed`). Inside the
+   page inset its last card stopped neatly short, so a horizontally scrolling row
+   read as a finished two-column grid — the affordance was simply missing. A card
+   cut off by the screen is the one signal that reliably says "more this way",
+   and it breaks the uniform inset every other element shares.
+2. **An elevation ladder instead of one plane** (`Modifier.quiet`,
+   `SectionCard(quiet = true)`). Primary cards stay raised; presence and past
+   check-ins — the things you read *after* doing what the screen asked — sit
+   recessed. On Dawn that reads as a well against paper, which is a genuine
+   hierarchy cue rather than decoration.
+
+Verified in both themes on device. The effect is stronger on Dawn, which is
+expected: dark themes have less elevation contrast to work with.
+
+**Not attempted, and the last of the three:** content art is still procedural
+gradient blobs — the rail is three near-identical teal cards. That one has an
+asset dependency and is not a code change.
+
 ## Gotchas this device adds
 
 The OEM (OPPO ColorOS) blocks more than `pm grant`:

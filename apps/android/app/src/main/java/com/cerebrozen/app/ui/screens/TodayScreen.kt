@@ -268,8 +268,13 @@ private fun ContentRail(onOpen: (String) -> Unit) {
     val list = items ?: return
     if (list.length() == 0) return
     Text(heading, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+    // Edge to edge, with the page inset re-applied inside: the first card still
+    // lines up with everything above it, and the last one is cut by the screen
+    // rather than stopping neatly short — which is the only reliable way a row
+    // says "there is more this way".
     Row(
-        Modifier.horizontalScroll(rememberScrollState()),
+        Modifier.bleed(24.dp).horizontalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         (0 until list.length()).forEach { i ->
@@ -628,7 +633,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
         // Presence (REDESIGN §3.6): count the days you showed up, never the
         // days you didn't. The ring fills; it never breaks or resets.
-        SectionCard {
+        //
+        // Quiet from here down. The check-in and the plan hero are what Home is
+        // for; presence and past check-ins are what you read afterwards, and
+        // giving all four the same lifted card made none of them lead.
+        SectionCard(quiet = true) {
             val daysPresent = week.count { it.second }
             Text(
                 if (daysPresent > 0 || streak > 0) stringResource(R.string.today_presence_title)
@@ -650,7 +659,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         if (recent.isNotEmpty()) {
-            SectionCard {
+            SectionCard(quiet = true) {
                 Text(stringResource(R.string.today_recent_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 recent.forEach { line ->
                     Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
