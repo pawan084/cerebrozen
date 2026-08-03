@@ -122,6 +122,12 @@
     <string name="talk_start_fresh">नई शुरुआत</string>
     <string name="talk_saved_view">सहेजा गया — जर्नल में देखें</string>
     <string name="talk_jump_latest_cd">सबसे नए जवाब पर जाएँ</string>
+    <string name="journal_hero_write">लिखें</string>
+    <string name="journal_recent_empty">आपकी पिछली एंट्री यहाँ दिखेगी — निजी, खोजने लायक़, आपकी।</string>
+    <plurals name="journal_word_count">
+        <item quantity="one">%1$d शब्द</item>
+        <item quantity="other">%1$d शब्द</item>
+    </plurals>
     <string name="today_friend">दोस्त</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>

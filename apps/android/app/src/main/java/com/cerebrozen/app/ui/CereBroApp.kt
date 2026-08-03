@@ -568,6 +568,8 @@ fun CereBroApp() {
             composable("talk/live") { TalkScreen(onOpen = open) }
             composable("talk/chat") { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
+            // The Home check-in's "Say more" bridge lands in the composer, not the hub.
+            composable("journal/new") { JournalScreen(startInEntry = true) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }

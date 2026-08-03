@@ -1097,7 +1097,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         // The bridge for the days one tap isn't enough: a word
                         // wants a page, and the page is one tap away.
                         TextButton(
-                            onClick = { onOpen("journal") },
+                            onClick = { onOpen("journal/new") },
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                         ) {
                             Text(stringResource(R.string.today_checkin_say_more),

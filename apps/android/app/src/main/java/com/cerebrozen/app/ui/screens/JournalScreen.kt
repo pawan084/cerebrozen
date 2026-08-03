@@ -184,11 +184,17 @@ internal fun entriesThisMonth(entries: List<Entry>, today: LocalDate): Int =
             ?.let { it.year == today.year && it.month == today.month } == true
     }
 
+/** Words in a draft — the quiet session-feel counter under the composer. Pure. */
+internal fun wordCount(s: String): Int =
+    s.trim().split(Regex("\\s+")).count { it.isNotBlank() }
+
 /** Journal: private composer + history, mirrored to /journal (safety-scanned
  * server-side; support surfaces, never blocks). Re-skinned to the redesign's
- * multi-mode hub (Home / Entry / History / Private) on our design system. */
+ * multi-mode hub (Home / Entry / History / Private) on our design system.
+ * [startInEntry] lands straight in the composer — the Home check-in's
+ * "Say more in Journal" bridge used to drop people at the hub. */
 @Composable
-fun JournalScreen() {
+fun JournalScreen(startInEntry: Boolean = false) {
     // Draft survives rotation / tab switch / process death — this is the user's
     // own writing, so losing it silently is the worst thing this screen can do.
     var title by rememberSaveable { mutableStateOf("") }
@@ -208,7 +214,7 @@ fun JournalScreen() {
     var tags by remember { mutableStateOf(listOf<String>()) }
     var tag by remember { mutableStateOf<String?>(null) }
     var mood by rememberSaveable { mutableStateOf<String?>(null) }
-    var mode by remember { mutableStateOf(JournalMode.Home) }
+    var mode by remember { mutableStateOf(if (startInEntry) JournalMode.Entry else JournalMode.Home) }
     // The entry being read in full. Android could WRITE journal entries and never
     // read one back: history rows were not tappable, so the only view of your own
     // writing was a 120-character, two-line preview. iOS has had JournalDetailView
@@ -320,6 +326,15 @@ fun JournalScreen() {
                 }
                 AppTextField(title, { title = it }, stringResource(R.string.journal_title_label), singleLine = true)
                 AppTextField(body, { body = it }, stringResource(R.string.journal_body_label), minLines = 3)
+                // A quiet session-feel counter — never a target, just the fact.
+                if (wordCount(body) > 0) {
+                    Text(
+                        androidx.compose.ui.res.pluralStringResource(
+                            R.plurals.journal_word_count, wordCount(body), wordCount(body),
+                        ),
+                        style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    )
+                }
                 Text(stringResource(R.string.journal_feeling_label),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 // FlowRow, not chunked(3) + Row: a fixed three-per-row grid has no
@@ -539,15 +554,35 @@ fun JournalScreen() {
                 mode = JournalMode.Entry
             },
         ) {
-            TextButton(
-                onClick = {
-                    // From a tuned hero the first tap moves to the rotation; after
-                    // that it advances through it as it always did.
-                    if (tuned != null) tunedDismissed = true
-                    else promptIdx = (promptIdx + 1) % prompts.size
-                },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
+            // The prompt card is the page's hero and it is WRITABLE — the pill
+            // says so (tapping anywhere on the card already opened the composer,
+            // but nothing admitted it).
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = {
+                        // From a tuned hero the first tap moves to the rotation; after
+                        // that it advances through it as it always did.
+                        if (tuned != null) tunedDismissed = true
+                        else promptIdx = (promptIdx + 1) % prompts.size
+                    },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
+                Box(
+                    Modifier.clip(RoundedCornerShape(50))
+                        .border(1.dp, com.cerebrozen.app.ui.theme.ArtTextSoft.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.journal_hero_write).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = com.cerebrozen.app.ui.theme.ArtTextSoft,
+                    )
+                }
+            }
         }
 
         // Writing is what this tab is FOR — it gets the one primary button.
@@ -587,6 +622,13 @@ fun JournalScreen() {
             entries.take(2).forEachIndexed { i, e ->
                 JournalEntryCard(e, i) { reading = e; mode = JournalMode.Read }
             }
+        } else {
+            // The section exists before the first entry too — an anchored
+            // promise instead of silent nothing.
+            Text(
+                stringResource(R.string.journal_recent_empty),
+                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            )
         }
 
         // Safety contract: support is surfaced, the entry is never blocked.

@@ -352,6 +352,15 @@ class ScreenLogicTest {
         assertEquals(fallback, com.cerebrozen.app.net.Session.ApiException(500, "").userMessage(fallback))
     }
 
+    // ── Journal polish (2026-08-04) ──
+    @Test
+    fun wordCount_counts_words_not_whitespace() {
+        assertEquals(0, wordCount(""))
+        assertEquals(0, wordCount("   "))
+        assertEquals(1, wordCount("breathe"))
+        assertEquals(4, wordCount("  a long   hard day\n"))
+    }
+
     // ── Talk polish (2026-08-04): fresh start + moment-aware offers ──
     @Test
     fun startFresh_hides_older_messages_but_keeps_local_bubbles() {

@@ -193,6 +193,12 @@
     <string name="talk_start_fresh">Start fresh</string>
     <string name="talk_saved_view">Saved — view in Journal</string>
     <string name="talk_jump_latest_cd">Jump to the latest reply</string>
+    <string name="journal_hero_write">Write</string>
+    <string name="journal_recent_empty">Your last entry will appear here — private, searchable, yours.</string>
+    <plurals name="journal_word_count">
+        <item quantity="one">%1$d word</item>
+        <item quantity="other">%1$d words</item>
+    </plurals>
     <string name="today_greeting_format">%1$s, %2$s</string>
     <string name="today_friend">friend</string>
     <string name="today_search_cd">Search the library</string>
