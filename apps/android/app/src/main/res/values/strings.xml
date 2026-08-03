@@ -369,6 +369,13 @@
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
     <string name="journal_recent_header">Recent</string>
+    <!-- You-tab section group headers + row state values. -->
+    <string name="you_group_personalize">Personalize</string>
+    <string name="you_group_progress">Your progress</string>
+    <string name="you_group_safety">Privacy &amp; safety</string>
+    <string name="you_reminder_state_on">On · a gentle daily check-in</string>
+    <string name="you_reminder_state_off">Off · tap to set one</string>
+    <string name="you_appearance_state">%1$s · night, dawn, or match your system</string>
     <string name="journal_lock_state_on">Lock is on · manage privacy</string>
     <string name="journal_lock_state_off">Lock is off · manage privacy</string>
     <plurals name="journal_month_count">
@@ -392,7 +399,7 @@
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
     <string name="you_tour_title">Take a quick tour</string>
-    <string name="you_tour_subtitle">Replay the four-stop walkthrough of Home</string>
+    <string name="you_tour_subtitle">Replay the Home walkthrough</string>
     <string name="you_reminder_title">Daily reminder</string>
     <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>

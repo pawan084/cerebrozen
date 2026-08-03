@@ -134,20 +134,51 @@ fun YouScreen(onOpen: (String) -> Unit) {
             }
         }
 
+        // Group headers: eighteen visually identical rows scrolled as one
+        // undifferentiated column — the legal-critical rows looked exactly like
+        // "Take a quick tour". Same header style the Legal section already used.
+        Text(stringResource(R.string.you_group_personalize), style = MaterialTheme.typography.labelSmall,
+            color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
         PremiumNavRow(stringResource(R.string.you_companion_title),
             stringResource(R.string.you_companion_subtitle, run {
                 val comp = companion.ifBlank { "Calm Guide" }
                 companionLabelRes(comp)?.let { stringResource(it) } ?: comp
             }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
-        PremiumNavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
-            icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
-        PremiumNavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
-            icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        // Rows carry their current value — a settings row that hides its state
+        // makes every check a round-trip.
+        PremiumNavRow(
+            stringResource(R.string.you_appearance_title),
+            stringResource(
+                R.string.you_appearance_state,
+                when (com.cerebrozen.app.ui.theme.AppTheme.mode) {
+                    com.cerebrozen.app.ui.theme.ThemeMode.Night -> stringResource(R.string.theme_night_title)
+                    com.cerebrozen.app.ui.theme.ThemeMode.Dawn -> stringResource(R.string.theme_dawn_title)
+                    else -> stringResource(R.string.theme_system_title)
+                },
+            ),
+            icon = Icons.Outlined.DarkMode,
+        ) { onOpen("appearance") }
+        run {
+            // Read fresh each composition so returning from the sub-screen
+            // shows the new state (a remember{} here would go stale).
+            val reminderOn = androidx.compose.ui.platform.LocalContext.current
+                .getSharedPreferences("cerebro", android.content.Context.MODE_PRIVATE)
+                .getBoolean("reminder_on", false)
+            PremiumNavRow(
+                stringResource(R.string.you_reminder_title),
+                if (reminderOn) stringResource(R.string.you_reminder_state_on)
+                else stringResource(R.string.you_reminder_state_off),
+                icon = Icons.Outlined.NotificationsNone,
+            ) { onOpen("reminders") }
+        }
         // Re-run the four-stop Home tour (iOS parity). Clears only `tour_done`
         // and lands on Home, where the overlay re-arms itself.
         PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
             icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
+
+        Text(stringResource(R.string.you_group_progress), style = MaterialTheme.typography.labelSmall,
+            color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
         // The one screen the user fills in rather than reads.
         PremiumNavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
             icon = Icons.Outlined.Flag) { onOpen("goals") }
@@ -158,26 +189,30 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // answer different questions and one should not be buried in the other.
         PremiumNavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
             icon = Icons.Outlined.ShowChart) { onOpen("trends") }
-        PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
-            icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
+
+        Text(stringResource(R.string.you_group_safety), style = MaterialTheme.typography.labelSmall,
+            color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
+        PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
+            icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
             icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
         // The Crisis screen's "add one in Settings" now has a Settings to mean.
         PremiumNavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
             icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
-        // The one upsell surface carries an occasional sheen (iOS parity) — the
-        // rest of You stays still, which is what makes this row read as the
-        // offer rather than as another setting.
-        Box(Modifier.sheen()) {
-            PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
-                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
-        }
         PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
         PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
             icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
+
+        // The one upsell surface carries an occasional sheen (iOS parity) — the
+        // rest of You stays still, which is what makes this row read as the
+        // offer rather than as another setting.
+        Box(Modifier.sheen().padding(top = 8.dp)) {
+            PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        }
 
         Text(stringResource(R.string.you_legal_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle,
             modifier = Modifier.padding(top = 8.dp))
