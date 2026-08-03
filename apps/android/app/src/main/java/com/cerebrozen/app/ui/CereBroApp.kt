@@ -69,6 +69,7 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.GroundingScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
@@ -619,6 +620,7 @@ fun CereBroApp() {
             composable("ritual") { RitualBuilderScreen(onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }
+            composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }

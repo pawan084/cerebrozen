@@ -1821,8 +1821,26 @@ private fun ToolkitHeader(label: String) {
     )
 }
 
-/** Headline game tile — W21 generative hero art with floating orbs, tappable to
- * open the game. Chrome only; the copy is passed in. Built on palette tokens. */
+/** The display label for a remembered Toolkit route, or null for routes that
+ * should never appear as "recent" (unknown/retired ones simply don't render —
+ * a stale pref can't crash the hub). Pure + unit-tested. */
+internal fun toolkitRecentLabelRes(route: String): Int? = when (route) {
+    "ground" -> R.string.toolkit_ground_title
+    "zenripples" -> R.string.toolkit_zen_title
+    "games" -> R.string.mg_title
+    "bubblepop" -> R.string.toolkit_bubble_title
+    "breathe/box" -> R.string.toolkit_box_title
+    "breathe/reset" -> R.string.toolkit_reset_title
+    "cbt" -> R.string.toolkit_cbt_title
+    "tipp" -> R.string.toolkit_tipp_title
+    "imagery" -> R.string.toolkit_imagery_title
+    "ritual" -> R.string.toolkit_ritual_title
+    "gratitude" -> R.string.toolkit_gratitude_title
+    "patternglow" -> R.string.toolkit_pattern_title
+    "sounds" -> R.string.toolkit_sounds_title
+    else -> null
+}
+
 @Composable
 fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
@@ -1839,24 +1857,42 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         ),
     ) {
         ToolkitAmbientLayer(if (reduceMotion) 0f else glowY)
+        // Every exercise door records itself so the hub can offer "pick up
+        // where you left off" next visit (support/crisis is deliberately not
+        // a "recent" — it is not a practice).
+        val openTool: (String) -> Unit = remember(onOpen) {
+            { route: String -> runCatching { com.cerebrozen.app.net.Session.prefPut("toolkit_recent", route) }; onOpen(route) }
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             ToolkitHeroHeader(onBack)
+            // Returning users mostly come back for one tool — the chip
+            // shortcuts the scroll hunt.
+            val recentRoute = remember { runCatching { com.cerebrozen.app.net.Session.prefGet("toolkit_recent") }.getOrNull() }
+            val recentLabel = recentRoute?.let { toolkitRecentLabelRes(it) }
+            if (recentRoute != null && recentLabel != null) {
+                PickChip(
+                    selected = false,
+                    label = stringResource(R.string.toolkit_recent_chip, stringResource(recentLabel)),
+                ) { onOpen(recentRoute) }
+            }
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80))
-            Grounding()
-            // Provenance, same as every other tool carries (REDESIGN F9) — the
-            // web Toolkit's grounding card has always had it and Android's
-            // hadn't, which made this the one tool here with no source.
-            WhyThisWorks(stringResource(R.string.ground_why))
+            // The 5-4-3-2-1 practice moved to its own screen (a guided exercise
+            // ran INLINE here, restarting silently mid-scroll every visit).
+            ToolkitExerciseCard(
+                stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_intro),
+                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
+                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Grain, Color(0xFF4ADE80), 0,
+            ) { openTool("ground") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
-            ) { onOpen("zenripples") }
-            FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { onOpen("bubblepop") }
+            ) { openTool("zenripples") }
+            FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
             // the only onOpen("games") lived in the retired legacy Toolkit, so
             // a whole shipped hub (engine, registry, tests) was unreachable
@@ -1865,38 +1901,38 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_ground), Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
-            ) { onOpen("games") }
+            ) { openTool("games") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Color(0xFF64C9FF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.Air, Color(0xFF64C9FF), 3,
-            ) { onOpen("breathe/box") }
+            ) { openTool("breathe/box") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.SelfImprovement, Color(0xFF7A5CFF), 4,
-            ) { onOpen("breathe/reset") }
+            ) { openTool("breathe/reset") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Color(0xFFB18CFF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
                 stringResource(R.string.toolkit_duration_5), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Psychology, Color(0xFFB18CFF), 5,
-            ) { onOpen("cbt") }
+            ) { openTool("cbt") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Spa, Color(0xFFFFD166), 6,
-            ) { onOpen("tipp") }
+            ) { openTool("tipp") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Color(0xFF9D7CFF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_imagery_title), stringResource(R.string.toolkit_imagery_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
-            ) { onOpen("imagery") }
+            ) { openTool("imagery") }
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
             // setup comes before use.
@@ -1904,22 +1940,22 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_ritual_title), stringResource(R.string.toolkit_ritual_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
-            ) { onOpen("ritual") }
+            ) { openTool("ritual") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80), 7,
-            ) { onOpen("gratitude") }
+            ) { openTool("gratitude") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFFB18CFF), 8,
-            ) { onOpen("patternglow") }
+            ) { openTool("patternglow") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
-            ) { onOpen("sounds") }
+            ) { openTool("sounds") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
@@ -2262,71 +2298,74 @@ internal fun groundSteps(): List<Pair<String, String>> = listOf(
     stringResource(R.string.ground_step5_title) to stringResource(R.string.ground_step5_hint),
 )
 
-/** The iOS 5-4-3-2-1 sensory grounding tool as a gentle stepper — inlined at the
- * top of the Toolkit so grounding is zero taps away. */
+/** The 5-4-3-2-1 grounding practice on its own screen. It used to run INLINE in
+ * the Toolkit hub — a guided three-minute exercise sandwiched mid-scroll between
+ * a section header and the next card, restarting silently every visit. A focused
+ * screen gives it what an exercise needs: room, a completion moment, and its
+ * evidence attached rather than floating after it. */
 @Composable
-private fun Grounding() {
+fun GroundingScreen(onBack: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
+    var done by remember { mutableStateOf(false) }
     val steps = groundSteps()
     val last = step == steps.lastIndex
-    val shape = RoundedCornerShape(28.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape)
-            .background(CardFill)
-            .border(1.dp, LineStroke, shape)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    PremiumSubPage(
+        stringResource(R.string.toolkit_badge_ground),
+        stringResource(R.string.toolkit_ground_title),
+        onBack = onBack,
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ToolkitBadge(stringResource(R.string.toolkit_badge_ground), Color(0xFF4ADE80))
-            Text(
-                "•  ${stringResource(R.string.toolkit_duration_3)}   •  ${stringResource(R.string.toolkit_level_guided)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
-            )
+        if (done) {
+            SectionCard {
+                Text(stringResource(R.string.ground_done_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.ground_done_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                PrimaryButton(text = stringResource(R.string.ground_start_again), modifier = Modifier.fillMaxWidth()) {
+                    step = 0; done = false
+                }
+            }
+        } else {
+            SectionCard {
+                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    steps.indices.forEach { index ->
+                        Box(
+                            Modifier.weight(1f).height(5.dp).clip(CircleShape)
+                                .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
+                        )
+                    }
+                }
+                Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
+                Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.height(48.dp).clip(CircleShape)
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF4BAE83), Color(0xFF64C9FF))))
+                            .clickable {
+                                if (last) {
+                                    done = true
+                                    Celebrations.trigger()
+                                } else {
+                                    step += 1
+                                }
+                            }
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (last) stringResource(R.string.common_done) else stringResource(R.string.common_next),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                        )
+                    }
+                    if (step > 0) TextButton(onClick = { step -= 1 }) {
+                        Text(stringResource(R.string.common_back), color = Color(0xFFB8C2D9))
+                    }
+                }
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(Color(0x224ADE80))
-                    .border(1.dp, Color(0x444ADE80), RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Grain, contentDescription = null, tint = Color(0xFF78E6A1), modifier = Modifier.size(25.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.toolkit_ground_title), style = MaterialTheme.typography.titleLarge, color = TextPrimary)
-                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            steps.indices.forEach { index ->
-                Box(
-                    Modifier.weight(1f).height(5.dp).clip(CircleShape)
-                        .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
-                )
-            }
-        }
-        Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
-        Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-        Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.height(48.dp).clip(CircleShape)
-                    .background(Brush.horizontalGradient(listOf(Color(0xFF4BAE83), Color(0xFF64C9FF))))
-                    .clickable { step = if (last) 0 else step + 1 }
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    if (last) stringResource(R.string.ground_start_over) else stringResource(R.string.common_next),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                )
-            }
-            if (step > 0) TextButton(onClick = { step -= 1 }) {
-                Text(stringResource(R.string.common_back), color = Color(0xFFB8C2D9))
-            }
-        }
+        // The evidence travels WITH the practice (REDESIGN F9) — it used to
+        // float after the inline card as a separate row on the hub.
+        WhyThisWorks(stringResource(R.string.ground_why))
     }
 }
 

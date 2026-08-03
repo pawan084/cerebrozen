@@ -275,7 +275,7 @@ class ScreenLogicTest {
     @Test
     fun widgetRoute_maps_every_cross_stack_widget_kind_natively() {
         assertEquals("breathing", widgetRoute("breathing"))
-        assertEquals("toolkit", widgetRoute("grounding"))
+        assertEquals("ground", widgetRoute("grounding"))   // its own screen since 2026-08-03
         assertEquals("home", widgetRoute("mood_check"))
         assertEquals("journal", widgetRoute("mini_journal"))
         assertEquals("sleep", widgetRoute("sleep_checkin"))
@@ -682,5 +682,18 @@ class ScreenLogicTest {
         )
         assertEquals(2, entriesThisMonth(entries, today))
         assertEquals(0, entriesThisMonth(emptyList(), today))
+    }
+
+    @Test
+    fun toolkitRecentLabel_knows_every_practice_and_declines_the_rest() {
+        listOf(
+            "ground", "zenripples", "games", "bubblepop", "breathe/box",
+            "breathe/reset", "cbt", "tipp", "imagery", "ritual", "gratitude",
+            "patternglow", "sounds",
+        ).forEach { assertTrue("label for $it", toolkitRecentLabelRes(it) != null) }
+        // Crisis must never render as "pick up where you left off", and a
+        // stale pref from a retired route renders nothing rather than crashing.
+        assertNull(toolkitRecentLabelRes("crisis"))
+        assertNull(toolkitRecentLabelRes("retired_tool"))
     }
 }

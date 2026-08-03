@@ -369,6 +369,10 @@
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
     <string name="journal_recent_header">Recent</string>
+    <string name="toolkit_recent_chip">Pick up where you left off · %1$s</string>
+    <string name="ground_done_title">That\'s the practice</string>
+    <string name="ground_done_body">Five senses, one present moment. Come back to it any time a spiral starts.</string>
+    <string name="ground_start_again">Start again</string>
     <!-- You-tab section group headers + row state values. -->
     <string name="you_group_personalize">Personalize</string>
     <string name="you_group_progress">Your progress</string>

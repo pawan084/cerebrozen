@@ -143,7 +143,9 @@ internal fun parseWidget(o: JSONObject?): ChatWidget? {
  * one-field tools became Journal quick-entry chips. */
 internal fun widgetRoute(kind: String): String? = when (kind) {
     "breathing" -> "breathing"
-    "grounding" -> "toolkit"
+    // Straight to the exercise since it has its own screen (2026-08-03) —
+    // the hub was a detour when the companion just suggested grounding.
+    "grounding" -> "ground"
     "mood_check" -> "home"
     "mini_journal", "journal" -> "journal"
     "sleep_checkin" -> "sleep"
