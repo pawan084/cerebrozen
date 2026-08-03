@@ -1036,9 +1036,12 @@ afternoon both suites were green).
   an empty value. Reads are deliberately unvalidated so historical rows
   stay visible — the clarity card shows the typo, the validator prevents
   the next one. Pinned in test_escalation.py.
-- [ ] Follow-up nit: Android's trusted_failed toast is generic — surface the
-  server's 422 detail ("That doesn't look like an email address.") the way
-  web's account page does.
+- [x] Follow-up nit FIXED (e5697f83): Android now surfaces the server's 422
+  sentence. The bug was two layers deep in Session.raw — pydantic's array
+  `detail` shape was unparsed, and org.json's optString was serializing it
+  to raw JSON (the exact failure the code's own comment warned about for
+  objects). Fixed at the Session layer, so all 19 userMessage call sites
+  benefit; pinned in SessionTest.
 
 ### Web 100-point improvement run (2026-08-03, autonomous waves)
 The full list, per-item status, and what stays owner-blocked live in
