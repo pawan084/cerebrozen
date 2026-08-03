@@ -198,6 +198,15 @@
     <string name="talk_start_fresh">Start fresh</string>
     <string name="talk_saved_view">Saved — view in Journal</string>
     <string name="talk_jump_latest_cd">Jump to the latest reply</string>
+    <string name="talk_presence_line">%1$s · %2$s</string>
+    <string name="talk_presence_ready">here with you</string>
+    <string name="talk_presence_listening">listening…</string>
+    <string name="talk_presence_thinking">thinking…</string>
+    <string name="talk_presence_speaking">speaking…</string>
+    <string name="talk_presence_hearing">hearing you…</string>
+    <string name="talk_memory_on">Remembers · Privacy</string>
+    <string name="talk_memory_off">Memory off · in the moment</string>
+    <string name="talk_starter_mood">Earlier I felt %1$s — can we start there?</string>
     <string name="journal_hero_write">Write</string>
     <string name="journal_recent_empty">Your last entry will appear here — private, searchable, yours.</string>
     <plurals name="journal_word_count">

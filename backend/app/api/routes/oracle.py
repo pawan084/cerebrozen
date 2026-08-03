@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.context import current_db, current_thread_id, current_user_id, emitted_widgets
+from app.agent.context import current_db, current_risk, current_thread_id, current_user_id, emitted_widgets
 from app.agent.graph import get_graph
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db, utcnow
@@ -75,10 +75,14 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
         t_uid = current_user_id.set(user_id)
         t_w = emitted_widgets.set([])
         t_tid = current_thread_id.set(thread_id)
+        # Read-only-on-risk gate: default to "none" for turns that carry no
+        # user text (a /confirm resume approves a PREVIOUS calm turn's write).
+        t_risk = current_risk.set("none")
         try:
             if persist_user is not None:
                 risk = await safety.scan_and_record(
                     db, user_id=user_id, source="chat", source_id=None, text=persist_user)
+                current_risk.set(risk)
                 db.add(ChatMessage(user_id=user_id, role="user", text=persist_user, risk_level=risk))
                 await db.commit()
                 # Surface crisis resources for elevated distress too (not only
@@ -137,6 +141,7 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
             current_user_id.reset(t_uid)
             emitted_widgets.reset(t_w)
             current_thread_id.reset(t_tid)
+            current_risk.reset(t_risk)
 
 
 @router.post("/messages")

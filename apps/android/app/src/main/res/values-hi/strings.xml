@@ -122,6 +122,15 @@
     <string name="talk_start_fresh">नई शुरुआत</string>
     <string name="talk_saved_view">सहेजा गया — जर्नल में देखें</string>
     <string name="talk_jump_latest_cd">सबसे नए जवाब पर जाएँ</string>
+    <string name="talk_presence_line">%1$s · %2$s</string>
+    <string name="talk_presence_ready">आपके साथ</string>
+    <string name="talk_presence_listening">सुन रहा है…</string>
+    <string name="talk_presence_thinking">सोच रहा है…</string>
+    <string name="talk_presence_speaking">बोल रहा है…</string>
+    <string name="talk_presence_hearing">आपको सुन रहा है…</string>
+    <string name="talk_memory_on">याद रखता है · प्राइवेसी</string>
+    <string name="talk_memory_off">मेमोरी बंद · बस इसी पल में</string>
+    <string name="talk_starter_mood">पहले मैंने %1$s महसूस किया — वहीं से शुरू करें?</string>
     <string name="journal_hero_write">लिखें</string>
     <string name="journal_recent_empty">आपकी पिछली एंट्री यहाँ दिखेगी — निजी, खोजने लायक़, आपकी।</string>
     <plurals name="journal_word_count">

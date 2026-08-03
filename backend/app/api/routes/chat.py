@@ -91,10 +91,22 @@ async def send_message(
     else:
         transcript = f"user: {payload.text}"
 
+    # The activity card is chosen from the USER's message BEFORE the reply is
+    # generated, and the model is told it exists — so it can never say "I can't
+    # start an exercise" above a working exercise card (the reference app hit
+    # exactly that contradiction and fixed it with this ordering + hint).
+    widget, suggestions = activities.route(payload.text, risk)
+
     system = _SCIENTIFIC if user.companion == "Scientific" else _CALM_GUIDE
     # Onboarding asks which language the user wants; until 2026-07-30 only
     # starter-topic generation read the answer.
     system += language.for_user(user)
+    if widget is not None:
+        system += (
+            f" A '{widget.title}' activity card appears directly under your reply; "
+            "you may point at it in at most one short sentence, and you must never "
+            "say you cannot start, play or run activities."
+        )
     reply_text = await ai.complete(system, transcript, max_tokens=200) or _fallback_reply(payload.text)
 
     if risk == "crisis":
@@ -107,6 +119,4 @@ async def send_message(
     await db.refresh(user_msg)
     await db.refresh(reply)
 
-    # Offer an inline activity (breathing, grounding, …) + quick-reply chips.
-    widget, suggestions = activities.route(payload.text, risk)
     return ChatReply(user_message=user_msg, reply=reply, widget=widget, suggestions=suggestions)

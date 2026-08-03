@@ -334,6 +334,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     DisposableEffect(Unit) { onDispose { voice.dispose(); cloud.dispose() } }
 
     var starters by remember { mutableStateOf(listOf<String>()) }
+    // Presence + honesty lines: who is talking, and whether it remembers.
+    var companionName by remember { mutableStateOf("") }
+    var memoryOn by remember { mutableStateOf<Boolean?>(null) }
+    // Today's check-in seeds a personal opener on the empty state.
+    var todayMoodTalk by remember { mutableStateOf<String?>(null) }
     // Agentic Oracle (SSE) when the server has it; deterministic /chat otherwise.
     var useOracle by remember { mutableStateOf(false) }
     var streamText by remember { mutableStateOf("") }
@@ -352,6 +357,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         entranceFloor = messages.size
         // Empty chat → grounded conversation starters (mirrors the iOS rail).
         if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
+        runCatching { companionName = Api.me().optString("companion") }
+        runCatching { memoryOn = Api.consent().optBoolean("ai_memory", false) }
+        runCatching {
+            val latest = Api.moods().optJSONObject(0)
+            todayMoodTalk = latest?.takeIf { isToday(it.optString("created_at")) }
+                ?.optString("mood")?.takeIf { it.isNotBlank() }
+        }
         useOracle = Api.oracleAvailable()
         cloudVoice = runCatching {
             val v = Api.voiceStatus()
@@ -428,8 +440,26 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     // The server persists both sides; thread defaults to the user id.
                     messages = messages + Msg("user", text.trim())
                     chips = emptyList()
-                    val final = consume("/oracle/messages", JSONObject().put("text", text.trim()))
-                    if (speak) speakReply(final)
+                    val final = try {
+                        consume("/oracle/messages", JSONObject().put("text", text.trim()))
+                    } catch (e: Session.FreeLimitException) {
+                        throw e
+                    } catch (_: Exception) {
+                        // The stream failed mid-flight: fall back to the
+                        // deterministic path with the SAME words, so the typed
+                        // message is never lost (reference send-path pattern —
+                        // the retry chip is now the last resort, not the first).
+                        val reply = Api.sendChat(text.trim())
+                        val replyText = reply.getJSONObject("reply").getString("text")
+                        messages = messages + Msg("assistant", replyText)
+                        val suggestions = reply.optJSONArray("suggestions")
+                        chips = suggestions?.let { arr ->
+                            (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
+                        } ?: emptyList()
+                        if (hasCrisisSuggestion(suggestions)) crisis = true
+                        replyText
+                    }
+                    if (speak) speakReply(final) else com.cerebrozen.app.ui.Haptics.tap()
                 } else {
                     val reply: JSONObject = Api.sendChat(text.trim())
                     val replyText = reply.getJSONObject("reply").getString("text")
@@ -659,6 +689,45 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             Text(stringResource(R.string.talk_disclosure_details), style = MaterialTheme.typography.bodySmall, color = Periwinkle)
         }
 
+        // Presence + memory honesty, one quiet line each (reference
+        // PresenceHeader, on our tokens): who is talking and what they're
+        // doing; whether they remember — and where to change that.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val personaRaw = companionName.ifBlank { "Calm Guide" }
+            val persona = companionLabelRes(personaRaw)?.let { stringResource(it) } ?: personaRaw
+            val stateLabel = stringResource(
+                when {
+                    transcribing -> R.string.talk_presence_hearing
+                    busy || streamText.isNotBlank() -> R.string.talk_presence_thinking
+                    voice.speaking || cloud.speaking -> R.string.talk_presence_speaking
+                    voice.listening || cloud.recording -> R.string.talk_presence_listening
+                    else -> R.string.talk_presence_ready
+                },
+            )
+            Text(
+                stringResource(R.string.talk_presence_line, persona, stateLabel),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onOpen("companion") }
+                    .padding(vertical = 4.dp),
+            )
+            memoryOn?.let { on ->
+                Text(
+                    stringResource(if (on) R.string.talk_memory_on else R.string.talk_memory_off),
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onOpen("privacy") }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
+
         if (crisis) {
             Column(
                 Modifier.fillMaxWidth()
@@ -734,7 +803,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
-            if (starters.isNotEmpty()) {
+            if (starters.isNotEmpty() || todayMoodTalk != null) {
                 Text(stringResource(R.string.talk_starters_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 // Bleed to the screen edge so a clipped chip reads as "scrolls",
                 // not "broken" (the ContentRail pattern).
@@ -743,6 +812,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         .padding(horizontal = pageHorizontalPadding()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // Today's check-in seeds the first opener — the static
+                    // topics never knew anything about the user's actual day.
+                    todayMoodTalk?.let { m ->
+                        val moodLabel = moodLabelResFor(m)?.let { stringResource(it) } ?: m
+                        val opener = stringResource(R.string.talk_starter_mood, moodLabel.lowercase())
+                        PickChip(selected = false, label = opener) { send(opener) }
+                    }
                     starters.forEach { topic ->
                         PickChip(selected = false, label = topic) { send(topic) }
                     }
