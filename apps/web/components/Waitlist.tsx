@@ -31,6 +31,17 @@ export default function Waitlist() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      // A 429 (rate limit) or 5xx still carries a JSON body — parsing it and
+      // announcing success would tell someone they're on the list when they
+      // aren't. Only 2xx means the email was actually recorded.
+      if (!res.ok) {
+        setMsg(
+          res.status === 429
+            ? "A little too fast — please try again in a minute."
+            : "Something went wrong. Please try again."
+        );
+        return;
+      }
       const data = await res.json();
       setMsg(
         data.status === "already_joined"

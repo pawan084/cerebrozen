@@ -161,7 +161,7 @@ export default async function Home() {
               <div className="hero-banner phone-float">
                 <img
                   src="/brand/banner-hero.jpg"
-                  alt="CereBro on iPhone — home, journal and sleep"
+                  alt="CereBro on three iPhones — the home check-in and sleep screens"
                   width={970}
                   height={1080}
                   fetchPriority="high"

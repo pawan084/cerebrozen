@@ -1012,6 +1012,30 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Landing (apps/web) world-class pass (2026-08-03, reviewed in a real browser)
+- [x] **Waitlist could announce success on failure** — FIXED. `Waitlist.tsx` parsed the JSON
+  of any response: a 429 (the endpoint rate-limits at 10/min per IP — one college NAT hits
+  that) or a 5xx still said "You're in" while the email was never recorded. Now only 2xx
+  celebrates; 429 gets its own gentle copy.
+- [x] **~20 static cards each paid for `backdrop-filter: blur(8px)`** — FIXED. Every card,
+  bento cell, space row and FAQ item forced its own raster layer to blur a smooth gradient
+  (invisible by definition); scrolling visibly strained the renderer on a Windows machine
+  during review. The sticky nav keeps its blur — content really scrolls under it.
+- [x] **Dead `images.unsplash.com` remotePattern** in next.config.mjs — removed; no remote
+  images exist and the CSP's `img-src 'self'` would block them anyway.
+- [x] **`sync-tokens.mjs --check` false-failed on Windows checkouts** (CRLF vs the LF block
+  it builds) — normalizes to LF before comparing now. CI behavior unchanged.
+- [x] Hero banner alt text said "home, journal and sleep"; the render shows home + sleep.
+- [ ] **The hero render contradicts the page it sits on.** `banner-hero.jpg` bakes in a
+  "3-day streak" chip (and "Rest easy, Pawan") while the bento cell beside it promises
+  "Presence, not streaks … nothing ever counts your misses." Needs a re-render from the
+  brand kit with the presence ring instead of a streak chip — asset work, not code.
+- [ ] **Scroll-driven `.reveal` can freeze mid-fade under renderer pressure.** Observed once
+  (Windows Chrome, DevTools-protocol attached): the final "Be first to feel the calm" head
+  held at opacity 0.59 even fully in view; clean loads complete correctly, so likely
+  capture-tooling-induced — but if a real-user report ever mentions dimmed sections, drop
+  `.reveal` from the last fold (waitlist + FAQ) first.
+
 ### From the 2026-08-03 deep review (after pulling the device-push/offline/games drop)
 - [x] **Consent was private-by-default on every client and permissive on the server** — FIXED.
   Four model columns defaulted True and `consent_allows` treated a missing row as granted, so

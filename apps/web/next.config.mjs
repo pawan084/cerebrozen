@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
+  // No remote images: every asset ships from /public, and the CSP
+  // (middleware.ts) only allows `img-src 'self' data: blob:` anyway.
 };
 
 export default nextConfig;

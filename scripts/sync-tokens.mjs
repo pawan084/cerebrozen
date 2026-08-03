@@ -16,15 +16,20 @@ const TARGETS = [
 const START = "/* @cerebro-tokens:start */";
 const END = "/* @cerebro-tokens:end */";
 
+// Normalize to LF before any comparison: a Windows checkout with
+// core.autocrlf=true reads CRLF, which made --check report false drift
+// against the LF block built below. Writes go out as LF; git renormalizes.
+const norm = (s) => s.replace(/\r\n/g, "\n");
+
 // The token rule is everything after the file's leading comment.
-const tokens = readFileSync(SOURCE, "utf8").replace(/^\/\*[\s\S]*?\*\/\s*/, "").trim();
+const tokens = norm(readFileSync(SOURCE, "utf8")).replace(/^\/\*[\s\S]*?\*\/\s*/, "").trim();
 const block = `${START}\n/* Synced from design/tokens.css — edit THERE, then run \`node scripts/sync-tokens.mjs\`. */\n${tokens}\n${END}`;
 
 const check = process.argv.includes("--check");
 let drift = false;
 
 for (const file of TARGETS) {
-  const src = readFileSync(file, "utf8");
+  const src = norm(readFileSync(file, "utf8"));
   const start = src.indexOf(START);
   const end = src.indexOf(END);
   if (start === -1 || end === -1) {
