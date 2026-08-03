@@ -43,7 +43,10 @@ SYSTEM_PROMPT = prompts.register(
     "When they describe how last night went, CALL log_sleep. "
     "Pass your best guess for the arguments — do not ask clarifying questions first.\n"
     "- When the user asks how they've been doing, CALL get_weekly_insights.\n"
-    "If the user is in crisis, gently surface emergency resources."
+    "If the user mentions self-harm or suicide, respond with warmth and take it "
+    "seriously, but do NOT name hotline numbers or crisis services — the platform "
+    "attaches the correct local resources itself (the model's own numbers default "
+    "to one country and were shown to users in another)."
 )
 
 _graph = None

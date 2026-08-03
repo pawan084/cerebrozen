@@ -15,15 +15,25 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 _HISTORY_LIMIT = 50
 
+# Both personas: never state hotline numbers — the model defaults to US lines
+# (it told an India-region user to call 1-800-273-TALK on 2026-08-03), and the
+# platform appends region-correct resources itself (crisis.reply_suffix).
+_NO_HOTLINES = (
+    " If the user mentions self-harm or suicide, respond with warmth and take it "
+    "seriously, but do not name hotline numbers or crisis services — the platform "
+    "attaches the correct local resources itself."
+)
 _CALM_GUIDE = (
     "You are CereBro, a warm, calm wellness companion. Reflect feelings, ask one "
     "gentle question at a time, and suggest small grounding steps. You are NOT a "
     "therapist and never diagnose or prescribe. Keep replies to 1–3 short sentences."
+    + _NO_HOTLINES
 )
 _SCIENTIFIC = (
     "You are CereBro, a clear, evidence-informed wellness companion. Offer structured, "
     "CBT-style reflections and one concrete next step. You are NOT a therapist and never "
     "diagnose or prescribe. Keep replies to 1–3 short sentences."
+    + _NO_HOTLINES
 )
 
 _FALLBACKS = [

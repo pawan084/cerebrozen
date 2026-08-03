@@ -14,9 +14,18 @@ from app.models.safety import SafetyEvent
 from app.services import ai, prompts
 
 # Ordered most→least severe; first match wins in the fallback.
+# Substring matching means base forms miss their progressives: "hurt myself"
+# does not match "hurting myself", "suicide" does not match "suicidal". A real
+# message — "I've been thinking about hurting myself" — sailed under this net
+# on 2026-08-03 and got no crisis resources, so every term carries its common
+# derived forms explicitly.
 _CRISIS_TERMS = [
-    "kill myself", "end my life", "suicide", "want to die", "better off dead",
-    "no reason to live", "hurt myself", "self harm", "self-harm",
+    "kill myself", "killing myself", "end my life", "ending my life",
+    "take my own life", "taking my own life", "end it all", "ending it all",
+    "suicide", "suicidal", "want to die", "wanting to die",
+    "wish i was dead", "wish i were dead", "better off dead",
+    "no reason to live", "hurt myself", "hurting myself",
+    "harm myself", "harming myself", "self harm", "self-harm",
 ]
 _ELEVATED_TERMS = [
     "hopeless", "can't go on", "cant go on", "cannot go on", "can not go on",

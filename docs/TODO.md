@@ -1012,6 +1012,45 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Web app (apps/app) world-class pass (2026-08-03, full funnel + chat walked live)
+- [x] **Crisis keyword floor missed progressive forms — a real heavy message got no
+  crisis resources.** "I've been thinking about hurting myself" sailed under the net:
+  substring matching means "hurt myself" ≠ "hurting myself", "suicide" ≠ "suicidal".
+  Floor now carries derived forms (killing/hurting/harming myself, suicidal, ending my
+  life, wanting to die, wish I was dead…); pinned by
+  test_safety_keyword_floor_catches_derived_forms.
+- [x] **Both chat LLM paths told an India-region user to call a US hotline.** The
+  /chat personas said nothing about hotlines and the Oracle prompt actively said
+  "gently surface emergency resources" — so the model printed 1-800-273-TALK while
+  the platform's own region-correct banner (Tele-MANAS-first) carried the right
+  numbers. Both prompts now forbid naming hotlines; the platform attaches local
+  resources itself. Verified live: banner up, no US numbers, nothing blocked.
+- [x] **Onboarding FirstReset breathed 4-in/2-hold/4-out — fifth recurrence of the
+  breathing-contract drift.** The cross-client Reset is 4-in/6-out, no hold
+  (ARCHITECTURE contract row). Now 4/6 with the ritual's existing `slow-out` 5.8s
+  transition class.
+- [x] **Funnel offered reminder times it never honored.** "Morning 9 AM" / "Evening
+  7 PM" both collapsed to `email_nudges=true`; delivery is a fixed 9 AM check-in +
+  7 PM wind-down (services/nudges.py). Step is now honest on/off chips, fine print
+  states the real schedule + the browser-notification path in Settings.
+- [ ] Wiring a REAL per-user reminder hour is a cross-stack schema task (users
+  column + nudges scheduling + all three clients' pickers) — decide before any
+  client re-grows a time picker.
+- [x] **"Lives in the iOS app" ×5 (chat ×3, sleep, toolkit)** — an app nobody can
+  download yet, stated as shipping. All now "arrives with the mobile apps".
+- [ ] **Elevated-risk chat replies get resources only on the Oracle path.** /chat
+  appends hotlines for `crisis` only, while /oracle SSEs the banner for
+  `elevated` too. Decide whether /chat's non-Oracle fallback should match
+  (activities.route already surfaces a crisis suggestion chip for elevated).
+- [ ] apps/app has no PWA manifest (sw.js is push-only) — "install to home screen"
+  would make the web client feel native on Android before the store app lands.
+- Verified working end-to-end in a real browser: full 8-step funnel (18+ gate,
+  Hindi consent notice via language carry-through, all-six-consents-off default,
+  signup), check-in → presence rail update, chat round-trip + suggested-activity
+  widget, free-limit typed error path (code-reviewed), theme Night/Dawn persist,
+  honest empty states on Home/Insights/Journal, Settings 13-language notice +
+  export + typed DELETE, Tele-MANAS-first /crisis + /support.
+
 ### Landing (apps/web) world-class pass (2026-08-03, reviewed in a real browser)
 - [x] **Waitlist could announce success on failure** — FIXED. `Waitlist.tsx` parsed the JSON
   of any response: a 429 (the endpoint rate-limits at 10/min per IP — one college NAT hits

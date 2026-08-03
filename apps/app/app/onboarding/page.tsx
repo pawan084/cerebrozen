@@ -297,10 +297,13 @@ function StateCheck({
 /* ---------- 4 · First reset (breathing) ---------- */
 
 function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
+  // The cross-client Reset: in 4 / out 6, no hold — the long exhale is the part
+  // of slow breathing with real vagal-tone evidence, and every client breathes
+  // this same shape (iOS/Android Reset, /games Breathe, the wind-down settle).
+  // A 4-2-4 with a hold shipped here once already; don't reintroduce it.
   const PHASES = [
     { label: "Breathe in", ms: 4000 },
-    { label: "Hold", ms: 2000 },
-    { label: "Breathe out", ms: 4000 },
+    { label: "Breathe out", ms: 6000 },
   ];
   const [phase, setPhase] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -308,7 +311,9 @@ function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: ()
     timer.current = setTimeout(() => setPhase((p) => (p + 1) % PHASES.length), PHASES[phase].ms);
     return () => clearTimeout(timer.current);
   }, [phase]);
-  const state = phase === 0 ? "in" : phase === 2 ? "out" : "hold";
+  // `slow-out` stretches the orb's transition to match the 6s exhale (the same
+  // class the wind-down ritual's settle step uses).
+  const state = phase === 0 ? "in" : "out slow-out";
   return (
     <div className="onb-step onb-center">
       <BackButton onBack={onBack} />
@@ -468,7 +473,11 @@ function Notifications({
           </button>
         ))}
       </div>
-      <p className="onb-fine">On the web we'll send a gentle email nudge — reminders on your phone come with the iOS app.</p>
+      <p className="onb-fine">
+        On the web that means a morning check-in and an evening wind-down by email —
+        or as browser notifications, if you turn those on in Settings. Phone
+        reminders arrive with the mobile apps.
+      </p>
     </Scaffold>
   );
 }

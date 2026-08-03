@@ -129,7 +129,7 @@ export default function Toolkit() {
         </section>
 
         <p className="footnote">
-          More of the Toolkit — TIPP and calm play — lives in the iOS &amp; Android apps.
+          More of the Toolkit — TIPP and calm play — arrives with the mobile apps.
         </p>
         {/* Crisis stays ≤2 clicks from every tool surface (REDESIGN §2.3). */}
         <p className="footnote">

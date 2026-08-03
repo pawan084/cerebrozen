@@ -20,6 +20,28 @@ async def test_safety_classify_branches(monkeypatch):
     assert (await safety.classify("had a nice cup of tea"))[0] == "none"   # nothing flagged
 
 
+async def test_safety_keyword_floor_catches_derived_forms(monkeypatch):
+    """Progressive/derived forms must not slip the substring net — a real
+    message ("thinking about hurting myself") did exactly that on 2026-08-03:
+    "hurt myself" is not a substring of "hurting myself", "suicide" is not a
+    substring of "suicidal"."""
+    async def no_ai(system, prompt, max_tokens=1024):
+        return None
+
+    monkeypatch.setattr(ai, "complete_json", no_ai)
+
+    for phrase in [
+        "I've been thinking about hurting myself",
+        "I keep thinking about killing myself",
+        "I've thought about ending my life",
+        "I feel suicidal",
+        "I've been wanting to die",
+        "some days I wish I was dead",
+        "I think about harming myself",
+    ]:
+        assert (await safety.classify(phrase))[0] == "crisis", phrase
+
+
 async def test_safety_uses_llm_result(monkeypatch):
     async def fake(system, prompt, max_tokens=1024):
         return {"risk_level": "low", "reason": "mild"}

@@ -235,12 +235,12 @@ export default function Chat() {
             <h2>I'm here whenever you're ready</h2>
             {/* Says where voice is: the browser client has text only, and the
                 orb above otherwise reads like a mic. */}
-            <p>Just type — no pressure to have the right words. Voice lives in the apps.</p>
+            <p>Just type — no pressure to have the right words. Voice arrives with the mobile apps.</p>
             <div className="talk-actions">
               <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
             <p className="footnote" style={{ marginTop: 14 }}>
-              Voice conversations live in the iOS app. Here, the companion listens in writing.
+              Voice conversations arrive with the mobile apps. Here, the companion listens in writing.
             </p>
           </section>
           <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
@@ -287,7 +287,7 @@ export default function Chat() {
                 {WIDGET_LINKS[m.widget.widget_kind] ? (
                   <Link className="btn ghost" href={WIDGET_LINKS[m.widget.widget_kind]}>Open</Link>
                 ) : (
-                  <p className="footnote">This one lives in the iOS app.</p>
+                  <p className="footnote">This one arrives with the mobile apps.</p>
                 )}
               </div>
             )}
@@ -338,7 +338,7 @@ export default function Chat() {
         </button>
       </form>
       <p className="footnote">
-        Voice conversations live in the iOS app. Free accounts have a daily message allowance.
+        Voice conversations arrive with the mobile apps. Free accounts have a daily message allowance.
       </p>
         </>
       )}

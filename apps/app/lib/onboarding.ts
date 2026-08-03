@@ -32,7 +32,11 @@ export const FEELINGS: {
 ];
 
 export const LANGUAGES = ["English", "Hindi", "Hinglish", "Punjabi", "Tamil"];
-export const REMINDER_TIMES = ["Morning 9 AM", "Evening 7 PM", "No reminders"];
+// On/off only — the old "Morning 9 AM" / "Evening 7 PM" chips offered a time
+// the server never stored (delivery is a fixed morning check-in + evening
+// wind-down; services/nudges.py). A choice that changes nothing is a fake.
+// Wiring a real per-user hour is a cross-stack schema task — TODO ledger.
+export const REMINDER_TIMES = ["Gentle nudges", "No reminders"];
 
 // `planTitle` and `PLAN_STEPS` used to live here, feeding a "your first plan"
 // preview step. They are gone with it: the three steps were static and identical
@@ -75,7 +79,7 @@ export function freshDraft(): Draft {
       sleep_history: false,
       model_training: false,
     },
-    reminder: "Evening 7 PM",
+    reminder: "Gentle nudges",
   };
 }
 

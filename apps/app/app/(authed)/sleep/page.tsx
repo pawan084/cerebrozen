@@ -181,8 +181,8 @@ export default function Sleep() {
         ))}
         <p className="footnote">
           Comfort content, not therapy — stories and sounds help you settle, while the cards
-          above carry the evidence. Served from the same catalogue as the apps; stories with
-          narration play right here, the soundscape mixer lives in the iOS &amp; Android apps.
+          above carry the evidence. Stories with narration play right here; the full
+          soundscape mixer arrives with the mobile apps.
         </p>
 
         <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
