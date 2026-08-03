@@ -497,10 +497,15 @@ async def device_push_status(
     """Whether push can actually be delivered to this platform, plus the number
     of live installs. The client asks before offering a notifications toggle —
     a switch that silently does nothing is worse than an honest explanation."""
+    # Scoped to the platform being asked about: `enabled` answers for ONE
+    # provider, so the install count must too — an iPhone-only account asking
+    # about Android would otherwise read "delivery off, 1 device registered".
     rows = (
         await db.scalars(
             select(DeviceToken).where(
-                DeviceToken.user_id == user.id, DeviceToken.failed_at.is_(None)
+                DeviceToken.user_id == user.id,
+                DeviceToken.platform == platform,
+                DeviceToken.failed_at.is_(None),
             )
         )
     ).all()

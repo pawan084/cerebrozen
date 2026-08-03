@@ -125,7 +125,12 @@ def classify(status_code: int, body: str) -> str:
     if status_code == 200:
         return OK
     # The install is gone (uninstalled, token rotated, wrong sender).
-    if status_code == 404 or "UNREGISTERED" in body or "INVALID_ARGUMENT" in body:
+    if status_code == 404 or "UNREGISTERED" in body:
+        return DEAD
+    # INVALID_ARGUMENT is DEAD only when FCM blames the token. It is also what
+    # a malformed *payload* returns — and DEAD stamps failed_at, so a payload
+    # bug on our side would otherwise silently bury every registered install.
+    if "INVALID_ARGUMENT" in body and "token" in body.lower():
         return DEAD
     return RETRY
 

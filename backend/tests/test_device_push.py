@@ -151,9 +151,18 @@ async def test_fcm_message_is_a_data_message_on_the_app_channel():
 def test_fcm_classifies_provider_answers():
     assert fcm.classify(200, "{}") == fcm.OK
     assert fcm.classify(404, "{}") == fcm.DEAD
-    assert fcm.classify(400, '{"error":{"status":"INVALID_ARGUMENT"}}') == fcm.DEAD
     assert fcm.classify(403, '{"error":{"status":"UNREGISTERED"}}') == fcm.DEAD
     assert fcm.classify(503, "unavailable") == fcm.RETRY, "an outage must be retried, not buried"
+    # INVALID_ARGUMENT is DEAD only when FCM blames the token — it is also what
+    # a malformed payload returns, and DEAD buries the install permanently. A
+    # payload bug on our side must surface as retries (and logged warnings),
+    # not as every registered device quietly stamped failed_at.
+    assert fcm.classify(
+        400, '{"error":{"status":"INVALID_ARGUMENT","message":"The registration token is not a valid FCM registration token"}}'
+    ) == fcm.DEAD
+    assert fcm.classify(
+        400, '{"error":{"status":"INVALID_ARGUMENT","message":"Invalid JSON payload received."}}'
+    ) == fcm.RETRY
 
 
 async def test_fcm_send_logs_instead_of_failing_without_credentials():
