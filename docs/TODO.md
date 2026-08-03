@@ -1012,6 +1012,37 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### iOS world-class pass (2026-08-03 — STATIC ONLY, Windows host; needs one
+### macOS `xcodebuild test` before shipping)
+- [x] **iOS was the phantom-grant client.** `Consent()` defaulted four
+  categories true, and RootView pushed `state.consent` to the server on every
+  launch — so a returning user signing in on a fresh iPhone had their real
+  recorded choices OVERWRITTEN by defaults nobody chose (the funnel's
+  all-off reset only runs if the consent step is reached; sign-in skips it).
+  Fixed with the exact guard the assessment push has always had:
+  `hasConsentChoice` (set by passing the consent step or moving a Privacy
+  switch), defaults all-false, decoder missing-key = not granted (journal
+  keeps its umbrella inheritance), and a new `GET /users/me/consent` adoption
+  on connect so a fresh device mirrors the account instead of the reverse.
+  Pinned in ConsentAndErrorsTest; the funnel UITest already asserted
+  "must not be pre-ticked".
+- [x] **Pydantic-422 sentences now surface on iOS too** — both APIClient
+  status-handling paths parse the array `detail` shape (and the JSON path
+  now recognises the free-tier cap). Same fix as Android e5697f83, pinned in
+  ConsentAndErrorsTest.
+- Checked, clean: breathing presets (box 4-4-4-4 / color 4-2-6 / reset 4-6,
+  RitualsTest pins the 4-7-8 rejection), crisis directory Tele-MANAS-first,
+  claims/prices gates green over Swift copy, reminder hour is a real local
+  notification.
+- Respected, not "fixed": **Sleep does NOT pin Night on iOS** — a recorded
+  2026-07-28 decision with a real technical argument (global-static tokens;
+  subtree pinning needs the Environment-palette refactor). That refactor is
+  the honest fix and stays open; it is also what would let iOS rejoin the
+  cross-client pin web/Android hold.
+- [ ] **macOS verification owed:** `xcodebuild test` (unit + UITests) on the
+  consent-guard changes before any store build; the funnel walk and a
+  fresh-device sign-in walk are the two flows to exercise.
+
 ### 2026-08-03 pull review: the craft pass (ad163877), reconciled
 The drop is genuinely good (aurora depth field, BreathVoice on-device phase
 narration over the ambient bed, trusted-contact clarity, premium framing on

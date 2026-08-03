@@ -89,7 +89,14 @@ struct MainTabView: View {
         // (explicit override, else device locale) so AI crisis replies are correct.
         .task {
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(state.crisisRegion))
-            backend.syncConsent(state.consent)
+            // Same guard the assessment push has always had, for the same
+            // reason: only choices actually made on this device may travel.
+            // Without it, a fresh-device sign-in pushed `Consent()`'s local
+            // defaults over the account's real recorded choices — a consent
+            // write nobody performed (DPDP: silence isn't consent).
+            if state.hasConsentChoice {
+                backend.syncConsent(state.consent)
+            }
             // The 18+ tap time from onboarding rides along with attest() at the
             // next connect (a sign-in can happen many launches later).
             backend.syncAgeConfirmation(state.ageConfirmedAt)
@@ -112,6 +119,24 @@ struct MainTabView: View {
                 state.hasAssessment = true
             }
         }
+        // Returning user on a fresh install: adopt the account's RECORDED
+        // consent so Privacy & Memory shows the truth. Mirror of the
+        // assessment adoption above — reads flow down, defaults never flow up.
+        // (If the server's values equal the local ones, `state.consent` doesn't
+        // change and the device stays unmarked — also correct.)
+        .onChange(of: backend.isConnected) { _, connected in
+            guard connected, !state.hasConsentChoice else { return }
+            Task {
+                guard let remote = try? await APIClient.shared.consent() else { return }
+                state.consent = Consent(
+                    moodHistory: remote.mood_history,
+                    aiMemory: remote.ai_memory,
+                    voiceStorage: remote.voice_storage,
+                    modelTraining: remote.model_training,
+                    journalMemory: remote.journal_memory ?? remote.ai_memory,
+                    sleepHistory: remote.sleep_history ?? false)
+            }
+        }
         // Returning user on a fresh install: adopt the server's companion style
         // unless this device has already been switched off the default (the
         // picker pushes local changes itself, so local intent still wins).
@@ -124,7 +149,13 @@ struct MainTabView: View {
         .onChange(of: state.crisisRegion) { _, new in
             backend.syncCrisisRegion(CrisisDirectory.effectiveRegion(new))
         }
-        .onChange(of: state.consent) { _, new in backend.syncConsent(new) }
+        // A consent value CHANGING here is a real action on this device (a
+        // Privacy & Memory switch, or the funnel step) — that both marks the
+        // device as having chosen and makes the sync legitimate.
+        .onChange(of: state.consent) { _, new in
+            state.hasConsentChoice = true
+            backend.syncConsent(new)
+        }
         // Guided tour lives at the tab level so it renders above any pushed
         // screen — the You-tab replay row works from anywhere, not just when
         // Home happens to be at its stack root. First run auto-shows it;
