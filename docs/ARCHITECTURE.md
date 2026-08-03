@@ -167,21 +167,17 @@ in-process looked identical to a healthy one.
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
 `web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account),
-<<<<<<< HEAD
 `device_tokens` (one row per native install: unique token, `ios|android`, `last_seen_at`,
 `failed_at` stamped when the provider reports the install gone so a dispatcher stops paying for
 it), `idempotency_records` (unique per `user_id + key`, response body stored, purged after 7 days
-by the same in-process loop that dispatches nudges).
-=======
+by the same in-process loop that dispatches nudges),
 `oracle_tool_calls` (agent audit trail — argument names only, never values),
 `intervention_recommendations` (one open offer at a time; the reason + the counts behind
 it, frozen at fire time).
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
 Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
 immutable versions per name; the active row overrides the in-code default in
 `services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-<<<<<<< HEAD
 `ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic.
 
 > **Alembic had two heads** (`c8f1b6d94e23` and `c93f2b7a5e18`, branching at `b8e6d1a4f527`),
@@ -192,9 +188,10 @@ UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK 
 > `d2b7f9c41a63` is an empty merge revision that restores a single head so migrations either run
 > or fail loudly. **Anything deployed between the branch and this merge should be checked against
 > `alembic current` before assuming its columns exist.**
-=======
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (21 revisions).
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
+>
+> It has happened three times now — every branch cut from a stale main mints its own head
+> (`8c27b8990a90`, then `f4b7c2e9a815`, then `a9d3e7f2c481` each re-join one). Before pushing a
+> new migration, run the head check the tests pin: there must be exactly one.
 
 ## iOS app (`apps/ios/CereBro`)
 

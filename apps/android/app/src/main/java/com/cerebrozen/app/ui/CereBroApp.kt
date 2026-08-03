@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -147,7 +146,6 @@ internal enum class Tab(val route: String, @androidx.annotation.StringRes val la
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 
-<<<<<<< HEAD
 internal fun shouldShowBottomBar(route: String?): Boolean =
     route in setOf("home", "sleep", "talk", "journal", "you")
 
@@ -161,11 +159,13 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
  * were unreachable — tapping one dismisses the keyboard first.
  *
  * Kept as a pure function of the two inputs so the matrix is a unit test rather
- * than something only a device can tell you.
+ * than something only a device can tell you (`NavigationChromeTest`); the
+ * composable below additionally checks the live inset itself
+ * (`BottomNavImeTest`), so both layers of the rule are pinned.
  */
 internal fun navVisible(route: String?, imeOpen: Boolean): Boolean =
     shouldShowBottomBar(route) && !imeOpen
-=======
+
 /**
  * The floating tab bar — and the rule that it yields to the keyboard.
  *
@@ -226,7 +226,6 @@ internal fun BottomNavBar(
         }
     }
 }
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
  * lavender radial + hairline when selected. Icons/labels brighten on selection
@@ -430,27 +429,20 @@ fun CereBroApp() {
     // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
     LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
-<<<<<<< HEAD
-    // Two things that only make sense once signed in, both fire-and-forget:
+    // Three things that only make sense once signed in, all fire-and-forget:
     //  * flush anything the user wrote while offline, before any screen reads
     //    a list that would otherwise be missing their own entry;
     //  * re-register this install for push (FCM rotates tokens silently, so
-    //    this runs on every cold start, not once).
-    val pushContext = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(Unit) {
-        runCatching { com.cerebrozen.app.net.Outbox.drain() }
-        com.cerebrozen.app.notify.Push.register(pushContext)
-=======
-    // Resolve the server sound/video catalogue once per launch, then pull the
-    // one-shot assets onto disk so taps fire with no network in the path. Both
-    // steps are best-effort: with no catalogue (offline, first run, server down)
-    // every sound falls back to its synthesized tone or bundled loop, so the app
-    // is fully audible either way — this only ever upgrades what's already there.
+    //    this runs on every cold start, not once);
+    //  * resolve the server sound/video catalogue and warm the one-shot assets
+    //    onto disk so taps fire with no network in the path — best-effort, every
+    //    sound falls back to its synthesized tone or bundled loop either way.
     val appContext = LocalContext.current.applicationContext
     LaunchedEffect(Unit) {
+        runCatching { com.cerebrozen.app.net.Outbox.drain() }
+        com.cerebrozen.app.notify.Push.register(appContext)
         runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
         runCatching { Sfx.warm(appContext) }
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
     }
 
     val navController = rememberNavController()
@@ -510,55 +502,10 @@ fun CereBroApp() {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-<<<<<<< HEAD
+            // navVisible is the pure rule (tab routes only, never over the
+            // keyboard); BottomNavBar re-checks the live IME inset itself, so
+            // the guard holds even mid-frame while the inset animates.
             if (showBottomBar) {
-            // A floating lavender pill over a dark scrim — the tabs read as a lifted
-            // capsule rather than a flat system bar.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
-                    .navigationBarsPadding()
-                    .padding(horizontal = 13.dp, vertical = 4.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(if (compactNav) 72.dp else 78.dp)
-                        .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
-                            ),
-                        )
-                        .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Tab.entries.forEach { tab ->
-                        BottomTabItem(
-                            tab = tab,
-                            selected = current == tab.route,
-                            compact = compactNav,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                // One haptic vocabulary app-wide: the custom
-                                // Haptics object (see ui/Haptics.kt).
-                                if (current != tab.route) Haptics.selection()
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                        )
-                    }
-=======
-            // Tabs only on tab routes — a pushed sub-screen owns the whole screen.
-            // (BottomNavBar itself additionally yields to the keyboard.)
-            if (Tab.entries.any { it.route == current }) {
             BottomNavBar(currentRoute = current, compact = compactNav) { tab ->
                 // One haptic vocabulary app-wide: the custom
                 // Haptics object (see ui/Haptics.kt).
@@ -567,7 +514,6 @@ fun CereBroApp() {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                 }
             }
             }

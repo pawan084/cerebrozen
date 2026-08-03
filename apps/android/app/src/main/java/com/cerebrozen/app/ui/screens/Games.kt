@@ -51,7 +51,6 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.MediaCatalog
 import com.cerebrozen.app.audio.Sfx
 import com.cerebrozen.app.ui.Haptics
-import com.cerebrozen.app.audio.WaterDropSound
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -190,8 +189,6 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
     var now by remember { mutableLongStateOf(0L) }
     var rippleCount by rememberSaveable { mutableIntStateOf(0) }
     var waterSoundEnabled by rememberSaveable { mutableStateOf(true) }
-    val waterSound = remember { WaterDropSound() }
-    DisposableEffect(waterSound) { onDispose { waterSound.release() } }
     // Pump frames only while a ripple is still animating (they live ~3s); when the
     // water is still the loop exits, so we don't recompose the Canvas every frame
     // forever. A new tap changes `ripples` and relaunches the effect.
@@ -237,16 +234,14 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
-<<<<<<< HEAD
                         rippleCount++
                         Haptics.soft(0.35f)
-                        if (waterSoundEnabled) waterSound.play(offset.x / size.width.coerceAtLeast(1).toFloat())
-=======
-                        // Pitch tracks where you touched — higher up the pool rings
-                        // brighter. Twelve identical plinks would grate; this way a
-                        // run of taps plays as a little phrase.
-                        Sfx.playRipple(rippleBrightness(offset.y, size.height.toFloat()))
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
+                        // One audio vocabulary: the pre-warmed Sfx engine, not a
+                        // per-tap AudioTrack. Pitch tracks where you touched —
+                        // higher up the pool rings brighter, so a run of taps
+                        // plays as a little phrase instead of twelve identical
+                        // plinks. The switch above lets a silent room stay silent.
+                        if (waterSoundEnabled) Sfx.playRipple(rippleBrightness(offset.y, size.height.toFloat()))
                     }
                 }
                 .semantics { contentDescription = canvasCd },

@@ -153,16 +153,12 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Flag) { onOpen("goals") }
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
-<<<<<<< HEAD
         // Trends sits beside Insights, not inside it: Insights is what the app
         // has to say, Trends is what the user's own entries look like. They
         // answer different questions and one should not be buried in the other.
-        NavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
+        PremiumNavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
             icon = Icons.Outlined.ShowChart) { onOpen("trends") }
-        NavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
-=======
         PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }

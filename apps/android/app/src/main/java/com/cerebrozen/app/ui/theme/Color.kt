@@ -263,24 +263,6 @@ val WelcomeOrbEdge = Color(0xFFC9C3FF)
 val WelcomeOrbHaloInner = Color(0x334F46B9)
 val WelcomeOrbHaloOuter = Color(0x224D45A7)
 val WelcomeOrbHaloDisc = Color(0x183F3889)
-<<<<<<< HEAD
-val PrimaryButtonFill: Color get() = if (AppTheme.isNight) Color(0xFFFCFBFF) else PeriwinkleDeep
-val PrimaryButtonInk: Color get() = if (AppTheme.isNight) Color(0xFF211C50) else OnPrimary
-val PrimaryButtonDisabledFill: Color get() = ButtonDisabled
-val ResetDoneFill: Color get() = if (AppTheme.isNight) Color(0xFF302D50) else SurfaceRaised
-val FunnelHeaderTop: Color get() = if (AppTheme.isNight) Color(0xFF393270) else Color(0xFFFDFBF7)
-val FunnelHeaderBottom: Color get() = if (AppTheme.isNight) Color(0xFF11102E) else Night
-val FunnelBodyText: Color get() = if (AppTheme.isNight) Color(0xFFD0CCDE) else TextSecondary
-val ProgressTrack: Color get() = if (AppTheme.isNight) Color(0xFF484361) else Line
-val PickRowSelectedFill: Color get() = if (AppTheme.isNight) Color(0xFF4A456F) else ChipSelectedFill
-val PickRowFill: Color get() = if (AppTheme.isNight) Color(0xFF302C56) else Surface
-val PickRowStroke: Color get() = if (AppTheme.isNight) Color(0xFF504B74) else Line
-val PickRowChevron: Color get() = if (AppTheme.isNight) Color(0xFF9993B4) else TextMuted2
-val PickCardStroke: Color get() = if (AppTheme.isNight) Color(0xFF575178) else Line
-val DotUnselectedFill: Color get() = if (AppTheme.isNight) Color(0xFF3B3766) else ChipFill
-val AuthEyebrow: Color get() = if (AppTheme.isNight) Color(0xFFB5AEE1) else EyebrowMuted
-val AuthFieldLabel: Color get() = if (AppTheme.isNight) Color(0xFFE0DDEE) else TextSoft
-=======
 val PrimaryButtonFill = Color(0xFFFCFBFF)
 val PrimaryButtonInk = Color(0xFF211C50)
 val PrimaryButtonDisabledFill = Color(0xFF9998A7)
@@ -309,4 +291,3 @@ val BrandSecondary = Color(0xFF6ECBF5)  // Soft Sky Blue
 val BrandAccent = Color(0xFF7ED9B6)     // Mint Green
 val LavenderPillTop = Color(0xFF6D5FE8)
 val LavenderPillFloor = Color(0xFF5B4BC4)
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58

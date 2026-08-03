@@ -486,4 +486,100 @@ class ApiEndpointsTest {
         assertEquals("/users/me/memory/m1", log[4].path)
         assertEquals("DELETE", log[4].method)
     }
+
+    // ── The free-tier cap (the one 429 that is NOT "slow down") ────────────
+    @Test
+    fun theFreeCapArrivesTypedAndTheRateLimiterDoesNot() = runTest {
+        // The server distinguishes "you used your day" (a structured detail with
+        // code=free_daily_limit) from slowapi's IP throttle (also 429). The
+        // client must keep them apart: offering an upgrade to someone who merely
+        // typed too fast would be manipulative.
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens
+            else 429 to """{"detail":{"code":"free_daily_limit","message":"You've used your 50 messages for today.","limit":50,"used":50,"resets_at":"2026-08-04T00:00:00Z"}}"""
+        }
+        try {
+            Session.api("/chat", "POST", JSONObject().put("message", "hi"))
+            throw AssertionError("expected FreeLimitException")
+        } catch (e: Session.FreeLimitException) {
+            assertEquals(50, e.limit)
+            assertEquals(50, e.used)
+            assertEquals("2026-08-04T00:00:00Z", e.resetsAtUtc)
+            assertTrue(e.message!!.contains("50 messages"))
+        }
+
+        // slowapi's key is `error`, and its message must reach the user rather
+        // than a bare "Request failed (429)".
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
+            if (url.endsWith("/auth/refresh")) 200 to tokens
+            else 429 to """{"error":"Rate limit exceeded: 30 per minute"}"""
+        }
+        try {
+            Session.api("/chat", "POST", JSONObject().put("message", "hi"))
+            throw AssertionError("expected ApiException")
+        } catch (e: Session.ApiException) {
+            assertEquals(429, e.code)
+            assertTrue("slowapi's message must surface", e.message!!.contains("Rate limit exceeded"))
+        }
+    }
+
+    // ── The rest of the B2C tier-1 helpers (paths/verbs pinned) ────────────
+    @Test
+    fun goalLifecycleAndHabitToggleHitTheirDocumentedPaths() = runTest {
+        val log = script(
+            mapOf(
+                "PATCH /goals/g1" to """{"id":"g1","status":"resolved"}""",
+                "POST /goals/g1/decompose" to """{"id":"g1","steps":["one","two"]}""",
+                "POST /habits/h1/complete" to """{"id":"h1","done_today":true}""",
+                "DELETE /habits/h1/complete" to """{"id":"h1","done_today":false}""",
+            ),
+        )
+        assertEquals("resolved", Api.setGoalStatus("g1", "resolved").getString("status"))
+        assertNotNull(Api.decomposeGoal("g1"))
+        // Done is POST, undone is DELETE — the verb IS the state change, so a
+        // retry of either is idempotent on the server.
+        assertTrue(Api.setHabitToday("h1", done = true).getBoolean("done_today"))
+        assertFalse(Api.setHabitToday("h1", done = false).getBoolean("done_today"))
+        assertEquals("POST", log[3].method)
+        assertEquals("DELETE", log[4].method)
+    }
+
+    @Test
+    fun undoCheckInAndPatternHideUseTheScopedEndpoints() = runTest {
+        val log = script(
+            mapOf(
+                "DELETE /moods/m1" to "{}",
+                "POST /users/me/memory/suppress-pattern" to "{}",
+            ),
+        )
+        Api.deleteMood("m1")
+        Api.suppressPattern("calmer the day after you journal")
+        assertEquals("/moods/m1", log[1].path)
+        val body = JSONObject(log[2].body!!)
+        assertEquals("calmer the day after you journal", body.getString("statement"))
+    }
+
+    @Test
+    fun trendsAndJournalSearchEncodeTheirParams() = runTest {
+        val log = script(
+            mapOf(
+                "GET /insights/trends?days=30" to """{"days":30}""",
+                "GET /insights/trends?days=90" to """{"days":90}""",
+                "GET /journal?q=100%25+done" to "[]",
+                "GET /journal?tag=work" to "[]",
+                "GET /journal/tags" to """["work"]""",
+                "GET /media/catalog" to "[]",
+            ),
+        )
+        assertEquals(30, Api.trends().getInt("days"))
+        assertEquals(90, Api.trends(days = 90).getInt("days"))
+        // "100% done" must reach the server URL-encoded — a raw % in a query
+        // string is truncated or 400s depending on the stack.
+        Api.searchJournal(query = "100% done")
+        Api.searchJournal(tag = "work")
+        assertEquals(1, Api.journalTags().length())
+        assertEquals(0, Api.mediaCatalog().length())
+        assertEquals("/journal?q=100%25+done", log[3].path)
+        assertEquals("/journal?tag=work", log[4].path)
+    }
 }

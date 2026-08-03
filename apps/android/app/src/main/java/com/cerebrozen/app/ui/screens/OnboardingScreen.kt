@@ -688,16 +688,11 @@ private fun Funnel(
             Text(
                 title,
                 modifier = if (titleCentered) Modifier.fillMaxWidth() else Modifier,
-<<<<<<< HEAD
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 38.sp, lineHeight = 39.sp),
-                color = TextPrimary,
-=======
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = if (compactTitle) 32.sp else 38.sp,
                     lineHeight = if (compactTitle) 35.sp else 39.sp,
                 ),
                 color = Color.White,
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                 textAlign = if (titleCentered) TextAlign.Center else TextAlign.Start,
             )
             if (sub.isNotBlank()) Text(
@@ -820,11 +815,6 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
             val isSelected = selected == opt
             val shape = RoundedCornerShape(14.dp)
             Box(
-<<<<<<< HEAD
-                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp))
-                    .background(if (isSelected) ChipSelectedFill else DotUnselectedFill)
-                    .clickable { onPick(opt) }.padding(horizontal = 22.dp),
-=======
                 Modifier.heightIn(min = 48.dp).clip(shape)
                     .background(if (isSelected) Color.White else DotUnselectedFill)
                     .border(
@@ -837,18 +827,13 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
                         onClickLabel = opt,
                     ) { onPick(opt) }
                     .padding(horizontal = 22.dp),
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     opt,
                     style = MaterialTheme.typography.titleMedium,
-<<<<<<< HEAD
-                    color = if (isSelected) ChipSelectedInk else TextPrimary,
-=======
                     color = if (isSelected) Color(0xFF17213A) else Color.White,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
->>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                 )
             }
         }

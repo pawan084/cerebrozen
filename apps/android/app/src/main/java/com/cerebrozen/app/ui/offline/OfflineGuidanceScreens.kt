@@ -167,7 +167,8 @@ fun GuidedImageryScreen(onBack: () -> Unit) {
     }
     ImmersiveJourneyPage(
             journeyId = journey.id, title = stringResource(journey.titleRes), glyph = journey.glyph,
-            progress = index + 1, total = journey.steps.size, body = stringResource(journey.steps[index]),
+            progress = index + 1, total = journey.steps.size,
+            stepBodies = journey.steps.map { stringResource(it) },
             voice = voice, paused = paused, onVoice = { voice = !voice }, onPause = { paused = !paused },
             onPrevious = { if (index > 0) index-- else journeyId = null },
             onNext = { if (index == journey.steps.lastIndex) complete = true else index++ },
@@ -329,7 +330,13 @@ fun InsightReelScreen(onBack: () -> Unit) {
 @Composable
 private fun ImmersiveJourneyPage(
     journeyId: String, title: String, glyph: String,
-    progress: Int, total: Int, body: String, voice: Boolean, paused: Boolean,
+    progress: Int, total: Int,
+    /** All step bodies, 0-indexed — the whole list, not just the current one:
+     * AnimatedContent composes the outgoing and incoming steps at once during
+     * the crossfade, and each must render ITS OWN text. With a single `body`
+     * both sides showed the new step, so the fade faded a card into itself. */
+    stepBodies: List<String>,
+    voice: Boolean, paused: Boolean,
     onVoice: () -> Unit, onPause: () -> Unit, onPrevious: () -> Unit,
     onNext: () -> Unit, onExit: () -> Unit,
 ) {
@@ -371,7 +378,7 @@ private fun ImmersiveJourneyPage(
                 targetState = progress,
                 transitionSpec = { androidx.compose.animation.fadeIn(tween(420)) togetherWith androidx.compose.animation.fadeOut(tween(220)) },
                 label = "forest-step",
-            ) {
+            ) { step ->
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
                         .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.07f))))
@@ -381,7 +388,12 @@ private fun ImmersiveJourneyPage(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Text(glyph, style = MaterialTheme.typography.displayMedium)
-                    Text(body, style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center)
+                    // `step` is 1-based progress; render THIS state's body so the
+                    // outgoing card keeps its own words while it fades.
+                    Text(
+                        stepBodies.getOrElse(step - 1) { stepBodies.lastOrNull().orEmpty() },
+                        style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center,
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
