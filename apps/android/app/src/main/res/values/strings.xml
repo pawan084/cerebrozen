@@ -28,6 +28,7 @@
     <string name="common_premium_badge">PREMIUM</string>
     <string name="common_wellness_footer">Wellness support, not emergency care.</string>
     <string name="common_save_failed">Couldn\'t save.</string>
+    <string name="common_resume">Resume</string>
     <string name="common_why_this_works">Why this works</string>
     <string name="common_expand">Expand</string>
     <string name="common_collapse">Collapse</string>
@@ -89,7 +90,20 @@
 
     <!-- ── Talk (TalkScreen.kt) ────────────────────────────────────────── -->
     <string name="talk_eyebrow">AI voice companion</string>
-    <string name="talk_title">Talk it through</string>
+    <string name="talk_title">How are you feeling today?</string>
+    <string name="talk_good_morning">Good morning</string>
+    <string name="talk_good_afternoon">Good afternoon</string>
+    <string name="talk_good_evening">Good evening</string>
+    <string name="talk_home_subtitle">Take a breath. You can speak freely here.</string>
+    <string name="talk_tap_start">Tap to start talking</string>
+    <string name="talk_chat_cta">Continue with AI Chat</string>
+    <string name="talk_chat_eyebrow">Text fallback</string>
+    <string name="talk_chat_title">AI Chat</string>
+    <string name="talk_open_chat_cd">Open AI Chat</string>
+    <string name="talk_back">Back</string>
+    <string name="talk_landing_body">Tap the orb to start a real conversation. I\'ll listen, then talk it through with you.</string>
+    <string name="talk_send_cd">Send message</string>
+    <string name="talk_history_start">Start of this conversation</string>
     <string name="talk_offline_banner">You\'re offline — the companion needs a connection. The Toolkit below still works.</string>
     <string name="talk_offline_action">Toolkit</string>
     <string name="talk_disclosure_pill">AI companion — not a therapist or crisis service</string>
@@ -112,6 +126,7 @@
     <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>
     <string name="talk_save_journal">Save this conversation to my journal</string>
+    <string name="talk_save_journal_short">Save to Journal</string>
     <string name="talk_journal_entry_title">Talk reflection</string>
     <string name="talk_saved_status">Saved to your journal.</string>
     <string name="talk_save_failed">Couldn\'t save — try again.</string>
@@ -131,6 +146,13 @@
     <string name="talk_transcribe_failed">Couldn\'t transcribe — you can type below.</string>
     <string name="talk_mic_off">Microphone access is off — you can still type below.</string>
     <string name="talk_live_session">LIVE SESSION</string>
+    <string name="talk_status_listening">Listening…</string>
+    <string name="talk_status_thinking">Thinking…</string>
+    <string name="talk_status_speaking">Speaking…</string>
+    <string name="talk_status_ready">I’m here</string>
+    <string name="talk_companion_name">CereBro</string>
+    <string name="talk_mute">Mute</string>
+    <string name="talk_unmute">Unmute</string>
     <string name="talk_state_speaking_interrupt">Speaking — tap the orb to interrupt</string>
     <string name="talk_state_listening">Listening… tap the orb when you\'re done</string>
     <string name="talk_state_orb">Tap the orb to speak</string>
@@ -176,6 +198,25 @@
     <string name="today_rail_ambient">Ambient</string>
     <string name="today_toolkit_title">Toolkit</string>
     <string name="today_toolkit_subtitle">Small practices for right now</string>
+    <string name="today_quick_access_title">Quick Access</string>
+    <string name="today_quick_access_subtitle">A calmer moment is one tap away.</string>
+    <string name="today_quick_games_title">Games</string>
+    <string name="today_quick_games_description">Quick calming activities</string>
+    <string name="today_quick_insights_title">Insights</string>
+    <string name="today_quick_insights_description">AI wellness insights</string>
+    <string name="today_quick_programs_title">Programs</string>
+    <string name="today_quick_programs_description">Daily guided plans</string>
+    <string name="today_quick_sounds_title">Sounds</string>
+    <string name="today_quick_sounds_description">Relaxing soundscapes</string>
+    <!-- Weekly-insights teaser (iOS/web parity). The subtitle states the real
+         last-7-days check-in count when there is one, and promises nothing when
+         there isn't. -->
+    <string name="today_insights_title">This week</string>
+    <string name="today_insights_subtitle">See what changed</string>
+    <plurals name="today_insights_count">
+        <item quantity="one">%1$d check-in in the last 7 days — see what changed.</item>
+        <item quantity="other">%1$d check-ins in the last 7 days — see what changed.</item>
+    </plurals>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">
@@ -188,10 +229,14 @@
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
     <string name="sleep_eyebrow">Improve your sleep, night by night</string>
     <string name="sleep_title">Sleep</string>
+    <string name="sleep_premium_subtitle">Improve your sleep, night by night.</string>
     <string name="sleep_hero_eyebrow">Wind down</string>
     <string name="sleep_hero_title">A calmer night</string>
     <string name="sleep_hero_subtitle">A slower evening makes for a softer morning.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
+    <string name="sleep_estimated_duration">About 20 minutes</string>
+    <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
+    <string name="sleep_guides_empty">Start your first relaxing session.</string>
     <string name="sleep_play_cd">Play the ambient bed</string>
     <string name="sleep_checkin_title">Morning check-in</string>
     <string name="sleep_checkin_subtitle">How rested do you feel?</string>
@@ -289,6 +334,18 @@
     <string name="journal_private_body">Journal entries are yours. Safety scanning reads an entry once to surface support when something sounds heavy — it never blocks your writing, and nobody at CereBro reads it. Like the companion, that check runs through our AI provider; nothing is sold, advertised against, or shown to another person.</string>
     <string name="journal_telemanas">In India, Tele-MANAS is available any time — call 14416, free, day or night.</string>
     <string name="journal_hero_subtitle">A gentle starting point — or write about anything.</string>
+    <!-- State-tuned journal hero (iOS parity: JournalPrompts.tuned(toMood:)). Shown
+         only when today's check-in named one of these feelings; otherwise the
+         rotating prompts stand. -->
+    <string name="journal_tuned_anxious_tag">For a tense day</string>
+    <string name="journal_tuned_anxious_title">Name the worry</string>
+    <string name="journal_tuned_anxious_prompt">Write the thought that keeps circling — then one truer thought beside it.</string>
+    <string name="journal_tuned_low_tag">For a heavy day</string>
+    <string name="journal_tuned_low_title">One kind sentence</string>
+    <string name="journal_tuned_low_prompt">Write to yourself as you would to a friend who had this exact day.</string>
+    <string name="journal_tuned_tired_tag">For a tired day</string>
+    <string name="journal_tuned_tired_title">Put the day down</string>
+    <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing, safety-aware</string>
     <string name="journal_history_subtitle">Your past entries, searchable</string>
@@ -307,6 +364,8 @@
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
+    <string name="you_tour_title">Take a quick tour</string>
+    <string name="you_tour_subtitle">Replay the four-stop walkthrough of Home</string>
     <string name="you_reminder_title">Daily reminder</string>
     <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>
@@ -413,7 +472,7 @@
     <!-- ── Toolkit hub (Extras.kt) ─────────────────────────────────────── -->
     <string name="toolkit_eyebrow">Small ways to steady</string>
     <string name="toolkit_title">Toolkit</string>
-    <string name="toolkit_intro">Pick what the moment needs — ground, breathe, reframe, settle.</string>
+    <string name="toolkit_intro">Choose a calming exercise for this moment.</string>
     <string name="toolkit_header_ground">Ground</string>
     <string name="toolkit_header_breathe">Breathe</string>
     <string name="toolkit_header_reframe">Reframe</string>
@@ -432,6 +491,10 @@
     <string name="toolkit_tipp_title">TIPP skill</string>
     <string name="toolkit_tipp_subtitle">DBT reset for very intense moments</string>
     <string name="toolkit_gratitude_title">Gratitude garden</string>
+    <string name="toolkit_onegood_title">One good thing</string>
+    <string name="toolkit_onegood_subtitle">Name one small win from today</string>
+    <string name="toolkit_intention_title">Tomorrow\'s intention</string>
+    <string name="toolkit_intention_subtitle">One thing that would steady tomorrow</string>
     <string name="toolkit_gratitude_subtitle">A flower for every thank-you</string>
     <string name="toolkit_pattern_title">Pattern glow</string>
     <string name="toolkit_pattern_subtitle">Watch the light, repeat it</string>
@@ -439,6 +502,28 @@
     <string name="toolkit_sounds_subtitle">Soundscapes and sleep stories</string>
     <string name="toolkit_support_title">Need support right now?</string>
     <string name="toolkit_playable_badge">PLAYABLE</string>
+    <string name="toolkit_ground_description">Reconnect with the present.</string>
+    <string name="toolkit_breathe_description">Slow your nervous system.</string>
+    <string name="toolkit_reframe_description">Change your perspective.</string>
+    <string name="toolkit_settle_description">Relax before rest.</string>
+    <string name="toolkit_header_support">Support</string>
+    <string name="toolkit_support_description">Reach trusted help when you need it.</string>
+    <string name="toolkit_ground_title">5-4-3-2-1 grounding</string>
+    <string name="toolkit_badge_ground">GROUND</string>
+    <string name="toolkit_badge_breathe">BREATHE</string>
+    <string name="toolkit_badge_reframe">REFRAME</string>
+    <string name="toolkit_badge_settle">SETTLE</string>
+    <string name="toolkit_badge_support">SUPPORT</string>
+    <string name="toolkit_duration_1">1 min</string>
+    <string name="toolkit_duration_2">2 min</string>
+    <string name="toolkit_duration_3">3 min</string>
+    <string name="toolkit_duration_5">5 min</string>
+    <string name="toolkit_duration_open">Open-ended</string>
+    <string name="toolkit_level_gentle">Gentle</string>
+    <string name="toolkit_level_easy">Easy</string>
+    <string name="toolkit_level_guided">Guided</string>
+    <string name="toolkit_featured">FEATURED EXERCISE</string>
+    <string name="toolkit_begin">Begin</string>
 
     <!-- ── Grounding stepper (Extras.kt) ───────────────────────────────── -->
     <string name="ground_counter">5 · 4 · 3 · 2 · 1</string>
@@ -474,6 +559,21 @@
     <string name="sounds_fading_out_in">Fading out in %1$s</string>
     <string name="sounds_sleep_timer_short">Sleep timer: %1$dm</string>
     <string name="mixer_intro">Blend rain, ocean, wind and a soft drone into your own calm — nudge each one to taste.</string>
+    <string name="mixer_eyebrow">Immersive ambient audio</string>
+    <string name="mixer_title">Sound Mixer</string>
+    <string name="mixer_subtitle">Create your perfect relaxing atmosphere.</string>
+    <string name="mixer_custom_mix">Your custom atmosphere</string>
+    <string name="mixer_open_ended">Open-ended session</string>
+    <string name="mixer_now_mixing">Now mixing</string>
+    <string name="mixer_all_layers">Controls every active sound</string>
+    <string name="mixer_presets">Calming presets</string>
+    <string name="mixer_layers">Sound layers</string>
+    <string name="mixer_playing">Playing</string>
+    <string name="mixer_bell_description">A gentle chime before the soundscape fades to silence.</string>
+    <string name="mixer_rain_description">Gentle rainfall for deep relaxation.</string>
+    <string name="mixer_ocean_description">Slow shoreline waves with a spacious rhythm.</string>
+    <string name="mixer_wind_description">Soft moving air to quiet a busy mind.</string>
+    <string name="mixer_drone_description">A warm low tone that grounds the whole mix.</string>
     <string name="mixer_master_volume">Master volume</string>
     <string name="mixer_fades_note">Fades out in %1$s — drift off, it stops itself.</string>
     <!-- W27 §3: one-tap mixer presets (stable keys in SoundscapeMixer.presets). -->
@@ -482,6 +582,9 @@
     <string name="mixer_preset_still_air">Still air</string>
     <!-- W27 §5: session-end bell when a sleep timer completes (default on). -->
     <string name="sounds_timer_bell">End with a soft bell</string>
+    <!-- Toolkit activity sounds (pattern pads, ripples, gratitude bloom); default on. -->
+    <string name="sounds_activity">Activity sounds</string>
+    <string name="mixer_activity_description">Soft tones as you play the calming activities.</string>
     <string name="player_eyebrow">Now playing</string>
     <string name="player_nothing">Nothing playing</string>
     <string name="player_empty_hint">Pick a soundscape or story from Sounds and it plays here.</string>
@@ -496,6 +599,7 @@
     <!-- ── Insights (Extras.kt) ────────────────────────────────────────── -->
     <string name="insights_eyebrow">Insights · this week</string>
     <string name="insights_default_headline">Your week</string>
+    <string name="insights_error_title">Your insights are taking a moment</string>
     <string name="insights_error_fallback">Couldn\'t load your week — try again shortly.</string>
     <string name="insights_loading">Reading your week…</string>
     <string name="insights_hero_eyebrow">This week</string>
@@ -504,6 +608,8 @@
     <string name="insights_baseline_recorded">" · recorded %1$s"</string>
     <string name="insights_baseline_nav_title">Set your starting point</string>
     <string name="insights_baseline_nav_subtitle">Two quick scales — see real change later</string>
+    <string name="insights_metrics_title">Weekly signals</string>
+    <string name="insights_metrics_empty_title">Your patterns will appear here</string>
     <string name="insights_metrics_empty">Log a few days and honest patterns appear here — no guesses.</string>
     <string name="insights_privacy_footer">First-party — computed on your own data, never sold or shared.</string>
 
@@ -654,6 +760,20 @@
     <string name="cbt_field_against">Evidence it\'s not the whole story</string>
     <string name="cbt_field_balanced">A more balanced thought</string>
     <string name="cbt_why">Reframing is a core cognitive-behavioural (CBT) technique — the approach with the strongest evidence among app-delivered tools (Linardon et al. 2024, World Psychiatry).</string>
+    <string name="onegood_eyebrow">One good thing</string>
+    <string name="onegood_title">Name a small win</string>
+    <string name="onegood_intro">Anything counts — a kind word, a finished task, a decent cup of tea. Naming it makes it stick.</string>
+    <string name="onegood_journal_title">One good thing</string>
+    <string name="onegood_compose_format">One good thing today: %1$s</string>
+    <string name="onegood_field">What went right?</string>
+    <string name="onegood_why">Writing down one good thing is the shortest form of a gratitude practice — brief, daily entries are the version with replicated effects on mood (Cregg &amp; Cheavens 2021, Journal of Happiness Studies).</string>
+    <string name="intention_eyebrow">Tomorrow\'s intention</string>
+    <string name="intention_title">One clear point</string>
+    <string name="intention_intro">Not a to-do list — one thing that would make tomorrow feel steadier.</string>
+    <string name="intention_journal_title">Intention</string>
+    <string name="intention_compose_format">Tomorrow I will: %1$s</string>
+    <string name="intention_field">Tomorrow I will…</string>
+    <string name="intention_why">Naming when and what you\'ll do is an implementation intention — the step that most reliably closes the gap between intending and doing (Gollwitzer &amp; Sheeran 2006, Advances in Experimental Social Psychology).</string>
     <string name="tipp_eyebrow">For very intense moments</string>
     <string name="tipp_title">TIPP</string>
     <string name="tipp_intro">A DBT skill for when emotion is at a 9 or 10 and thinking feels impossible. Work the four steps in order.</string>
@@ -686,6 +806,13 @@
     <string name="breathe_box_eyebrow">Steady in fours</string>
     <string name="breathe_box_title">Box breathing</string>
     <string name="breathe_box_intro">In for four, hold for four, out for four, hold for four — let the orb set the pace.</string>
+    <string name="breathe_box_detail">4-4-4-4 Guided Exercise</string>
+    <string name="breathe_reset_detail">4-4 Guided Reset</string>
+    <string name="breathe_color_detail">Guided Color Exercise</string>
+    <string name="breathe_estimated_time">Estimated time • 2 min</string>
+    <string name="breathe_pace_title">Breathing pace</string>
+    <string name="breathe_settings_title">Guidance</string>
+    <string name="breathe_seconds_remaining">seconds remaining</string>
     <string name="breathe_color_eyebrow">Follow the glow</string>
     <string name="breathe_color_title">Color breathing</string>
     <string name="breathe_color_intro">Let your breath follow the orb as the glow shifts with each phase.</string>
@@ -856,6 +983,203 @@
     <string name="ambience_sound_off">Sound off</string>
     <string name="ambience_label">Ambience</string>
 
+    <!-- i18n plumbing (2026-07-24): copy that used to live in pure Kotlin
+         (greetings, milestone line, rail headings, sleep rhythm, durations,
+         breathe phase labels, talk transcript prefixes, reminder notification,
+         mixer layer names). -->
+    <string name="duration_h_m">%1$dh %2$02dm</string>
+    <string name="duration_m">%1$dm</string>
+    <string name="today_greeting_morning">Good morning</string>
+    <string name="today_greeting_afternoon">Good afternoon</string>
+    <string name="today_greeting_evening">Good evening</string>
+    <string name="today_milestone_line">🎉 %1$d days of showing up — beautifully done</string>
+    <string name="today_rail_morning">For this morning</string>
+    <string name="today_rail_midday">A midday reset</string>
+    <string name="today_rail_tonight">For tonight</string>
+    <string name="sleep_rhythm_vary">A steadier bedtime — even an imperfect one — does more for sleep than extra hours.</string>
+    <string name="sleep_rhythm_steady">Your bedtime is steady — that consistency is the strongest thing you\'re doing for your sleep.</string>
+    <string name="talk_transcript_me">Me</string>
+    <string name="talk_transcript_bot">CereBro</string>
+    <string name="breathe_phase_in">Breathe in</string>
+    <string name="breathe_phase_hold">Hold</string>
+    <string name="breathe_phase_out">Breathe out</string>
+    <string name="reminder_channel_name">Daily reminder</string>
+    <string name="reminder_channel_desc">A gentle once-a-day check-in nudge.</string>
+    <string name="reminder_title">A moment for you</string>
+    <string name="reminder_body">Twenty seconds — how are you, really?</string>
+    <string name="mixer_layer_rain">Rain</string>
+    <string name="mixer_layer_ocean">Ocean</string>
+    <string name="mixer_layer_wind">Wind</string>
+    <string name="mixer_layer_drone">Drone</string>
+
+    <!-- i18n pass 2 (2026-07-25): display labels split from persisted values
+         (state options, languages, reminder picks, mood taxonomy, companions). -->
+    <string name="ob_state_stressed">Stressed and tense</string>
+    <string name="ob_state_night">Can\'t switch off at night</string>
+    <string name="ob_state_overthinking">Overthinking everything</string>
+    <string name="ob_state_doubting">Doubting myself</string>
+    <string name="ob_state_distant">Feeling distant from people</string>
+    <string name="ob_state_consistency">Can\'t stay consistent</string>
+    <string name="lang_english">English</string>
+    <string name="lang_hindi">Hindi</string>
+    <string name="lang_hinglish">Hinglish</string>
+    <string name="lang_punjabi">Punjabi</string>
+    <string name="lang_tamil">Tamil</string>
+    <string name="ob_notify_morning">Morning 9 AM</string>
+    <string name="ob_notify_evening">Evening 7 PM</string>
+    <string name="ob_notify_previews">Private previews</string>
+    <string name="ob_notify_none">No reminders</string>
+    <string name="mood_good">Good</string>
+    <string name="mood_anxious">Anxious</string>
+    <string name="mood_low">Low</string>
+    <string name="mood_tired">Tired</string>
+    <string name="mood_okay">Okay</string>
+    <string name="companion_calm_guide">Calm Guide</string>
+    <string name="companion_calm_guide_detail">Steady and soothing — grounds you first, never rushes</string>
+    <string name="companion_warm_friend">Warm Friend</string>
+    <string name="companion_warm_friend_detail">Encouraging and familiar — like a friend who gets it</string>
+    <string name="companion_straight_talker">Straight Talker</string>
+    <string name="companion_straight_talker_detail">Clear and direct — kind, but skips the padding</string>
+    <string name="companion_quiet_coach">Quiet Coach</string>
+    <string name="companion_quiet_coach_detail">Action-first — one small concrete step at a time</string>
+
+    <!-- ── Guided routines: wind-down ritual + guided imagery ──────────────
+         Copy hand-synced with the web app (apps/app `/sleep/ritual` and
+         `/games/imagery`). Deliberately still English in values-hi: these carry
+         clinical framing and a safety caution, the same class of copy the Hindi
+         draft leaves to the pending clinical review. -->
+    <string name="ritual_step_of">Step %1$d of %2$d</string>
+    <string name="ritual_stays_local">This stays on your device and is never sent anywhere — unless you choose to save it.</string>
+    <string name="ritual_save_to_journal">Save to journal</string>
+    <string name="ritual_saved_to_journal">Saved to journal</string>
+    <string name="ritual_good_thing">Good thing %1$d</string>
+    <string name="ritual_skip_ahead">Skip ahead</string>
+    <string name="ritual_stop_here">Stop here</string>
+
+    <string name="winddown_eyebrow">Wind down</string>
+    <string name="winddown_title">A ritual for tonight</string>
+    <string name="winddown_journal_title">Before bed</string>
+    <string name="winddown_dump_eyebrow">Step one · Empty the desk</string>
+    <string name="winddown_dump_title">What\'s still on your mind?</string>
+    <string name="winddown_dump_body">Anything unfinished, worrying, or just loud. Don\'t organise it — the point is getting it out of your head, not writing well.</string>
+    <string name="winddown_dump_field">Whatever\'s there…</string>
+    <string name="winddown_dump_why">Writing down what\'s unfinished before bed helps people fall asleep faster than writing about what they\'ve completed (Scullin et al., Journal of Experimental Psychology: General, 2018).</string>
+    <string name="winddown_good_eyebrow">Step two · Three good things</string>
+    <string name="winddown_good_title">What went right today?</string>
+    <string name="winddown_good_body">Small counts. The coffee, a message, getting through it.</string>
+    <string name="winddown_good_skip">Skip tonight</string>
+    <string name="winddown_good_why">Naming three specific good things each night is one of the most replicated positive-psychology exercises, with measured effects on mood up to six months out (Seligman et al., American Psychologist, 2005).</string>
+    <string name="winddown_scan_eyebrow">Step three · Let go, top to bottom</string>
+    <string name="winddown_scan_1">Let your jaw come unclenched.</string>
+    <string name="winddown_scan_2">Drop your shoulders away from your ears.</string>
+    <string name="winddown_scan_3">Open your hands.</string>
+    <string name="winddown_scan_4">Soften your belly.</string>
+    <string name="winddown_scan_5">Let your legs get heavy.</string>
+    <string name="winddown_scan_6">Let the whole body sink into the bed.</string>
+    <string name="winddown_scan_why">Progressive muscle relaxation is one of the standard relaxation components of CBT-I, the best-evidenced treatment for insomnia (Lancet Digital Health, 2025).</string>
+    <string name="winddown_settle_eyebrow">Step four · Settle</string>
+    <string name="winddown_settle_cta">I\'m settled</string>
+    <string name="winddown_settle_why">A longer exhale than inhale is the part of slow breathing with the clearest evidence — it raises vagal tone and slows heart rate. The count matters less than the ratio.</string>
+    <string name="winddown_done_title">Goodnight.</string>
+    <string name="winddown_done_body">Nothing else is needed tonight.</string>
+    <string name="sleep_ritual_nav_title">Tonight\'s wind-down</string>
+    <string name="sleep_ritual_nav_subtitle">Four guided steps — empty your head, then settle</string>
+
+    <string name="imagery_eyebrow">Settle</string>
+    <string name="imagery_title">A place you can go</string>
+    <string name="imagery_intro">Two minutes of building somewhere calm in detail — what it looks like, what you can hear from there, how the ground feels. Eight lines, fifteen seconds each. Read one, let your eyes rest, and glance back when the next lands.</string>
+    <string name="imagery_caution_title">If it stops feeling calm, stop.</string>
+    <string name="imagery_caution_body">Going looking for a quiet place can sometimes turn up the opposite. That\'s a normal thing for this exercise to do and not a failure of yours.</string>
+    <string name="imagery_caution_ground">Try 5-4-3-2-1 grounding instead</string>
+    <string name="imagery_begin">Begin</string>
+    <string name="imagery_line_1">Let your shoulders drop. Three slow breaths — out for longer than in.</string>
+    <string name="imagery_line_2">Bring to mind a place where you feel at ease. Real or imagined: a room, a shore, a path you know.</string>
+    <string name="imagery_line_3">Look around it. What\'s the light like? What colours are there?</string>
+    <string name="imagery_line_4">Listen from where you\'re standing. What\'s close by, and what\'s further off?</string>
+    <string name="imagery_line_5">Feel the ground holding you up. The air on your skin, and its temperature.</string>
+    <string name="imagery_line_6">Nothing here needs anything from you. You can put things down for a minute.</string>
+    <string name="imagery_line_7">When you\'re ready, let the place stay as it is. You know the way back to it.</string>
+    <string name="imagery_line_8">Come back to the room. One more slow breath, then open your eyes.</string>
+    <string name="imagery_seconds">%1$ds</string>
+    <string name="imagery_paused">Paused</string>
+    <string name="imagery_again">Again</string>
+    <string name="imagery_closing_title">The place stays where it is.</string>
+    <string name="imagery_closing_body">You built it, so you can get back to it — it takes less time each go.</string>
+    <string name="imagery_why">Guided imagery is a standard relaxation component in stress and anxiety protocols. The detail is what does the work — which is why these prompts ask about sound, light and temperature rather than just telling you to picture somewhere nice.</string>
+    <string name="toolkit_imagery_title">A place you can go</string>
+    <string name="toolkit_imagery_subtitle">Build somewhere calm, one sense at a time</string>
+    <string name="toolkit_ritual_title">Your ritual</string>
+    <string name="toolkit_ritual_subtitle">String a few of these together, on a cue you already have</string>
+    <string name="ground_why">Sensory grounding redirects attention from spiralling thoughts to the here-and-now — a widely taught anxiety-management skill.</string>
+
+    <!-- ── Ritual builder ──────────────────────────────────────────────────
+         The cue leads, because it is the part with the evidence: assembling a
+         nicer sequence changes nothing about whether it gets done. -->
+    <string name="builder_eyebrow">Toolkit</string>
+    <string name="builder_title">Your ritual</string>
+    <string name="builder_cue_eyebrow">First, the when</string>
+    <string name="builder_cue_title">Attach it to something you already do</string>
+    <string name="builder_cue_body">A routine with no cue is a good intention. A routine that rides on something already in your day is a plan.</string>
+    <string name="builder_cue_field">After I…</string>
+    <string name="builder_cue_idea_1">make my morning coffee</string>
+    <string name="builder_cue_idea_2">close my laptop</string>
+    <string name="builder_cue_idea_3">get off the bus</string>
+    <string name="builder_cue_idea_4">brush my teeth</string>
+    <string name="builder_cue_sentence">After I %1$s, I\'ll run this.</string>
+    <string name="builder_no_nag">CereBro won\'t nag you about this. The cue is the reminder — that\'s how it works.</string>
+    <string name="builder_cue_why">Deciding in advance when and where you\'ll do something — an \'if-then\' plan tied to a moment already in your day — roughly doubles follow-through compared with intention alone, across ~94 studies (Gollwitzer &amp; Sheeran, Advances in Experimental Social Psychology, 2006).</string>
+    <string name="builder_pick_title">Then, the what</string>
+    <string name="builder_pick_body">Pick a few. Short beats thorough — a five-minute routine you keep is worth more than a twenty-minute one you skip.</string>
+    <string name="builder_empty">Nothing picked yet.</string>
+    <plurals name="builder_summary">
+        <item quantity="one">%1$d step · about %2$d min</item>
+        <item quantity="other">%1$d steps · about %2$d min</item>
+    </plurals>
+    <string name="builder_start">Start the ritual</string>
+    <string name="builder_save">Save it</string>
+    <string name="builder_saved">Saved</string>
+    <string name="builder_local_note">Saved on this device only — it isn\'t synced to your account or sent to us.</string>
+    <string name="builder_include_cd">Include %1$s</string>
+    <string name="builder_move_earlier_cd">Move %1$s earlier</string>
+    <string name="builder_move_later_cd">Move %1$s later</string>
+    <string name="builder_next_step">Next step</string>
+    <string name="builder_finish">Finish</string>
+    <string name="builder_done_title">That\'s the ritual.</string>
+    <string name="builder_done_cue">Next time: after you %1$s.</string>
+    <string name="builder_done_nocue">Nothing else is needed right now.</string>
+    <string name="builder_change">Change it</string>
+    <string name="builder_journal_title">From my ritual</string>
+    <string name="builder_dump_title">What\'s still loud?</string>
+    <string name="builder_dump_body">Anything unfinished, worrying, or circling. Don\'t organise it — getting it out is the point.</string>
+    <string name="builder_dump_why">Writing down what\'s unfinished helps people let go of it — the effect is strongest for what\'s still open, not what\'s already done (Scullin et al., Journal of Experimental Psychology: General, 2018).</string>
+    <string name="builder_good_title">What went right?</string>
+    <string name="builder_good_skip">Skip this one</string>
+    <string name="builder_intention_title">What is this next stretch for?</string>
+    <string name="builder_intention_body">One line. Concrete beats noble — \'reply to two emails, then stop\' travels further than \'be productive\'.</string>
+    <string name="builder_intention_field">Today I\'ll…</string>
+    <string name="builder_intention_journal">An intention</string>
+    <string name="builder_intention_why">Naming a specific, concrete intention — what, when, where — is what separates a plan from a wish; vague goals reliably underperform specific ones (Gollwitzer &amp; Sheeran, 2006).</string>
+    <string name="builder_reflect_title">Anything at all</string>
+    <string name="builder_reflect_body">No prompt, no structure, nobody reading it.</string>
+    <string name="builder_reflect_why">Writing about what\'s on your mind, for a few minutes at a time, has small but repeatedly measured effects on wellbeing — the writing does the work, not the reading back (Pennebaker, Psychological Science, 1997).</string>
+    <string name="builder_scan_5">Let your feet feel the floor.</string>
+    <string name="builder_scan_6">Let the chair take your weight.</string>
+    <string name="block_settle_label">Settle the breath</string>
+    <string name="block_settle_note">In 4, out 6 — slow breaths.</string>
+    <string name="block_box_label">Box breathing</string>
+    <string name="block_box_note">Four equal counts: in, hold, out, hold.</string>
+    <string name="block_ground_label">5-4-3-2-1 grounding</string>
+    <string name="block_ground_note">Name what\'s around you, sense by sense.</string>
+    <string name="block_scan_label">Let go, top to bottom</string>
+    <string name="block_scan_note">A short body scan for held tension.</string>
+    <string name="block_dump_label">Empty the desk</string>
+    <string name="block_dump_note">Write out whatever\'s still loud.</string>
+    <string name="block_good_label">Three good things</string>
+    <string name="block_good_note">Name what went right today.</string>
+    <string name="block_intention_label">One intention</string>
+    <string name="block_intention_note">Decide what this next stretch is for.</string>
+    <string name="block_reflect_label">Write freely</string>
+    <string name="block_reflect_note">No prompt, no rules.</string>
     <!-- ── Shared micro-copy ────────────────────────────────────────────── -->
     <string name="common_got_it">Got it</string>
     <string name="common_selected_cd">Selected</string>
@@ -863,32 +1187,17 @@
     <string name="unit_minute_short">m</string>
 
     <!-- ── Mood chips (labels only — the wire values stay in code) ───────── -->
-    <string name="mood_good">Good</string>
     <string name="mood_good_note">Clear</string>
-    <string name="mood_anxious">Anxious</string>
     <string name="mood_anxious_note">Loud thoughts</string>
-    <string name="mood_low">Low</string>
     <string name="mood_low_note">Heavy</string>
-    <string name="mood_tired">Tired</string>
     <string name="mood_tired_note">Need rest</string>
 
     <!-- ── Home copy that used to live in pure functions ─────────────────── -->
-    <string name="today_greeting_morning">Good morning</string>
-    <string name="today_greeting_afternoon">Good afternoon</string>
-    <string name="today_greeting_evening">Good evening</string>
     <string name="today_milestone">🎉 %1$d days of showing up — beautifully done</string>
-    <string name="today_rail_morning">For this morning</string>
-    <string name="today_rail_midday">A midday reset</string>
-    <string name="today_rail_tonight">For tonight</string>
 
     <!-- ── Sleep copy that used to live in pure functions ────────────────── -->
-    <string name="sleep_rhythm_vary">A steadier bedtime — even an imperfect one — does more for sleep than extra hours.</string>
-    <string name="sleep_rhythm_steady">Your bedtime is steady — that consistency is the strongest thing you\'re doing for your sleep.</string>
 
     <!-- ── Breathe phase guidance ────────────────────────────────────────── -->
-    <string name="breathe_phase_in">Breathe in</string>
-    <string name="breathe_phase_hold">Hold</string>
-    <string name="breathe_phase_out">Breathe out</string>
 
     <!-- ── Onboarding pickers (display labels; wire values stay in code) ─── -->
     <string name="ob_state_opt_stressed">Stressed and tense</string>
@@ -902,10 +1211,7 @@
     <string name="ob_lang_hinglish">Hinglish</string>
     <string name="ob_lang_punjabi">Punjabi</string>
     <string name="ob_lang_tamil">Tamil</string>
-    <string name="ob_notify_morning">Morning 9 AM</string>
-    <string name="ob_notify_evening">Evening 7 PM</string>
     <string name="ob_notify_private">Private previews</string>
-    <string name="ob_notify_none">No reminders</string>
 
     <!-- ── Companion styles (display labels; wire values stay in code) ───── -->
     <string name="companion_calm_title">Calm Guide</string>
@@ -927,13 +1233,6 @@
     <string name="talk_voice_failed">Voice didn\'t work that time — you can type below.</string>
     <string name="talk_voice_no_speech">Didn\'t hear anything — tap the orb to try again, or type below.</string>
     <string name="talk_tts_unavailable">This device has no voice for reading replies aloud — they\'ll appear as text.</string>
-
-    <!-- ── Soundscape mixer layers ───────────────────────────────────────── -->
-    <string name="layer_rain">Rain</string>
-    <string name="layer_ocean">Ocean</string>
-    <string name="layer_wind">Wind</string>
-    <string name="layer_drone">Drone</string>
-
     <!-- ── Playback notifications ────────────────────────────────────────── -->
     <string name="notif_action_play">Play</string>
     <string name="notif_action_pause">Pause</string>

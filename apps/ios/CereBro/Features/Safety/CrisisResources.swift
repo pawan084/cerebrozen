@@ -91,7 +91,13 @@ enum CrisisDirectory {
                                textNumber: "1737", subtitle: "Call or text · free · 24/7"),
             ]
         case "IN":
+            // Tele-MANAS leads every crisis surface (REDESIGN §2.3) — mirrors
+            // backend services/crisis.py + Android CrisisScreen. Voice line
+            // only: no official national Tele-MANAS WhatsApp exists (the old
+            // wa.me/9114416 target was dead — Android W25 finding).
             return [
+                CrisisResource(title: "Tele-MANAS mental health support", phone: "14416",
+                               subtitle: "Real people · free government line · 24/7"),
                 CrisisResource(title: "Emergency services", phone: "112"),
                 CrisisResource(title: "KIRAN mental health helpline", phone: "1800-599-0019",
                                subtitle: "Free · 24/7"),
@@ -195,7 +201,7 @@ struct CrisisRegionView: View {
                             Spacer()
                             if state.crisisRegion == code {
                                 Image(systemName: "checkmark").appFont(14, weight: .bold)
-                                    .foregroundStyle(Theme.Palette.lav)
+                                    .foregroundStyle(Theme.Palette.lavText)
                             }
                         }
                         .padding(12).contentShape(Rectangle())
@@ -213,3 +219,4 @@ struct CrisisRegionView: View {
         }
     }
 }
+

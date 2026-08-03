@@ -1,47 +1,69 @@
 import SwiftUI
 
 // MARK: - Human support
+// Real pathways only (Android Settings.kt HumanSupportScreen parity). The old
+// fake "Coach booking" flow (invented time slots + "notify me") was exactly the
+// anti-pattern REDESIGN killed — a support surface must never point at a door
+// that doesn't open.
 struct HumanSupportView: View {
-    @State private var showBooking = false
     var body: some View {
-        ScreenScaffold(eyebrow: "Coach/therapist handoff", title: "Human Support", trailingSystemImage: "person.2") {
-            HeroCard(tag: "Optional", title: "Human support",
-                     subtitle: "Connect with a vetted coach or licensed therapist partner.",
-                     cta: "Book", imageURL: Dummy.Img.support) { showBooking = true }
-            DangerPanel {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Emergency boundary").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
-                    Text("CereBro is wellness support, not emergency care. In a crisis, use the resources below.").appFont(12).foregroundStyle(Theme.Palette.muted)
-                }
-            }
-            NavRow(title: "Coach booking", subtitle: "Human support booking", systemImage: "calendar", imageURL: Dummy.Img.meditate, emphasis: true) { CoachBookingView() }
+        ScreenScaffold(eyebrow: "Beyond the app", title: "Human Support", trailingSystemImage: "person.2") {
+            Text("CereBro is a companion, not a clinician. When you want a real person, these connect you with one.")
+                .appFont(13).foregroundStyle(Theme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            SupportLinkRow(title: "Tele-MANAS — call 14416",
+                           subtitle: "Free government mental-health line · 24/7",
+                           phone: "14416")
+            SupportLinkRow(title: "iCall — talk to a counsellor",
+                           subtitle: "Trained counsellors by phone · 9152987821",
+                           phone: "9152987821")
+            SupportLinkRow(title: "Find a therapist",
+                           subtitle: "Directories of professional help near you",
+                           url: "https://findahelpline.com/in")
+            InsightCard(label: "Talk to a coach",
+                        title: "A vetted coach directory for India is on our roadmap.",
+                        detail: "Until it's real, the lines above reach real people today.")
             NavRow(title: "Trusted contact", subtitle: "Private consent-first setup", systemImage: "person.crop.circle.badge.checkmark", imageURL: Dummy.Img.privacy) { TrustedContactView() }
-            NavRow(title: "Crisis flow", subtitle: "Free safety escalation", systemImage: "phone.fill", imageURL: Dummy.Img.mood) { CrisisView() }
+            NavRow(title: "Urgent support", subtitle: "Tele-MANAS 14416 · real people, 24/7", systemImage: "phone.fill", imageURL: Dummy.Img.mood) { CrisisView() }
         }
-        .navigationDestination(isPresented: $showBooking) { CoachBookingView() }
     }
 }
 
-// MARK: - Coach booking
-struct CoachBookingView: View {
-    @State private var slot: Set<String> = ["Tomorrow 6 PM"]
-    @State private var requested = false
+// A tappable human-support line: phone rows open the dialler (never auto-call),
+// URL rows open the browser. Shared shape with the crisis cards, calmer tint.
+struct SupportLinkRow: View {
+    let title: String
+    let subtitle: String
+    var phone: String? = nil
+    var url: String? = nil
+
+    private var destination: URL? {
+        if let phone {
+            let d = phone.filter { $0.isNumber || $0 == "+" }
+            return d.isEmpty ? nil : URL(string: "tel://\(d)")
+        }
+        return url.flatMap(URL.init(string:))
+    }
+
     var body: some View {
-        ScreenScaffold(eyebrow: "Human support booking", title: "Coach Booking", trailingSystemImage: "calendar") {
-            // Generic partner categories — never invented clinician names.
-            RowLabel(title: "Licensed therapists", subtitle: "CBT, anxiety, low mood", systemImage: "person.badge.shield.checkmark", emphasis: true, chevron: false)
-            RowLabel(title: "Wellness coaches", subtitle: "Sleep, stress, habits", systemImage: "person.2", chevron: false)
-            SectionTitle(title: "Pick a time", trailing: nil)
-            ChipRow(options: ["Today 8 PM", "Tomorrow 6 PM", "Sat 11 AM", "Sun 4 PM"], selection: $slot)
-            PrimaryButton(title: requested ? "Noted" : "Notify me when booking opens",
-                          systemImage: requested ? "checkmark.circle.fill" : "bell.badge") {
-                requested = true; Haptics.success()
+        if let destination {
+            Link(destination: destination) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title).appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.soft)
+                        Text(subtitle).appFont(12).foregroundStyle(Theme.Palette.accentCyan)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: phone != nil ? "phone.fill" : "arrow.up.right")
+                        .appFont(15, weight: .bold).foregroundStyle(Theme.Palette.accentCyan)
+                }
+                .padding(16)
+                .background(Theme.Palette.card)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.Palette.line))
+                .contentShape(Rectangle())
             }
-            if requested {
-                InsightCard(label: "Noted",
-                            title: "Human-session booking is rolling out.",
-                            detail: "You'll see it here first — nothing is scheduled yet.")
-            }
+            .accessibilityLabel(phone != nil ? "Call \(title), \(phone ?? "")" : "Open \(title)")
         }
     }
 }

@@ -1,5 +1,9 @@
 """add media assets catalogue + content scene video
 
+The media catalogue keys every sound/video a client can play. An empty `url` is a
+valid row: it means "no server asset yet" and the client uses its bundled or
+synthesized fallback, so the catalogue can ship ahead of the assets.
+
 Revision ID: c93f2b7a5e18
 Revises: b8e6d1a4f527
 Create Date: 2026-07-13 10:00:00.000000
@@ -33,6 +37,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_media_assets_key"), "media_assets", ["key"], unique=True)
     op.create_index(op.f("ix_media_assets_kind"), "media_assets", ["kind"])
     op.create_index(op.f("ix_media_assets_published"), "media_assets", ["published"])
+
     op.add_column(
         "content_items",
         sa.Column("video_url", sa.String(length=1024), nullable=False, server_default=""),

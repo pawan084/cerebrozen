@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthPanel from "@/components/AuthPanel";
-import { setOnboarded } from "@/lib/api";
 import { unlockAnalytics } from "@/lib/analytics";
+import { setOnboarded } from "@/lib/api";
 import { safeNext } from "@/lib/nextPath";
 
 export default function SignIn() {
@@ -13,6 +13,8 @@ export default function SignIn() {
   function onAuthed() {
     // A returning sign-in means this device is already introduced — skip the
     // funnel on subsequent loads (mirrors iOS: sign-in sets hasOnboarded).
+    // An authenticated session also unlocks anonymous telemetry (DPDP gate).
+    unlockAnalytics();
     setOnboarded();
     // A returning user consented at some point; matching iOS/Android, an
     // authenticated session unlocks counting without re-asking.
@@ -26,7 +28,7 @@ export default function SignIn() {
   }
 
   return (
-    <div className="authwrap">
+    <div className="authwrap theme-night">
       <div className="authcard">
         <p className="eyebrow">Private by design</p>
         <h1>Sign in</h1>

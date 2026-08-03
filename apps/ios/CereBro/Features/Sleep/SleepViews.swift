@@ -1,5 +1,35 @@
 import SwiftUI
 
+// MARK: - Rhythm math (pure — ports Android SleepScreen's unit-tested helpers)
+
+/// Mean nightly duration in minutes; `SleepEntry.durationMin` already wraps
+/// past midnight (23:30→07:00 = 435, not negative).
+func averageSleepMinutes(_ entries: [SleepEntry]) -> Int? {
+    guard !entries.isEmpty else { return nil }
+    let total = entries.reduce(0) { $0 + $1.durationMin }
+    return Int((Double(total) / Double(entries.count)).rounded())
+}
+
+/// Bedtime spread (max − min) in minutes, anchored at noon so bedtimes either
+/// side of midnight stay close (23:30 vs 00:30 → 60, not 23 hours).
+func bedtimeSpreadMinutes(_ entries: [SleepEntry]) -> Int? {
+    let anchored = entries.map { (($0.bedMinutes - 720) % 1440 + 1440) % 1440 }
+    guard let lo = anchored.min(), let hi = anchored.max() else { return nil }
+    return hi - lo
+}
+
+/// The one gentle CBT-I principle the data supports — consistency over duration.
+func rhythmPrinciple(spreadMin: Int) -> String {
+    spreadMin > 90
+        ? "A steadier bedtime — even an imperfect one — does more for sleep than extra hours."
+        : "Your bedtime is steady — that consistency is the strongest thing you're doing for your sleep."
+}
+
+/// A human-sized duration for prose ("45m", "7h 30m") — no zero-hour prefix.
+func spreadLabel(_ min: Int) -> String {
+    min < 60 ? "\(min)m" : (min % 60 == 0 ? "\(min / 60)h" : "\(min / 60)h \(min % 60)m")
+}
+
 // MARK: - Sleep home (tab root)
 struct SleepHomeView: View {
     @EnvironmentObject var state: AppState
@@ -28,7 +58,9 @@ struct SleepHomeView: View {
     }
 
     var body: some View {
-        ScreenScaffold(eyebrow: "Premium sleep hub", title: "Sleep", trailingSystemImage: "moon.stars",
+        // "Improve", not "track" (IOS_PARITY #14, SLEEP_TRACKING framing):
+        // the job is a better night, never measurement or diagnosis.
+        ScreenScaffold(eyebrow: "Improve your sleep, night by night", title: "Sleep", trailingSystemImage: "moon.stars",
                        accent: Theme.Accent.sleep, isRoot: true) {
             HeroCard(tag: "Tonight", title: featured.title,
                      subtitle: "A calming sleep story to slow a racing mind.",
@@ -45,6 +77,23 @@ struct SleepHomeView: View {
                        systemImage: "sunrise", emphasis: true) { SleepCheckInView() }
             }
             SleepTrendCard()
+            // Consistency insight (CBT-I Phase 1): what the last week's rhythm
+            // says, with the one principle the data supports. ≥3 real nights.
+            if state.sleepEntries.count >= 3,
+               let avg = averageSleepMinutes(Array(state.sleepEntries.prefix(7))),
+               let spread = bedtimeSpreadMinutes(Array(state.sleepEntries.prefix(7))) {
+                Card {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Your rhythm").appFont(14.5, weight: .semibold).foregroundStyle(Theme.Palette.text)
+                        Text("You averaged \(spreadLabel(avg)). Your bedtime varied by about \(spreadLabel(spread)) this week.")
+                            .appFont(12.5).foregroundStyle(Theme.Palette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(rhythmPrinciple(spreadMin: spread))
+                            .appFont(12.5).foregroundStyle(Theme.Palette.lavText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
             if !state.sleepEntries.isEmpty {
                 NavRow(title: "Sleep diary",
                        subtitle: "\(state.sleepEntries.count) morning\(state.sleepEntries.count == 1 ? "" : "s") logged",
@@ -52,6 +101,29 @@ struct SleepHomeView: View {
             }
 
             SectionTitle(title: "Wind down tonight")
+            // The guided version of everything below it: the stimulus-control
+            // advice is something to remember at 1am, the ritual is something
+            // to follow.
+            NavRow(title: "Tonight's wind-down", subtitle: "Four guided steps — empty your head, then settle",
+                   systemImage: "moon.stars", imageURL: Dummy.Img.sleep, emphasis: true) { WindDownRitualView() }
+            // Stimulus-control micro-education — non-diagnostic, hardcoded
+            // (copy hand-synced with Android sleep_bed_* / sleep_waketime_*).
+            Card {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bed is for sleep").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.text)
+                    Text("If you're wide awake for 20+ minutes, get up, do something quiet and dim, come back sleepy.")
+                        .appFont(12).foregroundStyle(Theme.Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Card {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Same wake time, even after a short night").appFont(14, weight: .semibold).foregroundStyle(Theme.Palette.text)
+                    Text("Your body clock anchors on when you get up.")
+                        .appFont(12).foregroundStyle(Theme.Palette.muted)
+                }
+            }
+            WhyThisWorks(text: "From CBT-I (cognitive behavioural therapy for insomnia) — the best-evidenced approach in sleep apps (Lancet Digital Health, 2025).")
             ForEach(windDownItems) { WindDownTipRow(tip: $0) }
             Text("A gentle routine drawn from sleep-therapy practice — guidance, not treatment.")
                 .appFont(11).foregroundStyle(Theme.Palette.muted2)
@@ -63,6 +135,11 @@ struct SleepHomeView: View {
             SectionTitle(title: "Sleep stories & sounds")
             ForEach(sleepItems) { SleepRow(item: $0) }
             NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView(items: meditationItems) }
+            // Programs' standing door (Android sleep_programs_nav parity) — the
+            // Home row was cut in the de-densify; enrolled users also reach it
+            // from the Home program card.
+            NavRow(title: "Programs", subtitle: "Guided multi-day journeys — start with Sleep Reset",
+                   systemImage: "sparkles", imageURL: Dummy.Img.premium) { ProgramsView() }
             InsightCard(label: "Auto-stop timer", title: "Sleep-safe playback fades out when you set the timer.")
         }
         .navigationDestination(isPresented: $playFeatured) { PlayerView(item: featured) }
@@ -84,7 +161,7 @@ struct WindDownTipRow: View {
                 HStack(spacing: 12) {
                     Image(systemName: tip.symbol)
                         .appFont(15, weight: .semibold)
-                        .foregroundStyle(Theme.Palette.lav)
+                        .foregroundStyle(Theme.Palette.lavText)
                         .frame(width: 40, height: 40)
                         .background(Theme.Stroke.iconWell, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
@@ -407,7 +484,7 @@ struct PlayerView: View {
 
             Button { audio.toggle() } label: {
                 Image(systemName: audio.isPlaying ? "pause.fill" : "play.fill")
-                    .appFont(24, weight: .bold).foregroundStyle(Theme.Palette.ink)
+                    .appFont(24, weight: .bold).foregroundStyle(Theme.Palette.onPrimary)
                     .frame(width: 68, height: 68)
                     .background(Theme.Gradient.primaryButton, in: Circle())
                     .shadow(color: Theme.Accent.sleep.opacity(0.4), radius: 16, y: 6)
@@ -518,4 +595,5 @@ struct PlayerVisualizer: View {
         .onAppear { if !reduceMotion { animate = true } }   // static bars when reduced
     }
 }
+
 

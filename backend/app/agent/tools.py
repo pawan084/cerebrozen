@@ -13,12 +13,45 @@ from langchain_core.tools import tool
 from langgraph.types import interrupt
 from sqlalchemy import select
 
-from app.agent.context import current_db, current_user_id, emitted_widgets
+from app.agent.context import current_db, current_thread_id, current_user_id, emitted_widgets
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.sleep import SleepLog
 from app.models.user import User
-from app.services import activities, insights, safety
+from app.services import activities, insights, oracle_audit, safety
+
+
+async def _audit_read(tool: str, args: dict | None = None) -> None:
+    """Record a read tool. Never let auditing break a tool: observability is
+    not worth failing the user's turn over."""
+    try:
+        await oracle_audit.record_read(
+            current_db.get(), user_id=current_user_id.get(),
+            thread_id=current_thread_id.get(""), tool=tool, args=args,
+        )
+    except Exception:  # noqa: BLE001 - pragma: no cover
+        pass
+
+
+async def _audit_open(tool: str, args: dict | None = None) -> None:
+    """Mark a write tool pending, BEFORE its interrupt() suspends the graph."""
+    try:
+        await oracle_audit.open_pending(
+            current_db.get(), user_id=current_user_id.get(),
+            thread_id=current_thread_id.get(""), tool=tool, args=args,
+        )
+    except Exception:  # noqa: BLE001 - pragma: no cover
+        pass
+
+
+async def _audit_resolve(tool: str, approved: bool) -> None:
+    try:
+        await oracle_audit.resolve(
+            current_db.get(), thread_id=current_thread_id.get(""),
+            tool=tool, approved=approved,
+        )
+    except Exception:  # noqa: BLE001 - pragma: no cover
+        pass
 
 
 @tool
@@ -40,6 +73,7 @@ async def suggest_activity(kind: str) -> str:
         emitted_widgets.get().append(spec.model_dump())
     except LookupError:
         pass
+    await _audit_read("suggest_activity", {"kind": kind})
     return f"Offered the '{spec.title}' activity card to the user."
 
 
@@ -51,18 +85,22 @@ async def get_weekly_insights() -> str:
     if user is None:
         return "No insights available."
     data = await insights.compute_weekly(db, user)
+    await _audit_read("get_weekly_insights")
     return f"{data['headline']}: {data['summary']}"
 
 
 @tool
 async def log_mood(mood: str, note: str = "") -> str:
     """Record how the user is feeling right now. Confirms with the user first."""
+    await _audit_open("log_mood", {"mood": mood, "note": note})
     decision = interrupt({
         "tool": "log_mood",
         "summary": f"Log your mood as “{mood}”?",
         "args": {"mood": mood, "note": note},
     })
-    if not (isinstance(decision, dict) and decision.get("approved")):
+    approved = isinstance(decision, dict) and bool(decision.get("approved"))
+    await _audit_resolve("log_mood", approved)
+    if not approved:
         return "The user declined to log their mood."
     db = current_db.get()
     uid = current_user_id.get()
@@ -74,12 +112,15 @@ async def log_mood(mood: str, note: str = "") -> str:
 @tool
 async def save_journal(title: str, body: str = "") -> str:
     """Save a short journal entry for the user. Confirms with the user first."""
+    await _audit_open("save_journal", {"title": title, "body": body})
     decision = interrupt({
         "tool": "save_journal",
         "summary": f"Save a journal entry titled “{title}”?",
         "args": {"title": title, "body": body},
     })
-    if not (isinstance(decision, dict) and decision.get("approved")):
+    approved = isinstance(decision, dict) and bool(decision.get("approved"))
+    await _audit_resolve("save_journal", approved)
+    if not approved:
         return "The user declined to save the journal entry."
     db = current_db.get()
     uid = current_user_id.get()
@@ -94,12 +135,16 @@ async def log_sleep(quality: int, bedtime: str = "23:00", wake_time: str = "07:0
     """Record last night's sleep diary for the user (felt quality 1–5, times as
     HH:MM). Use when the user describes how they slept. Confirms with the user
     first. One entry per morning — logging again edits today's entry."""
+    _args = {"quality": quality, "bedtime": bedtime, "wake_time": wake_time, "awakenings": awakenings}
+    await _audit_open("log_sleep", _args)
     decision = interrupt({
         "tool": "log_sleep",
         "summary": f"Log last night's sleep as {quality}/5?",
-        "args": {"quality": quality, "bedtime": bedtime, "wake_time": wake_time, "awakenings": awakenings},
+        "args": _args,
     })
-    if not (isinstance(decision, dict) and decision.get("approved")):
+    approved = isinstance(decision, dict) and bool(decision.get("approved"))
+    await _audit_resolve("log_sleep", approved)
+    if not approved:
         return "The user declined to log their sleep."
 
     def _parse(value: str, fallback: dt.time) -> dt.time:

@@ -263,6 +263,7 @@ val WelcomeOrbEdge = Color(0xFFC9C3FF)
 val WelcomeOrbHaloInner = Color(0x334F46B9)
 val WelcomeOrbHaloOuter = Color(0x224D45A7)
 val WelcomeOrbHaloDisc = Color(0x183F3889)
+<<<<<<< HEAD
 val PrimaryButtonFill: Color get() = if (AppTheme.isNight) Color(0xFFFCFBFF) else PeriwinkleDeep
 val PrimaryButtonInk: Color get() = if (AppTheme.isNight) Color(0xFF211C50) else OnPrimary
 val PrimaryButtonDisabledFill: Color get() = ButtonDisabled
@@ -279,3 +280,33 @@ val PickCardStroke: Color get() = if (AppTheme.isNight) Color(0xFF575178) else L
 val DotUnselectedFill: Color get() = if (AppTheme.isNight) Color(0xFF3B3766) else ChipFill
 val AuthEyebrow: Color get() = if (AppTheme.isNight) Color(0xFFB5AEE1) else EyebrowMuted
 val AuthFieldLabel: Color get() = if (AppTheme.isNight) Color(0xFFE0DDEE) else TextSoft
+=======
+val PrimaryButtonFill = Color(0xFFFCFBFF)
+val PrimaryButtonInk = Color(0xFF211C50)
+val PrimaryButtonDisabledFill = Color(0xFF9998A7)
+val ResetDoneFill = Color(0xFF302D50)
+val FunnelHeaderTop = Color(0xFF393270)
+val FunnelHeaderBottom = Color(0xFF11102E)
+val FunnelBodyText = Color(0xFFD0CCDE)
+val ProgressTrack = Color(0xFF484361)
+val PickRowSelectedFill = Color(0xFF4A456F)
+val PickRowFill = Color(0xFF302C56)
+val PickRowStroke = Color(0xFF504B74)
+val PickRowChevron = Color(0xFF9993B4)
+val PickCardStroke = Color(0xFF575178)
+val DotUnselectedFill = Color(0xFF3B3766)
+val AuthEyebrow = Color(0xFFB5AEE1)
+val AuthFieldLabel = Color(0xFFE0DDEE)
+
+// ── Constant brand marks (theme-independent) ────────────────────────────────
+// Not palette roles: these are the fixed brand hues the Material colorScheme,
+// the gradient tokens and PremiumFrames' pill are built from. They do NOT flip
+// with the theme — a brand mark that changed colour between Night and Dawn
+// would stop being a brand mark. Kept when Android's palettes moved back to
+// indigo, because PremiumFrames.kt (used by ~10 screens) is built on them.
+val BrandPrimary = Color(0xFF7C6FF0)    // Soft Lavender
+val BrandSecondary = Color(0xFF6ECBF5)  // Soft Sky Blue
+val BrandAccent = Color(0xFF7ED9B6)     // Mint Green
+val LavenderPillTop = Color(0xFF6D5FE8)
+val LavenderPillFloor = Color(0xFF5B4BC4)
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58

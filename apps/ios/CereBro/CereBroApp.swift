@@ -7,6 +7,7 @@ struct CereBroApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var state = AppState()
     @StateObject private var backend = BackendService()
+    @StateObject private var theme = AppTheme.shared
 
     init() {
         // Bare AsyncImage relies on URLCache.shared, whose default capacity is
@@ -21,8 +22,12 @@ struct CereBroApp: App {
             RootView()
                 .environmentObject(state)
                 .environmentObject(backend)
-                .preferredColorScheme(.dark)
-                .tint(Theme.Palette.soft)
+                .environmentObject(theme)
+                // nil under "Match device" on purpose — that is what lets
+                // RootView read the device's real scheme back out of the
+                // environment instead of reading its own override.
+                .preferredColorScheme(theme.preferredScheme)
+                .tint(Theme.Palette.tint)
                 // Support Dynamic Type, but cap scaling so the tightly-tuned
                 // fixed-height layouts don't clip at the largest sizes.
                 .dynamicTypeSize(.xSmall ... .accessibility1)
@@ -149,9 +154,20 @@ final class AppState: ObservableObject {
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate, Key.ageConfirmed,
              Key.usageStats,
+             // The personal ritual is device-local (RitualStore), not an
+             // AppState field — but it still has to be wiped, or a saved
+             // ritual leaks between UITest runs and the builder screenshots
+             // stop being deterministic.
+             RitualStore.blocksKey, RitualStore.cueKey,
              "cerebro_access_token"].forEach {   // also drop any cloud session
                 UserDefaults.standard.removeObject(forKey: $0)
             }
+            // One-shot flags (first-completion celebrations, consent-touched,
+            // the analytics consent gate) are keyed dynamically — wipe them so
+            // reruns stay deterministic.
+            UserDefaults.standard.dictionaryRepresentation().keys
+                .filter { $0.hasPrefix("celebrated_") || $0 == "onb_consent_touched" || $0 == Analytics.unlockKey }
+                .forEach { UserDefaults.standard.removeObject(forKey: $0) }
         }
         hasOnboarded   = UserDefaults.standard.bool(forKey: Key.onboarded)
         journalEntries = Self.load([JournalEntry].self, Key.journal) ?? Dummy.journalEntries

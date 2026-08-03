@@ -62,8 +62,11 @@ struct SplashView: View {
                     Spacer()
 
                     HStack(spacing: 7) {
+                        // main's animated icon, v1's text-safe lavender: the
+                        // brand fill is only 3.61:1 as a glyph, so item 17
+                        // moved icon/text paint to lavText (Brand.iris).
                         NativeEffectIcon(systemImage: "heart.fill", size: 13, weight: .semibold,
-                                         color: Theme.Palette.lav, effect: .pulse, active: appear)
+                                         color: Theme.Palette.lavText, effect: .pulse, active: appear)
                         Text("You matter. Always.")
                             .appFont(14, weight: .semibold).foregroundStyle(.white.opacity(0.7))
                     }
@@ -329,3 +332,4 @@ private struct MountainRidge: Shape {
         return p
     }
 }
+

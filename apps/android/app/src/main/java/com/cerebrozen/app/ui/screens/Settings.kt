@@ -147,12 +147,17 @@ private val COMPANIONS = listOf(
     CompanionStyle("Quiet Coach", R.string.companion_quiet_title, R.string.companion_quiet_detail),
 )
 
+/** Display label for a PERSISTED companion value (You header/rows render
+ * server data); unknown values show as stored. */
+internal fun companionLabelRes(value: String): Int? =
+    COMPANIONS.firstOrNull { it.value == value }?.titleRes
+
 @Composable
 fun CompanionStyleScreen(onBack: () -> Unit) {
     var current by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { runCatching { current = Api.me().optString("companion") } }
-    SubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
+    PremiumSubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
         Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         COMPANIONS.forEach { style ->
@@ -180,7 +185,7 @@ fun AppearanceScreen(onBack: () -> Unit) {
         Triple(ThemeMode.Night, stringResource(R.string.theme_night_title), stringResource(R.string.theme_night_hint)),
         Triple(ThemeMode.Dawn, stringResource(R.string.theme_dawn_title), stringResource(R.string.theme_dawn_hint)),
     )
-    SubPage(stringResource(R.string.appearance_eyebrow), stringResource(R.string.appearance_title), onBack) {
+    PremiumSubPage(stringResource(R.string.appearance_eyebrow), stringResource(R.string.appearance_title), onBack) {
         Text(stringResource(R.string.appearance_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         themeChoices.forEach { (mode, title, subtitle) ->
@@ -204,7 +209,7 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
     var region by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { runCatching { region = Api.me().optString("region") } }
-    SubPage(stringResource(R.string.crisisregion_eyebrow), stringResource(R.string.crisisregion_title), onBack) {
+    PremiumSubPage(stringResource(R.string.crisisregion_eyebrow), stringResource(R.string.crisisregion_title), onBack) {
         Text(stringResource(R.string.crisisregion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         regions.forEach { (code, label) ->
@@ -256,8 +261,10 @@ fun PrivacyScreen(onBack: () -> Unit) {
             loaded = true
         }
     }
+    // Without this the screen drew every consent switch from its initial state —
+    // i.e. all off — before the real values arrived (2026-07-31 audit).
     LaunchedEffect(Unit) { loadConsent() }
-    SubPage(stringResource(R.string.privacy_control_line), notice.title, onBack) {
+    PremiumSubPage(stringResource(R.string.privacy_control_line), notice.title, onBack) {
         Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         // The picker was thirteen unlabelled chips filling the first screen, with
         // nothing saying what they change — easily read as the app's language
@@ -370,7 +377,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PremiumScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.premium_eyebrow), stringResource(R.string.premium_title), onBack) {
+fun PremiumScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.premium_eyebrow), stringResource(R.string.premium_title), onBack) {
     // First-party paywall funnel count (anonymous, opt-out; mirrors iOS).
     LaunchedEffect(Unit) { Analytics.track("paywall_view") }
     Text(stringResource(R.string.premium_intro),
@@ -396,7 +403,7 @@ private fun PlanCard(name: String, price: String, note: String, featured: Boolea
 }
 
 @Composable
-fun HumanSupportScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.humansupport_eyebrow), stringResource(R.string.humansupport_title), onBack) {
+fun HumanSupportScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.humansupport_eyebrow), stringResource(R.string.humansupport_title), onBack) {
     Text(stringResource(R.string.humansupport_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
     // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
@@ -430,7 +437,7 @@ fun RemindersScreen(onBack: () -> Unit) {
         com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
     }
 
-    SubPage(stringResource(R.string.reminders_eyebrow), stringResource(R.string.reminders_title), onBack) {
+    PremiumSubPage(stringResource(R.string.reminders_eyebrow), stringResource(R.string.reminders_title), onBack) {
         SectionCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
@@ -453,7 +460,7 @@ fun RemindersScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PrivacyPolicyScreen(onBack: () -> Unit) = SubPage(stringResource(R.string.privacypolicy_eyebrow), stringResource(R.string.privacypolicy_title), onBack) {
+fun PrivacyPolicyScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.privacypolicy_eyebrow), stringResource(R.string.privacypolicy_title), onBack) {
     InfoCard(stringResource(R.string.privacypolicy_private_title), stringResource(R.string.privacypolicy_private_body))
     InfoCard(stringResource(R.string.privacypolicy_controls_title), stringResource(R.string.privacypolicy_controls_body))
     InfoCard(stringResource(R.string.privacypolicy_noselling_title), stringResource(R.string.privacypolicy_noselling_body))
@@ -477,7 +484,7 @@ fun DataExportScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val successTemplate = stringResource(R.string.export_success)
     val exportFailed = stringResource(R.string.export_failed)
-    SubPage(stringResource(R.string.export_eyebrow), stringResource(R.string.export_title), onBack) {
+    PremiumSubPage(stringResource(R.string.export_eyebrow), stringResource(R.string.export_title), onBack) {
         Text(stringResource(R.string.export_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         PrimaryButton(
@@ -504,7 +511,7 @@ fun AccountDeletionScreen(onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val deleteFailed = stringResource(R.string.delete_error_fallback)
-    SubPage(stringResource(R.string.delete_eyebrow), stringResource(R.string.delete_title), onBack) {
+    PremiumSubPage(stringResource(R.string.delete_eyebrow), stringResource(R.string.delete_title), onBack) {
         Text(stringResource(R.string.delete_warning),
             style = MaterialTheme.typography.bodyMedium, color = Danger)
         if (!confirm) {

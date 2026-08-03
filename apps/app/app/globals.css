@@ -87,10 +87,14 @@
   --danger-line: var(--dawn-danger-line); --danger-wash: var(--dawn-danger-wash);
 }
 
-/* Two surfaces stay Night in every theme: the onboarding funnel (its white
-   pill CTA and glowing orbs are the brand's first impression) and the auth
-   card. Redeclaring the roles on the container re-themes everything inside. */
-.onb-root, .authwrap {
+/* Some surfaces stay Night in every theme: the onboarding funnel (its white
+   pill CTA and glowing orbs are the brand's first impression), the auth card,
+   and anything marked `.theme-night` — the Sleep tab and its wind-down ritual
+   (a bright screen is the wrong thing to hand someone at bedtime), the public
+   /crisis page, and the Journal prompt hero. Redeclaring the roles on the
+   container re-themes everything inside, so the scope is correct even when
+   :root is Dawn. */
+.onb-root, .authwrap, .theme-night {
   --card: rgba(255, 255, 255, 0.05); --card-strong: rgba(255, 255, 255, 0.085);
   --line: rgba(255, 255, 255, 0.12); --text: #f5f4ff; --soft: #dfe0ff;
   --muted: #b0a9e0; --muted-2: #8f88c0; --lav: #8a7bf0; --lav-2: #a68bff;
@@ -98,6 +102,19 @@
   --danger-line: rgba(224, 138, 154, 0.5); --danger-wash: rgba(224, 138, 154, 0.09);
   background: linear-gradient(180deg, var(--panel-top), var(--panel-base));
   color: var(--text);
+}
+
+/* `.theme-night` additionally re-scopes the PAGE GROUND, which the two funnel
+   containers above do not need — they paint themselves from --panel-*, and
+   nothing inside them reads --night.
+   A `.theme-night` section is different: it wraps ordinary app content whose
+   cards, scrims and charts resolve --night/--night-top themselves. Without
+   these two lines the scope re-themed the text roles but left the ground Dawn,
+   so the Sleep tab rendered warm paper under Night ink — the bright-screen-at-
+   bedtime regression this scope exists to prevent (theme.spec.ts pins it). */
+.theme-night {
+  --night: #0e0c22;
+  --night-top: #1a1440;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -239,6 +256,7 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 .msg.user p { background: linear-gradient(135deg, var(--lav), var(--lav-2)); color: var(--cream); border-bottom-right-radius: 6px; }
 .msg.ai p { background: var(--card-strong); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
 .cursor { animation: blink 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
 @keyframes blink { 50% { opacity: 0; } }
 .widgetcard {
   border: 1px solid var(--line); background: var(--card);
@@ -386,6 +404,9 @@ select option { color: var(--ink); }
 }
 .onb-breathe-orb.in, .onb-breathe-orb.hold { transform: scale(1.24); }
 .onb-breathe-orb.out { transform: scale(0.78); }
+/* The wind-down ritual's settle step exhales for 6s; the default 3.8s transition
+   would finish early and leave the orb sitting still through the rest of it. */
+.onb-breathe-orb.slow-out { transition-duration: 5.8s; }
 @media (prefers-reduced-motion: reduce) { .onb-breathe-orb { transition: none; transform: none; } }
 
 /* First-plan hero card. */
@@ -854,4 +875,40 @@ select option { color: var(--ink); }
   .btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
   .premium-btn:active, .social-btn:active:not([disabled]),
   .quick-tile:hover, .quick-tile:active { transform: none; transition: none; }
+}
+
+/* ── Guided imagery (/games/imagery) ─────────────────────────────────────── */
+.imagery-stage {
+  position: relative; overflow: hidden; border-radius: 24px; margin-bottom: 16px;
+  min-height: 300px; padding: 40px 34px; display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.08);
+  /* The base layer is OPAQUE on purpose: a translucent one lets the warm-white
+     Dawn page through and the whole dusk washes out (and the cream text with
+     it). Same trap the hero paints avoid by carrying literal colours. */
+  background: radial-gradient(circle at 30% 22%, rgba(138,123,240,0.26), transparent 55%),
+              radial-gradient(circle at 76% 74%, rgba(143,230,238,0.14), transparent 52%),
+              linear-gradient(180deg, #1d1940, #0b0a1c);
+}
+.imagery-line {
+  position: relative; z-index: 1; text-align: center; max-width: 30ch;
+  font-family: var(--font-serif), Georgia, serif; font-size: 25px; line-height: 1.5;
+  color: rgba(255,255,255,0.9); animation: imageryIn 1s ease both;
+}
+.imagery-glow {
+  position: absolute; width: 260px; height: 260px; border-radius: 50%;
+  background: rgba(138,123,240,0.16); filter: blur(60px);
+  top: 8%; left: 6%; animation: imageryDrift 24s ease-in-out infinite;
+}
+.imagery-glow.two {
+  width: 200px; height: 200px; background: rgba(143,230,238,0.13);
+  top: auto; left: auto; bottom: 6%; right: 8%; animation-duration: 31s; animation-direction: reverse;
+}
+@keyframes imageryIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes imageryDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(38px, 26px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .imagery-line { animation: none; }
+  .imagery-glow { animation: none; }
 }

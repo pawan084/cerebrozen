@@ -12,10 +12,11 @@ import {
   unsubscribePush,
   type PushStatus,
 } from "@/lib/push";
+import { analyticsEnabled, setAnalyticsEnabled, track } from "@/lib/analytics";
 import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
+import { getThemeMode, setThemeMode, type ThemeMode } from "@/lib/theme";
 import { AppHeader } from "@/components/AppHeader";
 import { resetTour } from "@/components/GuidedTour";
-import { analyticsEnabled, setAnalyticsEnabled, track } from "@/lib/analytics";
 
 /** Fires `paywall_view` once, when the upgrade block is actually rendered —
  *  mounting is the honest definition of "seen", not opening the page. */
@@ -67,6 +68,8 @@ export default function Account() {
   const [push, setPush] = useState<PushStatus | null>(null);
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
+  const [theme, setTheme] = useState<ThemeMode>("system");
+  const [statsOn, setStatsOn] = useState(true);
   // DPDP s.5(3): the consent notice is readable in English or an
   // Eighth-Schedule language, picked right on the notice.
   const [noticeLang, setNoticeLang] = useState("en");
@@ -77,12 +80,22 @@ export default function Account() {
     api("/auth/me").then((u) => {
       setMe(u);
       setRegion(u.region ?? "");
+      // The paywall surface here is the upgrade card (iOS parity: PremiumView
+      // fires the same event; anonymous, consent-gated in lib/analytics).
+      if ((u.subscription_tier ?? "free") === "free") track("paywall_view");
     }).catch(() => {});
     api<Consent>("/users/me/consent").then(setConsent).catch(() => {});
     api<Contact | null>("/users/me/trusted-contact").then((c) => c && setContact(c)).catch(() => {});
     getPushStatus().then(setPush).catch(() => {});
     isSubscribed().then(setPushOn).catch(() => {});
+    setTheme(getThemeMode());
+    setStatsOn(analyticsEnabled());
   }, []);
+
+  function pickTheme(mode: ThemeMode) {
+    setThemeMode(mode);
+    setTheme(mode);
+  }
 
   async function toggleBrowserPush() {
     if (!push?.enabled) return;
@@ -240,10 +253,15 @@ export default function Account() {
             <div style={{ marginTop: 12 }}>
               {/* Stripe's own portal rather than a hand-rolled cancel: proration,
                   trials and dunning are its rules, and a local reimplementation
-                  gets them subtly wrong in ways that cost real people money. */}
-              <button className="btn ghost" onClick={openPortal}>Manage billing</button>
-              <p className="footnote">Change your card, switch plan, or cancel.</p>
-              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+                  gets them subtly wrong in ways that cost real people money.
+                  The label keeps the word "cancel" — cancelling must be as easy
+                  to find as subscribing was (OECD dark-pattern checklist), and a
+                  button reading only "Manage billing" hides it one click deeper. */}
+              <button className="btn ghost" onClick={openPortal}>Manage or cancel subscription</button>
+              <p className="footnote">
+                Change your card, switch plan, or cancel. Subscribed on iPhone? Manage it in the App Store instead.
+              </p>
+              {billingMsg &&<p className="footnote" role="status">{billingMsg}</p>}
             </div>
           )}
         </section>
@@ -267,7 +285,26 @@ export default function Account() {
         <span className="ui-row-chevron" aria-hidden="true">›</span>
       </button>
 
-      <section className="card cz-in cz-d2" aria-label="Privacy choices">
+      {/* Appearance — Android You→Appearance parity. Sleep, onboarding and the
+          signed-out pages deliberately stay Night in every mode. */}
+      <section className="card cz-in cz-d2" aria-label="Appearance">
+        <h2>Appearance</h2>
+        <p className="sub">Dawn is a warm-light look; Sleep keeps its calm Night either way.</p>
+        <div className="ui-chips" style={{ marginTop: 10 }}>
+          {([["system", "System"], ["night", "Night"], ["dawn", "Dawn"]] as [ThemeMode, string][]).map(([mode, label]) => (
+            <button
+              key={mode}
+              className={theme === mode ? "ui-chip active" : "ui-chip"}
+              aria-pressed={theme === mode}
+              onClick={() => pickTheme(mode)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card" aria-label="Privacy choices">
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
           <h2>{notice.title}</h2>
           <label className="row" style={{ gap: 6 }}>
@@ -330,7 +367,43 @@ export default function Account() {
         </div>
       </section>
 
-      <section className="card cz-in cz-d3" aria-label="Crisis resources region">
+      {/* Real human pathways — mirrors Android Settings.kt HumanSupportScreen.
+          No fake booking UI, ever; these lines reach real people today. */}
+      <section className="card cz-in cz-d3" aria-label="Talk to a human">
+        <h2>Talk to a human</h2>
+        <p className="sub">
+          CereBro is a companion, not a clinician. When you want a real person, these connect
+          you with one.
+        </p>
+        <div className="entry row">
+          <div className="grow">
+            <strong>Tele-MANAS — call <a href="tel:14416" style={{ color: "var(--cyan)" }}>14416</a></strong>
+            <div className="meta">Free government mental-health line · 24/7</div>
+          </div>
+        </div>
+        <div className="entry row">
+          <div className="grow">
+            <strong>iCall — talk to a counsellor at <a href="tel:9152987821" style={{ color: "var(--cyan)" }}>9152987821</a></strong>
+            <div className="meta">Trained counsellors by phone</div>
+          </div>
+        </div>
+        <div className="entry row">
+          <div className="grow">
+            <strong>
+              <a href="https://findahelpline.com/in" target="_blank" rel="noreferrer" style={{ color: "var(--cyan)" }}>
+                Find a therapist or helpline
+              </a>
+            </strong>
+            <div className="meta">Directories of professional help near you</div>
+          </div>
+        </div>
+        <p className="footnote">
+          In a heavy moment? <Link href="/crisis" style={{ color: "var(--lav)" }}>Urgent support</Link> is
+          two taps from anywhere.
+        </p>
+      </section>
+
+      <section className="card" aria-label="Crisis resources region">
         <h2>Crisis resources region</h2>
         <p className="sub">Sets which hotlines appear if a conversation gets heavy.</p>
         <select value={region} onChange={(e) => saveRegion(e.target.value)} aria-label="Region">
@@ -376,8 +449,50 @@ export default function Account() {
           <Link href="/patterns" style={{ color: "var(--lav)" }}>what the AI has learned</Link>{" "}
           (deletable there too).
         </p>
+        {/* iOS/Android "Anonymous usage stats" parity — local toggle over the
+            first-party, no-auth /events counts (never content, never linked). */}
+        <label className="row" style={{ marginTop: 12, gap: 10 }}>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={statsOn}
+            onChange={() => { setAnalyticsEnabled(!statsOn); setStatsOn(!statsOn); }}
+            aria-label="Anonymous usage stats"
+            style={{ width: "auto" }}
+          />
+          <span className="sub">
+            Anonymous usage stats — first-party counts (like "onboarding completed"), never your
+            content, never linked to your account.
+          </span>
+        </label>
         <button className="btn ghost" onClick={exportData}>Download my data (JSON)</button>
         {status && <p className="success" role="status">{status}</p>}
+      </section>
+
+      {/* Honesty cards — hand-synced with Android privacypolicy_* strings
+          (REDESIGN F9: say what's evidence, what CereBro is not, who's involved). */}
+      <section className="card" aria-label="How CereBro is built">
+        <h2>How CereBro is built</h2>
+        <div className="entry">
+          <strong>Evidence, labeled</strong>
+          <div className="meta">
+            Tools are labeled with why they work. Where something is comfort rather than
+            therapy, we say so.
+          </div>
+        </div>
+        <div className="entry">
+          <strong>What CereBro is not</strong>
+          <div className="meta">
+            A companion alongside care, never a replacement. It doesn&apos;t diagnose or treat.
+          </div>
+        </div>
+        <div className="entry">
+          <strong>Professional involvement</strong>
+          <div className="meta">
+            Built with published clinical research; a formal clinical advisory process is on
+            our roadmap.
+          </div>
+        </div>
       </section>
 
       <section className="card cz-in cz-d6" aria-label="Delete account">

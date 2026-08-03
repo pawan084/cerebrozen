@@ -25,8 +25,8 @@ struct AIDisclosureBanner: View {
                     .appFont(11.5, weight: .medium).foregroundStyle(Theme.Palette.muted)
                     .lineLimit(1).minimumScaleFactor(0.85)
                 Spacer(minLength: 4)
-                Text("Details").appFont(11.5, weight: .heavy).foregroundStyle(Theme.Palette.lav)
-                Image(systemName: "chevron.right").appFont(9, weight: .bold).foregroundStyle(Theme.Palette.lav)
+                Text("Details").appFont(11.5, weight: .heavy).foregroundStyle(Theme.Palette.lavText)
+                Image(systemName: "chevron.right").appFont(9, weight: .bold).foregroundStyle(Theme.Palette.lavText)
             }
             .padding(.horizontal, 12).frame(minHeight: 34)
             .background(Theme.Palette.card)
@@ -135,7 +135,7 @@ private struct DisclosurePoint: View {
     let detail: String
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon).appFont(15, weight: .semibold).foregroundStyle(Theme.Palette.lav)
+            Image(systemName: icon).appFont(15, weight: .semibold).foregroundStyle(Theme.Palette.lavText)
                 .frame(width: 38, height: 38)
                 .background(Theme.Palette.lav.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
@@ -181,3 +181,4 @@ struct CrisisBanner: View {
         .accessibilityLabel("Crisis support available. Opens crisis resources.")
     }
 }
+

@@ -14,6 +14,9 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
+// The offline fallback list and the tel:/http href rule used to live here. Both
+// moved to `lib/crisis` + <CrisisLines>, so chat, journal and /support cannot
+// drift apart on "Tele-MANAS first, every number tappable".
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
@@ -44,13 +47,27 @@ function confirmDetail(req: ConfirmReq): string {
   return "Nothing here describes the change — if you're unsure, choose Not now.";
 }
 
-// Where an inline activity lands on the web; unmapped kinds stay app-only.
+// Where an inline activity lands on the web; unmapped kinds stay app-only
+// (mirror of Android TalkScreen widgetRoute — add mappings, never remove
+// kinds: the honest "lives in the app" fallback must survive).
 const WIDGET_LINKS: Record<string, string> = {
   mood_check: "/home",
   mini_journal: "/journal",
   journal: "/journal",
   sleep_checkin: "/sleep",
+  breathing: "/games",
+  grounding: "/games",
+  one_good_thing: "/journal",
+  intention_set: "/journal",
 };
+
+// "Try together" — rule-based structured exercises offered up front (evidence
+// F3: structure beats open-ended chat); client-only links, no LLM dependency.
+const TRY_TOGETHER = [
+  { label: "Box breathing", detail: "4·4·4·4 — follow the orb", href: "/games" },
+  { label: "5-4-3-2-1 grounding", detail: "Anchor through the senses", href: "/games" },
+  { label: "One good thing", detail: "A 30-second journal entry", href: "/journal" },
+];
 
 // crypto.randomUUID() needs a secure context (absent on plain-http origins
 // like the e2e stack) — local bubble keys don't need cryptographic ids anyway.
@@ -196,7 +213,9 @@ export default function Chat() {
       {crisis && (
         <div className="crisis" role="alert">
           <strong>{crisis.message || "If things feel heavy right now, you deserve support."}</strong>
-          {/* Tele-MANAS leads, every number dials — and the conversation is never blocked. */}
+          {/* Tele-MANAS leads, every number dials — and the conversation is never
+              blocked. Region-aware when the server sent a block; the component's
+              own list otherwise, so this never renders empty. */}
           <CrisisLines lines={crisis.lines?.length ? crisis.lines : undefined} compact />
           <div className="row" style={{ gap: 10, marginTop: 10 }}>
             <Link className="btn ghost" href="/support" style={{ padding: "6px 14px" }}>More ways to get help</Link>
@@ -214,7 +233,9 @@ export default function Chat() {
           <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
-            <p>Type whatever's on your mind — no pressure to have the right words.</p>
+            {/* Says where voice is: the browser client has text only, and the
+                orb above otherwise reads like a mic. */}
+            <p>Just type — no pressure to have the right words. Voice lives in the apps.</p>
             <div className="talk-actions">
               <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
@@ -222,11 +243,26 @@ export default function Chat() {
               Voice conversations live in the iOS app. Here, the companion listens in writing.
             </p>
           </section>
-          <div className="cz-in cz-d1">
-            <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
-            {STARTERS.map((s) => (
-              <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
-            ))}
+          <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+            <div className="cz-in cz-d1">
+              <h2 className="serif-h" style={{ marginBottom: 14 }}>Not sure where to start?</h2>
+              {STARTERS.map((s) => (
+                <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
+              ))}
+            </div>
+            {/* The "Try together" rail (WEB_PARITY Wave C, iOS/Android parity):
+                a structured exercise offered before a conversation, per the
+                rule-based-first evidence. The slot it replaced was a hardcoded
+                "Recent conversations" list — deleted in Wave A as a fake. */}
+            <div className="cz-in cz-d2">
+              <h2 className="serif-h" style={{ marginBottom: 14 }}>Try together</h2>
+              {TRY_TOGETHER.map((t) => (
+                <Link key={t.label} href={t.href} className="suggest-row" style={{ display: "block", textDecoration: "none" }}>
+                  <strong>{t.label}</strong>
+                  <span style={{ color: "var(--muted)" }}> — {t.detail}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </>
       ) : (

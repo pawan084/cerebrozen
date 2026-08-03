@@ -403,4 +403,87 @@ class ApiEndpointsTest {
         }
         assertFalse("no network → Oracle treated as unavailable", Api.oracleAvailable())
     }
+
+    // NOTE: $script() logs the cold-start /auth/refresh as log[0], so the\n    // first real request in each test below is log[1].\n    // ── B2C tier-1 surfaces: goals & habits, safety plan, recommendations,
+    // per-item memory. Same contract check as every endpoint above — path,
+    // method and body — because the transport is stubbed in tests and a wrong
+    // verb or path is exactly the class of bug that only shows up on device.
+    @Test
+    fun goalsAndHabits_useTheirOwnPathsAndVerbs() = runTest {
+        val log = script(
+            mapOf(
+                "GET /goals" to """[{"id":"g1","title":"Sleep by 11"}]""",
+                "GET /goals?include_resolved=true" to """[{"id":"g1"},{"id":"g2"}]""",
+                "POST /goals" to """{"id":"g3","title":"Walk daily"}""",
+                "GET /habits" to """[{"id":"h1","title":"Water"}]""",
+                "POST /habits" to """{"id":"h2"}""",
+            ),
+        )
+        assertEquals(1, Api.goals().length())
+        // Resolved goals are opt-in: the default list must not carry the flag,
+        // or a retired goal reappears on the screen that retired it.
+        assertEquals(2, Api.goals(includeResolved = true).length())
+        assertEquals("/goals", log[1].path)
+        assertEquals("/goals?include_resolved=true", log[2].path)
+        assertNotNull(Api.addGoal("Walk daily"))
+        assertEquals(1, Api.habits().length())
+        assertNotNull(Api.addHabit("Water", "after lunch"))
+    }
+
+    @Test
+    fun safetyPlan_treatsAnEmptyBodyAsNoPlanRatherThanAnError() = runTest {
+        // A user who has never written one gets `null`, not a crash and not an
+        // empty-looking plan — the screen needs to tell those apart to say why
+        // it is empty.
+        script(mapOf("GET /safety-plan/me" to "null"))
+        assertNull(Api.safetyPlan())
+
+        script(
+            mapOf(
+                "GET /safety-plan/me" to """{"warning_signs":"tight chest"}""",
+                "PUT /safety-plan/me" to """{"warning_signs":"tight chest","coping":"walk"}""",
+            ),
+        )
+        assertEquals("tight chest", Api.safetyPlan()!!.getString("warning_signs"))
+        val saved = Api.saveSafetyPlan(JSONObject().put("coping", "walk"))
+        assertEquals("walk", saved.getString("coping"))
+    }
+
+    @Test
+    fun recommendations_acceptAndDismissHitDifferentPaths() = runTest {
+        val log = script(
+            mapOf(
+                "GET /recommendations/mine" to """[{"id":"r1","practice_slug":"anchor-the-hard-hour"}]""",
+                "POST /recommendations/r1/accept" to "{}",
+                "POST /recommendations/r1/dismiss" to "{}",
+            ),
+        )
+        assertEquals("anchor-the-hard-hour", Api.recommendations().getJSONObject(0).getString("practice_slug"))
+        Api.resolveRecommendation("r1", accept = true)
+        Api.resolveRecommendation("r1", accept = false)
+        // The two outcomes must not collapse onto one path: admin reads the
+        // accept/dismiss split to see whether a practice is worth suggesting.
+        assertEquals("/recommendations/r1/accept", log[2].path)
+        assertEquals("/recommendations/r1/dismiss", log[3].path)
+    }
+
+    @Test
+    fun perItemMemory_listsAndDeletesWithoutTouchingTheWipe() = runTest {
+        val log = script(
+            mapOf(
+                "GET /users/me/memory" to """[{"id":"m1","body":"prefers mornings"}]""",
+                "POST /users/me/memory" to """{"id":"m2"}""",
+                "PATCH /users/me/memory/m1" to """{"id":"m1","body":"prefers early mornings"}""",
+                "DELETE /users/me/memory/m1" to "{}",
+            ),
+        )
+        assertEquals(1, Api.memories().length())
+        assertNotNull(Api.addMemory("prefers mornings"))
+        assertEquals("prefers early mornings", Api.editMemory("m1", "prefers early mornings").getString("body"))
+        Api.deleteOneMemory("m1")
+        // Deleting ONE item must not hit the bare /users/me/memory wipe, which
+        // clears chat, insights and the Oracle checkpoint as well.
+        assertEquals("/users/me/memory/m1", log[4].path)
+        assertEquals("DELETE", log[4].method)
+    }
 }

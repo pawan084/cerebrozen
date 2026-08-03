@@ -37,22 +37,17 @@ export type EventName =
   | "paywall_cta";
 
 /**
- * Onboarding step names, in order, mirroring `services/metrics.ONBOARDING_STEPS`.
- * The admin funnel joins on these strings — a rename here silently drops a bar
- * rather than erroring, so this array is a cross-stack contract.
+ * Step names live in `lib/onboarding.ts` as `STEP_NAMES`, not here.
+ *
+ * There were briefly two lists: this one mirroring the backend's ten-name
+ * `services/metrics.ONBOARDING_STEPS`, and the funnel's own eight. The browser
+ * funnel is eight steps — `age_gate` folded into `disclosure` and the invented
+ * `first_plan` preview is gone — so indexing the ten-name list by the UI's step
+ * number labelled step 4 "state_check" when it was "first_reset", and shifted
+ * every bar after it. The admin funnel joins on these strings, so a wrong name
+ * is a silently wrong chart rather than an error. One list, next to the steps
+ * it names.
  */
-export const ONBOARDING_STEPS = [
-  "welcome",
-  "age_gate",
-  "disclosure",
-  "language",
-  "state_check",
-  "first_reset",
-  "first_plan",
-  "signup",
-  "consent",
-  "notifications",
-] as const;
 
 function safeGet(key: string): string | null {
   try {

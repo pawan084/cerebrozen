@@ -50,8 +50,11 @@ struct PatternDashboardView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("· \(p.statement)")
                                             .appFont(13.5).foregroundStyle(Theme.Palette.soft)
+                                        // Palette.accentCyan, not Brand.cyan: this is text, and
+                                        // the Night aurora hex all but vanishes on Dawn's warm
+                                        // white. The role resolves per theme and is AA-gated.
                                         Text(p.basis)
-                                            .appFont(11).foregroundStyle(Theme.Brand.cyan)
+                                            .appFont(11).foregroundStyle(Theme.Palette.accentCyan)
                                             .padding(.leading, 12)
                                     }
                                     Spacer(minLength: 0)

@@ -5,6 +5,7 @@ import com.cerebrozen.app.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -17,10 +18,10 @@ class ScreenLogicTest {
 
     // ── Sleep time math ─────────────────────────────────────────────
     @Test
-    fun minutesToLabel_formats_hours_and_zero_padded_minutes() {
-        assertEquals("7h 30m", minutesToLabel(450))
-        assertEquals("8h 05m", minutesToLabel(485))
-        assertEquals("0h 00m", minutesToLabel(0))
+    fun hoursMinutes_splits_totals_for_the_localized_duration_format() {
+        assertEquals(7 to 30, hoursMinutes(450))
+        assertEquals(8 to 5, hoursMinutes(485))
+        assertEquals(0 to 0, hoursMinutes(0))
     }
 
     @Test
@@ -466,10 +467,11 @@ class ScreenLogicTest {
     @Test
     fun breathePhases_box_paces_four_beats_of_four() {
         val phases = breathePhases(BreathePreset.Box)
+        // Asserted on the KIND, not the label resource: cues and haptics branch
+        // on the enum, so that is the thing the pacing must get right.
         assertEquals(
-            listOf(R.string.breathe_phase_in, R.string.breathe_phase_hold,
-                R.string.breathe_phase_out, R.string.breathe_phase_hold),
-            phases.map { it.labelRes },
+            listOf(BreathKind.IN, BreathKind.HOLD, BreathKind.OUT, BreathKind.HOLD),
+            phases.map { it.kind },
         )
         assertEquals(List(4) { 4 }, phases.map { it.seconds })
         assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
@@ -479,8 +481,80 @@ class ScreenLogicTest {
     @Test
     fun breathePhases_reset_has_no_holds() {
         val phases = breathePhases(BreathePreset.Reset)
-        assertEquals(listOf(R.string.breathe_phase_in, R.string.breathe_phase_out), phases.map { it.labelRes })
+        assertEquals(listOf(BreathKind.IN, BreathKind.OUT), phases.map { it.kind })
         assertEquals(listOf(true, false), phases.map { it.expanded })
+        // …and the exhale is the longer half (BreathePacingTest pins the numbers).
+        assertTrue(phases[1].seconds > phases[0].seconds)
+    }
+
+    // ── Guided routines (wind-down ritual + guided imagery) ───────────────
+    @Test
+    fun nextPromptIndex_advances_then_ends_on_the_last_prompt() {
+        assertEquals(1, nextPromptIndex(0, 6))
+        assertEquals(5, nextPromptIndex(4, 6))
+        assertNull("the last prompt hands over rather than wrapping", nextPromptIndex(5, 6))
+        // Defensive: an index past the end must still end, not run backwards.
+        assertNull(nextPromptIndex(9, 6))
+        assertNull("an empty reel is already finished", nextPromptIndex(0, 0))
+    }
+
+    @Test
+    fun ritualBlocks_have_unique_ids_and_real_durations() {
+        assertEquals("ids are the persisted contract — a duplicate would collide in the pref",
+            RITUAL_BLOCKS.size, RITUAL_BLOCKS.map { it.id }.distinct().size)
+        assertTrue("every block claims at least a minute", RITUAL_BLOCKS.all { it.minutes >= 1 })
+    }
+
+    @Test
+    fun sanitizeRitual_drops_unknown_ids_and_duplicates_keeping_order() {
+        assertEquals(
+            listOf("good", "settle"),
+            sanitizeRitual(listOf("good", "affirmation", "settle", "good", "478")),
+        )
+        assertEquals(emptyList<String>(), sanitizeRitual(listOf("nope")))
+    }
+
+    @Test
+    fun moveBlock_swaps_neighbours_and_refuses_to_fall_off_either_end() {
+        val order = listOf("a", "b", "c")
+        assertEquals(listOf("b", "a", "c"), moveBlock(order, 1, -1))
+        assertEquals(listOf("a", "c", "b"), moveBlock(order, 1, 1))
+        assertEquals("moving the first up is a no-op, not a crash", order, moveBlock(order, 0, -1))
+        assertEquals("moving the last down is a no-op, not a crash", order, moveBlock(order, 2, 1))
+        assertEquals("an index that isn't in the list changes nothing", order, moveBlock(order, 7, -1))
+    }
+
+    @Test
+    fun ritualMinutes_sums_only_blocks_that_exist() {
+        val expected = RITUAL_BLOCKS.first { it.id == "good" }.minutes +
+            RITUAL_BLOCKS.first { it.id == "settle" }.minutes
+        assertEquals(expected, ritualMinutes(listOf("good", "settle")))
+        assertEquals(0, ritualMinutes(emptyList()))
+        assertEquals("an unknown id contributes nothing rather than throwing",
+            0, ritualMinutes(listOf("affirmation")))
+    }
+
+    @Test
+    fun ritualStore_round_trips_and_sanitizes_on_the_way_out() {
+        freshStore()
+        RitualStore.save(listOf("good", "affirmation", "good", "settle"), "  close my laptop  ")
+        assertEquals(listOf("good", "settle"), RitualStore.blocks())
+        assertEquals("close my laptop", RitualStore.cue())
+        // Nothing saved yet on a fresh install must read as an empty ritual,
+        // not a crash or a phantom block.
+        freshStore()
+        assertEquals(emptyList<String>(), RitualStore.blocks())
+        assertEquals("", RitualStore.cue())
+    }
+
+    @Test
+    fun ritualProgress_is_an_explicit_fraction_and_clamps() {
+        assertEquals(0.25f, ritualProgress(0, 4), 0.001f)
+        assertEquals(1f, ritualProgress(3, 4), 0.001f)
+        assertEquals("past the end still reads as finished, never over-full",
+            1f, ritualProgress(9, 4), 0.001f)
+        assertEquals("no ritual is no progress, not a divide by zero",
+            0f, ritualProgress(0, 0), 0.001f)
     }
 
     @Test

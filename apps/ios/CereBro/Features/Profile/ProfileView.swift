@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var backend: BackendService
+    @EnvironmentObject var theme: AppTheme
     @State private var showReset = false
 
     /// Real account name when signed in; a neutral placeholder otherwise.
@@ -13,7 +14,9 @@ struct ProfileView: View {
 
     var body: some View {
         ScreenScaffold(eyebrow: "Settings and support", title: "You", trailingSystemImage: "gearshape", isRoot: true) {
-            // Profile header
+            // Profile header — with the always-visible Support door (crisis
+            // ≤2 taps from anywhere; the row further down was easy to scroll
+            // past, the header door is not).
             HStack(spacing: 12) {
                 ZStack {
                     Circle().fill(Theme.orb)
@@ -32,6 +35,14 @@ struct ProfileView: View {
                     Text("\(state.companion) · \(state.language)").appFont(12).foregroundStyle(Theme.Palette.muted2)
                 }
                 Spacer()
+                NavigationLink { CrisisView() } label: {
+                    Image(systemName: "heart.text.square.fill")
+                        .appFont(19, weight: .semibold).foregroundStyle(Theme.Accent.warm)
+                        .frame(width: 44, height: 44)
+                        .background(Theme.Accent.warm.opacity(0.14), in: Circle())
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel("Support — crisis resources")
             }
             .padding(14)
             .background(Theme.Palette.card)
@@ -46,6 +57,8 @@ struct ProfileView: View {
             }
             NavRow(title: "Companion style", subtitle: "\(state.companion) · how CereBro talks with you",
                    systemImage: "bubble.left.and.text.bubble.right", imageURL: Dummy.Img.chat) { CompanionStyleView() }
+            NavRow(title: "Appearance", subtitle: "\(theme.mode.label) · Night or Dawn",
+                   systemImage: "circle.lefthalf.filled", imageURL: Dummy.Img.calm) { AppearanceView() }
             NavRow(title: "Daily reminder",
                    subtitle: state.reminderEnabled ? "On · gentle daily check-in" : "Off · tap to set a gentle nudge",
                    systemImage: "bell", imageURL: Dummy.Img.bell) { RemindersView() }
@@ -65,7 +78,9 @@ struct ProfileView: View {
             // Written when things are steady, so it sits with the calm settings
             // rather than filed under crisis, where nobody browses.
             NavRow(title: "My safety plan", subtitle: "Yours, in your words · works offline", systemImage: "shield.lefthalf.filled", imageURL: Dummy.Img.privacy) { SafetyPlanView() }
-            NavRow(title: "Urgent support", subtitle: "Emergency resources", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
+            // Subtitle names the line: "Emergency resources" tells someone in a
+            // heavy moment nothing they can act on — a number does.
+            NavRow(title: "Urgent support", subtitle: "Tele-MANAS 14416 · real people, 24/7", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
             NavRow(title: "Crisis region", subtitle: CrisisDirectory.displayName(state.crisisRegion), systemImage: "globe", imageURL: Dummy.Img.privacy) { CrisisRegionView() }
             NavRow(title: "Human support", subtitle: "Coach or therapist handoff", systemImage: "person.2", imageURL: Dummy.Img.meditate) { HumanSupportView() }
 

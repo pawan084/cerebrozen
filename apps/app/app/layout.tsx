@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Newsreader } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 // Self-hosted at build time (no runtime request to Google — CSP-safe). Exposed
@@ -42,8 +43,18 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Pre-paint theme apply (Night/Dawn/System — lib/theme.ts owns the key):
+  // runs before hydration so a Dawn user never flashes Night. Inline script
+  // needs the per-request CSP nonce the middleware forwards as x-nonce.
+  const nonce = headers().get("x-nonce") ?? undefined;
+  const themeBoot =
+    `try{var t=localStorage.getItem("theme_mode");` +
+    `if(t==="night"||t==="dawn")document.documentElement.dataset.theme=t}catch(e){}`;
   return (
     <html lang="en" className={serif.variable}>
+      <head>
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body>{children}</body>
     </html>
   );

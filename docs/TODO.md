@@ -24,6 +24,23 @@
   2026-07-03 — investor gap #3.)
 - [ ] **Ops config:** `SMTP_*`, `TWILIO_*`, `OPS_ALERT_EMAIL`, `APNS_*`, and `ASC_*`
   GitHub secrets (TestFlight workflow).
+- [ ] **Licensed media for the catalogue** (2026-07-13). The keyed media catalogue
+  (`GET /media/catalog` + `POST /admin/media/{id}/upload`) ships with every key
+  seeded and **every `url` empty** — the app is fully audible on its bundled loops
+  and synthesized tones, and each upload is a pure upgrade with no app release.
+  What's missing is the audio/video itself. Needed, all **first-party or licensed**:
+  - `scene.night_lake` / `scene.dawn` — no video ships at all today; clients render
+    the generative aurora instead. These are the only two keys with *no* fallback of
+    their own kind (there is no such thing as a synthesized video).
+  - `breathe.inhale` / `.hold` / `.exhale` — recorded cues would beat the synth glide.
+  - `game.*`, `chime.timer_bell` — optional; the synthesized tones are good.
+  - `ambience.*` — optional; the four bundled loops already ship.
+  ⚠️ **Do not source these from `calm/`.** That directory is a competitive teardown of
+  Calm's shipped APK (it is git-ignored for exactly this reason, and
+  `calm/extracted/TEARDOWN_NOTES.md` says so) — its 51 breathe `.ogg` files and
+  `jasper_lake.mp4` are Calm's copyrighted assets. Shipping them is infringement and a
+  store-takedown risk. Use it as a spec (phase timings, how many cues), never as a
+  source of bytes.
 
 ## Open — needs a product/legal decision (surfaced by the 2026-07-12 Android deep review)
 
@@ -46,9 +63,17 @@
   You → Appearance persists `theme_mode` (System/Night/Dawn); Sleep, the splash and the
   signed-out funnel force Night; `ContrastTest` gates both palettes ≥4.5:1 and pins the
   Night palette byte-identical.
-- [ ] **iOS parity for the redesign** — the Android IA changes (Toolkit merge, breathe
-  engine, sounds consolidation, presence framing, onboarding trim) intentionally diverge
-  from iOS until backported.
+- [x] **iOS parity for the redesign** — DONE 2026-07-24 → 2026-07-28 across Waves A–D
+  (`docs/IOS_PARITY.md`): Toolkit merge, one breathe engine, presence framing, onboarding
+  10 → 8, Sleep CBT-I, safety/credibility/consent, the WCAG contrast gate and finally the
+  Dawn/Night dual theme. Every item is **static-verified only** (Windows host) — the
+  standing owner action is one macOS `xcodebuild test` + a two-theme screenshot pass.
+  Two things stay open and both need a Mac: item 5 (back-to-back `PlayerView` audio
+  overlap — a listen test) and the one-time `CereBroTests` unit-test target. One design
+  gap is recorded deliberately: **the Sleep tab does not force Night on iOS** (SwiftUI
+  can't scope global tokens to a subtree the way Compose snapshot state and CSS variables
+  do — the proper fix is an Environment-palette refactor; rationale + cost in
+  IOS_PARITY.md "Deliberate divergences").
 - [ ] **Phase 3 roadmap**: Hindi UI localization (externalize strings as they're touched),
   premium launch behind the OECD dark-pattern checklist. Android groundwork landed
   2026-07-12 (W11): ~370 user-facing strings across all Compose screens now live in
@@ -98,6 +123,647 @@
   now gates it and the Night pin was updated deliberately.
 
 ## Done — recent
+
+### `main` ⟵ `origin/main` merge (2026-08-02) — the forked-main reconciliation
+`main` had **forked**. A `git fetch` reported `origin/v1` deleted and `origin/main`
+force-updated; the two lines shared no history after `5ef7416` (13 Jul). Local carried 27
+commits (13–29 Jul, author `pawancerebro`) — the web/iOS parity waves, Dawn on both, Android
+i18n, the Oracle audit, interventions, the guided routines. `origin/main` carried 72 (30–31
+Jul, 70 authored `Pawan Kumar <ohgrtai@gmail.com>` — the same owner on a second identity,
+plus 2 by Abhimanyu Kumar) — goals & habits, safety plan, editable memory, recommendations,
+the claims gate, Stripe hardening, the free-tier cap, and a 16-screen module audit run on
+hardware. **Neither contained the other**, so nothing here was a fast-forward.
+
+Rule applied: **remote wins on defects found on hardware** (this host cannot reproduce them),
+**local wins on documented cross-stack contracts**, keep-both wherever additive.
+- **Stripe → remote.** The merged `User` has `stripe_customer_id`, so local's
+  subscription-search lookup was obsolete; the portal now 409s (a state) instead of 502ing (a
+  failure) when there is no customer. Three local tests were rewritten to the kept behaviour
+  and a 409 case added.
+- **Web Dawn → remote's architecture, local's scoping.** Took the `--dawn-*` scale (values
+  declared once, hooks only map), then grafted back `.theme-night` — six pages depend on it
+  and remote had no equivalent, so Sleep, `/crisis` and the signed-out funnel would have gone
+  light. Also restored the `.cursor` reduce-motion gate remote had lost, and the guided-imagery
+  CSS; dropped orphaned `.live-dot`.
+  The graft was subtly wrong at first and **only `theme.spec.ts` caught it**: folding
+  `.theme-night` into remote's `.onb-root, .authwrap` rule inherited a block that paints from
+  `--panel-*` and never redeclares `--night`. The funnel containers don't need it; a
+  `.theme-night` *section* wraps ordinary content whose cards and scrims resolve `--night`
+  themselves — so Sleep re-themed its text to Night ink but kept the warm-paper ground. Night
+  ink on Dawn paper, i.e. the bright-screen-at-bedtime regression the scope exists to prevent.
+  `.theme-night` now re-scopes the ground as well.
+- **Android theme → remote.** Its Dawn is the on-device fix for a raised card at **1.09:1**
+  against its page; local's white-on-near-white had the same flaw. Night went back to the brand
+  indigo `#100D2B`: local's navy re-theme never updated `colors.xml`, which remote's new
+  `ThemeTokensTest` catches. The five constant brand marks `PremiumFrames.kt` needs were kept.
+- **Breathe reset → local.** Remote's tests asserted a *symmetric* reset — the exact
+  cross-client bug local fixed on 2026-07-29 (ARCHITECTURE contract: 4 in / 6 out). The
+  implementation was right and the two `twoMinutesReached` tests had stale arithmetic; fixed.
+- **Onboarding → remote** (removes the "Private previews" chip that silently disabled
+  reminders), but **web onboarding → local**: remote still shipped the fake `first_plan`
+  preview iOS and Android had already dropped.
+- **Talk / Today → remote** (device-audited: pinned composer, free-limit card, Home rhythm,
+  and the insights teaser that closes the Android-parity item). **Sleep → welded**: remote's
+  `fallback` dedup fix (the stimulus-control advice printed twice) *plus* local's wind-down
+  ritual door, which remote lacked.
+- **Six defects came from *clean* auto-merges, not conflicts**: duplicate onboarding
+  step-tracking effects (double-counting the funnel), a doubled `onboarding_done`, a duplicated
+  `openPortal`, duplicate imports, admin error states rendering `ApiError` objects as
+  ReactNode, and an `ONBOARDING_STEPS` list whose 10 names indexed against an 8-step UI would
+  have labelled step 4 `state_check` instead of `first_reset`.
+- Alembic forked at `c93f2b7a5e18` (local +2, remote +8) → new empty merge revision
+  `f4b7c2e9a815`; single head restored.
+- Verified: backend **448 passed / 2 skipped, 96 %**; `apps/app` tsc + `next build` (23 routes)
+  + `scripts/check-claims.mjs`; admin tsc + build; Android **`:app:check` green — 286 tests,
+  lint clean, coverage 95.13 %** (added the missing `Api` endpoint tests for goals/habits,
+  safety plan, recommendations and per-item memory to get there). **iOS remains uncompiled** —
+  static-verified only, and now the strongest reason to run `xcodebuild test` on a Mac.
+- Inherited, not caused: `apps/web` is byte-identical to `origin/main` and its `/icon` route
+  fails to prerender (`next/og` "Invalid URL", font fetch) — confirm in CI, where the network
+  is available.
+
+### `main` ⟵ `v1` merge (2026-07-29) — two design eras reconciled
+`main` had been a 13-July snapshot plus 7 commits of 10-July work; `v1` had run 26 commits
+past it. The merge auto-resolved everything except 9 files / 15 hunks, which were **not**
+mechanical — they were the two eras disagreeing. Resolution rule and the calls made:
+- **Both kept** where additive: the `cz-*` motion system and Dawn/imagery CSS (globals.css),
+  both cross-stack contract rows (ARCHITECTURE.md), main's guided-tour row *and* v1's
+  Appearance picker, main's crisis-region card *and* v1's "Talk to a human" card, and main's
+  state-tuned journal prompt now rendering **inside** v1's `theme-night` hero scope.
+- **v1 wins on content**, because main still carried things v1 deliberately deleted in
+  WEB_PARITY Wave A: the hardcoded "Recent conversations" list, the invented mood-line
+  fallback `[3,4,3,4,3,4,4]`, and the best-streak "Day rhythm" headline. A careless
+  keep-both here would have **resurrected fakes** the credibility bar removed. The
+  `MILESTONES` ring went with the best-streak number it decorated.
+- **iOS welded rather than picked**: `Photo` keeps main's layout-neutral base and
+  `asset:` bundled-imagery support but v1's *constant-dark* `Brand` colours (Wave E rule —
+  a stand-in for a photo must not turn light in Dawn); the splash keeps main's animated
+  `NativeEffectIcon` with v1's AA-safe `lavText`; `HomeView` stays v1's de-densified
+  version, since reinstating the quick-links grid and weekly teaser would undo IOS_PARITY #6.
+- Three joins were **wrong on the first pass and caught by the gates**, not by eye: a
+  regex ate a `=` run inside a CSS comment banner, keep-both duplicated three `<section>`
+  opening tags in the account page (unbalanced JSX), and the reduce-motion media query lost
+  its closing brace so it swallowed the new Dawn CSS (the `next build` failure that found it).
+- Verified on the merged tree: `tsc` + `next build` clean, **e2e 15/15**, Android
+  `:app:check` green at 96.19 %. **iOS remains uncompiled** — the three-way weld above is
+  static-verified only, and is now the strongest reason to run `xcodebuild test` on a Mac.
+- Debt found: `QuickLinksGrid` (HomeView.swift) is now defined but unreferenced — main's
+  quick-links grid lost its call site to the de-densified Home. Harmless to compile; delete
+  it or find it a home.
+
+### iOS: the three guided routines (2026-07-29) — `Features/Tools/Rituals.swift`
+**⚠ Static-verified only (Windows host)** — same caveat as every prior iOS wave. Full
+detail in [IOS_PARITY.md](IOS_PARITY.md) "Wave E". All three clients now carry the same
+routines, with the same three blocks deliberately absent and the same missing "nothing can
+harm you".
+- [x] Wind-down (Sleep tab), ritual builder + guided imagery (Toolkit → Settle), over one
+  parameterized set of step views. The settle step reuses `BreathingPacer.Preset.reset`
+  (already *in 4, out 6*) rather than inventing a fourth rhythm — which is exactly the
+  divergence Android had to be corrected to match.
+- [x] **Every auto-advancing timer is `-resetState`-gated**, the posture CLAUDE.md requires
+  for animated/async features (an ungated one hangs the UITest suite). `RitualStore`'s two
+  keys join the `-resetState` wipe list, so a saved ritual can't leak between runs and make
+  the builder screenshots nondeterministic.
+- [x] The runner is keyed by block (two writing steps in a row would otherwise share view
+  identity and the second would inherit the first's text), and the imagery countdown is
+  keyed on `paused` too, so pausing restarts the task with the new value rather than
+  trusting a running closure to observe it.
+- [x] New `CereBroUITests.testGuidedRoutines` walks all three with manual controls only,
+  asserting the brain dump's privacy line renders *before* anything is written and that
+  imagery's caution renders *before* the exercise starts.
+- [x] New `CereBroTests/RitualsTest.swift` pins the pure seams Android pins in
+  `ScreenLogicTest` — plus a test that the three rejected blocks stay rejected, so none can
+  be reintroduced without reading why. Needs the same one-time unit-test-target add as
+  `ContrastTest` (documented in both file headers).
+- Owner: one macOS `xcodebuild test` pass + a look at the three new screens in both themes.
+
+### Android: the three guided routines (2026-07-29) — `ui/screens/Rituals.kt`
+The web routines ported to the primary client, same day: wind-down ritual (Sleep tab →
+`winddown`), ritual builder (Toolkit → `ritual`) and guided imagery (Toolkit Settle →
+`imagery`). Copy hand-synced with `apps/app`, including every deliberate departure from
+the sibling build recorded there — the 4-7-8 rejection, the three dropped blocks
+(4-7-8 / Disidentification / affirmations, the last on Wood et al. 2009), the cue-first
+structure, and guided imagery's missing "nothing can harm you".
+- [x] One parameterized set of step composables (writing · three good things · body scan ·
+  paced breath · 5-4-3-2-1) drives all three screens; the words come from the caller,
+  because the wind-down speaks to someone already in bed and the builder to someone at
+  any hour. `groundSteps()` went `internal` so the 5-4-3-2-1 copy has one home.
+- [x] The runner is **keyed by block** — the same reconciliation bug the web version had:
+  two writing steps in a row otherwise inherit the first one's text.
+- [x] **Found and fixed a real cross-client divergence.** iOS `BreathingPacer.Preset.reset`
+  is *in 4, out 6*; Android's `Reset` was *in N, out N*. The same named "two-minute reset"
+  — including the onboarding first breath — paced differently on the two phones, and
+  Android's version dropped the one part of slow breathing with clear evidence (the
+  longer exhale). `breathePhases` now exhales `RESET_EXHALE_EXTRA` seconds longer at every
+  pace; the pinning test was updated deliberately and a second test pins iOS parity at the
+  default pace.
+- [x] Android's Toolkit grounding card had **no `WhyThisWorks`** — the one tool in the app
+  with no source, where web's equivalent has always carried one. Added.
+- [x] Ritual persistence is device-local (`RitualStore` on the same `Session` pref seam as
+  the gratitude garden) and the screen says so — there is no server model for a ritual and
+  inventing one to sync eight ids would be the wrong trade. Reads are **sanitized**:
+  unknown ids (older/newer install, hand-edited pref) and duplicates are dropped, since a
+  duplicate row's reorder arrows would fight over one index.
+- [x] Every string went to `values/strings.xml` (~90 new keys, zero literals). Deliberately
+  **not** translated in `values-hi`: these carry clinical framing and a safety caution —
+  the same class the Hindi draft leaves to the pending clinical review, so they fall back
+  to English by design.
+- [x] **Emulator smoke found a real usability gap**: only the 40 dp switch toggled a block —
+  tapping the block's name, which is what everyone tries, did nothing. The whole row is now
+  `toggleable(role = Role.Switch)` (the posture the plan-step rows already had) with the
+  switch cleared from the semantics tree, so a screen reader gets one control instead of
+  two. Re-verified on device: row taps select, numbering and reorder arrows appear, the
+  summary reads "2 steps · about 3 min".
+- Verified: `:app:check` green — compile, unit tests (new pure-seam tests for
+  `sanitizeRitual` / `moveBlock` / `ritualMinutes` / `nextPromptIndex` / `ritualProgress` /
+  the `RitualStore` round-trip), lint, coverage gate **96.19 %** ≥ 95. **Emulator-smoked
+  2026-07-29** (API-34, signed-in against the local dev API): wind-down walked all four
+  steps to the breathing orb, the builder's cue chips / row toggles / ordering / summary,
+  and guided imagery's caution card → running stage with its countdown.
+- Open: iOS ports of all three (IOS_PARITY follow-up). The physical device on this host
+  refused the install (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` — the resident build was signed
+  with another key, and uninstalling would have wiped its data), so the on-device pass ran
+  on the API-34 emulator.
+
+### Your ritual + guided imagery (2026-07-29) — `apps/app` `/games/ritual`, `/games/imagery`
+Fifth and sixth adoptions from the sibling build (`RitualBuilderPage`,
+`GuidedImageryPage`), closing that folder's open list. Web's Toolkit now covers all four
+sections iOS/Android ship — Ground · Breathe · Reframe · **Settle** — plus a door to a
+routine you assemble yourself.
+- [x] **Three of the reference's eight ritual blocks did not survive.** 4-7-8 breathing
+  (rejected once already when the wind-down landed — a popularised ratio without direct
+  evidence, and letting it back in through a side door defeats the point);
+  **Disidentification** (Psychosynthesis/Assagioli — recorded as skipped on evidence
+  grounds in the original assessment); and **affirmation reading** ("I am enough. I am
+  capable."). The last is the one worth spelling out: generic positive self-statements
+  *lower* mood and self-regard in people with low self-esteem (Wood, Perunovic & Lee,
+  Psychological Science, 2009) — i.e. precisely the users a wellness app selects for.
+  That makes it a small harm, not a taste call. Everything selectable is an exercise the
+  app already ships with its own provenance; the builder invents no new exercise.
+- [x] **The cue is the feature, and the reference has none.** A nicer sequence changes
+  nothing about whether it gets done; an if-then plan attached to something already in
+  the day roughly doubles follow-through (Gollwitzer & Sheeran, 2006, ~94 studies). So
+  "After I ___" leads the page, the plan sentence reads back, and the finish card repeats
+  the cue instead of awarding a trophy (F5: notable moments, not every rep).
+- [x] Honest about what is *not* built: **no reminder**. There is no web scheduler here,
+  and promising a nudge we can't send would be a fake — the screen says the cue is the
+  reminder, which is also how the mechanism works. The ritual saves to **localStorage
+  only** and says so ("not synced to your account").
+- [x] **Guided imagery: the absolute reassurance is gone.** The reference's sixth slide
+  reads "You are safe here. Nothing can harm you." Safe-place imagery is exactly the
+  exercise where that promise can break — for someone carrying trauma, going looking for
+  a calm interior place is a known route to intrusive material instead, and being told
+  "nothing can harm you" at that moment reads as the app being wrong about you. The
+  mechanism it reached for is kept ("nothing here needs anything from you"), and a
+  caution on the way **in** (not after something goes wrong) says stopping is a normal
+  outcome and points at 5-4-3-2-1 grounding, which works in the other direction.
+- [x] New `components/RitualSteps.tsx` — paced breath, prompt sequence, 5-4-3-2-1,
+  writing step, three good things — shared by the wind-down ritual, the Toolkit's
+  grounding card and the builder. The 5-4-3-2-1 copy is hand-synced with Android
+  `strings.xml ground_step*`, so a second copy was a second thing to forget.
+- [x] Two real bugs fixed on the way, both invisible in the reference because it never
+  hits them: the runner is **keyed by block** (two writing steps in a row otherwise
+  reconcile to the same component and the second inherits the first's text — for a brain
+  dump that is a privacy-shaped bug, verified in-browser before/after), and the paced
+  breath now derives phase+round from **one counter** instead of bumping a round counter
+  inside a state updater (impure updaters run twice under StrictMode, so the dev breath
+  count ran at double speed). The imagery countdown was restructured the same way.
+- [x] `.imagery-stage` is constant-dark in both themes, the hero/media-art rule — with an
+  **opaque** base layer, because a translucent one lets the warm-white Dawn page through
+  and washes out the dusk and its cream text with it (caught in a Dawn screenshot).
+  Reduce-motion gates the drifting glows and the line fade.
+- [x] Fixed en route: the Toolkit page carried **two buttons labelled "Start"** (the box
+  breather and Thought Sort, which landed 2026-07-28 without an e2e run). A real
+  screen-reader ambiguity as well as a strict-mode locator failure — Thought Sort's CTA is
+  now "Start sorting".
+- Verified: `next build` clean (types + lint), a real browser walk of both screens in
+  Dawn **and** Night — cue → reorder → save → reload-restore → run → finish, and the
+  imagery timer, skip, and close — and the **full e2e suite 15/15** in the Docker stack,
+  including the new ritual-builder and guided-imagery walk in `app.spec.ts`.
+- Open: iOS/Android ports of both. `CustomRitualsPage` (the sibling's server-backed
+  ritual CRUD) stays unadopted — it needs a backend model, and a browser-local ritual is
+  the honest version until there's a reason to sync one.
+
+### Thought Sort → the Toolkit's Reframe section (2026-07-28) — `apps/app` `/games`
+Fourth adoption from the sibling build, and the only one of its 18 games that teaches
+something: spotting the named cognitive distortions (all-or-nothing, catastrophising,
+"should" statements, labelling) is standard cognitive-restructuring psychoeducation.
+Web's Toolkit now covers Breathe · Ground · Reframe, matching three of the four sections
+iOS/Android ship.
+- [x] Three things deliberately dropped on the way in:
+  - **The efficacy claim.** The reference scores a "Thought awareness: 87 %" and
+    congratulates "Perfect cognitive awareness!". A ten-item quiz over pre-written
+    sentences measures no such faculty, and that is precisely the claim class behind the
+    2016 Lumosity FTC settlement. The summary now reports the count and explicitly says
+    the count isn't the point.
+  - **The reward loop** (trophies, praise ladder) — conflicts with F5, celebrate notable
+    moments rather than every rep.
+  - **The word "game"** — these are example thoughts about self-criticism.
+- [x] The thought bank was rewritten so each "why" names the actual distortion rather
+  than offering encouragement, and carries a real `WhyThisWorks` (Beck). **Nothing the
+  user has written is ever categorised for them** — only generic examples.
+- Not ported: **Cloud Drift** and **Zen Sand**. Both are calm-play canvases that would
+  duplicate the Zen Ripples already on iOS/Android, add no teaching value to a web
+  Toolkit that deliberately says "more lives in the apps", and — being purely visual —
+  could not be verified from this host. They belong on iOS/Android's Settle section,
+  on a device. The remaining 15 games stay rejected on the credibility grounds recorded
+  in the adoption assessment above.
+
+### Wind-down ritual (2026-07-28) — `apps/app` `/sleep/ritual`
+Third adoption from the sibling build (its `SleepRitualPage`). Four guided steps —
+empty your head → three good things → body scan → settle the breath — reachable from
+the Sleep tab's "Better nights, gently" section, so the CBT-I advice already on that
+page has a guided version instead of being something to remember at 1am.
+- [x] Two deliberate changes on the way in:
+  - The reference ends on **4-7-8 breathing**; that exact ratio is a popularised pattern
+    without much direct evidence, and every other exercise here carries a citation. The
+    final step reuses the **in-4 / out-6** pattern the iOS/Android breathe engines
+    already ship — a longer exhale than inhale is the part with real vagal-tone evidence
+    — rather than adding a fourth, unevidenced ratio to the app's vocabulary.
+  - The brain dump **never leaves the device** unless the user explicitly taps "Save to
+    journal", and the screen says so. "Write down everything on your mind" right before
+    bed invites the most unguarded writing a user will do all day; the reference
+    discards it silently, which is fine behaviour but silent about it.
+- [x] Every step carries a real `WhyThisWorks` source (Scullin 2018 for the brain dump,
+  Seligman 2005 for three good things, CBT-I relaxation for the body scan). Gratitude
+  and the body scan are both **skippable** — a night where only one good thing comes to
+  mind is exactly the night not to be blocked by a form.
+- [x] New `.onb-breathe-orb.slow-out` CSS so the orb's 3.8 s transition doesn't finish
+  early and sit still through a 6 s exhale. Reduce-motion already handled by the
+  existing orb rule. `tsc` clean.
+- Open: iOS/Android ports. (RitualBuilder + guided imagery from the same folder landed
+  2026-07-29 — see above; the step runners this page used were extracted to
+  `components/RitualSteps.tsx` and shared with them, copy unchanged.)
+
+### Interventions: recommend with a visible rationale (2026-07-28)
+Second adoption from the `workspace/cerebro` sibling build. The app already nudged; it
+never said **what it noticed**. Every offer now carries a plain-language reason computed
+from the user's own logged counts, frozen at fire time.
+- [x] `intervention_recommendations` (Alembic `e8a5b3d1c742`) + `services/interventions.py`
+  + `/interventions` router (`active` / history / accept / dismiss / complete).
+  Evaluation is **lazy** — no background job invents suggestions between visits.
+- [x] Five code-defined rules over signals we actually hold: `human_support` (unresolved
+  crisis flag in the last day → a real person, not a breathing exercise), `rough_sleep`
+  (→ the Sleep Reset program), `irregular_bedtime` (noon-anchored spread, the same math
+  the iOS/Android "Your rhythm" cards use), `stress_spike`, `low_mood_run`. First match
+  by priority wins; **one open offer at a time** (a stack of suggestions is noise).
+- [x] **Consent gates the inputs.** Mood rules need `mood_history`, sleep rules need
+  `sleep_history`, and the signal fields are `None` rather than `0` when a category is
+  off — so a rule can distinguish "no data" from "data says zero" and stay silent rather
+  than firing on an absence it isn't allowed to see. Crisis is never consent-gated.
+- [x] Mood rules count **days, not entries**: five check-ins in one hard afternoon is one
+  day, not a week-long pattern.
+- [x] `reason` and the action are frozen at fire time, so later rule edits don't rewrite
+  what a user was actually shown; `state_snapshot` holds the counts behind the sentence
+  (numbers only, never journal/chat text) so the rationale can be checked, not trusted.
+- [x] Dismissing starts a 72 h per-rule cooldown — a suggestion that bounces back the
+  moment it's waved away is the nagging pattern the OECD paywall checklist already
+  forbids elsewhere.
+- [x] **Deliberately absent: any "you haven't checked in for N days" rule.** That is the
+  loss/pressure framing REDESIGN removed when streaks became presence framing, and a test
+  pins the absence so it can't be added back by accident.
+- [x] `apps/app` renders the card above the Home check-in (saying what was noticed before
+  asking for more data). iOS/Android surfaces remain open.
+- Verified in-container: **330 passed / 2 skipped, coverage 95.65 %** (gate 95);
+  `apps/app` `tsc` clean; migration applied to a fresh DB.
+
+### Oracle ops: agent audit trail + pending confirmations (2026-07-28)
+Adapted from the `workspace/cerebro` sibling build's **Oracle Studio** admin hub — see
+the assessment note under "Open — code/product work" for what was deliberately NOT taken.
+Closes a real blind spot: the Oracle *writes user data* (mood, journal, sleep) behind an
+`interrupt()` confirmation, and nothing recorded which tools ran, which writes were
+approved, or which confirmations were stuck.
+- [x] `oracle_tool_calls` table (Alembic `d7f4a2c9e631`, verified by applying the full
+  chain to a fresh DB) + `services/oracle_audit.py`. Read tools record `decision="auto"`;
+  write tools `open_pending` **before** `interrupt()` suspends the graph and resolve to
+  `approved`/`declined` on resume.
+- [x] `open_pending` is idempotent **by necessity** — LangGraph re-executes an interrupted
+  node from the top when it resumes, so everything before `interrupt()` runs a second
+  time; without the guard every confirmation left an orphan pending row that nothing
+  resolved. Pinned by a test that replays it three times.
+- [x] **Argument names only, never values.** A journal body or mood note copied into an
+  audit row would be a second copy of the user's most sensitive content, sitting outside
+  the consent flags governing the original, surviving a journal deletion, and needing
+  separate DPDP export/erasure. Tested, including that values don't leak through the API.
+- [x] Auditing never raises into a tool — observability must not fail a user's approved
+  write; a missing pending row logs and returns.
+- [x] `GET /admin/oracle/{status,pending,audit}` + an admin **Oracle** tab. `status.
+  checkpointer` (`postgres`|`memory`|`none`) surfaces the MemorySaver fallback that was
+  previously visible only in a boot log line — a production worker silently running
+  in-process (paused confirmations dying on restart, not crossing workers) looked
+  identical to a healthy one. The tab warns explicitly on `memory`.
+- [x] Audit rows carry `ondelete=CASCADE`; a test asserts `DELETE /users/me` takes the
+  agent's trail with it.
+- Verified in-container: **306 passed / 2 skipped, coverage 95.45 %** (gate 95, was
+  95.34); admin `tsc` clean; migration applied to a fresh DB and the table/indexes/FK
+  inspected.
+
+### iOS Dawn/Night dual theme (2026-07-28) — IOS_PARITY.md item 16, closing the backport
+**⚠ Static-verified only (Windows host).** Contrast is host-independent math and is
+gated by test; *layout* in Dawn is not — OWNER: two-theme screenshot pass on macOS.
+- [x] New `DesignSystem/AppTheme.swift`: `ThemeMode` (system/night/dawn) persisted as
+  `theme_mode` in the same vocabulary Android's `prefValue()` and web's `data-theme`
+  use, plus pure `themeMode(fromPref:)` / `resolveIsNight(mode:systemDark:forceNight:)`
+  seams that the test suite gates without rendering anything.
+- [x] `Theme.Palette` / `Stroke` / `Gradient` members became computed `static var`s
+  resolving a `ThemeSnapshot` global, so **no screen changed** — every screen still
+  reads `Theme.Palette.…`. RootView re-keys `.id(theme.generation)` when the resolved
+  theme actually flips, which is how SwiftUI is told to re-read global tokens (it has
+  no equivalent of Compose snapshot state or CSS variable scoping). `generation` only
+  moves when the *outcome* changes, so an input change that doesn't flip costs nothing.
+- [x] Dawn values hand-synced with the web app's `[data-theme="dawn"]` block (WEB_PARITY
+  Wave E) so phone and app.cerebrozen.in agree; the four roles web has no token for
+  (cyan/mint/rose/danger) are the same hues darkened until each cleared AA. Night was
+  **not touched** — that was the point of landing item 17 first.
+- [x] Surfaces swept: Dawn paints solid fills where Night paints white-alpha glass (a
+  white veil over warm white is invisible), veils/hairlines invert to ink, the aurora
+  dims through one multiplier, and the primary CTA deepens to a lavender pill with a
+  white label rather than staying a cream button with nothing to sit against. Paint that
+  sits on **constant-dark art** (hero photos and their scrims, the brand orb, the splash)
+  was deliberately left alone — same rule web's Wave E applied to heroes.
+- [x] You → Appearance picker (`AppearanceView`), honest about the two surfaces the
+  preference doesn't reach (splash + signed-out funnel, both bespoke night art).
+- [x] `ContrastTest` now gates BOTH palettes — 0 failures across 105 role×surface pairs,
+  tightest 4.51:1 (Dawn mint on the darkest page paint, the same value Android's own
+  gate independently measured for that hex) — plus the theme truth table and a
+  byte-identical Night pin that fails the build if a future Dawn tweak drifts Night.
+- [x] Under `-resetState` the theme is **pinned Night**, same gating posture as the
+  splash and the audio engine: a simulator booted in Light appearance would otherwise
+  flip to Dawn the instant onboarding finished, re-keying the root view mid-test and
+  re-rendering every marketing screenshot in the wrong theme.
+- Deliberate divergence recorded: **the Sleep tab does not force Night on iOS** (Android
+  and web both pin it). Full rationale and the proper fix — an Environment-palette
+  refactor — in IOS_PARITY.md; it carries a real wellness cost, not just a cosmetic one.
+
+### iOS parity backport, Wave A (2026-07-24) — IOS_PARITY.md items 9,10,13,11,4,2,22,23
+**⚠ Static-verified only (Windows host) — OWNER: run `xcodebuild test` on macOS
+before shipping; UITest funnel + games-hub assertions were checked by hand.**
+- [x] Tele-MANAS 14416 now LEADS the iOS IN crisis directory (was 112+KIRAN only —
+  iOS had no Tele-MANAS anywhere); voice line only per the Android W25 dead-target
+  finding; mirrors backend `services/crisis.py`.
+- [x] Fake "Coach booking" flow deleted (invented time slots — App Store 2.1 risk);
+  HumanSupportView now ships real tappable lines (Tele-MANAS / iCall 9152987821 /
+  findahelpline.com/in) + an honest roadmap card (new `SupportLinkRow`).
+- [x] Onboarding ConsentScreen renders all 6 DPDP categories (model_training was
+  silently defaulted) AND no longer wipes the user's consent taps on every
+  appearance (IOS_PARITY #13 bug — reset now runs once per install).
+- [x] Credibility layer: `WhyThisWorks` footers (breathing, grounding, CBT reframe,
+  TIPP, gratitude garden, Programs) + "How CereBro is built" honesty cards in
+  PrivacyPolicyView — copy hand-synced with Android/web.
+- [x] IA: onegoodthing/intention → Journal quick-prompt chips; widget kinds remapped
+  to `JournalEntryView(prompt:)` (kinds stay routable — cross-stack contract);
+  memorymatch/slidingpuzzle/bubblewrap/colorbreathing killed (REDESIGN §2.2).
+- [x] F5 posture: celebrations now fire on FIRST completion only per tool
+  (`CelebrationGate`, `-resetState`-wiped); Home post-check-in "A tiny reward ·
+  Seal it with a calm game" reframed to a quiet "Settle for a minute" breathe row.
+- [x] Paywall: "Manage or cancel anytime" link to Apple's subscriptions page (OECD
+  cancel-path indicator; iOS StoreKit is live code).
+
+### iOS parity backport, Wave B (2026-07-24) — IOS_PARITY.md items 1,3,6,7,8,15
+**⚠ Static-verified only — same macOS `xcodebuild test` caveat as Wave A.**
+- [x] One breathing engine: `BreathingPacer.Preset` (box / color 4-2-6 / reset 4-6
+  no-holds); onboarding FirstReset uses `.reset`; Toolkit offers all three.
+- [x] `GamesHubView` → `ToolkitView`: Ground · Breathe · Reframe · Settle sections
+  over the surviving tools + the Tele-MANAS crisis footer (≤2-tap rule).
+- [x] Home de-densified (~10 → 6 blocks): hero → check-in (hidden when the hero IS
+  the mood ask) → plan → rail → presence card → collapsed recent check-ins →
+  quiet Toolkit row. Cut: sleep row (Sleep tab owns it), baseline ask (moved to
+  Insights, where its payoff renders), Programs row (standing door added to the
+  Sleep tab, Android sleep_programs_nav parity; enrolled card still links).
+- [x] Presence framing: "N days you showed up this week" headline, no "Begin your
+  streak" / "Best N days" pressure copy; streak computation untouched (contract).
+- [x] Crisis doors: You-header Support button, Journal "If today feels heavy" row.
+- [x] Talk: "Try together" rail (CBT reframe / box breathing / grounding) in the
+  empty state; Ground chip added mid-conversation + in the voice session.
+- [x] UITests updated by hand: hero "Check in" path, Toolkit rename + crisis-footer
+  assertion, Programs reached via Sleep.
+
+### iOS parity backport, Wave C (2026-07-24) — IOS_PARITY.md items 14, 12
+**⚠ Static-verified only — same macOS `xcodebuild test` caveat.** Item 5
+(back-to-back PlayerView audio overlap) is a device listen test — still open.
+- [x] Sleep "track" → "improve": "Improve your sleep, night by night" eyebrow;
+  "Your rhythm" card (≥3 nights) with noon-anchored bedtime-spread math ported
+  from Android's unit-tested helpers; "Bed is for sleep" + "Same wake time"
+  stimulus-control cards + the CBT-I provenance footer.
+- [x] Onboarding 10 → 8: fake `FirstPlanScreen` deleted (static Dummy steps posing
+  as personalization); 18+ attest + underage exit merged into `DisclosureScreen`
+  (confirmAge/syncAgeConfirmation preserved, Continue stays gated); `stepNames`
+  → 8 canonical names (`age_gate`/`first_plan` never fire — backend list
+  unchanged); progress fractions refit; all four funnel UITests re-walked.
+
+### Android Hindi i18n plumbing, pass 1 (2026-07-25)
+The display-copy half of the "pure functions still returning English" ledger
+(see the Phase-3 item above) — verified: `:app:check` green, coverage gate
+96.19% ≥ 95%.
+- [x] Res-driven now: `greetingResFor`/`milestoneFor`/`railKindFor` (Today),
+  `hoursMinutes` + `minutesLabel`/`spreadLabelText` + `isVariedRhythm` (Sleep),
+  `BreathKind` phase model + `phaseLabelRes` (Breathe engine — cues/haptics key
+  off the enum, not English labels), `talkTranscript` localized prefixes,
+  `Reminders` channel/notification copy, `SoundscapeMixer.Layer.nameRes`.
+  New strings in values/ + values-hi/ (hi = DRAFT, same review posture as W16).
+- [x] Pass 2 (2026-07-25): the label/value splits that touch persisted state —
+  Today `MOODS` gains `labelRes` (API name/note stay English contract values;
+  `moodLabelRes` also localizes known names in Recent check-ins), Settings
+  `COMPANIONS` → `CompanionOption(value, labelRes, detailRes)` (server value
+  unchanged; You header/rows display-localize via `companionLabelRes`),
+  onboarding `STATE_OPTIONS` keyed by stable ids (saver stores the key, not the
+  English label), `LANGUAGES`/`NOTIFY` → `PickOption(value, labelRes)` (reminder
+  hour keys off "morning"/"evening" ids, not `startsWith("Morning")`), `Funnel`
+  takes an explicit `progress:` fraction (was matching English eyebrow copy).
+  ZERO `i18n: pending` markers remain. `:app:check` green, gate 96.19%.
+  **Also found + fixed en route: the cc7cbd4 "ui" commit had silently reverted
+  the private-by-default consent fix — mood_history/ai_memory were pre-ticked
+  ON again in onboarding (restored all-off, matching iOS/web + the decided
+  DPDP posture).** Emulator-smoked 2026-07-25 (API-34 AVD, fresh install):
+  EN funnel walk — consent step shows ALL SIX toggles OFF (regression fix
+  verified on device); per-app locale `hi` walk — language chips show native
+  names, all six state options + notify options render the Hindi drafts,
+  "शाम 7 बजे" correctly pre-selected from the stable "evening" id, progress
+  bar shows real fractions in Hindi (the old eyebrow-matching would have
+  pinned 100%). Remaining before Hindi ship: the clinical/linguistic review
+  (owner) only.
+
+### Analytics consent-gate parity, iOS + web (2026-07-24)
+The owner's 2026-07-13 decision ("no telemetry before consent", made for
+Android) applied cross-client — closing WEB_PARITY item 14 and the parked
+iOS note in IOS_PARITY "decisions taken":
+- [x] iOS: `Analytics.track` now no-ops until `analytics_unlocked` — set when the
+  onboarding Consent step is passed (`Analytics.unlock()` on its Continue) or a
+  session authenticates (restore + finishConnect); pre-consent funnel steps are
+  deliberately uncounted; flag wiped under `-resetState`. (⚠ static-verified.)
+- [x] Web (`apps/app`): new `lib/analytics.ts` — anon install id, no auth header,
+  allowlisted names, `source: "app"`, same consent gate (unlock on Consent pass /
+  sign-in / live session); onboarding_step fires per step with the canonical
+  8-step names (`age_gate`/`first_plan` never fire — backend list unchanged),
+  onboarding_done, paywall_view + paywall_cta on /account; "Anonymous usage
+  stats" opt-out toggle (iOS/Android parity). The admin funnel now sees web.
+
+### Web parity backport, Waves A–D (2026-07-24) — WEB_PARITY.md landed
+The 2026-07-12 audit's landing order executed on `apps/app` (+ one backend
+addition), e2e spec updated in the same commits; tsc + backend suite green.
+- [x] **Wave A — fakes killed (B1–B8+3)**: hardcoded "Recent conversations",
+  fabricated "Gentle patterns"/stat tiles (now computed from real check-ins or
+  honestly empty; patterns from `/insights/patterns`), invented mood-line
+  fallbacks, journal fabrications, dead search/bell chrome, fake "live session"
+  CTA, hardcoded "Free plan" chip (now `subscription_tier`), best-streak
+  headline (now days-present-this-week).
+- [x] **Wave B — safety**: public static `/crisis` page (works signed-out, dead-API
+  safe; Tele-MANAS 14416 → 112 → KIRAN → findahelpline, dialler-only `tel:`
+  links, NO WhatsApp row per Android W25); persistent sidebar "Support" door;
+  chat/journal crisis banners lead with Tele-MANAS, numbers tappable; account
+  "Talk to a human" card (Tele-MANAS/iCall/directories).
+- [x] **Wave C — credibility/consent**: onboarding consent renders all 6 DPDP
+  categories (model_training added; old drafts deep-merge private-by-default);
+  shared `WhyThisWorks` provenance footers; /games → "Toolkit / Small ways to
+  steady" + real 5-4-3-2-1 grounding; account "How CereBro is built" honesty
+  cards; `today_guide` on Programs + Home; chat "Try together" rail;
+  WIDGET_LINKS extended (breathing/grounding→/games, one_good_thing/
+  intention_set→/journal; kind names pinned to services/activities.py);
+  journal prompts clickable + gratitude/intention quick-entry chips.
+- [x] **Wave D — flagship**: Sleep "Your rhythm" card (noon-anchored bedtime
+  spread — Android's unit-tested math ported) + stimulus-control education
+  cards + improvement framing; onboarding 10 → 8 steps (fake FirstPlan killed,
+  18+ attest merged into Disclosure, resume→consent renumbered);
+  **`POST /billing/portal`** (backend: Stripe Billing-Portal session via
+  subscription-metadata lookup, 503/502-honest, 6 new tests) + account
+  "Manage or cancel subscription" row + sidebar upsell now free-tier-only
+  (OECD nagging indicator); reduce-motion gate on the streaming caret +
+  orphaned-CSS sweep.
+- [x] **Wave E — Dawn/Night dual web theme** (WEB_PARITY item 17) — 2026-07-24:
+  Dawn var overrides in `apps/app/globals.css` (values mirror Android's
+  WCAG-verified `DawnPalette`, incl. AA-darkened accent inks) via
+  `prefers-color-scheme: light` + a `data-theme` override; extension vars
+  (`--card-soft/--line-soft/--well/--field/--tabbar`) promoted from the
+  white-alpha literals (Night values byte-identical); heroes/media art pinned
+  constant-dark (Android ContentArt rule) instead of the audit's class sweep —
+  deliberate; `.theme-night` scope pins Sleep, onboarding, signin and /crisis
+  to Night in every mode; Appearance picker (System/Night/Dawn) on /account
+  with a nonce'd pre-paint script (no flash, works under the enforced CSP);
+  `theme.spec.ts` e2e asserts Dawn-on-light, Night pinning, picker + reload
+  persistence, with screenshots for the visual pass. admin/web stay
+  Night-only (hand-duplicated globals — follow-up only if wanted). Web
+  analytics (item 14) stays decision-gated.
+### CI: the Android job was watching main break and saying nothing (2026-07-31)
+The root cause behind that morning's broken `main`, fixed rather than just cleaned up
+after. The `android` job already ran `testDebugUnitTest` + `assembleDebug`, so it
+*did* fail on the stray `/sdfsdkjfk` in `Session.kt` — but it carried
+`continue-on-error: true` from when `apps/android` was a scaffold, so the failure
+was a non-blocking annotation and the pipeline stayed green. The flag's own comment
+said "flip to blocking once it's built once green"; that condition had been met long
+ago, and Android is now the lead client.
+- [x] `continue-on-error` removed — the job that compiles the lead client is the one
+  job that was allowed to fail. Verified: it is now the only `continue-on-error` in
+  the file, and no job carries it.
+- [x] Added `:app:lintVitalRelease` to the same step (release-blocking lint was
+  running on nobody's machine but a developer's), and lint HTML is uploaded
+  alongside the test reports on failure.
+- [x] Switched `gradle` → `./gradlew`, dropping the separately pinned
+  `gradle-version: 8.11.1`. The wrapper already pins 8.11.1, and two pins that can
+  disagree is a drift waiting to happen; now CI runs exactly what everyone runs.
+- Verified by running CI's exact command locally: `./gradlew :app:testDebugUnitTest
+  :app:assembleDebug :app:lintVitalRelease --no-daemon --stacktrace` → BUILD
+  SUCCESSFUL, 244 tests.
+- [ ] **Unverified until the next push:** local is macOS + Android Studio's JBR, CI
+  is Linux + Temurin 17. If the job has been failing on Linux for something
+  platform-specific, this change is what will finally surface it — which is the
+  point, but expect the first red to be informative rather than a regression.
+- [x] **And the second breakage was invisible too.** The two-heads incident could
+  never have failed CI: the suite builds its schema with `Base.metadata.create_all`
+  (`init_db`), so pytest never executes a migration — a forked or broken Alembic
+  history is simply not exercised, and green CI could ship an API that won't boot.
+  The backend job now asserts a single head and runs `alembic upgrade head` against
+  its own scratch database (`migrations_ci`, so the pytest path is untouched),
+  proving the chain applies from empty rather than merely parsing.
+  Verified by reproducing the failure: with `8c27b8990a90` moved aside, `alembic
+  heads` reports **2** and the step fails; restored, it reports **1** and passes.
+- [ ] Still worth doing and needs GitHub access: a **branch-protection rule** so
+  these checks must pass before `main` accepts a push. CI going red does not
+  currently stop anything from landing.
+
+### The three open PRs, resolved (2026-07-31)
+All three were opened 3 weeks ago off a base that `main` has since moved **135 commits**
+past. Dispositions, with the evidence for each:
+- **PR #3 (`cc7cbd4`, "ui")** — zero commits and an empty diff against `main`; already
+  contained. Nothing to merge.
+- **PR #1 (`9cb3da4`, ".gitignore")** — its two commits are both ancestors of PR #2, so it
+  is a strict subset. Superseded.
+- **PR #2 (`d5c20be`, "Add Android v1 updates")** — **not merged, deliberately.** It
+  predates two things that landed on `main` since: the string externalisation and the Dawn
+  theme. Measured, not guessed: PR #2's TodayScreen/SleepScreen/TalkScreen contain **0**
+  `stringResource` calls against main's 33/49/67, and its `Color.kt` has **0** `isNight`
+  references against main's 35. A test merge conflicts in 11 files — every major screen.
+  Merging it would put hardcoded English and raw hex back into the app and undo W11/W16
+  and the Dawn work.
+- [x] **Salvaged from PR #2 — the two prompts worth keeping**: "One good thing" and
+  "Tomorrow's intention", ported onto today's `main` rather than merged. They reuse the
+  existing `JournalingTool`, take their copy from `strings.xml`, and each carries a
+  "why this works" provenance line like CBT and TIPP do. Verified end to end on a
+  CPH2681 against the local API: `POST /journal 201`, and the row reads
+  `One good thing today: shipped the keyboard fix` — the compose template doing its job.
+- **Rejected from PR #2, on purpose:**
+  - `StressAlertCard` — a Home card reading "ELEVATED STRESS DETECTED / Your heart rate
+    variability dipped / From Apple Watch" with **no HRV source anywhere in the app**, on
+    Android. Fabricated data presented as a measurement; exactly what
+    `docs/CLAIMS_MAP.md` and `scripts/check-claims.mjs` exist to prevent. (The genuine
+    version of this idea is still open below under proactive stress detection.)
+  - `MorningCheckInScreen` — not a missing feature. `main`'s SleepScreen already does this
+    inline (quality chips, bed/wake times, `Api.logSleep`); PR #2's copy is the same
+    capability as a separate screen with 9 raw-hex values.
+  - Journal biometric lock — already on `main` in 5 files.
+- [ ] **The PRs still need closing on GitHub** — `gh` is not installed here and there is no
+  API token, so this could not be done from the CLI. #1 and #3 close as superseded/contained;
+  #2 closes with the note above. PR #1 would now also conflict with the `.gitignore` rewrite.
+
+### main was unbuildable and unbootable for ~40 minutes (2026-07-31)
+`d40a3d4` was cut from an old `1a27bbf` and merged in via `009250f`. Three separate
+breakages, fixed in that order:
+- [x] **Build**: `/sdfsdkjfk` between `SENSITIVE_KEYS` and `signedIn` in `Session.kt` —
+  a stray keystroke that failed `compileDebugKotlin`, so nothing Android could build.
+  Line removed, nothing around it touched.
+- [x] **Boot**: two alembic heads. `c93f2b7a5e18` (media_assets) claimed
+  `b8e6d1a4f527` as its parent, which `c7a4e91b6d38` already held, and `prestart.py`
+  runs `upgrade head` at boot — which refuses to choose. Merge revision
+  `8c27b8990a90` joins them; empty on purpose (the branches touch disjoint tables).
+  **Generated with `alembic merge`, not hand-written** — this is exactly the case the
+  CLAUDE.md gotcha warns about. Verified by applying the whole chain to a virgin
+  database: both branches converge, `media_assets` + `content_items.video_url` exist,
+  `alembic_version` = the merge.
+- [x] **Repo hygiene**: 14,270 tracked junk files removed — two Windows virtualenvs
+  (`env/` 4,624 and `backend/env/` 6,180, including `Scripts/*.exe`) and 3,466
+  `__MACOSX/` AppleDouble stubs from an unpacked third-party APK. Nothing tracked
+  referenced them. `.gitignore` now covers `env/` (it only had `venv/`/`.venv/`),
+  `__MACOSX/`, and `*.xapk`/`*.apk`/`*.aab`.
+  **History is not rewritten** — `.git` stays ~233 MB. Recovering that needs a
+  force-push and every clone re-made; left as the owner's call.
+- Checked and clean: no secrets entered history (no `.env`/`.pem`/`.key`), and the
+  decompiled Calm APK's audio was never committed — only the `__MACOSX/._*` metadata
+  stubs that name it.
+- [ ] **Follow-up: `media_assets` is schema with no code behind it** — the migration
+  landed without a SQLAlchemy model, a route, or a seed, and nothing in `backend/app`
+  references `media_assets` or `video_url`. Harmless (the column has a server default)
+  but dead until the model lands. Whoever owns the media work should either bring the
+  ORM side or drop the table.
+- Verified after all three: backend **379 passed, 2 skipped, 95% coverage**; Android
+  **229 unit tests green**; claims gate clean.
+
+### Android: the tab bar now yields its slot to the keyboard (2026-07-31)
+The last unblocked item from the 2026-07-31 audit list. `BottomNavBar` emitted the pill
+unconditionally, so with the IME up Scaffold still charged the body the bar's ~78dp for a
+bar the keyboard was covering — and every screen body also carries `imePadding()`
+(Common.kt `Page`), so the two stacked into an empty band above the keyboard. Measured on a
+CPH2681 (Android 14): ~90dp of dead space between the Talk composer and the keyboard.
+- [x] The pill is hoisted out of the Scaffold into `BottomNavBar`, which returns before
+  emitting anything when the IME is visible — Scaffold then reserves nothing. `imeVisible`
+  is a parameter defaulting to `WindowInsets.isImeVisible`, so the rule renders off-device.
+- [x] `BottomNavImeTest` (Robolectric) measures the **reserved slot**, not the pill's
+  presence: keyboard up → the body reaches the window bottom; keyboard down → ≥72dp is
+  reserved and the tabs are displayed. Confirmed to fail with the guard removed.
+- [x] Verified on the device both ways: composer flush against the keyboard while typing,
+  nav back and focus retained after dismissing it.
+- Note for whoever runs the suite cold: the first full `testDebugUnitTest` on a cold
+  Robolectric cache took 11m and threw 12 `AppNotIdleException`s across three unrelated
+  Compose classes. Warm runs are ~15s and green (229 tests). It's an Espresso idle timeout
+  under first-run load, not a real failure — re-run before chasing it.
 
 ### Landing → web app: the missing front door (2026-07-30)
 The landing had **zero** links to `apps/app`. Every CTA was "Join the waitlist" and the only
@@ -346,6 +1012,99 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Left by the 2026-08-02 forked-main merge
+- [ ] **Two suggestion engines now ship side by side.** `/interventions` (rule-driven offers
+  off logged signals — crisis/sleep/mood, one open offer, 72 h cooldown, frozen `reason`,
+  rendered on Home) and `/recommendations` (practice suggestions off *pattern statements*,
+  rendered on the Patterns dashboard, with admin accept/dismiss stats). Different triggers,
+  different surfaces, entirely disjoint tables — so the merge did not have to choose, and
+  deliberately didn't. But a user can now be offered something in two places by two systems
+  with two rationales. Decide whether they unify (likeliest: keep the interventions engine's
+  consent-gating/cooldown/audit and give it a pattern-derived rule source, with
+  `practice_catalog` as the action vocabulary) or stay separate with clearer boundaries.
+- [ ] **`/crisis` and `/support` are two public static pages doing the same job.** Both
+  survived because both are linked from safety surfaces (5 pages → `/crisis`, 6 → `/support`)
+  and a 404 on a crisis route is the last acceptable regression. `/support` is the factored
+  one (`components/CrisisLines` + `lib/crisis`); the sidebar door and the chat/journal banners
+  point at it. Fold `/crisis` into it and leave a redirect, rather than maintaining two.
+- [ ] **Neither test stack is hermetic on a dev box** — both read the developer's real keys,
+  so they exercise a different code path than CI *and* bill real API calls.
+  - `pytest`: a populated `backend/.env` makes
+    `test_habits::test_decompose_names_the_goal_even_without_an_llm_key` and
+    `test_safety_plan::test_crisis_reply_is_unchanged_with_and_without_a_plan` take the
+    live-LLM path and fail their own keyless assertions. Run with the keys blanked, or have
+    `conftest` blank them under `TESTING=1` (preferred — the tests then match CI by default).
+  - `docker-compose.e2e.yml`: the `api` service does `env_file: ./backend/.env` wholesale, so
+    the e2e run logs real `POST https://api.openai.com/v1/chat/completions`. CLAUDE.md says
+    hermetic tests run with blank keys; the compose file should pin `OPENAI_API_KEY: ""` (and
+    the voice keys) in its `environment:` block, which overrides `env_file`.
+- [ ] **iOS Dawn is now the odd one out, and it carries the bug the other two just fixed.**
+  iOS `Theme.Dawn` was hand-synced to the *old* web Dawn: ground `0xFAFAFC`, resting card
+  `0xFFFFFF` — a white card on a near-white ground, ≈**1.02:1**. That is the same flatness
+  Android/web corrected on 2026-07-31 by moving the ground to warm paper (web `#f2eee5`,
+  Android `#F5F2EC`) and letting shadow carry elevation. iOS `ContrastTest` passes and always
+  will: it gates *text* contrast, and card-versus-ground separation is not a text pair, so no
+  test catches this. Port the warm ground + a Dawn shadow tier, then re-run the two-theme
+  screenshot pass. (Also worth settling while there: web `#f2eee5` and Android `#F5F2EC` are
+  not the same warm paper — pick one and sync all three.)
+- [ ] `rhythmPrinciple` / `spreadLabel` (SleepScreen) are now exercised only by
+  `SleepInsightTest`; the screen branches on `isVariedRhythm` / `spreadLabelText`. Keep the
+  pure twins (they pin the boundary and are the non-composable path) or collapse to one pair.
+
+
+### Adopting from the `workspace/cerebro` sibling build (assessed 2026-07-28)
+The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mobile/infra,
+~120 API domains) sits beside this one and is a legitimate internal reference — unlike
+`calm/`, which is a competitor teardown and must never be a source of bytes. Assessment:
+- [x] **Oracle Studio** — NOT portable as code. It is a hub page over **8 endpoints**, of
+  which cerebroSG backed exactly one (`/admin/prompts`), plus links to ~10 admin surfaces
+  that don't exist here; it also assumes `@cerebro/ui` + TanStack + Tailwind against our
+  hand-rolled single-page admin. What *was* worth taking — the tool-call audit, pending
+  confirmations and an agent status band — shipped 2026-07-28 (see "Done — recent").
+  Deliberately not taken: the intent router, tool-override registry, and model-accuracy
+  card (the last needs an SME moderation-review pipeline that doesn't exist here).
+- [x] **Interventions engine** — SHIPPED 2026-07-28 (see "Done — recent"). The rationale
+  and escalation-tier ideas ported; the reference's DB-backed ACE/ZER rules did not —
+  rules are code-defined over signals cerebroSG actually holds. Follow-ups left open:
+  DB-backed rule overrides (admin-editable without a deploy, like the prompt registry),
+  and the iOS/Android surfaces (only `apps/app` renders the card today).
+- [x] **Tools → wind-down ritual, ritual builder, guided imagery** — ALL SHIPPED on
+  `apps/app` (wind-down 2026-07-28; builder + imagery 2026-07-29 — see "Done — recent").
+  The reference's 27-item `ToolsPage` grid was **not** taken: an everything-we-have hub is
+  the opposite of the REDESIGN de-densification, and this app already has one Toolkit.
+  **Skipped on evidence grounds:** Disidentification and Will Training are Psychosynthesis
+  (Assagioli) constructs with a much thinner evidence base than everything else this app
+  ships with a `WhyThisWorks` citation — they'd need a source we can't currently give;
+  and **affirmation reading**, which is worse than thin (Wood et al. 2009 — generic
+  positive self-statements lower mood in low-self-esteem readers). That folder's list is
+  now closed; what remains from it is `CustomRitualsPage`, deferred as server-backed CRUD
+  we have no model for.
+- [x] **Games** — Thought Sort adopted 2026-07-28 with the claims stripped (see "Done —
+  recent"); Cloud Drift / Zen Sand deferred to iOS/Android where they'd be verifiable on
+  a device. Original assessment, kept for the reasoning: ⚠️ take at most 3–4, and
+  **strip the efficacy claims**. The reference
+  ships 18 arcade games whose catalogue advertises `builds: "Working memory" /
+  "Selective attention" / "Cognitive flexibility"`. Importing them wholesale would (a)
+  reverse REDESIGN §2.2 / IOS_PARITY item 2, which deliberately killed four mini-games as
+  the weakest items against the F9 credibility bar and rebuilt the hub as "Toolkit ·
+  small ways to steady", and (b) make unevidenced cognitive-training claims — the exact
+  claim class the FTC fined Lumosity $2M for in 2016. Candidates that fit the existing
+  Toolkit sections without claims: **Thought Sort** (→ Reframe; genuinely CBT-shaped),
+  **Cloud Drift** / **Zen Sand** (→ Settle). Keep the catalogue's structure; drop
+  `builds:` or replace it with real provenance via the existing `WhyThisWorks` component.
+
+
+### `apps/app`: the `.meta` class has no global rule (found 2026-07-29)
+`className="meta"` is used on ~20 elements across Home, Account, Library, Plan, Programs,
+Sleep, the Toolkit and both ritual screens — durations, consent hints, sub-details, step
+counters — but `globals.css` only defines it *scoped*: `.entry .meta` and
+`.program-body .meta`. Everywhere else it renders as plain body text, so those lines sit
+at the same weight as the copy they're meant to sit under. The fix is one line
+(`.meta { color: var(--muted-2); font-size: 12px; }` — both scoped rules are more
+specific and keep winning), but it changes the look of six shipped, screenshot-reviewed
+pages, so it wants to land as its own change with a fresh visual pass rather than riding
+along inside a feature commit.
+
 ### B2C Tier 1 — SHIPPED 2026-07-30 (see the commits on `fix/ui-worldclass-103`)
 - [x] **Persisted, addressable memory** (`context_memories`) — closes the PRD note that
   granular editing was "not implementable against the current schema". Only what the user
@@ -379,21 +1138,36 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different
 product**, `cerebrolearning.com`, 111 API domains). B2B/HR and clinical/EHR planes are
 excluded by the B2C-only decision; the doc says why per category.
-- [ ] **Tier 1 (each closes a gap PRD.md already documents):** persisted addressable
-  `memory` (today's schema makes per-item edit/delete impossible) · `recommendations` +
-  practice catalogue (patterns are display-only) · **personal safety plan**
-  (Stanley-Brown six sections; take the schema, *not* the sibling's AI-authorship —
-  user-authored, per the doc) · weekly digest delivery.
-- [ ] **Tier 2 — the consumer habit loop:** habits, goals (+ `decompose` → feeds the
-  existing agentic planner), rituals/intention, commitments, affirmations. No `Habit` or
-  `Goal` model exists here at all.
-- [ ] **Tier 3 — skills content:** DBT skills, MBCT, behavioural activation, role-play,
-  guided imagery, dreams. Each needs the non-clinical framing pass + its own PRD row.
+> **Re-checked against the code 2026-07-31.** Tiers 1 and 2 below were written as a
+> plan and then shipped, but the checkboxes here were never ticked — so this section
+> claimed work was open that the section above records as done, and a "what's next?"
+> read landed on already-built features. Verified against `backend/app/models/`
+> rather than against the other section.
+
+- [x] **Tier 1 (each closes a gap PRD.md already documents)** — SHIPPED; see the
+  Tier 1 section above for the detail. `models/memory.py` (addressable per-item
+  memory), `models/recommendation.py` (recommendations + practice catalogue),
+  `models/safety_plan.py` (Stanley-Brown, user-authored — the sibling's
+  AI-authorship deliberately not copied), weekly digest delivery.
+- [x] **Tier 2 — the consumer habit loop** — SHIPPED. `models/habit.py` carries
+  `Goal`, `Habit` and `HabitCompletion`, and `POST /goals/{id}/decompose` feeds the
+  existing agentic planner. **The old parenthetical here — "No `Habit` or `Goal`
+  model exists here at all" — was simply out of date.** Rituals / commitments /
+  affirmations were assessed and mostly dropped with reasons (B2C_BACKLOG §4b).
+- [ ] **Tier 2's one survivor, still an owner call:** a **daily intention** — does it
+  replace the generated `Plan.focus` or sit beside it? (Note: the "Tomorrow's
+  intention" journaling tool added 2026-07-31 is *not* this. That one writes a
+  journal entry; this question is about what Home leads with.)
+- [ ] **Tier 3 — skills content:** genuinely open, and the only tier that is.
+  Shipped so far: DBT TIPP and CBT reframe. Absent from both `backend/app` and the
+  Android source: MBCT, behavioural activation, role-play, guided imagery, dreams.
+  Each needs the non-clinical framing pass + its own PRD row.
 - [ ] **Flagged, needs an owner decision before any code:** gamification/leaderboard vs
   the OECD dark-pattern checklist; peer community (24/7 moderation commitment —
   recommend deferring the whole category).
-- [ ] **Two owner decisions block the recommended first slice:** what memory persists
-  (privacy posture) and who authors the safety plan.
+- [x] **The two owner decisions that blocked the first slice were made** (2026-07-30,
+  recorded in the Tier 1 section): memory persists only what the user wrote or
+  approved, and the safety plan is user-authored.
 
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
@@ -423,11 +1197,30 @@ excluded by the B2C-only decision; the doc says why per category.
   "Now playing · Narration" vs "· Ambient bed", driven by `SoundscapePlayer.isNarrating`
   (reactive, follows the honest fallback if narration fails). 2026-07-08. Not built on
   the Windows dev box — verify on a simulator before shipping.
-- [ ] Follow-ups: premium audio gating (signed short-lived media URLs) once a
-  premium narration catalogue exists; bulk "generate all missing" if the catalogue
-  outgrows per-row clicks (~25+); persistent web player; compute real `duration_min`
-  from the generated MP3 (needs a decoder dep). OWNER: click Generate per seeded item
-  (burns ElevenLabs credits, ~15–30k chars total).
+- [x] **Real `duration_min` from the generated MP3** — DONE 2026-07-28. `narrate`
+  minted the audio but never touched `duration_min`, so a hand-authored "8 min"
+  sat over whatever length the file actually was, on all three clients — a small
+  lie in a product that sells honesty. `services/media.mp3_duration_seconds()`
+  now reads it from the MPEG frame headers (skips ID3v2, prefers a Xing/Info VBR
+  frame count, falls back to the CBR byte-length calculation) and narrate writes
+  `duration_minutes()` (half-up, floor 1) into the item. **No new dependency** —
+  deliberately: the obvious library (mutagen) is GPL-2.0 and not worth linking
+  into a commercial backend for one integer, and tinytag is still a dependency
+  for ~60 lines of public-format parsing. Unreadable audio leaves the authored
+  number alone (never replace a human's value with a guess) and logs a warning,
+  so the stubbed-TTS tests and any odd provider output degrade cleanly. Admin
+  content form says the field gets overwritten. Verified in-container: 292
+  passed / 2 skipped, coverage 95.34 % (gate 95); admin tsc clean.
+- [ ] Follow-ups still open: premium audio gating (signed short-lived media URLs)
+  — **note the standing gap**: `/media` is a public StaticFiles mount, so every
+  narration MP3 is world-readable by URL today; that is fine while the whole
+  catalogue is free, and becomes a hole the moment premium narration exists.
+  Bulk "generate all missing" stays deliberately unbuilt — the trigger was "if
+  the catalogue outgrows per-row clicks (~25+)" and the seeded catalogue is 9
+  scripts, so it would be speculative. Persistent web player (playback stops on
+  navigation in `apps/app`, which uses a per-item `<audio controls>`). OWNER:
+  click Generate per seeded item (burns ElevenLabs credits, ~15–30k chars total)
+  — durations will now be correct automatically.
 
 ### Ref-mock audit follow-ups (ref/ design screens, audited 2026-07-07)
 - [x] Backend + Android: program enrollment (`/programs` router + `program_enrollments`
@@ -473,9 +1266,36 @@ Remaining iOS deltas the mock still wins on — CLOSED for iOS + web 2026-07-09
   entrance staggers on all authed pages, selection pop, orb breathe, premium
   sheen, streak ring, button press springs, one `prefers-reduced-motion` kill
   switch.
-- [ ] Android parity for the new bits it lacks (insights teaser card,
-  state-tuned journal prompt, tour re-trigger row, ring/sheen accents) —
-  quick-grid it already has.
+- [x] Android parity for the new bits it lacks — DONE 2026-07-31. All four, each
+  verified on the `cere_smoke` emulator against the local API:
+  - **Weekly-insights teaser on Home.** Insights was reachable only from You, so the
+    one screen answering "did any of this help?" sat two taps off the main surface.
+    The subtitle carries the real last-7-days count (`checkInsThisWeek`, seven days
+    *inclusive* so it matches the presence ring beside it) and falls back to plain
+    copy at zero. Seen live: "1 check-in in the last 7 days".
+  - **State-tuned journal prompt.** Mirrors `JournalPrompts.tuned(toMood:)`; an
+    Anxious check-in turns the hero into "For a tense day / Name the worry". Two
+    deliberate divergences from iOS, both pinned in `TunedPromptTest`: the match is
+    **case-insensitive** (mobile posts "Anxious", the browser client posts "anxious",
+    and iOS's exact-string `switch` silently misses the latter — both castings are in
+    the dev database), and "today" is resolved in the **reader's timezone**, not the
+    UTC one the server stamps, so a late-night entry still tunes. "Try another" opts
+    out into the rotation.
+  - **Tour re-trigger row in You.** `TourState.reset()` clears only `tour_done`;
+    verified the four-stop overlay re-runs from stop 1.
+  - **Motion accents.** `RadiatingRing` (iOS's numbers exactly: 0.6→1.35, 0.5→0
+    opacity, 2s ease-out) on the streak-milestone line, and `Modifier.sheen()` on the
+    Premium row. Both Reduce-Motion-gated, and both take the gate as a *parameter* —
+    an endless animation is how a Compose test stops going idle.
+- [x] Follow-up from that pass, now closed: **the milestone halo is verified on a
+  device**. It only draws when `milestoneLine(streak)` is non-null, so the demo
+  account's streak of 1 could never show it; two backdated `mood_logs` rows took the
+  server-computed streak to 3 (`isMilestone` = 3/7/14/21/30/50/100), and four frames
+  0.7s apart caught the ring mid-swell, gone, mid-swell, gone — expanding and fading
+  on its 2s loop as designed. The seeded rows were deleted afterwards and the streak
+  confirmed back at 1. (The sheen was caught on device in both themes too — and
+  needed fixing: a white sweep is invisible on Dawn's near-white card, so the
+  highlight is now theme-aware.)
 - [ ] Splash consolidation nice-to-haves (review-2 deferrals, 2026-07-10):
   OrbMark's three breathing circles vs `RadiatingRing` are two names for one
   ring vocabulary; the Wordmark glint is a third shimmer implementation
@@ -1096,9 +1916,6 @@ left, each with the reason it was left rather than done.
   gradient axis within a kind (verified), but at 48dp it is incremental. Genuinely
   distinctive art needs commissioned illustration; that is an asset/budget decision, not
   a code change.
-- [ ] **Bottom nav reserves its space behind the keyboard** — with the IME up the nav
-  pill's slot stays allocated, leaving an empty band above the keyboard. Hiding the nav on
-  IME is a behaviour change on every screen, so it belongs in its own pass.
 - [ ] **Two DPDP consent hints describe the default, not the category** — "Voice storage ·
   Off by default", "Model training · Separate opt-in only". True, but they say nothing
   about what the data is for, and they are stale once someone switches one on. The fix is

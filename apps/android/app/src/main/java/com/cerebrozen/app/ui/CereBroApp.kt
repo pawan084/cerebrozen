@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +48,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,10 +63,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.res.stringResource
 import com.cerebrozen.app.R
+import com.cerebrozen.app.BuildConfig
+import com.cerebrozen.app.audio.MediaCatalog
+import com.cerebrozen.app.audio.Sfx
+import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
+import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
 import com.cerebrozen.app.ui.screens.BreatheScreen
 import com.cerebrozen.app.ui.breathing.BreathLoopsScreen
@@ -79,11 +88,14 @@ import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.Celebration
 import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.CbtReframeScreen
+import com.cerebrozen.app.ui.screens.IntentionScreen
+import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
+import com.cerebrozen.app.ui.screens.GuidedImageryScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
@@ -94,6 +106,7 @@ import com.cerebrozen.app.ui.screens.TrendsScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
 import com.cerebrozen.app.ui.screens.GoalsScreen
+import com.cerebrozen.app.ui.screens.RitualBuilderScreen
 import com.cerebrozen.app.ui.screens.SafetyPlanScreen
 import com.cerebrozen.app.ui.screens.SearchScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
@@ -108,6 +121,7 @@ import com.cerebrozen.app.ui.screens.TrustedContactScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
+import com.cerebrozen.app.ui.screens.WindDownRitualScreen
 import com.cerebrozen.app.ui.screens.YouScreen
 import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.screens.AppearanceScreen
@@ -125,7 +139,7 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 
 // W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
 // instead of stock Material glyphs — one consistent 2dp rounded-line set.
-private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
+internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
     Home("home", R.string.tab_home, R.drawable.ic_tab_home),
     Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
@@ -133,6 +147,7 @@ private enum class Tab(val route: String, @androidx.annotation.StringRes val lab
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 
+<<<<<<< HEAD
 internal fun shouldShowBottomBar(route: String?): Boolean =
     route in setOf("home", "sleep", "talk", "journal", "you")
 
@@ -150,6 +165,68 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
  */
 internal fun navVisible(route: String?, imeOpen: Boolean): Boolean =
     shouldShowBottomBar(route) && !imeOpen
+=======
+/**
+ * The floating tab bar — and the rule that it yields to the keyboard.
+ *
+ * With the IME up this emits **nothing**, so Scaffold reserves no bottom slot for
+ * it. It used to emit the pill unconditionally: the keyboard drew over it, but
+ * Scaffold still charged the content that height, and every screen body already
+ * carries `imePadding()` (see Common.kt `Page`). The two stacked, so a composer
+ * floated ~78dp above the keyboard with an empty band under it — worst on Talk and
+ * Journal, the two screens where you type most. Nav that hides while typing is
+ * also the Material behaviour, and typing is the one moment nobody is navigating.
+ *
+ * [imeVisible] is a parameter, defaulting to the real inset, so the rule is
+ * renderable off-device (`BottomNavImeTest`).
+ */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+internal fun BottomNavBar(
+    currentRoute: String,
+    compact: Boolean,
+    imeVisible: Boolean = WindowInsets.isImeVisible,
+    onSelect: (Tab) -> Unit,
+) {
+    if (imeVisible) return
+    // A floating lavender pill over a dark scrim — the tabs read as a lifted
+    // capsule rather than a flat system bar.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
+            .navigationBarsPadding()
+            .padding(horizontal = 13.dp, vertical = 4.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(if (compact) 72.dp else 78.dp)
+                .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
+                    ),
+                )
+                .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
+                .padding(horizontal = 9.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tab.entries.forEach { tab ->
+                BottomTabItem(
+                    tab = tab,
+                    selected = currentRoute == tab.route,
+                    compact = compact,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelect(tab) },
+                )
+            }
+        }
+    }
+}
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
  * lavender radial + hairline when selected. Icons/labels brighten on selection
@@ -353,6 +430,7 @@ fun CereBroApp() {
     // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
     LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
+<<<<<<< HEAD
     // Two things that only make sense once signed in, both fire-and-forget:
     //  * flush anything the user wrote while offline, before any screen reads
     //    a list that would otherwise be missing their own entry;
@@ -362,6 +440,17 @@ fun CereBroApp() {
     LaunchedEffect(Unit) {
         runCatching { com.cerebrozen.app.net.Outbox.drain() }
         com.cerebrozen.app.notify.Push.register(pushContext)
+=======
+    // Resolve the server sound/video catalogue once per launch, then pull the
+    // one-shot assets onto disk so taps fire with no network in the path. Both
+    // steps are best-effort: with no catalogue (offline, first run, server down)
+    // every sound falls back to its synthesized tone or bundled loop, so the app
+    // is fully audible either way — this only ever upgrades what's already there.
+    val appContext = LocalContext.current.applicationContext
+    LaunchedEffect(Unit) {
+        runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
+        runCatching { Sfx.warm(appContext) }
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
     }
 
     val navController = rememberNavController()
@@ -385,19 +474,43 @@ fun CereBroApp() {
     val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     val auroraAccent by animateColorAsState(
         targetValue = when (current) {
-            Tab.Sleep.route -> com.cerebrozen.app.ui.theme.Accent.sleep
-            Tab.Talk.route -> com.cerebrozen.app.ui.theme.Accent.talk
+            Tab.Sleep.route, "sounds", "sounds/mixer" -> com.cerebrozen.app.ui.theme.Accent.sleep
+            Tab.Talk.route, "talk/live", "talk/chat" -> com.cerebrozen.app.ui.theme.Accent.talk
             else -> com.cerebrozen.app.ui.theme.Accent.home
         },
         animationSpec = if (reduceMotion) snap() else tween(600),
         label = "aurora-accent",
     )
 
+    // The Sleep tab's scene loop, when one exists. It sits *beneath* the aurora, not
+    // instead of it: the aurora is translucent, so an uploaded scene reads through it,
+    // and with no scene uploaded (the shipping default — we hold no video we have the
+    // rights to) the aurora is simply what the user sees, exactly as before.
+    // Reduce Motion suppresses it entirely — a looping video is motion.
+    // Reading `loaded` (Compose-observable) is what re-runs this once the catalogue
+    // lands. It arrives asynchronously, after the first composition — a bare urlFor()
+    // read touches no snapshot state, so without this the scene would stay missing
+    // until some unrelated recomposition happened to occur.
+    val catalogueLoaded = MediaCatalog.loaded
+    val sceneUrl = when {
+        !catalogueLoaded || reduceMotion -> ""
+        // Sleep tab only. The pushed "sounds"/mixer screens are built on
+        // PremiumFrame, which paints its own opaque plate — a scene behind those
+        // would decode and then be covered, burning a video decoder to render
+        // nothing. Restrict it to the surface where it actually shows.
+        current == Tab.Sleep.route -> MediaCatalog.urlFor(MediaCatalog.Keys.SCENE_NIGHT_LAKE)
+        else -> ""
+    }
+
     Box(Modifier.fillMaxSize()) {
-    AuroraBackground(accent = auroraAccent)
+    SceneVideo(sceneUrl, Modifier.fillMaxSize())
+    // The aurora's plate is the app's opaque page floor; it has to go sheer over a
+    // scene, or the video under it can never be seen.
+    AuroraBackground(accent = auroraAccent, sceneBehind = sceneUrl.isNotBlank())
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
+<<<<<<< HEAD
             if (showBottomBar) {
             // A floating lavender pill over a dark scrim — the tabs read as a lifted
             // capsule rather than a flat system bar.
@@ -442,6 +555,19 @@ fun CereBroApp() {
                             },
                         )
                     }
+=======
+            // Tabs only on tab routes — a pushed sub-screen owns the whole screen.
+            // (BottomNavBar itself additionally yields to the keyboard.)
+            if (Tab.entries.any { it.route == current }) {
+            BottomNavBar(currentRoute = current, compact = compactNav) { tab ->
+                // One haptic vocabulary app-wide: the custom
+                // Haptics object (see ui/Haptics.kt).
+                if (current != tab.route) Haptics.selection()
+                navController.navigate(tab.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                 }
             }
             }
@@ -467,6 +593,12 @@ fun CereBroApp() {
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
+            // The live/chat split belonged to the two-mode Talk screen. Talk is
+            // one surface again — voice and typing live together, with the
+            // composer pinned below the transcript — so both routes land on it
+            // rather than dead-ending anything still pointing at them.
+            composable("talk/live") { TalkScreen(onOpen = open) }
+            composable("talk/chat") { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
@@ -513,6 +645,11 @@ fun CereBroApp() {
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
             composable("mbct") { MbctOfflineScreen(onBack = back) }
             composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
+            // The two guided routines (web parity): the Sleep tab's wind-down
+            // and the Toolkit's Settle visualization.
+            composable("winddown") { WindDownRitualScreen(onBack = back) }
+            composable("imagery") { GuidedImageryScreen(onOpen = open, onBack = back) }
+            composable("ritual") { RitualBuilderScreen(onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
@@ -521,6 +658,8 @@ fun CereBroApp() {
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
+            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
+            composable("intention") { IntentionScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }

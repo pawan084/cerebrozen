@@ -49,6 +49,16 @@ internal object TourState {
     private const val KEY = "tour_done"
     fun isDone(): Boolean = Session.prefGet(KEY) == "true"
     fun markDone() = Session.prefPut(KEY, "true")
+
+    /**
+     * Re-arm the tour from You (iOS parity: the "Take a quick tour" row).
+     *
+     * Clears this one flag and nothing else — the tour is the only thing being
+     * replayed, not onboarding, not consent, not any content the user made.
+     * Home reads `isDone()` through a plain `remember`, so it re-evaluates when
+     * the tab is composed again and the overlay comes back on its own.
+     */
+    fun reset() = Session.prefPut(KEY, "false")
 }
 
 @Composable

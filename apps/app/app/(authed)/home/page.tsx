@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { GuidedTour } from "@/components/GuidedTour";
+import { InterventionCard } from "@/components/InterventionCard";
 import { Icon } from "@/components/icons";
 
 // 5-emoji check-in matching the ref; each maps into the shared mood taxonomy.
@@ -21,7 +22,8 @@ type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
 type Plan = { id: string; title: string; steps: Step[] };
-// `today_guide` is additive — absent for programs with no day guides.
+// `today_guide` is additive — absent for programs with no day guides, and for
+// servers older than the migration that added them. Omit-tolerant like Android.
 type Program = {
   content_id: string;
   title: string;
@@ -45,14 +47,18 @@ function stepHref(symbol: string) {
   if (symbol === "mic" || symbol.startsWith("person") || symbol === "heart") return "/chat";
   return "/plan";
 }
+// Constant-dark tiles (white labels) — each tint sits on a literal night base
+// so the cards read identically in Night and Dawn.
 const JUMP = [
-  { label: "Talk now", href: "/chat", icon: Icon.talk, bg: "linear-gradient(160deg,rgba(138,123,240,0.35),rgba(255,255,255,0.02))" },
-  { label: "Breathe", href: "/games", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(143,230,238,0.28),rgba(255,255,255,0.02))" },
-  { label: "Sleep", href: "/sleep", icon: Icon.sleep, bg: "linear-gradient(160deg,rgba(166,139,255,0.32),rgba(255,255,255,0.02))" },
-  { label: "Journal", href: "/journal", icon: Icon.journal, bg: "linear-gradient(160deg,rgba(240,164,140,0.28),rgba(255,255,255,0.02))" },
+  { label: "Talk now", href: "/chat", icon: Icon.talk, bg: "linear-gradient(160deg,rgba(138,123,240,0.35),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Breathe", href: "/games", icon: Icon.spark, bg: "linear-gradient(160deg,rgba(143,230,238,0.28),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Sleep", href: "/sleep", icon: Icon.sleep, bg: "linear-gradient(160deg,rgba(166,139,255,0.32),rgba(255,255,255,0.02)), #14102c" },
+  { label: "Journal", href: "/journal", icon: Icon.journal, bg: "linear-gradient(160deg,rgba(240,164,140,0.28),rgba(255,255,255,0.02)), #14102c" },
 ];
-// Streak milestones worth celebrating (days) — same values as iOS AppState.milestones.
-const MILESTONES = [3, 7, 14, 30, 60, 100, 150, 365];
+// (The MILESTONES list that lived here rang a celebration ring around the BEST
+// streak. Wave A moved this rail to presence framing — days present, no streak
+// to break — so the ring had nothing left to fire on. iOS keeps its own
+// AppState.milestones for the streak card it still shows.)
 // Quick links under the greeting (ref mock 4-tile grid).
 const QUICK = [
   { label: "Games", href: "/games", icon: Icon.games, bg: "linear-gradient(160deg,rgba(143,230,238,0.22),rgba(255,255,255,0.03))" },
@@ -95,9 +101,12 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const days = ["S", "M", "T", "W", "T", "F", "S"];
-  // A gentle mood line for the rail chart, scored by recency. When there aren't
-  // two real check-ins yet the card says so — it never draws an invented shape.
+  // A gentle mood line for the rail chart, scored by recency — only ever the
+  // user's real days. When there aren't two real check-ins yet the card says so;
+  // it never draws an invented shape (the `[3,4,3,4,3,4,4]` fallback that used
+  // to stand in here was deleted in WEB_PARITY Wave A).
   const pts = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
+  const presentDays = streak?.week?.filter((d) => d.active).length ?? 0;
   // One honest line for the weekly-insights teaser, from the same mood fetch.
   const weekCheckins = moods.filter((m) => Date.now() - new Date(m.created_at).getTime() < 7 * 86400e3).length;
 
@@ -118,6 +127,9 @@ export default function Home() {
 
         <div className="dash-grid">
           <div>
+            {/* Above the check-in on purpose: if the engine noticed something,
+                saying so before asking for more data is the honest order. */}
+            <InterventionCard />
             {/* Check-in hero */}
             <section className="checkin-hero cz-in cz-d1" aria-label="Daily check-in">
               <div className="checkin-orb" aria-hidden="true" />
@@ -204,7 +216,9 @@ export default function Home() {
                   <Link key={s.id} href={s.done ? "/plan" : stepHref(s.symbol)} className="plan-row">
                     <span
                       className="plan-play"
-                      style={{ background: s.done ? "rgba(255,255,255,0.08)" : STEP_COLORS[i % STEP_COLORS.length], fontWeight: 700 }}
+                      style={s.done
+                        ? { background: "var(--well)", color: "var(--muted)", fontWeight: 700 }
+                        : { background: STEP_COLORS[i % STEP_COLORS.length], fontWeight: 700 }}
                     >
                       {s.done ? "✓" : <Icon.play size={16} />}
                     </span>
@@ -243,16 +257,18 @@ export default function Home() {
 
           {/* Right rail */}
           <div className="rail">
+            {/* Merge note: main showed the BEST streak here with a milestone
+                ring. Wave A replaced that with days-present — presence framing,
+                no loss language — so v1's card wins and the streak-milestone
+                ring goes with it. The entrance class is kept. */}
             <div className="rail-card cz-in cz-d2">
-              <span className="kicker">Day rhythm</span>
-              <div className="rail-big">
-                {/* The number is always the CURRENT run of days present — a best-ever
-                    streak is never shown in its place (and never as a target). */}
-                <b className={MILESTONES.includes(streak?.current ?? 0) ? "cz-streak" : undefined}>
-                  {streak?.current ?? 0}
-                </b>
-                <span>{(streak?.current ?? 0) === 1 ? "day in a row" : "days in a row"}</span>
-              </div>
+              {/* Days present in the week, not a consecutive run: a run is a
+                  thing that breaks, which is the loss framing the presence pass
+                  removed — and the sub-line right below already promises "no
+                  streaks to break". iOS and Android both show the weekly count,
+                  so this keeps the three clients saying the same thing. */}
+              <span className="kicker">This week</span>
+              <div className="rail-big"><b>{presentDays}</b><span>{presentDays === 1 ? "day present" : "days present"}</span></div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
               <div className="rhythm-bars">
                 {(streak?.week ?? Array.from({ length: 7 }, (_, i) => ({ date: `${i}`, active: false }))).map((d, i) => (
@@ -275,6 +291,8 @@ export default function Home() {
                     fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                     points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
                   />
+                  {/* Tokens, not literals: this chart sits on a page that flips
+                      to Dawn, where the Night cyan/lavender lose their ground. */}
                   <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="var(--cyan)" /><stop offset="1" stopColor="var(--lav)" /></linearGradient></defs>
                 </svg>
               ) : (

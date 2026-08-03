@@ -8,7 +8,16 @@ import { CrisisLines } from "@/components/CrisisLines";
 
 type Entry = { id: string; title: string; body: string; tags: string[]; risk_level: string; created_at: string };
 type Checkin = { mood: string; created_at: string };
-const REVISIT = ["What do you need more of this week?", "Name a worry, then set it down.", "Who made today a little easier?"];
+// Every prompt opens the composer prefilled (prompt-as-title, Android
+// JournalScreen pattern) — the last two absorb the old onegoodthing/intention
+// mini-tools as quick entries (REDESIGN IA consolidation).
+const REVISIT: { prompt: string; tag: string }[] = [
+  { prompt: "What do you need more of this week?", tag: "Reflection" },
+  { prompt: "Name a worry, then set it down.", tag: "Release" },
+  { prompt: "Who made today a little easier?", tag: "Gratitude" },
+  { prompt: "One good thing from today", tag: "Gratitude" },
+  { prompt: "Tonight's intention", tag: "Intention" },
+];
 
 // State-tuned prompts (ref mock): the latest mood check-in shapes the hero.
 // The .eyebrow class uppercases, so "For a tense day" renders FOR A TENSE DAY.
@@ -49,6 +58,13 @@ export default function Journal() {
     } finally { setBusy(false); }
   }
 
+  function usePrompt(p: { prompt: string; tag: string }) {
+    setTitle(p.prompt);
+    setTags(p.tag);
+    setOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const monthEntries = entries.filter((e) => new Date(e.created_at).getMonth() === new Date().getMonth());
   const monthCount = monthEntries.length;
   // Derived from the entries actually written this month — never a stock claim.
@@ -81,7 +97,11 @@ export default function Journal() {
         )}
         <div className="dash-grid">
           <div>
-            <section className="prompt-hero cz-in">
+            {/* theme-night keeps the hero dark in Dawn, so the composer's
+                var-driven fields re-resolve to Night ink (the hero carries its
+                own art). The state-tuned prompt pairs with iOS
+                JournalPrompts.tuned — see the ARCHITECTURE cross-stack row. */}
+            <section className="prompt-hero theme-night cz-in">
               {/* Only the tuned variant is actually shaped by a check-in — the
                   default prompt says only what it is. */}
               <p className="eyebrow">{tuned ? tuned.eyebrow : "Today's prompt"}</p>
@@ -124,11 +144,21 @@ export default function Journal() {
               <span className="kicker">This month</span>
               <div className="rail-big"><b>{monthCount}</b><span>{monthCount === 1 ? "entry" : "entries"}</span></div>
               {whenLine && <p className="sub">{whenLine}</p>}
+              <p className="sub">Every entry stays private by default.</p>
             </div>
             <div className="rail-card cz-in cz-d2">
               <span className="serif-h" style={{ fontSize: 18 }}>Prompts you can revisit</span>
               <div className="plist" style={{ marginTop: 8 }}>
-                {REVISIT.map((p) => <div key={p} className="prompt-item">{p}</div>)}
+                {REVISIT.map((p) => (
+                  <button
+                    key={p.prompt}
+                    className="prompt-item"
+                    onClick={() => usePrompt(p)}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}
+                  >
+                    {p.prompt}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

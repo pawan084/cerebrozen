@@ -32,6 +32,7 @@ import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Gradients
+import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Violet
@@ -49,9 +50,28 @@ import com.cerebrozen.app.ui.theme.Violet
  * kind the starting screen declared, or "soundscape" for the mixer). The
  * visual reacts to WHAT is playing, never to the waveform; it's a single slow
  * color lerp (~1200ms), zero extra motion. Reduce Motion snaps the color.
+ *
+ * @param sceneBehind true when a [SceneVideo] is playing underneath. The base
+ *   plate is normally an OPAQUE gradient — it is the app's page floor — so a
+ *   video behind it would be perfectly invisible. With a scene present the plate
+ *   becomes a scrim instead: dark enough to hold text contrast over moving
+ *   footage, sheer enough to let the scene read through. The orbs and sheen are
+ *   already translucent and stay exactly as they are, so the app keeps its own
+ *   colour identity on top of whatever video is uploaded. Defaults to false —
+ *   with no scene (the shipping default) this composable is byte-for-byte what
+ *   it was.
  */
+/** How much of the page floor survives over a scene video. Tuned on-device against
+ * the Sleep tab's cards: below ~0.5 the body copy starts to lose the brighter
+ * frames of the footage. */
+internal const val SCENE_SCRIM_ALPHA = 0.55f
+
 @Composable
-internal fun AuroraBackground(accent: Color = Periwinkle, modifier: Modifier = Modifier) {
+internal fun AuroraBackground(
+    accent: Color = Periwinkle,
+    modifier: Modifier = Modifier,
+    sceneBehind: Boolean = false,
+) {
     val reduceMotion = rememberReduceMotion()
     val playingKind = Player.audibleKind()
     val primaryTint by animateColorAsState(
@@ -80,7 +100,17 @@ internal fun AuroraBackground(accent: Color = Periwinkle, modifier: Modifier = M
     // lavender/teal washes over the cream base instead of muddy stains.
     val night = AppTheme.isNight
     val orbAlphas = if (night) floatArrayOf(0.16f, 0.12f, 0.05f) else floatArrayOf(0.10f, 0.08f, 0.04f)
-    Box(modifier.fillMaxSize().background(Gradients.night)) {
+    // The page floor. Opaque normally; a scrim when a scene video is playing under
+    // it, or the video could never be seen. SCENE_SCRIM_ALPHA is a legibility
+    // number, not a taste one: body text and card strokes have to stay readable
+    // over footage we don't control, and a wellness app that makes you squint has
+    // already failed. Erring dark is the safe direction.
+    val plate: Modifier = if (sceneBehind) {
+        Modifier.background(Night.copy(alpha = SCENE_SCRIM_ALPHA))
+    } else {
+        Modifier.background(Gradients.night)
+    }
+    Box(modifier.fillMaxSize().then(plate)) {
         AuroraOrb(primaryTint.copy(alpha = orbAlphas[0]), size = 380.dp, blur = 100.dp,
             fromX = -70, fromY = -180, toX = -130, toY = -240, drift = drift)
         AuroraOrb(Violet.copy(alpha = orbAlphas[1]), size = 320.dp, blur = 110.dp,

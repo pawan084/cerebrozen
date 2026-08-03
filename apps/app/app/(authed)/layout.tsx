@@ -19,11 +19,16 @@ const EXPLORE = [
   { href: "/goals", label: "Goals & habits", icon: Icon.spark },
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
-  { href: "/games", label: "Games", icon: Icon.games },
+  // "Toolkit", not "Games": the hub is Ground/Breathe/Reframe/Settle, and the
+  // four mini-games REDESIGN §2.2 removed are exactly what the old name promised.
+  { href: "/games", label: "Toolkit", icon: Icon.games },
   // A plan is written when things are steady, so it belongs in the calm part of
   // the nav — not filed under crisis, where nobody browses.
   { href: "/safety-plan", label: "Safety plan", icon: Icon.support },
   { href: "/account", label: "Settings", icon: Icon.settings },
+  // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3), but as the single
+  // styled `.support-door` below the nav rather than a row here — two entries
+  // both labelled "Support" is what merging the two designs first produced.
 ];
 // The mobile bottom bar keeps the primary spaces (mirrors iOS) plus the Support
 // door — crisis has to stay one tap away on a phone too (design system §1).
@@ -45,6 +50,8 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
+  // `null` until /auth/me answers: defaulting to "free" flashed a "Free plan"
+  // chip at paying users on every load.
   const [tier, setTier] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
 
@@ -58,6 +65,9 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       return;
     }
     setReady(true);
+    // A live session = established relationship → telemetry unlocked (the
+    // same rule iOS/Android apply on connect; the opt-out still governs).
+    import("@/lib/analytics").then(({ unlockAnalytics }) => unlockAnalytics());
     setUpsell(window.localStorage.getItem(PREMIUM_DISMISSED) !== "1");
     import("@/lib/api").then(({ api }) =>
       api("/auth/me").then((me: any) => {
@@ -99,6 +109,9 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
           </span>
         </Link>
 
+        {/* Free accounts only, and dismissible — a permanent upsell in a
+            wellness app leans on the OECD "nagging" indicator, and premium
+            users never need it. */}
         {upsell && tier === "free" && (
           <div className="premium-card">
             <strong>Unlock Premium</strong>
@@ -113,7 +126,13 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             <span className="user-avatar" aria-hidden="true" />
             <div className="user-meta">
               <strong>{name || "Your space"}</strong>
-              {tier && <small>{tier === "free" ? "Free plan" : `${tier[0].toUpperCase()}${tier.slice(1)} plan`}</small>}
+              {/* Named map, not a capitalise: the tier value is `premium_human`,
+                  which generic title-casing renders as "Premium_human plan". */}
+              {tier && (
+                <small>
+                  {{ premium: "Premium", premium_human: "Premium + Human" }[tier] ?? "Free plan"}
+                </small>
+              )}
             </div>
           </div>
           <button

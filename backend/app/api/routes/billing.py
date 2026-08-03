@@ -47,8 +47,13 @@ async def create_checkout(request: Request, payload: CheckoutBody,
 async def create_portal(request: Request, user: User = Depends(get_current_user)):
     """Open Stripe's billing portal — change card, switch plan, cancel.
 
+    Cancellation must be as reachable as subscribing (OECD dark-pattern
+    checklist), which is why this route exists at all.
+
     409 rather than 502 when the account has never checked out: there is
-    genuinely nothing to manage yet, which is a state, not a failure.
+    genuinely nothing to manage yet, which is a state, not a failure. App Store
+    subscribers land here too — they have no Stripe customer, and the 409 copy
+    is honest about that rather than reporting a gateway error.
     """
     if not settings.stripe_enabled:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

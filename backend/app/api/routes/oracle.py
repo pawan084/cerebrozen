@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.context import current_db, current_user_id, emitted_widgets
+from app.agent.context import current_db, current_thread_id, current_user_id, emitted_widgets
 from app.agent.graph import get_graph
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db, utcnow
@@ -74,6 +74,7 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
         t_db = current_db.set(db)
         t_uid = current_user_id.set(user_id)
         t_w = emitted_widgets.set([])
+        t_tid = current_thread_id.set(thread_id)
         try:
             if persist_user is not None:
                 risk = await safety.scan_and_record(
@@ -135,6 +136,7 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
             current_db.reset(t_db)
             current_user_id.reset(t_uid)
             emitted_widgets.reset(t_w)
+            current_thread_id.reset(t_tid)
 
 
 @router.post("/messages")

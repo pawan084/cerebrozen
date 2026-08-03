@@ -109,6 +109,11 @@ class PlayerMixerStateTest {
         // The stable symbol keys are the contract; the names are display copy now.
         assertEquals(listOf("rain", "ocean", "wind", "drone"), SoundscapeMixer.layers.map { it.symbol })
         assertEquals("rain", SoundscapeMixer.layers[0].symbol)
+        assertEquals(
+            listOf(com.cerebrozen.app.R.string.mixer_layer_rain, com.cerebrozen.app.R.string.mixer_layer_ocean,
+                   com.cerebrozen.app.R.string.mixer_layer_wind, com.cerebrozen.app.R.string.mixer_layer_drone),
+            SoundscapeMixer.layers.map { it.nameRes },
+        )
         assertEquals(4, SoundscapeMixer.volumes.size)
     }
 

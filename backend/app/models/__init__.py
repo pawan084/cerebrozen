@@ -13,12 +13,15 @@ from app.models.content import ContentItem
 from app.models.nudge import Nudge
 from app.models.habit import Goal, Habit, HabitCompletion
 from app.models.insight import Insight
+from app.models.intervention import InterventionRecommendation
 from app.models.memory import ContextMemory
+from app.models.oracle_audit import OracleToolCall
 from app.models.safety import SafetyEvent
 from app.models.safety_plan import SafetyPlan
 from app.models.sleep import SleepLog
 from app.models.trusted_contact import TrustedContact
 from app.models.login_code import LoginCode
+from app.models.media import MediaAsset
 from app.models.product_event import ProductEvent
 from app.models.program import ProgramEnrollment
 from app.models.prompt import PromptTemplate
@@ -45,12 +48,15 @@ __all__ = [
     "Habit",
     "HabitCompletion",
     "Insight",
+    "InterventionRecommendation",
     "ContextMemory",
+    "OracleToolCall",
     "SafetyEvent",
     "SafetyPlan",
     "SleepLog",
     "TrustedContact",
     "LoginCode",
+    "MediaAsset",
     "ProductEvent",
     "ProgramEnrollment",
     "PromptTemplate",

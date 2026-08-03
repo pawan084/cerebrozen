@@ -86,6 +86,8 @@ struct TalkView: View {
                     .buttonStyle(.pressable)
                     .disabled(voice.turns.isEmpty && voice.transcript.isEmpty && voice.reply.isEmpty)
                 NavigationLink { DailyPlanView() } label: { MiniChip("Open plan") }.buttonStyle(.pressable)
+                NavigationLink { BreathingView(preset: .reset) } label: { MiniChip("2-min reset") }.buttonStyle(.pressable)
+                NavigationLink { GroundingView() } label: { MiniChip("Ground") }.buttonStyle(.pressable)
             }
 
             VStack(spacing: 10) {
@@ -177,7 +179,7 @@ struct StreamingBubble: View {
             // animates — a smooth blink rather than a hard toggle.
             HStack(alignment: .bottom, spacing: 1) {
                 Text(text).appFont(12.5).foregroundStyle(Theme.Palette.soft)
-                Text("▍").appFont(12.5).foregroundStyle(Theme.Palette.lav)
+                Text("▍").appFont(12.5).foregroundStyle(Theme.Palette.lavText)
                     .opacity(caretVisible ? 1 : 0.15)
             }
             .padding(.horizontal, 13).padding(.vertical, 11)
@@ -261,9 +263,10 @@ struct ChatView: View {
 
             // No photo strip — the transcript is the content.
             if backend.isConnected {
-                // Empty state: personalized starters from the self-reflection.
+                // Empty state: personalized starters + structured exercises.
                 if backend.chat.isEmpty && !backend.isStreaming {
                     ConversationStartersRail(topics: backend.starters) { sendText($0) }
+                    TryTogetherRail()
                 }
                 // Live transcript: assistant turns can carry an inline activity.
                 ForEach(backend.chat) { m in
@@ -303,7 +306,8 @@ struct ChatView: View {
 
             HStack(spacing: 8) {
                 NavigationLink { CBTReframeView() } label: { MiniChip("Reframe") }.buttonStyle(.pressable)
-                NavigationLink { BreathingView() } label: { MiniChip("2-min reset") }.buttonStyle(.pressable)
+                NavigationLink { BreathingView(preset: .reset) } label: { MiniChip("2-min reset") }.buttonStyle(.pressable)
+                NavigationLink { GroundingView() } label: { MiniChip("Ground") }.buttonStyle(.pressable)
                 Button { saveChatToJournal() } label: { MiniChip("Save to journal") }
                     .buttonStyle(.pressable)
                     .disabled(backend.chat.isEmpty && state.chatHistory.isEmpty)
@@ -321,8 +325,8 @@ struct ChatView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 Button { send() } label: {
                     Image(systemName: sending ? "ellipsis" : "arrow.up")
-                        .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.ink)
-                        .frame(width: 46, height: 46).background(Theme.Palette.cream, in: Circle())
+                        .appFont(16, weight: .bold).foregroundStyle(Theme.Palette.onPrimary)
+                        .frame(width: 46, height: 46).background(Theme.Palette.primaryPill, in: Circle())
                 }
                 .buttonStyle(.pressable)
                 .accessibilityLabel("Send message")
@@ -391,3 +395,4 @@ struct ChatView: View {
         savedChat.toggle()
     }
 }
+

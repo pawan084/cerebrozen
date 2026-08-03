@@ -11,8 +11,11 @@ struct ActivityDestination: View {
         case "grounding":            GroundingView()
         case "mood_check":           MoodCheckinView()
         case "mini_journal", "journal": JournalEntryView()
-        case "one_good_thing":       OneGoodThingView()
-        case "intention_set":        IntentionSetView()
+        // IA consolidation (IOS_PARITY #4): the standalone micro-views were
+        // absorbed into Journal quick prompts — the kinds stay routable
+        // (cross-stack widget contract), only the destination changed.
+        case "one_good_thing":       JournalEntryView(prompt: "One good thing from today")
+        case "intention_set":        JournalEntryView(prompt: "Tonight's intention")
         case "dbt_skill":            DBTSkillView()
         case "sleep_checkin":        SleepCheckInView()
         case "crisis":               CrisisView()
@@ -45,7 +48,7 @@ struct ActivityWidgetCard: View {
             HStack(spacing: 12) {
                 Image(systemName: ActivityDestination.icon(widget.widget_kind))
                     .appFont(17, weight: .semibold)
-                    .foregroundStyle(Theme.Palette.lav)
+                    .foregroundStyle(Theme.Palette.lavText)
                     .frame(width: 42, height: 42)
                     .background(Theme.Palette.lav.opacity(0.16), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
@@ -55,7 +58,7 @@ struct ActivityWidgetCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                Image(systemName: "play.circle.fill").appFont(26).foregroundStyle(Theme.Palette.lav)
+                Image(systemName: "play.circle.fill").appFont(26).foregroundStyle(Theme.Palette.lavText)
             }
             .padding(13)
             .background(Theme.Palette.cardEmphasis)
@@ -81,9 +84,9 @@ struct ToolConfirmCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button { onResolve(true) } label: {
-                    Text("Approve").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.ink)
+                    Text("Approve").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.onPrimary)
                         .frame(maxWidth: .infinity).frame(height: 42)
-                        .background(Theme.Palette.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Theme.Palette.primaryPill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }.buttonStyle(.pressable).accessibilityLabel("Approve action")
                 Button { onResolve(false) } label: {
                     Text("Not now").appFont(13, weight: .heavy).foregroundStyle(Theme.Palette.soft)
@@ -118,7 +121,7 @@ struct ConversationStartersRail: View {
         if !topics.isEmpty {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.lav)
+                    Image(systemName: "sparkles").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.lavText)
                     Text("Start a conversation").eyebrow()
                 }
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
@@ -146,6 +149,43 @@ struct ConversationStartersRail: View {
             .background(Theme.Palette.cardEmphasis)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(Theme.Palette.lav.opacity(0.3)))
+    }
+}
+
+/// "Try together" — structured exercises offered up front, rule-based-first
+/// (IOS_PARITY #15, evidence F3: structure beats open-ended chat). Client-only
+/// links, no LLM dependency; shown in the empty state and available throughout.
+struct TryTogetherRail: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
+                Image(systemName: "figure.2").appFont(11, weight: .bold).foregroundStyle(Theme.Palette.accentCyan)
+                Text("Try together").eyebrow()
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    NavigationLink { CBTReframeView() } label: { chip("CBT reframe", symbol: "brain") }
+                        .buttonStyle(.pressable)
+                    NavigationLink { BreathingView(preset: .box) } label: { chip("Box breathing", symbol: "wind") }
+                        .buttonStyle(.pressable)
+                    NavigationLink { GroundingView() } label: { chip("5-4-3-2-1 grounding", symbol: "checkmark.shield") }
+                        .buttonStyle(.pressable)
+                }
+                .padding(.horizontal, 1)
+            }
+        }
+    }
+
+    private func chip(_ text: String, symbol: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).appFont(11, weight: .bold)
+            Text(text).appFont(12.5, weight: .semibold).lineLimit(1)
+        }
+        .foregroundStyle(Theme.Palette.soft)
+        .padding(.horizontal, 14).frame(height: 38)
+        .background(Theme.Palette.card)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Theme.Palette.line))
     }
 }
 
@@ -190,3 +230,4 @@ struct SuggestionChipRail: View {
         .overlay(Capsule().stroke(s.action == "crisis" ? Theme.Palette.danger.opacity(0.4) : Theme.Palette.line))
     }
 }
+

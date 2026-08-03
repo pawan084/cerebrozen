@@ -10,14 +10,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import AuthPanel from "@/components/AuthPanel";
 import { hasOnboarded, hasSession, setOnboarded } from "@/lib/api";
+import { track, unlockAnalytics } from "@/lib/analytics";
 import {
   applyOnboarding, clearDraft, Draft, FEELINGS, freshDraft, LANGUAGES,
-  loadDraft, planTitle, PLAN_STEPS, REMINDER_TIMES, saveDraft,
+  loadDraft, REMINDER_TIMES, saveDraft, STEP_NAMES,
 } from "@/lib/onboarding";
 import { CONSENT_NOTICE, defaultNoticeLang, NOTICE_LANGS } from "@/lib/consentNotice";
-import { ONBOARDING_STEPS, track, unlockAnalytics } from "@/lib/analytics";
 
-const PROGRESS = [0.08, 0.15, 0.25, 0.35, 0.45, 0.58, 0.7, 0.8, 0.88, 0.96];
+// 8 steps (Android precedent): the fake "First plan" preview is gone — a
+// preview no data supports fails the F9 bar — and the age confirm folded
+// into the disclosure step.
+const PROGRESS = [0.1, 0.22, 0.35, 0.48, 0.62, 0.75, 0.87, 0.96];
 
 export default function Onboarding() {
   const router = useRouter();
@@ -30,7 +33,7 @@ export default function Onboarding() {
   useEffect(() => {
     if (hasOnboarded()) { router.replace("/home"); return; }
     setDraft(loadDraft());
-    if (hasSession()) setStep(8);
+    if (hasSession()) setStep(6); // resume at consent (post-signup preferences)
     setReady(true);
   }, [router]);
 
@@ -42,15 +45,19 @@ export default function Onboarding() {
     });
   }
 
-  // One event per step reached. `track` no-ops until the Consent step calls
-  // unlockAnalytics(), so earlier steps stay uncounted by design rather than
-  // being buffered and sent retroactively (the 2026-07-13 decision).
-  useEffect(() => {
-    track("onboarding_step", ONBOARDING_STEPS[step] ?? "");
-  }, [step]);
-
   const next = () => setStep((s) => Math.min(s + 1, PROGRESS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Anonymous funnel: which step each install reached (name only — never any
+  // answer or content). No-ops until the Consent step unlocks telemetry, so
+  // pre-consent steps are deliberately uncounted (owner decision 2026-07-13).
+  //
+  // Indexed by STEP_NAMES, NOT the backend's 10-name ONBOARDING_STEPS: this
+  // funnel is 8 steps, so the backend list would label step 4 "state_check"
+  // when it is actually "first_reset" and shift every bar after it.
+  useEffect(() => {
+    if (ready) track("onboarding_step", STEP_NAMES[step] ?? "");
+  }, [ready, step]);
 
   async function finish() {
     await applyOnboarding(draft);
@@ -60,29 +67,30 @@ export default function Onboarding() {
     router.replace("/home");
   }
 
-  if (!ready) return <div className="onb-root" />;
+  if (!ready) return <div className="onb-root theme-night" />;
 
   return (
-    <div className="onb-root">
+    // theme-night: the signed-out funnel keeps Night in both themes.
+    <div className="onb-root theme-night">
       <div className="onb-stage" key={step}>
         {step === 0 && <Welcome onBegin={next} />}
-        {step === 1 && <AgeGate onContinue={next} onBack={back} />}
-        {step === 2 && <Disclosure onContinue={next} onBack={back} />}
-        {step === 3 && (
+        {step === 1 && <Disclosure onContinue={next} onBack={back} />}
+        {step === 2 && (
           <Language draft={draft} update={update} onContinue={next} onBack={back} />
         )}
-        {step === 4 && (
+        {step === 3 && (
           <StateCheck draft={draft} update={update} onContinue={next} onBack={back} />
         )}
-        {step === 5 && <FirstReset onContinue={next} onBack={back} />}
-        {step === 6 && <FirstPlan draft={draft} onContinue={next} onBack={back} />}
-        {step === 7 && <Signup onAuthed={next} onBack={back} />}
-        {step === 8 && (
+        {step === 4 && <FirstReset onContinue={next} onBack={back} />}
+        {step === 5 && <Signup onAuthed={next} onBack={back} />}
+        {step === 6 && (
           <ConsentStep
             draft={draft}
             update={update}
             onContinue={() => {
-              // Passing Consent is what unlocks counting at all.
+              // Passing Consent is what unlocks counting at all — and the
+              // step-change effect already fired while analytics was still
+              // locked, so this step counts itself once it is allowed to.
               unlockAnalytics();
               track("onboarding_step", "consent");
               next();
@@ -90,7 +98,7 @@ export default function Onboarding() {
             onBack={back}
           />
         )}
-        {step === 9 && (
+        {step === 7 && (
           <Notifications draft={draft} update={update} onFinish={finish} onBack={back} />
         )}
       </div>
@@ -171,19 +179,28 @@ function Welcome({ onBegin }: { onBegin: () => void }) {
   );
 }
 
-/* ---------- 1 · Age gate ---------- */
+/* ---------- 1 · AI disclosure + 18+ attest (merged step, Android precedent:
+   both are honesty gates — one screen, canonical funnel name "disclosure") ---------- */
 
-function AgeGate({
-  onContinue, onBack,
-}: { onContinue: () => void; onBack: () => void }) {
+function Disclosure({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
   const [confirmed, setConfirmed] = useState(false);
   const [underage, setUnderage] = useState(false);
   return (
     <Scaffold
-      eyebrow="For adults only" title="A quick check"
-      caption="CereBro is built for adults. A quick check keeps the experience safe and appropriate."
+      eyebrow="Honesty first" title="What CereBro is — and isn't"
+      caption="Here's exactly what your AI companion can and can't do for you. CereBro is built for adults."
       progress={PROGRESS[1]} canContinue={confirmed} onContinue={onContinue} onBack={onBack}
     >
+      <div className="onb-twocol">
+        <div className="onb-mini">
+          <strong>Can help</strong>
+          <p>Listen, reflect, guide tools, suggest a plan.</p>
+        </div>
+        <div className="onb-mini">
+          <strong>Can't do</strong>
+          <p>Diagnose, prescribe, replace therapy, or handle emergencies.</p>
+        </div>
+      </div>
       <div className="onb-danger">
         <strong>Wellness support, not emergency care.</strong>
         <span>If you are in immediate danger, call emergency services now.</span>
@@ -210,30 +227,7 @@ function AgeGate({
   );
 }
 
-/* ---------- 2 · AI disclosure ---------- */
-
-function Disclosure({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
-  return (
-    <Scaffold
-      eyebrow="Honesty first" title="What CereBro is — and isn't"
-      caption="Here's exactly what your AI companion can and can't do for you."
-      progress={PROGRESS[2]} onContinue={onContinue} onBack={onBack}
-    >
-      <div className="onb-twocol">
-        <div className="onb-mini">
-          <strong>Can help</strong>
-          <p>Listen, reflect, guide tools, suggest a plan.</p>
-        </div>
-        <div className="onb-mini">
-          <strong>Can't do</strong>
-          <p>Diagnose, prescribe, replace therapy, or handle emergencies.</p>
-        </div>
-      </div>
-    </Scaffold>
-  );
-}
-
-/* ---------- 3 · Language ---------- */
+/* ---------- 2 · Language ---------- */
 
 function Language({
   draft, update, onContinue, onBack,
@@ -247,7 +241,7 @@ function Language({
     <Scaffold
       eyebrow="Speak your language" title="Language"
       caption="Talk and reflect in the language you think in. Mix more than one if that's you."
-      progress={PROGRESS[3]} onContinue={onContinue} onBack={onBack}
+      progress={PROGRESS[2]} onContinue={onContinue} onBack={onBack}
     >
       <div className="onb-chips">
         {LANGUAGES.map((lang) => (
@@ -264,7 +258,7 @@ function Language({
   );
 }
 
-/* ---------- 4 · State check ---------- */
+/* ---------- 3 · State check ---------- */
 
 function StateCheck({
   draft, update, onContinue, onBack,
@@ -277,7 +271,7 @@ function StateCheck({
     <Scaffold
       eyebrow="One tap is enough" title="What feels most true right now?"
       caption="No questionnaire — just pick the one that fits today. CereBro shapes your first reset and plan around it."
-      progress={PROGRESS[4]} canContinue={!!draft.feeling} onContinue={onContinue} onBack={onBack}
+      progress={PROGRESS[3]} canContinue={!!draft.feeling} onContinue={onContinue} onBack={onBack}
     >
       <div className="onb-list">
         {FEELINGS.map((f) => (
@@ -300,7 +294,7 @@ function StateCheck({
   );
 }
 
-/* ---------- 5 · First reset (breathing) ---------- */
+/* ---------- 4 · First reset (breathing) ---------- */
 
 function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
   const PHASES = [
@@ -329,7 +323,7 @@ function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: ()
         <div className={`onb-breathe-orb ${state}`} aria-hidden="true" />
       </div>
       <div className="onb-footer">
-        <Progress value={PROGRESS[5]} />
+        <Progress value={PROGRESS[4]} />
         <button className="btn pill-cta" onClick={onContinue}>I feel steadier</button>
         <button className="btn ghost onb-secondary" onClick={onContinue}>Skip for now →</button>
       </div>
@@ -337,41 +331,9 @@ function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: ()
   );
 }
 
-/* ---------- 6 · First plan ---------- */
-
-function FirstPlan({
-  draft, onContinue, onBack,
-}: { draft: Draft; onContinue: () => void; onBack: () => void }) {
-  return (
-    <div className="onb-step">
-      <BackButton onBack={onBack} />
-      <p className="onb-eyebrow">Made around you</p>
-      <h1 className="onb-title">First Plan</h1>
-      <div className="onb-hero">
-        <span className="onb-hero-tag">Today</span>
-        <h2>{planTitle(draft.goals[0])}</h2>
-        <p>A light plan: one thing now, one tonight, one tomorrow — tuned to what you picked.</p>
-      </div>
-      <div className="onb-list">
-        {PLAN_STEPS.map((s) => (
-          <div key={s.title} className="onb-row static">
-            <span className="onb-row-icon">{s.emoji}</span>
-            <span className="onb-row-body">
-              <strong>{s.title}</strong>
-              <small>{s.detail}</small>
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="onb-footer">
-        <Progress value={PROGRESS[6]} />
-        <button className="btn pill-cta" onClick={onContinue}>Keep going →</button>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- 7 · Signup ---------- */
+/* ---------- 5 · Signup (the fake static "First plan" preview that used to sit
+   here was killed — Android precedent: your real plan appears on Home, built
+   from your actual check-ins, not a mockup) ---------- */
 
 function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void }) {
   return (
@@ -380,25 +342,26 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
       <p className="onb-eyebrow">Yours to keep</p>
       <h1 className="onb-title">Save your space</h1>
       <p className="onb-caption">
-        You've shaped your plan — create your private space to keep it. No social feed, no sharing,
-        just you.
+        Your first real plan takes shape on Home from what you picked — create your private
+        space to keep it. No social feed, no sharing, just you.
       </p>
       <div className="onb-content">
         <AuthPanel initialMode="signUp" onAuthed={onAuthed} />
       </div>
       <div className="onb-footer">
-        <Progress value={PROGRESS[7]} />
+        <Progress value={PROGRESS[5]} />
       </div>
     </div>
   );
 }
 
-/* ---------- 8 · Consent ---------- */
+/* ---------- 6 · Consent ---------- */
 
-// All six DPDP categories are shown here, in the account page's order. Nothing
-// is pre-ticked, and the "remember my patterns" shortcut deliberately leaves
-// voice_storage + model_training alone — sensitive categories stay individual,
-// deliberate opt-ins (design system §8).
+// All six DPDP categories are shown here, in the account page's order — DPDP
+// "specific and informed" is better served by showing a category than by
+// silently defaulting it. Nothing is pre-ticked, and the "remember my patterns"
+// shortcut deliberately leaves voice_storage + model_training alone — sensitive
+// categories stay individual, deliberate opt-ins (design system §8).
 const CONSENT_KEYS: (keyof Draft["consent"])[] = [
   "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];
@@ -430,7 +393,7 @@ function ConsentStep({
     <Scaffold
       eyebrow="Privacy choices" title={notice.title}
       caption={notice.caption}
-      progress={PROGRESS[8]} onContinue={onContinue} onBack={onBack}
+      progress={PROGRESS[6]} onContinue={onContinue} onBack={onBack}
     >
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span aria-hidden="true">🌐</span>
@@ -477,7 +440,7 @@ function ConsentStep({
   );
 }
 
-/* ---------- 9 · Notifications ---------- */
+/* ---------- 7 · Notifications ---------- */
 
 function Notifications({
   draft, update, onFinish, onBack,
@@ -491,7 +454,7 @@ function Notifications({
     <Scaffold
       eyebrow="Gentle reminders" title="Notifications"
       caption="You've had your first win — want a quiet nudge to come back tomorrow? Never noisy, always easy to turn off."
-      progress={PROGRESS[9]} continueLabel={busy ? "One moment…" : "Enter CereBro"}
+      progress={PROGRESS[7]} continueLabel={busy ? "One moment…" : "Enter CereBro"}
       canContinue={!busy} onContinue={enter} onBack={onBack}
     >
       <div className="onb-chips">

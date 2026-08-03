@@ -66,6 +66,13 @@ See `PRIVACY_LABELS.md` for the authoritative, questionnaire-ready version.
 
 ## 4. Pre-submission checklist
 
+- [ ] **Run `xcodebuild test` on a Mac at least once.** Every iOS change since
+      2026-07-24 (IOS_PARITY Waves A–E: the parity backport, the Dawn theme, and
+      the three guided routines) was written on a Windows host and is
+      **static-verified only** — read, not compiled. Contrast is gated by test
+      math, but layout in both themes is not. Add the one-time `CereBroTests`
+      Unit Testing Bundle target while you're there so `ContrastTest` and
+      `RitualsTest` actually run.
 - [ ] Bump bundle id / version / build; set the real `PUBLIC_API_URL` (HTTPS).
 - [ ] Provide live provider keys via `backend/.env` / secrets (OpenAI/Anthropic,
       Deepgram, ElevenLabs). Without them chat/voice fall back gracefully but the

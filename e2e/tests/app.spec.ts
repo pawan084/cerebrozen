@@ -2,6 +2,10 @@ import { test, expect, Page } from "@playwright/test";
 
 const APP = process.env.APP_URL || "http://app:3002";
 
+// Guided imagery ships eight prompts; skipping through all of them lands on
+// the closing card (mirrors LINES in app/(authed)/games/imagery/page.tsx).
+const LINES_IN_IMAGERY = 8;
+
 // Sidebar nav items are links; scope to .sidebar so a label like "Journal"
 // hits the nav rather than a same-named card elsewhere on the page.
 function nav(page: Page, label: string) {
@@ -51,8 +55,10 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Save entry" }).click();
     await expect(page.locator(".entry-card", { hasText: "A bit stressed" })).toBeVisible();
 
-    // Sleep: the morning check-in still writes server-side.
+    // Sleep: the morning check-in still writes server-side, and the CBT-I
+    // stimulus-control education cards render (improvement framing, W12).
     await nav(page, "Sleep").click();
+    await expect(page.getByRole("heading", { name: "Bed is for sleep" })).toBeVisible();
     await page.getByRole("radio", { name: "Good" }).click();
     await page.getByRole("button", { name: "Save check-in" }).click();
     await expect(page.getByText(/Saved — one entry per morning/)).toBeVisible();
@@ -80,13 +86,58 @@ test.describe("Web app (authenticated client)", () => {
       page.getByRole("heading", { level: 3, name: "Ease work stress" }),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Games: box breathing is genuinely playable — Start flips to Stop and the
-    // phase label appears (proves the game actually runs, not a dead button).
-    await nav(page, "Games").click();
+    // Toolkit (still at /games): box breathing is genuinely playable — Start
+    // flips to Stop and the phase label appears (not a dead button); the
+    // 5-4-3-2-1 grounding stepper advances.
+    await nav(page, "Toolkit").click();
     await expect(page.getByRole("heading", { name: "Box breathing" })).toBeVisible();
-    await page.getByRole("button", { name: "Start" }).click();
+    await page.getByRole("button", { name: "Start", exact: true }).click();
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
     await expect(page.getByText("Breathe in")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "5 things you can see" })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "4 things you can feel" })).toBeVisible();
+
+    // Ritual builder: the cue (the part with the evidence) round-trips into the
+    // plan sentence, reordering actually reorders the run, and the routine runs
+    // to a finish that repeats the cue back.
+    await page.getByRole("link", { name: "Build yours" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Attach it to something you already do" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "close my laptop" }).click();
+    await expect(page.getByText("After I close my laptop, I'll run this.")).toBeVisible();
+    await page.getByRole("checkbox", { name: "One intention" }).check();
+    await page.getByRole("checkbox", { name: "Three good things" }).check();
+    await expect(page.getByText("2 steps · about 3 min")).toBeVisible();
+    await page.getByRole("button", { name: "Move Three good things earlier" }).click();
+    await expect(page.getByText("1. Three good things")).toBeVisible();
+    await page.getByRole("button", { name: "Save it" }).click();
+    await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+    await page.getByRole("button", { name: "Start the ritual" }).click();
+    await expect(page.getByRole("heading", { name: "What went right?" })).toBeVisible();
+    await page.getByRole("button", { name: "Skip this one" }).click();
+    await expect(page.getByRole("heading", { name: "What is this next stretch for?" })).toBeVisible();
+    await page.getByRole("button", { name: "Finish" }).click();
+    await expect(page.getByText("That's the ritual.")).toBeVisible();
+    await expect(page.getByText("Next time: after you close my laptop.")).toBeVisible();
+
+    // Guided imagery: the caution is on the way IN (not after something goes
+    // wrong), and the prompts advance to a close.
+    await page.getByRole("link", { name: "Back to the Toolkit" }).click();
+    await page.getByRole("link", { name: "Start the visualization" }).click();
+    await expect(page.getByText("If it stops feeling calm, stop.")).toBeVisible();
+    await page.getByRole("button", { name: "Begin" }).click();
+    await expect(page.getByText(/Let your shoulders drop/)).toBeVisible();
+    // Guarded rather than a flat 8 clicks: the 15s auto-advance can carry a
+    // line while the runner is between clicks, and the control disappears on
+    // the closing card.
+    const skip = page.getByRole("button", { name: "Skip ahead" });
+    for (let i = 0; i < LINES_IN_IMAGERY; i++) {
+      if (!(await skip.isVisible())) break;
+      await skip.click();
+    }
+    await expect(page.getByText("The place stays where it is.")).toBeVisible();
 
     // Plan + Library (were built but orphaned) are now reachable from the nav.
     await nav(page, "Plan").click();
@@ -101,6 +152,16 @@ test.describe("Web app (authenticated client)", () => {
 
     // Settings (account): consent toggle flips, enforced server-side.
     await nav(page, "Settings").click();
+    // Safety: real human pathways render (Tele-MANAS leads), and the sidebar
+    // carries a persistent Support door (crisis ≤2 clicks from anywhere).
+    await expect(page.getByRole("heading", { name: "Talk to a human" })).toBeVisible({ timeout: 20_000 });
+    // The door is the styled `.support-door`, not a plain nav row, so its
+    // accessible name is "Support Real people, 24/7" — matched on the prefix
+    // rather than exactly, because what this pins is that a Support door exists
+    // in the sidebar, not how its label reads.
+    await expect(
+      page.locator(".sidebar").getByRole("link", { name: /^Support/ }),
+    ).toBeVisible();
     const aiMemory = page.getByRole("switch", { name: "AI memory" });
     await expect(aiMemory).toBeVisible({ timeout: 20_000 });
     const before = await aiMemory.isChecked();
@@ -177,6 +238,18 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
       .toBeVisible({ timeout: 20_000 });
     await expect(page).toHaveURL(/\/home$/);
+  });
+
+  // The crisis page must work signed-out with a dead API: it's static JSX,
+  // Tele-MANAS first, numbers as real tel: links (never auto-called).
+  test("crisis page is public and Tele-MANAS-first", async ({ page }) => {
+    await page.goto(`${APP}/crisis`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Urgent support" })).toBeVisible();
+    const lines = page.getByRole("link", { name: /Tele-MANAS|Emergency|KIRAN/ });
+    await expect(lines).toHaveCount(3);
+    await expect(page.getByRole("link", { name: /Tele-MANAS/ })).toHaveAttribute("href", "tel:14416");
+    await expect(page.getByRole("link", { name: /Find a helpline/ })).toHaveAttribute(
+      "href", "https://findahelpline.com/in");
   });
 
   // The landing deep-links into app screens ("Open Sleep →"), which only works

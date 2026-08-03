@@ -41,7 +41,7 @@ fun BreathingScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    SubPage(stringResource(R.string.breathing_eyebrow), stringResource(R.string.breathing_title), onBack) {
+    PremiumSubPage(stringResource(R.string.breathing_eyebrow), stringResource(R.string.breathing_title), onBack) {
         ToolAmbienceEffect(R.raw.drone)
         Text(stringResource(R.string.breathing_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -88,7 +88,7 @@ private fun JournalingTool(
     var saved by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    SubPage(eyebrow, title, onBack) {
+    PremiumSubPage(eyebrow, title, onBack) {
         ToolAmbienceEffect(R.raw.rain)
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AmbienceToggle()
@@ -140,6 +140,42 @@ fun CbtReframeScreen(onBack: () -> Unit) {
     )
 }
 
+/**
+ * Two one-field journaling tools, salvaged from PR #2 (3 weeks stale, pre-i18n and
+ * pre-Dawn, so the branch itself was not mergeable). Only the prompts survived; the
+ * rendering is today's [JournalingTool], the copy lives in strings.xml, and each
+ * carries the "why this works" provenance every other tool here has.
+ */
+@Composable
+fun OneGoodThingScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.onegood_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.onegood_eyebrow),
+        title = stringResource(R.string.onegood_title),
+        intro = stringResource(R.string.onegood_intro),
+        journalTitle = stringResource(R.string.onegood_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.onegood_field) to ""),
+        provenance = stringResource(R.string.onegood_why),
+    )
+}
+
+@Composable
+fun IntentionScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.intention_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.intention_eyebrow),
+        title = stringResource(R.string.intention_title),
+        intro = stringResource(R.string.intention_intro),
+        journalTitle = stringResource(R.string.intention_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.intention_field) to ""),
+        provenance = stringResource(R.string.intention_why),
+    )
+}
+
 /** DBT TIPP — a guided walkthrough, no data collected. */
 @Composable
 fun TippScreen(onBack: () -> Unit) {
@@ -151,7 +187,7 @@ fun TippScreen(onBack: () -> Unit) {
     )
     var idx by remember { mutableIntStateOf(0) }
     val (heading, how, why) = steps[idx]
-    SubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
+    PremiumSubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
         Text(
             stringResource(R.string.tipp_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,

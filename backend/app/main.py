@@ -145,8 +145,14 @@ async def media_guard(request: Request, call_next) -> Response:
 
 app.include_router(api_router)
 
-# Generated media (narration MP3s). StaticFiles serves Range/ETag so native
-# players can stream and seek; `media_guard` above gates access.
+# Media bytes (narration MP3s, catalogue assets). StaticFiles serves Range/ETag
+# so native players can stream and seek; `media_guard` above gates access to
+# premium narration (the mount itself cannot ask "is this person allowed?").
+#
+# ORDER MATTERS: this mount must stay *below* include_router. The media router
+# owns GET /media/catalog under the same prefix, and Starlette matches routes in
+# registration order — mounting first would make the mount swallow /media/catalog
+# and look for a file called "catalog" on disk. test_media_catalog.py locks this.
 Path(settings.media_root).mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 

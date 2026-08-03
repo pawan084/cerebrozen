@@ -58,6 +58,14 @@ struct InsightsView: View {
                          cta: "Open your plan", imageURL: Dummy.Img.calm) { applyToPlan = true }
             }
 
+            // The baseline ask lives HERE now (Home was de-densified — the ask
+            // belongs where its payoff renders): offered once the check-in
+            // habit exists, until answered.
+            if !state.hasBaseline && state.moodLogs.count >= 3 {
+                NavRow(title: "Set your starting point",
+                       subtitle: "Two quick scales — so Insights can show real change",
+                       systemImage: "flag", imageURL: Dummy.Img.calm) { BaselineCheckView() }
+            }
             // The real onboarding baseline — a true "before" to measure against.
             if state.hasBaseline {
                 Card {

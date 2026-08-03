@@ -94,6 +94,11 @@ async def create_portal_session(customer_id: str) -> str:
     either charging someone who cancelled or refunding someone who didn't.
     The portal is also where card updates and invoices live, so one route covers
     every "manage my billing" need instead of three.
+
+    Takes the stored ``stripe_customer_id`` rather than searching subscriptions by
+    ``user_id`` metadata: the customer mapping is persisted on the user now
+    (stripe-hardening), so the extra search round-trip — and its "no subscription"
+    failure mode for a customer who has one — is gone.
     """
     if not settings.stripe_enabled:
         raise StripeError("Stripe is not configured")

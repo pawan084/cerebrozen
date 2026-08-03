@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -76,7 +77,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
     }
 
-    Page(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
+    PremiumPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
         SectionCard {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -91,9 +92,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name.ifBlank { stringResource(R.string.you_default_name) }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
-                        // "Calm Guide"/"English" are server-profile fallback values
-                        // (cross-stack contract), so they stay literal for now.
-                        "${companion.ifBlank { "Calm Guide" }} · ${language.ifBlank { "English" }}",
+                        // Known taxonomy values localize for DISPLAY; the
+                        // server-side values stay English (contract).
+                        run {
+                            val comp = companion.ifBlank { "Calm Guide" }
+                            val lang = language.ifBlank { "English" }
+                            val compLabel = companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+                            val langLabel = languageLabelRes(lang)?.let { stringResource(it) } ?: lang
+                            "$compLabel · $langLabel"
+                        },
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
@@ -127,45 +134,66 @@ fun YouScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        NavRow(stringResource(R.string.you_companion_title),
-            stringResource(R.string.you_companion_subtitle, companion.ifBlank { "Calm Guide" }),
+        PremiumNavRow(stringResource(R.string.you_companion_title),
+            stringResource(R.string.you_companion_subtitle, run {
+                val comp = companion.ifBlank { "Calm Guide" }
+                companionLabelRes(comp)?.let { stringResource(it) } ?: comp
+            }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
-        NavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
+        PremiumNavRow(stringResource(R.string.you_appearance_title), stringResource(R.string.you_appearance_subtitle),
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
-        NavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
+        PremiumNavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        // Re-run the four-stop Home tour (iOS parity). Clears only `tour_done`
+        // and lands on Home, where the overlay re-arms itself.
+        PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
+            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
         // The one screen the user fills in rather than reads.
-        NavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
+        PremiumNavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
             icon = Icons.Outlined.Flag) { onOpen("goals") }
-        NavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
+        PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
+<<<<<<< HEAD
         // Trends sits beside Insights, not inside it: Insights is what the app
         // has to say, Trends is what the user's own entries look like. They
         // answer different questions and one should not be buried in the other.
         NavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
             icon = Icons.Outlined.ShowChart) { onOpen("trends") }
         NavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
+=======
+        PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
-        NavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
+        PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
-        NavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
+        PremiumNavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
             icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
         // The Crisis screen's "add one in Settings" now has a Settings to mean.
-        NavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
+        PremiumNavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
             icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
-        NavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
-            icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
-        NavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
+        // The one upsell surface carries an occasional sheen (iOS parity) — the
+        // rest of You stays still, which is what makes this row read as the
+        // offer rather than as another setting.
+        Box(Modifier.sheen()) {
+            PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        }
+        PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
-        NavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
+        PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
             icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 
         Text(stringResource(R.string.you_legal_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle,
             modifier = Modifier.padding(top = 8.dp))
-        NavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
+        PremiumNavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
             icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
-        NavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
+        PremiumNavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
             icon = Icons.Outlined.FileDownload) { onOpen("export") }
+        // Deliberately NOT a PremiumNavRow like every row above it: as a premium
+        // row, "Delete account · Permanently erase everything" was pixel-identical
+        // to "Privacy policy · How we handle your data", so the single most
+        // irreversible action in the app looked like a link to a document. The
+        // danger tint is the difference (2026-07-31 module audit).
         NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
             icon = Icons.Outlined.DeleteOutline, tint = Danger) { onOpen("delete") }
 

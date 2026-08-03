@@ -48,6 +48,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.audio.MediaCatalog
+import com.cerebrozen.app.audio.Sfx
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.audio.WaterDropSound
 import com.cerebrozen.app.ui.theme.Cyan
@@ -88,11 +90,14 @@ fun PatternGlowScreen(onBack: () -> Unit) {
     var note by remember { mutableStateOf(noteStart) }
 
     // Replays the sequence on first show and after every change (success or reset).
+    // The pad's own tone sounds with its glow, so the demonstration is heard as well
+    // as seen — which is the whole point of a Simon board, and what makes the game
+    // playable at all with your eyes closed.
     LaunchedEffect(replay) {
         showing = true
         delay(600)
         sequence.forEach { pad ->
-            lit = pad; delay(450); lit = -1; delay(180)
+            lit = pad; Sfx.playPad(pad); delay(450); lit = -1; delay(180)
         }
         showing = false
         inputPos = 0
@@ -100,6 +105,11 @@ fun PatternGlowScreen(onBack: () -> Unit) {
 
     fun tap(pad: Int) {
         if (showing) return
+        // Every pad answers, right or wrong — the pads are a pentatonic set, so no
+        // tap can sound like a mistake (see SfxTones). The HAPTIC is deliberately
+        // not fired here: right and wrong get different pulses below, and a
+        // generic one on every tap would say "registered" before "correct".
+        Sfx.playPad(pad)
         if (pad == sequence[inputPos]) {
             // A right tap ticks; completing the round earns the one success
             // pulse; a wrong tap gets the softer warning — never the same
@@ -109,17 +119,22 @@ fun PatternGlowScreen(onBack: () -> Unit) {
             if (inputPos == sequence.size) {
                 best = maxOf(best, sequence.size)
                 note = noteSuccess.format(sequence.size)
+                Sfx.playActivity(MediaCatalog.Keys.GAME_PATTERN_SUCCESS)
                 Haptics.success()
                 sequence = sequence + Random.nextInt(4); replay++
             }
         } else {
             Haptics.warning()
             note = noteReset.format(sequence.size)
+            // A soft low settle, quieter than the pad that preceded it — never a
+            // buzzer. Missing a pad is a reset, not a failure.
+            Sfx.playActivity(MediaCatalog.Keys.GAME_PATTERN_RESET)
             sequence = listOf(Random.nextInt(4)); replay++
         }
     }
 
-    SubPage(stringResource(R.string.patternglow_eyebrow), stringResource(R.string.patternglow_title), onBack) {
+    PremiumSubPage(stringResource(R.string.patternglow_eyebrow), stringResource(R.string.patternglow_title), onBack) {
+        ToolAmbienceEffect(R.raw.drone)
         Text(note, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Column(
             Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(14.dp),
@@ -161,6 +176,14 @@ fun PatternGlowScreen(onBack: () -> Unit) {
 // ── Zen ripples ──────────────────────────────────────────────────────────
 private data class Ripple(val at: Offset, val born: Long)
 
+/** Where a tap sits in the pool, as 0 (bottom) → 1 (top) — the brightness of the
+ * drop it makes. Pure, so the mapping is unit-testable; a zero-height canvas (the
+ * first frame, before layout) resolves to the middle rather than dividing by zero. */
+internal fun rippleBrightness(y: Float, height: Float): Float {
+    if (height <= 0f) return 0.5f
+    return (1f - (y / height)).coerceIn(0f, 1f)
+}
+
 @Composable
 fun ZenRipplesScreen(onBack: () -> Unit) {
     var ripples by remember { mutableStateOf(listOf<Ripple>()) }
@@ -185,7 +208,8 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
         }
     }
 
-    SubPage(stringResource(R.string.zen_eyebrow), stringResource(R.string.zen_title), onBack) {
+    PremiumSubPage(stringResource(R.string.zen_eyebrow), stringResource(R.string.zen_title), onBack) {
+        ToolAmbienceEffect(R.raw.ocean)
         Text(stringResource(R.string.zen_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         SectionCard {
@@ -213,9 +237,16 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
+<<<<<<< HEAD
                         rippleCount++
                         Haptics.soft(0.35f)
                         if (waterSoundEnabled) waterSound.play(offset.x / size.width.coerceAtLeast(1).toFloat())
+=======
+                        // Pitch tracks where you touched — higher up the pool rings
+                        // brighter. Twelve identical plinks would grate; this way a
+                        // run of taps plays as a little phrase.
+                        Sfx.playRipple(rippleBrightness(offset.y, size.height.toFloat()))
+>>>>>>> 2869a68cd34702cd622e3c8e661d57347757bd58
                     }
                 }
                 .semantics { contentDescription = canvasCd },
@@ -258,13 +289,16 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
     var entries by remember { mutableStateOf(Gratitude.all()) }
     var draft by remember { mutableStateOf("") }
 
-    SubPage(stringResource(R.string.gratitude_eyebrow), stringResource(R.string.gratitude_title), onBack) {
+    PremiumSubPage(stringResource(R.string.gratitude_eyebrow), stringResource(R.string.gratitude_title), onBack) {
+        ToolAmbienceEffect(R.raw.rain)
         Text(stringResource(R.string.gratitude_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AppTextField(draft, { draft = it }, stringResource(R.string.gratitude_field_label), singleLine = true)
         PrimaryButton(text = stringResource(R.string.gratitude_plant_cta), enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
             entries = Gratitude.add(draft)
             draft = ""
+            // Something opening — the sound of the flower landing.
+            Sfx.playActivity(MediaCatalog.Keys.GAME_BLOOM)
         }
         // The soil: every real entry becomes one flower at a deterministic spot.
         val soilCd = stringResource(R.string.gratitude_soil_cd, entries.size)

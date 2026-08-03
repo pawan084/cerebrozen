@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+# `env/` too, not just venv/.venv: a Windows virtualenv under this name (plus a
+# second at backend/env/) was committed whole — 10,804 files including Scripts/*.exe.
+env/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
@@ -41,8 +44,16 @@ temp/
 
 # OS / editor
 .DS_Store
+# macOS writes __MACOSX/._* AppleDouble stubs when unzipping; 3,466 of them were
+# committed alongside an unpacked third-party APK.
+__MACOSX/
 .idea/
 .vscode/
+
+# Unpacked/downloaded app bundles used as references — never source
+*.xapk
+*.apk
+*.aab
 
 # Xcode
 xcuserdata/

@@ -5,9 +5,13 @@
 
 import { api } from "@/lib/api";
 
+// 8-step funnel (Android precedent): the 18+ attest merged into "disclosure"
+// and the fake "first_plan" preview was killed. The canonical backend
+// vocabulary (metrics.ONBOARDING_STEPS) still lists age_gate/first_plan —
+// they simply never fire from web.
 export const STEP_NAMES = [
-  "welcome", "age_gate", "disclosure", "language", "state_check",
-  "first_reset", "first_plan", "signup", "consent", "notifications",
+  "welcome", "disclosure", "language", "state_check",
+  "first_reset", "signup", "consent", "notifications",
 ] as const;
 
 // One feeling tap is the whole "assessment" — each maps into the shared
@@ -30,24 +34,10 @@ export const FEELINGS: {
 export const LANGUAGES = ["English", "Hindi", "Hinglish", "Punjabi", "Tamil"];
 export const REMINDER_TIMES = ["Morning 9 AM", "Evening 7 PM", "No reminders"];
 
-// Headline the first plan around the chosen goal (mirrors iOS FirstPlanScreen).
-export function planTitle(goal: string | undefined): string {
-  switch (goal) {
-    case "Sleep better": return "Sleep deeper";
-    case "Reduce stress": return "Ease today's stress";
-    case "Stop overthinking": return "Quiet the noise";
-    case "Build confidence": return "Steady confidence";
-    case "Feel less alone": return "Feel more connected";
-    case "Strengthen willpower": return "Small promises, kept";
-    default: return "A calmer day";
-  }
-}
-
-export const PLAN_STEPS = [
-  { title: "Breathing reset", detail: "3 min · recommended now", emoji: "🌬️" },
-  { title: "Night journal", detail: "5 min reflection", emoji: "📖" },
-  { title: "Reminder timing", detail: "Evening private nudge", emoji: "🔔" },
-];
+// `planTitle` and `PLAN_STEPS` used to live here, feeding a "your first plan"
+// preview step. They are gone with it: the three steps were static and identical
+// for every user, so the screen presented a canned list as personalization. iOS
+// and Android had already dropped the same fake; web was the last one carrying it.
 
 // All six DPDP categories — the same set the account page and the 13-language
 // notice carry. "Specific and informed" means the category is shown at the
@@ -96,8 +86,9 @@ export function loadDraft(): Draft {
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
     if (!raw) return freshDraft();
-    // Deep-merge `consent` so a draft saved before a category existed still
-    // yields a boolean for it (an undefined toggle would go uncontrolled).
+    // Deep-merge `consent` so a draft saved before a category existed (e.g.
+    // model_training) still yields a boolean for it, private-by-default — an
+    // undefined toggle would also go uncontrolled.
     const base = freshDraft();
     const saved = JSON.parse(raw) as Partial<Draft>;
     return { ...base, ...saved, consent: { ...base.consent, ...(saved.consent ?? {}) } };

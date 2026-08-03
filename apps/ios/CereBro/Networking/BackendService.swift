@@ -92,6 +92,7 @@ final class BackendService: ObservableObject {
             let me = try await APIClient.shared.me()
             user = me
             status = .connected(email: me.email)
+            Analytics.unlock()   // existing account = established relationship
             await refresh()   // restored sessions should load the plan + insights too
             oracleAvailable = await APIClient.shared.oracleStatus()
             await syncPushToken()
@@ -140,6 +141,7 @@ final class BackendService: ObservableObject {
         let me = try await APIClient.shared.me()
         user = me
         status = .connected(email: me.email)
+        Analytics.unlock()   // authenticated session unlocks telemetry (DPDP gate)
         // Push the local self-reflection BEFORE the first refresh, so the very
         // first plan/insights fetch personalizes off the user's onboarding
         // choices instead of profile defaults.

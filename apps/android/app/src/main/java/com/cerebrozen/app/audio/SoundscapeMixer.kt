@@ -23,14 +23,20 @@ object SoundscapeMixer {
     /** One blendable ambient layer. [symbol] is the stable id (icon lookup, and
      * the same key the presets are documented against); [nameRes] is the display
      * label, resolved in composition so it localizes — same treatment the
-     * presets one block below already get. */
-    data class Layer(@androidx.annotation.StringRes val nameRes: Int, val rawRes: Int, val symbol: String)
+     * presets one block below already get. [key] is the media-catalogue key whose
+     * uploaded server asset supersedes the bundled loop. */
+    data class Layer(
+        @androidx.annotation.StringRes val nameRes: Int,
+        val rawRes: Int,
+        val symbol: String,
+        val key: String,
+    )
 
     val layers = listOf(
-        Layer(R.string.layer_rain, R.raw.rain, "rain"),
-        Layer(R.string.layer_ocean, R.raw.ocean, "ocean"),
-        Layer(R.string.layer_wind, R.raw.wind, "wind"),
-        Layer(R.string.layer_drone, R.raw.drone, "drone"),
+        Layer(R.string.mixer_layer_rain, R.raw.rain, "rain", MediaCatalog.Keys.AMBIENCE_RAIN),
+        Layer(R.string.mixer_layer_ocean, R.raw.ocean, "ocean", MediaCatalog.Keys.AMBIENCE_OCEAN),
+        Layer(R.string.mixer_layer_wind, R.raw.wind, "wind", MediaCatalog.Keys.AMBIENCE_WIND),
+        Layer(R.string.mixer_layer_drone, R.raw.drone, "drone", MediaCatalog.Keys.AMBIENCE_DRONE),
     )
 
     /** W27 §3 (Calm study): a named one-tap volume vector over the four layers.

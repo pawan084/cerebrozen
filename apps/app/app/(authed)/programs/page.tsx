@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { WhyThisWorks } from "@/components/WhyThisWorks";
 import { Icon } from "@/components/icons";
 import { JourneyPath, type DayGuide } from "@/components/JourneyPath";
 import { API_URL, api } from "@/lib/api";
@@ -28,7 +29,7 @@ const THUMBS = [
 // `today_guide` and `guides` are both additive — omitted for programs with no
 // day guides, and by servers older than the migrations that added them. `guides`
 // is the whole ordered week; `today_guide` stays for older clients and as the
-// fallback when a server sends only that.
+// fallback when a server sends only that. Tolerate absence, never require it.
 type Active = {
   content_id: string;
   title: string;
@@ -85,7 +86,7 @@ export default function Programs() {
           className="media-hero cz-in"
           style={{
             background:
-              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), var(--night)",
+              "linear-gradient(120deg, rgba(90,82,201,0.5), rgba(20,16,44,0.3)), radial-gradient(circle at 85% 30%, rgba(166,139,255,0.3), transparent 45%), #0e0c22",
           }}
         >
           <p className="eyebrow">Multi-day paths to a calmer baseline</p>
@@ -190,6 +191,7 @@ export default function Programs() {
           ))}
         </div>
 
+        <WhyThisWorks text="Programs are evidence-informed — built on CBT and sleep-science techniques." />
         <p className="footnote">
           Programs are curated from the same catalogue the iOS &amp; Android apps read. Your{" "}
           <Link href="/plan">daily plan</Link> adapts to them as you check in.

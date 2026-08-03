@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { ApiError, api, clearToken, getToken, login, setToken } from "@/lib/api";
+import { API_URL, ApiError, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
-type Tab = "overview" | "analytics" | "users" | "content" | "prompts" | "nudges" | "safety" | "waitlist";
+type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "analytics", label: "Analytics" },
   { key: "users", label: "Users" },
   { key: "content", label: "Content" },
+  { key: "media", label: "Media" },
   { key: "prompts", label: "Prompts" },
+  { key: "oracle", label: "Oracle" },
   { key: "nudges", label: "Nudges" },
   { key: "safety", label: "Safety" },
   { key: "waitlist", label: "Waitlist" },
@@ -73,7 +75,8 @@ export default function AdminPage() {
           <BrandMark size={26} /> CereBro
         </div>
         {TABS.map((t) => {
-          const I = Icon[t.key];
+          // Fallback glyph: a missing icon must never take down the dashboard.
+          const I = Icon[t.key] ?? Icon.overview;
           return (
             <button
               key={t.key}
@@ -101,7 +104,9 @@ export default function AdminPage() {
         {tab === "analytics" && <Analytics />}
         {tab === "users" && <Users />}
         {tab === "content" && <Content />}
+        {tab === "media" && <Media />}
         {tab === "prompts" && <PromptsTab />}
+        {tab === "oracle" && <OracleTab />}
         {tab === "nudges" && <NudgesTab />}
         {tab === "safety" && <Safety />}
         {tab === "waitlist" && <WaitlistTab />}
@@ -741,6 +746,150 @@ const EMPTY_CONTENT = {
   narration_script: "", day_guides: [] as { title: string; body: string }[],
 };
 
+// ── Media catalogue ─────────────────────────────────────────────────────
+// Every sound and video the clients can play, addressed by a stable key. The
+// clients ship with a bundled loop or a synthesized tone for each key, so a row
+// with an empty `url` is NOT broken — it means "no server asset yet, the app is
+// playing its own fallback". Uploading here replaces that sound for every user
+// on their next launch, with no app release. `scene.*` is the exception worth
+// calling out: there is no such thing as a synthesized video, so those keys are
+// genuinely silent-until-uploaded (the clients draw their generative artwork).
+const MEDIA_KIND_HELP: Record<string, string> = {
+  ambience: "Looping bed. Empty ⇒ the app plays its bundled loop.",
+  breathe: "Breath phase cue. Empty ⇒ the app plays its synthesized glide.",
+  game: "Toolkit activity sound. Empty ⇒ the app plays its synthesized tone.",
+  chime: "One-shot chime. Empty ⇒ the app plays its synthesized bell.",
+  scene: "Looping background video. Empty ⇒ no video plays (the app draws its aurora instead).",
+};
+
+const MEDIA_ACCEPT = ".mp3,.m4a,.ogg,.wav,.mp4,.webm";
+
+function Media() {
+  const { data, err, reload } = useData<any[]>(() => api("/admin/media"));
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+
+  async function onPick(asset: any, file: File | undefined) {
+    if (!file) return;
+    setBusyId(asset.id);
+    setMsg("");
+    try {
+      await upload(`/admin/media/${asset.id}/upload`, file);
+      setMsg(`Uploaded ${file.name} → ${asset.key}. Clients pick it up on next launch.`);
+      reload();
+    } catch (e: any) {
+      setMsg(String(e?.message || e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function clearAsset(asset: any) {
+    setBusyId(asset.id);
+    try {
+      // Point the key back at nothing: the clients fall straight back to their
+      // bundled/synthesized sound. (Deleting the row would remove the key itself,
+      // which is a schema change, not a content one — hence "Clear", not "Delete".)
+      await api(`/admin/media/${asset.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ url: "", mime: "" }),
+      });
+      setMsg(`Cleared ${asset.key} — the app is back on its built-in sound.`);
+      reload();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const rows = data ?? [];
+  const filled = rows.filter((a: any) => a.url).length;
+  const groups = Array.from(new Set(rows.map((a: any) => a.kind)));
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title serif">Media catalogue</h1>
+          <div className="page-sub" style={{ marginBottom: 0 }}>
+            {filled} of {rows.length} keys have an uploaded asset — the rest play the
+            app&apos;s built-in sound, which is normal.
+          </div>
+        </div>
+      </div>
+
+      <Problem err={err} onRetry={reload} />
+      {msg && <div className="card" style={{ marginBottom: 12 }}>{msg}</div>}
+
+      {groups.map((kind) => (
+        <div key={String(kind)} className="card" style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 10 }}>
+            <strong className="serif" style={{ fontSize: 16, textTransform: "capitalize" }}>{String(kind)}</strong>
+            <div className="page-sub" style={{ marginBottom: 0 }}>{MEDIA_KIND_HELP[String(kind)] || ""}</div>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Title</th>
+                <th>Asset</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.filter((a: any) => a.kind === kind).map((a: any) => {
+                const busy = busyId === a.id;
+                const isVideo = String(a.mime).startsWith("video/");
+                return (
+                  <tr key={a.id}>
+                    <td><code>{a.key}</code></td>
+                    <td>{a.title}</td>
+                    <td>
+                      {a.url ? (
+                        isVideo ? (
+                          <video src={`${API_URL}${a.url}`} muted loop playsInline controls style={{ maxWidth: 200, borderRadius: 6 }} />
+                        ) : (
+                          <audio src={`${API_URL}${a.url}`} controls preload="none" style={{ maxWidth: 220 }} />
+                        )
+                      ) : (
+                        <span className="page-sub">
+                          {kind === "scene" ? "No video — the app draws its aurora" : "Using the app's built-in sound"}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <label className="btn" style={{ cursor: busy ? "wait" : "pointer" }}>
+                        {busy ? "Uploading…" : a.url ? "Replace" : "Upload"}
+                        <input
+                          type="file"
+                          accept={MEDIA_ACCEPT}
+                          disabled={busy}
+                          style={{ display: "none" }}
+                          onChange={(e) => { onPick(a, e.target.files?.[0]); e.target.value = ""; }}
+                        />
+                      </label>
+                      {a.url && (
+                        <button className="btn" disabled={busy} onClick={() => clearAsset(a)} style={{ marginLeft: 8 }}>
+                          Clear
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {rows.length === 0 && !err && (
+        <div className="card">
+          No catalogue keys. They are seeded on backend boot — check that the API started.
+        </div>
+      )}
+    </>
+  );
+}
+
 function Content() {
   const uid = useId();
   const { data, err, reload } = useData<any[]>(() => api("/admin/content"));
@@ -863,6 +1012,11 @@ function Content() {
           <div>
             <label htmlFor={`${uid}-duration`}>Duration (min)</label>
             <input id={`${uid}-duration`} type="number" min={0} value={form.duration_min} onChange={(e) => set("duration_min", e.target.value)} />
+            <small className="field-hint">
+              Generating audio overwrites this with the real length of the MP3 —
+              for a narrated item the file is the content, so the number clients
+              show has to match it.
+            </small>
           </div>
           <div>
             <label htmlFor={`${uid}-symbol`}>Icon</label>
@@ -1525,6 +1679,117 @@ function WaitlistTab() {
           </tbody>
         </table>
         {data && data.length === 0 && !err && <Empty>No signups yet.</Empty>}
+      </div>
+    </>
+  );
+}
+
+// ── Oracle ops ──────────────────────────────────────────────────────────
+// The agent can WRITE user data (mood, journal, sleep) behind an in-chat
+// confirmation. This tab is the only operator view of that: what it ran, what
+// was approved, and what is still waiting. Argument VALUES are deliberately
+// never sent by the API — only their names.
+
+type OracleCall = {
+  id: string;
+  thread_id: string;
+  tool: string;
+  risk_tier: string;
+  decision: string;
+  arg_keys: string[];
+  created_at: string;
+  resolved_at: string | null;
+};
+
+function ago(iso: string) {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 90) return `${Math.round(secs)}s ago`;
+  if (secs < 5400) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 172800) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
+}
+
+function decisionTag(decision: string) {
+  const cls =
+    decision === "approved" ? "ok" : decision === "pending" ? "elevated" : "muted";
+  return <span className={`tag ${cls}`}>{decision}</span>;
+}
+
+function OracleTab() {
+  const { data: status, err: statusErr } = useData<any>(() => api("/admin/oracle/status"));
+  const { data: pending, err: pendingErr } = useData<OracleCall[]>(() => api("/admin/oracle/pending"));
+  const { data: trail, err: trailErr } = useData<OracleCall[]>(() => api("/admin/oracle/audit?limit=25"));
+
+  return (
+    <>
+      <h1 className="page-title serif">Oracle</h1>
+      <div className="page-sub">
+        What the agent did, and what it is still waiting on. Tool arguments are recorded
+        by name only — never their values.
+      </div>
+      <Problem err={statusErr} />
+
+      <div className="stats">
+        <div className="stat"><div className="n">{status?.enabled ? "Live" : "Off"}</div><div className="l">Agent</div></div>
+        <div className="stat"><div className="n">{status?.checkpointer ?? "—"}</div><div className="l">Checkpointer</div></div>
+        <div className="stat"><div className="n">{status?.counts?.pending ?? 0}</div><div className="l">Pending</div></div>
+        <div className="stat"><div className="n">{status?.counts?.approved ?? 0}</div><div className="l">Approved</div></div>
+        <div className="stat"><div className="n">{status?.counts?.total ?? 0}</div><div className="l">Tool calls</div></div>
+      </div>
+
+      {status?.checkpointer === "memory" && (
+        <div className="card" style={{ borderColor: "var(--danger)", marginBottom: 20 }}>
+          Running on the in-process MemorySaver — paused confirmations will not survive a
+          restart and do not cross workers. Check the boot logs for why Postgres
+          checkpointing failed.
+        </div>
+      )}
+      {status?.checkpointer === "none" && (
+        <div className="page-sub" style={{ marginBottom: 20 }}>
+          The agent graph has not been built in this process — expected when no LLM key is
+          set, or before the first Oracle request of the process.
+        </div>
+      )}
+
+      <h3 className="serif" style={{ marginBottom: 10 }}>Awaiting a decision</h3>
+      <Problem err={pendingErr} />
+      <div className="card">
+        <table>
+          <thead><tr><th>Tool</th><th>Arguments</th><th>Thread</th><th>Waiting</th></tr></thead>
+          <tbody>
+            {(pending || []).map((r) => (
+              <tr key={r.id}>
+                <td className="mono">{r.tool}</td>
+                <td className="mono">{r.arg_keys.join(", ") || "—"}</td>
+                <td className="mono">{r.thread_id}</td>
+                <td>{ago(r.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {pending && pending.length === 0 && <div className="empty">Nothing stuck right now.</div>}
+      </div>
+
+      <h3 className="serif" style={{ marginTop: 24, marginBottom: 10 }}>Recent tool calls</h3>
+      <Problem err={trailErr} />
+      <div className="card">
+        <table>
+          <thead><tr><th>Tool</th><th>Tier</th><th>Decision</th><th>Arguments</th><th>When</th></tr></thead>
+          <tbody>
+            {(trail || []).map((r) => (
+              <tr key={r.id}>
+                <td className="mono">{r.tool}</td>
+                <td><span className="tag muted">{r.risk_tier}</span></td>
+                <td>{decisionTag(r.decision)}</td>
+                <td className="mono">{r.arg_keys.join(", ") || "—"}</td>
+                <td>{ago(r.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {trail && trail.length === 0 && (
+          <div className="empty">No agent tool calls yet.</div>
+        )}
       </div>
     </>
   );
