@@ -163,7 +163,7 @@
     <string name="talk_chip_breathe">Breathe with me</string>
     <string name="talk_chip_ground">Ground yourself</string>
     <string name="talk_suggested_activity">Suggested activity</string>
-    <string name="talk_ios_only">This one lives in the iOS app.</string>
+    <string name="talk_ios_only">This one isn&#8217;t in the Android app yet.</string>
     <string name="talk_orb_stop_cd">Stop listening</string>
     <string name="talk_orb_talk_cd">Talk to CereBro</string>
 
@@ -702,7 +702,7 @@
     <string name="premium_monthly_price">₹499 / month</string>
     <string name="premium_monthly_note">Cancel anytime</string>
     <string name="premium_cta">Start free trial</string>
-    <string name="premium_billing_note">Billing isn\'t wired on Android yet — Play Billing lands with Play Console setup. On iOS this is live via StoreKit.</string>
+    <string name="premium_billing_note">Billing isn\'t wired on Android yet — Play Billing lands with Play Console setup.</string>
     <string name="reminders_eyebrow">A gentle daily nudge</string>
     <string name="reminders_title">Daily reminder</string>
     <string name="reminders_toggle_title">Daily check-in reminder</string>
@@ -1428,6 +1428,10 @@
     <string name="trends_sleep_not_enough">%1$d nights logged so far — a few more and a shape starts to show.</string>
     <string name="trends_empty_title">Nothing to chart yet</string>
     <string name="trends_empty_body">Check in on Home or log a night on Sleep, and this fills in on its own.</string>
+    <!-- Shown instead of trends_empty_body when mood or sleep history consent is
+         OFF: the server honours the flag, so "check in and this fills in" would
+         be false. Truth first, then the way to change it. -->
+    <string name="trends_empty_consent_off">Mood or sleep history is switched off, so Trends can\'t chart it — you can change that any time in Privacy &amp; memory.</string>
     <string name="trends_error_title">Couldn\'t load your trends</string>
     <string name="trends_load_failed">Couldn\'t load your trends just now.</string>
     <string name="trends_link_title">Sleep and the day after</string>

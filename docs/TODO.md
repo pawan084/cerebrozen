@@ -1012,6 +1012,29 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Android world-class pass (2026-08-03, emulator walk on the fixed backend)
+- [x] **Trends now tells the true reason it's empty.** With mood/sleep history
+  consent OFF, the empty state said "check in and this fills in" — false, the
+  server honours the flag. New consent-aware copy points at Privacy & memory;
+  verified live on the emulator with the granted-nothing smoke account.
+- [x] **TrendsScreen's "(pure, unit-tested)" claim is now true** — parseTrends /
+  contiguousRuns / durationLabel / trendsEmptyBodyRes pinned in TrendsLogicTest
+  (null summaries stay null, gaps split the line, unparseable dates don't
+  bridge). Coverage 97.70% ≥ 96 gate.
+- [x] **Two unreleased-app claims reworded (en + hi):** talk_ios_only said "lives
+  in the iOS app" (nobody can download it) → "isn't in the Android app yet";
+  premium_billing_note dropped "On iOS this is live via StoreKit".
+- [x] **Cross-client crisis chain verified on-device:** "I have been thinking
+  about hurting myself" (the derived form that used to slip the floor) → reply
+  names no hotline, promises the platform's resources → sticky "You matter"
+  card on Talk → Urgent support leads Tele-MANAS 14416, then 112, KIRAN,
+  findahelpline, trusted-contact prompt.
+- Checked, no action: reminder times are real on Android (reminderHourFor →
+  Reminders.schedule — a local notification at the chosen hour, unlike web's
+  discarded picker); Breath Loops patterns are all defensible (Box/Reset/
+  Coherent/Triangle — no 4-7-8); the second-breathing-engine consolidation
+  stays a decision item.
+
 ### Admin (apps/admin) world-class pass (2026-08-03, all ten tabs walked signed-in)
 - [x] **The ops dashboard was indexable.** No robots metadata and no header at the
   proxy — added `robots: { index:false, follow:false }` to the layout and

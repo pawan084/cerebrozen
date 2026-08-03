@@ -122,6 +122,18 @@ internal fun durationLabel(minutes: Int): String =
     if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
 
 /**
+ * Which empty-state line an empty Trends screen shows.
+ *
+ * "Check in and this fills in" is a lie when the real reason is that mood or
+ * sleep history is switched OFF in Privacy & memory — the server honours the
+ * consent flag and will never read those check-ins, however many there are.
+ * Say the true reason and point at the switch.
+ */
+internal fun trendsEmptyBodyRes(moodAllowed: Boolean, sleepAllowed: Boolean): Int =
+    if (moodAllowed && sleepAllowed) R.string.trends_empty_body
+    else R.string.trends_empty_consent_off
+
+/**
  * Which points are contiguous in time, so the chart can break the line across a
  * gap instead of drawing through it.
  *
@@ -155,6 +167,9 @@ internal fun TrendsScreen(onBack: () -> Unit) {
     var trends by remember { mutableStateOf<Trends?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Which empty-state copy is honest (see trendsEmptyBodyRes). Read once; a
+    // failed consent read falls back to the default copy rather than blocking.
+    var emptyBodyRes by remember { mutableIntStateOf(R.string.trends_empty_body) }
 
     val loadFailed = stringResource(R.string.trends_load_failed)
     LaunchedEffect(days) {
@@ -164,6 +179,14 @@ internal fun TrendsScreen(onBack: () -> Unit) {
             .onSuccess { trends = it }
             .onFailure { error = it.userMessage(loadFailed) }
         loading = false
+    }
+    LaunchedEffect(Unit) {
+        runCatching { Api.consent() }.onSuccess {
+            emptyBodyRes = trendsEmptyBodyRes(
+                moodAllowed = it.optBoolean("mood_history"),
+                sleepAllowed = it.optBoolean("sleep_history"),
+            )
+        }
     }
 
     SubPage(
@@ -224,7 +247,7 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
                             )
                             Text(
-                                stringResource(R.string.trends_empty_body),
+                                stringResource(emptyBodyRes),
                                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                             )
                         }

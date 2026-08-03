@@ -107,7 +107,7 @@
     <string name="talk_chip_breathe">मेरे साथ साँस लें</string>
     <string name="talk_chip_ground">वर्तमान में लौटें</string>
     <string name="talk_suggested_activity">सुझाई गई गतिविधि</string>
-    <string name="talk_ios_only">यह फ़िलहाल iOS ऐप में ही है।</string>
+    <string name="talk_ios_only">यह अभी Android ऐप में नहीं है।</string>
     <string name="talk_orb_stop_cd">सुनना बंद करें</string>
     <string name="talk_orb_talk_cd">CereBro से बात करें</string>
 
@@ -484,7 +484,7 @@
     <string name="premium_monthly_price">₹499 / माह</string>
     <string name="premium_monthly_note">कभी भी रद्द करें</string>
     <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
-    <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी। iOS पर यह StoreKit के ज़रिये चालू है।</string>
+    <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी।</string>
     <string name="reminders_eyebrow">एक हल्की-सी रोज़ की याद</string>
     <string name="reminders_title">दैनिक रिमाइंडर</string>
     <string name="reminders_toggle_title">दैनिक चेक-इन रिमाइंडर</string>
