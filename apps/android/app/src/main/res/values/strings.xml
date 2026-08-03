@@ -367,7 +367,14 @@
     <string name="journal_tuned_tired_title">Put the day down</string>
     <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
-    <string name="journal_new_subtitle">Private writing, safety-aware</string>
+    <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
+    <string name="journal_recent_header">Recent</string>
+    <string name="journal_lock_state_on">Lock is on · manage privacy</string>
+    <string name="journal_lock_state_off">Lock is off · manage privacy</string>
+    <plurals name="journal_month_count">
+        <item quantity="one">%1$d entry this month · searchable</item>
+        <item quantity="other">%1$d entries this month · searchable</item>
+    </plurals>
     <string name="journal_history_subtitle">Your past entries, searchable</string>
     <string name="journal_private_mode">Private mode</string>
     <string name="journal_private_subtitle">Lock the journal, manage privacy</string>

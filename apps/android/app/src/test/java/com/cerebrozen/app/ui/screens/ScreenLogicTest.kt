@@ -669,4 +669,18 @@ class ScreenLogicTest {
         assertEquals("TODAY", daySeparator(list, 3, today))
         assertNull(daySeparator(list, 4, today))
     }
+
+    @Test
+    fun entriesThisMonth_counts_only_this_calendar_month_and_skips_garbage() {
+        val today = java.time.LocalDate.parse("2026-08-03")
+        val entries = listOf(
+            Entry("a", "x", "2026-08-01", "none"),
+            Entry("b", "x", "2026-08-03", "none"),
+            Entry("c", "x", "2026-07-31", "none"),   // last month
+            Entry("d", "x", "2025-08-10", "none"),   // last year, same month name
+            Entry("e", "x", "not-a-date", "none"),
+        )
+        assertEquals(2, entriesThisMonth(entries, today))
+        assertEquals(0, entriesThisMonth(emptyList(), today))
+    }
 }

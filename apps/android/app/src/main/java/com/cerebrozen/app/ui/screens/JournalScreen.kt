@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Save
@@ -175,6 +174,15 @@ internal fun filterEntries(entries: List<Entry>, query: String): List<Entry> {
     if (q.isEmpty()) return entries
     return entries.filter { it.title.contains(q, ignoreCase = true) || it.body.contains(q, ignoreCase = true) }
 }
+
+/** How many entries fall in [today]'s calendar month — the honest number the
+ * hub states (Entry.date is the "yyyy-MM-dd" prefix). Unparseable dates are
+ * not counted. Pure. */
+internal fun entriesThisMonth(entries: List<Entry>, today: LocalDate): Int =
+    entries.count { e ->
+        runCatching { LocalDate.parse(e.date) }.getOrNull()
+            ?.let { it.year == today.year && it.month == today.month } == true
+    }
 
 /** Journal: private composer + history, mirrored to /journal (safety-scanned
  * server-side; support surfaces, never blocks). Re-skinned to the redesign's
@@ -522,6 +530,14 @@ fun JournalScreen() {
             subtitle = if (tuned != null) stringResource(tuned.prompt)
                        else stringResource(R.string.journal_hero_subtitle),
             height = 220.dp,
+            // The prompt is an invitation — tapping it accepts: the composer
+            // opens with the prompt as the title (never overwriting a draft).
+            onClick = {
+                if (title.isBlank()) {
+                    title = if (tuned != null) "" else prompts[promptIdx]
+                }
+                mode = JournalMode.Entry
+            },
         ) {
             TextButton(
                 onClick = {
@@ -534,14 +550,43 @@ fun JournalScreen() {
             ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
         }
 
-        NavRow(stringResource(R.string.journal_new_title), stringResource(R.string.journal_new_subtitle), Icons.Outlined.Edit) {
-            mode = JournalMode.Entry
-        }
-        NavRow(stringResource(R.string.journal_history_title), stringResource(R.string.journal_history_subtitle), Icons.Outlined.History) {
+        // Writing is what this tab is FOR — it gets the one primary button.
+        // History and Private stay quiet rows.
+        PrimaryButton(
+            text = stringResource(R.string.journal_new_title),
+            modifier = Modifier.fillMaxWidth(),
+        ) { mode = JournalMode.Entry }
+
+        val monthCount = entriesThisMonth(entries, LocalDate.now())
+        NavRow(
+            stringResource(R.string.journal_history_title),
+            if (monthCount > 0)
+                androidx.compose.ui.res.pluralStringResource(R.plurals.journal_month_count, monthCount, monthCount)
+            else stringResource(R.string.journal_history_subtitle),
+            Icons.Outlined.History,
+        ) {
             mode = JournalMode.History
         }
-        NavRow(stringResource(R.string.journal_private_mode), stringResource(R.string.journal_private_subtitle), Icons.Outlined.Lock) {
+        NavRow(
+            stringResource(R.string.journal_private_mode),
+            // The row carries its state — a lock you can't see is a lock you
+            // don't trust.
+            if (journalLocked) stringResource(R.string.journal_lock_state_on)
+            else stringResource(R.string.journal_lock_state_off),
+            Icons.Outlined.Lock,
+        ) {
             mode = JournalMode.Private
+        }
+
+        // Your writing, on the tab named for it: the two most recent entries
+        // inline (History keeps the full list). A journal hub that never shows
+        // a word you wrote feels empty even when it isn't.
+        if (entries.isNotEmpty()) {
+            Text(stringResource(R.string.journal_recent_header),
+                style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            entries.take(2).forEachIndexed { i, e ->
+                JournalEntryCard(e, i) { reading = e; mode = JournalMode.Read }
+            }
         }
 
         // Safety contract: support is surfaced, the entry is never blocked.
