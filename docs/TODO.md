@@ -1041,9 +1041,17 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   lacks — round counting, session history, Coherent/Triangle pacings — but two pacing sources
   will drift (they already disagreed once, on 4-7-8). Fold the loop/history layer over
   `breathePhases`, or retire one. Decide before the next breathing change, not during it.
-- [ ] **Android Trends screen: verify against a live backend + both themes on device.** The
-  backend `/insights/trends` contract is well-tested; the Compose screen is compile+unit-tested
-  only on this host (same standing caveat as every screen — emulator smoke on next dev loop).
+- [x] **Android Trends screen verified on the emulator against the live backend** (2026-08-03
+  smoke): renders, honest "Nothing to chart yet" for a granted-nothing account even after a
+  check-in wrote data — the consent gate working end to end. Follow-up nit: the empty-state copy
+  says "Check in on Home … and this fills in", but when the real reason is mood_history OFF it
+  should say so and point at Privacy & memory (client can read its own consent via
+  `Api.consent()`; no backend change needed).
+- [ ] **You/Toolkit render premium-dark over Dawn chrome.** With the funnel and every tab
+  theme-following, the You screen's PremiumNavRow cards and the Toolkit's fixed dark gradient
+  are now the two surfaces that stay dark on a light system — by design (premium glass) or by
+  accident? Looked fine on the emulator walk, but it's a deliberate-or-not question for the
+  owner with both themes side by side.
 - [ ] **The offline guidance pack (BodyScan / CBT-I / MBCT / journeys / insight reel) carries
   clinical-adjacent copy added 2026-08-03** — English-only, and deliberately NOT in `values-hi`
   (same posture as the crisis/TIPP omit list). Wants the same clinical review pass as the rest
