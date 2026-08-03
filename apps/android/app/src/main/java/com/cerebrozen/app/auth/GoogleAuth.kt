@@ -14,6 +14,9 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
  * or null if it's unconfigured / cancelled / unavailable — so the caller can
  * degrade gracefully (mirrors the iOS "inert until GIDClientID is set" state).
  */
+//kksjfkd
+
+//ksjdflksdf]
 suspend fun googleIdToken(context: Context, webClientId: String): Pair<String, String>? {
     if (webClientId.isBlank()) return null
     return try {
