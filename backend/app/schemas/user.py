@@ -1,7 +1,9 @@
+import re
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter, model_validator
 
 
 class ConsentSchema(BaseModel):
@@ -128,14 +130,53 @@ class SubscriptionVerify(BaseModel):
     signed_transaction: str
 
 
+_EMAIL = TypeAdapter(EmailStr)
+
+
 class TrustedContactIn(BaseModel):
+    """The person to reach in a detected crisis.
+
+    The value is validated against the chosen method: this is the one contact
+    the product may ever use on someone's behalf in their worst moment, and a
+    typo'd address fails silently exactly then. Found on-device 2026-08-03 —
+    an adb-mangled "sister%40example.com" saved without complaint.
+    """
+
     name: str = Field(default="", max_length=120)
-    method: str = Field(default="email", max_length=20)  # email | sms | phone
+    method: Literal["email", "sms", "phone"] = "email"
     value: str = Field(default="", max_length=255)
     relationship: str = Field(default="", max_length=60)
     notify_consent: bool = False
 
+    @model_validator(mode="after")
+    def _value_matches_method(self) -> "TrustedContactIn":
+        self.value = self.value.strip()
+        if not self.value:
+            # An empty draft may be saved — but consent to contact nobody is a
+            # promise the product cannot keep, so it cannot be switched on.
+            if self.notify_consent:
+                raise ValueError("Add an email or number before turning on crisis contact.")
+            return self
+        if self.method == "email":
+            try:
+                _EMAIL.validate_python(self.value)
+            except ValueError as exc:
+                raise ValueError("That doesn't look like an email address.") from exc
+        else:  # sms | phone — digits with the usual separators, at least 7 digits
+            if len(re.sub(r"\D", "", self.value)) < 7 or not re.fullmatch(r"[+()\-.\s\d]+", self.value):
+                raise ValueError("That doesn't look like a phone number.")
+        return self
 
-class TrustedContactOut(TrustedContactIn):
+
+# NOT TrustedContactIn's subclass: the input validator must never run on rows
+# read back from the database — a historical row that predates validation (or
+# was written by an older build) should still be readable, not turn GET into
+# a 500. What's saved is shown as-is; only new writes are held to the format.
+class TrustedContactOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
+    name: str
+    method: str
+    value: str
+    relationship: str
+    notify_consent: bool

@@ -1028,6 +1028,17 @@ afternoon both suites were green).
   is genuinely wanted, it must ship on web + iOS + Android in one change,
   with the e2e pins updated — not by one client deleting its test. Until
   then the pin stands on all clients.
+- [x] **Trusted-contact values are validated against their method** (found
+  while emulator-testing the drop's clarity card: an adb-mangled
+  "sister%40example.com" saved fine and would have failed silently at
+  escalation). method is now a strict enum; email values must parse as
+  email, sms/phone as ≥7-digit numbers; consent cannot be switched on over
+  an empty value. Reads are deliberately unvalidated so historical rows
+  stay visible — the clarity card shows the typo, the validator prevents
+  the next one. Pinned in test_escalation.py.
+- [ ] Follow-up nit: Android's trusted_failed toast is generic — surface the
+  server's 422 detail ("That doesn't look like an email address.") the way
+  web's account page does.
 
 ### Web 100-point improvement run (2026-08-03, autonomous waves)
 The full list, per-item status, and what stays owner-blocked live in
