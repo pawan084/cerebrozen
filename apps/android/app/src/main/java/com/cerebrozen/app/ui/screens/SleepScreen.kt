@@ -77,6 +77,9 @@ import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -243,9 +246,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF0D1424), Color(0xFF172447), Color(0xFF241A4A)),
-                ),
+                Brush.verticalGradient(listOf(Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.72f), Night.copy(alpha = 0.82f))),
             ),
     ) {
         SleepBackgroundGlow()
@@ -559,8 +560,8 @@ private fun SleepPremiumHeader() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.displayLarge, color = Color.White)
-            Text(stringResource(R.string.sleep_premium_subtitle), style = MaterialTheme.typography.bodyMedium, color = Color(0xFFB7C2DC))
+            Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.displayLarge, color = TextPrimary)
+            Text(stringResource(R.string.sleep_premium_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         }
         Box(
             Modifier
@@ -649,8 +650,8 @@ private fun SleepGlassCard(
             .fillMaxWidth()
             .shadow(18.dp, shape, ambientColor = Color(0x33000000), spotColor = Color(0x33000000))
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xCC1A2340), Color(0xA8262B4A))))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
@@ -661,8 +662,8 @@ private fun SleepGlassCard(
 private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick: () -> Unit) {
     val emojis = listOf("😴", "😟", "😐", "🙂", "😊")
     val shape = RoundedCornerShape(24.dp)
-    val fill by animateColorAsState(if (selected) Color(0x447A5CFF) else Color(0x4D27304B), label = "moodFill")
-    val stroke by animateColorAsState(if (selected) Color(0xFF9B82FF) else Color.White.copy(alpha = 0.09f), label = "moodStroke")
+    val fill by animateColorAsState(if (selected) Periwinkle.copy(alpha = 0.22f) else CardFill, label = "moodFill")
+    val stroke by animateColorAsState(if (selected) Periwinkle else LineStroke, label = "moodStroke")
     Column(
         Modifier
             .height(78.dp)
@@ -675,7 +676,7 @@ private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick:
         verticalArrangement = Arrangement.Center,
     ) {
         Text(emojis.getOrElse(index) { "🙂" }, style = MaterialTheme.typography.titleLarge)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) Color.White else Color(0xFFC0C8DA))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextPrimary)
     }
 }
 
@@ -686,8 +687,8 @@ private fun HealthConnectCard(onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Color(0x4D203550))
-            .border(1.dp, Color(0x445CCBFF), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .clickable(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -695,8 +696,8 @@ private fun HealthConnectCard(onClick: () -> Unit) {
     ) {
         Icon(Icons.Outlined.HealthAndSafety, contentDescription = null, tint = Color(0xFF5CCBFF), modifier = Modifier.size(26.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = Color.White)
-            Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = Color(0xFFAEB9D0), maxLines = 3)
+            Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted, maxLines = 3)
         }
         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF5CCBFF))
     }
@@ -732,8 +733,8 @@ private fun SleepNavCard(icon: ImageVector, title: String, subtitle: String, onC
             .fillMaxWidth()
             .pressScale(pressed, down = 0.98f)
             .clip(shape)
-            .background(Color(0xB31A2340))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(18.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -747,8 +748,8 @@ private fun SleepNavCard(icon: ImageVector, title: String, subtitle: String, onC
             Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFFB18CFF))
     }

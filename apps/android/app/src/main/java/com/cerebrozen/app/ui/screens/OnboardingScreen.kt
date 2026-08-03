@@ -611,6 +611,9 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
 
 @Composable
 private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit) {
+    // Keep the same quiet bed as the full-screen reset. DisposableEffect inside
+    // this helper stops it as soon as onboarding advances, skips, or goes back.
+    ToolAmbienceEffect(R.raw.ambient_bed)
     // The orb, count and Reduce-Motion behaviour all come from the shared
     // BreatheEngine (Reset preset: four in, four out, no holds) — the same
     // engine every breathe surface in the app hosts.

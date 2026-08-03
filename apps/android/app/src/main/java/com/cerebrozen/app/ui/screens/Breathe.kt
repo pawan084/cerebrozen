@@ -55,6 +55,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,6 +65,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -84,8 +86,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
+import com.cerebrozen.app.audio.BreathVoice
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.FunnelHeaderTop
+import com.cerebrozen.app.ui.theme.FunnelHeaderBottom
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -93,6 +99,7 @@ import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.Teal
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.delay
 
 // The one breathing implementation (REDESIGN §2.2): every breathe surface —
@@ -196,11 +203,20 @@ fun BreatheEngine(
     chimeOn: Boolean = false,
     compact: Boolean = false,
 ) {
+    val context = LocalContext.current
+    val phaseVoice = remember { BreathVoice(context) }
+    DisposableEffect(phaseVoice) { onDispose { phaseVoice.dispose() } }
     val phases = remember(preset, secondsPerPhase) { breathePhases(preset, secondsPerPhase) }
     var phase by remember(preset, secondsPerPhase) { mutableIntStateOf(0) }
     var count by remember(preset, secondsPerPhase) { mutableIntStateOf(phases.first().seconds) }
     var breaths by remember(preset) { mutableIntStateOf(0) }
     val reduceMotion = rememberReduceMotion()
+    val spokenPhase = stringResource(phaseLabelRes(phases[phase].kind))
+
+    // Narration follows the exact same phase state as the label and orb. It is
+    // intentionally independent of the optional chime so eyes-closed guidance
+    // remains available while the quiet ambient bed continues underneath.
+    LaunchedEffect(phase, spokenPhase) { phaseVoice.speak(spokenPhase) }
 
     // One pacer for every preset: a 1-second tick counts the phase down, then
     // advances it. A gentle haptic marks each phase change — a rhythm you can
@@ -398,7 +414,8 @@ fun BreatheEngine(
  * routes. Title and framing vary by preset; the engine does the rest. */
 @Composable
 fun BreatheScreen(preset: BreathePreset, onBack: () -> Unit) {
-    val (eyebrow, title, intro) = when (preset) {
+    ToolAmbienceEffect(R.raw.ambient_bed)
+    val (_, title, intro) = when (preset) {
         BreathePreset.Box -> Triple(
             stringResource(R.string.breathe_box_eyebrow), stringResource(R.string.breathe_box_title),
             stringResource(R.string.breathe_box_intro),
@@ -424,7 +441,7 @@ fun BreatheScreen(preset: BreathePreset, onBack: () -> Unit) {
         BreathePreset.Color -> stringResource(R.string.breathe_color_detail)
         BreathePreset.Reset -> stringResource(R.string.breathe_reset_detail)
     }
-    ImmersiveBreatheFrame(eyebrow, title, detail, intro, onBack) {
+    ImmersiveBreatheFrame(title, detail, intro, onBack) {
         BreatheEngine(
             preset, Modifier.fillMaxWidth(),
             secondsPerPhase = pace, hapticsOn = hapticsOn, chimeOn = chimeOn,
@@ -443,7 +460,6 @@ fun BreatheScreen(preset: BreathePreset, onBack: () -> Unit) {
 
 @Composable
 private fun ImmersiveBreatheFrame(
-    eyebrow: String,
     title: String,
     detail: String,
     intro: String,
@@ -460,7 +476,7 @@ private fun ImmersiveBreatheFrame(
     )
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))),
+            Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)),
         ),
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -477,17 +493,12 @@ private fun ImmersiveBreatheFrame(
                 )
             }
         }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(listOf(Color.Transparent, Color(0x22000000), Color(0x66000000))),
-            ),
-        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            BreatheCompactHeader(eyebrow, title, detail, intro, onBack)
+            BreatheCompactHeader(title, detail, intro, onBack)
             Column(
                 Modifier.fillMaxWidth().appear(rise = 12f),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -498,7 +509,7 @@ private fun ImmersiveBreatheFrame(
 }
 
 @Composable
-private fun BreatheCompactHeader(eyebrow: String, title: String, detail: String, intro: String, onBack: () -> Unit) {
+private fun BreatheCompactHeader(title: String, detail: String, intro: String, onBack: () -> Unit) {
     val backLabel = stringResource(R.string.common_back)
     Column(
         Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
@@ -510,27 +521,22 @@ private fun BreatheCompactHeader(eyebrow: String, title: String, detail: String,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.07f))
-                    .border(1.dp, Color.White.copy(alpha = 0.13f), CircleShape)
+                Modifier.size(44.dp).clip(CircleShape).background(CardFill)
+                    .border(1.dp, LineStroke, CircleShape)
                     .clickable(onClickLabel = backLabel, onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = Color.White, modifier = Modifier.size(17.dp))
+                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = TextPrimary, modifier = Modifier.size(17.dp))
             }
             Text(
                 title,
                 style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold),
-                color = Color.White,
+                color = TextPrimary,
             )
         }
-        Column(Modifier.padding(start = 2.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Air, contentDescription = null, tint = Color(0xFF64C9FF), modifier = Modifier.size(14.dp))
-                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 1.4.sp), color = Color(0xFF9FCBEA))
-            }
-            Text(detail, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp), color = Color(0xFFD2D9EB))
-            Text(stringResource(R.string.breathe_estimated_time), style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp), color = Color(0xFF9FCBEA))
-            Text(intro, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp), color = Color(0xFFAEB9D0), maxLines = 2)
+        Column(Modifier.padding(start = 2.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(detail, style = MaterialTheme.typography.labelMedium, color = Cyan)
+            Text(intro, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp), color = TextMuted, maxLines = 2)
         }
     }
 }
@@ -538,10 +544,10 @@ private fun BreatheCompactHeader(eyebrow: String, title: String, detail: String,
 @Composable
 private fun BreathePaceControl(pace: Int, onPaceChange: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text(stringResource(R.string.breathe_pace_title), style = MaterialTheme.typography.titleMedium, color = Color.White)
+        Text(stringResource(R.string.breathe_pace_title), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color(0xB31A2340))
-                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(24.dp)).padding(5.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CardFill)
+                .border(1.dp, LineStroke, RoundedCornerShape(24.dp)).padding(5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             listOf(
@@ -556,7 +562,7 @@ private fun BreathePaceControl(pace: Int, onPaceChange: (Int) -> Unit) {
                         .clickable(role = Role.RadioButton, onClickLabel = label) { onPaceChange(value) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label.substringBefore(" ·"), style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else Color(0xFFAEB9D0))
+                    Text(label.substringBefore(" ·"), style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else TextMuted)
                 }
             }
         }
@@ -573,11 +579,11 @@ private fun BreatheGuidanceCard(
     val shape = RoundedCornerShape(24.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xD91A2340), Color(0xB823294B))))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), shape).padding(16.dp),
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(stringResource(R.string.breathe_settings_title), style = MaterialTheme.typography.titleMedium, color = Color.White)
+        Text(stringResource(R.string.breathe_settings_title), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
         BreatheSettingRow(Icons.Outlined.Vibration, stringResource(R.string.breathe_haptics_label), hapticsOn, onHaptics)
         BreatheSettingRow(Icons.Outlined.NotificationsNone, stringResource(R.string.breathe_chime_label), chimeOn, onChime)
     }
@@ -593,30 +599,14 @@ private fun BreatheSettingRow(icon: androidx.compose.ui.graphics.vector.ImageVec
         ) {
             Icon(icon, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.size(21.dp))
         }
-        Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = Color(0xFFD2D9EB), modifier = Modifier.weight(1f))
+        Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = TextSoft, modifier = Modifier.weight(1f))
         AppSwitch(checked = checked, onCheckedChange = onChecked)
     }
 }
 
 @Composable
 private fun BreatheDoneButton(label: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val elevation by animateDpAsState(
-        targetValue = if (pressed) 3.dp else 9.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "breatheDoneElevation",
-    )
-    Box(
-        Modifier.fillMaxWidth().height(48.dp).pressScale(pressed, down = 0.97f)
-            .shadow(elevation, RoundedCornerShape(24.dp), clip = false, ambientColor = Color(0x557A5CFF), spotColor = Color(0x4464C9FF))
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.horizontalGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9D7CFF), Color(0xFF64C9FF))))
-            .clickable(interactionSource = interaction, indication = LocalIndication.current, role = Role.Button, onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.SemiBold)
-    }
+    PrimaryButton(label, modifier = Modifier.fillMaxWidth(), onClick = onClick)
 }
 
 @Composable
@@ -630,12 +620,12 @@ private fun BreatheWhyCard(text: String) {
     val shape = RoundedCornerShape(24.dp)
     Column(
         Modifier.fillMaxWidth().animateContentSize(spring(dampingRatio = Spring.DampingRatioNoBouncy))
-            .clip(shape).background(Color(0xB31A2340)).border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .clip(shape).background(CardFill).border(1.dp, LineStroke, shape)
             .clickable { expanded = !expanded }.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.common_why_this_works), style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Text(stringResource(R.string.common_why_this_works), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Icon(
                 Icons.Outlined.ExpandMore,
                 contentDescription = if (expanded) stringResource(R.string.common_collapse) else stringResource(R.string.common_expand),
@@ -643,6 +633,6 @@ private fun BreatheWhyCard(text: String) {
                 modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = rotation },
             )
         }
-        if (expanded) Text(text, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp), color = Color(0xFFAEB9D0))
+        if (expanded) Text(text, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp), color = TextMuted)
     }
 }

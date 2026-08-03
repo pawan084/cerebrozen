@@ -96,7 +96,7 @@ class ThemeTokensTest {
         assertFalse("explicit Dawn wins over a dark system", AppTheme.isNight)
 
         AppTheme.forceNight = true
-        assertTrue("forceNight (splash/auth/sleep) beats every preference", AppTheme.isNight)
+        assertTrue("the internal forceNight seam beats every preference", AppTheme.isNight)
     }
 
     @Test

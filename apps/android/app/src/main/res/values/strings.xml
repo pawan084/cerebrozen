@@ -68,6 +68,10 @@
     <string name="trusted_save">Save contact</string>
     <string name="trusted_remove">Remove this contact</string>
     <string name="trusted_saved">Saved.</string>
+    <string name="trusted_current">CURRENT SAVED CONTACT</string>
+    <string name="trusted_details_title">Contact details</string>
+    <string name="trusted_consent_on">Crisis contact permission is on</string>
+    <string name="trusted_consent_off">Saved, but contact permission is off</string>
     <string name="trusted_removed">Removed.</string>
     <string name="trusted_failed">Couldn\'t save that — try again.</string>
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
@@ -750,6 +754,7 @@
     <string name="breathing_save_hint">Add this practice to your private journal</string>
     <string name="tool_saved_cta">Saved to your journal</string>
     <string name="tool_save_cta">Save to journal</string>
+    <string name="tool_field_hint">Write a few words…</string>
     <string name="cbt_eyebrow">Untangle a thought</string>
     <string name="cbt_title">From stuck to balanced</string>
     <string name="cbt_intro">Catch the thought, look at it honestly, and write the fairer version. This is the whole skill.</string>
@@ -861,6 +866,7 @@
     <string name="patternglow_pad_cd">Pad %1$d</string>
     <string name="patternglow_watching">Watching…</string>
     <string name="patternglow_your_turn">Your turn</string>
+    <string name="patternglow_progress">%1$d of %2$d taps</string>
     <string name="patternglow_best_suffix">"  ·  best round %1$d"</string>
     <string name="zen_eyebrow">Still water</string>
     <string name="zen_title">Zen ripples</string>

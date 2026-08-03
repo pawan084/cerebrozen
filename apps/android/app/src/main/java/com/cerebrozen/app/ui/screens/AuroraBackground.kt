@@ -8,6 +8,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -117,6 +118,29 @@ internal fun AuroraBackground(
             fromX = 90, fromY = 30, toX = 140, toY = -60, drift = drift)
         AuroraOrb(Cyan.copy(alpha = orbAlphas[2]), size = 260.dp, blur = 90.dp,
             fromX = -50, fromY = 320, toX = 70, toY = 250, drift = drift)
+        // A restrained constellation gives long, otherwise-empty pages the same
+        // crafted depth as the splash/onboarding art. Positions are deterministic
+        // (no visual jump on recomposition) and the whole field follows the one
+        // existing slow drift, so Reduce Motion also freezes it automatically.
+        Canvas(Modifier.fillMaxSize()) {
+            val points = listOf(
+                .08f to .10f, .24f to .17f, .76f to .11f, .91f to .24f,
+                .14f to .37f, .67f to .32f, .84f to .46f, .31f to .54f,
+                .06f to .68f, .73f to .64f, .92f to .79f, .42f to .83f,
+            )
+            points.forEachIndexed { index, (x, y) ->
+                val travel = (drift - .5f) * (if (index % 2 == 0) 10f else -8f)
+                drawCircle(
+                    color = when (index % 3) {
+                        0 -> primaryTint
+                        1 -> Violet
+                        else -> Cyan
+                    }.copy(alpha = if (night) 0.20f else 0.13f),
+                    radius = (if (index % 4 == 0) 1.8f else 1.1f).dp.toPx(),
+                    center = androidx.compose.ui.geometry.Offset(size.width * x, size.height * y + travel.dp.toPx()),
+                )
+            }
+        }
         // Soft top-lit sheen, mirroring the iOS top radial highlight. On Dawn
         // it's a brighter white glow — morning light rather than a lavender haze.
         val sheen = if (night) TextSoft.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.55f)
@@ -124,6 +148,15 @@ internal fun AuroraBackground(
             Modifier.align(Alignment.TopCenter).offset(y = (-120).dp).size(420.dp)
                 .clip(CircleShape)
                 .background(Brush.radialGradient(listOf(sheen, Color.Transparent))),
+        )
+        Box(
+            Modifier.align(Alignment.BottomEnd).offset(x = 120.dp, y = 150.dp).size(360.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(primaryTint.copy(alpha = if (night) 0.08f else 0.05f), Color.Transparent),
+                    ),
+                ),
         )
     }
 }

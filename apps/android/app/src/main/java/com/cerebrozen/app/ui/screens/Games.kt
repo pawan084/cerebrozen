@@ -46,15 +46,20 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.MediaCatalog
 import com.cerebrozen.app.audio.Sfx
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Veil
 import com.cerebrozen.app.ui.theme.VeilSoft
 import com.cerebrozen.app.ui.theme.VeilLine
@@ -134,9 +139,36 @@ fun PatternGlowScreen(onBack: () -> Unit) {
 
     PremiumSubPage(stringResource(R.string.patternglow_eyebrow), stringResource(R.string.patternglow_title), onBack) {
         ToolAmbienceEffect(R.raw.drone)
-        Text(note, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Column(
-            Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp)).padding(14.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(if (showing) Cyan.copy(alpha = 0.08f) else Periwinkle.copy(alpha = 0.09f))
+                .border(1.dp, if (showing) Cyan.copy(alpha = 0.22f) else Periwinkle.copy(alpha = 0.24f), RoundedCornerShape(18.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(9.dp).clip(CircleShape)
+                    .background(if (showing) Cyan else Periwinkle))
+                Text(
+                    if (showing) stringResource(R.string.patternglow_watching)
+                    else stringResource(R.string.patternglow_your_turn),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                )
+            }
+            Text(note, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text(
+                stringResource(R.string.patternglow_progress, inputPos, sequence.size),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (showing) TextMuted else Periwinkle,
+            )
+        }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
+                .background(Brush.verticalGradient(listOf(CardFill, Periwinkle.copy(alpha = 0.07f))))
+                .border(1.dp, Periwinkle.copy(alpha = 0.18f), RoundedCornerShape(26.dp))
+                .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             listOf(0 to 1, 2 to 3).forEach { (l, r) ->
@@ -145,29 +177,36 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                         val active = lit == pad
                         val padCd = stringResource(R.string.patternglow_pad_cd, pad + 1)
                         Box(
-                            Modifier.weight(1f).height(130.dp)
+                            Modifier.weight(1f).height(112.dp)
                                 .minimumInteractiveComponentSize()
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(
                                     Brush.radialGradient(
                                         listOf(
-                                            Color.White.copy(alpha = if (active) 0.70f else 0.16f),
-                                            pads[pad].copy(alpha = if (active) 0.88f else 0.26f),
+                                            Color.White.copy(alpha = if (active) 0.92f else 0.22f),
+                                            pads[pad].copy(alpha = if (active) 0.92f else 0.20f),
                                         ),
                                     ),
                                 )
                                 .border(1.dp, pads[pad].copy(alpha = if (active) 0.85f else 0.45f), RoundedCornerShape(20.dp))
                                 .clickable { tap(pad) }
                                 .semantics { role = Role.Button; contentDescription = padCd },
-                        )
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                (pad + 1).toString(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (active) TextPrimary else pads[pad],
+                            )
+                        }
                     }
                 }
             }
         }
-        Text(
-            (if (showing) stringResource(R.string.patternglow_watching) else stringResource(R.string.patternglow_your_turn)) +
-                if (best > 0) stringResource(R.string.patternglow_best_suffix, best) else "",
-            style = MaterialTheme.typography.labelSmall, color = TextMuted,
+        if (best > 0) Text(
+            stringResource(R.string.patternglow_best_suffix, best).trim(),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted,
         )
     }
 }
@@ -210,27 +249,31 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
         Text(stringResource(R.string.zen_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         SectionCard {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.zen_ripple_count, rippleCount), style = MaterialTheme.typography.titleMedium, color = Cyan)
                     Text(stringResource(R.string.zen_water_sound), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
                 AppSwitch(waterSoundEnabled, { waterSoundEnabled = it })
-            }
-            if (rippleCount > 0) TextButton(onClick = { ripples = emptyList(); rippleCount = 0 }) {
-                Text(stringResource(R.string.common_reset), color = TextMuted)
+                if (rippleCount > 0) TextButton(onClick = { ripples = emptyList(); rippleCount = 0 }) {
+                    Text(stringResource(R.string.common_reset), color = Periwinkle)
+                }
             }
         }
         val canvasCd = stringResource(R.string.zen_canvas_cd)
         Box(
-            Modifier.fillMaxWidth().height(500.dp)
-                .clip(RoundedCornerShape(30.dp))
+            Modifier.fillMaxWidth().height(420.dp)
+                .clip(RoundedCornerShape(26.dp))
                 .background(
                     Brush.radialGradient(
-                        listOf(Cyan.copy(alpha = 0.42f), Color(0xFF102B43), Color(0xFF071521)),
+                        listOf(Cyan.copy(alpha = 0.24f), Periwinkle.copy(alpha = 0.10f), CardFill),
                     ),
                 )
-                .border(1.dp, Cyan.copy(alpha = 0.30f), RoundedCornerShape(30.dp))
+                .border(1.dp, LineStroke, RoundedCornerShape(26.dp))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
@@ -247,8 +290,8 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                 .semantics { contentDescription = canvasCd },
         ) {
             Canvas(Modifier.matchParentSize()) {
-                drawCircle(Color.White.copy(alpha = 0.035f), radius = size.minDimension * 0.48f, center = center)
-                drawCircle(Cyan.copy(alpha = 0.055f), radius = size.minDimension * 0.32f, center = center)
+                drawCircle(Periwinkle.copy(alpha = 0.035f), radius = size.minDimension * 0.48f, center = center)
+                drawCircle(Cyan.copy(alpha = 0.065f), radius = size.minDimension * 0.32f, center = center)
                 ripples.forEach { r ->
                     val age = (now - r.born) / 1_000_000_000f
                     if (age in 0f..3f) {
@@ -261,7 +304,7 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
             if (ripples.isEmpty()) {
                 Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("◎", style = MaterialTheme.typography.displayMedium, color = Cyan.copy(alpha = 0.72f))
-                    Text(stringResource(R.string.zen_tap_hint), style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.72f))
+                    Text(stringResource(R.string.zen_tap_hint), style = MaterialTheme.typography.titleMedium, color = TextPrimary.copy(alpha = 0.78f))
                 }
             }
         }
@@ -286,34 +329,56 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
 
     PremiumSubPage(stringResource(R.string.gratitude_eyebrow), stringResource(R.string.gratitude_title), onBack) {
         ToolAmbienceEffect(R.raw.rain)
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                .background(Periwinkle.copy(alpha = 0.055f))
+                .border(1.dp, Periwinkle.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
+                .padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
         Text(stringResource(R.string.gratitude_intro),
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        AppTextField(draft, { draft = it }, stringResource(R.string.gratitude_field_label), singleLine = true)
+            style = MaterialTheme.typography.bodySmall, color = TextSoft)
+        AppTextField(draft, { draft = it }, label = "", singleLine = true,
+            placeholderText = stringResource(R.string.gratitude_field_label))
         PrimaryButton(text = stringResource(R.string.gratitude_plant_cta), enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
             entries = Gratitude.add(draft)
             draft = ""
             // Something opening — the sound of the flower landing.
             Sfx.playActivity(MediaCatalog.Keys.GAME_BLOOM)
         }
+        }
         // The soil: every real entry becomes one flower at a deterministic spot.
         val soilCd = stringResource(R.string.gratitude_soil_cd, entries.size)
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(300.dp)
-                .clip(RoundedCornerShape(22.dp))
+            Modifier.fillMaxWidth().height(270.dp)
+                .clip(RoundedCornerShape(26.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(VeilSoft, Ok.copy(alpha = 0.16f)),
+                        listOf(Cyan.copy(alpha = 0.10f), Ok.copy(alpha = 0.13f), CardFill),
                     ),
                 )
-                .border(1.dp, VeilLine, RoundedCornerShape(22.dp))
+                .border(1.dp, Ok.copy(alpha = 0.24f), RoundedCornerShape(26.dp))
                 .semantics { contentDescription = soilCd },
         ) {
+            Canvas(Modifier.matchParentSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(Ok.copy(alpha = 0.16f), Color.Transparent)),
+                    radius = size.minDimension * 0.72f,
+                    center = Offset(size.width * 0.50f, size.height * 0.90f),
+                )
+                drawLine(
+                    color = Ok.copy(alpha = 0.14f),
+                    start = Offset(0f, size.height * 0.78f),
+                    end = Offset(size.width, size.height * 0.78f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
             if (entries.isEmpty()) {
                 Text(stringResource(R.string.gratitude_empty),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp))
             }
-            val flower = 34.dp
+            val flower = 44.dp
             entries.forEachIndexed { i, text ->
                 val x = (maxWidth - flower) * plantFraction(i, 1)
                 val y = (maxHeight - flower) * plantFraction(i, 2)
@@ -322,11 +387,14 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
                     Modifier.offset(x = x, y = y).size(flower)
                         .appear(i)
                         .clip(CircleShape)
-                        .background(Periwinkle.copy(alpha = 0.22f))
+                        .background(Brush.radialGradient(
+                            listOf(Color.White.copy(alpha = 0.88f), Periwinkle.copy(alpha = 0.24f)),
+                        ))
+                        .border(1.dp, Periwinkle.copy(alpha = 0.18f), CircleShape)
                         .semantics { contentDescription = flowerCd },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(flowerFor(i), style = MaterialTheme.typography.titleMedium)
+                    Text(flowerFor(i), style = MaterialTheme.typography.titleLarge)
                 }
             }
         }

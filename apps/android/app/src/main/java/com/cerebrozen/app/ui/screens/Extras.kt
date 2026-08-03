@@ -144,10 +144,12 @@ import kotlin.math.roundToInt
 import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.Radius
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
@@ -1833,7 +1835,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     )
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))),
+            Brush.verticalGradient(listOf(Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.72f), Night.copy(alpha = 0.82f))),
         ),
     ) {
         ToolkitAmbientLayer(if (reduceMotion) 0f else glowY)
@@ -1953,31 +1955,24 @@ private fun BoxScope.ToolkitAmbientLayer(motion: Float) {
 
 @Composable
 private fun ToolkitHeroHeader(onBack: () -> Unit) {
-    val shape = RoundedCornerShape(32.dp)
     val backLabel = stringResource(R.string.common_back)
-    Box(
-        Modifier.fillMaxWidth().height(204.dp).clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xDD31275F), Color(0xCC1A3155), Color(0xBB182447))))
-            .border(1.dp, Color.White.copy(alpha = 0.13f), shape)
-            .padding(20.dp),
+    Row(
+        Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 28.dp, y = (-42).dp).size(150.dp)
-                .blur(28.dp).background(Color(0x557A5CFF), CircleShape),
-        )
-        Box(
-            Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.09f))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
+            Modifier.size(48.dp).clip(CircleShape).background(VeilWell)
+                .border(1.dp, LineStroke, CircleShape)
                 .clickable(onClickLabel = backLabel, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = TextPrimary, modifier = Modifier.size(20.dp))
         }
-        Icon(Icons.Outlined.Spa, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.align(Alignment.TopEnd).size(52.dp))
-        Column(Modifier.align(Alignment.BottomStart), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(stringResource(R.string.toolkit_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp), color = Color(0xFFB9C8FF))
-            Text(stringResource(R.string.toolkit_title), style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 40.sp), color = Color.White)
-            Text(stringResource(R.string.toolkit_intro), style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD2D9EB))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(stringResource(R.string.toolkit_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp), color = EyebrowMuted)
+            Text(stringResource(R.string.toolkit_title), style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
+            Text(stringResource(R.string.toolkit_intro), style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2)
         }
     }
 }
@@ -1990,19 +1985,16 @@ private fun ToolkitSectionHeader(label: String, description: String, icon: Image
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(accent.copy(alpha = 0.13f))
-                .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(17.dp)),
+            Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.09f))
+                .border(1.dp, LineStroke, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(label, style = MaterialTheme.typography.headlineSmall, color = Color.White)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
-            Box(
-                Modifier.fillMaxWidth().padding(top = 4.dp).height(1.dp)
-                    .background(Brush.horizontalGradient(listOf(accent.copy(alpha = 0.7f), Color.Transparent))),
-            )
+            Text(label, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Box(Modifier.fillMaxWidth().padding(top = 5.dp).height(1.dp).background(LineStroke))
         }
     }
 }
@@ -2030,47 +2022,38 @@ private fun ToolkitExerciseCard(
     }
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier.fillMaxWidth().graphicsLayer {
             alpha = reveal.value
             translationY = (1f - reveal.value) * 18.dp.toPx()
         }.pressScale(pressed, down = 0.975f).clip(shape)
-            .background(
-                Brush.linearGradient(
-                    if (emphasis) listOf(Color(0xD9442346), Color(0xCC2A274D))
-                    else listOf(Color(0xCC1A2340), Color(0xA8262B4A)),
-                ),
-            )
-            .border(1.dp, accent.copy(alpha = if (emphasis) 0.46f else 0.25f), shape)
+            .background(CardFill)
+            .border(1.dp, if (emphasis) accent.copy(alpha = 0.40f) else LineStroke, shape)
             .clickable(interactionSource = interaction, indication = null, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = title, onClick = onOpen)
-            .padding(18.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(58.dp).clip(RoundedCornerShape(20.dp))
-                .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.28f), accent.copy(alpha = 0.09f))))
-                .border(1.dp, accent.copy(alpha = 0.38f), RoundedCornerShape(20.dp)),
+            Modifier.size(48.dp).clip(RoundedCornerShape(16.dp))
+                .background(accent.copy(alpha = 0.10f))
+                .border(1.dp, LineStroke, RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(27.dp))
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ToolkitBadge(category, accent)
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB8C2D9), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("•  $duration", style = MaterialTheme.typography.labelSmall, color = Color(0xFFD4DCF0))
-                Text("•  $difficulty", style = MaterialTheme.typography.labelSmall, color = Color(0xFFD4DCF0))
-            }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(duration, style = MaterialTheme.typography.labelSmall, color = TextMuted2)
         }
         Box(
-            Modifier.size(42.dp).clip(CircleShape).background(accent.copy(alpha = 0.13f))
-                .border(1.dp, accent.copy(alpha = 0.28f), CircleShape),
+            Modifier.size(38.dp).clip(CircleShape).background(VeilWell)
+                .border(1.dp, LineStroke, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -2078,8 +2061,7 @@ private fun ToolkitExerciseCard(
 @Composable
 private fun ToolkitBadge(label: String, accent: Color) {
     Box(
-        Modifier.clip(CircleShape).background(accent.copy(alpha = 0.12f))
-            .border(1.dp, accent.copy(alpha = 0.24f), CircleShape)
+        Modifier.clip(CircleShape).background(accent.copy(alpha = 0.08f))
             .padding(horizontal = 9.dp, vertical = 4.dp),
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.9.sp), color = accent)
@@ -2171,33 +2153,27 @@ fun BubblePopScreen(onBack: () -> Unit) {
     var score by remember { mutableIntStateOf(0) }
     var nextId by remember { mutableLongStateOf(0L) }
     val hues = listOf(Periwinkle, Cyan, Warm)
+    fun freshBubbles(): List<Bubble> = (0 until 7).map { i ->
+        Bubble(
+            nextId++, Random.nextFloat() * 0.66f + 0.06f,
+            0.08f + i * 0.115f, (54..90).random(), hues[Random.nextInt(hues.size)],
+        )
+    }
     // Reduce Motion is a contract: no spawn loop, no drift loop. The field
     // still gets one static set of bubbles to pop — static, never blank.
     val reduceMotion = rememberReduceMotion()
     // Spawn near the bottom…
     LaunchedEffect(reduceMotion) {
-        if (reduceMotion) {
-            if (bubbles.isEmpty()) {
-                bubbles = (0 until 7).map { i ->
-                    Bubble(
-                        nextId++,
-                        Random.nextFloat() * 0.78f + 0.04f,
-                        0.10f + i * 0.11f,
-                        (52..96).random(),
-                        hues[Random.nextInt(hues.size)],
-                    )
-                }
-            }
-            return@LaunchedEffect
-        }
+        if (bubbles.isEmpty()) bubbles = freshBubbles()
+        if (reduceMotion) return@LaunchedEffect
         while (true) {
             delay(650)
             if (bubbles.size < 7) {
                 bubbles = bubbles + Bubble(
                     nextId++,
-                    Random.nextFloat() * 0.78f + 0.04f,
+                    Random.nextFloat() * 0.66f + 0.06f,
                     Random.nextFloat() * 0.16f + 0.80f,
-                    (52..96).random(),
+                    (54..90).random(),
                     hues[Random.nextInt(hues.size)],
                 )
             }
@@ -2213,39 +2189,64 @@ fun BubblePopScreen(onBack: () -> Unit) {
     }
     SubPage(stringResource(R.string.bubblepop_eyebrow), stringResource(R.string.bubblepop_title), onBack) {
         ToolAmbienceEffect(R.raw.ocean)
-        Text(stringResource(R.string.bubblepop_intro),
-            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        AmbienceToggle()
+        SectionCard(quiet = true) {
+            Text(stringResource(R.string.bubblepop_intro),
+                style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         // A quiet score panel + reset — a gentle sense of progress, easily cleared.
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("$score", style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
                 Text(stringResource(R.string.bubblepop_popped), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text("$score", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
             }
-            TextButton(onClick = { bubbles = emptyList(); score = 0 }) {
-                Text(stringResource(R.string.common_reset), color = Cyan)
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                AmbienceToggle()
+                TextButton(onClick = { bubbles = freshBubbles(); score = 0 }) {
+                    Text(stringResource(R.string.common_reset), color = Cyan)
+                }
             }
         }
+        }
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(20.dp))
-                .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(20.dp)),
+            Modifier.fillMaxWidth().height(430.dp).clip(RoundedCornerShape(28.dp))
+                .background(Brush.verticalGradient(
+                    listOf(Cyan.copy(alpha = 0.12f), Periwinkle.copy(alpha = 0.09f), CardFill),
+                )).border(1.dp, Cyan.copy(alpha = 0.22f), RoundedCornerShape(28.dp)),
         ) {
             val w = maxWidth
             val h = maxHeight
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(Cyan.copy(alpha = 0.14f), Color.Transparent)),
+                    radius = size.minDimension * 0.62f,
+                    center = Offset(size.width * 0.48f, size.height * 0.48f),
+                )
+            }
             bubbles.forEach { b ->
                 Box(
-                    Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp).clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.92f), b.hue)))
-                        .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                    Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp)
+                        .shadow(12.dp, CircleShape, clip = false,
+                            ambientColor = b.hue.copy(alpha = 0.42f), spotColor = b.hue.copy(alpha = 0.42f))
+                        .clip(CircleShape)
+                        .background(Brush.radialGradient(
+                            listOf(Color.White.copy(alpha = 0.96f), b.hue.copy(alpha = 0.78f), b.hue),
+                            center = Offset(0.34f, 0.28f),
+                        )).border(1.dp, Color.White.copy(alpha = 0.52f), CircleShape)
                         .clickable {
                             com.cerebrozen.app.ui.Haptics.soft()
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
                         },
-                )
+                ) {
+                    Box(
+                        Modifier.align(Alignment.TopStart)
+                            .offset((b.size * 0.20f).dp, (b.size * 0.16f).dp)
+                            .size((b.size * 0.18f).dp).clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.48f)),
+                    )
+                }
             }
         }
     }
@@ -2271,8 +2272,8 @@ private fun Grounding() {
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xCC183C3B), Color(0xC41A2944))))
-            .border(1.dp, Color(0x554ADE80), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -2281,7 +2282,7 @@ private fun Grounding() {
             Text(
                 "•  ${stringResource(R.string.toolkit_duration_3)}   •  ${stringResource(R.string.toolkit_level_guided)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFFD4DCF0),
+                color = TextMuted,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -2293,21 +2294,21 @@ private fun Grounding() {
                 Icon(Icons.Outlined.Grain, contentDescription = null, tint = Color(0xFF78E6A1), modifier = Modifier.size(25.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.toolkit_ground_title), style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodySmall, color = Color(0xFFB8C2D9))
+                Text(stringResource(R.string.toolkit_ground_title), style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             steps.indices.forEach { index ->
                 Box(
                     Modifier.weight(1f).height(5.dp).clip(CircleShape)
-                        .background(if (index <= step) Color(0xFF4ADE80) else Color.White.copy(alpha = 0.10f)),
+                        .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
                 )
             }
         }
         Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
-        Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = Color.White)
-        Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFC4CDE0))
+        Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.height(48.dp).clip(CircleShape)
@@ -2372,6 +2373,41 @@ internal fun SupportLinkRow(title: String, detail: String, target: String) {
     }
 }
 
+/** Compact high-priority action used by the urgent-support directory. */
+@Composable
+private fun CrisisSupportRow(title: String, detail: String, target: String, primary: Boolean = false) {
+    val ctx = LocalContext.current
+    val isUrl = isSupportUrl(target)
+    val desc = if (isUrl) stringResource(R.string.crisis_open_cd, title)
+    else stringResource(R.string.crisis_call_cd, title, detail)
+    val accent = if (primary) Warm else Cyan
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape)
+            .background(accent.copy(alpha = if (primary) 0.10f else 0.045f))
+            .border(1.dp, accent.copy(alpha = if (primary) 0.30f else 0.16f), shape)
+            .clickable { openSupportTarget(ctx, target) }
+            .semantics { contentDescription = desc }
+            .padding(horizontal = 15.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = accent)
+        }
+        Box(
+            Modifier.size(42.dp).clip(CircleShape).background(accent.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (isUrl) Icons.AutoMirrored.Outlined.OpenInNew else Icons.Outlined.Call,
+                contentDescription = null, tint = accent, modifier = Modifier.size(21.dp),
+            )
+        }
+    }
+}
+
 @Composable
 fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var contact by remember { mutableStateOf<String?>(null) }
@@ -2395,13 +2431,29 @@ fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         stringResource(R.string.crisis_line_find_helpline) to "findahelpline.com",
     )
     SubPage(stringResource(R.string.crisis_eyebrow), stringResource(R.string.crisis_title), onBack) {
-        GradientHero(
-            eyebrow = stringResource(R.string.crisis_hero_eyebrow),
-            title = stringResource(R.string.crisis_hero_title),
-            colors = listOf(Warm, Danger),
-        )
-        lines.forEach { (name, number) ->
-            SupportLinkRow(name, number, number)
+        val heroShape = RoundedCornerShape(24.dp)
+        Column(
+            Modifier.fillMaxWidth().clip(heroShape)
+                .background(Brush.verticalGradient(
+                    listOf(Warm.copy(alpha = 0.16f), Danger.copy(alpha = 0.09f)),
+                ))
+                .border(1.dp, Warm.copy(alpha = 0.32f), heroShape)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                stringResource(R.string.crisis_hero_eyebrow).uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.3.sp),
+                color = Warm,
+            )
+            Text(
+                stringResource(R.string.crisis_hero_title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextPrimary,
+            )
+        }
+        lines.forEachIndexed { index, (name, number) ->
+            CrisisSupportRow(name, number, number, primary = index == 0)
         }
         // A door, not a notice. It used to be an inert card telling the user to
         // "add one in Settings" — where no such setting existed on Android.
@@ -2411,6 +2463,7 @@ fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             icon = Icons.Outlined.PersonAddAlt,
         ) { onOpen("trustedcontact") }
         Text(stringResource(R.string.common_wellness_footer),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }

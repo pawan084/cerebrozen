@@ -107,6 +107,9 @@ import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.ChipSelectedFill
 import com.cerebrozen.app.ui.theme.ChipSelectedInk
 import com.cerebrozen.app.ui.theme.OnPrimary
+import com.cerebrozen.app.ui.theme.PrimaryButtonFill
+import com.cerebrozen.app.ui.theme.PrimaryButtonInk
+import com.cerebrozen.app.ui.theme.PrimaryButtonDisabledFill
 import com.cerebrozen.app.ui.theme.SwitchThumbOn
 import com.cerebrozen.app.ui.theme.ShimmerHighlight
 import com.cerebrozen.app.ui.theme.Veil
@@ -120,6 +123,7 @@ import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightPurple
 import com.cerebrozen.app.ui.theme.OnDanger
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.SurfaceRaised
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -213,6 +217,13 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
     )
     .clip(shape)
     .background(Gradients.glass)
+    // A faint brand-light edge keeps large card stacks from reading as flat
+    // grey rectangles, while remaining subtle enough for dense settings pages.
+    .background(
+        Brush.linearGradient(
+            listOf(Periwinkle.copy(alpha = 0.055f), Color.Transparent, Cyan.copy(alpha = 0.035f)),
+        ),
+    )
     .border(1.dp, Stroke.bevel, shape)
 
 /** True when the user has asked the system to minimise animations ("Remove
@@ -687,10 +698,30 @@ internal fun PageHeader(
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
 ) {
+    val headerShape = RoundedCornerShape(Radius.hero)
     Row(
-        Modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .shadow(
+                Elevation.card, headerShape, clip = false,
+                ambientColor = accent.copy(alpha = 0.22f),
+                spotColor = accent.copy(alpha = 0.28f),
+            )
+            .clip(headerShape)
+            .background(Gradients.glass)
+            .background(
+                Brush.linearGradient(
+                    listOf(accent.copy(alpha = 0.14f), Color.Transparent, Cyan.copy(alpha = 0.05f)),
+                ),
+            )
+            .border(
+                1.dp,
+                Brush.linearGradient(listOf(accent.copy(alpha = 0.42f), Stroke.hairline, Cyan.copy(alpha = 0.18f))),
+                headerShape,
+            )
+            .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.tight)) {
             Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = eyebrowColor)
@@ -828,11 +859,6 @@ internal fun PrimaryButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val brush = if (enabled) {
-        Gradients.primary
-    } else {
-        Brush.horizontalGradient(listOf(ButtonDisabled, ButtonDisabled))
-    }
     val shape = RoundedCornerShape(Radius.pill)
     Box(
         modifier
@@ -845,8 +871,10 @@ internal fun PrimaryButton(
                 spotColor = BrandPrimary.copy(alpha = 0.50f),
             )
             .clip(shape)
-            .background(brush)
-            .heightIn(min = 52.dp)
+            // Exact onboarding/auth CTA treatment: one calm high-contrast pill,
+            // not a separate signed-in gradient vocabulary.
+            .background(if (enabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
+            .heightIn(min = 56.dp)
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,
@@ -858,11 +886,9 @@ internal fun PrimaryButton(
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            // OnPrimary is white on the deep-lavender pill in BOTH themes (4.72:1
-            // on the top stop). Disabled stays Ink — legible on ButtonDisabled.
-            color = if (enabled) OnPrimary else Ink,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (enabled) PrimaryButtonInk else Ink,
         )
     }
 }
@@ -902,7 +928,7 @@ internal fun AppTextField(
             focusedBorderColor = Periwinkle,
             unfocusedBorderColor = LineStroke,
             focusedContainerColor = FieldFill,
-            unfocusedContainerColor = NightPurple,
+            unfocusedContainerColor = FieldFill,
             cursorColor = Periwinkle,
             focusedLabelColor = Periwinkle,
             unfocusedLabelColor = TextMuted,

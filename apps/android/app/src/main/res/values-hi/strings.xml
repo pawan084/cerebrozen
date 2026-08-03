@@ -367,6 +367,7 @@
     <string name="ground_start_over">फिर से शुरू करें</string>
 
     <!-- ── Bubble pop ──────────────────────────────────────────────────── -->
+    <string name="tool_field_hint">कुछ शब्द लिखें…</string>
     <string name="bubblepop_eyebrow">एक नन्हा रीसेट</string>
     <string name="bubblepop_title">बबल पॉप</string>
     <string name="bubblepop_intro">धीरे-धीरे फोड़ें — न जल्दी, न कोई स्कोर।</string>
@@ -580,6 +581,7 @@
     <string name="patternglow_pad_cd">पैड %1$d</string>
     <string name="patternglow_watching">देख रहे हैं…</string>
     <string name="patternglow_your_turn">अब आपकी बारी</string>
+    <string name="patternglow_progress">%2$d में से %1$d टैप</string>
     <string name="patternglow_best_suffix">"  ·  सबसे अच्छा राउंड %1$d"</string>
     <string name="zen_eyebrow">ठहरा पानी</string>
     <string name="zen_title">ज़ेन लहरें</string>
@@ -790,6 +792,10 @@
     <string name="trusted_save">संपर्क सहेजें</string>
     <string name="trusted_remove">यह संपर्क हटाएँ</string>
     <string name="trusted_saved">सहेजा गया।</string>
+    <string name="trusted_current">अभी सहेजा गया संपर्क</string>
+    <string name="trusted_details_title">संपर्क की जानकारी</string>
+    <string name="trusted_consent_on">संकट संपर्क की अनुमति चालू है</string>
+    <string name="trusted_consent_off">सहेजा गया है, लेकिन संपर्क की अनुमति बंद है</string>
     <string name="trusted_removed">हटा दिया गया।</string>
     <string name="trusted_failed">सहेजा नहीं जा सका — फिर कोशिश करें।</string>
     <string name="crisis_trusted_contact_empty">सेट नहीं है — सेटिंग्स में एक जोड़ें ताकि संकट के समय CereBro उन तक पहुँच सके (आपकी सहमति से)।</string>

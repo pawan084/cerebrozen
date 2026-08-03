@@ -150,18 +150,6 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     route in setOf("home", "sleep", "talk", "journal", "you")
 
 /**
- * Everything the Sleep tab can push, not just the tab: the full player, the
- * soundscape mixer and the wind-down ritual are used with the lights off, and a
- * bright screen there is worse than anywhere else in the product. Keep this in
- * step with the NavRows in SleepScreen — a new sleep destination that is not
- * listed here will flip the theme mid-wind-down (`NavigationChromeTest` pins
- * the set).
- */
-internal val SLEEP_CONTEXT_ROUTES = setOf(
-    "sleep", "player", "sounds", "sounds/mixer", "winddown",
-)
-
-/**
  * Whether the nav pill is drawn right now.
  *
  * It is hidden while the keyboard is up, and that is the whole point: the pill
@@ -467,14 +455,9 @@ fun CereBroApp() {
     // and reclaims the slot, instead of keeping an empty one.
     val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val showBottomBar = navVisible(current, imeOpen)
-    // Sleep contexts stay Night regardless of the appearance choice. This was
-    // briefly removed ("an explicit Light choice must remain Light everywhere"),
-    // but the rule exists because of a finding on real hardware: a sleep story
-    // playing at 22:46, one tap on the now-playing bar, and a full-brightness
-    // Dawn player with the sleep timer running. A bright screen at bedtime is a
-    // wellness harm, not a preference; web pins the same surfaces
-    // (theme.spec.ts), and the funnel/every other route follows the choice.
-    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
+    // Appearance is global: Sleep and every screen it opens respect the same
+    // System/Night/Dawn choice as the rest of the app. The override was already
+    // cleared above, so a previous route cannot leak a dark palette into You.
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).

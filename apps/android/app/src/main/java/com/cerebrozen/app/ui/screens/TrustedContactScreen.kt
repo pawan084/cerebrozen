@@ -26,7 +26,9 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Ok
 import kotlinx.coroutines.launch
 
 /** How to reach the trusted contact. Wire values of the cross-stack contract
@@ -69,6 +71,10 @@ fun TrustedContactScreen(onBack: () -> Unit) {
     var value by rememberSaveable { mutableStateOf("") }
     var consent by rememberSaveable { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
+    var hasSavedContact by remember { mutableStateOf(false) }
+    var savedName by remember { mutableStateOf("") }
+    var savedValue by remember { mutableStateOf("") }
+    var savedConsent by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -79,32 +85,60 @@ fun TrustedContactScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         runCatching { Api.trustedContact() }.onSuccess { tc ->
             if (tc != null) {
+                hasSavedContact = true
                 name = tc.optString("name")
                 method = tc.optString("method").ifBlank { "email" }
                 value = tc.optString("value")
                 consent = tc.optBoolean("notify_consent")
+                savedName = name
+                savedValue = value
+                savedConsent = consent
             }
         }
         loaded = true
     }
 
-    SubPage(stringResource(R.string.trusted_eyebrow), stringResource(R.string.trusted_title), onBack) {
+    PremiumSubPage(stringResource(R.string.trusted_eyebrow), stringResource(R.string.trusted_title), onBack) {
         Text(stringResource(R.string.trusted_intro),
-            style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
 
-        AppTextField(name, { name = it }, stringResource(R.string.trusted_name_label), singleLine = true)
-        Text(stringResource(R.string.trusted_method_label),
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        ChipWrapOptions(METHODS, method) { method = it }
-        AppTextField(
-            value, { value = it }, stringResource(R.string.trusted_value_label),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = trustedKeyboard(method)),
-        )
+        if (hasSavedContact && savedValue.isNotBlank()) {
+            SectionCard(quiet = true) {
+                Text(stringResource(R.string.trusted_current),
+                    style = MaterialTheme.typography.labelSmall, color = Ok)
+                Text(savedName.ifBlank { savedValue }, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                if (savedName.isNotBlank()) Text(savedValue, style = MaterialTheme.typography.bodySmall, color = TextSoft)
+                Text(
+                    stringResource(if (savedConsent) R.string.trusted_consent_on else R.string.trusted_consent_off),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (savedConsent) Ok else TextMuted,
+                )
+            }
+        }
+
+        SectionCard(quiet = true) {
+            Text(stringResource(R.string.trusted_details_title),
+                style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+            Text(stringResource(R.string.trusted_name_label),
+                style = MaterialTheme.typography.labelLarge, color = TextSoft)
+            AppTextField(name, { name = it; status = null }, label = "", singleLine = true,
+                placeholderText = stringResource(R.string.trusted_name_label))
+            Text(stringResource(R.string.trusted_method_label),
+                style = MaterialTheme.typography.labelLarge, color = TextSoft)
+            ChipWrapOptions(METHODS, method) { method = it; status = null }
+            Text(stringResource(R.string.trusted_value_label),
+                style = MaterialTheme.typography.labelLarge, color = TextSoft)
+            AppTextField(
+                value, { value = it; status = null }, label = "",
+                placeholderText = stringResource(R.string.trusted_value_label),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = trustedKeyboard(method)),
+            )
+        }
 
         // The consent gate. Off unless the user turns it on; the backend only
         // escalates when this is true (services/escalation.py::on_crisis).
-        SectionCard {
+        SectionCard(quiet = true) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,9 +146,9 @@ fun TrustedContactScreen(onBack: () -> Unit) {
             ) {
                 Column(Modifier.fillMaxWidth(0.75f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.trusted_consent_title),
-                        style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                     Text(stringResource(R.string.trusted_consent_hint),
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
                 AppSwitch(checked = consent, onCheckedChange = { consent = it })
             }
@@ -123,17 +157,31 @@ fun TrustedContactScreen(onBack: () -> Unit) {
         PrimaryButton(
             text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.trusted_save),
             enabled = loaded && !busy && trustedContactReady(value),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             busy = true; status = null
             scope.launch {
                 runCatching { Api.setTrustedContact(name.trim(), method, value.trim(), consent) }
-                    .onSuccess { status = savedMsg }
+                    .onSuccess {
+                        hasSavedContact = true
+                        savedName = name.trim()
+                        savedValue = value.trim()
+                        savedConsent = consent
+                        status = savedMsg
+                    }
                     .onFailure { status = it.userMessage(failedMsg) }
                 busy = false
             }
         }
 
-        if (loaded && value.isNotBlank()) {
+        status?.let {
+            SectionCard(quiet = true) {
+                Text(it, style = MaterialTheme.typography.titleSmall,
+                    color = if (it == savedMsg) Ok else Periwinkle)
+            }
+        }
+
+        if (loaded && hasSavedContact) {
             TextButton(
                 enabled = !busy,
                 onClick = {
@@ -142,15 +190,15 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                         runCatching { Api.deleteTrustedContact() }
                             .onSuccess {
                                 name = ""; value = ""; consent = false
+                                hasSavedContact = false
+                                savedName = ""; savedValue = ""; savedConsent = false
                                 status = removedMsg
                             }
                             .onFailure { status = it.userMessage(failedMsg) }
                         busy = false
                     }
-                },
+                }, modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.trusted_remove), color = Danger) }
         }
-
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Periwinkle) }
     }
 }

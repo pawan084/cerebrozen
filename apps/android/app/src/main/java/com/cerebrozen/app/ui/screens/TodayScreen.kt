@@ -68,6 +68,8 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -400,32 +402,41 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         (0 until minOf(moods.length(), 3)).map { i -> checkInLine(moods.getJSONObject(i)) }
 
     suspend fun reload() {
-        runCatching {
-            val me = Api.me()
+        // These endpoints are independent. Running them serially made Home take
+        // the sum of six network round trips and caused cards to pop in one by
+        // one. Fetch together, then publish each result as soon as this batch is
+        // ready; total wait is now the slowest request, not all requests added.
+        coroutineScope {
+        val meRequest = async { runCatching { Api.me() } }
+        val streakRequest = async { runCatching { Api.streak() } }
+        val moodsRequest = async { runCatching { Api.moods() } }
+        val planRequest = async { runCatching { Api.activePlan() } }
+        val programRequest = async { runCatching { Api.activeProgram() } }
+        val sleepRequest = async { runCatching { Api.sleepLogs() } }
+
+        meRequest.await().onSuccess { me ->
             userName = me.optString("name")
             goal = me.optJSONArray("goals")?.optString(0).orEmpty()
         }
-        runCatching {
-            val s = Api.streak()
+        streakRequest.await().onSuccess { s ->
             streak = s.optInt("current")
             week = parseWeek(s)
         }
-        runCatching {
+        moodsRequest.await().onSuccess { moods ->
             // One fetch feeds both the recent-check-ins list and the teaser count.
-            val moods = Api.moods()
             recent = parseRecent(moods)
             weekCheckIns = checkInsThisWeek(moods, LocalDate.now())
         }
-        runCatching { plan = Api.activePlan() }
-        runCatching { program = Api.activeProgram() }
+        planRequest.await().onSuccess { plan = it }
+        programRequest.await().onSuccess { program = it }
         // One extra GET (cached like every read) so the morning banner knows
         // whether last night is already logged — B2.
-        runCatching {
-            val logs = Api.sleepLogs()
+        sleepRequest.await().onSuccess { logs ->
             lastNightLogged = hasLastNightLog(
                 (0 until logs.length()).map { logs.getJSONObject(it).optString("date") },
                 LocalDate.now(),
             )
+        }
         }
     }
 

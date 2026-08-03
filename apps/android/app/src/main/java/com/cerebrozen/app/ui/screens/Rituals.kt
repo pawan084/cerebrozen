@@ -6,12 +6,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -42,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
@@ -55,9 +59,12 @@ import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.VeilWell
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -491,11 +498,17 @@ fun RitualBuilderScreen(onBack: () -> Unit) {
         ) {
             // The cue leads. Reordering blocks is the fun part; deciding when
             // it happens is the part with the evidence behind it.
-            SectionCard {
-                Text(stringResource(R.string.builder_cue_eyebrow), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Text(stringResource(R.string.builder_cue_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(stringResource(R.string.builder_cue_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                AppTextField(cue, { cue = it; saved = false }, stringResource(R.string.builder_cue_field), singleLine = true)
+            SectionCard(quiet = true) {
+                Text(stringResource(R.string.builder_cue_eyebrow).uppercase(),
+                    style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(stringResource(R.string.builder_cue_title),
+                    style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+                Text(stringResource(R.string.builder_cue_body),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                AppTextField(
+                    cue, { cue = it; saved = false }, label = "", singleLine = true,
+                    placeholderText = stringResource(R.string.builder_cue_field),
+                )
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -517,13 +530,15 @@ fun RitualBuilderScreen(onBack: () -> Unit) {
                 // Honest about what we won't do: there is no reminder wired to
                 // this, and promising one we don't send would be a fake. It is
                 // also the point — the cue is meant to do the reminding.
-                Text(stringResource(R.string.builder_no_nag), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(stringResource(R.string.builder_no_nag), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             WhyThisWorks(stringResource(R.string.builder_cue_why))
 
-            SectionCard {
-                Text(stringResource(R.string.builder_pick_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(stringResource(R.string.builder_pick_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            SectionCard(quiet = true) {
+                Text(stringResource(R.string.builder_pick_title),
+                    style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+                Text(stringResource(R.string.builder_pick_body),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 RITUAL_BLOCKS.forEach { block ->
                     val idx = chosen.indexOf(block.id)
                     val label = blockLabel(block.id)
@@ -544,7 +559,7 @@ fun RitualBuilderScreen(onBack: () -> Unit) {
                 Text(
                     if (chosen.isEmpty()) stringResource(R.string.builder_empty)
                     else pluralStringResource(R.plurals.builder_summary, chosen.size, chosen.size, ritualMinutes(chosen)),
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted,
                 )
                 PrimaryButton(
                     text = stringResource(R.string.builder_start),
@@ -561,7 +576,7 @@ fun RitualBuilderScreen(onBack: () -> Unit) {
                         color = TextMuted,
                     )
                 }
-                Text(stringResource(R.string.builder_local_note), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(stringResource(R.string.builder_local_note), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
         }
     }
@@ -579,6 +594,8 @@ private fun BlockRow(
     onMoveDown: () -> Unit,
 ) {
     val toggleCd = stringResource(R.string.builder_include_cd, label)
+    val selected = position != null
+    val shape = RoundedCornerShape(18.dp)
     Row(
         Modifier.fillMaxWidth()
             // The WHOLE row toggles, not just the switch — a 40dp switch beside
@@ -586,33 +603,45 @@ private fun BlockRow(
             // plan-step rows. The switch keeps its own tap (it consumes the
             // event, so this doesn't double-fire) but is cleared from the
             // semantics tree so screen readers get one control, not two.
-            .toggleable(value = position != null, onValueChange = { onToggle() }, role = Role.Switch)
+            .clip(shape)
+            .background(Periwinkle.copy(alpha = if (selected) 0.13f else 0.035f))
+            .border(
+                1.dp,
+                if (selected) Periwinkle.copy(alpha = 0.42f) else Periwinkle.copy(alpha = 0.13f),
+                shape,
+            )
+            .toggleable(value = selected, onValueChange = { onToggle() }, role = Role.Switch)
             .semantics { contentDescription = toggleCd }
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.clearAndSetSemantics { }) {
-            AppSwitch(checked = position != null, onCheckedChange = { onToggle() })
-        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                if (position != null) "$position. $label" else label,
-                style = MaterialTheme.typography.titleSmall, color = TextSoft,
+                if (selected) "$position  ·  $label" else label,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (selected) TextPrimary else TextSoft,
             )
-            Text(note, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(note, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        if (position != null) {
+        if (selected) {
             val upCd = stringResource(R.string.builder_move_earlier_cd, label)
             val downCd = stringResource(R.string.builder_move_later_cd, label)
-            Column {
-                IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.semantics { contentDescription = upCd }) {
-                    Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = null, tint = if (canMoveUp) Periwinkle else LineStroke)
+            Row {
+                IconButton(onClick = onMoveUp, enabled = canMoveUp,
+                    modifier = Modifier.size(36.dp).semantics { contentDescription = upCd }) {
+                    Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = null,
+                        tint = if (canMoveUp) Periwinkle else LineStroke, modifier = Modifier.size(20.dp))
                 }
-                IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.semantics { contentDescription = downCd }) {
-                    Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null, tint = if (canMoveDown) Periwinkle else LineStroke)
+                IconButton(onClick = onMoveDown, enabled = canMoveDown,
+                    modifier = Modifier.size(36.dp).semantics { contentDescription = downCd }) {
+                    Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null,
+                        tint = if (canMoveDown) Periwinkle else LineStroke, modifier = Modifier.size(20.dp))
                 }
             }
+        }
+        Box(Modifier.clearAndSetSemantics { }) {
+            AppSwitch(checked = selected, onCheckedChange = { onToggle() })
         }
     }
 }
@@ -763,45 +792,69 @@ fun GuidedImageryScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         onBack,
     ) {
         when {
-            done -> ClosingCard(
-                stringResource(R.string.imagery_closing_title),
-                stringResource(R.string.imagery_closing_body),
-                onBack,
-            ) {
-                TextButton(
-                    onClick = { index = 0; left = IMAGERY_LINE_SECONDS; paused = false; done = false },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.imagery_again), color = TextMuted) }
+            done -> ImageryClosing(onBack) {
+                index = 0
+                left = IMAGERY_LINE_SECONDS
+                paused = false
+                done = false
             }
             !started -> ImageryIntro(onOpen) { started = true }
             else -> {
-                ImageryStage(lines, index)
-                SectionCard {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    Modifier.fillMaxWidth().heightIn(min = 600.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    // Keep the prompt in the visual centre while the controls
+                    // settle near the bottom instead of leaving a dead lower half.
+                    Box(
+                        Modifier.fillMaxWidth().weight(1f).padding(bottom = 20.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        TextButton(onClick = { paused = !paused }) {
+                        ImageryStage(lines, index)
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                            .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(22.dp))
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.tipp_progress, index + 1, lines.size),
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted)
                             Text(
-                                if (paused) stringResource(R.string.common_resume) else stringResource(R.string.common_pause_label),
-                                color = Periwinkle,
+                                if (paused) stringResource(R.string.imagery_paused)
+                                else stringResource(R.string.imagery_seconds, left),
+                                style = MaterialTheme.typography.labelLarge, color = Periwinkle,
                             )
                         }
-                        TextButton(onClick = {
-                            val next = nextPromptIndex(index, lines.size)
-                            if (next == null) done = true else { index = next; left = IMAGERY_LINE_SECONDS }
-                        }) { Text(stringResource(R.string.ritual_skip_ahead), color = TextMuted) }
-                        Text(
-                            if (paused) stringResource(R.string.imagery_paused)
-                            else stringResource(R.string.imagery_seconds, left),
-                            style = MaterialTheme.typography.labelSmall, color = TextMuted,
-                        )
-                    }
-                    // Stopping is one tap at every moment, the same posture as
-                    // the caution on the way in.
-                    TextButton(onClick = { started = false; index = 0; left = IMAGERY_LINE_SECONDS; paused = false }) {
-                        Text(stringResource(R.string.ritual_stop_here), color = TextMuted)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            PrimaryButton(
+                                if (paused) stringResource(R.string.common_resume) else stringResource(R.string.common_pause_label),
+                                modifier = Modifier.weight(1f),
+                            ) { paused = !paused }
+                            Box(
+                                Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(26.dp))
+                                    .background(VeilWell).border(1.dp, LineStroke, RoundedCornerShape(26.dp))
+                                    .clickable {
+                                        val next = nextPromptIndex(index, lines.size)
+                                        if (next == null) done = true else { index = next; left = IMAGERY_LINE_SECONDS }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(stringResource(R.string.ritual_skip_ahead),
+                                    style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                            }
+                        }
+                        TextButton(
+                            onClick = { started = false; index = 0; left = IMAGERY_LINE_SECONDS; paused = false },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.ritual_stop_here), color = TextMuted)
+                        }
                     }
                 }
             }
@@ -811,25 +864,67 @@ fun GuidedImageryScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
 
 @Composable
 private fun ImageryIntro(onOpen: (String) -> Unit, onBegin: () -> Unit) {
-    SectionCard {
-        Text(stringResource(R.string.imagery_intro), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        // The caution goes BEFORE the exercise, not after something goes wrong.
-        val shape = RoundedCornerShape(18.dp)
-        Column(
-            Modifier.fillMaxWidth().clip(shape)
-                .background(Color(0x1AFF6B81)).border(1.dp, Color(0x55FF6B81), shape)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(stringResource(R.string.imagery_caution_title), style = MaterialTheme.typography.titleSmall, color = TextSoft)
-            Text(stringResource(R.string.imagery_caution_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            TextButton(onClick = { onOpen("toolkit") }) {
-                Text(stringResource(R.string.imagery_caution_ground), color = Periwinkle)
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = 600.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Box(Modifier.fillMaxWidth().weight(1f).padding(bottom = 58.dp), contentAlignment = Alignment.Center) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(stringResource(R.string.imagery_intro),
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                val shape = RoundedCornerShape(18.dp)
+                Column(
+                    Modifier.fillMaxWidth().clip(shape)
+                        .background(Color(0x10FF6B81)).border(1.dp, Color(0x35FF6B81), shape)
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(stringResource(R.string.imagery_caution_title), style = MaterialTheme.typography.titleSmall, color = TextSoft)
+                    Text(stringResource(R.string.imagery_caution_body), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    TextButton(onClick = { onOpen("toolkit") }) {
+                        Text(stringResource(R.string.imagery_caution_ground), color = Periwinkle)
+                    }
+                }
             }
         }
-        PrimaryButton(text = stringResource(R.string.imagery_begin), modifier = Modifier.fillMaxWidth()) { onBegin() }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            PrimaryButton(text = stringResource(R.string.imagery_begin), modifier = Modifier.fillMaxWidth()) { onBegin() }
+            WhyThisWorks(stringResource(R.string.imagery_why))
+        }
     }
-    WhyThisWorks(stringResource(R.string.imagery_why))
+}
+
+@Composable
+private fun ImageryClosing(onBack: () -> Unit, onAgain: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = 600.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Box(Modifier.fillMaxWidth().weight(1f).padding(bottom = 22.dp), contentAlignment = Alignment.Center) {
+            SectionCard(quiet = true) {
+                Text(
+                    stringResource(R.string.imagery_closing_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextSoft,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    stringResource(R.string.imagery_closing_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PrimaryButton(stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth(), onClick = onBack)
+            TextButton(onClick = onAgain, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.imagery_again), color = TextMuted)
+            }
+        }
+    }
 }
 
 /** The dusk stage — constant-dark in both themes, the rule content art follows
@@ -838,12 +933,23 @@ private fun ImageryIntro(onOpen: (String) -> Unit, onBegin: () -> Unit) {
 private fun ImageryStage(lines: List<String>, index: Int) {
     val shape = RoundedCornerShape(28.dp)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 260.dp).clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF1D1940), Color(0xFF0B0A1C))))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
-            .padding(28.dp),
+        Modifier.fillMaxWidth().heightIn(min = 248.dp).clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF292451), Color(0xFF100E29))))
+            .border(1.dp, Periwinkle.copy(alpha = 0.28f), shape),
         contentAlignment = Alignment.Center,
     ) {
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x405FCEFF), Color.Transparent)),
+                radius = size.minDimension * 0.72f,
+                center = Offset(size.width * 0.25f, size.height * 0.18f),
+            )
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x407A5CFF), Color.Transparent)),
+                radius = size.minDimension * 0.62f,
+                center = Offset(size.width * 0.82f, size.height * 0.82f),
+            )
+        }
         AnimatedContent(
             targetState = index,
             transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -854,7 +960,7 @@ private fun ImageryStage(lines: List<String>, index: Int) {
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(28.dp),
             )
         }
     }

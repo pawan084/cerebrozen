@@ -3,9 +3,15 @@ package com.cerebrozen.app.ui.breathing
 import android.app.Application
 import android.speech.tts.TextToSpeech
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +21,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,8 +51,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -62,10 +74,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.screens.PrimaryButton
+import com.cerebrozen.app.ui.screens.rememberReduceMotion
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.CardShadow
 import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -157,9 +171,17 @@ private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel,
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        HeaderButton(onBack)
-        Text(stringResource(R.string.breath_loops_title), style = MaterialTheme.typography.displaySmall, color = TextPrimary)
-        Text(stringResource(R.string.breath_loops_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeaderButton(onBack)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(R.string.breath_loops_title), style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
+                Text(stringResource(R.string.breath_loops_subtitle), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
         BreathPattern.entries.forEach { pattern ->
             val selected = pattern == state.core.selectedPattern
             PatternCard(pattern, selected) { model.select(pattern) }
@@ -188,34 +210,43 @@ private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel,
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PatternCard(pattern: BreathPattern, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-            .background(if (selected) ChipFill else CardFill)
-            .border(if (selected) 2.dp else 1.dp, if (selected) Periwinkle else LineStroke, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick).padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        Modifier.fillMaxWidth().clip(shape)
+            .background(CardFill)
+            .background(if (selected) Periwinkle.copy(alpha = 0.055f) else Color.Transparent)
+            .border(1.dp, if (selected) Periwinkle.copy(alpha = 0.72f) else LineStroke, shape)
+            .clickable(onClick = onClick).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(patternName(pattern), style = MaterialTheme.typography.titleMedium, color = TextPrimary,
                 modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.breath_rounds, pattern.rounds), color = Periwinkle,
-                style = MaterialTheme.typography.labelSmall)
+            if (selected) Icon(
+                Icons.Outlined.Check, contentDescription = stringResource(R.string.common_selected_cd),
+                tint = Periwinkle, modifier = Modifier.size(19.dp),
+            )
         }
-        Text(patternDescription(pattern), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
             pattern.phases.forEach { phase ->
                 Text(
                     "${phaseLabel(phase.type)} ${phase.seconds}s",
                     style = MaterialTheme.typography.labelSmall, color = TextSoft,
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(VeilWell)
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
         }
-        Text(stringResource(R.string.breath_duration_seconds, pattern.plannedDurationSeconds),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted2)
+        Text(
+            "${stringResource(R.string.breath_duration_seconds, pattern.plannedDurationSeconds)}  ·  ${stringResource(R.string.breath_rounds, pattern.rounds)}",
+            style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+        )
     }
 }
 
@@ -223,13 +254,37 @@ private fun PatternCard(pattern: BreathPattern, selected: Boolean, onClick: () -
 private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewModel) {
     val position = requireNotNull(state.position)
     val phase = position.phase
-    val targetSize = if (orbExpanded(position)) 220.dp else 132.dp
-    val orbSize by androidx.compose.animation.core.animateDpAsState(
-        targetValue = targetSize,
-        animationSpec = tween(phase.seconds * 1_000, easing = LinearEasing),
-        label = "breath-orb-size",
-    )
     val colors = phaseGradient(phase.type)
+    val reduceMotion = rememberReduceMotion()
+    val expanded = orbExpanded(position)
+    val scale by animateFloatAsState(
+        targetValue = if (reduceMotion) 1f else if (expanded) 1.12f else 0.74f,
+        animationSpec = if (reduceMotion) snap() else tween(
+            durationMillis = phase.seconds * 900,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "breath-loop-orb-scale",
+    )
+    val tint by animateColorAsState(
+        targetValue = colors.first(),
+        animationSpec = if (reduceMotion) snap() else tween(1_400, easing = FastOutSlowInEasing),
+        label = "breath-loop-orb-tint",
+    )
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (expanded) 0.34f else 0.18f,
+        animationSpec = if (reduceMotion) snap() else tween(1_200, easing = FastOutSlowInEasing),
+        label = "breath-loop-glow",
+    )
+    val phaseProgress = remember { Animatable(0f) }
+    LaunchedEffect(position.phaseIndex, position.roundIndex, reduceMotion) {
+        phaseProgress.snapTo(0f)
+        if (!reduceMotion) {
+            phaseProgress.animateTo(1f, tween(phase.seconds * 1_000, easing = LinearEasing))
+        }
+    }
+    val ringProgress = if (reduceMotion) {
+        ((phase.seconds - state.remainingSeconds).toFloat() / phase.seconds).coerceIn(0f, 1f)
+    } else phaseProgress.value
     val muteVoiceDescription = stringResource(R.string.breath_mute_voice)
     val enableVoiceDescription = stringResource(R.string.breath_enable_voice)
 
@@ -257,27 +312,79 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
             }
         }
 
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(280.dp).clip(CircleShape).background(colors.first().copy(alpha = 0.10f)))
-            Box(
-                Modifier.size(orbSize).clip(CircleShape)
-                    .background(Brush.linearGradient(colors))
-                    .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(state.remainingSeconds.toString(), style = MaterialTheme.typography.displaySmall,
-                    color = Color.White, fontWeight = FontWeight.Bold)
+        Column(
+            Modifier.weight(1f).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(phaseLabel(phase.type), style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+            Spacer(Modifier.height(14.dp))
+            Box(Modifier.fillMaxWidth().height(330.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(282.dp).graphicsLayer {
+                        scaleX = scale * 1.18f
+                        scaleY = scale * 1.18f
+                    }.blur(22.dp).background(
+                        Brush.radialGradient(
+                            listOf(tint.copy(alpha = glowAlpha), Color(0x337A5CFF), Color.Transparent),
+                        ), CircleShape,
+                    ),
+                )
+                repeat(3) { ring ->
+                    Box(
+                        Modifier.size((240 + ring * 30).dp).graphicsLayer {
+                            val ringScale = if (reduceMotion) 1f else scale * (1f + ring * 0.025f)
+                            scaleX = ringScale
+                            scaleY = ringScale
+                            alpha = 0.20f - ring * 0.035f
+                        }.clip(CircleShape).border(1.dp, tint.copy(alpha = 0.34f), CircleShape),
+                    )
+                }
+                Canvas(Modifier.size(300.dp)) {
+                    val stroke = 4.dp.toPx()
+                    drawCircle(Color.White.copy(alpha = 0.08f), radius = size.minDimension / 2f - stroke,
+                        style = Stroke(3.dp.toPx()))
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            listOf(Color(0xFF64C9FF), Color(0xFFB18CFF), Color(0xFF7A5CFF)),
+                        ), startAngle = -90f,
+                        sweepAngle = 360f * ringProgress, useCenter = false,
+                        style = Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                    )
+                }
+                Box(
+                    Modifier.size(214.dp).graphicsLayer { scaleX = scale; scaleY = scale }
+                        .shadow(22.dp, CircleShape, clip = false,
+                            ambientColor = tint.copy(alpha = 0.55f), spotColor = Color(0x667A5CFF))
+                        .clip(CircleShape)
+                        .background(Brush.radialGradient(
+                            listOf(Color.White, Color(0xFFDDE8FF), Color(0xFF64C9FF), Color(0xFF7A5CFF), Color(0xFFB18CFF)),
+                        )).border(1.dp, Color.White.copy(alpha = 0.48f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(state.remainingSeconds.toString(), style = MaterialTheme.typography.displaySmall,
+                            color = Ink, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.breathe_seconds_remaining),
+                            style = MaterialTheme.typography.labelSmall, color = Ink.copy(alpha = 0.72f))
+                    }
+                }
             }
+            Spacer(Modifier.height(8.dp))
+            Text(patternName(position.pattern), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            Text(
+                if (state.voiceEnabled) stringResource(R.string.breath_voice_on) else stringResource(R.string.breath_voice_off),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                modifier = Modifier.padding(top = 7.dp),
+            )
         }
-        Text(phaseLabel(phase.type), style = MaterialTheme.typography.displaySmall, color = TextPrimary)
-        Text(patternName(position.pattern), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Text(
-            if (state.voiceEnabled) stringResource(R.string.breath_voice_on) else stringResource(R.string.breath_voice_off),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted2,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        TextButton(onClick = model::stop, modifier = Modifier.padding(top = 20.dp)) {
-            Text(stringResource(R.string.breath_stop), color = TextMuted)
+        Box(
+            Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(27.dp))
+                .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(27.dp))
+                .clickable(onClick = model::stop),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(stringResource(R.string.breath_stop), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
         }
     }
 }

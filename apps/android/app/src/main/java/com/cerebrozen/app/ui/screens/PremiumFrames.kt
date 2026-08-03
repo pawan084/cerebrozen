@@ -51,8 +51,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.VeilWell
 
-private val PremiumBackground = listOf(Color(0xFF0D1424), Color(0xFF182447), Color(0xFF241A4A))
+private val PremiumBackground: List<Color> get() = listOf(
+    Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.74f), Night.copy(alpha = 0.82f),
+)
 
 /** Opt-in frame for non-protected pushed screens. It owns only presentation:
  * navigation callbacks and screen content stay with the caller. */
@@ -99,7 +109,7 @@ internal fun PremiumNavRow(
     val shape = RoundedCornerShape(26.dp)
     Row(
         Modifier.fillMaxWidth().pressScale(pressed, down = 0.975f)
-            .background(Brush.linearGradient(listOf(Color(0xD91A2340), Color(0xB823294B))), shape)
+            .background(CardFill, shape)
             .border(
                 1.dp,
                 Brush.linearGradient(listOf(accent.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Color(0x4464C9FF))),
@@ -126,11 +136,11 @@ internal fun PremiumNavRow(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFAEB9D0),
+                color = TextMuted,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -156,7 +166,7 @@ internal fun PremiumStateCard(
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().appear(rise = 10f)
-            .background(Brush.linearGradient(listOf(Color(0xD91A2340), Color(0xB823294B))), shape)
+            .background(CardFill, shape)
             .border(1.dp, accent.copy(alpha = 0.28f), shape)
             .padding(22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -172,7 +182,7 @@ internal fun PremiumStateCard(
         Text(
             message,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFFD2D9EB),
+            color = TextSoft,
             maxLines = 4,
         )
         if (actionLabel != null && onAction != null) {
@@ -231,15 +241,15 @@ private fun PremiumFrameHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    Modifier.size(40.dp).background(Color.White.copy(alpha = 0.07f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.13f), CircleShape)
+                    Modifier.size(40.dp).background(VeilWell, CircleShape)
+                        .border(1.dp, LineStroke, CircleShape)
                         .clickable(onClickLabel = backLabel, onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Outlined.ArrowBackIosNew,
                         contentDescription = backLabel,
-                        tint = Color.White,
+                        tint = TextPrimary,
                         modifier = Modifier.size(17.dp),
                     )
                 }
@@ -250,7 +260,7 @@ private fun PremiumFrameHeader(
                         lineHeight = 32.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
-                    color = Color.White,
+                    color = TextPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -263,7 +273,7 @@ private fun PremiumFrameHeader(
                     letterSpacing = 1.4.sp,
                     fontWeight = FontWeight.Medium,
                 ),
-                color = Color(0xFF9FCBEA).copy(alpha = 0.88f),
+                color = TextMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -274,10 +284,7 @@ private fun PremiumFrameHeader(
     val shape = RoundedCornerShape(30.dp)
     Box(
         Modifier.fillMaxWidth().heightIn(min = 146.dp)
-            .background(
-                Brush.linearGradient(listOf(Color(0xE62D285B), Color(0xD91C3159), Color(0xD2241A4A))),
-                shape,
-            )
+            .background(CardFill, shape)
             .border(
                 1.dp,
                 Brush.linearGradient(listOf(Color(0x887A5CFF), Color.White.copy(alpha = 0.10f), Color(0x6664C9FF))),
@@ -299,11 +306,11 @@ private fun PremiumFrameHeader(
             }
             trailing?.let {
                 Box(
-                    Modifier.size(48.dp).background(Color.White.copy(alpha = 0.08f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape),
+                    Modifier.size(48.dp).background(VeilWell, CircleShape)
+                        .border(1.dp, LineStroke, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(it, contentDescription = null, tint = Color(0xFFDDE5FF), modifier = Modifier.size(23.dp))
+                    Icon(it, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(23.dp))
                 }
             }
         }
@@ -314,14 +321,14 @@ private fun PremiumFrameHeader(
             Text(
                 eyebrow.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
-                color = Color(0xFFB9C8FF),
+                color = TextMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 title,
                 style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold),
-                color = Color.White,
+                color = TextPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

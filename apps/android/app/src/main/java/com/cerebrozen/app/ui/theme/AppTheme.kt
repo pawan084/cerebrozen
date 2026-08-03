@@ -21,10 +21,8 @@ object AppTheme {
     /** Fed by `isSystemInDarkTheme()` at the top of CereBroApp. */
     var systemDark by mutableStateOf(true)
 
-    /** Contexts that are always Night regardless of preference: the splash,
-     * the signed-out onboarding/auth funnel (bespoke night art), and the
-     * Sleep tab (sleep contexts always Night — REDESIGN §4.1). */
-    // Production routes keep this false; retained as an internal preview/test seam.
+    /** Internal preview/test override. Production screens respect the global
+     * appearance choice and keep this false. */
     var forceNight by mutableStateOf(false)
 
     /** Local hour, refreshed each minute by CereBroApp. Held here rather than

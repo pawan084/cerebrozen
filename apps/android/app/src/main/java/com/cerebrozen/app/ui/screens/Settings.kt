@@ -8,12 +8,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
@@ -33,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -55,6 +60,11 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.PickRowFill
+import com.cerebrozen.app.ui.theme.PickRowSelectedFill
+import com.cerebrozen.app.ui.theme.PickRowStroke
+import com.cerebrozen.app.ui.theme.PickRowChevron
+import com.cerebrozen.app.ui.theme.ChipSelectedInk
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -88,7 +98,11 @@ internal fun NavRow(
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (icon != null) {
+                if (icon != null) Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(13.dp))
+                        .background((tint ?: if (emphasis) Cyan else Periwinkle).copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(icon, contentDescription = null,
                         tint = tint ?: if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
                 }
@@ -111,24 +125,28 @@ internal fun NavRow(
 
 @Composable
 private fun SelectableRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    SectionCard(onClick = { Haptics.selection(); onClick() }) {
-        Row(
-            Modifier.fillMaxWidth(),
+    val shape = RoundedCornerShape(17.dp)
+    Row(
+            Modifier.fillMaxWidth().clip(shape)
+                .background(if (selected) PickRowSelectedFill else PickRowFill)
+                .border(1.dp, PickRowStroke, shape)
+                .clickable { Haptics.selection(); onClick() }
+                .padding(horizontal = 18.dp, vertical = 15.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = if (selected) Cyan else TextSoft)
+                Text(title, style = MaterialTheme.typography.titleMedium,
+                    color = if (selected) ChipSelectedInk else TextSoft)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
             if (selected) Icon(
                 Icons.Outlined.Check,
                 contentDescription = stringResource(R.string.common_selected_cd),
-                tint = Cyan,
+                tint = if (selected) ChipSelectedInk else PickRowChevron,
                 modifier = Modifier.size(20.dp),
             )
         }
-    }
 }
 
 /** A companion style. [value] is the server-side `companion` profile value —

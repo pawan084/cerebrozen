@@ -1,8 +1,18 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,8 +24,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
@@ -24,6 +39,9 @@ import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.VeilWell
 import kotlinx.coroutines.launch
 
 // Native tools (iOS ToolsViews + MicroActivities parity): the journaling
@@ -92,16 +110,42 @@ private fun JournalingTool(
         ToolAmbienceEffect(R.raw.rain)
         Text(intro, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         AmbienceToggle()
-        fields.forEachIndexed { i, (label, _) ->
-            AppTextField(
-                values.value[i],
-                { v ->
-                    values.value = values.value.toMutableList().also { it[i] = v }
-                    saved = false   // editing after a save re-arms the button
-                },
-                label,
-                minLines = 2,
-            )
+        SectionCard(quiet = true) {
+            fields.forEachIndexed { i, (label, _) ->
+                Column(
+                    Modifier.fillMaxWidth().padding(bottom = if (i < fields.lastIndex) 4.dp else 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${i + 1}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Periwinkle,
+                        )
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSoft,
+                        )
+                    }
+                    AppTextField(
+                        values.value[i],
+                        { v ->
+                            values.value = values.value.toMutableList().also { it[i] = v }
+                            saved = false
+                        },
+                        label = "",
+                        minLines = 2,
+                        placeholderText = stringResource(R.string.tool_field_hint),
+                    )
+                }
+            }
         }
         val saveFailed = stringResource(R.string.common_save_failed)
         PrimaryButton(
@@ -111,7 +155,11 @@ private fun JournalingTool(
         ) {
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
-                    .onSuccess { saved = true; Celebrations.trigger() }
+                    .onSuccess {
+                        saved = true
+                        values.value = List(fields.size) { "" }
+                        Celebrations.trigger()
+                    }
                     .onFailure { status = it.userMessage(saveFailed) }
             }
         }
@@ -190,40 +238,94 @@ fun TippScreen(onBack: () -> Unit) {
     PremiumSubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
         Text(
             stringResource(R.string.tipp_intro),
-            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            style = MaterialTheme.typography.bodyMedium, color = TextSoft,
         )
-        SectionCard {
-            Text(heading, style = MaterialTheme.typography.titleMedium, color = Cyan)
-            Text(how, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-            Text(why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
-        }
-        // maxLines/weight rather than a bare SpaceBetween: three labelled controls
-        // on one line is the shape that broke the Goals row and the sleep TimeRow
-        // at 720px, and every label here is longer in Hindi.
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        val stepAccent = listOf(Cyan, Periwinkle, Ok, Cyan)[idx]
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(stepAccent.copy(alpha = 0.10f), CardFill),
+                    ),
+                )
+                .border(1.dp, stepAccent.copy(alpha = 0.30f), RoundedCornerShape(26.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            TextButton(enabled = idx > 0, onClick = { idx-- }) {
-                Text(stringResource(R.string.tipp_previous), color = TextMuted, maxLines = 1)
-            }
-            Text(
-                stringResource(R.string.tipp_progress, idx + 1, steps.size),
-                style = MaterialTheme.typography.labelSmall, color = TextMuted, maxLines = 1,
-            )
-            if (idx < steps.size - 1) {
-                TextButton(onClick = { idx++ }) {
-                    Text(stringResource(R.string.common_next), color = Periwinkle, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(38.dp).clip(CircleShape).background(stepAccent.copy(alpha = 0.16f))
+                        .border(1.dp, stepAccent.copy(alpha = 0.34f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("${idx + 1}", style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold, color = stepAccent)
                 }
-            } else {
-                TextButton(onClick = onBack) {
-                    Text(stringResource(R.string.tipp_done), color = Ok, maxLines = 1)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(stringResource(R.string.tipp_progress, idx + 1, steps.size),
+                        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(heading, style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+            }
+            Text(how, style = MaterialTheme.typography.bodyLarge, color = TextSoft)
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .background(VeilWell).padding(13.dp),
+            ) {
+                Text(why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                repeat(steps.size) { step ->
+                    Box(
+                        Modifier.weight(1f).height(4.dp).clip(CircleShape)
+                            .background(if (step <= idx) stepAccent else LineStroke),
+                    )
                 }
             }
         }
-        Text(stringResource(R.string.tipp_urge_note),
-            style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        if (idx < steps.size - 1) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TippPreviousButton(enabled = idx > 0, modifier = Modifier.weight(1f)) { idx-- }
+                PrimaryButton(stringResource(R.string.common_next), modifier = Modifier.weight(1f)) { idx++ }
+            }
+        } else {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PrimaryButton(stringResource(R.string.tipp_done), modifier = Modifier.fillMaxWidth(), onClick = onBack)
+                TippPreviousButton(enabled = true, modifier = Modifier.fillMaxWidth()) { idx-- }
+            }
+        }
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(Periwinkle.copy(alpha = 0.07f))
+                .border(1.dp, Periwinkle.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
+                .padding(14.dp),
+        ) {
+            Text(stringResource(R.string.tipp_urge_note),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
         WhyThisWorks(stringResource(R.string.tipp_why))
+    }
+}
+
+@Composable
+private fun TippPreviousButton(enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.height(52.dp).clip(RoundedCornerShape(26.dp))
+            .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(26.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            stringResource(R.string.tipp_previous),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (enabled) TextPrimary else TextMuted.copy(alpha = 0.45f),
+            maxLines = 1,
+        )
     }
 }
