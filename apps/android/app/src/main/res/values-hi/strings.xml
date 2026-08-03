@@ -848,6 +848,11 @@
     <string name="trusted_eyebrow">अगर हालात कठिन हों</string>
     <string name="trusted_title">भरोसेमंद संपर्क</string>
     <string name="you_trusted_subtitle">एक व्यक्ति, केवल कठिन समय में</string>
+    <string name="you_trusted_saved">सहेजा गया · %1$s</string>
+    <string name="you_crisisregion_state">अभी · %1$s</string>
+    <string name="you_support_call">कॉल</string>
+    <string name="you_support_call_cd">टेली-मानस 14416 पर कॉल करें</string>
+    <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">एक व्यक्ति जिससे CereBro संपर्क कर सके, अगर बातचीत से लगे कि आप खतरे में हैं। जब तक आप नीचे इसे चालू न करें, कुछ नहीं भेजा जाता — और किसी सामान्य बुरे दिन पर कुछ नहीं भेजा जाता।</string>
     <string name="trusted_name_label">उनका नाम (वैकल्पिक)</string>
     <string name="trusted_method_label">उन तक कैसे पहुँचें</string>
@@ -906,7 +911,7 @@
     <string name="you_support_title">सहायता, किसी भी समय</string>
     <string name="you_crisisregion_title">संकट क्षेत्र</string>
     <string name="you_crisisregion_subtitle">कौन-सी हेल्पलाइन दिखाई जाएँ</string>
-    <string name="you_humansupport_subtitle">कोच या थेरेपिस्ट तक पहुँच</string>
+    <string name="you_humansupport_subtitle">असली लोगों की निर्देशिकाएँ, जब आप चाहें</string>
     <string name="toolkit_support_title">क्या अभी सहायता चाहिए?</string>
     <string name="journal_telemanas">भारत में टेली-मानस किसी भी समय उपलब्ध है — 14416 पर कॉल करें, निःशुल्क, दिन हो या रात।</string>
     <string name="journal_support_title">आपको यह अकेले नहीं उठाना है</string>
@@ -1024,7 +1029,7 @@
 
     <!-- Goals & habits (2026-07-30). Machine-assisted; in the pending review. -->
     <string name="you_goals_title">लक्ष्य और आदतें</string>
-    <string name="you_goals_subtitle">यह हिस्सा आप तय करते हैं</string>
+    <string name="you_goals_subtitle">आपके लक्ष्य — कभी भी बदलें</string>
     <string name="goals_eyebrow">आपके तय किए हुए</string>
     <string name="goals_title">लक्ष्य और आदतें</string>
     <string name="goals_intro">बाकी CereBro आपको सुझाव देता है। यह हिस्सा आप तय करते हैं।</string>

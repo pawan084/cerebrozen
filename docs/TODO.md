@@ -86,6 +86,9 @@ cached-first snapshot + parallel reload + 640dp max-width.
 
 Deferred from that audit (need decisions or hardware):
 - [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
+- [ ] **PUT /journal/{id} backend route** — entries can be read but not edited on any client (Others audit #35).
+- [ ] **You page compact density + collapsed header** (Others audit #42/#45) — owner call on the 72dp-row look before reworking PremiumNavRow/PremiumPage.
+- [ ] **Talk conversation search + companion-style whisper in Talk** (Others audit #15/#20) — needs a history surface design.
 - [ ] **Collapsing Sleep header** (audit #4) — design decision on scroll behavior.
 - [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
 - [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.

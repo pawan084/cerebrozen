@@ -56,6 +56,11 @@
     <string name="trusted_eyebrow">If things get hard</string>
     <string name="trusted_title">Trusted contact</string>
     <string name="you_trusted_subtitle">One person, only if things get hard</string>
+    <string name="you_trusted_saved">Saved · %1$s</string>
+    <string name="you_crisisregion_state">Current · %1$s</string>
+    <string name="you_support_call">Call</string>
+    <string name="you_support_call_cd">Call Tele-MANAS 14416</string>
+    <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">One person CereBro can reach out to if a conversation suggests you are in danger. Nothing is sent unless you switch it on below, and nothing is sent for an ordinary bad day.</string>
     <string name="trusted_name_label">Their name (optional)</string>
     <string name="trusted_method_label">How to reach them</string>
@@ -446,7 +451,7 @@
     <string name="you_group_safety">Privacy &amp; safety</string>
     <string name="you_reminder_state_on">On · a gentle daily check-in</string>
     <string name="you_reminder_state_off">Off · tap to set one</string>
-    <string name="you_appearance_state">%1$s · night, dawn, or match your system</string>
+    <string name="you_appearance_state">%1$s · switches with your phone or your call</string>
     <string name="journal_lock_state_on">Lock is on · manage privacy</string>
     <string name="journal_lock_state_off">Lock is off · manage privacy</string>
     <plurals name="journal_month_count">
@@ -483,7 +488,7 @@
     <string name="you_premium_subtitle">Unlock the full library</string>
     <string name="you_crisisregion_title">Crisis region</string>
     <string name="you_crisisregion_subtitle">Which helplines to show</string>
-    <string name="you_humansupport_subtitle">Coach or therapist handoff</string>
+    <string name="you_humansupport_subtitle">Directories to real people, when you want one</string>
     <string name="you_legal_header">LEGAL &amp; ACCOUNT</string>
     <string name="you_export_subtitle">Download a full copy</string>
     <string name="you_delete_subtitle">Permanently erase everything</string>
@@ -1397,7 +1402,7 @@
 
     <!-- ── Goals & habits (GoalsScreen.kt, 2026-07-30) ─────────────────── -->
     <string name="you_goals_title">Goals &amp; habits</string>
-    <string name="you_goals_subtitle">The part you decide</string>
+    <string name="you_goals_subtitle">Your goals — edit anytime</string>
     <string name="goals_eyebrow">Yours to define</string>
     <string name="goals_title">Goals &amp; habits</string>
     <string name="goals_intro">The rest of CereBro suggests things to you. This is the part you decide.</string>

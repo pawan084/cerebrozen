@@ -1,6 +1,8 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DarkMode
@@ -43,6 +46,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -66,6 +71,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var companion by remember { mutableStateOf("") }
     var language by remember { mutableStateOf("") }
+    var region by remember { mutableStateOf("") }
+    // Live state for the safety rows — a settings row that hides its state
+    // makes every check a round-trip.
+    var trustedLine by remember { mutableStateOf<String?>(null) }
     var signOutAsked by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -74,22 +83,38 @@ fun YouScreen(onOpen: (String) -> Unit) {
             name = me.optString("name")
             companion = me.optString("companion")
             language = me.optString("language")
+            region = me.optString("region")
+        }
+        runCatching {
+            trustedLine = Api.trustedContact()?.let { tc ->
+                val who = tc.optString("name").ifBlank { tc.optString("value") }
+                who.takeIf { it.isNotBlank() }
+            }
         }
     }
 
     PremiumPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
-        SectionCard {
+        // The profile row was the page's one dead card — it now opens the
+        // companion/language settings (the closest thing to a profile editor)
+        // and wears the same initial-letter avatar Home's header uses.
+        SectionCard(onClick = { onOpen("companion") }) {
             Row(
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // The avatar orb (mirrors iOS ProfileView's gradient orb).
                 Box(
-                    Modifier.size(46.dp).clip(CircleShape).background(
-                        Brush.radialGradient(listOf(Color.White, TextSoft, Periwinkle)),
-                    ),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Modifier.size(46.dp).clip(CircleShape)
+                        .background(Periwinkle.copy(alpha = 0.16f))
+                        .border(1.dp, Periwinkle.copy(alpha = 0.35f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        name.trim().firstOrNull()?.uppercase() ?: "·",
+                        style = MaterialTheme.typography.titleMedium, color = Periwinkle,
+                    )
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name.ifBlank { stringResource(R.string.you_default_name) }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
                         // Known taxonomy values localize for DISPLAY; the
@@ -104,6 +129,12 @@ fun YouScreen(onOpen: (String) -> Unit) {
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 }
+                Icon(
+                    Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextMuted2,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -121,6 +152,32 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     Text(stringResource(R.string.you_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(stringResource(R.string.crisis_telemanas_line),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+                // One tap fewer on the path that matters most: a direct dial
+                // action (ACTION_DIAL — opens the dialler, never places the
+                // call itself). The card still opens the full crisis screen.
+                run {
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    val callCd = stringResource(R.string.you_support_call_cd)
+                    Box(
+                        Modifier.clip(RoundedCornerShape(50))
+                            .border(1.dp, Warm.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .clickable {
+                                runCatching {
+                                    ctx.startActivity(
+                                        android.content.Intent(
+                                            android.content.Intent.ACTION_DIAL,
+                                            android.net.Uri.parse("tel:14416"),
+                                        ),
+                                    )
+                                }
+                            }
+                            .semantics { contentDescription = callCd }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(stringResource(R.string.you_support_call),
+                            style = MaterialTheme.typography.labelLarge, color = Warm)
+                    }
                 }
                 // The same AutoMirrored chevron every NavRow on this screen uses.
                 // This one was a literal "›" glyph at a different size and colour,
@@ -172,11 +229,6 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 icon = Icons.Outlined.NotificationsNone,
             ) { onOpen("reminders") }
         }
-        // Re-run the four-stop Home tour (iOS parity). Clears only `tour_done`
-        // and lands on Home, where the overlay re-arms itself.
-        PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
-            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
-
         Text(stringResource(R.string.you_group_progress), style = MaterialTheme.typography.labelSmall,
             color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
         // The one screen the user fills in rather than reads.
@@ -199,10 +251,20 @@ fun YouScreen(onOpen: (String) -> Unit) {
         PremiumNavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
             icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
         // The Crisis screen's "add one in Settings" now has a Settings to mean.
-        PremiumNavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
-            icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
-        PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
-            icon = Icons.Outlined.Public) { onOpen("crisisregion") }
+        // Both safety rows carry their live state — "one person, only if things
+        // get hard" told you nothing about whether that person exists yet.
+        PremiumNavRow(
+            stringResource(R.string.trusted_title),
+            trustedLine?.let { stringResource(R.string.you_trusted_saved, it) }
+                ?: stringResource(R.string.you_trusted_subtitle),
+            icon = Icons.Outlined.PersonAddAlt,
+        ) { onOpen("trustedcontact") }
+        PremiumNavRow(
+            stringResource(R.string.you_crisisregion_title),
+            if (region.isNotBlank()) stringResource(R.string.you_crisisregion_state, region.uppercase())
+            else stringResource(R.string.you_crisisregion_subtitle),
+            icon = Icons.Outlined.Public,
+        ) { onOpen("crisisregion") }
         PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
             icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 
@@ -227,6 +289,11 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // danger tint is the difference (2026-07-31 module audit).
         NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
             icon = Icons.Outlined.DeleteOutline, tint = Danger) { onOpen("delete") }
+
+        // Replay-the-tour is a once-ever action: it lives at the bottom now,
+        // not above the safety rows it used to outrank.
+        PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
+            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
 
         // Sign out was a bare TextButton in TextMuted — a caption, on a screen
         // where every other action is a bordered card — and it signed you out on
@@ -257,6 +324,12 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
         Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp))
+        // The quiet fact every support conversation starts with.
+        Text(
+            stringResource(R.string.you_version, com.cerebrozen.app.BuildConfig.VERSION_NAME),
+            style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        )
     }
 }
