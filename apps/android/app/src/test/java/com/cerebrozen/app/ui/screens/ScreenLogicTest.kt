@@ -651,4 +651,22 @@ class ScreenLogicTest {
         assertEquals("Heavy", onboardingMoodNote("Low"))
         assertEquals("", onboardingMoodNote("SomethingNew"))
     }
+
+    @Test
+    fun daySeparator_labels_day_changes_and_lets_local_bubbles_inherit() {
+        val today = java.time.LocalDate.parse("2026-08-03")
+        fun msg(role: String, iso: String) = Msg(role, "x", createdAt = iso)
+        val list = listOf(
+            msg("user", "2026-08-01T10:00:00+05:30"),
+            msg("assistant", "2026-08-01T10:00:05+05:30"),
+            msg("user", "2026-08-02T09:00:00+05:30"),
+            msg("user", "2026-08-03T08:00:00+05:30"),
+            Msg("user", "local, just sent"),   // no stamp: inherits, never labels
+        )
+        assertEquals("Aug 1", daySeparator(list, 0, today))
+        assertNull(daySeparator(list, 1, today))
+        assertEquals("YESTERDAY", daySeparator(list, 2, today))
+        assertEquals("TODAY", daySeparator(list, 3, today))
+        assertNull(daySeparator(list, 4, today))
+    }
 }

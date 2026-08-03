@@ -124,8 +124,14 @@
     <string name="talk_hint_speaking">Speaking…</string>
     <string name="talk_hint_listening_done">Listening… tap when you\'re done</string>
     <string name="talk_hint_listening_stop">Listening… tap to stop</string>
-    <string name="talk_hint_orb_studio">Tap the orb — studio-quality voice</string>
-    <string name="talk_hint_orb">Tap the orb to talk live</string>
+    <string name="talk_hint_orb_studio">Tap the orb to talk it through</string>
+    <string name="talk_hint_orb">Tap the orb to talk it through</string>
+    <!-- Conversation day separators + failed-send recovery + bubble copy. -->
+    <string name="talk_day_today">Today</string>
+    <string name="talk_day_yesterday">Yesterday</string>
+    <string name="talk_retry">Try sending again</string>
+    <string name="talk_copied">Copied</string>
+    <string name="talk_field_followup">Say what\'s on your mind…</string>
     <string name="talk_empty_title">What\'s on your mind?</string>
     <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>

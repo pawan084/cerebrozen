@@ -75,8 +75,8 @@
     <string name="talk_hint_speaking">बोल रहे हैं…</string>
     <string name="talk_hint_listening_done">सुन रहे हैं… पूरा होने पर टैप करें</string>
     <string name="talk_hint_listening_stop">सुन रहे हैं… रोकने के लिए टैप करें</string>
-    <string name="talk_hint_orb_studio">ऑर्ब टैप करें — स्टूडियो-क्वालिटी आवाज़</string>
-    <string name="talk_hint_orb">लाइव बात करने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_hint_orb_studio">बात करने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_hint_orb">बात करने के लिए ऑर्ब टैप करें</string>
     <string name="talk_empty_title">मन में क्या चल रहा है?</string>
     <string name="talk_empty_subtitle">बोलें या लिखें — छोटी-छोटी चिंताएँ भी कह सकते हैं।</string>
     <string name="talk_starters_header">या यहीं से शुरू करें</string>

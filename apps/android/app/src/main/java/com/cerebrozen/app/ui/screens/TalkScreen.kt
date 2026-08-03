@@ -99,8 +99,34 @@ import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.LocalDate
 
-internal data class Msg(val role: String, val text: String, val widget: ChatWidget? = null)
+internal data class Msg(
+    val role: String,
+    val text: String,
+    val widget: ChatWidget? = null,
+    /** ISO created_at from the server; "" for bubbles minted locally this session. */
+    val createdAt: String = "",
+)
+
+/** The day-separator label slot above message [i]: "Today", "Yesterday", or a
+ * date — null when message [i] shares its calendar day with message [i-1].
+ * Local bubbles (no stamp) inherit the previous day and never force a label.
+ * Pure; the composable maps the sentinel values to localized strings. */
+internal fun daySeparator(messages: List<Msg>, i: Int, today: LocalDate): String? {
+    fun dayOf(iso: String): LocalDate? = runCatching {
+        java.time.OffsetDateTime.parse(iso)
+            .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDate()
+    }.getOrNull()
+    val day = dayOf(messages[i].createdAt) ?: return null
+    val prevDay = (i - 1 downTo 0).firstNotNullOfOrNull { dayOf(messages[it].createdAt) }
+    if (prevDay == day) return null
+    return when (day) {
+        today -> "TODAY"
+        today.minusDays(1) -> "YESTERDAY"
+        else -> day.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))
+    }
+}
 
 /** An inline activity the Oracle attached to a reply (cross-stack widget kinds). */
 internal data class ChatWidget(val kind: String, val title: String, val description: String)
@@ -129,7 +155,7 @@ internal fun widgetRoute(kind: String): String? = when (kind) {
 internal fun parseChat(rows: JSONArray): List<Msg> =
     (0 until rows.length()).map { i ->
         val m = rows.getJSONObject(i)
-        Msg(m.getString("role"), m.getString("text"))
+        Msg(m.getString("role"), m.getString("text"), createdAt = m.optString("created_at"))
     }
 
 /** The backend marks elevated/crisis replies with a `crisis` suggestion
@@ -191,6 +217,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // than an error string. Never set by the IP rate limiter.
     var freeLimit by remember { mutableStateOf<Session.FreeLimitException?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // The message a failed send was carrying, so "Try sending again" can resend
+    // it verbatim — the composer clears on send, so without this a network blip
+    // meant retyping from memory.
+    var failedText by remember { mutableStateOf<String?>(null) }
     // Auto-scroll the conversation to the newest reply / streaming tokens.
     val chatScroll = rememberScrollState()
     // Regulatory UX (mirrors iOS AIDisclosure): tappable always-visible pill +
@@ -346,7 +376,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     fun send(text: String, speak: Boolean = false) {
         if (text.isBlank() || busy) return
-        busy = true; status = null
+        busy = true; status = null; failedText = null
         // Clear the composer up front so the sent text doesn't linger in the box
         // during streaming (and can't be wiped if the user starts a follow-up).
         draft = ""
@@ -378,6 +408,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 freeLimit = e
             } catch (e: Exception) {
                 status = e.message ?: sendFailed
+                failedText = text.trim()
             } finally {
                 busy = false
             }
@@ -531,6 +562,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 }
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+            // A failed send keeps its words: one tap resends verbatim.
+            failedText?.let { t ->
+                PickChip(selected = false, label = stringResource(R.string.talk_retry)) { send(t) }
+            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -538,8 +573,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             ) {
                 AppTextField(
                     draft, { draft = it },
-                    if (voice.available) stringResource(R.string.talk_type_instead)
-                    else stringResource(R.string.talk_field_label),
+                    // "Type instead" is orb-context copy — mid-conversation,
+                    // "instead" of what? The follow-up placeholder invites.
+                    when {
+                        messages.isNotEmpty() -> stringResource(R.string.talk_field_followup)
+                        voice.available -> stringResource(R.string.talk_type_instead)
+                        else -> stringResource(R.string.talk_field_label)
+                    },
                     modifier = Modifier.weight(1f),
                 )
                 SendButton(enabled = !busy && draft.isNotBlank(), busy = busy) { send(draft) }
@@ -611,12 +651,20 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
 
         if (voice.available || cloudVoice) {
+            // Full-size only while the orb is the point (no conversation yet, or
+            // actively in a voice turn). Once a text conversation exists, the orb
+            // was half the viewport pushing the transcript below the fold — it
+            // compacts, and the invitation hint goes quiet with it.
+            val voiceActive = voice.listening || cloud.recording ||
+                voice.speaking || cloud.speaking || transcribing
+            val compactOrb = messages.isNotEmpty() && !voiceActive
             VoiceOrb(
                 listening = voice.listening || cloud.recording,
                 speaking = voice.speaking || cloud.speaking,
                 onTap = { onOrbTap() },
                 thinking = transcribing || busy,
                 level = if (cloud.recording) cloudLevel else voice.level,
+                compact = compactOrb,
             )
             val hint = when {
                 transcribing -> stringResource(R.string.talk_hint_hearing)
@@ -625,11 +673,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 voice.speaking -> stringResource(R.string.talk_hint_speaking)
                 cloud.recording -> stringResource(R.string.talk_hint_listening_done)
                 voice.listening -> stringResource(R.string.talk_hint_listening_stop)
+                compactOrb -> null   // the conversation is the point now
                 cloudVoice -> stringResource(R.string.talk_hint_orb_studio)
                 else -> stringResource(R.string.talk_hint_orb)
             }
-            Text(hint, style = MaterialTheme.typography.titleMedium, color = TextSoft,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            hint?.let {
+                Text(it, style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
         }
 
         if (messages.isEmpty()) {
@@ -641,7 +692,13 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
             if (starters.isNotEmpty()) {
                 Text(stringResource(R.string.talk_starters_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Bleed to the screen edge so a clipped chip reads as "scrolls",
+                // not "broken" (the ContentRail pattern).
+                Row(
+                    Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                        .padding(horizontal = pageHorizontalPadding()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     starters.forEach { topic ->
                         PickChip(selected = false, label = topic) { send(topic) }
                     }
@@ -653,8 +710,24 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 // Keyed on the absolute index so the sliding 12-message window
                 // never re-runs an old bubble's entrance (W10).
                 val windowStart = (messages.size - 12).coerceAtLeast(0)
-                messages.takeLast(12).forEachIndexed { i, m ->
+                val today = remember { LocalDate.now() }
+                val visible = messages.takeLast(12)
+                visible.forEachIndexed { i, m ->
                     key(windowStart + i) {
+                        // Day separators: a restored transcript with no time
+                        // anchors read as one endless present.
+                        daySeparator(visible, i, today)?.let { label ->
+                            Text(
+                                when (label) {
+                                    "TODAY" -> stringResource(R.string.talk_day_today)
+                                    "YESTERDAY" -> stringResource(R.string.talk_day_yesterday)
+                                    else -> label
+                                },
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            )
+                        }
                         ChatBubble(m, animate = windowStart + i >= entranceFloor)
                         m.widget?.let { WidgetCard(it, onOpen) }
                     }
@@ -731,15 +804,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
 
         if (chips.isNotEmpty()) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                    .padding(horizontal = pageHorizontalPadding()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 chips.forEach { label ->
                     PickChip(selected = false, label = label) { send(label) }
                 }
             }
         }
 
-        // Fast escape hatch when talking feels like too much (mirrors iOS).
-        NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
+        // Fast escape hatch when talking feels like too much (mirrors iOS) —
+        // except while the crisis card is up: two urgent doors stacked compete,
+        // and the crisis one must win.
+        if (!crisis) {
+            NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
+        }
 
     }
 
@@ -881,7 +962,11 @@ private fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
 private fun TryTogetherRow(onOpen: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.talk_try_together), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                .padding(horizontal = pageHorizontalPadding()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
             PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
             PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("toolkit") }
@@ -920,6 +1005,10 @@ private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
 private fun ChatBubble(m: Msg, animate: Boolean = false) {
     val user = m.role == "user"
     val entrance = if (animate) Modifier.appear(rise = 8f, durationMs = 150) else Modifier
+    // Long-press copies the bubble (quoting your own words into the journal is
+    // the common case). Android 13+ shows the system clipboard chip, so the
+    // haptic plus that chip is the whole feedback loop.
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     Row(
         Modifier.fillMaxWidth().then(entrance),
         horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
@@ -935,7 +1024,13 @@ private fun ChatBubble(m: Msg, animate: Boolean = false) {
                 .border(
                     1.dp, if (user) Periwinkle.copy(alpha = 0.35f) else LineStroke,
                     RoundedCornerShape(18.dp),
-                ),
+                )
+                .pointerInput(m.text) {
+                    detectTapGestures(onLongPress = {
+                        com.cerebrozen.app.ui.Haptics.tap()
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(m.text))
+                    })
+                },
         ) {
             Text(
                 m.text,
@@ -1011,7 +1106,15 @@ private fun VoiceOrb(
     onTap: () -> Unit,
     thinking: Boolean = false,
     level: Float = 0f,
+    /** Mid-conversation resting size — the orb stays reachable without owning
+     * half the viewport. Voice activity always restores the full stage. */
+    compact: Boolean = false,
 ) {
+    val stage = if (compact) 96.dp else 210.dp
+    val orbSize = if (compact) 64.dp else 150.dp
+    val haloSize = if (compact) 100.dp else 230.dp
+    val highlight = if (compact) 24.dp else 56.dp
+    val highlightOffset = if (compact) (-10).dp else (-24).dp
     val active = listening || speaking || thinking
     val reduceMotion = rememberReduceMotion()
     // Phase tint: thinking = iris, voice active = cyan, resting = lavender.
@@ -1035,7 +1138,7 @@ private fun VoiceOrb(
     // Mic-reactive swell on top of the breathing pulse (listening only).
     val pulse = if (reduceMotion || !listening) basePulse else basePulse + level * 0.16f
 
-    Box(Modifier.fillMaxWidth().height(210.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().height(stage), contentAlignment = Alignment.Center) {
         // Expanding ripple rings while listening.
         if (listening && !reduceMotion) {
             for (i in 0 until 3) {
@@ -1048,12 +1151,12 @@ private fun VoiceOrb(
         }
         // Soft bloom halo behind the orb (mirrors the iOS radial glow).
         Box(
-            Modifier.size(230.dp).scale(pulse)
+            Modifier.size(haloSize).scale(pulse)
                 .background(Brush.radialGradient(listOf(core.copy(alpha = 0.28f), Color.Transparent))),
         )
         // Rotating conic shimmer ring while the companion is thinking.
         if (thinking && !reduceMotion) {
-            Canvas(Modifier.size(178.dp).graphicsLayer { rotationZ = spin }) {
+            Canvas(Modifier.size(if (compact) 80.dp else 178.dp).graphicsLayer { rotationZ = spin }) {
                 drawCircle(
                     brush = Brush.sweepGradient(listOf(Color.Transparent, core.copy(alpha = 0.1f), core, Color.Transparent)),
                     radius = size.minDimension / 2f - 3.dp.toPx(),
@@ -1063,7 +1166,7 @@ private fun VoiceOrb(
         }
         // The orb core, with an inner specular highlight (top-left light source).
         Box(
-            Modifier.size(150.dp).scale(pulse).clip(CircleShape)
+            Modifier.size(orbSize).scale(pulse).clip(CircleShape)
                 .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep)))
                 .clickable(
                     onClickLabel = if (listening) stringResource(R.string.talk_orb_stop_cd)
@@ -1072,9 +1175,19 @@ private fun VoiceOrb(
             contentAlignment = Alignment.Center,
         ) {
             Box(
-                Modifier.size(56.dp).offset(x = (-24).dp, y = (-24).dp).clip(CircleShape)
+                Modifier.size(highlight).offset(x = highlightOffset, y = highlightOffset).clip(CircleShape)
                     .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.7f), Color.Transparent))),
             )
+            // The resting orb reads as decoration without a glyph: a quiet mic
+            // says what tapping does (full-size resting state only — while
+            // listening/speaking the motion itself is the signal).
+            if (!listening && !speaking && !thinking) {
+                Icon(
+                    Icons.Outlined.Mic, contentDescription = null,
+                    tint = PeriwinkleDeep.copy(alpha = 0.55f),
+                    modifier = Modifier.size(if (compact) 22.dp else 34.dp),
+                )
+            }
         }
     }
 }
