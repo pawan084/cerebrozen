@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -138,6 +139,11 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Flag) { onOpen("goals") }
         NavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
+        // Trends sits beside Insights, not inside it: Insights is what the app
+        // has to say, Trends is what the user's own entries look like. They
+        // answer different questions and one should not be buried in the other.
+        NavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
+            icon = Icons.Outlined.ShowChart) { onOpen("trends") }
         NavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         NavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),

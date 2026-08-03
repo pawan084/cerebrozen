@@ -19,14 +19,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -46,10 +49,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.audio.WaterDropSound
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.Veil
+import com.cerebrozen.app.ui.theme.VeilSoft
 import com.cerebrozen.app.ui.theme.VeilLine
 import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
@@ -159,6 +165,10 @@ private data class Ripple(val at: Offset, val born: Long)
 fun ZenRipplesScreen(onBack: () -> Unit) {
     var ripples by remember { mutableStateOf(listOf<Ripple>()) }
     var now by remember { mutableLongStateOf(0L) }
+    var rippleCount by rememberSaveable { mutableIntStateOf(0) }
+    var waterSoundEnabled by rememberSaveable { mutableStateOf(true) }
+    val waterSound = remember { WaterDropSound() }
+    DisposableEffect(waterSound) { onDispose { waterSound.release() } }
     // Pump frames only while a ripple is still animating (they live ~3s); when the
     // water is still the loop exits, so we don't recompose the Canvas every frame
     // forever. A new tap changes `ripples` and relaunches the effect.
@@ -178,24 +188,41 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
     SubPage(stringResource(R.string.zen_eyebrow), stringResource(R.string.zen_title), onBack) {
         Text(stringResource(R.string.zen_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        SectionCard {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(stringResource(R.string.zen_ripple_count, rippleCount), style = MaterialTheme.typography.titleMedium, color = Cyan)
+                    Text(stringResource(R.string.zen_water_sound), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                AppSwitch(waterSoundEnabled, { waterSoundEnabled = it })
+            }
+            if (rippleCount > 0) TextButton(onClick = { ripples = emptyList(); rippleCount = 0 }) {
+                Text(stringResource(R.string.common_reset), color = TextMuted)
+            }
+        }
         val canvasCd = stringResource(R.string.zen_canvas_cd)
         Box(
-            Modifier.fillMaxWidth().height(400.dp)
-                .clip(RoundedCornerShape(22.dp))
+            Modifier.fillMaxWidth().height(500.dp)
+                .clip(RoundedCornerShape(30.dp))
                 .background(
                     Brush.radialGradient(
-                        listOf(Cyan.copy(alpha = 0.33f), Color.White.copy(alpha = 0.07f), Color.White.copy(alpha = 0.025f)),
+                        listOf(Cyan.copy(alpha = 0.42f), Color(0xFF102B43), Color(0xFF071521)),
                     ),
                 )
-                .border(1.dp, VeilLine, RoundedCornerShape(22.dp))
+                .border(1.dp, Cyan.copy(alpha = 0.30f), RoundedCornerShape(30.dp))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         ripples = (ripples + Ripple(offset, System.nanoTime())).takeLast(12)
+                        rippleCount++
+                        Haptics.soft(0.35f)
+                        if (waterSoundEnabled) waterSound.play(offset.x / size.width.coerceAtLeast(1).toFloat())
                     }
                 }
                 .semantics { contentDescription = canvasCd },
         ) {
             Canvas(Modifier.matchParentSize()) {
+                drawCircle(Color.White.copy(alpha = 0.035f), radius = size.minDimension * 0.48f, center = center)
+                drawCircle(Cyan.copy(alpha = 0.055f), radius = size.minDimension * 0.32f, center = center)
                 ripples.forEach { r ->
                     val age = (now - r.born) / 1_000_000_000f
                     if (age in 0f..3f) {
@@ -203,6 +230,12 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                         drawCircle(Cyan.copy(alpha = alpha), radius = 30f + age * 220f, center = r.at, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
                         drawCircle(Periwinkle.copy(alpha = alpha * 0.6f), radius = 10f + age * 140f, center = r.at, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
                     }
+                }
+            }
+            if (ripples.isEmpty()) {
+                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("◎", style = MaterialTheme.typography.displayMedium, color = Cyan.copy(alpha = 0.72f))
+                    Text(stringResource(R.string.zen_tap_hint), style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.72f))
                 }
             }
         }
@@ -240,7 +273,7 @@ fun GratitudeGardenScreen(onBack: () -> Unit) {
                 .clip(RoundedCornerShape(22.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.05f), Ok.copy(alpha = 0.16f)),
+                        listOf(VeilSoft, Ok.copy(alpha = 0.16f)),
                     ),
                 )
                 .border(1.dp, VeilLine, RoundedCornerShape(22.dp))

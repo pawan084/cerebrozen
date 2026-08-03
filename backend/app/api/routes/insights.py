@@ -9,6 +9,7 @@ from app.models.nudge import Nudge
 from app.models.user import User
 from app.schemas.content_data import InsightOut, NudgeOut
 from app.services import insights
+from app.services import trends as trends_service
 
 router = APIRouter(tags=["insights"])
 
@@ -19,6 +20,22 @@ async def weekly_insights(
     db: AsyncSession = Depends(get_db),
 ):
     return await insights.compute_weekly(db, user)
+
+
+@router.get("/insights/trends")
+async def trends(
+    days: int = 30,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Day-by-day mood and sleep series for the Trends screen.
+
+    Days with no data are absent rather than zero, `enough_data` gates every
+    summary number, and the mood↔sleep link stays withheld (with a reason)
+    until enough overlapping nights exist to mean something. See
+    `app.services.trends` for why each of those is not a client concern.
+    """
+    return await trends_service.compute(db, user, days=days)
 
 
 @router.get("/insights/digest", response_model=InsightOut | None)

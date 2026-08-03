@@ -693,6 +693,31 @@
     <string name="breathe_reset_title">Two-minute reset</string>
     <string name="breathe_reset_intro">A gentle four in, four out — nothing to hold. Stay as long as you like.</string>
     <string name="breathe_why">Paced breathing is used in clinical distress-tolerance and relaxation protocols. Slowing the breath activates the body\'s calming response.</string>
+    <string name="breath_loops_title">Breath Loops</string>
+    <string name="breath_loops_subtitle">Choose an offline breathing pattern</string>
+    <string name="breath_loops_start">Start %1$s</string>
+    <string name="breath_pattern_box">Box Breathing</string>
+    <string name="breath_pattern_box_desc">Equal counts to steady attention</string>
+    <string name="breath_pattern_478">4-7-8</string>
+    <string name="breath_pattern_478_desc">A longer exhale for settling</string>
+    <string name="breath_pattern_coherent">Coherent</string>
+    <string name="breath_pattern_coherent_desc">A smooth, balanced breathing rhythm</string>
+    <string name="breath_pattern_triangle">Triangle</string>
+    <string name="breath_pattern_triangle_desc">Three even sides: inhale, hold, exhale</string>
+    <string name="breath_rounds">%1$d rounds</string>
+    <string name="breath_duration_seconds">About %1$d seconds</string>
+    <string name="breath_round_progress">Round %1$d of %2$d</string>
+    <string name="breath_voice_on">Voice cues on</string>
+    <string name="breath_voice_off">Voice cues off</string>
+    <string name="breath_mute_voice">Mute voice cues</string>
+    <string name="breath_enable_voice">Enable voice cues</string>
+    <string name="breath_stop">Stop session</string>
+    <string name="breath_complete_title">Session complete</string>
+    <string name="breath_complete_body">%1$d rounds of %2$s breathing</string>
+    <string name="breath_history_title">History</string>
+    <string name="breath_history_clear">Clear</string>
+    <string name="breath_history_empty">Completed sessions will appear here.</string>
+    <string name="breath_history_rounds">%1$d rounds</string>
     <!-- W27 §4: pace choice + guidance toggles (eyes-closed accessibility). -->
     <string name="breathe_pace_gentle">Gentle · 6s</string>
     <string name="breathe_pace_classic">Classic · 4s</string>
@@ -714,6 +739,8 @@
     <string name="zen_title">Zen ripples</string>
     <string name="zen_intro">Tap anywhere on the water. Watch each ripple widen and let go.</string>
     <string name="zen_canvas_cd">Ripple canvas</string>
+    <string name="zen_water_sound">Water-drop sound</string>
+    <string name="zen_ripple_count">%1$d ripples</string><string name="zen_tap_hint">Touch the water</string>
     <string name="gratitude_eyebrow">Grow something good</string>
     <string name="gratitude_title">Gratitude garden</string>
     <string name="gratitude_intro">Name one small thing you\'re thankful for — a flower is planted for each.</string>
@@ -989,4 +1016,199 @@
          generic error and the server\'s explanation never reached anyone. -->
     <string name="freelimit_title">Today\'s free messages are used</string>
     <string name="freelimit_body">Free includes %1$d messages a day; your count resets at %2$s. Journal, sleep, breathing and your plan are all still here in the meantime.</string>
+    <!-- Fully offline guidance tools. Content is local and intentionally avoids diagnosis/treatment claims. -->
+    <string name="offline_previous">Previous</string><string name="offline_pause">Pause</string><string name="offline_resume">Resume</string>
+    <string name="offline_exit">Exit</string><string name="offline_complete">Complete</string><string name="offline_voice">Voice cues</string><string name="offline_begin">Begin</string><string name="offline_saved">Saved locally</string><string name="offline_cancel">Cancel</string>
+    <string name="offline_auto">Auto timing</string><string name="offline_progress">%1$d of %2$d</string>
+    <string name="offline_disclaimer">Educational wellness support only. It is not medical care, diagnosis, treatment, or an emergency service.</string>
+
+    <string name="oi_title">Guided Imagery</string><string name="oi_subtitle">Choose an inner landscape</string>
+    <string name="oi_complete">Journey complete</string>
+    <string name="oi_forest">Forest Sanctuary</string><string name="oi_forest_1">Close your eyes if that feels comfortable and take three slow breaths.</string><string name="oi_forest_2">Imagine a quiet forest path. The air feels cool and clean.</string><string name="oi_forest_3">Walk beneath the trees and notice light moving through the leaves.</string><string name="oi_forest_4">Find a peaceful clearing. Set down what you do not need to carry right now.</string><string name="oi_forest_5">Rest here for a moment. Let your breathing be easy and unforced.</string><string name="oi_forest_end">The forest sanctuary remains available in your imagination.</string>
+    <string name="oi_ocean">Ocean Shore</string><string name="oi_ocean_1">Take a slow breath and picture a calm ocean shore.</string><string name="oi_ocean_2">Listen as each wave arrives and returns to the sea.</string><string name="oi_ocean_3">Imagine warm sand beneath your feet and a soft breeze.</string><string name="oi_ocean_4">Let each outgoing wave carry a little tension away.</string><string name="oi_ocean_5">Breathe with the quiet rhythm of the water.</string><string name="oi_ocean_end">Carry the shore’s steady rhythm with you.</string>
+    <string name="oi_mountain">Mountain Peak</string><string name="oi_mountain_1">Picture a mountain beneath an open sky and take one grounding breath.</string><string name="oi_mountain_2">Notice its wide base resting firmly on the earth.</string><string name="oi_mountain_3">Weather moves around it while the mountain remains.</string><string name="oi_mountain_4">Imagine a spacious view from the peak.</string><string name="oi_mountain_5">Let thoughts pass like clouds without needing to follow them.</string><string name="oi_mountain_end">You can revisit this image of steadiness whenever it is useful.</string>
+    <string name="oi_meadow">Sunlit Meadow</string><string name="oi_meadow_1">Imagine stepping into a meadow in soft morning light.</string><string name="oi_meadow_2">Notice warmth, grass, and the air around you.</string><string name="oi_meadow_3">Look gently at the colours and shapes nearby.</string><string name="oi_meadow_4">Rest without needing to solve anything for this moment.</string><string name="oi_meadow_5">Make room for one easy breath, then another.</string><string name="oi_meadow_end">Carry a little of this spaciousness into what comes next.</string>
+
+    <string name="obs_title">Body Scan</string><string name="obs_subtitle">Move attention through the body without trying to change anything.</string><string name="obs_complete">Body scan complete</string>
+    <string name="obs_feet">Feet</string><string name="obs_feet_body">Notice pressure, temperature, or contact in both feet.</string>
+    <string name="obs_legs">Lower legs</string><string name="obs_legs_body">Move attention through the ankles, calves, and knees.</string>
+    <string name="obs_pelvis">Hips and pelvis</string><string name="obs_pelvis_body">Notice where the body is supported by the chair, bed, or floor.</string>
+    <string name="obs_belly">Belly</string><string name="obs_belly_body">Feel the natural movement of breathing without forcing its pace.</string>
+    <string name="obs_chest">Chest and back</string><string name="obs_chest_body">Notice expansion, release, and any areas that feel neutral.</string>
+    <string name="obs_hands">Hands and arms</string><string name="obs_hands_body">Notice the fingers, palms, wrists, and arms.</string>
+    <string name="obs_shoulders">Shoulders and neck</string><string name="obs_shoulders_body">Observe sensations here. Softening is optional, not a task.</string>
+    <string name="obs_face">Face and head</string><string name="obs_face_body">Notice the jaw, eyes, forehead, and the whole head together.</string>
+
+    <string name="ocg_title">Crisis Grounding</string><string name="ocg_subtitle">Local grounding steps and your chosen emergency contact</string>
+    <string name="ocg_emergency_disclaimer">If you may be in immediate danger, contact emergency services where you are. This app cannot determine or contact the correct service for your location.</string>
+    <string name="ocg_see">See</string><string name="ocg_see_body">Name five things you can see: colours, edges, light, and shapes.</string>
+    <string name="ocg_touch">Touch</string><string name="ocg_touch_body">Notice four things you can physically feel.</string>
+    <string name="ocg_hear">Hear</string><string name="ocg_hear_body">Listen for three distinct sounds nearby or farther away.</string>
+    <string name="ocg_smell">Smell</string><string name="ocg_smell_body">Notice two scents, or recall two familiar safe scents.</string>
+    <string name="ocg_taste">Taste</string><string name="ocg_taste_body">Notice one taste or sensation in your mouth.</string>
+    <string name="ocg_slow_breath">Slow breathing</string><string name="ocg_slow_breath_body">If comfortable, breathe in gently and let the exhale be a little longer. Stop if this feels unpleasant.</string>
+    <string name="ocg_open_breath">Open Breath Loops</string><string name="ocg_contact_title">My emergency contact</string>
+    <string name="ocg_contact_name">Contact label or name</string><string name="ocg_contact_number">Phone number</string><string name="ocg_contact_save">Save on this device</string>
+    <string name="ocg_call">Call contact</string><string name="ocg_confirm_title">Open the dialer?</string><string name="ocg_confirm_body">The dialer will open with %1$s. Check the number before placing the call.</string><string name="ocg_confirm_open">Open dialer</string><string name="ocg_contact_required">Add and save a phone number first.</string>
+
+    <string name="oir_title">Insight Reel</string><string name="oir_subtitle">Local cards for a quiet pause</string><string name="oir_insight">INSIGHT</string><string name="oir_reflect">REFLECT</string>
+    <string name="oir_title_1">Thoughts are events, not commands</string><string name="oir_body_1">You can notice a thought without agreeing with it or acting on it.</string>
+    <string name="oir_title_2">What feels most present?</string><string name="oir_body_2">Name one sensation, one emotion, and one need without judging the answers.</string>
+    <string name="oir_title_3">A small pause still counts</string><string name="oir_body_3">One deliberate breath can create a little space before the next action.</string>
+    <string name="oir_title_4">Try a kinder question</string><string name="oir_body_4">Replace “What is wrong with me?” with “What might support me right now?”</string>
+    <string name="oir_title_5">Notice what is neutral</string><string name="oir_body_5">Attention can include neutral details alongside difficult sensations.</string>
+    <string name="oir_title_6">Choose one workable next step</string><string name="oir_body_6">It can be small: water, a message, fresh air, or a few minutes of rest.</string>
+
+    <string name="offline_modules">Modules</string><string name="offline_practice">Local practice</string><string name="offline_mark_done">Mark complete</string><string name="offline_mark_undone">Mark incomplete</string><string name="offline_program_progress">%1$d of %2$d modules complete</string>
+    <string name="ocbti_eyebrow">OFFLINE SLEEP EDUCATION</string><string name="ocbti_title">CBT-I Overview</string><string name="ocbti_subtitle">Educational modules about habits that can support sleep. Work with a qualified clinician for personalised CBT-I.</string>
+    <string name="ocbti_m1">Understanding sleep</string><string name="ocbti_m1_body">Sleep pressure and the body clock both influence when sleep feels possible.</string><string name="ocbti_m1_practice">For one week, note bedtime, wake time, and how rested you feel.</string>
+    <string name="ocbti_m2">A consistent wake time</string><string name="ocbti_m2_body">A regular morning anchor can help make the daily rhythm more predictable.</string><string name="ocbti_m2_practice">Choose a realistic wake-time range for the next few days.</string>
+    <string name="ocbti_m3">The bed-sleep connection</string><string name="ocbti_m3_body">Quiet, repeatable cues can help the bed become associated with winding down.</string><string name="ocbti_m3_practice">Create a short pre-bed routine using two calm, low-light activities.</string>
+    <string name="ocbti_m4">Light and activity</string><string name="ocbti_m4_body">Daytime light and movement provide timing cues to the body clock.</string><string name="ocbti_m4_practice">Notice when you receive daylight and when activity feels sustainable.</string>
+    <string name="ocbti_m5">Thoughts at night</string><string name="ocbti_m5_body">Trying to force sleep can add effort and frustration.</string><string name="ocbti_m5_practice">Write tomorrow’s tasks down earlier, then set the list aside.</string>
+    <string name="ocbti_m6">Review and seek support</string><string name="ocbti_m6_body">Persistent sleep difficulty can have many causes and deserves individual assessment.</string><string name="ocbti_m6_practice">Review patterns and consider discussing concerns with a qualified professional.</string>
+    <string name="ombct_eyebrow">OFFLINE MINDFULNESS EDUCATION</string><string name="ombct_title">MBCT Overview</string><string name="ombct_subtitle">Educational mindfulness practices inspired by MBCT. This is not a substitute for a clinician-led programme.</string>
+    <string name="ombct_m1">Awareness and autopilot</string><string name="ombct_m1_body">Mindfulness begins by noticing when attention has moved automatically.</string><string name="ombct_m1_practice">Give full attention to one ordinary activity for two minutes.</string>
+    <string name="ombct_m2">The body as an anchor</string><string name="ombct_m2_body">Body sensations can provide present-moment information without needing analysis.</string><string name="ombct_m2_practice">Complete the offline Body Scan once.</string>
+    <string name="ombct_m3">Gathering attention</string><string name="ombct_m3_body">Attention can be gently returned after wandering.</string><string name="ombct_m3_practice">Notice five breaths and restart kindly whenever you lose count.</string>
+    <string name="ombct_m4">Relating to thoughts</string><string name="ombct_m4_body">Thoughts can be observed as mental events rather than facts.</string><string name="ombct_m4_practice">Add “I am noticing the thought that…” before one recurring thought.</string>
+    <string name="ombct_m5">Allowing experience</string><string name="ombct_m5_body">Allowing means acknowledging what is present, not approving or giving up.</string><string name="ombct_m5_practice">Name what is present and where you feel it in the body.</string>
+    <string name="ombct_m6">Responding with care</string><string name="ombct_m6_body">A deliberate response can replace an automatic reaction.</string><string name="ombct_m6_practice">Pause and choose one supportive action you can realistically take.</string>
+    <string name="ombct_m7">Caring for capacity</string><string name="ombct_m7_body">Pleasant and mastery activities can support a balanced routine.</string><string name="ombct_m7_practice">Schedule one nourishing and one manageable activity.</string>
+    <string name="ombct_m8">Continuing practice</string><string name="ombct_m8_body">A sustainable practice can be brief and flexible.</string><string name="ombct_m8_practice">Choose when, where, and how long your next three practices will be.</string>
+    <string name="mg_title">Mindful Games</string><string name="mg_subtitle">Build focus, memory and calm through local play</string>
+    <string name="mg_cat_focus">Focus &amp; Attention</string><string name="mg_cat_memory">Memory</string><string name="mg_cat_resilience">Resilience &amp; Emotional Strength</string><string name="mg_cat_flexibility">Cognitive Flexibility</string><string name="mg_cat_calm">Calmness &amp; Mindfulness</string>
+    <string name="mg_color_tap">Color Tap</string><string name="mg_color_tap_desc">Tap only the target colour while distractions appear.</string>
+    <string name="mg_sound_hunter">Sound Hunter</string><string name="mg_sound_hunter_desc">Notice the named sound cue among changing symbols.</string>
+    <string name="mg_freeze_switch">Freeze Switch</string><string name="mg_freeze_switch_desc">Switch carefully between move and freeze.</string>
+    <string name="mg_distraction_dodge">Distraction Dodge</string><string name="mg_distraction_dodge_desc">Keep following the target while distractors change.</string>
+    <string name="mg_emotion_match">Emotion Match</string><string name="mg_emotion_match_desc">Remember and match a brief emotion sequence.</string>
+    <string name="mg_pattern_recall">Pattern Recall</string><string name="mg_pattern_recall_desc">Remember a short sequence of symbols.</string>
+    <string name="mg_object_tray">Object Tray</string><string name="mg_object_tray_desc">Notice objects, then recall which one was present.</string>
+    <string name="mg_path_memory">Path Memory</string><string name="mg_path_memory_desc">Watch a short path and choose its final direction.</string>
+    <string name="mg_growth_garden">Growth Garden</string><string name="mg_growth_garden_desc">Grow a local garden through small calming choices.</string>
+    <string name="mg_thought_sort">Thought Sort</string><string name="mg_thought_sort_desc">Sort thoughts as helpful, unhelpful, or uncertain.</string>
+    <string name="mg_emotion_compass">Emotion Compass</string><string name="mg_emotion_compass_desc">Name an emotion and choose a supportive response.</string>
+    <string name="mg_storm_balance">Storm Balance</string><string name="mg_storm_balance_desc">Choose steady actions while an imaginary storm passes.</string>
+    <string name="mg_rule_switch">Rule Switch</string><string name="mg_rule_switch_desc">Respond as the rule changes between rounds.</string>
+    <string name="mg_shape_shift">Shape Shift</string><string name="mg_shape_shift_desc">Change how you classify each shape.</string>
+    <string name="mg_multi_task_relay">Multi-Task Relay</string><string name="mg_multi_task_relay_desc">Alternate between two simple local tasks.</string>
+    <string name="mg_breathing_rhythm">Breathing Rhythm</string><string name="mg_breathing_rhythm_desc">Follow expanding and settling circles.</string>
+    <string name="mg_zen_sand">Zen Sand</string><string name="mg_zen_sand_desc">Create a slow pattern through deliberate taps.</string>
+    <string name="mg_cloud_drift">Cloud Drift</string><string name="mg_cloud_drift_desc">Guide a cloud with patient, unhurried choices.</string>
+    <string name="mg_who_are_you">Who Are You?</string><string name="mg_who_are_you_desc">Move through quiet prompts without scoring.</string>
+    <string name="mg_selective_attention">Selective attention</string><string name="mg_auditory_focus">Auditory focus</string><string name="mg_reaction_control">Reaction control</string><string name="mg_sustained_attention">Sustained attention</string>
+    <string name="mg_awareness_memory">Awareness + memory</string><string name="mg_working_memory">Working memory</string><string name="mg_visual_memory">Visual memory</string><string name="mg_spatial_memory">Spatial memory</string>
+    <string name="mg_positive_habits">Positive habits</string><string name="mg_cognitive_reframing">Cognitive reframing</string><string name="mg_emotional_intelligence">Emotional intelligence</string><string name="mg_emotional_regulation">Emotional regulation</string>
+    <string name="mg_mental_flexibility">Mental flexibility</string><string name="mg_flexible_thinking">Flexible thinking</string><string name="mg_divided_attention">Divided attention</string>
+    <string name="mg_calm_focus">Calm focus</string><string name="mg_relaxation">Relaxation</string><string name="mg_patience">Patience</string><string name="mg_self_awareness">Self-awareness</string>
+    <string name="mg_round">Round %1$d of %2$d</string><string name="mg_score">Noticed %1$d</string><string name="mg_tap_target">Tap the target: %1$s</string><string name="mg_remember">Remember: %1$s</string><string name="mg_choose">Choose the most workable response</string>
+    <string name="mg_option_pause">Pause and notice</string><string name="mg_option_rush">Rush immediately</string><string name="mg_option_ignore">Ignore every signal</string>
+    <string name="mg_finished">Game complete</string><string name="mg_finished_body">You completed %1$s. There is no high score to chase.</string><string name="mg_play_again">Play again</string><string name="mg_back_games">Back to games</string>
+    <string name="mg_result_eyebrow">Activity complete</string><string name="mg_result_title">Beautifully done</string>
+    <string name="mg_result_score">%1$d of %2$d mindful responses</string><string name="mg_result_message">You stayed with the activity through every round. Progress comes from returning, not perfection.</string>
+    <string name="mg_result_skill">You practised %1$s</string>
+    <string name="mg_stroop_flow">Stroop Flow</string><string name="mg_stroop_flow_desc">Name the ink colour, not the written word.</string>
+    <string name="mg_number_bloom">Number Bloom</string><string name="mg_number_bloom_desc">Hold a growing number pattern in mind.</string>
+    <string name="mg_mirror_tap">Mirror Tap</string><string name="mg_mirror_tap_desc">Alternate left and right with a steady rhythm.</string>
+    <string name="mg_still_point">Still Point</string><string name="mg_still_point_desc">Follow a quiet pulse and let attention settle.</string>
+    <string name="mg_inhibitory_control">Inhibitory control</string><string name="mg_coordination">Bilateral coordination</string>
+    <string name="mg_ink_prompt">Tap the ink colour</string><string name="mg_left">Left</string><string name="mg_right">Right</string>
+    <string name="mg_follow_side">Follow the glowing side</string><string name="mg_breathe_with_orb">Breathe gently with the orb</string>
+    <string name="mg_colour_green">Green</string><string name="mg_colour_cyan">Cyan</string><string name="mg_colour_purple">Purple</string>
+    <string name="mg_rule_prompt">Use the rule: %1$s</string><string name="mg_rule_small">Tap the smaller number</string><string name="mg_rule_large">Tap the larger number</string>
+    <string name="mg_tone_prompt">Which tone did you hear?</string><string name="mg_tone_low">Low tone</string><string name="mg_tone_high">High tone</string><string name="mg_replay_tone">Replay tone</string>
+    <string name="mg_go">GO</string><string name="mg_freeze">FREEZE</string><string name="mg_tap">Tap</string><string name="mg_wait">Wait</string>
+    <string name="mg_find_target">Find the softly glowing target</string><string name="mg_colour_prompt">Tap %1$s</string>
+    <string name="mg_helpful">Helpful</string><string name="mg_unhelpful">Unhelpful</string><string name="mg_uncertain">Uncertain</string>
+    <string name="mg_water">Water</string><string name="mg_sunlight">Sunlight</string><string name="mg_rush_growth">Pull the stem</string>
+    <string name="mg_name_it">Name it</string><string name="mg_notice_body">Notice the body</string><string name="mg_choose_support">Choose support</string>
+    <string name="mg_anchor">Drop anchor</string><string name="mg_fight_storm">Fight the storm</string><string name="mg_steady_breath">Steady breath</string>
+    <string name="mg_sort_prompt">Sort this thought: “I must get everything right.”</string><string name="mg_garden_prompt">What helps a small habit grow?</string>
+    <string name="mg_compass_prompt">Choose a direction for this emotion</string><string name="mg_storm_prompt">The storm is loud. What keeps you steady?</string>
+    <string name="mg_draw_sand">Tap a point to continue the sand pattern</string><string name="mg_guide_cloud">Guide the cloud toward the quiet space</string>
+    <string name="mg_reflect_prompt">Notice one quality you value in yourself</string><string name="mg_still_prompt">Rest your attention on the centre point</string>
+    <string name="mg_shape_circle">Circle</string><string name="mg_shape_cornered">Cornered</string>
+    <string name="mg_feedback_good">Nicely noticed</string><string name="mg_feedback_continue">Keep exploring</string>
+
+    <!-- Remote nudges (FCM). Its own channel, so silencing server nudges
+         doesn't also silence the local daily reminder. -->
+    <string name="push_channel_name">Gentle nudges</string>
+    <string name="push_channel_desc">Occasional, quiet check-ins from CereBro. Never urgent.</string>
+
+    <!-- Offline queue. Says what actually happened rather than "Saved". -->
+    <string name="today_checkin_queued">Kept on this device — it will sync when you\'re back online.</string>
+    <string name="journal_entry_queued">Kept on this device — it will sync when you\'re back online.</string>
+    <string name="outbox_pending">%d waiting to sync</string>
+    <string name="today_banner_offline_queued">You\'re offline — showing the last copy. %1$d thing(s) you wrote are saved here and will send themselves when you\'re back.</string>
+
+    <!-- Trends. Every summary string is only ever shown when the server said
+         it had enough data; the "not enough" strings are the honest default. -->
+    <string name="trends_eyebrow">Over time</string>
+    <string name="trends_title">Trends</string>
+    <string name="trends_window_week">Week</string>
+    <string name="trends_window_month">Month</string>
+    <string name="trends_window_season">3 months</string>
+    <string name="trends_mood_title">How days have felt</string>
+    <string name="trends_sleep_title">Time in bed</string>
+    <string name="trends_mood_summary">Averaging %1$s out of 5 across %2$d days you checked in.</string>
+    <string name="trends_sleep_summary">Averaging %1$s across %2$d nights you logged.</string>
+    <string name="trends_mood_not_enough">%1$d days logged so far — a few more and a shape starts to show.</string>
+    <string name="trends_sleep_not_enough">%1$d nights logged so far — a few more and a shape starts to show.</string>
+    <string name="trends_empty_title">Nothing to chart yet</string>
+    <string name="trends_empty_body">Check in on Home or log a night on Sleep, and this fills in on its own.</string>
+    <string name="trends_error_title">Couldn\'t load your trends</string>
+    <string name="trends_load_failed">Couldn\'t load your trends just now.</string>
+    <string name="trends_link_title">Sleep and the day after</string>
+    <string name="trends_link_needs_more">Not enough nights with a check-in the next day yet (%1$d so far). This stays blank until it would mean something.</string>
+    <string name="trends_link_no_variation">Your nights and your days have both been steady, so there\'s no difference to compare.</string>
+    <string name="trends_link_positive">Across %1$d nights, longer nights have tended to come before easier days for you.</string>
+    <string name="trends_link_negative">Across %1$d nights, longer nights have tended to come before harder days. Worth noticing rather than fixing.</string>
+    <string name="trends_link_none">Across %1$d nights, no clear link either way.</string>
+    <string name="trends_why">These are trends over what you wrote down, not measurements. Gaps are left as gaps: a day you didn\'t log is missing from the line, never drawn as a low.</string>
+    <string name="trends_chart_a11y">Line chart of %1$d logged days, from %2$s to %3$s.</string>
+    <string name="trends_open">See your trends</string>
+    <string name="you_trends_title">Trends</string>
+    <string name="you_trends_subtitle">Your check-ins and nights, over time</string>
+
+    <!-- Journal search: says where results came from, so older entries pulled
+         from the server don't look like they were in the list all along. -->
+    <!-- Games, 2026-08-01 rebuild: twelve mechanics, timed rounds, a result
+         band rather than a grade. A score is never a verdict on the player. -->
+    <string name="mg_colour_amber">Amber</string>
+    <string name="mg_colour_rose">Rose</string>
+    <string name="mg_watch_sequence">Watch the order</string>
+    <string name="mg_repeat_sequence">Now tap where it started</string>
+    <string name="mg_study_tray">Take it in…</string>
+    <string name="mg_find_new">One is new — which?</string>
+    <string name="mg_breathe_in">Breathe in</string>
+    <string name="mg_breathe_out">Breathe out</string>
+    <string name="mg_done_step">Done</string>
+    <string name="mg_sort_unhelpful">A familiar trap</string>
+    <string name="mg_sort_workable">Something workable</string>
+    <string name="mg_band_sharp">Sharp today</string>
+    <string name="mg_band_steady">Steady today</string>
+    <string name="mg_band_gentle">A gentler round</string>
+    <string name="mg_band_rested">A few quiet minutes</string>
+    <!-- Sorting prompts: deliberately generic and pre-written. The exercise is
+         noticing a pattern, never judging the user's own thoughts. -->
+    <string name="mg_thought_all_or_nothing">"If it isn\'t perfect, it\'s a failure."</string>
+    <string name="mg_thought_one_step">"I can do the next small piece of it."</string>
+    <string name="mg_thought_mind_reading">"They didn\'t reply — they must be annoyed."</string>
+    <string name="mg_thought_evidence">"I could just ask instead of guessing."</string>
+    <string name="mg_thought_catastrophe">"This will ruin everything."</string>
+    <string name="mg_thought_ask_for_help">"It\'s okay to ask someone for help here."</string>
+    <string name="mg_thought_should">"I should be handling this better by now."</string>
+    <string name="mg_thought_good_enough">"Good enough today is genuinely good enough."</string>
+
+    <!-- Sleep: "we couldn't load this" must never be shown as "you have no
+         nights logged" — a failed read is not a fact about the user. -->
+    <string name="sleep_load_failed">Couldn\'t load your week just now. Your nights are safe — this is only the reading of them.</string>
+    <string name="common_retry">Try again</string>
+
+    <string name="journal_searching">Looking through your older entries…</string>
+    <plurals name="journal_found_older">
+        <item quantity="one">Found 1 older entry</item>
+        <item quantity="other">Found %d older entries</item>
+    </plurals>
 </resources>

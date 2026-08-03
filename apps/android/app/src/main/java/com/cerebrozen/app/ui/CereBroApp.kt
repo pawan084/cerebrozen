@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.animateFloatAsState
@@ -61,6 +65,15 @@ import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.BreathePreset
 import com.cerebrozen.app.ui.screens.BreatheScreen
+import com.cerebrozen.app.ui.breathing.BreathLoopsScreen
+import com.cerebrozen.app.ui.offline.BodyScanScreen
+import com.cerebrozen.app.ui.offline.CbtIOfflineScreen
+import com.cerebrozen.app.ui.offline.CrisisGroundingScreen
+import com.cerebrozen.app.ui.offline.GuidedImageryScreen
+import com.cerebrozen.app.ui.offline.InsightReelScreen
+import com.cerebrozen.app.ui.offline.MbctOfflineScreen
+import com.cerebrozen.app.ui.games.MindfulGameScreen
+import com.cerebrozen.app.ui.games.MindfulGamesScreen
 import com.cerebrozen.app.ui.screens.BreathingScreen
 import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.Celebration
@@ -77,6 +90,7 @@ import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.Onboarding
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
+import com.cerebrozen.app.ui.screens.TrendsScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
 import com.cerebrozen.app.ui.screens.GoalsScreen
@@ -118,6 +132,24 @@ private enum class Tab(val route: String, @androidx.annotation.StringRes val lab
     Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
+
+internal fun shouldShowBottomBar(route: String?): Boolean =
+    route in setOf("home", "sleep", "talk", "journal", "you")
+
+/**
+ * Whether the nav pill is drawn right now.
+ *
+ * It is hidden while the keyboard is up, and that is the whole point: the pill
+ * reserves its slot in the Scaffold whether or not it has anything to draw, so
+ * with the IME open there was a dead lavender band sitting between the keyboard
+ * and the composer on every screen you can type on. Worse, the tabs it showed
+ * were unreachable — tapping one dismisses the keyboard first.
+ *
+ * Kept as a pure function of the two inputs so the matrix is a unit test rather
+ * than something only a device can tell you.
+ */
+internal fun navVisible(route: String?, imeOpen: Boolean): Boolean =
+    shouldShowBottomBar(route) && !imeOpen
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
  * lavender radial + hairline when selected. Icons/labels brighten on selection
@@ -268,18 +300,6 @@ private fun SyncSystemBarIcons() {
 }
 
 
-/** Routes that are a "sleep context" and therefore always Night (REDESIGN §4.1).
- *
- * Everything the Sleep tab can push, not just the tab: the full player and the
- * soundscape mixer are used with the lights off, and a bright screen there is
- * worse than anywhere else in the product. Keep this in step with the NavRows
- * in SleepScreen — a new sleep destination that is not listed here will flip
- * the theme mid-wind-down.
- */
-private val SLEEP_CONTEXT_ROUTES = setOf(
-    Tab.Sleep.route, "player", "sounds", "sounds/mixer",
-)
-
 @Composable
 fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
@@ -301,6 +321,9 @@ fun CereBroApp() {
     // A brief branded splash on cold launch — always Night (brand moment).
     // Reduce Motion gets the settled frame instantly, so holding it for the full
     // animation length would just be a longer dead screen: shorten the hold too.
+    // Clear route overrides before early-returning into splash/auth. This also
+    // prevents a Sleep-route forceNight value leaking through after sign-out.
+    AppTheme.forceNight = false
     val splashReduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(splashReduceMotion) {
@@ -308,7 +331,6 @@ fun CereBroApp() {
         showSplash = false
     }
     if (showSplash) {
-        AppTheme.forceNight = true
         SyncSystemBarIcons()
         Splash()
         return
@@ -318,7 +340,6 @@ fun CereBroApp() {
     // same account as iOS/web). Session.signedIn is Compose-observable. The funnel's
     // bespoke night art doesn't theme, so it is always Night.
     if (!Session.signedIn) {
-        AppTheme.forceNight = true
         SyncSystemBarIcons()
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             AuroraBackground()
@@ -332,17 +353,30 @@ fun CereBroApp() {
     // new consent-gated funnel (DPDP posture, owner decision 2026-07-13).
     LaunchedEffect(Unit) { com.cerebrozen.app.net.Analytics.unlock() }
 
+    // Two things that only make sense once signed in, both fire-and-forget:
+    //  * flush anything the user wrote while offline, before any screen reads
+    //    a list that would otherwise be missing their own entry;
+    //  * re-register this install for push (FCM rotates tokens silently, so
+    //    this runs on every cold start, not once).
+    val pushContext = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        runCatching { com.cerebrozen.app.net.Outbox.drain() }
+        com.cerebrozen.app.notify.Push.register(pushContext)
+    }
+
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
-    // Sleep contexts always keep the night palette (REDESIGN §4.1).
-    //
-    // The TAB alone is not the context. Found on a physical device: playing a
-    // sleep story and tapping the now-playing bar pushed `player`, which fell
-    // out of this check and rendered a full-screen bright Dawn player at 22:46
-    // — with the sleep timer running, from a Night tab. That is the exact harm
-    // the rule exists to prevent, and it was invisible to every test.
-    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
+    // The primary navigation belongs only to the five root destinations. Detail,
+    // player, tool and game screens get the full viewport and one clear Back path.
+    // WindowInsets.ime reports the keyboard's height; > 0 means it is up. Read
+    // here rather than inside the bottomBar lambda so the Scaffold recomposes
+    // and reclaims the slot, instead of keeping an empty one.
+    val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+    val showBottomBar = navVisible(current, imeOpen)
+    // Sleep, player and soundscape follow the same appearance choice as every
+    // other route; an explicit Light choice must remain Light everywhere.
+    AppTheme.forceNight = false
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
@@ -364,6 +398,7 @@ fun CereBroApp() {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
+            if (showBottomBar) {
             // A floating lavender pill over a dark scrim — the tabs read as a lifted
             // capsule rather than a flat system bar.
             Box(
@@ -409,6 +444,7 @@ fun CereBroApp() {
                     }
                 }
             }
+            }
         },
     ) { padding ->
         NavHost(
@@ -419,12 +455,14 @@ fun CereBroApp() {
                 .padding(padding),
             // A gentle shared-axis feel: cross-fade paired with a whisper of scale,
             // so screens settle in rather than hard-cut.
-            enterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 0.98f, animationSpec = tween(280)) },
-            exitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 1.02f, animationSpec = tween(170)) },
-            popEnterTransition = { fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
-            popExitTransition = { fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
+            enterTransition = { if (reduceMotion) EnterTransition.None else fadeIn(tween(280)) + scaleIn(initialScale = 0.98f, animationSpec = tween(280)) },
+            exitTransition = { if (reduceMotion) ExitTransition.None else fadeOut(tween(170)) + scaleOut(targetScale = 1.02f, animationSpec = tween(170)) },
+            popEnterTransition = { if (reduceMotion) EnterTransition.None else fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
+            popExitTransition = { if (reduceMotion) ExitTransition.None else fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
         ) {
-            val open: (String) -> Unit = { route -> navController.navigate(route) }
+            val open: (String) -> Unit = { route ->
+                navController.navigate(route) { launchSingleTop = true }
+            }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
@@ -450,16 +488,30 @@ fun CereBroApp() {
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }
+            composable("trends") { TrendsScreen(onBack = back) }
             composable("safetyplan") { SafetyPlanScreen(onBack = back) }
             composable("goals") { GoalsScreen(onBack = back) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
             composable("toolkit") { ToolkitScreen(onOpen = open, onBack = back) }
-            composable("games") { ToolkitScreen(onOpen = open, onBack = back) }
+            composable("games") { MindfulGamesScreen(onBack = back) { open("mindfulgame/$it") } }
+            composable("mindfulgame/{gameId}") { entry ->
+                MindfulGameScreen(
+                    gameId = entry.arguments?.getString("gameId"),
+                    onBack = back,
+                    onBackToGames = { navController.popBackStack("games", false) },
+                )
+            }
             composable("tools") { ToolkitScreen(onOpen = open, onBack = back) }
             // The one parameterized breathe engine (box / two-minute reset).
-            composable("breathe/box") { BreatheScreen(BreathePreset.Box, onBack = back) }
+            composable("breathe/box") { BreathLoopsScreen(onBack = back) }
+            composable("guidedimagery") { GuidedImageryScreen(onBack = back) }
+            composable("bodyscan") { BodyScanScreen(onBack = back) }
+            composable("crisisgrounding") { CrisisGroundingScreen(onBack = back) { open("breathe/box") } }
+            composable("insightreel") { InsightReelScreen(onBack = back) }
+            composable("cbti") { CbtIOfflineScreen(onBack = back) }
+            composable("mbct") { MbctOfflineScreen(onBack = back) }
             composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }

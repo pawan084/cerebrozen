@@ -60,7 +60,7 @@ class ThemeTokensTest {
     }
 
     @Test
-    fun windDownHoursAreNightOnSystem_butNeverOverruleAnExplicitChoice() {
+    fun appearanceChoiceIsConsistentAtEveryHour() {
         // REDESIGN §4.1 says "Sleep tab AND wind-down hours always Night". Only
         // the first half was built. Found on a device at 23:43: Home was showing
         // a banner reading "The day is winding down" in full-brightness Dawn.
@@ -69,8 +69,8 @@ class ThemeTokensTest {
         assertFalse("but 20:00 is not", isWindDownHour(20))
         assertFalse("nor is 09:00", isWindDownHour(9))
 
-        // System follows the clock as well as the OS toggle.
-        assertTrue("light OS, but it is 23:00", nightFor(ThemeMode.System, systemDark = false, hour = 23))
+        // System follows the OS setting at every hour.
+        assertFalse("light OS stays light at 23:00", nightFor(ThemeMode.System, systemDark = false, hour = 23))
         assertFalse("light OS at midday stays Dawn", nightFor(ThemeMode.System, systemDark = false, hour = 12))
         assertTrue("dark OS at midday is still Night", nightFor(ThemeMode.System, systemDark = true, hour = 12))
 

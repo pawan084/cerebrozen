@@ -24,6 +24,7 @@ object AppTheme {
     /** Contexts that are always Night regardless of preference: the splash,
      * the signed-out onboarding/auth funnel (bespoke night art), and the
      * Sleep tab (sleep contexts always Night — REDESIGN §4.1). */
+    // Production routes keep this false; retained as an internal preview/test seam.
     var forceNight by mutableStateOf(false)
 
     /** Local hour, refreshed each minute by CereBroApp. Held here rather than
@@ -56,7 +57,7 @@ fun isWindDownHour(hour: Int): Boolean = hour >= WIND_DOWN_FROM_HOUR || hour < 6
  * at 23:43 the room is dark whatever the OS toggle says.
  */
 fun nightFor(mode: ThemeMode, systemDark: Boolean, hour: Int): Boolean = when (mode) {
-    ThemeMode.System -> systemDark || isWindDownHour(hour)
+    ThemeMode.System -> systemDark
     ThemeMode.Night -> true
     ThemeMode.Dawn -> false
 }

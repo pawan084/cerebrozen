@@ -7,6 +7,15 @@ plugins {
     jacoco
 }
 
+// The google-services plugin is applied ONLY when a config file is present.
+// Applying it unconditionally fails the build with "File google-services.json is
+// missing" — which would mean nobody could build the app until someone created a
+// Firebase project. With this, push ships dormant and switches on by dropping the
+// file in (it stays git-ignored; it is a config artifact, not source).
+if (project.file("google-services.json").isFile) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.isFile) file.inputStream().use(::load)
@@ -166,6 +175,17 @@ val coverageExcludes = listOf(
     // holders for composable lambdas — rendering internals, not logic.
     "**/ComposableSingletons*",
     "**/LiveLiterals*",
+    // FirebaseMessagingService subclass: instantiating it requires an
+    // initialised FirebaseApp, which needs a google-services.json this repo
+    // deliberately does not carry. Every decision it makes lives in
+    // notify/Push.kt, which IS covered (PushTest) — this class is the two-line
+    // adapter Firebase requires.
+    "com/cerebrozen/app/notify/CereBroMessagingService*",
+    // The Play-services Task→coroutine bridge in notify/Push.kt (file-level
+    // private, so it compiles into PushKt). It can only run against a real
+    // FirebaseMessaging instance, which needs the config file above; the
+    // token fetch it wraps is behind Push.tokenProvider, which IS covered.
+    "com/cerebrozen/app/notify/PushKt*",
 )
 
 // NOT in coverageIncludes (documented here so the omission is deliberate):
@@ -276,6 +296,9 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.datastore.preferences)
     // Google sign-in via Credential Manager (inert until a web client id is set).
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
@@ -292,6 +315,11 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     // Health Connect — optional last-night sleep prefill (Android's HealthKit analogue).
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    // Remote nudges (FCM). Inert without a google-services.json: Firebase's
+    // init provider finds no config, FirebaseApp.getApps() stays empty, and
+    // Push.available() returns false — so the app behaves exactly as before.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

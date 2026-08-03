@@ -72,6 +72,12 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.AuthEyebrow
 import com.cerebrozen.app.ui.theme.AuthFieldLabel
+import com.cerebrozen.app.ui.theme.Gradients
+import com.cerebrozen.app.ui.theme.PrimaryButtonDisabledFill
+import com.cerebrozen.app.ui.theme.PrimaryButtonFill
+import com.cerebrozen.app.ui.theme.PrimaryButtonInk
+import com.cerebrozen.app.ui.theme.TextBright
+import com.cerebrozen.app.ui.theme.VeilWell
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -143,7 +149,7 @@ fun AuthScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(PeriwinkleDeep.copy(alpha = 0.55f), NightMid, Night))),
+            .background(Gradients.night),
     ) {
     Column(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
@@ -154,10 +160,10 @@ fun AuthScreen(
             if (onBack != null) {
                 Box(
                     Modifier.size(45.dp).clip(RoundedCornerShape(23.dp))
-                        .background(Color.White.copy(alpha = 0.10f)).clickable(onClick = onBack),
+                        .background(VeilWell).clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = TextBright, modifier = Modifier.size(20.dp))
                 }
             }
             Column {
@@ -166,7 +172,7 @@ fun AuthScreen(
                 Text(
                     if (creating) stringResource(R.string.auth_create_title) else stringResource(R.string.auth_signin_title),
                     style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp),
-                    color = Color.White,
+                    color = TextPrimary,
                 )
             }
         }
@@ -253,7 +259,7 @@ fun AuthScreen(
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         onClick = { creating = false; error = null; info = null },
                     ) {
-                        Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_have_account), style = MaterialTheme.typography.titleMedium, color = Periwinkle)
                     }
                 } else {
                     // Reset completes via the emailed web link (same as iOS);
@@ -268,13 +274,13 @@ fun AuthScreen(
                             }
                         },
                     ) {
-                        Text(stringResource(R.string.auth_forgot), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_forgot), style = MaterialTheme.typography.titleMedium, color = Periwinkle)
                     }
                     TextButton(
                         modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 24.dp),
                         onClick = { creating = true; error = null; info = null },
                     ) {
-                        Text(stringResource(R.string.auth_new_here), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.auth_new_here), style = MaterialTheme.typography.titleMedium, color = Periwinkle)
                     }
                 }
             }
@@ -380,7 +386,7 @@ private fun AuthWhiteButton(
         modifier
             .pressScale(pressed, down = 0.97f)
             .clip(RoundedCornerShape(26.dp))
-            .background(if (enabled) Color.White else Color.White.copy(alpha = 0.32f))
+            .background(if (enabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
             .clickable(enabled = enabled, interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 28.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
@@ -389,7 +395,7 @@ private fun AuthWhiteButton(
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Ink else TextMuted2,
+            color = if (enabled) PrimaryButtonInk else Ink,
         )
     }
 }

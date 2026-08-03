@@ -32,7 +32,7 @@ class ApiEndpointsTest {
 
     /** Signed-in session over a router keyed by "METHOD /path". */
     private fun script(routes: Map<String, String>, log: MutableList<Req> = mutableListOf()): MutableList<Req> {
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, method, body, _, auth ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, method, body, _, auth, _ ->
             val path = url.removePrefix(com.cerebrozen.app.BuildConfig.API_BASE_URL)
             log.add(Req(path, method, body, auth))
             if (path == "/auth/refresh") return@resetForTest 200 to tokens
@@ -47,7 +47,7 @@ class ApiEndpointsTest {
     @Test
     fun signUp_posts_json_and_signs_in() = runTest {
         val store = FakeStore()
-        Session.resetForTest(store) { url, method, body, contentType, _ ->
+        Session.resetForTest(store) { url, method, body, contentType, _, _ ->
             assertTrue(url.endsWith("/auth/signup"))
             assertEquals("POST", method)
             assertEquals("application/json", contentType)
@@ -65,7 +65,7 @@ class ApiEndpointsTest {
     fun otp_request_then_verify_signs_in() = runTest {
         val store = FakeStore()
         val seen = mutableListOf<String>()
-        Session.resetForTest(store) { url, _, body, _, auth ->
+        Session.resetForTest(store) { url, _, body, _, auth, _ ->
             assertNull("OTP endpoints are unauthenticated", auth)
             seen.add(url.substringAfter("http://").substringAfter("/"))
             when {
@@ -90,7 +90,7 @@ class ApiEndpointsTest {
     @Test
     fun signInWithGoogle_exchanges_the_id_token() = runTest {
         val store = FakeStore()
-        Session.resetForTest(store) { url, method, body, _, _ ->
+        Session.resetForTest(store) { url, method, body, _, _, _ ->
             assertTrue(url.endsWith("/auth/google"))
             assertEquals("POST", method)
             val json = JSONObject(body!!)
@@ -106,7 +106,7 @@ class ApiEndpointsTest {
 
     @Test
     fun write_while_signed_in_but_offline_reports_503_not_signed_out() = runTest {
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { _, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { _, _, _, _, _, _ ->
             throw IOException("offline")
         }
         try {
@@ -121,7 +121,7 @@ class ApiEndpointsTest {
 
     @Test
     fun api_without_any_session_reports_signed_out() = runTest {
-        Session.resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
+        Session.resetForTest(FakeStore()) { _, _, _, _, _, _ -> 200 to "{}" }
         try {
             Session.api("/moods")
             throw AssertionError("expected ApiException")
@@ -134,7 +134,7 @@ class ApiEndpointsTest {
     @Test
     fun get_serves_stale_on_5xx_but_never_on_4xx() = runTest {
         var status = 200
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             when {
                 url.endsWith("/auth/refresh") -> 200 to tokens
                 else -> status to if (status == 200) """{"ok":1}""" else """{"detail":"boom"}"""
@@ -156,7 +156,7 @@ class ApiEndpointsTest {
 
     @Test
     fun non_json_error_body_falls_back_to_a_generic_detail() = runTest {
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 502 to "<html>bad gateway</html>"
         }
         try {
@@ -204,6 +204,78 @@ class ApiEndpointsTest {
         assertFalse(Api.voiceStatus().getBoolean("stt"))
         assertTrue("every read used GET + a bearer token",
             log.filter { it.path != "/auth/refresh" }.all { it.method == "GET" && it.auth == "a1" })
+    }
+
+    // ── Sync-era endpoints (trends, journal search, device push) ────────
+
+    @Test
+    fun trends_asks_for_the_window_it_will_draw() = runTest {
+        val log = script(mapOf("GET /insights/trends?days=90" to """{"days":90}"""))
+
+        assertEquals(90, Api.trends(90).getInt("days"))
+        assertEquals("/insights/trends?days=90", log.last().path)
+    }
+
+    @Test
+    fun journal_search_encodes_the_query_and_omits_empty_filters() = runTest {
+        val log = script(
+            mapOf(
+                "GET /journal" to "[]",
+                "GET /journal?q=quiet+morning" to """[{"id":"j1"}]""",
+                "GET /journal?tag=work" to """[{"id":"j2"}]""",
+                "GET /journal?q=a%26b&tag=home" to "[]",
+            ),
+        )
+
+        Api.searchJournal()
+        assertEquals("no filters must not send a bare '?'", "/journal", log.last().path)
+
+        assertEquals(1, Api.searchJournal("quiet morning").length())
+        assertEquals(1, Api.searchJournal(tag = "work").length())
+        Api.searchJournal("a&b", "home")
+        assertEquals(
+            "an unencoded & would silently truncate the search",
+            "/journal?q=a%26b&tag=home", log.last().path,
+        )
+    }
+
+    @Test
+    fun journal_tags_reads_the_used_tag_list() = runTest {
+        script(mapOf("GET /journal/tags" to """["evening","work"]"""))
+
+        assertEquals("evening", Api.journalTags().getString(0))
+    }
+
+    @Test
+    fun device_registration_sends_platform_and_build() = runTest {
+        val log = script(mapOf("POST /users/me/devices" to """{"id":"d1"}"""))
+
+        Api.registerDevice("fcm-1", "android", "0.1.0")
+
+        val body = JSONObject(log.last().body!!)
+        assertEquals("fcm-1", body.getString("token"))
+        assertEquals("android", body.getString("platform"))
+        assertEquals("0.1.0", body.getString("app_version"))
+    }
+
+    @Test
+    fun device_unregistration_passes_the_token_as_an_encoded_query() = runTest {
+        val log = script(mapOf("DELETE /users/me/devices?token=a%2Fb%2Bc" to ""))
+
+        Api.unregisterDevice("a/b+c")
+
+        assertEquals("DELETE", log.last().method)
+        assertEquals("/users/me/devices?token=a%2Fb%2Bc", log.last().path)
+    }
+
+    @Test
+    fun push_status_asks_about_this_platform() = runTest {
+        script(mapOf("GET /users/me/devices?platform=android" to """{"enabled":false,"devices":0}"""))
+
+        assertFalse(
+            "an unconfigured server must be able to say so, so the toggle isn't a lie",
+            Api.pushStatus().getBoolean("enabled"),
+        )
     }
 
     @Test
@@ -283,7 +355,7 @@ class ApiEndpointsTest {
     fun activeProgram_is_null_when_none_and_activePlan_swallows_failure() = runTest {
         script(mapOf("GET /programs/active" to """{"program":null}"""))
         assertNull(Api.activeProgram())
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 404 to """{"detail":"no plan"}"""
         }
         assertNull("activePlan degrades to null instead of throwing", Api.activePlan())
@@ -292,7 +364,7 @@ class ApiEndpointsTest {
     @Test
     fun trustedContact_maps_blank_and_null_bodies_to_null() = runTest {
         var body = "null"
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, method, reqBody, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, method, reqBody, _, _, _ ->
             when {
                 url.endsWith("/auth/refresh") -> 200 to tokens
                 method == "PUT" -> {
@@ -316,7 +388,7 @@ class ApiEndpointsTest {
         val declined = Api.setTrustedContact("Mum", "sms", "+65 8123", notifyConsent = false)
         assertFalse("and so must an explicit no", declined.getBoolean("notify_consent"))
         // A blank body would JSON-crash without the isBlank guard.
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to ""
         }
         assertNull(Api.trustedContact())
@@ -326,7 +398,7 @@ class ApiEndpointsTest {
     fun oracleAvailable_reads_the_flag_and_defaults_false_on_failure() = runTest {
         script(mapOf("GET /oracle/status" to """{"available":true}"""))
         assertTrue(Api.oracleAvailable())
-        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else throw IOException("offline")
         }
         assertFalse("no network → Oracle treated as unavailable", Api.oracleAvailable())

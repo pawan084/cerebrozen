@@ -30,7 +30,7 @@ class SessionTest {
     @Test
     fun signIn_stores_tokens_and_flips_signedIn() = runTest {
         val store = FakeStore()
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             assertTrue(url.endsWith("/auth/login"))
             200 to tokens
         }
@@ -43,7 +43,7 @@ class SessionTest {
     fun get_is_cached_and_served_when_offline() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var online = true
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (!online) throw IOException("offline")
             when {
                 url.endsWith("/auth/refresh") -> 200 to tokens
@@ -61,7 +61,7 @@ class SessionTest {
     fun servedStale_flips_on_cache_fallback_and_clears_when_back_online() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var online = true
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (!online) throw IOException("offline")
             when {
                 url.endsWith("/auth/refresh") -> 200 to tokens
@@ -82,7 +82,7 @@ class SessionTest {
     @Test
     fun network_blip_during_refresh_does_not_sign_out() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) throw IOException("offline") else 200 to "{}"
         }
         runCatching { Session.api("/x") }   // cold start, refresh fails on network
@@ -93,7 +93,7 @@ class SessionTest {
     @Test
     fun expired_refresh_401_signs_out() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 401 to """{"detail":"expired"}""" else 200 to "{}"
         }
         runCatching { Session.api("/x") }
@@ -104,7 +104,7 @@ class SessionTest {
     fun expired_access_401_rotates_then_retries() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var meCalls = 0
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             when {
                 url.endsWith("/auth/refresh") -> 200 to tokens
                 url.endsWith("/me") -> {
@@ -126,7 +126,7 @@ class SessionTest {
         val store = FakeStore("refresh_token" to "r1")
         var refreshCalls = 0
         var consumed = false
-        Session.resetForTest(store) { url, _, body, _, _ ->
+        Session.resetForTest(store) { url, _, body, _, _, _ ->
             when {
                 url.endsWith("/auth/refresh") -> {
                     refreshCalls++
@@ -151,7 +151,7 @@ class SessionTest {
     @Test
     fun signOut_clears_refresh_and_cache() = runTest {
         val store = FakeStore("refresh_token" to "r1", "cache:/me" to """{"ok":1}""")
-        Session.resetForTest(store) { _, _, _, _, _ -> 200 to "{}" }
+        Session.resetForTest(store) { _, _, _, _, _, _ -> 200 to "{}" }
         Session.signOut()
         assertFalse(Session.signedIn)
         assertNull(store.getString("refresh_token"))
@@ -162,7 +162,7 @@ class SessionTest {
     fun forgotPassword_posts_unauthenticated() = runTest {
         val store = FakeStore()
         var seenAuth: String? = "sentinel"
-        Session.resetForTest(store) { url, method, body, _, auth ->
+        Session.resetForTest(store) { url, method, body, _, auth, _ ->
             assertTrue(url.endsWith("/auth/password/forgot"))
             assertEquals("POST", method)
             assertTrue(body!!.contains("e@x.com"))
@@ -178,7 +178,7 @@ class SessionTest {
         val store = FakeStore()
         var captured: String? = null
         var seenAuth: String? = "sentinel"
-        Session.resetForTest(store) { url, method, body, _, auth ->
+        Session.resetForTest(store) { url, method, body, _, auth, _ ->
             assertTrue(url.endsWith("/events"))
             assertEquals("POST", method)
             captured = body; seenAuth = auth
@@ -195,7 +195,7 @@ class SessionTest {
     @Test
     fun analytics_toggle_defaults_on_and_persists_via_store() = runTest {
         val store = FakeStore()
-        Session.resetForTest(store) { _, _, _, _, _ -> 200 to "{}" }
+        Session.resetForTest(store) { _, _, _, _, _, _ -> 200 to "{}" }
         assertTrue("anonymous counts default on (opt-out, matches iOS)", Analytics.enabled)
         Analytics.enabled = false
         assertFalse(Analytics.enabled)
@@ -227,7 +227,7 @@ class SessionTest {
     @Test
     fun sse_streams_frames_in_order() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
         }
         val frames = """
@@ -257,7 +257,7 @@ class SessionTest {
     fun sse_rotates_once_on_401_then_replays() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var refreshes = 0
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) { refreshes++; 200 to tokens } else 200 to "{}"
         }
         var attempts = 0
@@ -286,7 +286,7 @@ class SessionTest {
     @Test
     fun stt_uploads_multipart_and_returns_the_transcript() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
         }
         Session.binExec = { url, method, body, contentType, auth ->
@@ -303,7 +303,7 @@ class SessionTest {
     @Test
     fun tts_rotates_once_on_401_and_returns_bytes() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
         }
         var attempts = 0
@@ -321,7 +321,7 @@ class SessionTest {
     @Test
     fun sse_surfaces_the_error_detail_on_persistent_failure() = runTest {
         val store = FakeStore("refresh_token" to "r1")
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 200 to "{}"
         }
         Session.sseExec = { _, _, _ -> 429 to """{"detail":"Daily message limit reached"}""".byteInputStream() }

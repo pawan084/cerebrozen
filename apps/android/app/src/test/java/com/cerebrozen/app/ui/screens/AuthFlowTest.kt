@@ -33,7 +33,7 @@ class AuthFlowTest {
     @Test
     fun post_signup_writes_survive_the_signedIn_composition_swap() = runTest {
         val calls = mutableListOf<String>()
-        Session.resetForTest(FakeStore()) { url, _, _, _, _ ->
+        Session.resetForTest(FakeStore()) { url, _, _, _, _, _ ->
             // The real transport suspends (withContext(Dispatchers.IO)), which is
             // where a cancelled caller dies on-device — model that suspension
             // point with yield() so cancellation is actually observed here.

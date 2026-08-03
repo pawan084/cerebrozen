@@ -155,12 +155,19 @@ async def dispatch_due(db: AsyncSession) -> int:
         if user is None:
             nudge.status = "failed"
             continue
+        # Native installs first (every registered iOS/Android device, plus the
+        # legacy single push_token column), then the browser, then email.
+        if await notifications.deliver(db, user, nudge):
+            nudge.status = "sent"
+            nudge.sent_at = now
+            sent += 1
+            continue
         if not user.push_token:
-            # Web-only users: browser push first (subscriptions registered via
-            # /users/me/push-subscriptions), then the email opt-in
-            # (users.email_nudges, account-page toggle); otherwise record
-            # honestly instead of faking "sent" — the admin safety/ops views
-            # can query these.
+            # No native install took it. Browser push next (subscriptions
+            # registered via /users/me/push-subscriptions), then the email
+            # opt-in (users.email_nudges, account-page toggle); otherwise
+            # record honestly instead of faking "sent" — the admin safety/ops
+            # views can query these.
             if await webpush.send_web_push(db, user, nudge):
                 nudge.status = "sent"
                 nudge.sent_at = now
@@ -173,11 +180,8 @@ async def dispatch_due(db: AsyncSession) -> int:
             else:
                 nudge.status = "skipped"
             continue
-        if await notifications.send_push(user, nudge):
-            nudge.status = "sent"
-            nudge.sent_at = now
-            sent += 1
-        else:
-            nudge.status = "failed"
+        # A registered token that would not take it: a real delivery failure,
+        # not a routing question. `deliver` already tried it.
+        nudge.status = "failed"
     await db.commit()
     return sent

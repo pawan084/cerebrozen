@@ -308,7 +308,7 @@ class ScreenLogicTest {
     }
 
     private fun freshStore() = com.cerebrozen.app.net.Session
-        .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
+        .resetForTest(FakeStore()) { _, _, _, _, _, _ -> 200 to "{}" }
 
     // ── Onboarding funnel progress (must not key off translated copy) ──
     @Test

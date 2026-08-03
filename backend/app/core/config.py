@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     apns_bundle_id: str = "com.cerebrozen.app"
     apns_use_sandbox: bool = True
 
+    # FCM (HTTP v1) for Android push. Empty credentials path = log instead of
+    # send, same contract as APNs — the Android client still registers its
+    # token, so turning delivery on later needs no app release.
+    fcm_credentials_path: str = ""   # path to the service-account .json
+    fcm_project_id: str = ""
+
     # Transactional email (verification, password reset). Empty host = log only.
     smtp_host: str = ""
     smtp_port: int = 587
@@ -190,6 +196,10 @@ class Settings(BaseSettings):
     @property
     def apns_enabled(self) -> bool:
         return bool(self.apns_key_path and self.apns_key_id and self.apns_team_id)
+
+    @property
+    def fcm_enabled(self) -> bool:
+        return bool(self.fcm_credentials_path and self.fcm_project_id)
 
     @property
     def webpush_enabled(self) -> bool:

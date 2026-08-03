@@ -152,6 +152,12 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     var nights by remember { mutableStateOf(listOf<SleepNight>()) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // Three states this screen used to collapse into one. A first load in
+    // flight, a load that failed, and an account with no nights yet all drew
+    // the same "start logging" empty state — so a user whose request had just
+    // failed was told, in a friendly voice, that they had never logged a night.
+    var loading by remember { mutableStateOf(true) }
+    var loadFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     // Duration unit letters — the only localizable part of "7h 30m".
@@ -176,8 +182,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     }
 
     suspend fun reload() {
-        runCatching { summary = Api.sleepSummary() }
-        runCatching { nights = parseNights(Api.sleepLogs()) }
+        // Either read failing means the week we would draw is incomplete, and
+        // an incomplete week rendered as a whole one is the honesty problem
+        // this module's audit was about.
+        val gotSummary = runCatching { summary = Api.sleepSummary() }.isSuccess
+        val gotNights = runCatching { nights = parseNights(Api.sleepLogs()) }.isSuccess
+        loadFailed = !(gotSummary && gotNights)
+        loading = false
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -282,6 +293,29 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 }
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+        }
+
+        // Loading: the shape of the card that is coming, not a spinner and not
+        // an empty state that would be a claim about the user's history.
+        if (loading && summary == null) {
+            SectionCard {
+                ShimmerBox(Modifier.fillMaxWidth().height(18.dp))
+                ShimmerBox(Modifier.fillMaxWidth().height(52.dp))
+            }
+        }
+
+        // Failed: say so, and offer the retry. Silence here reads as "no nights".
+        if (!loading && loadFailed && summary == null) {
+            SectionCard {
+                Text(stringResource(R.string.sleep_week_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(
+                    stringResource(R.string.sleep_load_failed),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+                TextButton(onClick = { scope.launch { loading = true; reload() } }) {
+                    Text(stringResource(R.string.common_retry), color = Cyan)
+                }
+            }
         }
 
         summary?.let { s ->

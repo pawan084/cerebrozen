@@ -172,7 +172,7 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
 }
 
 /** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
- * The choice persists as `theme_mode`; Sleep always keeps the night palette. */
+ * The choice persists as `theme_mode` and applies to every app screen. */
 @Composable
 fun AppearanceScreen(onBack: () -> Unit) {
     val themeChoices = listOf(

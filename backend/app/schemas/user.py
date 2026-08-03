@@ -82,6 +82,35 @@ class WebPushStatusOut(BaseModel):
     subscriptions: int
 
 
+class DeviceTokenIn(BaseModel):
+    """One native install registering for push.
+
+    `platform` is closed to the two clients that exist; anything else would
+    reach a dispatcher that has no provider for it and fail silently at 3am.
+    """
+    token: str = Field(min_length=8, max_length=512)
+    platform: str = Field(pattern="^(ios|android)$")
+    app_version: str = Field(default="", max_length=40)
+
+
+class DeviceTokenOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    platform: str
+    app_version: str
+    last_seen_at: datetime
+    created_at: datetime
+
+
+class PushStatusOut(BaseModel):
+    """What the native client shows in Settings: whether the server can deliver
+    to this platform at all, and how many installs are currently registered.
+    `enabled: false` means the toggle explains itself instead of lying."""
+    enabled: bool
+    platform: str
+    devices: int
+
+
 class AttestBody(BaseModel):
     """Optional client-recorded age-confirmation time — the tap happened
     on-device during onboarding, possibly before the first connect."""

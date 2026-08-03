@@ -66,9 +66,11 @@ object Session {
         fun keys(): Set<String>
     }
 
-    /** HTTP transport seam — (url, method, body, contentType, authToken) →
-     * (status, body); throws on a network failure. Swappable in unit tests. */
-    internal var http: suspend (String, String, String?, String?, String?) -> Pair<Int, String> = ::realHttp
+    /** HTTP transport seam — (url, method, body, contentType, authToken, extra
+     * headers) → (status, body); throws on a network failure. Swappable in unit
+     * tests. The header map carries `Idempotency-Key` for offline-queue replays
+     * (see [Outbox]) and is empty for every other call. */
+    internal var http: suspend (String, String, String?, String?, String?, Map<String, String>) -> Pair<Int, String> = ::realHttp
 
     fun init(context: Context) {
         storage = buildStore(context)
@@ -99,7 +101,7 @@ object Session {
     /** Point Session at fakes for unit tests (no Android, no network). */
     internal fun resetForTest(
         store: Store,
-        exec: suspend (String, String, String?, String?, String?) -> Pair<Int, String>,
+        exec: suspend (String, String, String?, String?, String?, Map<String, String>) -> Pair<Int, String>,
     ) {
         storage = store
         http = exec
@@ -138,8 +140,12 @@ object Session {
         body: String?,
         contentType: String?,
         authed: Boolean,
+        headers: Map<String, String> = emptyMap(),
     ): String {
-        val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
+        val (code, text) = http(
+            BuildConfig.API_BASE_URL + path, method, body, contentType,
+            if (authed) access else null, headers,
+        )
         logApiResponse(method, path, code, text)
         if (code !in 200..299) {
             // `detail` may be an OBJECT (the free-tier cap) or a string. Reading
@@ -228,6 +234,7 @@ object Session {
         body: String?,
         contentType: String?,
         authToken: String?,
+        headers: Map<String, String> = emptyMap(),
     ): Pair<Int, String> = withContext(Dispatchers.IO) {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
@@ -247,6 +254,7 @@ object Session {
             conn.connectTimeout = 15_000
             conn.readTimeout = 15_000
             authToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            headers.forEach { (name, value) -> conn.setRequestProperty(name, value) }
             if (body != null) {
                 conn.doOutput = true
                 contentType?.let { conn.setRequestProperty("Content-Type", it) }
@@ -333,6 +341,7 @@ object Session {
     // APIs directly (unit-testable via resetForTest).
     internal fun prefGet(key: String): String? = storage.getString(key)
     internal fun prefPut(key: String, value: String) { storage.putString(key, value) }
+    internal fun prefRemove(key: String) { storage.remove(key) }
 
     // ── Oracle SSE ──────────────────────────────────────────────────────
     /** SSE transport seam — (url, jsonBody, authToken) → (status, byte stream).
@@ -484,15 +493,20 @@ object Session {
     /** Authenticated call with the fresh-launch refresh + one rotation retry.
      * GET responses are cached; a network failure falls back to the last copy so
      * read screens work offline (the store is cleared on sign-out for privacy). */
-    suspend fun api(path: String, method: String = "GET", json: JSONObject? = null): String {
+    suspend fun api(
+        path: String,
+        method: String = "GET",
+        json: JSONObject? = null,
+        headers: Map<String, String> = emptyMap(),
+    ): String {
         val isGet = method == "GET"
         return try {
             ensureAccess()
             val result = try {
-                raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
+                raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true, headers = headers)
             } catch (e: ApiException) {
                 if ((e.code == 401 || e.code == 403) && refresh()) {
-                    raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true)
+                    raw(path, method, json?.toString(), json?.let { "application/json" }, authed = true, headers = headers)
                 } else {
                     throw e
                 }
@@ -545,23 +559,27 @@ object Api {
      * undoes it has to exist — and a stray mood otherwise sits in the 60-day
      * window that patterns and the weekly read are computed from. */
     suspend fun deleteMood(id: String) { Session.api("/moods/$id", "DELETE") }
-    suspend fun checkIn(mood: String, note: String, symbol: String, intensity: Int): JSONObject =
-        JSONObject(
-            Session.api(
-                "/moods", "POST",
-                JSONObject().put("mood", mood).put("note", note)
-                    .put("symbol", symbol).put("intensity", intensity),
-            ),
+
+    /** Log a check-in. Goes through [Outbox], so a tap with no signal is kept
+     * and sent later rather than lost — returns null in that case, and the
+     * caller shows the entry anyway, because from the user's side it happened. */
+    suspend fun checkIn(mood: String, note: String, symbol: String, intensity: Int): JSONObject? =
+        Outbox.send(
+            "/moods",
+            JSONObject().put("mood", mood).put("note", note)
+                .put("symbol", symbol).put("intensity", intensity),
         )
 
     suspend fun journal(): JSONArray = JSONArray(Session.api("/journal"))
-    suspend fun createJournal(title: String, body: String): JSONObject =
-        JSONObject(
-            Session.api(
-                "/journal", "POST",
-                JSONObject().put("title", title).put("body", body)
-                    .put("tags", JSONArray()).put("symbol", "book"),
-            ),
+
+    /** Write an entry. Queued when offline, same contract as [checkIn] — a
+     * journal that drops what you wrote on a train is worse than no journal. */
+    suspend fun createJournal(title: String, body: String, tags: List<String> = emptyList()): JSONObject? =
+        Outbox.send(
+            "/journal",
+            JSONObject().put("title", title).put("body", body)
+                .put("tags", JSONArray().apply { tags.forEach { put(it) } })
+                .put("symbol", "book"),
         )
 
     suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/sleep"))
@@ -589,6 +607,51 @@ object Api {
         JSONArray(Session.api("/content?kind=" + URLEncoder.encode(kind, "UTF-8")))
 
     suspend fun insightsWeekly(): JSONObject = JSONObject(Session.api("/insights/weekly"))
+
+    /** Day-by-day mood + sleep series for the Trends screen.
+     *
+     * Days with no data are absent rather than zero, and every summary number is
+     * gated by `enough_data` — the screen must respect both rather than drawing
+     * a flat line at the bottom of a chart, which reads as "I felt terrible". */
+    suspend fun trends(days: Int = 30): JSONObject =
+        JSONObject(Session.api("/insights/trends?days=$days"))
+
+    // ── Journal search ───────────────────────────────────────────────────
+    /** Entries filtered server-side. The client only holds the pages it has
+     * fetched, so "I wrote about this months ago" is exactly the search that
+     * would miss if it ran on-device. */
+    suspend fun searchJournal(query: String = "", tag: String = ""): JSONArray {
+        val params = buildList {
+            if (query.isNotBlank()) add("q=" + URLEncoder.encode(query, "UTF-8"))
+            if (tag.isNotBlank()) add("tag=" + URLEncoder.encode(tag, "UTF-8"))
+        }
+        val suffix = if (params.isEmpty()) "" else "?" + params.joinToString("&")
+        return JSONArray(Session.api("/journal$suffix"))
+    }
+
+    /** Every tag the user has actually used — offered as chips so the composer
+     * doesn't quietly create "work", "Work" and "work " as three tags. */
+    suspend fun journalTags(): JSONArray = JSONArray(Session.api("/journal/tags"))
+
+    // ── Push registration ────────────────────────────────────────────────
+    suspend fun registerDevice(token: String, platform: String, appVersion: String): JSONObject =
+        JSONObject(
+            Session.api(
+                "/users/me/devices", "POST",
+                JSONObject().put("token", token).put("platform", platform)
+                    .put("app_version", appVersion),
+            ),
+        )
+
+    suspend fun unregisterDevice(token: String) {
+        Session.api("/users/me/devices?token=" + URLEncoder.encode(token, "UTF-8"), "DELETE")
+    }
+
+    /** Whether the server can actually deliver push to this platform. The
+     * Settings toggle asks first — a switch that silently does nothing is worse
+     * than an honest explanation. */
+    suspend fun pushStatus(): JSONObject =
+        JSONObject(Session.api("/users/me/devices?platform=android"))
 
     /** Transparent AI memory: honest learned statements + their data basis. */
     suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))

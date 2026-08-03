@@ -18,6 +18,7 @@ from app.core.database import SessionLocal
 from app.core.ratelimit import limiter
 from app.services import media
 from app.services import digest as digest_service
+from app.services import idempotency as idempotency_service
 from app.services import nudges as nudges_service
 
 __version__ = "0.1.0"
@@ -53,6 +54,16 @@ async def _nudge_dispatcher() -> None:
                 logger.info("Nudge dispatcher: %d sent", sent)
         except Exception:  # noqa: BLE001 - keep the loop alive
             logger.exception("Nudge dispatch pass failed")
+        # Offline-queue replay records age out here rather than on a timer of
+        # their own — the pass is idempotent and cheap, and one loop is one
+        # thing to reason about when a worker misbehaves.
+        try:
+            async with SessionLocal() as db:
+                purged = await idempotency_service.purge_expired(db)
+            if purged:
+                logger.info("Idempotency purge: %d expired", purged)
+        except Exception:  # noqa: BLE001 - keep the loop alive
+            logger.exception("Idempotency purge failed")
 
 
 @asynccontextmanager

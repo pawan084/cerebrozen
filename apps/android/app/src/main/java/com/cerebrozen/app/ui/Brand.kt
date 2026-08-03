@@ -232,7 +232,7 @@ fun Splash() {
                 val y = starRand(i, 2) * h * 0.72f
                 val rad = 0.6f + starRand(i, 3) * 1.4f
                 val a = (0.25f + starRand(i, 4) * 0.55f) * appear
-                drawCircle(Color.White.copy(alpha = a), radius = rad, center = Offset(x, y))
+                drawCircle(TextPrimary.copy(alpha = a), radius = rad, center = Offset(x, y))
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

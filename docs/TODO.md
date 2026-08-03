@@ -1024,6 +1024,66 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [x] Transaction ownership — reviewed: services `flush()`, routes `commit()`; the flagged
   double-commit did not exist (dispatch_due commits by design — it's a job, not a route).
 
+## Shipped 2026-08-01 — offline sync, native push, trends, and the games rebuild
+
+Backend **425 passed / 95.22 %** (in-container, live Postgres); Android **309 unit tests, 0
+failures**, `lintVitalRelease` green.
+
+- [x] **Alembic had two heads** — `c8f1b6d94e23` and `c93f2b7a5e18` both descended from
+  `b8e6d1a4f527`. `alembic upgrade head` fails on a branched graph; `prestart.py` catches that and
+  falls back to `create_all`, which only CREATEs missing tables and never ALTERs an existing one.
+  So on any database that already had the schema, **every migration after the branch point
+  silently stopped applying** while the boot log showed one warning. Fixed with empty merge
+  revision `d2b7f9c41a63`. Check `alembic current` on anything deployed in that window.
+- [x] **Native push (FCM)** — `device_tokens` table (one row per install, not one column per user),
+  `/users/me/devices` GET/POST/DELETE, `services/fcm.py` (HTTP v1, OAuth2 assertion signed with the
+  `jose` we already ship — no `google-auth` dependency), and `notifications.deliver` fanning a nudge
+  out to every live install and burying tokens the provider reports gone. Android side is dormant
+  until a `google-services.json` exists: the plugin is applied conditionally, so a checkout with no
+  Firebase project still builds and the app behaves exactly as before.
+- [x] **Offline write queue** — `net/Outbox.kt`: writes persisted to the same encrypted store as the
+  refresh token, each carrying its idempotency key **from the moment it is queued** (a key minted at
+  send time lets a crashed retry create a second check-in), drained oldest-first with one failure
+  stopping the drain so a day is never reordered. Server side: `Idempotency-Key` on `POST /moods`
+  and `POST /journal` (409 on key reuse with a different body), `since=` cursors on both GETs.
+  Undo works on a queued write too (`Outbox.dropLast`) — otherwise an offline mis-tap syncs the
+  mistake back when signal returns.
+- [x] **Trends** — `GET /insights/trends` + the Android screen. Gaps stay gaps (the line breaks
+  rather than dropping to zero), `enough_data` gates every number, and the mood↔sleep correlation
+  is withheld with a reason until ≥7 overlapping nights.
+- [x] **Journal search** — server-side `q`/`tag` filters + `GET /journal/tags`, wired behind the
+  instant local filter so offline still answers and only *older* entries come from the network.
+- [x] **Mindful games rebuilt: 23 → 12.** The old set was seven round-builders behind 23 titles, and
+  every answer came from `round % n` — nothing random, nothing harder, twelve titles that were one
+  function with a different emoji. Now: one mechanic per game (a test fails if two share one),
+  seeded sessions, a difficulty curve (time limits tighten, memory span grows, the field widens),
+  expiry counting as a miss, per-game synthesized sound (`audio/GameSound.kt` — the old one used
+  DTMF *telephone keypad* tones), and calm games left deliberately unscored. Retired ids redirect
+  so saved shortcuts don't dead-end.
+- [x] **Sleep: a failed read no longer looks like an empty history** — loading, failed and empty
+  were one state, so a user whose request had just failed was told they had never logged a night.
+- [x] **The nav pill gets out of the keyboard's way** — it reserved its slot with the IME up,
+  leaving a dead band above the keyboard on every screen you can type on (`navVisible`, unit-tested).
+
+### Open from this run
+
+- [ ] **Android's coverage gate has been failing independently of this work.** `:app:check`
+  requires 95 %; the tree measures **92.24 %** (was 91.65 % before — this work raised it). The
+  shortfall is pre-existing and outside anything touched here: `ui/theme/ColorKt` (29 lines,
+  theme-flip getters only one branch of which is exercised), `net/Session` (18), `net/Api` (34
+  helpers with no contract test), `Session$FreeLimitException` (5, never constructed in a test),
+  `health/HealthConnectSleep` (7). Verified by measuring the tree with the new classes excluded —
+  identical number. Either cover those or restate the gate honestly; silently lowering it is the
+  one option that should not happen.
+- [ ] **`google-services.json` + `FCM_CREDENTIALS_PATH`** — the only things standing between the
+  push code and working push. No app release needed once they exist.
+- [ ] **Hindi strings for everything added here** — Trends, the games rebuild, the offline-queue
+  copy and the Sleep failure state are English-only, consistent with the existing partial-locale
+  policy (`values-hi` ships as a deliberate partial pending clinical review).
+- [ ] **Games on a device** — the rebuild is unit-tested and compiles, but timing, sound levels and
+  the sequence-replay pacing are exactly the things `MODULE_AUDIT.md` says are not real until seen.
+  A `toolkit` re-audit is the right next step.
+
 ## Open after the 2026-07-31 module-audit run
 
 Everything the audits found is fixed and merged; these are the items deliberately

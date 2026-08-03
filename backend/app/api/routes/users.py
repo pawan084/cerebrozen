@@ -12,6 +12,7 @@ from app.models.chat import ChatMessage
 from app.models.agent_action import AgentAction
 from app.models.consent import Consent, consent_allows
 from app.models.deletion_ledger import DeletionLedger
+from app.models.device_token import DeviceToken
 from app.models.habit import Goal
 from app.models.insight import Insight
 from app.models.memory import EDITABLE_SOURCES, ContextMemory
@@ -45,6 +46,9 @@ from app.schemas.user import (
     AttestBody,
     ConsentSchema,
     ConsentUpdate,
+    DeviceTokenIn,
+    DeviceTokenOut,
+    PushStatusOut,
     PushTokenUpdate,
     SubscriptionVerify,
     TrustedContactIn,
@@ -476,6 +480,74 @@ async def set_push_token(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.get("/me/devices", response_model=PushStatusOut)
+async def device_push_status(
+    platform: str = "android",
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Whether push can actually be delivered to this platform, plus the number
+    of live installs. The client asks before offering a notifications toggle —
+    a switch that silently does nothing is worse than an honest explanation."""
+    rows = (
+        await db.scalars(
+            select(DeviceToken).where(
+                DeviceToken.user_id == user.id, DeviceToken.failed_at.is_(None)
+            )
+        )
+    ).all()
+    enabled = settings.fcm_enabled if platform == "android" else settings.apns_enabled
+    return PushStatusOut(enabled=enabled, platform=platform, devices=len(rows))
+
+
+@router.post("/me/devices", response_model=DeviceTokenOut, status_code=201)
+async def register_device(
+    payload: DeviceTokenIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Register (or refresh) this install's push token.
+
+    Called on every cold start, not just once: FCM and APNs both rotate tokens
+    silently, and a token that rotated without us hearing about it is an install
+    that stops getting nudges with nothing in any log to say so. Re-registering
+    is therefore cheap and idempotent — the row is adopted, `last_seen_at` moves
+    forward, and a token previously marked dead is revived (a reinstall reuses
+    neither the token nor the problem, but a transient failure can be cleared).
+    """
+    row = await db.scalar(select(DeviceToken).where(DeviceToken.token == payload.token))
+    if row is None:
+        row = DeviceToken(token=payload.token)
+        db.add(row)
+    row.user_id = user.id
+    row.platform = payload.platform
+    row.app_version = payload.app_version
+    row.last_seen_at = utcnow()
+    row.failed_at = None
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+@router.delete("/me/devices", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister_device(
+    token: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Drop this install's token — sign-out, or the user turning notifications
+    off. Scoped to the caller, so one account cannot unregister another's."""
+    row = await db.scalar(
+        select(DeviceToken).where(
+            DeviceToken.token == token, DeviceToken.user_id == user.id
+        )
+    )
+    if row is not None:
+        await db.delete(row)
+        await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me/push-subscriptions", response_model=WebPushStatusOut)

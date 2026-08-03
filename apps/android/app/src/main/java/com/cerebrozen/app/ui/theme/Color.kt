@@ -180,6 +180,14 @@ val VeilWell: Color get() = if (AppTheme.isNight) NightPalette.veilWell else Daw
 val VeilStrong: Color get() = if (AppTheme.isNight) NightPalette.veilStrong else DawnPalette.veilStrong
 val VeilLine: Color get() = if (AppTheme.isNight) NightPalette.veilLine else DawnPalette.veilLine
 
+/** Full-screen modal/tour scrim. It must darken content in both themes; deriving
+ * it from [Night] made the Dawn scrim a translucent cream wash. */
+val ModalScrim: Color get() = Color.Black.copy(alpha = if (AppTheme.isNight) 0.72f else 0.46f)
+
+/** Moving highlight used by skeleton loaders: light on Night, ink on Dawn. */
+val ShimmerHighlight: Color
+    get() = if (AppTheme.isNight) Color.White.copy(alpha = 0.14f) else Ink.copy(alpha = 0.10f)
+
 // ── Theme-independent colors ────────────────────────────────────────────────
 // Decorative accents: never used as text on themed surfaces (verified 2026-07:
 // orb/lotus art, thumbnail gradients, aurora tints, title-glow shadows only).
@@ -236,18 +244,18 @@ val AccentSoft: Color get() = PeriwinkleSoft    // soft accent (tints, selected-
 // Onboarding / Auth surface tokens (bespoke funnel art — promoted from inline
 // hex). The signed-out funnel is ALWAYS Night (AppTheme.forceNight), so these
 // stay single-valued constants.
-val GratitudeCardFill = Color(0xFF493453)
-val GratitudeAvatarFill = Color(0xFF5A547F)
-val GratitudeCaption = Color(0xFFC9C5DA)
-val InfoCardFill = Color(0xFF302D54)
-val InfoCardStroke = Color(0xFF514C73)
-val InfoCardHint = Color(0xFFCBC7D8)
-val InfoCardDivider = Color(0xFF464166)
-val WelcomeGradientTop = Color(0xFF3B3474)
-val WelcomeGradientBottom = Color(0xFF12102F)
-val WelcomeTitleText = Color(0xFFD8D5E5)
-val WelcomeSubtitleText = Color(0xFFBDB8D0)
-val WelcomeSecondaryText = Color(0xFFE4E1EC)
+val GratitudeCardFill: Color get() = if (AppTheme.isNight) Color(0xFF493453) else Surface
+val GratitudeAvatarFill: Color get() = if (AppTheme.isNight) Color(0xFF5A547F) else SurfaceRaised
+val GratitudeCaption: Color get() = if (AppTheme.isNight) Color(0xFFC9C5DA) else TextMuted
+val InfoCardFill: Color get() = if (AppTheme.isNight) Color(0xFF302D54) else Surface
+val InfoCardStroke: Color get() = if (AppTheme.isNight) Color(0xFF514C73) else Line
+val InfoCardHint: Color get() = if (AppTheme.isNight) Color(0xFFCBC7D8) else TextMuted
+val InfoCardDivider: Color get() = if (AppTheme.isNight) Color(0xFF464166) else Line
+val WelcomeGradientTop: Color get() = if (AppTheme.isNight) Color(0xFF3B3474) else Color(0xFFFDFBF7)
+val WelcomeGradientBottom: Color get() = if (AppTheme.isNight) Color(0xFF12102F) else Night
+val WelcomeTitleText: Color get() = if (AppTheme.isNight) Color(0xFFD8D5E5) else TextSoft
+val WelcomeSubtitleText: Color get() = if (AppTheme.isNight) Color(0xFFBDB8D0) else TextMuted
+val WelcomeSecondaryText: Color get() = if (AppTheme.isNight) Color(0xFFE4E1EC) else Periwinkle
 val WelcomeOrbMid = Color(0xFFF4F1FF)
 val WelcomeOrbEdge = Color(0xFFC9C3FF)
 // The orb's outer halo — three soft indigo washes that fade the glow into the
@@ -255,19 +263,19 @@ val WelcomeOrbEdge = Color(0xFFC9C3FF)
 val WelcomeOrbHaloInner = Color(0x334F46B9)
 val WelcomeOrbHaloOuter = Color(0x224D45A7)
 val WelcomeOrbHaloDisc = Color(0x183F3889)
-val PrimaryButtonFill = Color(0xFFFCFBFF)
-val PrimaryButtonInk = Color(0xFF211C50)
-val PrimaryButtonDisabledFill = Color(0xFF9998A7)
-val ResetDoneFill = Color(0xFF302D50)
-val FunnelHeaderTop = Color(0xFF393270)
-val FunnelHeaderBottom = Color(0xFF11102E)
-val FunnelBodyText = Color(0xFFD0CCDE)
-val ProgressTrack = Color(0xFF484361)
-val PickRowSelectedFill = Color(0xFF4A456F)
-val PickRowFill = Color(0xFF302C56)
-val PickRowStroke = Color(0xFF504B74)
-val PickRowChevron = Color(0xFF9993B4)
-val PickCardStroke = Color(0xFF575178)
-val DotUnselectedFill = Color(0xFF3B3766)
-val AuthEyebrow = Color(0xFFB5AEE1)
-val AuthFieldLabel = Color(0xFFE0DDEE)
+val PrimaryButtonFill: Color get() = if (AppTheme.isNight) Color(0xFFFCFBFF) else PeriwinkleDeep
+val PrimaryButtonInk: Color get() = if (AppTheme.isNight) Color(0xFF211C50) else OnPrimary
+val PrimaryButtonDisabledFill: Color get() = ButtonDisabled
+val ResetDoneFill: Color get() = if (AppTheme.isNight) Color(0xFF302D50) else SurfaceRaised
+val FunnelHeaderTop: Color get() = if (AppTheme.isNight) Color(0xFF393270) else Color(0xFFFDFBF7)
+val FunnelHeaderBottom: Color get() = if (AppTheme.isNight) Color(0xFF11102E) else Night
+val FunnelBodyText: Color get() = if (AppTheme.isNight) Color(0xFFD0CCDE) else TextSecondary
+val ProgressTrack: Color get() = if (AppTheme.isNight) Color(0xFF484361) else Line
+val PickRowSelectedFill: Color get() = if (AppTheme.isNight) Color(0xFF4A456F) else ChipSelectedFill
+val PickRowFill: Color get() = if (AppTheme.isNight) Color(0xFF302C56) else Surface
+val PickRowStroke: Color get() = if (AppTheme.isNight) Color(0xFF504B74) else Line
+val PickRowChevron: Color get() = if (AppTheme.isNight) Color(0xFF9993B4) else TextMuted2
+val PickCardStroke: Color get() = if (AppTheme.isNight) Color(0xFF575178) else Line
+val DotUnselectedFill: Color get() = if (AppTheme.isNight) Color(0xFF3B3766) else ChipFill
+val AuthEyebrow: Color get() = if (AppTheme.isNight) Color(0xFFB5AEE1) else EyebrowMuted
+val AuthFieldLabel: Color get() = if (AppTheme.isNight) Color(0xFFE0DDEE) else TextSoft

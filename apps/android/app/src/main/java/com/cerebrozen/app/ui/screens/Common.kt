@@ -98,6 +98,7 @@ import com.cerebrozen.app.ui.theme.ChipSelectedFill
 import com.cerebrozen.app.ui.theme.ChipSelectedInk
 import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.SwitchThumbOn
+import com.cerebrozen.app.ui.theme.ShimmerHighlight
 import com.cerebrozen.app.ui.theme.Veil
 import com.cerebrozen.app.ui.theme.VeilSoft
 import com.cerebrozen.app.ui.theme.EyebrowMuted
@@ -561,6 +562,7 @@ internal fun SectionCard(
     onClick: (() -> Unit)? = null,
     /** Secondary content: the same card, without the lift. See [Modifier.quiet]. */
     quiet: Boolean = false,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -568,12 +570,12 @@ internal fun SectionCard(
     val surface: Modifier.() -> Modifier = if (quiet) ({ quiet() }) else ({ glass() })
     val mod = if (onClick != null) {
         // A whisper of press-in — cards are large, so the scale is tiny on purpose.
-        Modifier.fillMaxWidth()
+        modifier.fillMaxWidth()
             .pressScale(pressed, down = 0.985f)
             .surface()
             .clickable(interactionSource = interaction, indication = null) { Haptics.soft(0.4f); onClick() }
     } else {
-        Modifier.fillMaxWidth().surface()
+        modifier.fillMaxWidth().surface()
     }
     Column(
         mod.padding(cardPadding()),
@@ -775,7 +777,7 @@ internal fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape = RoundedCor
             val startX = x * size.width
             drawRect(
                 brush = Brush.horizontalGradient(
-                    listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
+                    listOf(Color.Transparent, ShimmerHighlight, Color.Transparent),
                     startX = startX,
                     endX = startX + sweepWidth,
                 ),

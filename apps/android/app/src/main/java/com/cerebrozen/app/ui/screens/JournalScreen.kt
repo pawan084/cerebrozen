@@ -87,16 +87,24 @@ private fun quickPrompts(): List<String> = listOf(
  * pushed sub-screens for writing, reviewing history, and privacy. */
 private enum class JournalMode { Home, Entry, History, Private, Read }
 
-internal data class Entry(val title: String, val body: String, val date: String, val risk: String)
+internal data class Entry(
+    val title: String,
+    val body: String,
+    val date: String,
+    val risk: String,
+    val tags: List<String> = emptyList(),
+)
 
 internal fun parseEntries(rows: JSONArray): List<Entry> =
     (0 until rows.length()).map { i ->
         val e = rows.getJSONObject(i)
+        val tagArray = e.optJSONArray("tags")
         Entry(
             e.getString("title"),
             e.getString("body"),
             e.getString("created_at").take(10),
             e.optString("risk_level", "none"),
+            (0 until (tagArray?.length() ?: 0)).mapNotNull { tagArray?.optString(it)?.takeIf(String::isNotBlank) },
         )
     }
 
@@ -125,6 +133,14 @@ fun JournalScreen() {
     var busy by remember { mutableStateOf(false) }
     var promptIdx by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
+    // Server-side search. The device holds only the most recent page, so
+    // "I wrote about this months ago" is exactly the search that would miss
+    // if it ran on-device alone. Debounced, and purely additive: the local
+    // filter still answers instantly and still works with no signal.
+    var remoteHits by remember { mutableStateOf(listOf<Entry>()) }
+    var searching by remember { mutableStateOf(false) }
+    var tags by remember { mutableStateOf(listOf<String>()) }
+    var tag by remember { mutableStateOf<String?>(null) }
     var mood by rememberSaveable { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(JournalMode.Home) }
     // The entry being read in full. Android could WRITE journal entries and never
@@ -147,7 +163,32 @@ fun JournalScreen() {
     val activity = LocalContext.current as? FragmentActivity
     val prompts = journalPrompts()
 
-    LaunchedEffect(Unit) { runCatching { entries = parseEntries(Api.journal()) } }
+    LaunchedEffect(Unit) {
+        runCatching { entries = parseEntries(Api.journal()) }
+        runCatching {
+            val used = Api.journalTags()
+            tags = (0 until used.length()).mapNotNull { used.optString(it).takeIf(String::isNotBlank) }
+        }
+    }
+
+    // Debounced server search. 350ms: long enough that typing a word is one
+    // request rather than five, short enough that it feels like the list is
+    // keeping up. Blank queries clear rather than fetch everything again.
+    LaunchedEffect(query, tag) {
+        val q = query.trim()
+        if (q.length < 2 && tag == null) {
+            remoteHits = emptyList()
+            searching = false
+            return@LaunchedEffect
+        }
+        searching = true
+        delay(350)
+        runCatching { parseEntries(Api.searchJournal(q, tag.orEmpty())) }
+            .onSuccess { remoteHits = it }
+            // Offline is not an error here — the local filter already answered.
+            .onFailure { remoteHits = emptyList() }
+        searching = false
+    }
 
     if (!unlocked) {
         Page(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
@@ -235,8 +276,14 @@ fun JournalScreen() {
                             val entryBody = body.trim().let { b ->
                                 mood?.let { feelingTemplate.format(b, it.lowercase()) } ?: b
                             }
+                            // Null = queued offline. The safety scan runs
+                            // server-side, so there is no verdict yet; showing
+                            // the support card anyway would be inventing one,
+                            // and hiding it forever would be worse — the scan
+                            // happens when the entry syncs.
                             val saved = Api.createJournal(title.trim(), entryBody)
-                            showSupport = saved.optString("risk_level", "none") !in listOf("none", "low")
+                            showSupport = saved?.optString("risk_level", "none")
+                                ?.let { it !in listOf("none", "low") } == true
                             title = ""; body = ""; mood = null
                             draftBannerDismissed = true   // the draft became an entry
                             status = savedStatus
@@ -299,13 +346,44 @@ fun JournalScreen() {
                     if (entries.size > 3) {
                         AppTextField(query, { query = it }, stringResource(R.string.journal_search_label), singleLine = true)
                     }
-                    val shown = filterEntries(entries, query)
+                    // Tag chips, only the ones this user has actually used.
+                    // Offered rather than typed, so "work", "Work" and "work "
+                    // don't quietly become three different tags.
+                    if (tags.isNotEmpty()) {
+                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                        androidx.compose.foundation.layout.FlowRow(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            tags.take(8).forEach { t ->
+                                PickChip(selected = tag == t, label = t) { tag = if (tag == t) null else t }
+                            }
+                        }
+                    }
+                    // Local filter first — it is instant and works offline. The
+                    // server search below only adds what the device cannot know
+                    // about: entries older than the page we hold.
+                    val local = filterEntries(entries, query)
+                        .filter { tag == null || it.tags.contains(tag) }
+                    val shown = if (local.isEmpty() && remoteHits.isNotEmpty()) remoteHits else local
                     shown.take(20).forEachIndexed { i, e ->
                         JournalEntryCard(e, i) { reading = e; mode = JournalMode.Read }
                     }
                     if (shown.isEmpty()) {
-                        Text(stringResource(R.string.journal_no_match, query.trim()),
-                            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        Text(
+                            if (searching) stringResource(R.string.journal_searching)
+                            else stringResource(R.string.journal_no_match, query.trim()),
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        )
+                    } else if (local.isEmpty()) {
+                        // Say where these came from: they are not in the list the
+                        // user was just scrolling.
+                        Text(
+                            androidx.compose.ui.res.pluralStringResource(
+                                R.plurals.journal_found_older, shown.size, shown.size,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        )
                     }
                 }
             }

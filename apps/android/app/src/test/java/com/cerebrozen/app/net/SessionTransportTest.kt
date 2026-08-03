@@ -103,7 +103,7 @@ class SessionTransportTest {
     fun startServer() {
         server = MiniServer()
         // Installs a no-op http fake AND restores the real sseExec/binExec.
-        Session.resetForTest(NullStore()) { _, _, _, _, _ -> 200 to "{}" }
+        Session.resetForTest(NullStore()) { _, _, _, _, _, _ -> 200 to "{}" }
     }
 
     @After
@@ -111,14 +111,15 @@ class SessionTransportTest {
         server.stop()
     }
 
-    /** The private suspend realHttp(url, method, body, contentType, auth). */
+    /** The private suspend realHttp(url, method, body, contentType, auth, headers). */
     private fun realHttp(
         url: String, method: String, body: String?, contentType: String?, auth: String?,
+        headers: Map<String, String> = emptyMap(),
     ): Pair<Int, String> = runBlocking {
         val fn = Session::class.declaredMemberFunctions.first { it.name == "realHttp" }
         fn.isAccessible = true
         @Suppress("UNCHECKED_CAST")
-        fn.callSuspend(Session, url, method, body, contentType, auth) as Pair<Int, String>
+        fn.callSuspend(Session, url, method, body, contentType, auth, headers) as Pair<Int, String>
     }
 
     // ── realHttp ───────────────────────────────────────────────────────

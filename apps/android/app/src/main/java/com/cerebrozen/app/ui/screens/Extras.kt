@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -149,7 +150,7 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
             Box(
                 Modifier.size(48.dp).clip(CircleShape)
                     .background(VeilWell)
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+                    .border(1.dp, LineStroke, CircleShape)
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1110,6 +1111,9 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
     Text(stringResource(R.string.toolkit_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
 
+    NavRow(stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
+        icon = Icons.Outlined.SportsEsports) { onOpen("games") }
+
     ToolkitHeader(stringResource(R.string.toolkit_header_ground))
     Text(stringResource(R.string.toolkit_grounding_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
@@ -1127,6 +1131,10 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
         icon = Icons.Outlined.Air) { onOpen("breathe/box") }
     NavRow(stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
         icon = Icons.Outlined.SelfImprovement) { onOpen("breathe/reset") }
+    NavRow(stringResource(R.string.oi_title), stringResource(R.string.oi_subtitle),
+        icon = Icons.Outlined.AutoAwesome) { onOpen("guidedimagery") }
+    NavRow(stringResource(R.string.obs_title), stringResource(R.string.obs_subtitle),
+        icon = Icons.Outlined.SelfImprovement) { onOpen("bodyscan") }
 
     ToolkitHeader(stringResource(R.string.toolkit_header_reframe))
     NavRow(stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
@@ -1141,11 +1149,17 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) =
         icon = Icons.Outlined.AutoAwesome) { onOpen("patternglow") }
     NavRow(stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
         icon = Icons.Outlined.GraphicEq) { onOpen("sounds") }
+    NavRow(stringResource(R.string.oir_title), stringResource(R.string.oir_subtitle),
+        icon = Icons.Outlined.AutoAwesome) { onOpen("insightreel") }
+    NavRow(stringResource(R.string.ocbti_title), stringResource(R.string.ocbti_subtitle),
+        icon = Icons.Outlined.Bedtime) { onOpen("cbti") }
+    NavRow(stringResource(R.string.ombct_title), stringResource(R.string.ombct_subtitle),
+        icon = Icons.Outlined.Spa) { onOpen("mbct") }
 
     // The quiet, always-there door (REDESIGN §2.3) — support belongs in the
     // toolkit too, two taps from anywhere.
     NavRow(stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
-        icon = Icons.Outlined.HealthAndSafety) { onOpen("crisis") }
+        icon = Icons.Outlined.HealthAndSafety) { onOpen("crisisgrounding") }
 }
 
 /** Headline game tile — W21 generative hero art with floating orbs, tappable to

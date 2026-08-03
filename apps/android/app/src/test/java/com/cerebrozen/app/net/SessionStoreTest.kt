@@ -57,7 +57,7 @@ class SessionStoreTest {
             override fun keys() = m.keys.toSet()
         }
         var body = ""
-        Session.resetForTest(store) { url, _, _, _, _ ->
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) {
                 200 to """{"access_token":"a1","refresh_token":"r1"}"""
             } else {

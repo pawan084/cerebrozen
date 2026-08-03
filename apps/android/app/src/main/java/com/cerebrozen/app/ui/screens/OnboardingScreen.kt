@@ -100,6 +100,8 @@ import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.ChipSelectedFill
+import com.cerebrozen.app.ui.theme.ChipSelectedInk
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import androidx.compose.ui.text.SpanStyle
@@ -362,10 +364,10 @@ fun Onboarding() {
             ReferenceCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.size(40.dp).clip(CircleShape).background(GratitudeAvatarFill), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Person, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.Person, null, tint = TextPrimary, modifier = Modifier.size(20.dp))
                     }
                     Column {
-                        Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                         Text(stringResource(R.string.ob_thank_you), style = MaterialTheme.typography.bodySmall, color = GratitudeCaption)
                     }
                 }
@@ -449,7 +451,7 @@ fun Onboarding() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(label, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                             Text(
                                 hint, style = MaterialTheme.typography.bodySmall, color = InfoCardHint,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -527,7 +529,7 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = 40.sp, lineHeight = 41.sp, letterSpacing = (-0.6).sp,
                 ),
-                color = Color.White,
+                color = TextPrimary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(23.dp))
@@ -611,7 +613,7 @@ private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit
                     .background(ResetDoneFill).clickable(onClick = onSkip),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             }
         },
     ) {
@@ -659,7 +661,7 @@ private fun Funnel(
                 title,
                 modifier = if (titleCentered) Modifier.fillMaxWidth() else Modifier,
                 style = MaterialTheme.typography.displaySmall.copy(fontSize = 38.sp, lineHeight = 39.sp),
-                color = Color.White,
+                color = TextPrimary,
                 textAlign = if (titleCentered) TextAlign.Center else TextAlign.Start,
             )
             if (sub.isNotBlank()) Text(
@@ -692,7 +694,7 @@ private fun Funnel(
                 label = "funnel-progress",
             )
             Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(ProgressTrack)) {
-                Box(Modifier.fillMaxWidth(animatedProgress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White))
+                Box(Modifier.fillMaxWidth(animatedProgress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Periwinkle))
             }
             Spacer(Modifier.height(18.dp))
             Row(
@@ -737,7 +739,8 @@ private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit
             .clickable(onClick = onClick).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = Color.White)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
+            color = if (selected) ChipSelectedInk else TextPrimary)
         Icon(Icons.Outlined.ChevronRight, null, tint = PickRowChevron, modifier = Modifier.size(22.dp))
     }
 }
@@ -781,14 +784,14 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
             val isSelected = selected == opt
             Box(
                 Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp))
-                    .background(if (isSelected) Color.White else DotUnselectedFill)
+                    .background(if (isSelected) ChipSelectedFill else DotUnselectedFill)
                     .clickable { onPick(opt) }.padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     opt,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isSelected) PrimaryButtonInk else Color.White,
+                    color = if (isSelected) ChipSelectedInk else TextPrimary,
                 )
             }
         }

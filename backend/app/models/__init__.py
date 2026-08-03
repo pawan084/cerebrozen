@@ -2,6 +2,8 @@
 from app.models.user import User
 from app.models.consent import Consent
 from app.models.deletion_ledger import DeletionLedger
+from app.models.device_token import DeviceToken
+from app.models.idempotency import IdempotencyRecord
 from app.models.mood import MoodLog
 from app.models.journal import JournalEntry
 from app.models.agent_action import AgentAction
@@ -29,6 +31,8 @@ __all__ = [
     "User",
     "Consent",
     "DeletionLedger",
+    "DeviceToken",
+    "IdempotencyRecord",
     "MoodLog",
     "JournalEntry",
     "AgentAction",

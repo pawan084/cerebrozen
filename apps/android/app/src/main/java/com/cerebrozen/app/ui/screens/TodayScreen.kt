@@ -358,6 +358,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     // What was just logged, and its row id, so the tap can be taken back.
     var loggedMood by remember { mutableStateOf<MoodOption?>(null) }
     var loggedId by remember { mutableStateOf<String?>(null) }
+    // True when the check-in is sitting in the offline queue rather than on the
+    // server: the confirmation is the same, but Undo has to pull it back out of
+    // the queue instead of deleting a row that does not exist yet.
+    var loggedQueued by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
@@ -473,10 +477,21 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 enrolledInProgram = program != null,
             )
         ) {
-            HomeBanner.OFFLINE -> InfoBanner(
-                icon = Icons.Outlined.CloudOff,
-                text = stringResource(R.string.today_banner_offline),
-            )
+            HomeBanner.OFFLINE -> {
+                // Two different offline facts, and conflating them is what the
+                // banner used to do. "You're seeing the last copy" is about
+                // reads; "3 things you wrote are waiting" is about the user's
+                // own writing, which is the one they will worry about.
+                val waiting = com.cerebrozen.app.net.Outbox.count()
+                InfoBanner(
+                    icon = Icons.Outlined.CloudOff,
+                    text = if (waiting > 0) {
+                        stringResource(R.string.today_banner_offline_queued, waiting)
+                    } else {
+                        stringResource(R.string.today_banner_offline)
+                    },
+                )
+            }
             HomeBanner.SLEEP_CHECKIN -> InfoBanner(
                 icon = Icons.Outlined.LightMode,
                 text = stringResource(R.string.today_banner_sleep),
@@ -533,10 +548,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                                     busy = true; status = null
                                     scope.launch {
                                         try {
+                                            // Null = no signal; the check-in is
+                                            // queued and will send itself later.
+                                            // The tap still counts, so the
+                                            // confirmation is the same — only
+                                            // the undo path differs (there is
+                                            // no server row to delete yet).
                                             val row2 = Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
                                             Haptics.success()
                                             if (!reduceMotion) bloom++
-                                            loggedId = row2.optString("id")
+                                            loggedId = row2?.optString("id").orEmpty()
+                                            loggedQueued = row2 == null
                                             loggedMood = mood
                                             reload()
                                         } catch (e: Exception) {
@@ -563,16 +585,30 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(stringResource(R.string.today_checkin_logged, stringResource(mood.labelRes)),
                             style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                        Text(stringResource(mood.noteRes), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        // Say which of the two happened. "Saved" when it is on
+                        // the server, and the truth when it is not — a check-in
+                        // that silently waits for signal is still saved, but
+                        // claiming it synced would be a small lie the user can
+                        // catch by opening the app on another device.
+                        Text(
+                            if (loggedQueued) stringResource(R.string.today_checkin_queued)
+                            else stringResource(mood.noteRes),
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        )
                     }
                     TextButton(
                         enabled = !busy,
                         onClick = {
                             val id = loggedId
+                            val queued = loggedQueued
                             busy = true
                             scope.launch {
-                                if (!id.isNullOrBlank()) runCatching { Api.deleteMood(id) }
-                                loggedMood = null; loggedId = null; status = null
+                                if (queued) {
+                                    com.cerebrozen.app.net.Outbox.dropLast("/moods")
+                                } else if (!id.isNullOrBlank()) {
+                                    runCatching { Api.deleteMood(id) }
+                                }
+                                loggedMood = null; loggedId = null; loggedQueued = false; status = null
                                 busy = false
                                 reload()
                             }

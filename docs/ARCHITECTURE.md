@@ -74,11 +74,13 @@ cere/
 | --- | --- |
 | `/auth` | signup, login (lockout 5 fails/15 min), apple (bundle-id or Services-ID audience), google, otp/request + otp/verify (emailed 6-digit passwordless sign-in: find-or-create, single-use, 10 min TTL, burns after 5 wrong tries, hashed at rest), refresh (rotates; checks `token_version`), logout (revokes all tokens), verify + password-reset link flows, me |
 | `/users/me` | profile, attest (18+/AI disclosure; optional client tap-time, honored only when past), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade + minimal Rule 8(3) `deletion_ledger` row: hashed email only, 12-month ops purge), push-token, push-subscriptions (Web Push: status+VAPID key GET / register POST / unregister DELETE), streak (server mirror of the iOS rules) |
+| `/users/me/devices` | native push registration (2026-08-01). `GET ?platform=` reports whether delivery is actually configured for that platform + live install count (so a client never offers a toggle that does nothing); `POST` registers/refreshes a token — called on every cold start because FCM and APNs rotate tokens silently, adopts the row and clears `failed_at`; `DELETE ?token=` on sign-out, owner-scoped. Replaces the single `users.push_token` column, which lost a user's tablet to their phone and had nowhere to put an Android token |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
-| `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget. `DELETE /moods/{id}` (owner-scoped, 404 otherwise) backs the check-in's Undo: logging is one tap, so a mis-tap is one tap, and a stray mood otherwise sits in the 60-day window `compute_patterns` and the weekly read are computed from |
+| `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget. `DELETE /moods/{id}` (owner-scoped, 404 otherwise) backs the check-in's Undo: logging is one tap, so a mis-tap is one tap, and a stray mood otherwise sits in the 60-day window `compute_patterns` and the weekly read are computed from. **`POST /moods` and `POST /journal` accept an optional `Idempotency-Key`** (2026-08-01) so the Android offline queue can retry a write that may already have landed: same key + same body replays the stored response, same key + a *different* body is a 409 rather than a silent overwrite. **`GET` on both takes `since=`**, an incremental cursor, so a client that has been offline for a week costs one small request instead of re-downloading its own history. `GET /journal` also takes `q=` (case-insensitive title/body, LIKE wildcards escaped so "100%" is text) and `tag=` (exact JSONB containment); `GET /journal/tags` lists the tags actually used |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
 | `/plans` | active (lazily generated), generate, step patch |
 | `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave. **Enroll resumes**: re-enrolling in a program you LEFT reactivates the prior enrollment (keeping its `started_at`) while its window is still running, and starts fresh otherwise — so a stray tap on "Leave this journey" no longer forfeits the week, and a program abandoned months ago does not resume at "day 92" clamped to complete (`tests/test_program_resume.py`) |
+| `/insights/trends` | day-by-day mood + sleep series for the Android Trends screen (2026-08-01). Days with no data are **absent, never zero** — a zero drawn on a chart reads as "I felt terrible", not "I didn't open the app"; `enough_data` gates every summary number; the mood↔sleep correlation is withheld with a machine-readable `reason` until ≥7 overlapping nights (two points always correlate perfectly, which is exactly why two points must not be shown as a finding). Mood is charted as an *ease* score, not raw intensity: "Anxious at 5" and "Good at 5" are opposite ends of one axis (`services/trends.py`) |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/voice` | status, stt (Deepgram, 10 MB cap), tts (ElevenLabs) |
@@ -133,12 +135,25 @@ setup timeout as the fallback).
 `users` (auth-hardening, subscription, compliance, region, push_token fields) with 1:1 `consents`,
 `trusted_contacts`; user-scoped: `mood_logs`, `journal_entries`, `chat_messages`, `plans`+`plan_steps`,
 `nudges`, `insights`, `safety_events`, `sleep_logs` (one diary row per user per date),
-`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account).
+`web_push_subscriptions` (browser endpoints; unique per endpoint, adopted by the last account),
+`device_tokens` (one row per native install: unique token, `ios|android`, `last_seen_at`,
+`failed_at` stamped when the provider reports the install gone so a dispatcher stops paying for
+it), `idempotency_records` (unique per `user_id + key`, response body stored, purged after 7 days
+by the same in-process loop that dispatches nudges).
 Global: `content_items`, `waitlist_entries`, `prompt_templates` (versioned LLM prompt registry —
 immutable versions per name; the active row overrides the in-code default in
 `services/prompts.py`, no rows = code default, so dev/CI run identically with an empty table).
 UUID PKs, `created_at`, JSONB for goals/motivations/tags/metrics. Every user FK is
-`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic (15 revisions).
+`ondelete=CASCADE` so `DELETE /users/me` cascades (App Store 5.1.1(v)). Migrations: Alembic.
+
+> **Alembic had two heads** (`c8f1b6d94e23` and `c93f2b7a5e18`, branching at `b8e6d1a4f527`),
+> found 2026-08-01. `alembic upgrade head` fails outright on a branched graph, and `prestart.py`
+> catches that failure and falls back to `create_all` — which only ever CREATEs missing tables and
+> never ALTERs an existing one. So on any database that already had the schema, every migration
+> after the branch point silently stopped applying while the boot log showed one warning.
+> `d2b7f9c41a63` is an empty merge revision that restores a single head so migrations either run
+> or fail loudly. **Anything deployed between the branch and this merge should be checked against
+> `alembic current` before assuming its columns exist.**
 
 ## iOS app (`apps/ios/CereBro`)
 

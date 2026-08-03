@@ -1,0 +1,306 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><style>
+@page { size: A4; margin: 17mm 15mm 18mm; }
+* { box-sizing: border-box; }
+body { font-family: "Nirmala UI", "Noto Sans Devanagari", sans-serif; color:#20242b; font-size:10.4pt; line-height:1.52; }
+h1 { color:#392c79; font-size:23pt; border-bottom:2px solid #8d7be8; padding-bottom:8px; }
+h2 { color:#443587; font-size:16pt; margin-top:24px; break-after:avoid; }
+h3 { color:#5b49a1; font-size:12.5pt; margin-top:18px; break-after:avoid; }
+p { margin:7px 0; }
+ul,ol { margin:7px 0 10px 23px; padding:0; }
+li { margin:3px 0; }
+table { width:100%; border-collapse:collapse; margin:10px 0 15px; font-size:9.2pt; break-inside:auto; }
+tr { break-inside:avoid; }
+th { background:#ece8ff; color:#35266f; text-align:left; }
+th,td { border:1px solid #c9c2e8; padding:6px 7px; vertical-align:top; }
+blockquote { border-left:4px solid #e3a64b; background:#fff7e8; padding:8px 12px; margin:10px 0; }
+code { font-family:Consolas,monospace; background:#f2f1f7; padding:1px 3px; border-radius:3px; }
+</style></head><body><h1>CereBro Android Application — परिचय और मॉड्यूल दस्तावेज़</h1>
+<h2>1. एप्लिकेशन क्या है?</h2>
+<p><strong>CereBro</strong> एक native Android mental-wellness और self-care application है। इसका उद्देश्य user को अपनी मनःस्थिति समझने, mood और sleep track करने, journal लिखने, guided calming exercises करने, AI-based conversational support लेने और personal wellness plan follow करने में सहायता देना है।</p>
+<p>यह application clinical diagnosis या emergency service का replacement नहीं है। Crisis और safety features user को grounding, safety-plan, trusted contact और human-support resources तक पहुँचाने के लिए हैं।</p>
+<p>Application का Android package <code>com.cerebrozen.app</code> और वर्तमान version <code>0.1.0</code> है। यह Android 8.0 (API 26) और उसके बाद के versions को support करता है।</p>
+<h2>2. मुख्य user flow</h2>
+<ol>
+<li>App launch पर branded splash screen दिखाई जाती है।</li>
+<li>नया या signed-out user onboarding, consent और authentication flow से गुजरता है।</li>
+<li>Login के बाद पाँच मुख्य tabs मिलते हैं: <strong>Home, Sleep, Talk, Journal और You</strong>।</li>
+<li>इन tabs से user daily plan, insights, audio, wellness tools, games, goals, safety और settings जैसे secondary modules खोल सकता है।</li>
+</ol>
+<h2>3. Functional modules</h2>
+<h3>3.1 Onboarding और Authentication</h3>
+<ul>
+<li>Welcome, wellness disclosure, language और current-state selection</li>
+<li>Reset preference, consent और notification setup</li>
+<li>Email/password sign-up और sign-in</li>
+<li>Email OTP request और verification</li>
+<li>Forgot-password flow</li>
+<li>Google sign-in (client configuration उपलब्ध होने पर)</li>
+<li>Access token और refresh-token आधारित session management</li>
+</ul>
+<h3>3.2 Home / Today</h3>
+<ul>
+<li>Daily home dashboard</li>
+<li>Mood check-in: mood, symbol, intensity और optional note</li>
+<li>Current streak और recent mood activity</li>
+<li>Context-based banners, जैसे sleep check-in और wind-down</li>
+<li>Daily plan और recommended content तक quick access</li>
+<li>Search और personalized journey presentation</li>
+</ul>
+<h3>3.3 Sleep</h3>
+<ul>
+<li>Sleep diary/check-in</li>
+<li>Bedtime, wake time और sleep-quality entry</li>
+<li>Previous sleep logs और summary/insights</li>
+<li>Android Health Connect से last-night sleep prefill (permission मिलने पर)</li>
+<li>Sleep sounds, soundscape mixer और wind-down content</li>
+<li>CBT-I offline program</li>
+</ul>
+<h3>3.4 Talk / Conversational Support</h3>
+<ul>
+<li>Backend-connected chat conversation</li>
+<li>Suggested starter prompts और suggestion chips</li>
+<li>Server-sent events आधारित streamed response support</li>
+<li>Chat response में tool/widget recommendations</li>
+<li>Voice capability: speech-to-text और text-to-speech backend endpoints</li>
+<li>Human support और crisis resources की navigation</li>
+</ul>
+<h3>3.5 Journal</h3>
+<ul>
+<li>Journal entry create और history view</li>
+<li>Entry title/body और server-side risk indicator</li>
+<li>Private journal area</li>
+<li>Screen-lock/biometric protection</li>
+<li>Support card, ताकि sensitive entry के समय सहायता का रास्ता उपलब्ध रहे</li>
+</ul>
+<h3>3.6 You / Profile और Settings</h3>
+<ul>
+<li>User profile और preferences</li>
+<li>Companion style selection</li>
+<li>Appearance: System, Night और Dawn themes</li>
+<li>Reminder configuration</li>
+<li>Privacy और consent controls</li>
+<li>Crisis region और human-support settings</li>
+<li>Premium information</li>
+<li>Privacy policy</li>
+<li>User-data export</li>
+<li>Account deletion</li>
+</ul>
+<h3>3.7 Daily Plan, Goals और Habits</h3>
+<ul>
+<li>Personalized active daily plan</li>
+<li>Plan steps को complete/incomplete करना</li>
+<li>Plan regeneration</li>
+<li>Goals create और status update</li>
+<li>Goal decomposition</li>
+<li>Habits create और daily completion tracking</li>
+<li>Backend recommendations accept या dismiss करना</li>
+</ul>
+<h3>3.8 Insights और Patterns</h3>
+<ul>
+<li>Weekly insights</li>
+<li>Mood, sleep और activity से प्राप्त patterns</li>
+<li>Learned/suggested observations</li>
+<li>User memory देखना, जोड़ना, edit करना और delete करना</li>
+<li>किसी unwanted pattern को suppress करना</li>
+</ul>
+<h3>3.9 Programs</h3>
+<ul>
+<li>Available wellness programs की listing</li>
+<li>Program enroll/leave और active-program state</li>
+<li>Offline <strong>CBT-I</strong> sleep program</li>
+<li>Offline <strong>MBCT</strong> mindfulness-based cognitive therapy content</li>
+</ul>
+<h3>3.10 Audio, Sounds और Player</h3>
+<ul>
+<li>Central audio player</li>
+<li>Ambient sound service और foreground soundscape service</li>
+<li>Multi-layer soundscape mixer, presets, volume और timer</li>
+<li>Smooth volume ramp/crossfade</li>
+<li>Tool ambience, chime और water-drop sounds</li>
+<li>Voice engine तथा cloud voice support</li>
+</ul>
+<h3>3.11 Breathing और Offline Guidance Tools</h3>
+<ul>
+<li>Box breathing और two-minute reset</li>
+<li>Multiple paced breathing patterns और session history</li>
+<li>Guided imagery</li>
+<li>Body scan</li>
+<li>5-4-3-2-1 style crisis grounding</li>
+<li>Insight reel</li>
+<li>CBT thought reframe</li>
+<li>TIPP distress-tolerance tool</li>
+<li>Baseline assessment</li>
+</ul>
+<h3>3.12 Toolkit और Mindful Games</h3>
+<p>Toolkit games और practical wellness exercises को एक hub में जोड़ता है। इसमें focus, memory, resilience, flexibility और calm categories के लगभग 23 mindful games हैं। अतिरिक्त interactive activities में Bubble Pop, Pattern Glow, Zen Ripples और Gratitude Garden शामिल हैं।</p>
+<h3>3.13 Safety और Crisis Support</h3>
+<ul>
+<li>Personal safety plan create/update</li>
+<li>Trusted contact add, update और remove</li>
+<li>Crisis grounding और immediate coping tools</li>
+<li>Region-specific crisis resource selection</li>
+<li>Human-support information</li>
+</ul>
+<blockquote>Safety content सहायता के लिए है; immediate danger में local emergency service या qualified professional से संपर्क करना चाहिए।</blockquote>
+<h3>3.14 Search और Content Catalogue</h3>
+<ul>
+<li>Served content catalogue में search</li>
+<li>Programs, sounds और wellness content discovery</li>
+<li>Content image और audio URLs</li>
+<li>Loading, empty, error और cached/fallback states</li>
+</ul>
+<h3>3.15 Notifications और Analytics</h3>
+<ul>
+<li>Local daily reminders</li>
+<li>Device reboot के बाद reminder rescheduling</li>
+<li>Consent-aware anonymous product analytics</li>
+<li>Onboarding और application events tracking</li>
+</ul>
+<h2>4. Technical modules और architecture</h2>
+<p>Gradle की दृष्टि से project में अभी <strong>एक Android application module <code>:app</code></strong> है। Functional separation packages और source files के माध्यम से की गई है:</p>
+<table><thead><tr><th>Package/area</th><th>जिम्मेदारी</th></tr></thead><tbody>
+<tr><td><code>MainActivity.kt</code></td><td>App entry point, edge-to-edge UI, session/haptics initialization</td></tr>
+<tr><td><code>ui/CereBroApp.kt</code></td><td>Splash, auth gate, five-tab navigation और complete route graph</td></tr>
+<tr><td><code>ui/screens/</code></td><td>Main screens, settings, plan, insights, safety और tools</td></tr>
+<tr><td><code>ui/breathing/</code></td><td>Breathing engine, rules, history और ViewModel</td></tr>
+<tr><td><code>ui/games/</code></td><td>Mindful game registry और game screens</td></tr>
+<tr><td><code>ui/offline/</code></td><td>Offline guidance तथा CBT-I/MBCT content</td></tr>
+<tr><td><code>ui/theme/</code></td><td>Material 3 design tokens, colors, typography और themes</td></tr>
+<tr><td><code>net/</code></td><td>API client, authentication session, caching, SSE और analytics</td></tr>
+<tr><td><code>audio/</code></td><td>Player, audio services, soundscape mixer और voice features</td></tr>
+<tr><td><code>auth/</code></td><td>Google Credential Manager integration</td></tr>
+<tr><td><code>health/</code></td><td>Health Connect sleep integration</td></tr>
+<tr><td><code>notify/</code></td><td>Reminders, notifications और boot receiver</td></tr>
+</tbody></table>
+<h2>5. Technology stack</h2>
+<ul>
+<li>Kotlin 2.0 और Java 17 target</li>
+<li>Jetpack Compose + Material 3 UI</li>
+<li>Navigation Compose</li>
+<li>Kotlin Coroutines</li>
+<li>DataStore preferences</li>
+<li>Android Security Crypto for encrypted token/cache storage</li>
+<li>Credential Manager for Google authentication</li>
+<li>Media3 ExoPlayer for soundscapes</li>
+<li>Coil for remote images</li>
+<li>AndroidX Biometric for journal lock</li>
+<li>Health Connect for sleep data</li>
+<li><code>HttpURLConnection</code> + <code>org.json</code> आधारित lightweight API client</li>
+<li>JUnit, Robolectric और JaCoCo tests/coverage</li>
+</ul>
+<h2>6. Backend और data behavior</h2>
+<ul>
+<li>Debug default API: <code>http://10.0.2.2:8000</code></li>
+<li>Release API: <code>https://api.cerebrozen.in</code></li>
+<li>Authenticated requests access token use करती हैं; refresh token rotation supported है।</li>
+<li>Offline response cache encrypted-at-rest रखा जाता है और network failure पर selected screens fallback/cache state दिखा सकती हैं।</li>
+<li>Mood, journal, sleep, chat, plans, goals, habits, insights, safety plan और profile backend APIs से जुड़े हैं।</li>
+</ul>
+<h2>7. Permissions और device integrations</h2>
+<p>Feature के अनुसार application notification, microphone/voice, biometric/device lock और Health Connect sleep permissions माँग सकती है। Integration configure या permission grant न होने पर संबंधित feature को graceful fallback के साथ काम करना चाहिए।</p>
+<h2>8. संक्षिप्त निष्कर्ष</h2>
+<p>CereBro एक modular wellness application है जिसका core पाँच tabs पर आधारित है। इसके प्रमुख pillars हैं: <strong>daily emotional check-in, sleep support, conversational companion, private journaling, personalized planning, calming tools और safety support</strong>। Codebase में UI, network, audio, health, notification और offline-content concerns अलग packages में रखे गए हैं, लेकिन build level पर फिलहाल एक ही <code>:app</code> module है।</p>
+<h2>9. इस application का उपयोग कौन करेगा और क्यों?</h2>
+<h3>प्रमुख users</h3>
+<table><thead><tr><th>User group</th><th>वे इसका उपयोग क्यों करेंगे?</th></tr></thead><tbody>
+<tr><td>Stress, anxiety या overthinking महसूस करने वाले adults</td><td>Breathing, grounding, journaling और calming audio से तुरंत self-help पाने के लिए</td></tr>
+<tr><td>अपनी emotional health track करने वाले लोग</td><td>Daily mood check-in, streak, journal और weekly patterns देखने के लिए</td></tr>
+<tr><td>Sleep routine सुधारने वाले users</td><td>Sleep diary, Health Connect import, sleep insights, stories, soundscapes और CBT-I content के लिए</td></tr>
+<tr><td>Guided self-care पसंद करने वाले users</td><td>Daily plan, goals, habits, MBCT और छोटे wellness exercises के लिए</td></tr>
+<tr><td>किसी से private तरीके से बात करना चाहने वाले users</td><td>Conversational companion, reflection prompts और journal export के लिए</td></tr>
+<tr><td>Meditation/breathing beginners</td><td>आसान paced breathing, guided imagery और body scan के लिए</td></tr>
+<tr><td>Students और working professionals</td><td>Focus games, short resets, stress management और routine building के लिए</td></tr>
+<tr><td>Existing CereBro web/iOS users</td><td>उसी account और shared backend data को Android पर access करने के लिए</td></tr>
+</tbody></table>
+<h3>यह application क्यों उपयोगी हो सकता है?</h3>
+<ul>
+<li>एक ही जगह mood, sleep, journal, habits और wellness tools मिलते हैं।</li>
+<li>छोटे exercises user को भारी course के बिना तुरंत शुरू करने देते हैं।</li>
+<li>Personalized plan और insights raw entries को actionable steps में बदल सकते हैं।</li>
+<li>Offline grounding, breathing, CBT-I और MBCT content weak network में भी उपयोगी है।</li>
+<li>Journal lock, consent controls, data export और account deletion user control बढ़ाते हैं।</li>
+<li>Crisis और trusted-contact paths कठिन समय में सहायता तक पहुँच आसान बनाते हैं।</li>
+</ul>
+<h3>किसके लिए यह पर्याप्त नहीं है?</h3>
+<p>यह psychiatrist, psychologist, counsellor, diagnosis, medication advice या emergency response का replacement नहीं है। Severe symptoms, self-harm risk या immediate danger में qualified professional और local emergency/crisis service जरूरी है।</p>
+<h2>10. Module completion status</h2>
+<p>यह status <strong>current source code review</strong> पर आधारित है। “Code-complete” का अर्थ है कि UI, logic और expected API/local persistence wiring मौजूद है; इसका अर्थ यह नहीं कि हर production device और live backend पर final acceptance testing हो चुकी है।</p>
+<h3>10.1 Code-complete / मुख्य flow उपलब्ध</h3>
+<table><thead><tr><th>Module</th><th>वर्तमान evidence</th><th>Status</th></tr></thead><tbody>
+<tr><td>Splash, onboarding और email authentication</td><td>Sign-up, sign-in, OTP, forgot password, consent और session refresh implemented</td><td>Code-complete</td></tr>
+<tr><td>Home / Today</td><td>Profile, streak, moods, plan, program, banners, add/delete mood APIs wired</td><td>Code-complete</td></tr>
+<tr><td>Sleep diary</td><td>Logs, summary, create sleep entry और history implemented</td><td>Code-complete</td></tr>
+<tr><td>Text Talk/chat</td><td>Chat history, starters, send, SSE streaming, limits और tool widgets wired</td><td>Code-complete; backend required</td></tr>
+<tr><td>Journal</td><td>Create/history/private flow, risk field और biometric/device lock present</td><td>Code-complete</td></tr>
+<tr><td>Daily Plan</td><td>Active plan, toggle step और regenerate APIs present</td><td>Code-complete</td></tr>
+<tr><td>Goals और Habits</td><td>Create/update/decompose और daily completion APIs present</td><td>Code-complete</td></tr>
+<tr><td>Patterns, memories और recommendations</td><td>Read/add/edit/delete/accept/dismiss flows wired</td><td>Code-complete</td></tr>
+<tr><td>Programs</td><td>Catalogue, enrollment, active journey, day path और leave flow present</td><td>Code-complete; server content required</td></tr>
+<tr><td>Safety Plan</td><td>Load/save, cached offline display और stale-state indication present</td><td>Code-complete</td></tr>
+<tr><td>Trusted Contact</td><td>Load, add/update और delete APIs present</td><td>Code-complete</td></tr>
+<tr><td>Breathing और offline guidance</td><td>Breathing engine/history, guided imagery, body scan, grounding, CBT-I और MBCT present</td><td>Code-complete/local</td></tr>
+<tr><td>Mindful games और interactive tools</td><td>Registry और playable mechanics/screens present</td><td>Code-complete/local</td></tr>
+<tr><td>Appearance, privacy और consent</td><td>Theme persistence, consent read/update और journal-lock setting present</td><td>Code-complete</td></tr>
+<tr><td>Reminders</td><td>Local AlarmManager notification, permission और reboot reschedule implemented</td><td>Code-complete; device QA required</td></tr>
+<tr><td>Data export और account deletion</td><td>Backend calls, progress/error और confirmation behavior present</td><td>Code-complete; backend required</td></tr>
+</tbody></table>
+<h3>10.2 Partial या configuration-dependent modules</h3>
+<table><thead><tr><th>Module</th><th>क्या बाकी/निर्भर है?</th><th>Status</th></tr></thead><tbody>
+<tr><td>Google Sign-In</td><td>Code मौजूद है, लेकिन valid Google web client ID और Play Services configuration के बिना inactive रहेगा</td><td>Configuration-dependent</td></tr>
+<tr><td>Voice Talk</td><td>On-device STT/TTS fallback मौजूद; cloud STT/TTS server capability और microphone permission पर निर्भर</td><td>Partial/conditional</td></tr>
+<tr><td>Health Connect sleep import</td><td>Read flow मौजूद; Health Connect availability, install और user permission जरूरी</td><td>Conditional</td></tr>
+<tr><td>Audio library और sleep stories</td><td>Player/mixer implemented, लेकिन कुछ items के actual media URLs/narration backend catalogue पर निर्भर हैं</td><td>Partial/content-dependent</td></tr>
+<tr><td>Insights</td><td>Weekly API और baseline UI मौजूद; useful result पर्याप्त real user data और backend analysis पर निर्भर है</td><td>Data-dependent</td></tr>
+<tr><td>Search/content catalogue</td><td>Multiple content APIs wired; completeness backend में published catalogue पर निर्भर है</td><td>Content-dependent</td></tr>
+<tr><td>Offline behavior</td><td>Selected GET cache और offline tools मौजूद; सभी create/update actions पूर्ण offline sync queue नहीं रखते</td><td>Partial</td></tr>
+<tr><td>Hindi localization</td><td>बड़ी translation file मौजूद, लेकिन safety/clinical strings का English fallback और professional review pending है</td><td>Partial</td></tr>
+<tr><td>Human Support</td><td>Real helpline/website links मौजूद, पर vetted coach directory roadmap में है</td><td>Partial</td></tr>
+<tr><td>Privacy/clinical credibility</td><td>In-app disclosure मौजूद, लेकिन formal clinical advisory/review process roadmap में है</td><td>Partial</td></tr>
+</tbody></table>
+<h3>10.3 स्पष्ट रूप से अधूरा module</h3>
+<table><thead><tr><th>Module</th><th>Evidence</th><th>Status</th></tr></thead><tbody>
+<tr><td>Premium subscription</td><td>Plans और prices का UI है, लेकिन purchase CTA disabled है और Google Play Billing dependency/flow नहीं है</td><td>अधूरा</td></tr>
+</tbody></table>
+<h3>10.4 “पूरा चल रहा है” प्रमाणित करने से पहले जरूरी QA</h3>
+<ul>
+<li>Production backend के साथ सभी API flows का end-to-end test</li>
+<li>Real Android devices पर biometric, microphone, notification और Health Connect test</li>
+<li>Background audio, lock screen controls, timer और OEM battery restrictions test</li>
+<li>Poor network, expired token और offline-to-online recovery test</li>
+<li>Hindi content, विशेषकर crisis और clinical language, का human review</li>
+<li>Accessibility, TalkBack, large font और low-end device performance test</li>
+<li>Play Store privacy/data-safety और security review</li>
+</ul>
+<h2>11. Application में आगे क्या add किया जा सकता है?</h2>
+<h3>Priority 1 — launch से पहले</h3>
+<ol>
+<li><strong>Google Play Billing:</strong> premium purchase, restore purchase, subscription status और server verification।</li>
+<li><strong>Complete offline sync:</strong> Room database, pending-action queue, conflict handling और reconnect sync।</li>
+<li><strong>Clinical और safety review:</strong> qualified mental-health professionals द्वारा content validation और escalation policy।</li>
+<li><strong>Hindi localization review:</strong> crisis, consent और clinical strings की verified translation; बाद में अन्य Indian languages।</li>
+<li><strong>Security hardening:</strong> penetration test, certificate pinning decision, sensitive-log audit और token migration/recovery tests।</li>
+<li><strong>Crash/performance monitoring:</strong> privacy-safe crash reports, ANR और audio failure monitoring।</li>
+</ol>
+<h3>Priority 2 — user value बढ़ाने के लिए</h3>
+<ol>
+<li><strong>Personalized dashboard:</strong> mood/sleep trends, correlations और user-controlled weekly/monthly charts।</li>
+<li><strong>Flexible reminders:</strong> custom time, multiple schedules, sleep reminder, habit reminder और quiet hours।</li>
+<li><strong>Journal improvements:</strong> tags, search, filters, edit/delete entry, attachments और encrypted local drafts।</li>
+<li><strong>Sleep improvements:</strong> smart bedtime routine, sleep debt/trend, wearable integrations और more offline audio downloads।</li>
+<li><strong>Goals/habits calendar:</strong> streak calendar, weekly targets और missed-day recovery।</li>
+<li><strong>Professional care bridge:</strong> verified therapist/coach directory, appointment booking और user-consented report sharing।</li>
+<li><strong>Emergency enhancements:</strong> quick-call button, location-aware verified resources और user-tested safety-plan export।</li>
+<li><strong>Accessibility:</strong> font scaling audit, voice navigation, captions/transcripts, color-blind checks और switch access।</li>
+</ol>
+<h3>Priority 3 — engagement और platform growth</h3>
+<ol>
+<li>Android home-screen widgets for mood check-in, breathing और daily plan।</li>
+<li>Wear OS quick check-in और breathing session।</li>
+<li>Secure cross-device sync और web/iOS continuity।</li>
+<li>Download manager for offline programs, stories और soundscapes।</li>
+<li>Progress reports जिन्हें user PDF/CSV में export कर सके।</li>
+<li>Carefully designed, opt-in community/group challenges—बिना public mental-health data expose किए।</li>
+<li>Admin/content-management portal ताकि reviewed programs और media safely publish किए जा सकें।</li>
+</ol>
+<h2>12. सुझाया गया development order</h2>
+<p>पहले <strong>Premium Billing + offline sync + clinical/localization review + real-device QA</strong> पूरा करना चाहिए। उसके बाद journal/search, flexible reminders और analytics charts जैसे improvements करने चाहिए। Therapist marketplace, community या wearable जैसी बड़ी सुविधाएँ core safety, privacy और reliability stable होने के बाद जोड़ना बेहतर होगा।</p></body></html>

@@ -28,7 +28,7 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
-import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.ModalScrim
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -57,7 +57,7 @@ internal fun GuidedTourOverlay(onDone: () -> Unit) {
     val stops = tourStops()
     val (label, caption) = stops[idx]
     Box(
-        Modifier.fillMaxSize().background(Night.copy(alpha = 0.82f)),
+        Modifier.fillMaxSize().background(ModalScrim),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(

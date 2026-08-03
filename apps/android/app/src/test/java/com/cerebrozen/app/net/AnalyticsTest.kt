@@ -31,7 +31,7 @@ class AnalyticsTest {
         val bodies = CopyOnWriteArrayList<String>()
         var latch = CountDownLatch(1)
         fun install(store: FakeStore) {
-            Session.resetForTest(store) { url, _, body, _, auth ->
+            Session.resetForTest(store) { url, _, body, _, auth, _ ->
                 assertTrue(url.endsWith("/events"))
                 assertNull("events must never carry a bearer token", auth)
                 bodies.add(body!!)
@@ -106,7 +106,7 @@ class AnalyticsTest {
     fun track_swallows_transport_failures() {
         val store = FakeStore("analytics_unlocked" to "true")
         val latch = CountDownLatch(1)
-        Session.resetForTest(store) { _, _, _, _, _ ->
+        Session.resetForTest(store) { _, _, _, _, _, _ ->
             latch.countDown()
             throw java.io.IOException("offline")
         }
