@@ -539,13 +539,19 @@
     <string name="breath_round_progress">राउंड %1$d / %2$d</string>
     <string name="breath_voice_on">वॉइस संकेत चालू</string>
     <string name="breath_voice_off">वॉइस संकेत बंद</string>
-    <string name="breath_stop">सत्र रोकें</string>
+    <string name="breath_stop">सत्र समाप्त करें</string>
+    <string name="breath_pause">रोकें</string>
+    <string name="breath_resume">जारी रखें</string>
+    <string name="breath_paused">रुका हुआ</string>
     <string name="breath_complete_title">सत्र पूरा हुआ</string>
     <string name="breath_complete_body">%2$s ब्रीदिंग के %1$d राउंड</string>
     <string name="breath_history_title">इतिहास</string>
     <string name="breath_history_clear">साफ़ करें</string>
     <string name="breath_history_empty">पूरे किए गए सत्र यहाँ दिखाई देंगे।</string>
-    <string name="breath_history_rounds">%1$d राउंड</string>
+    <plurals name="breath_history_rounds">
+        <item quantity="one">%1$d राउंड</item>
+        <item quantity="other">%1$d राउंड</item>
+    </plurals>
     <string name="tool_saved_cta">आपके जर्नल में सहेज लिया</string>
     <string name="tool_save_cta">जर्नल में सहेजें</string>
 

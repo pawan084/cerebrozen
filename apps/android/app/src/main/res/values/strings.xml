@@ -877,13 +877,19 @@
     <string name="breath_voice_off">Voice cues off</string>
     <string name="breath_mute_voice">Mute voice cues</string>
     <string name="breath_enable_voice">Enable voice cues</string>
-    <string name="breath_stop">Stop session</string>
+    <string name="breath_stop">End session</string>
+    <string name="breath_pause">Pause</string>
+    <string name="breath_resume">Resume</string>
+    <string name="breath_paused">Paused</string>
     <string name="breath_complete_title">Session complete</string>
     <string name="breath_complete_body">%1$d rounds of %2$s breathing</string>
     <string name="breath_history_title">History</string>
     <string name="breath_history_clear">Clear</string>
     <string name="breath_history_empty">Completed sessions will appear here.</string>
-    <string name="breath_history_rounds">%1$d rounds</string>
+    <plurals name="breath_history_rounds">
+        <item quantity="one">%1$d round</item>
+        <item quantity="other">%1$d rounds</item>
+    </plurals>
     <!-- W27 §4: pace choice + guidance toggles (eyes-closed accessibility). -->
     <string name="breathe_pace_gentle">Gentle · 6s</string>
     <string name="breathe_pace_classic">Classic · 4s</string>

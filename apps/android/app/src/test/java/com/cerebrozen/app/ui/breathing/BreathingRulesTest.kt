@@ -147,6 +147,61 @@ class BreathLoopsViewModelTest {
     }
 
     @Test
+    fun pauseFreezesTheDeadlineAndResumeContinuesMidPhase() = runTest(dispatcher) {
+        val clock = FakeClock()
+        val vm = viewModel(clock)
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
+        vm.start(BreathPattern.Box)
+        runCurrent()
+        clock.value += 2_000
+        vm.reconcile()
+        runCurrent()
+        assertEquals(2, vm.uiState.value.core.remainingSeconds)
+
+        vm.pause()
+        runCurrent()
+        assertTrue(vm.uiState.value.core.paused)
+        // A long background gap while paused must not advance anything.
+        clock.value += 60_000
+        vm.reconcile()
+        runCurrent()
+        assertEquals(BreathPhaseType.Inhale, vm.uiState.value.core.position?.phase?.type)
+        assertEquals(2, vm.uiState.value.core.remainingSeconds)
+
+        vm.resume()
+        runCurrent()
+        clock.value += 2_000
+        vm.reconcile()
+        runCurrent()
+        assertEquals(BreathPhaseType.Hold, vm.uiState.value.core.position?.phase?.type)
+        vm.stop()
+        collection.cancel()
+    }
+
+    @Test
+    fun stoppingMidSessionBanksCompletedRoundsAsPartialCredit() = runTest(dispatcher) {
+        val clock = FakeClock()
+        val history = FakeHistory()
+        val vm = viewModel(clock, history)
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
+        vm.start(BreathPattern.Coherent)
+        runCurrent()
+        // Two full 10-second rounds plus five seconds into the third.
+        clock.value += 25_000
+        vm.reconcile()
+        runCurrent()
+        vm.stop()
+        runCurrent()
+
+        assertEquals(BreathScreenMode.Picker, vm.uiState.value.core.mode)
+        val record = vm.uiState.value.history.single()
+        assertEquals(BreathPattern.Coherent, record.pattern)
+        assertEquals(2, record.rounds)
+        assertEquals(20, record.durationSeconds)
+        collection.cancel()
+    }
+
+    @Test
     fun completingAllRoundsShowsCompletionAndSavesLocally() = runTest(dispatcher) {
         val clock = FakeClock()
         val history = FakeHistory()
