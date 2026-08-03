@@ -16,6 +16,9 @@ const serif = Newsreader({
 export const metadata: Metadata = {
   title: "CereBro Admin",
   description: "Operations dashboard for CereBro.",
+  // An ops dashboard has no business in a search index. The Caddyfile sets
+  // X-Robots-Tag for admin.cerebrozen.in too; this covers any other host.
+  robots: { index: false, follow: false },
 };
 
 // Per-request rendering so the CSP script nonce (middleware.ts) lands on every

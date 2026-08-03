@@ -30,6 +30,9 @@ cerebrozen.in, www.cerebrozen.in {
 # Admin dashboard (Next.js)
 admin.cerebrozen.in {
 	import security_headers
+	# An ops dashboard has no business in a search index (the app's layout
+	# metadata says the same; this covers every response, HTML or not).
+	header X-Robots-Tag "noindex, nofollow"
 	encode gzip zstd
 	reverse_proxy admin:3001
 }

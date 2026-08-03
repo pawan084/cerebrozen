@@ -1012,6 +1012,29 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Admin (apps/admin) world-class pass (2026-08-03, all ten tabs walked signed-in)
+- [x] **The ops dashboard was indexable.** No robots metadata and no header at the
+  proxy — added `robots: { index:false, follow:false }` to the layout and
+  `X-Robots-Tag: noindex, nofollow` to the admin block in deploy/Caddyfile.
+- Verified live, signed in against real data: all ten tabs render (Overview stats,
+  Analytics cohorts/funnels, Users incl. detail panel contract, Content library,
+  Media catalogue with honest fallback copy, versioned Prompts with the
+  risk-prompt double-confirm, Oracle audit, Nudges, Safety, Waitlist). The
+  safety-review privacy flow works end to end: excerpts hidden by default with
+  char counts only, per-row server-audited reveal ("You opened this. The server
+  logged it."), required resolution notes. The queue held the crisis test
+  messages from today's web-app review — including two rows matched by the NEW
+  "hurting myself" keyword-floor term, live proof of that fix.
+- Correction to today's earlier finding: the Oracle path's crisis banner DID fire
+  for the pre-fix message (LLM classifier caught it; the banner showed
+  default-region lines and the check regexed for Tele-MANAS only). The keyword
+  floor gap was still real — it is the only net when the LLM is off or
+  under-flags — but the banner path was never broken.
+- Noted, not changed: admin keeps its access token in localStorage (apps/app
+  holds it in memory only) — simpler, weaker against XSS; the nonce CSP is the
+  mitigation. Worth aligning if the dashboard ever grows content-injection
+  surface. The single 1,709-line page.tsx split is already on the ledger.
+
 ### Web app (apps/app) world-class pass (2026-08-03, full funnel + chat walked live)
 - [x] **Crisis keyword floor missed progressive forms — a real heavy message got no
   crisis resources.** "I've been thinking about hurting myself" sailed under the net:
