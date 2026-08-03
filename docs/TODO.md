@@ -55,6 +55,22 @@
   governs server-side memory). SleepScreen states the boundary next to the prefill button
   (`sleep_hc_boundary_hint`).
 
+## Done — 2026-08-03 Android Home deep polish (58-point audit, 4 commits)
+
+`03806ead` → `08699a49`: header (rotating goal eyebrow, Library search pill,
+avatar shortcut, small-hours continuity, once-per-session rise, status scrim),
+banners (eased entrance/exit, offline "Send now" drain, wind-down copy+wave
+medallion), check-in (earlier-mood ring, say-more bridge, 8s settle, undo
+feedback, merged semantics, tap-race guard), plan hero (focus-keyed art,
+1-line subtitle, evening "steps still open tonight", next-step deep link,
+START chip, per-step progress bar, skeleton), rail (tap plays the item →
+player, title-keyed wave art, play pill, kind meta, skeleton), doors (icons,
+"Weekly insights" rename, tiered copy, toolkit recents subtitle, state-aware
+order), presence (folded header, 18dp dots, today halo, LAST 7 DAYS eyebrow,
+tappable, late-milestone catch-up), recents (localized display copy, row taps,
+time dedup, "+N more today"), cached-first snapshot paint (verified offline),
+themed refresh indicator. Point 15 (fifth mood) queued below.
+
 ## Open — owner decisions queued by the 2026-08-02 Android page-by-page polish (waves 1–8)
 
 The 8-wave UI/UX pass (commits `655b0cb6` → `2ad7697e`: Home, Talk, Journal, You,
