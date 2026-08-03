@@ -188,4 +188,68 @@ class ThemeTokensTest {
         assertEquals("Dawn background is the cream ground", DawnPalette.night, background)
         assertEquals(DawnPalette.onPrimary, onPrimary)
     }
+    // ── Every themed token resolves, in BOTH themes ─────────────────────────
+    //
+    // Reflection over ColorKt on purpose: the file has ~55 top-level `get()`
+    // tokens and a hand-kept list here would silently stop covering the next
+    // one added. Each getter must return a real paint (alpha > 0) under Night
+    // AND Dawn — an unset default (Color.Unspecified / transparent) is a screen
+    // painting nothing, and the Dawn arm of a getter is exactly the branch a
+    // Night-only device fleet never executes.
+    @Test
+    fun everyThemedColorTokenResolvesInBothThemes() {
+        val getters = Class.forName("com.cerebrozen.app.ui.theme.ColorKt")
+            .methods.filter {
+                java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                    it.parameterCount == 0 && it.name.startsWith("get")
+            }
+        assertTrue("reflection found the token getters", getters.size >= 40)
+        for (night in listOf(true, false)) {
+            AppTheme.mode = if (night) ThemeMode.Night else ThemeMode.Dawn
+            AppTheme.forceNight = false
+            getters.forEach { getter ->
+                val value = getter.invoke(null)
+                if (value is Long) { // Compose Color is an inline value class over ULong
+                    val color = Color(value.toULong())
+                    assertTrue(
+                        "${getter.name} resolves to a transparent paint in ${if (night) "Night" else "Dawn"}",
+                        color.alpha > 0f,
+                    )
+                }
+            }
+        }
+        // And the theme actually switches what a role means: the page floor is
+        // the palette's own ground on each side, not a shared constant.
+        AppTheme.mode = ThemeMode.Night
+        assertEquals(NightPalette.night, Night)
+        AppTheme.mode = ThemeMode.Dawn
+        assertEquals(DawnPalette.night, Night)
+    }
+
+    // ── The spacing/elevation scales are actually scales ────────────────────
+    // Three tiers that group by proximity only work if the tiers are ordered;
+    // a refactor that flattened two of them would pass every screenshotless
+    // test while quietly un-grouping every screen.
+    @Test
+    fun spacingAndElevationTiersStayOrdered() {
+        assertTrue(Space.tight < Space.item)
+        assertTrue(Space.item < Space.group)
+        assertTrue(Space.group < Space.section)
+        assertTrue(Elevation.card < Elevation.focus)
+        assertTrue(Elevation.focus < Elevation.hero)
+        assertTrue(Elevation.hero < Elevation.nav)
+    }
+
+    @Test
+    fun sectionAccentsAndCtaGradientResolveInBothThemes() {
+        listOf(true, false).forEach { night ->
+            AppTheme.mode = if (night) ThemeMode.Night else ThemeMode.Dawn
+            // The aurora tints are brand marks — fully opaque in both themes.
+            listOf(AuroraTint.home, AuroraTint.sleep, AuroraTint.talk, AuroraTint.default)
+                .forEach { assertEquals(1f, it.alpha) }
+            // The CTA pill is one deep-lavender gradient in BOTH themes — the
+            // one action that matters looks the same everywhere.
+            assertNotNull(Gradients.primary)
+        }
+    }
 }

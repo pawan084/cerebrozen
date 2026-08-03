@@ -238,11 +238,11 @@ val jacocoTestReport by tasks.registering(JacocoReport::class) {
 }
 
 // The gate: parses the XML report, prints the measured percentage (total and
-// per-package), and fails the build below 95% — wired into `check` so
+// per-package), and fails the build below 96% — wired into `check` so
 // `gradlew :app:check` enforces it exactly like the backend's CI coverage gate.
 val jacocoLogicCoverageVerification by tasks.registering {
     group = "verification"
-    description = "Fails unless line coverage over the logic scope is >= 95%."
+    description = "Fails unless line coverage over the logic scope is >= 96%."
     dependsOn(jacocoTestReport)
     // Resolve to plain, serializable values at configuration time — the doLast
     // closure must not capture script-object references (configuration cache).
@@ -283,14 +283,14 @@ val jacocoLogicCoverageVerification by tasks.registering {
         val percent = pct(covered, missed)
         println("  %-40s %6.2f%%  (%d/%d lines)".format("TOTAL", percent, covered, covered + missed))
         println()
-        if (percent < 95.0) {
+        if (percent < 96.0) {
             throw GradleException(
-                "Logic-scope line coverage %.2f%% is below the 95%% gate ".format(percent) +
+                "Logic-scope line coverage %.2f%% is below the 96%% gate ".format(percent) +
                     "(backend parity: pytest --cov-fail-under=95). " +
                     "See $htmlHint/index.html",
             )
         }
-        println("Coverage gate OK: %.2f%% >= 95%%".format(percent))
+        println("Coverage gate OK: %.2f%% >= 96%%".format(percent))
     }
 }
 

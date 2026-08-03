@@ -692,7 +692,10 @@ private fun Funnel(
                     fontSize = if (compactTitle) 32.sp else 38.sp,
                     lineHeight = if (compactTitle) 35.sp else 39.sp,
                 ),
-                color = Color.White,
+                // Themed, not Color.White: the funnel follows the appearance
+                // choice now, and a white title on the Dawn cream was invisible
+                // (caught on the emulator). Night renders near-white as before.
+                color = TextPrimary,
                 textAlign = if (titleCentered) TextAlign.Center else TextAlign.Start,
             )
             if (sub.isNotBlank()) Text(
@@ -816,10 +819,10 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
             val shape = RoundedCornerShape(14.dp)
             Box(
                 Modifier.heightIn(min = 48.dp).clip(shape)
-                    .background(if (isSelected) Color.White else DotUnselectedFill)
+                    .background(if (isSelected) ChipSelectedFill else DotUnselectedFill)
                     .border(
                         1.dp,
-                        if (isSelected) Color(0xFFB9C8FF) else Color.White.copy(alpha = 0.04f),
+                        if (isSelected) PickCardStroke else PickRowStroke.copy(alpha = 0.35f),
                         shape,
                     )
                     .clickable(
@@ -832,7 +835,7 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
                 Text(
                     opt,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isSelected) Color(0xFF17213A) else Color.White,
+                    color = if (isSelected) ChipSelectedInk else TextPrimary,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 )
             }

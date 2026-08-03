@@ -1819,70 +1819,6 @@ private fun ToolkitHeader(label: String) {
     )
 }
 
-/** The one activities hub (REDESIGN §2.2: `games` + `tools` merged). Sections
- * are jobs, not categories — Ground · Breathe · Reframe · Settle — with the
- * evidence-lineage tool (CBT reframe) leading its section. */
-@Composable
-private fun LegacyToolkitScreenUnused(onOpen: (String) -> Unit, onBack: () -> Unit) =
-    SubPage(stringResource(R.string.toolkit_eyebrow), stringResource(R.string.toolkit_title), onBack) {
-    Text(stringResource(R.string.toolkit_intro),
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-
-    NavRow(stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
-        icon = Icons.Outlined.SportsEsports) { onOpen("games") }
-
-    ToolkitHeader(stringResource(R.string.toolkit_header_ground))
-    Text(stringResource(R.string.toolkit_grounding_intro),
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    Grounding()
-    NavRow(stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
-        icon = Icons.Outlined.Waves) { onOpen("zenripples") }
-    FeaturedGameCard(
-        title = stringResource(R.string.toolkit_bubble_title),
-        subtitle = stringResource(R.string.toolkit_bubble_subtitle),
-        onOpen = { onOpen("bubblepop") },
-    )
-
-    ToolkitHeader(stringResource(R.string.toolkit_header_breathe))
-    NavRow(stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
-        icon = Icons.Outlined.Air) { onOpen("breathe/box") }
-    NavRow(stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
-        icon = Icons.Outlined.SelfImprovement) { onOpen("breathe/reset") }
-    NavRow(stringResource(R.string.oi_title), stringResource(R.string.oi_subtitle),
-        icon = Icons.Outlined.AutoAwesome) { onOpen("guidedimagery") }
-    NavRow(stringResource(R.string.obs_title), stringResource(R.string.obs_subtitle),
-        icon = Icons.Outlined.SelfImprovement) { onOpen("bodyscan") }
-
-    ToolkitHeader(stringResource(R.string.toolkit_header_reframe))
-    NavRow(stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
-        icon = Icons.Outlined.Psychology) { onOpen("cbt") }
-    NavRow(stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
-        icon = Icons.Outlined.Spa) { onOpen("tipp") }
-
-    ToolkitHeader(stringResource(R.string.toolkit_header_settle))
-    NavRow(stringResource(R.string.toolkit_onegood_title), stringResource(R.string.toolkit_onegood_subtitle),
-        icon = Icons.Outlined.WbSunny) { onOpen("onegoodthing") }
-    NavRow(stringResource(R.string.toolkit_intention_title), stringResource(R.string.toolkit_intention_subtitle),
-        icon = Icons.Outlined.Flag) { onOpen("intention") }
-    NavRow(stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
-        icon = Icons.Outlined.LocalFlorist) { onOpen("gratitude") }
-    NavRow(stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
-        icon = Icons.Outlined.AutoAwesome) { onOpen("patternglow") }
-    NavRow(stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
-        icon = Icons.Outlined.GraphicEq) { onOpen("sounds") }
-    NavRow(stringResource(R.string.oir_title), stringResource(R.string.oir_subtitle),
-        icon = Icons.Outlined.AutoAwesome) { onOpen("insightreel") }
-    NavRow(stringResource(R.string.ocbti_title), stringResource(R.string.ocbti_subtitle),
-        icon = Icons.Outlined.Bedtime) { onOpen("cbti") }
-    NavRow(stringResource(R.string.ombct_title), stringResource(R.string.ombct_subtitle),
-        icon = Icons.Outlined.Spa) { onOpen("mbct") }
-
-    // The quiet, always-there door (REDESIGN §2.3) — support belongs in the
-    // toolkit too, two taps from anywhere.
-    NavRow(stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
-        icon = Icons.Outlined.HealthAndSafety) { onOpen("crisisgrounding") }
-}
-
 /** Headline game tile — W21 generative hero art with floating orbs, tappable to
  * open the game. Chrome only; the copy is passed in. Built on palette tokens. */
 @Composable
@@ -1919,6 +1855,15 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
             ) { onOpen("zenripples") }
             FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { onOpen("bubblepop") }
+            // The door to the twelve offline games. It was orphaned for a day:
+            // the only onOpen("games") lived in the retired legacy Toolkit, so
+            // a whole shipped hub (engine, registry, tests) was unreachable
+            // from the UI — caught walking the emulator, not by any gate.
+            ToolkitExerciseCard(
+                stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
+                stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
+                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
+            ) { onOpen("games") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Color(0xFF64C9FF))
             ToolkitExerciseCard(

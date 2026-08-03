@@ -287,7 +287,12 @@ fun BreatheEngine(
             Text(
                 stringResource(phaseLabelRes(kind)),
                 style = MaterialTheme.typography.headlineMedium.copy(fontSize = instructionSize, fontWeight = FontWeight.SemiBold),
-                color = Color.White,
+                // Themed, not Color.White: the engine is hosted by the
+                // theme-following onboarding funnel too, where a white
+                // instruction on Dawn's cream was invisible (caught on the
+                // emulator). The breathe screens' own dark chrome renders
+                // Night's near-white exactly as before.
+                color = TextPrimary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
