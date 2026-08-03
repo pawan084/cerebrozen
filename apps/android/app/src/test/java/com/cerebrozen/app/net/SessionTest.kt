@@ -28,6 +28,29 @@ class SessionTest {
     }
 
     @Test
+    fun pydantic_422_surfaces_the_servers_own_sentence() = runTest {
+        // FastAPI validation errors put `detail` in an ARRAY of {loc, msg, type},
+        // with the human reason behind a "Value error, " prefix. Before this was
+        // parsed, the trusted-contact screen showed "Request failed (422)" while
+        // the server had written the exact reason a save was refused.
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
+            when {
+                url.endsWith("/auth/refresh") -> 200 to tokens
+                else -> 422 to """{"detail":[{"loc":["body","value"],
+                    "msg":"Value error, That doesn't look like an email address.",
+                    "type":"value_error"}]}"""
+            }
+        }
+        val thrown = runCatching {
+            Session.api("/users/me/trusted-contact", "PUT", org.json.JSONObject())
+        }.exceptionOrNull() as? Session.ApiException
+        assertEquals(422, thrown?.code)
+        assertEquals("That doesn't look like an email address.", thrown?.message)
+        assertTrue("a 422 is a rejected write, never a session problem", Session.signedIn)
+    }
+
+    @Test
     fun signIn_stores_tokens_and_flips_signedIn() = runTest {
         val store = FakeStore()
         Session.resetForTest(store) { url, _, _, _, _, _ ->

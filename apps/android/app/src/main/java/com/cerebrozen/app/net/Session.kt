@@ -160,13 +160,25 @@ object Session {
                     obj.optString("resets_at"),
                 )
             }
+            // Pydantic validation errors (422) put `detail` in a THIRD shape —
+            // an array of {loc, msg, type} — and the human-written reason sits
+            // in `msg` behind a "Value error, " prefix. Without this branch the
+            // server's own sentence ("That doesn't look like an email
+            // address.") collapsed to "Request failed (422)" on every screen.
+            val validationMsg = body?.optJSONArray("detail")
+                ?.optJSONObject(0)?.optString("msg")
+                ?.removePrefix("Value error, ")
             // `error` is slowapi's key for the IP rate limiter — without it a
             // throttled user just sees "Request failed (429)", which teaches
-            // them nothing about what to do.
+            // them nothing about what to do. `opt` + a type check rather than
+            // `optString`: org.json's optString SERIALIZES a non-string value,
+            // which is exactly the print-raw-JSON-at-the-user failure the
+            // comment above describes.
             val detail = listOfNotNull(
                 obj?.optString("message"),
-                body?.optString("detail"),
-                body?.optString("error"),
+                body?.opt("detail") as? String,
+                validationMsg,
+                body?.opt("error") as? String,
             ).firstOrNull { it.isNotBlank() } ?: "Request failed ($code)"
             throw ApiException(code, detail)
         }
