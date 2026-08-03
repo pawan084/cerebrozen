@@ -108,7 +108,7 @@ fun MindfulGameScreen(gameId: String?, onBack: () -> Unit, onBackToGames: () -> 
     }
     if (game.category == GameCategory.Calm) ToolAmbienceEffect(R.raw.wind)
 
-    SubPage(stringResource(game.buildsRes), gameName, onBack) {
+    SubPage(stringResource(game.practiceRes), gameName, onBack) {
         Column(
             Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -242,7 +242,7 @@ private fun GameHeader(game: MindfulGame, gameName: String, accent: Color) {
             }
             Column {
                 Text(stringResource(game.category.titleRes), style = MaterialTheme.typography.labelMedium, color = accent)
-                Text(stringResource(game.buildsRes), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text(stringResource(game.practiceRes), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
         }
         if (game.category == GameCategory.Calm) AmbienceToggle()

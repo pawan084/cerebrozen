@@ -129,6 +129,12 @@ object Outbox {
             } else {
                 throw e
             }
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            // Not a network verdict — the coroutine was cancelled (navigation,
+            // scope teardown). Swallowing it would break structured concurrency
+            // AND queue a write whose first attempt may still land; rethrow and
+            // let the caller's retry mint the same decision path again.
+            throw e
         } catch (e: Exception) {
             // No connectivity at all (UnknownHost/timeout) — exactly what the
             // queue is for.
@@ -164,6 +170,8 @@ object Outbox {
                     else -> dropped++                 // refused; it will be refused again
                 }
                 if (retryable(e.code)) break
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e                               // cancellation is not "offline"
             } catch (e: Exception) {
                 break                                 // no network — stop, keep order
             }

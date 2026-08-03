@@ -48,7 +48,16 @@ data class MindfulGame(
     val id: String,
     @StringRes val nameRes: Int,
     @StringRes val descriptionRes: Int,
-    @StringRes val buildsRes: Int,
+    /** What the game ASKS OF YOU ("Hold a sequence in mind"), never what it
+     * claims to build. This field arrived as `buildsRes` carrying the reference
+     * catalogue's faculty tags — "Working memory", "Selective attention",
+     * "Cognitive Flexibility" — which is the unevidenced cognitive-training
+     * claim class this product has removed twice already (REDESIGN §2.2, the
+     * Thought Sort adoption) and the FTC fined Lumosity $2M over in 2016.
+     * A tag describing the activity is honest; a tag naming the faculty it
+     * trains is a claim we cannot back. `scripts/check-claims.mjs` now bans
+     * the old vocabulary so it cannot come back through a third door. */
+    @StringRes val practiceRes: Int,
     val category: GameCategory,
     val glyph: String,
     val mechanic: GameMechanic,
@@ -102,6 +111,6 @@ object MindfulGameRegistry {
         games.firstOrNull { it.id == id }
             ?: retired[id]?.let { successor -> games.firstOrNull { it.id == successor } }
 
-    private fun game(id: String, name: Int, description: Int, builds: Int, category: GameCategory, glyph: String, mechanic: GameMechanic) =
-        MindfulGame(id, name, description, builds, category, glyph, mechanic)
+    private fun game(id: String, name: Int, description: Int, practice: Int, category: GameCategory, glyph: String, mechanic: GameMechanic) =
+        MindfulGame(id, name, description, practice, category, glyph, mechanic)
 }

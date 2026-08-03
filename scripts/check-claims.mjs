@@ -95,7 +95,28 @@ const CAPABILITY = [
   "shares your writing",
 ];
 
-const BANNED = [...MEDICAL, ...GUARANTEES, ...CAPABILITY];
+// 4. Cognitive-training claims. A ten-round tap game does not train a named
+//    faculty, and saying it does is the claim class the FTC fined Lumosity $2M
+//    over in 2016. This product has now removed this vocabulary THREE times —
+//    REDESIGN §2.2 killed four mini-games over it, the Thought Sort adoption
+//    stripped "Thought awareness: 87%", and the Mindful Games drop (2026-08-03)
+//    arrived with a literal `builds:` field tagging games "Working memory" and
+//    "Cognitive Flexibility". Game tags describe what the game ASKS OF YOU
+//    ("Hold a sequence in mind"), never the faculty it purports to build.
+const COGNITIVE_TRAINING = [
+  "working memory",
+  "selective attention",
+  "sustained attention",
+  "cognitive flexibility",
+  "spatial memory",
+  "visual memory",
+  "inhibitory control",
+  "brain training",
+  "trains your brain",
+  "build focus, memory",
+];
+
+const BANNED = [...MEDICAL, ...GUARANTEES, ...CAPABILITY, ...COGNITIVE_TRAINING];
 
 function walk(dir, ext) {
   const out = [];

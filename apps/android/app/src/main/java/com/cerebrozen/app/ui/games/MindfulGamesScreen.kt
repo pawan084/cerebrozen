@@ -111,7 +111,7 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                             Text(name, style = MaterialTheme.typography.titleMedium, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.weight(1f))
-                            Text(stringResource(game.buildsRes), style = MaterialTheme.typography.labelSmall, color = accent,
+                            Text(stringResource(game.practiceRes), style = MaterialTheme.typography.labelSmall, color = accent,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }

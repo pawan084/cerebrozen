@@ -31,7 +31,7 @@ class MindfulGameRegistryTest {
             assertNotNull(MindfulGameRegistry.find(game.id))
             assertNotEquals(0, game.nameRes)
             assertNotEquals(0, game.descriptionRes)
-            assertNotEquals(0, game.buildsRes)
+            assertNotEquals(0, game.practiceRes)
             assertTrue("a card with no glyph draws an empty tile", game.glyph.isNotBlank())
         }
     }

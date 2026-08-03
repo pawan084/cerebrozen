@@ -1375,59 +1375,31 @@
     <string name="ombct_m6">Responding with care</string><string name="ombct_m6_body">A deliberate response can replace an automatic reaction.</string><string name="ombct_m6_practice">Pause and choose one supportive action you can realistically take.</string>
     <string name="ombct_m7">Caring for capacity</string><string name="ombct_m7_body">Pleasant and mastery activities can support a balanced routine.</string><string name="ombct_m7_practice">Schedule one nourishing and one manageable activity.</string>
     <string name="ombct_m8">Continuing practice</string><string name="ombct_m8_body">A sustainable practice can be brief and flexible.</string><string name="ombct_m8_practice">Choose when, where, and how long your next three practices will be.</string>
-    <string name="mg_title">Mindful Games</string><string name="mg_subtitle">Build focus, memory and calm through local play</string>
-    <string name="mg_cat_focus">Focus &amp; Attention</string><string name="mg_cat_memory">Memory</string><string name="mg_cat_resilience">Resilience &amp; Emotional Strength</string><string name="mg_cat_flexibility">Cognitive Flexibility</string><string name="mg_cat_calm">Calmness &amp; Mindfulness</string>
+    <string name="mg_title">Mindful Games</string><string name="mg_subtitle">Small games of noticing — offline, unscored, and never a measurement of you</string>
+    <string name="mg_cat_focus">Noticing</string><string name="mg_cat_memory">Remembering</string><string name="mg_cat_resilience">Reframing</string><string name="mg_cat_flexibility">Switching</string><string name="mg_cat_calm">Settling</string>
     <string name="mg_color_tap">Color Tap</string><string name="mg_color_tap_desc">Tap only the target colour while distractions appear.</string>
-    <string name="mg_sound_hunter">Sound Hunter</string><string name="mg_sound_hunter_desc">Notice the named sound cue among changing symbols.</string>
     <string name="mg_freeze_switch">Freeze Switch</string><string name="mg_freeze_switch_desc">Switch carefully between move and freeze.</string>
-    <string name="mg_distraction_dodge">Distraction Dodge</string><string name="mg_distraction_dodge_desc">Keep following the target while distractors change.</string>
-    <string name="mg_emotion_match">Emotion Match</string><string name="mg_emotion_match_desc">Remember and match a brief emotion sequence.</string>
     <string name="mg_pattern_recall">Pattern Recall</string><string name="mg_pattern_recall_desc">Remember a short sequence of symbols.</string>
     <string name="mg_object_tray">Object Tray</string><string name="mg_object_tray_desc">Notice objects, then recall which one was present.</string>
     <string name="mg_path_memory">Path Memory</string><string name="mg_path_memory_desc">Watch a short path and choose its final direction.</string>
-    <string name="mg_growth_garden">Growth Garden</string><string name="mg_growth_garden_desc">Grow a local garden through small calming choices.</string>
     <string name="mg_thought_sort">Thought Sort</string><string name="mg_thought_sort_desc">Sort thoughts as helpful, unhelpful, or uncertain.</string>
-    <string name="mg_emotion_compass">Emotion Compass</string><string name="mg_emotion_compass_desc">Name an emotion and choose a supportive response.</string>
-    <string name="mg_storm_balance">Storm Balance</string><string name="mg_storm_balance_desc">Choose steady actions while an imaginary storm passes.</string>
     <string name="mg_rule_switch">Rule Switch</string><string name="mg_rule_switch_desc">Respond as the rule changes between rounds.</string>
-    <string name="mg_shape_shift">Shape Shift</string><string name="mg_shape_shift_desc">Change how you classify each shape.</string>
-    <string name="mg_multi_task_relay">Multi-Task Relay</string><string name="mg_multi_task_relay_desc">Alternate between two simple local tasks.</string>
     <string name="mg_breathing_rhythm">Breathing Rhythm</string><string name="mg_breathing_rhythm_desc">Follow expanding and settling circles.</string>
     <string name="mg_zen_sand">Zen Sand</string><string name="mg_zen_sand_desc">Create a slow pattern through deliberate taps.</string>
-    <string name="mg_cloud_drift">Cloud Drift</string><string name="mg_cloud_drift_desc">Guide a cloud with patient, unhurried choices.</string>
-    <string name="mg_who_are_you">Who Are You?</string><string name="mg_who_are_you_desc">Move through quiet prompts without scoring.</string>
-    <string name="mg_selective_attention">Selective attention</string><string name="mg_auditory_focus">Auditory focus</string><string name="mg_reaction_control">Reaction control</string><string name="mg_sustained_attention">Sustained attention</string>
-    <string name="mg_awareness_memory">Awareness + memory</string><string name="mg_working_memory">Working memory</string><string name="mg_visual_memory">Visual memory</string><string name="mg_spatial_memory">Spatial memory</string>
-    <string name="mg_positive_habits">Positive habits</string><string name="mg_cognitive_reframing">Cognitive reframing</string><string name="mg_emotional_intelligence">Emotional intelligence</string><string name="mg_emotional_regulation">Emotional regulation</string>
-    <string name="mg_mental_flexibility">Mental flexibility</string><string name="mg_flexible_thinking">Flexible thinking</string><string name="mg_divided_attention">Divided attention</string>
-    <string name="mg_calm_focus">Calm focus</string><string name="mg_relaxation">Relaxation</string><string name="mg_patience">Patience</string><string name="mg_self_awareness">Self-awareness</string>
-    <string name="mg_round">Round %1$d of %2$d</string><string name="mg_score">Noticed %1$d</string><string name="mg_tap_target">Tap the target: %1$s</string><string name="mg_remember">Remember: %1$s</string><string name="mg_choose">Choose the most workable response</string>
-    <string name="mg_option_pause">Pause and notice</string><string name="mg_option_rush">Rush immediately</string><string name="mg_option_ignore">Ignore every signal</string>
-    <string name="mg_finished">Game complete</string><string name="mg_finished_body">You completed %1$s. There is no high score to chase.</string><string name="mg_play_again">Play again</string><string name="mg_back_games">Back to games</string>
+    <string name="mg_selective_attention">Find one thing among many</string><string name="mg_reaction_control">Sometimes the move is not moving</string><string name="mg_working_memory">Hold a sequence in mind</string><string name="mg_visual_memory">Notice what changed</string><string name="mg_spatial_memory">Retrace the path</string>
+    <string name="mg_cognitive_reframing">Name the thought pattern</string><string name="mg_mental_flexibility">Follow the rule as it changes</string><string name="mg_calm_focus">A breath to follow</string><string name="mg_relaxation">Nothing to win here</string><string name="mg_round">Round %1$d of %2$d</string><string name="mg_score">Noticed %1$d</string><string name="mg_play_again">Play again</string><string name="mg_back_games">Back to games</string>
     <string name="mg_result_eyebrow">Activity complete</string><string name="mg_result_title">Beautifully done</string>
     <string name="mg_result_score">%1$d of %2$d mindful responses</string><string name="mg_result_message">You stayed with the activity through every round. Progress comes from returning, not perfection.</string>
-    <string name="mg_result_skill">You practised %1$s</string>
     <string name="mg_stroop_flow">Stroop Flow</string><string name="mg_stroop_flow_desc">Name the ink colour, not the written word.</string>
-    <string name="mg_number_bloom">Number Bloom</string><string name="mg_number_bloom_desc">Hold a growing number pattern in mind.</string>
     <string name="mg_mirror_tap">Mirror Tap</string><string name="mg_mirror_tap_desc">Alternate left and right with a steady rhythm.</string>
     <string name="mg_still_point">Still Point</string><string name="mg_still_point_desc">Follow a quiet pulse and let attention settle.</string>
-    <string name="mg_inhibitory_control">Inhibitory control</string><string name="mg_coordination">Bilateral coordination</string>
+    <string name="mg_inhibitory_control">Hold back the easy answer</string><string name="mg_coordination">Left, right, keep the beat</string>
     <string name="mg_ink_prompt">Tap the ink colour</string><string name="mg_left">Left</string><string name="mg_right">Right</string>
-    <string name="mg_follow_side">Follow the glowing side</string><string name="mg_breathe_with_orb">Breathe gently with the orb</string>
-    <string name="mg_colour_green">Green</string><string name="mg_colour_cyan">Cyan</string><string name="mg_colour_purple">Purple</string>
+    <string name="mg_follow_side">Follow the glowing side</string><string name="mg_colour_green">Green</string><string name="mg_colour_cyan">Cyan</string><string name="mg_colour_purple">Purple</string>
     <string name="mg_rule_prompt">Use the rule: %1$s</string><string name="mg_rule_small">Tap the smaller number</string><string name="mg_rule_large">Tap the larger number</string>
-    <string name="mg_tone_prompt">Which tone did you hear?</string><string name="mg_tone_low">Low tone</string><string name="mg_tone_high">High tone</string><string name="mg_replay_tone">Replay tone</string>
     <string name="mg_go">GO</string><string name="mg_freeze">FREEZE</string><string name="mg_tap">Tap</string><string name="mg_wait">Wait</string>
-    <string name="mg_find_target">Find the softly glowing target</string><string name="mg_colour_prompt">Tap %1$s</string>
-    <string name="mg_helpful">Helpful</string><string name="mg_unhelpful">Unhelpful</string><string name="mg_uncertain">Uncertain</string>
-    <string name="mg_water">Water</string><string name="mg_sunlight">Sunlight</string><string name="mg_rush_growth">Pull the stem</string>
-    <string name="mg_name_it">Name it</string><string name="mg_notice_body">Notice the body</string><string name="mg_choose_support">Choose support</string>
-    <string name="mg_anchor">Drop anchor</string><string name="mg_fight_storm">Fight the storm</string><string name="mg_steady_breath">Steady breath</string>
-    <string name="mg_sort_prompt">Sort this thought: “I must get everything right.”</string><string name="mg_garden_prompt">What helps a small habit grow?</string>
-    <string name="mg_compass_prompt">Choose a direction for this emotion</string><string name="mg_storm_prompt">The storm is loud. What keeps you steady?</string>
-    <string name="mg_draw_sand">Tap a point to continue the sand pattern</string><string name="mg_guide_cloud">Guide the cloud toward the quiet space</string>
-    <string name="mg_reflect_prompt">Notice one quality you value in yourself</string><string name="mg_still_prompt">Rest your attention on the centre point</string>
-    <string name="mg_shape_circle">Circle</string><string name="mg_shape_cornered">Cornered</string>
+    <string name="mg_colour_prompt">Tap %1$s</string>
+    <string name="mg_sort_prompt">Sort this thought: “I must get everything right.”</string><string name="mg_draw_sand">Tap a point to continue the sand pattern</string><string name="mg_still_prompt">Rest your attention on the centre point</string>
     <string name="mg_feedback_good">Nicely noticed</string><string name="mg_feedback_continue">Keep exploring</string>
 
     <!-- Remote nudges (FCM). Its own channel, so silencing server nudges
