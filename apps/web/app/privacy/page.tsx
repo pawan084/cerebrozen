@@ -96,7 +96,25 @@ export default function Privacy() {
           <p>
             We keep your data only while your account is active. When you delete your account, we
             remove your personal data from our systems promptly. Data is encrypted in transit, access
-            is restricted, and passwords are stored only as salted hashes.
+            is restricted, and passwords are stored only as salted hashes. In table form:
+          </p>
+          <table>
+            <thead>
+              <tr><th>Category</th><th>Kept for</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Account (email, name, hashed password)</td><td>While your account exists; deleted with it</td></tr>
+              <tr><td>Wellness content (check-ins, journal, chats, sleep logs)</td><td>While your account exists; deleted with it, immediately and irreversibly</td></tr>
+              <tr><td>Voice audio</td><td>Not stored at all unless you switch voice storage on (off by default)</td></tr>
+              <tr><td>Consent decisions</td><td>While your account exists — they are the record of what you allowed</td></tr>
+              <tr><td>Anonymous usage counts</td><td>Not linked to your account, so account deletion neither needs nor supports removing them; you can switch collection off any time</td></tr>
+              <tr><td>Operational logs (rate-limiting, errors)</td><td>Short-lived, rotated automatically</td></tr>
+            </tbody>
+          </table>
+          <p>
+            More on the engineering side of this, including how to report a vulnerability, lives at{" "}
+            <Link href="/security">cerebrozen.in/security</Link>. The third parties that process
+            data on our behalf are listed at <Link href="/subprocessors">/subprocessors</Link>.
           </p>
 
           <h2>7. Children</h2>

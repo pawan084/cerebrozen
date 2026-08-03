@@ -1,0 +1,6 @@
+# CereBro vulnerability disclosure (RFC 9116)
+Contact: mailto:support@cerebrozen.in
+Expires: 2027-08-01T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://cerebrozen.in/.well-known/security.txt
+Policy: https://cerebrozen.in/security

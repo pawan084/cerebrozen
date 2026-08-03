@@ -82,6 +82,31 @@ const FAQ_JSONLD = {
   })),
 };
 
+// App + org schema, from the same truthful facts the page states: the browser
+// app is what exists today, the free tier is the honest lowest price, and no
+// ratings are claimed because none exist yet.
+const APP_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "CereBro",
+  applicationCategory: "HealthApplication",
+  operatingSystem: "Web browser",
+  url: "https://app.cerebrozen.in",
+  description:
+    "A calm, private mental-wellness companion: daily check-ins, breathing and grounding, a private journal, sleep tools, and an AI companion that adapts to how you feel.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
+  publisher: { "@type": "Organization", name: "CereBro", url: "https://cerebrozen.in" },
+};
+
+const ORG_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "CereBro",
+  url: "https://cerebrozen.in",
+  logo: "https://cerebrozen.in/brand/cerebro-mark.svg",
+  email: "support@cerebrozen.in",
+};
+
 function Check() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -102,6 +127,20 @@ export default async function Home() {
         nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSONLD) }}
       />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSONLD) }}
+      />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
+      />
+
+      {/* Hoisted to <head> by Next: the hero image is the LCP element and would
+          otherwise only be discovered after HTML+CSS parse. */}
+      <link rel="preload" as="image" href="/brand/banner-hero.jpg" fetchPriority="high" />
 
       <a className="skip-link" href="#main">Skip to content</a>
 

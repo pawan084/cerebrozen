@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import select
@@ -20,6 +22,7 @@ class WaitlistOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     email: EmailStr
     source: str
+    created_at: datetime
 
 
 @router.post("/waitlist", status_code=201)

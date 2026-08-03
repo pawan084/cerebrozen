@@ -197,7 +197,7 @@ function Disclosure({ onContinue, onBack }: { onContinue: () => void; onBack: ()
           <p>Listen, reflect, guide tools, suggest a plan.</p>
         </div>
         <div className="onb-mini">
-          <strong>Can't do</strong>
+          <strong>Can&apos;t do</strong>
           <p>Diagnose, prescribe, replace therapy, or handle emergencies.</p>
         </div>
       </div>
@@ -216,10 +216,10 @@ function Disclosure({ onContinue, onBack }: { onContinue: () => void; onBack: ()
           <small>{confirmed ? "Thank you" : "Tap to confirm — required to continue"}</small>
         </span>
       </button>
-      <button className="onb-quiet" onClick={() => setUnderage(true)}>I'm not 18 yet</button>
+      <button className="onb-quiet" onClick={() => setUnderage(true)}>I&apos;m not 18 yet</button>
       {underage && (
         <p className="onb-fine" role="status">
-          CereBro is built for adults, so we can't offer it to you yet. If things feel heavy,
+          CereBro is built for adults, so we can&apos;t offer it to you yet. If things feel heavy,
           please talk to a trusted adult — or reach a free helpline like Childline (1098 in India).
         </p>
       )}
@@ -284,7 +284,7 @@ function StateCheck({
             <span className="onb-row-icon">{f.emoji}</span>
             <span className="onb-row-body">
               <strong>{f.label}</strong>
-              {draft.feeling === f.label && <small>That's what we'll start with</small>}
+              {draft.feeling === f.label && <small>That&apos;s what we&apos;ll start with</small>}
             </span>
             <span className="onb-chevron">›</span>
           </button>
@@ -318,10 +318,10 @@ function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: ()
     <div className="onb-step onb-center">
       <BackButton onBack={onBack} />
       <p className="onb-eyebrow">Your first reset</p>
-      <h1 className="onb-title">Let's steady your body</h1>
+      <h1 className="onb-title">Let&apos;s steady your body</h1>
       <p className="onb-caption">
         Two minutes of guided breathing — follow the orb for a few cycles, or skip ahead if now
-        isn't the moment.
+        isn&apos;t the moment.
       </p>
       <div className="onb-breathe">
         <p className="onb-breathe-label">{PHASES[phase].label}</p>
@@ -413,33 +413,37 @@ function ConsentStep({
           ))}
         </select>
       </label>
-      <button
-        className={remembering ? "onb-row selected" : "onb-row"}
-        onClick={() => setAll(!remembering)}
-        aria-pressed={remembering}
-      >
-        <span className="onb-row-icon">{remembering ? "✓" : "✨"}</span>
-        <span className="onb-row-body">
-          <strong>{remembering ? notice.recommendOn : notice.recommendOff}</strong>
-          <small>{remembering ? notice.recommendOnSub : notice.recommendOffSub}</small>
-        </span>
-      </button>
-      <div className="onb-toggles">
-        {CONSENT_KEYS.map((key) => (
-          <label key={key} className="onb-toggle">
-            <span className="onb-toggle-body">
-              <strong>{notice.categories[key].label}</strong>
-              <small>{notice.categories[key].hint}</small>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-label={notice.categories[key].label}
-              checked={draft.consent[key]}
-              onChange={() => toggle(key)}
-            />
-          </label>
-        ))}
+      {/* lang switches screen-reader pronunciation with the picked notice
+          language — Hindi read with English phonetics is not a notice. */}
+      <div lang={lang}>
+        <button
+          className={remembering ? "onb-row selected" : "onb-row"}
+          onClick={() => setAll(!remembering)}
+          aria-pressed={remembering}
+        >
+          <span className="onb-row-icon">{remembering ? "✓" : "✨"}</span>
+          <span className="onb-row-body">
+            <strong>{remembering ? notice.recommendOn : notice.recommendOff}</strong>
+            <small>{remembering ? notice.recommendOnSub : notice.recommendOffSub}</small>
+          </span>
+        </button>
+        <div className="onb-toggles">
+          {CONSENT_KEYS.map((key) => (
+            <label key={key} className="onb-toggle">
+              <span className="onb-toggle-body">
+                <strong>{notice.categories[key].label}</strong>
+                <small>{notice.categories[key].hint}</small>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={notice.categories[key].label}
+                checked={draft.consent[key]}
+                onChange={() => toggle(key)}
+              />
+            </label>
+          ))}
+        </div>
       </div>
     </Scaffold>
   );

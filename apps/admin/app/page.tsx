@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { API_URL, ApiError, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
+import { API_URL, ApiError, api, clearToken, hasSession, login, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
 type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
@@ -35,7 +35,10 @@ export default function AdminPage() {
   const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
-    setAuthed(!!getToken());
+    // The access token is memory-only now, so a reload never has one — a
+    // stored refresh token is what says "signed in"; the first API call
+    // rotates it into a fresh access token.
+    setAuthed(hasSession());
     setReady(true);
   }, []);
 
@@ -467,7 +470,7 @@ function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
       </div>
       <div className="page-sub" style={{ marginTop: 4 }}>
-        Counts and account state only — journal, chat, and sleep contents never leave the user's space.
+        Counts and account state only — journal, chat, and sleep contents never leave the user&apos;s space.
       </div>
       <Problem err={err} onRetry={reload} />
       {data && (
@@ -629,7 +632,7 @@ function DisableUserPanel({ user, onCancel, onDone }: { user: any; onCancel: () 
         <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
       </div>
       <div className="warn">
-        <strong>They'll be signed out and locked out.</strong>
+        <strong>They&apos;ll be signed out and locked out.</strong>
         Their data stays untouched, and you can re-enable the account at any time.
       </div>
       <div className="mt-3">
@@ -1514,7 +1517,7 @@ function Safety() {
       </div>
       <div className="warn" style={{ marginBottom: 16 }}>
         <strong>What people wrote stays hidden until you ask for it.</strong>
-        Triage from the risk level and reason where you can. If you need someone's own
+        Triage from the risk level and reason where you can. If you need someone&apos;s own
         words to make a call, reveal that one row — the reveal is noted on the row, and
         everything hides again when you leave this page.
       </div>
@@ -1662,19 +1665,46 @@ function ResolvePanel({ id, onCancel, onDone }: { id: string; onCancel: () => vo
   );
 }
 
+/** RFC-4180-enough CSV: quote everything, double internal quotes. */
+function toCsv(rows: string[][]): string {
+  return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+}
+
 function WaitlistTab() {
   const { data, err, reload } = useData<any[]>(() => api("/admin/waitlist"));
+
+  function exportCsv() {
+    const rows = [["email", "source", "joined"], ...(data || []).map((w) => [w.email, w.source, w.created_at ?? ""])];
+    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `cerebro-waitlist-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   return (
     <>
-      <h1 className="page-title serif">Waitlist</h1>
-      <div className="page-sub">{data?.length ?? 0} signups from the landing page</div>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title serif">Waitlist</h1>
+          <div className="page-sub flush">{data?.length ?? 0} signups from the landing page</div>
+        </div>
+        {(data?.length ?? 0) > 0 && (
+          <button className="btn btn-ghost" onClick={exportCsv}>Export CSV</button>
+        )}
+      </div>
       <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
-          <thead><tr><th>Email</th><th>Source</th></tr></thead>
+          <thead><tr><th>Email</th><th>Source</th><th>Joined</th></tr></thead>
           <tbody>
             {(data || []).map((w, i) => (
-              <tr key={i}><td className="mono">{w.email}</td><td><span className="tag muted">{w.source}</span></td></tr>
+              <tr key={i}>
+                <td className="mono">{w.email}</td>
+                <td><span className="tag muted">{w.source}</span></td>
+                <td>{w.created_at ? fmtDate(w.created_at) : "—"}</td>
+              </tr>
             ))}
           </tbody>
         </table>

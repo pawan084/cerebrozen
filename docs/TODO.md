@@ -1012,6 +1012,22 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Web 100-point improvement run (2026-08-03, autonomous waves)
+The full list, per-item status, and what stays owner-blocked live in
+**docs/WEB_IMPROVEMENTS.md** (31 shipped / 13 owner-blocked / 9 recorded
+decisions / the rest scoped as "later"). Shipped highlights: trust surface
+(/security + RFC 9116 security.txt, /refunds, /subprocessors, privacy
+retention table, `.legal` prose styles the policy pages never had),
+SoftwareApplication/Organization JSON-LD, www→apex redirect + asset caching,
+LCP preload + content-visibility, app-shell a11y (skip link, aria-live chat,
+focus-to-h1, notice `lang`), journal drafts + server-index search/tags, chat
+retry, OTP cooldown, password guidance, **18+ attest on direct signup with
+fresh accounts routed through the consent step** (they used to skip straight
+to /home), PWA manifest + icons, admin memory-only token + waitlist
+created_at/CSV (cross-stack), ESLint green + CI-gated on all three apps, a
+CSP-floor gate (scripts/check-csp-sync.mjs), five new e2e specs, and
+docs/WEB_STYLE.md. New copy rulebook lives there; hold future surfaces to it.
+
 ### Android world-class pass (2026-08-03, emulator walk on the fixed backend)
 - [x] **Trends now tells the true reason it's empty.** With mood/sleep history
   consent OFF, the empty state said "check in and this fills in" — false, the

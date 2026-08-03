@@ -1,19 +1,32 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const TOKEN_KEY = "cerebro_admin_token";
 const REFRESH_KEY = "cerebro_admin_refresh";
 
+// The ACCESS token lives in memory only — the same model as the user-facing
+// web app (apps/app/lib/api.ts): XSS can't lift what storage doesn't hold.
+// Until 2026-08-03 it sat in localStorage; an admin token is the worst one to
+// leave lying around. The refresh token stays in localStorage so sessions
+// survive a reload — a fresh load starts token-less and rotates on first use.
+let accessToken: string | null = null;
+
 export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return accessToken;
 }
 export function setToken(t: string) {
-  window.localStorage.setItem(TOKEN_KEY, t);
+  accessToken = t;
 }
 export function clearToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_KEY);
+  accessToken = null;
+  if (typeof window !== "undefined") window.localStorage.removeItem(REFRESH_KEY);
+}
+
+/** Whether a (possibly stale) session exists — the login-screen gate. The
+ * access token being memory-only means a reload always starts without one;
+ * what decides "signed in" is having a refresh token to rotate. */
+export function hasSession(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(REFRESH_KEY) !== null;
 }
 
 /**

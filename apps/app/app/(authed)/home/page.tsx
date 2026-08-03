@@ -205,7 +205,7 @@ export default function Home() {
 
             {/* Today's plan — the served agentic plan, same one /plan toggles. */}
             <div className="sec-head">
-              <h2 className="serif-h">Today's plan</h2>
+              <h2 className="serif-h">Today&apos;s plan</h2>
               <span className="sec-date">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
             </div>
             <div className="plan-list cz-in cz-d3">
@@ -232,7 +232,7 @@ export default function Home() {
               {planFailed && (
                 <Link href="/plan" className="plan-row">
                   <span className="plan-play" style={{ background: STEP_COLORS[0] }}><Icon.play size={16} /></span>
-                  <span className="plan-body"><strong>Open today's plan</strong><small>Personalized from your check-ins</small></span>
+                  <span className="plan-body"><strong>Open today&apos;s plan</strong><small>Personalized from your check-ins</small></span>
                   <span className="plan-start">START</span>
                 </Link>
               )}

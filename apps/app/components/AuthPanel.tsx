@@ -5,7 +5,7 @@
 // and embedded inline in the onboarding "Save your space" step. Calls onAuthed()
 // once a session exists (the caller decides where to go next).
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   signIn, signUp, requestOtp, verifyOtp, signInApple, signInGoogle,
 } from "@/lib/api";
@@ -15,12 +15,22 @@ import {
 
 type Mode = "signIn" | "signUp";
 
+/** How the session came to exist — callers route fresh accounts through the
+ * consent steps, returning users straight in. "otp" may be either (the code
+ * path signs up new addresses), so callers treat it as possibly-new. */
+export type AuthOutcome = "signIn" | "signUp" | "otp";
+
 export default function AuthPanel({
   initialMode = "signIn",
+  requireAgeAttest = false,
   onAuthed,
 }: {
   initialMode?: Mode;
-  onAuthed: () => void;
+  /** Standalone /signin sets this: account creation outside the funnel never
+   * passed the 18+ gate the funnel shows at step 1. Embedded funnel use leaves
+   * it off — the gate already ran there. */
+  requireAgeAttest?: boolean;
+  onAuthed: (outcome: AuthOutcome) => void;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
@@ -32,6 +42,11 @@ export default function AuthPanel({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ageOk, setAgeOk] = useState(false);
+  // Resend cooldown: requesting a second code inside the window burns rate
+  // limit for no benefit — the timer says when trying again can work.
+  const [resendAt, setResendAt] = useState(0);
+  const [nowTick, setNowTick] = useState(0);
 
   // The last thing the user tried, so the error can offer a real retry instead
   // of making them re-enter everything.
@@ -75,15 +90,23 @@ export default function AuthPanel({
     withBusy(async () => {
       const { token, name: appleName } = await appleIdentityToken();
       await signInApple(token, appleName);
-      onAuthed();
+      onAuthed("otp");
     });
 
   const doGoogle = () =>
     withBusy(async () => {
       const idToken = await googleIdToken();
       await signInGoogle(idToken);
-      onAuthed();
+      onAuthed("otp");
     });
+
+  const resendWait = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+  useEffect(() => {
+    if (!resendAt) return;
+    const t = setInterval(() => setNowTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [resendAt]);
+  void nowTick;
 
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -91,16 +114,35 @@ export default function AuthPanel({
       if (useCode && !codeSent) {
         await requestOtp(email);
         setCodeSent(true);
+        setResendAt(Date.now() + 60_000);
         setNotice("Code sent — enter the 6 digits from your email.");
         setBusy(false);
         return;
       }
-      if (useCode) await verifyOtp(email, code);
-      else if (mode === "signUp") await signUp(email, password, name);
-      else await signIn(email, password);
-      onAuthed();
+      if (useCode) { await verifyOtp(email, code); onAuthed("otp"); }
+      else if (mode === "signUp") { await signUp(email, password, name); onAuthed("signUp"); }
+      else { await signIn(email, password); onAuthed("signIn"); }
     });
   }
+
+  async function resendCode() {
+    await withBusy(async () => {
+      await requestOtp(email);
+      setResendAt(Date.now() + 60_000);
+      setNotice("A fresh code is on its way.");
+      setBusy(false);
+    });
+  }
+
+  /** A gentle, honest read on the password — guidance, never a gate beyond the
+   * server's own minimum. No trademarked "strength" theatre: length is the
+   * only factor that reliably matters, so length is what's measured. */
+  const passHint = (() => {
+    if (mode !== "signUp" || useCode || !password) return null;
+    if (password.length < 8) return { tone: "warn", text: "At least 8 characters." };
+    if (password.length < 12) return { tone: "ok", text: "Decent — longer is stronger." };
+    return { tone: "good", text: "Good length." };
+  })();
 
   const emailCta = useCode
     ? codeSent ? "Sign in with code" : "Email me a code"
@@ -157,19 +199,29 @@ export default function AuthPanel({
         </label>
         {useCode ? (
           codeSent && (
-            <label className="field">
-              <span>Code</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="\d{6}"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-                autoComplete="one-time-code"
-              />
-            </label>
+            <>
+              <label className="field">
+                <span>Code</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  autoComplete="one-time-code"
+                />
+              </label>
+              <button
+                type="button"
+                className="linklike"
+                disabled={busy || resendWait > 0}
+                onClick={resendCode}
+              >
+                {resendWait > 0 ? `Resend code in ${resendWait}s` : "Resend code"}
+              </button>
+            </>
           )
         ) : (
           <label className="field">
@@ -181,6 +233,23 @@ export default function AuthPanel({
               required
               autoComplete={mode === "signUp" ? "new-password" : "current-password"}
             />
+            {passHint && (
+              <span className={`pass-hint pass-${passHint.tone}`} role="status">{passHint.text}</span>
+            )}
+          </label>
+        )}
+
+        {/* Outside the funnel there was no 18+ moment at all — an account could
+            exist without the confirmation every other door requires. */}
+        {requireAgeAttest && mode === "signUp" && !useCode && (
+          <label className="field check-line">
+            <input
+              type="checkbox"
+              checked={ageOk}
+              onChange={(e) => setAgeOk(e.target.checked)}
+              required
+            />
+            <span>I&apos;m 18 or older. CereBro is built for adults.</span>
           </label>
         )}
 

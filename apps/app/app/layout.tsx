@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   title,
   description,
   robots: { index: false },
+  // Installable: manifest + icons make "Add to home screen" real in modern
+  // Chrome. A full offline shell is deliberately NOT attempted — every page
+  // here is per-request-rendered for the CSP nonce, so cached-HTML offline
+  // support is an architecture decision, not a manifest flag (see sw.js).
+  manifest: "/manifest.webmanifest",
   icons: { icon: "/brand/cerebro-mark.png", apple: "/apple-touch-icon.png" },
   openGraph: {
     title,

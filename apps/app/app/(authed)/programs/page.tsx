@@ -97,7 +97,7 @@ export default function Programs() {
             className="pill-btn"
             style={{ marginTop: 18, alignSelf: "flex-start" }}
           >
-            <Icon.play size={14} /> Begin with today's plan
+            <Icon.play size={14} /> Begin with today&apos;s plan
           </Link>
           <span
             style={{

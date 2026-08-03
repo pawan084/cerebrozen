@@ -20,9 +20,20 @@
 	}
 }
 
+# www → apex: one canonical host, so search engines never split the site's
+# authority across two.
+www.cerebrozen.in {
+	redir https://cerebrozen.in{uri} permanent
+}
+
 # Landing site (Next.js)
-cerebrozen.in, www.cerebrozen.in {
+cerebrozen.in {
 	import security_headers
+	# Brand art and screenshots are content-addressed by redeploy, not by name —
+	# but they change rarely and re-downloading them on every visit is the
+	# larger cost. A day of cache with revalidation is the honest middle.
+	@static path /brand/* /screens/* /apple-touch-icon.png
+	header @static Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
 	encode gzip zstd
 	reverse_proxy web:3000
 }

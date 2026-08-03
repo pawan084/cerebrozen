@@ -92,6 +92,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main">Skip to content</a>
       <aside className="sidebar" aria-label="Primary">
         <Link href="/home" className="sidebar-brand"><BrandMark size={30} /> <span>CereBro</span></Link>
 
@@ -146,7 +147,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      <div className="app-main">{children}</div>
+      <div className="app-main" id="main">{children}</div>
 
       <nav className="mobile-tabs" aria-label="Primary">
         {MOBILE.map(({ href, label, icon: I }) => (

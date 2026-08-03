@@ -67,8 +67,8 @@ export default function Support() {
         </p>
         <p className="sub" style={{ marginTop: 10 }}>
           You can name someone we may contact in a detected crisis — only with your consent —
-          on the <Link href="/account">settings</Link> page. If you've written a{" "}
-          <Link href="/safety-plan">safety plan</Link>, it's there too.
+          on the <Link href="/account">settings</Link> page. If you&apos;ve written a{" "}
+          <Link href="/safety-plan">safety plan</Link>, it&apos;s there too.
         </p>
       </div>
     </main>

@@ -304,7 +304,9 @@ export default function Account() {
         </div>
       </section>
 
-      <section className="card" aria-label="Privacy choices">
+      {/* lang tracks the picked notice language so screen readers switch
+          pronunciation instead of reading Hindi with English phonetics. */}
+      <section className="card" aria-label="Privacy choices" lang={noticeLang}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
           <h2>{notice.title}</h2>
           <label className="row" style={{ gap: 6 }}>
@@ -461,7 +463,7 @@ export default function Account() {
             style={{ width: "auto" }}
           />
           <span className="sub">
-            Anonymous usage stats — first-party counts (like "onboarding completed"), never your
+            Anonymous usage stats — first-party counts (like &quot;onboarding completed&quot;), never your
             content, never linked to your account.
           </span>
         </label>

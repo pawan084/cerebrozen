@@ -17,7 +17,13 @@ async function signup(page: Page) {
   await page.locator('input[autocomplete="name"]').fill("Theme");
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill("password123");
+  // The 18+ attest (2026-08-03): account creation outside the funnel requires it.
+  await page.locator(".check-line input").check();
   await page.getByRole("button", { name: "Create my account" }).click();
+  // Fresh accounts walk the funnel's consent + notifications steps first.
+  await expect(page).toHaveURL(/\/onboarding/, { timeout: 20_000 });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Enter CereBro" }).click();
   await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
     .toBeVisible({ timeout: 20_000 });
   // Dismiss the first-run tour so screenshots show the dashboard.

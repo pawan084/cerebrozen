@@ -87,6 +87,9 @@ export default function Chat() {
   // The free daily cap, shown as its own calm card rather than an error bubble.
   const [freeLimit, setFreeLimit] = useState<FreeLimitError | null>(null);
   const [started, setStarted] = useState(false);
+  // The message that failed to send, so "Try again" can resend it verbatim —
+  // without this, an error meant retyping from memory on a bad connection.
+  const [failedText, setFailedText] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,6 +141,7 @@ export default function Chat() {
     setBusy(true);
     setInput("");
     setSuggestions([]);
+    setFailedText(null);
     push({ id: uid(), role: "user", text: t });
     try {
       if (useOracle) {
@@ -159,11 +163,12 @@ export default function Chat() {
       if (err instanceof FreeLimitError) {
         setFreeLimit(err);
       } else {
+        if (err?.message !== "unauthorized") setFailedText(t);
         push({
           id: uid(),
           role: "assistant",
           text: err?.message === "unauthorized" ? "Your session expired — please sign in again."
-            : "I couldn't reach the companion just now — please try again.",
+            : "I couldn't reach the companion just now — your words are kept below.",
         });
       }
     } finally {
@@ -232,7 +237,7 @@ export default function Chat() {
               live affordance to imply one (the footnote below says where voice lives). */}
           <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
-            <h2>I'm here whenever you're ready</h2>
+            <h2>I&apos;m here whenever you&apos;re ready</h2>
             {/* Says where voice is: the browser client has text only, and the
                 orb above otherwise reads like a mic. */}
             <p>Just type — no pressure to have the right words. Voice arrives with the mobile apps.</p>
@@ -269,12 +274,15 @@ export default function Chat() {
         <>
           <div className="ai-note cz-in" role="note">
             <span className="ai-note-dot" aria-hidden="true">ⓘ</span>
-            AI companion — not a therapist or crisis service. It listens and guides; it can't
+            AI companion — not a therapist or crisis service. It listens and guides; it can&apos;t
             diagnose, prescribe, or handle emergencies.
           </div>
-          <section className="card chatbox cz-in cz-d1" aria-label="Conversation">
+          {/* aria-live polite: streamed tokens and new replies are announced
+              once settled; without it the conversation is silent to a screen
+              reader unless they hunt for it. */}
+          <section className="card chatbox cz-in cz-d1" aria-label="Conversation" aria-live="polite">
         {messages.length === 0 && !streaming && (
-          <p className="sub">What's on your mind? The companion listens first, then offers one small step.</p>
+          <p className="sub">What&apos;s on your mind? The companion listens first, then offers one small step.</p>
         )}
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role === "user" ? "user" : "ai"}`}>
@@ -311,6 +319,14 @@ export default function Chat() {
         )}
         <div ref={endRef} />
       </section>
+
+      {failedText && (
+        <div className="chips">
+          <button className="chip" onClick={() => void send(failedText)} disabled={busy}>
+            ↻ Try sending again
+          </button>
+        </div>
+      )}
 
       {suggestions.length > 0 && (
         <div className="chips">

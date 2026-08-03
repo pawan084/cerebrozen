@@ -12,22 +12,44 @@ function nav(page: Page, label: string) {
   return page.locator(".sidebar").getByRole("link", { name: label, exact: true });
 }
 
+// Create an account the way a person now does it: tick the 18+ attest, then
+// walk the funnel's post-signup steps (consent — all-off is the honest default
+// — and notifications). Fresh accounts route through consent since 2026-08-03;
+// landing straight on /home without seeing it was the bug.
+async function createAccount(page: Page, email: string, opts: { keepTour?: boolean } = {}) {
+  await page.goto(`${APP}/signin`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "Create account" }).click();
+  await page.locator('input[autocomplete="name"]').fill("E2E");
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill("password123");
+  await page.locator(".check-line input").check();
+  await page.getByRole("button", { name: "Create my account" }).click();
+  // Funnel resumes at the consent step for the fresh session.
+  await expect(page).toHaveURL(/\/onboarding/, { timeout: 20_000 });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Enter CereBro" }).click();
+  await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
+    .toBeVisible({ timeout: 20_000 });
+  // The first-run tour is a modal — it intercepts pointer events until
+  // dismissed, so callers that click anything else must clear it first.
+  // The main journey keeps it: walking the tour is part of that test.
+  if (!opts.keepTour) await page.getByRole("button", { name: "Skip" }).click().catch(() => {});
+}
+
+// Leave the session signed out again (sidebar icon button).
+async function signOut(page: Page) {
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/signin/, { timeout: 10_000 });
+}
+
 test.describe("Web app (authenticated client)", () => {
   // One long journey across the dashboard — needs more than the 30s default
   // (chat may wait on a live LLM when the stack runs with real keys).
   test("signup → check-in → journal → sleep → talk → insights → account → reload", async ({ page }) => {
     test.setTimeout(150_000);
-    // Fresh account per run (the e2e stack seeds no app users). /signup funnels
-    // into onboarding; create the account via the AuthPanel "Create account" tab.
+    // Fresh account per run (the e2e stack seeds no app users).
     const email = `e2e-app-${Date.now()}@test.app`;
-    await page.goto(`${APP}/signin`, { waitUntil: "networkidle" });
-    await page.getByRole("tab", { name: "Create account" }).click();
-    await page.locator('input[autocomplete="name"]').fill("E2E");
-    await page.locator('input[type="email"]').fill(email);
-    await page.locator('input[type="password"]').fill("password123");
-    await page.getByRole("button", { name: "Create my account" }).click();
-    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }))
-      .toBeVisible({ timeout: 20_000 });
+    await createAccount(page, email, { keepTour: true });
 
     // First-run guided tour (ref GUIDED TOUR OVERLAY): walk one stop, then
     // skip — it must dismiss and never come back this session.
@@ -254,19 +276,21 @@ test.describe("Web app (authenticated client)", () => {
 
   // The landing deep-links into app screens ("Open Sleep →"), which only works
   // if a signed-out visitor is carried through sign-in back to what they
-  // clicked. Without this the links resolve but every one of them lands on Home.
+  // clicked. The carrying is a SIGN-IN promise: a fresh signup goes through
+  // the consent step instead (a deliberate 2026-08-03 change), so this test
+  // creates the account first, signs out, and returns as the deep link does.
   test("a signed-out deep link returns to where it pointed after sign-in", async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const email = `e2e-next-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    await signOut(page);
 
     await page.goto(`${APP}/sleep`, { waitUntil: "networkidle" });
     await expect(page).toHaveURL(/\/signin\?next=%2Fsleep$/);
 
-    await page.getByRole("tab", { name: "Create account" }).click();
-    await page.locator('input[autocomplete="name"]').fill("E2E Next");
     await page.locator('input[type="email"]').fill(email);
     await page.locator('input[type="password"]').fill("password123");
-    await page.getByRole("button", { name: "Create my account" }).click();
+    await page.getByRole("button", { name: "Continue with email" }).click();
 
     await expect(page).toHaveURL(/\/sleep$/, { timeout: 20_000 });
   });
@@ -274,16 +298,16 @@ test.describe("Web app (authenticated client)", () => {
   // `next` is attacker-controlled, so it is an allow-list: same-origin absolute
   // paths only. A protocol-relative URL must not become an open redirect.
   test("refuses an off-origin next and falls back to Home", async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const email = `e2e-evil-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    await signOut(page);
 
     await page.goto(`${APP}/signin?next=//example.com/evil`, { waitUntil: "networkidle" });
-    await page.getByRole("tab", { name: "Create account" }).click();
-    await page.locator('input[autocomplete="name"]').fill("E2E Evil");
     await page.locator('input[type="email"]').fill(email);
     await page.locator('input[type="password"]').fill("password123");
-    await page.getByRole("button", { name: "Create my account" }).click();
+    await page.getByRole("button", { name: "Continue with email" }).click();
 
-    await expect(page).toHaveURL(new RegExp(`^${APP}/(home|onboarding)`), { timeout: 20_000 });
+    await expect(page).toHaveURL(new RegExp(`^${APP}/home`), { timeout: 20_000 });
   });
 });

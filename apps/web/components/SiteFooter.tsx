@@ -53,6 +53,9 @@ export function SiteFooter() {
             <strong>Trust</strong>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/security">Security</Link>
+            <Link href="/refunds">Refunds</Link>
+            <Link href="/subprocessors">Subprocessors</Link>
             <Link href="/support">Crisis support</Link>
           </nav>
         </div>

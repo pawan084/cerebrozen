@@ -204,6 +204,10 @@ a { color: inherit; text-decoration: none; }
 
 /* Section */
 .section { padding: 72px 0; }
+/* Below-fold sections skip layout/paint until scrolled near (the hero is a
+   <header>, so it never matches). contain-intrinsic-size reserves roughly a
+   section's height so the scrollbar doesn't jump as sections materialize. */
+main > .section { content-visibility: auto; contain-intrinsic-size: auto 640px; }
 .section-head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
 .section-head h2 { font-size: clamp(28px, 4vw, 40px); }
 .section-head p { color: var(--muted); margin-top: 12px; font-size: 17px; }
@@ -352,6 +356,38 @@ a { color: inherit; text-decoration: none; }
   text-align: center; color: var(--muted); font-size: 13px;
   max-width: 640px; margin: 28px auto 0;
 }
+
+/* Legal / policy prose (privacy, terms, support, security, refunds,
+   subprocessors). These pages rendered on bare inherited styles until
+   2026-08-03 — readable, but with no prose column, list rhythm, or tables. */
+.legal { max-width: 720px; margin: 0 auto; }
+.legal h1 { font-size: clamp(30px, 4.6vw, 44px); margin: 6px 0 4px; }
+.legal .muted { color: var(--muted-2); font-size: 13.5px; }
+.legal h2 { font-size: 21px; margin: 34px 0 10px; }
+.legal p { color: var(--soft); font-size: 15.5px; line-height: 1.7; margin: 12px 0; }
+.legal ul { margin: 12px 0 12px 20px; }
+.legal li { color: var(--soft); font-size: 15.5px; line-height: 1.7; margin: 8px 0; }
+.legal li::marker { color: var(--lav); }
+.legal a { color: var(--lav-2); text-decoration: underline; text-underline-offset: 3px; }
+.legal a:hover { color: var(--text); }
+.legal table {
+  width: 100%; border-collapse: collapse; margin: 16px 0;
+  font-size: 14.5px; line-height: 1.55;
+}
+.legal th {
+  text-align: left; color: var(--muted); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 10px 12px; border-bottom: 1px solid var(--line);
+}
+.legal td {
+  color: var(--soft); padding: 12px; vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+/* Wide tables scroll inside their own box on small screens. */
+@media (max-width: 640px) {
+  .legal table { display: block; overflow-x: auto; }
+}
+.legal .disclaimer { text-align: left; margin-left: 0; }
 
 /* App Store status chip. Deliberately NOT an imitation of Apple's black download
    badge — the app isn't on the store yet, and a lookalike badge promises a
