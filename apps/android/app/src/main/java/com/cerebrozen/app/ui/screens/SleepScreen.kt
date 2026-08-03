@@ -185,6 +185,12 @@ internal fun isVariedRhythm(spreadMin: Int): Boolean = spreadMin > 90
 internal fun rhythmPrinciple(spreadMin: Int): Int =
     if (isVariedRhythm(spreadMin)) R.string.sleep_rhythm_vary else R.string.sleep_rhythm_steady
 
+/** Which block leads the Sleep tab. Morning through afternoon (4:00–16:59) the
+ * check-in about last night leads — that's when there's a night to report.
+ * From 17:00, and overnight until 3:59, the wind-down hero leads: someone
+ * opening Sleep at 1am wants help going down, not a survey. */
+internal fun checkInLeadsAt(hour: Int): Boolean = hour in 4..16
+
 /** A human-sized duration for prose ("45m", "1h 50m") — no zero-hour prefix.
  * Pure twin of [spreadLabelText], for tests and non-composable callers. */
 internal fun spreadLabel(min: Int, hourUnit: String = "h", minuteUnit: String = "m"): String =
@@ -261,6 +267,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         // The hero title doubles as the ambient bed's now-playing title, so both
         // read from the same resource and stay consistent.
         val calmerNight = stringResource(R.string.sleep_hero_title)
+        val heroBlock: @Composable () -> Unit = {
         PremiumWindDownHero(
             kind = "sleep",
             eyebrow = stringResource(R.string.sleep_hero_eyebrow),
@@ -318,6 +325,8 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 }
             }
         }
+        }
+        val checkInBlock: @Composable () -> Unit = {
         SleepGlassCard {
             Text(stringResource(R.string.sleep_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -366,6 +375,21 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
+        }
+        // Time-aware order: through the afternoon the check-in about last night
+        // leads; evenings and the small hours the wind-down hero does. Decided
+        // once when the tab composes ([checkInLeadsAt] is the tested boundary).
+        val checkInFirst = remember { checkInLeadsAt(java.time.LocalTime.now().hour) }
+        if (checkInFirst) {
+            checkInBlock()
+            heroBlock()
+        } else {
+            heroBlock()
+            checkInBlock()
+        }
+        // The transport lives where play starts — right under the lead cards,
+        // not buried beneath the nav doors. Renders nothing while idle.
+        NowPlayingBar(onOpenPlayer = { onOpen("player") })
 
         // Loading: the shape of the card that is coming, not a spinner and not
         // an empty state that would be a claim about the user's history.
@@ -455,7 +479,6 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         ) { onOpen("programs") }
 
         SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
-        NowPlayingBar(onOpenPlayer = { onOpen("player") })
         // metaLabel lambdas are not composable — capture the templates here.
         val minutesTemplate = stringResource(R.string.common_minutes)
         val storyMeta = stringResource(R.string.sleep_meta_story)
@@ -676,7 +699,10 @@ private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick:
         verticalArrangement = Arrangement.Center,
     ) {
         Text(emojis.getOrElse(index) { "🙂" }, style = MaterialTheme.typography.titleLarge)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextPrimary)
+        // One line, never wrapped: the chip widens to fit ("Rested" used to
+        // wrap inside the fixed-height chip and clip to "Reste…").
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextPrimary,
+            maxLines = 1, softWrap = false)
     }
 }
 
@@ -830,6 +856,8 @@ private fun SleepSectionHeader(glyph: String, title: String) {
 private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
     val earlierCd = stringResource(R.string.sleep_time_earlier_cd, label)
     val laterCd = stringResource(R.string.sleep_time_later_cd, label)
+    val pickCd = stringResource(R.string.sleep_time_pick_cd, label)
+    val context = LocalContext.current
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -842,13 +870,26 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
             modifier = Modifier.weight(1f),
         )
         TimeStep(R.string.sleep_minus_30, earlierCd) { onChange(minutes - 30) }
+        // ±30m covers the common case; tapping the time itself opens the system
+        // picker for people whose night didn't land on a half hour.
         Text(
             hhmm(minutes),
             style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
+            color = PeriwinkleSoft,
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.width(52.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    android.app.TimePickerDialog(
+                        context,
+                        { _, h, m -> onChange(h * 60 + m) },
+                        minutes / 60, minutes % 60, true,
+                    ).show()
+                }
+                .semantics { contentDescription = pickCd }
+                .width(56.dp)
+                .padding(vertical = 12.dp),
         )
         TimeStep(R.string.sleep_plus_30, laterCd) { onChange(minutes + 30) }
     }

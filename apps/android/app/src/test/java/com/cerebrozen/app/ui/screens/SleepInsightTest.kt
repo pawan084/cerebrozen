@@ -53,6 +53,18 @@ class SleepInsightTest {
         assertEquals(null, averageSleepMinutes(listOf(night(null, null))))
     }
 
+    // ── Time-aware lead block (morning check-in vs evening wind-down) ─
+    @Test
+    fun checkInLeadsAt_hands_over_to_winddown_at_five_pm_and_back_at_four_am() {
+        assertEquals(false, checkInLeadsAt(3))    // 3am: help going down, not a survey
+        assertEquals(true, checkInLeadsAt(4))
+        assertEquals(true, checkInLeadsAt(9))
+        assertEquals(true, checkInLeadsAt(16))
+        assertEquals(false, checkInLeadsAt(17))   // evening: wind-down leads
+        assertEquals(false, checkInLeadsAt(23))
+        assertEquals(false, checkInLeadsAt(0))
+    }
+
     // ── Bedtime spread (max−min, anchored so midnight doesn't split) ─
     @Test
     fun bedtimeSpreadMinutes_keeps_bedtimes_either_side_of_midnight_close() {

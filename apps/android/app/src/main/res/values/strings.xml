@@ -264,6 +264,7 @@
     <string name="sleep_wake_label">Woke up around</string>
     <string name="sleep_time_earlier_cd">Set %1$s 30 minutes earlier</string>
     <string name="sleep_time_later_cd">Set %1$s 30 minutes later</string>
+    <string name="sleep_time_pick_cd">Set %1$s to an exact time</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
     <string name="sleep_programs_nav_title">Programs</string>

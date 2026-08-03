@@ -158,6 +158,7 @@
     <string name="sleep_wake_label">उठे, लगभग</string>
     <string name="sleep_time_earlier_cd">%1$s को 30 मिनट पहले करें</string>
     <string name="sleep_time_later_cd">%1$s को 30 मिनट बाद करें</string>
+    <string name="sleep_time_pick_cd">%1$s का सटीक समय चुनें</string>
     <string name="sleep_minus_30">−30 मि</string>
     <string name="sleep_plus_30">+30 मि</string>
     <string name="sleep_programs_nav_title">प्रोग्राम</string>
