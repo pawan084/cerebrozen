@@ -310,6 +310,12 @@
     <string name="sleep_duration_preview">%1$s in bed</string>
     <string name="sleep_logged_updated">Updated today\'s log.</string>
     <string name="sleep_save_hint">Pick how rested you felt to save.</string>
+    <string name="sleep_data_title">Your sleep</string>
+    <string name="sleep_log_last_night">Log last night</string>
+    <string name="sleep_diary_edit_hint">Tap a night to edit it</string>
+    <string name="sleep_editing_night">Editing %1$s — Save updates that night</string>
+    <string name="sleep_bed_window">Bedtimes landed %1$s–%2$s</string>
+    <string name="sleep_programs_enrolled">Day %1$d of %2$d · %3$s</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
     <string name="sleep_programs_nav_title">Programs</string>
@@ -327,7 +333,7 @@
     <string name="sleep_rhythm_title">Your rhythm</string>
     <string name="sleep_rhythm_line">You averaged %1$s. Your bedtime varied by about %2$s this week.</string>
     <string name="sleep_mixer_nav_title">Mix your own soundscape</string>
-    <string name="sleep_mixer_nav_subtitle">Blend rain, ocean, wind &amp; a soft drone</string>
+    <string name="sleep_mixer_nav_subtitle">Build the exact sound that puts you under</string>
     <string name="sleep_sounds_header">Sounds for sleep</string>
     <string name="sleep_winddown_header">Before bed</string>
     <string name="sleep_meta_guide">Guide</string>

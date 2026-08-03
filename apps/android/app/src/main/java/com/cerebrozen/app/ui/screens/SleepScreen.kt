@@ -91,6 +91,8 @@ import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -230,6 +232,25 @@ internal fun checkInLeadsAt(hour: Int): Boolean = hour in 4..16
 internal fun spreadLabel(min: Int, hourUnit: String = "h", minuteUnit: String = "m"): String =
     if (min < 60) "$min$minuteUnit" else minutesToLabel(min, hourUnit, minuteUnit)
 
+/** "2026-08-02" → the chart's weekday letter; "·" for anything unparseable. */
+internal fun dayLetterFor(date: String): String = runCatching {
+    listOf("M", "T", "W", "T", "F", "S", "S")[LocalDate.parse(date).dayOfWeek.value - 1]
+}.getOrDefault("·")
+
+/** "2026-08-02" → "Sat 2 Aug" — the diary used to print raw ISO wire dates. */
+internal fun humanDate(date: String): String = runCatching {
+    LocalDate.parse(date).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM"))
+}.getOrDefault(date)
+
+/** The actual bedtime window across logs, as minutes-of-day (23:00 to 00:10 →
+ * 1380 to 10), anchored at noon so midnight doesn't split it. More useful than
+ * the bare spread: "your bedtimes landed 23:00–00:10" is actionable. Pure. */
+internal fun bedtimeWindow(logs: List<SleepNight>): Pair<Int, Int>? {
+    val anchored = logs.mapNotNull { it.bedMin }.map { ((it - 720) % 1440 + 1440) % 1440 }
+    if (anchored.isEmpty()) return null
+    return ((anchored.min() + 720) % 1440) to ((anchored.max() + 720) % 1440)
+}
+
 /** Sleep: morning check-in + honest weekly summary + diary, with a CBT-I-informed
  * layer on top — the job is improving sleep night by night, not measuring it. */
 @Composable
@@ -249,6 +270,12 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     var loadFailed by remember { mutableStateOf(false) }
     // The saved-night settle line ("Rested · 23:00–07:00"), until Edit reopens.
     var savedSummaryLine by remember { mutableStateOf<String?>(null) }
+    // Which past night the form is editing (the backend upserts by date) —
+    // null means "tonight/last night" as always.
+    var editDate by remember { mutableStateOf<String?>(null) }
+    // Enrollment, so the Programs door can say where you are instead of
+    // telling an enrolled user to start.
+    var program by remember { mutableStateOf<JSONObject?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     // Duration unit letters — the only localizable part of "7h 30m".
@@ -275,15 +302,23 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     suspend fun reload() {
         // Either read failing means the week we would draw is incomplete, and
         // an incomplete week rendered as a whole one is the honesty problem
-        // this module's audit was about.
-        val gotSummary = runCatching { summary = Api.sleepSummary() }.isSuccess
-        val gotNights = runCatching { nights = parseNights(Api.sleepLogs()) }.isSuccess
-        loadFailed = !(gotSummary && gotNights)
+        // this module's audit was about. The reads are independent, so they
+        // run together — serial awaits made the tab pay the sum of the trips.
+        coroutineScope {
+            val summaryReq = async { runCatching { Api.sleepSummary() } }
+            val nightsReq = async { runCatching { Api.sleepLogs() } }
+            val programReq = async { runCatching { Api.activeProgram() } }
+            val gotSummary = summaryReq.await().onSuccess { summary = it }.isSuccess
+            val gotNights = nightsReq.await().onSuccess { nights = parseNights(it) }.isSuccess
+            programReq.await().onSuccess { program = it }
+            loadFailed = !(gotSummary && gotNights)
+        }
         loading = false
     }
 
     LaunchedEffect(Unit) { reload() }
 
+    val scrollState = rememberScrollState()
     Box(
         Modifier
             .fillMaxSize()
@@ -295,7 +330,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -440,6 +475,24 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 stringResource(R.string.sleep_duration_preview, minutesLabel(nightLengthMinutes(bed, wake))),
                 style = MaterialTheme.typography.labelSmall, color = PeriwinkleSoft,
             )
+            // Editing an older night (via the diary): say so, and offer the
+            // way back to logging tonight.
+            editDate?.let { d ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.sleep_editing_night, humanDate(d)),
+                        style = MaterialTheme.typography.labelSmall, color = Cyan,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { editDate = null }) {
+                        Text(stringResource(R.string.common_cancel), color = TextMuted)
+                    }
+                }
+            }
             val logged = stringResource(R.string.sleep_logged)
             val updated = stringResource(R.string.sleep_logged_updated)
             val logFailed = stringResource(R.string.sleep_log_failed)
@@ -449,19 +502,21 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 enabled = quality > 0 && !busy,
             ) {
                 busy = true; status = null
-                val hadToday = nights.any { it.date == LocalDate.now().toString() }
+                val targetDate = editDate ?: LocalDate.now().toString()
+                val hadEntry = nights.any { it.date == targetDate }
                 val word = words.getOrNull(quality - 1).orEmpty()
                 scope.launch {
                     try {
-                        Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
+                        Api.logSleep(targetDate, hhmm(bed), hhmm(wake), quality)
                         // A rough night is data, not an achievement — celebrate
                         // only when the user says the night was at least okay.
                         if (quality >= 3) Celebrations.trigger()
                         // Say which of the two happened: the backend upserts by
-                        // date, so a second save today EDITS today's entry.
-                        status = if (hadToday) updated else logged
+                        // date, so re-saving a date EDITS that entry.
+                        status = if (hadEntry) updated else logged
                         savedSummaryLine = "$word · ${hhmm(bed)}–${hhmm(wake)}"
                         quality = 0
+                        editDate = null
                         reload()
                     } catch (e: Exception) {
                         status = e.userMessage(logFailed)
@@ -519,9 +574,12 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             }
         }
 
+        // ── The merged "Your sleep" card ────────────────────────────────
+        // Averages, chart, rhythm and diary were FOUR stacked cards doing one
+        // job; they now read as one story: headline, picture, principle, log.
         summary?.let { s ->
             SleepGlassCard {
-                Text(stringResource(R.string.sleep_week_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.sleep_data_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 if (s.optBoolean("enough_data")) {
                     Text(
                         stringResource(
@@ -533,55 +591,104 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
                 } else {
-                    // W24: a small one-shot art illustration above the copy.
+                    // W24: a small one-shot art illustration above the copy —
+                    // and a way to act on it, not just read it.
                     EmptyStateArt(kind = "sleep", size = 48.dp)
                     Text(
                         stringResource(R.string.sleep_week_empty),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
+                    TextButton(onClick = {
+                        savedSummaryLine = null
+                        scope.launch { scrollState.animateScrollTo(0) }
+                    }) { Text(stringResource(R.string.sleep_log_last_night), color = Cyan) }
                 }
-            }
-        }
 
-        // Consistency insight (CBT-I Phase 1): what the last week's rhythm says,
-        // with one gentle principle — consistency beats duration. Client-side only.
-        run {
-            val recent = nights.take(7)
-            val avgSleep = averageSleepMinutes(recent)
-            val spread = bedtimeSpreadMinutes(recent)
-            if (recent.size >= 3 && avgSleep != null && spread != null) {
-                SleepGlassCard {
-                    Text(stringResource(R.string.sleep_rhythm_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                if (nights.size >= 2) NightsChart(nights)
+
+                // Consistency insight (CBT-I Phase 1) — with the ACTUAL window
+                // ("bedtimes landed 23:00–00:10"), which is actionable where
+                // the bare spread number wasn't.
+                val recent7 = nights.take(7)
+                val avgSleep = averageSleepMinutes(recent7)
+                val spread = bedtimeSpreadMinutes(recent7)
+                if (recent7.size >= 3 && avgSleep != null && spread != null) {
                     Text(
                         stringResource(R.string.sleep_rhythm_line, spreadLabelText(avgSleep), spreadLabelText(spread)),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     )
+                    bedtimeWindow(recent7)?.let { (from, to) ->
+                        Text(
+                            stringResource(R.string.sleep_bed_window, hhmm(from), hhmm(to)),
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        )
+                    }
                     Text(
                         stringResource(if (isVariedRhythm(spread)) R.string.sleep_rhythm_vary else R.string.sleep_rhythm_steady),
                         style = MaterialTheme.typography.bodyMedium, color = PeriwinkleSoft,
                     )
                 }
+
+                // The diary, humanized and finally editable: tapping a night
+                // prefills the form and Save UPSERTS that date (the backend
+                // edits in place). Deleting a night still needs a backend
+                // route — ledgered in docs/TODO.md.
+                if (nights.isNotEmpty()) {
+                    Text(stringResource(R.string.sleep_diary_title), style = MaterialTheme.typography.titleSmall, color = TextSoft)
+                    Text(stringResource(R.string.sleep_diary_edit_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    val words = sleepWords()
+                    nights.take(7).forEach { n ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    n.bedMin?.let { bed = it }
+                                    n.wakeMin?.let { wake = it }
+                                    quality = n.quality.coerceIn(0, 5)
+                                    editDate = n.date
+                                    savedSummaryLine = null
+                                    status = null
+                                    scope.launch { scrollState.animateScrollTo(0) }
+                                }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                listOfNotNull(humanDate(n.date), minutesLabel(n.duration), words.getOrNull(n.quality - 1))
+                                    .joinToString(" · "),
+                                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                            )
+                            Text(stringResource(R.string.sleep_checkin_edit),
+                                style = MaterialTheme.typography.labelSmall, color = Cyan)
+                        }
+                    }
+                }
             }
         }
 
-        if (nights.size >= 2) NightsChart(nights)
-
-        // Mix-your-own layered soundscape — lives in the Sounds hub's Mixer
-        // section now (REDESIGN §3.4); this door opens it directly.
-        SleepNavCard(
-            icon = Icons.Outlined.LibraryMusic,
-            title = stringResource(R.string.sleep_mixer_nav_title),
-            subtitle = stringResource(R.string.sleep_mixer_nav_subtitle),
-        ) { onOpen("sounds/mixer") }
-
-        // Programs door — after the redesign cut Home's program tiles, this is
-        // the unenrolled entry point (the Home banner only shows once enrolled),
-        // and the sleep tab is where the flagship Sleep Reset journey belongs.
-        SleepNavCard(
-            icon = Icons.Outlined.AutoStories,
-            title = stringResource(R.string.sleep_programs_nav_title),
-            subtitle = stringResource(R.string.sleep_programs_nav_subtitle),
-        ) { onOpen("programs") }
+        // The two doors: mornings keep them here, up with the planning mind;
+        // at night they step below the sounds — the thing you actually came
+        // for at 11pm outranks navigation.
+        val doorsBlock: @Composable () -> Unit = {
+            SleepNavCard(
+                icon = Icons.Outlined.LibraryMusic,
+                title = stringResource(R.string.sleep_mixer_nav_title),
+                subtitle = stringResource(R.string.sleep_mixer_nav_subtitle),
+            ) { onOpen("sounds/mixer") }
+            // State-aware Programs door: an enrolled user is told where they
+            // ARE, not to start.
+            val prog = program
+            SleepNavCard(
+                icon = Icons.Outlined.AutoStories,
+                title = stringResource(R.string.sleep_programs_nav_title),
+                subtitle = if (prog != null) {
+                    stringResource(
+                        R.string.sleep_programs_enrolled,
+                        prog.optInt("day"), prog.optInt("days"), prog.optString("title"),
+                    )
+                } else stringResource(R.string.sleep_programs_nav_subtitle),
+            ) { onOpen("programs") }
+        }
+        if (checkInFirst) doorsBlock()
 
         SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
         // metaLabel lambdas are not composable — capture the templates here.
@@ -596,8 +703,18 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             emptyIcon = Icons.Outlined.LibraryMusic,
         )
 
+        if (!checkInFirst) doorsBlock()
+
         // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
         SleepSectionHeader("☾", stringResource(R.string.sleep_winddown_header))
+
+        // Action leads the section: the guided ritual first, the reference
+        // cards after — it used to trail four passive cards.
+        SleepNavCard(
+            icon = Icons.Outlined.Bedtime,
+            title = stringResource(R.string.sleep_ritual_nav_title),
+            subtitle = stringResource(R.string.sleep_ritual_nav_subtitle),
+        ) { onOpen("winddown") }
         // The served guides, falling back to the bundled stimulus-control pair
         // (CBT-I Phase 1) when the catalogue is unreachable or empty — advice
         // worth having at 3am on a bad connection.
@@ -632,28 +749,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             },
         )
 
-        // The guided version of the advice above: stimulus control is something
-        // to remember at 1am, the ritual is something to follow.
-        SleepNavCard(
-            icon = Icons.Outlined.Bedtime,
-            title = stringResource(R.string.sleep_ritual_nav_title),
-            subtitle = stringResource(R.string.sleep_ritual_nav_subtitle),
-        ) { onOpen("winddown") }
-
-        // One citation for the section, not one under each card.
+        // One citation for the section, not one under each card. The diary now
+        // lives inside the merged "Your sleep" card above.
         WhyThisWorks(stringResource(R.string.sleep_cbti_why))
-
-        if (nights.isNotEmpty()) {
-            SleepGlassCard {
-                Text(stringResource(R.string.sleep_diary_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                nights.take(7).forEach { n ->
-                    Text(
-                        stringResource(R.string.sleep_diary_line, n.date, minutesLabel(n.duration), n.quality),
-                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                    )
-                }
-            }
-        }
     }
 
     // A quiet top scrim so scrolled content fades under the system clock
@@ -924,7 +1022,11 @@ private fun SleepNavCard(icon: ImageVector, title: String, subtitle: String, onC
     }
 }
 
-/** A live bar chart of the last few nights' durations. W10: the bars grow from
+/** A live bar chart of the last few nights' durations, drawn INSIDE the
+ * merged "Your sleep" card. Duration is height; QUALITY is the tint (bright
+ * cyan-led for rested nights, dim for rough ones) — the chart used to spend
+ * its ink on one number. Day letters sit under the bars (an axis at last),
+ * and tapping a bar answers with the night's facts. W10: the bars grow from
  * the baseline once on first composition (40ms stagger, 400ms each); Reduce
  * Motion renders them at full height immediately — static, never blank.
  * Internal so the Robolectric reduce-motion suite can render it directly. */
@@ -934,35 +1036,63 @@ internal fun NightsChart(nights: List<SleepNight>) {
     val maxDur = (recent.maxOfOrNull { it.duration } ?: 1).coerceAtLeast(1)
     val avg = recent.map { it.duration }.average().toInt()
     val reduceMotion = rememberReduceMotion()
-    SleepGlassCard {
-        Text(stringResource(R.string.sleep_chart_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        val chartCd = stringResource(R.string.sleep_chart_cd, recent.size, minutesLabel(avg))
-        Row(
-            Modifier.fillMaxWidth().height(120.dp)
-                .semantics { contentDescription = chartCd },
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            recent.forEachIndexed { i, n ->
-                val frac = (n.duration.toFloat() / maxDur).coerceIn(0.08f, 1f)
-                // Starts at full height under Reduce Motion so the first frame is
-                // already the resting chart (no clock ever advances it).
-                val grow = remember { Animatable(if (reduceMotion) 1f else 0f) }
-                LaunchedEffect(reduceMotion) {
-                    if (reduceMotion) { grow.snapTo(1f); return@LaunchedEffect }
-                    kotlinx.coroutines.delay(i * 40L)
-                    grow.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
+    var selected by remember { mutableStateOf<SleepNight?>(null) }
+    val words = sleepWords()
+    val chartCd = stringResource(R.string.sleep_chart_cd, recent.size, minutesLabel(avg))
+    Row(
+        Modifier.fillMaxWidth()
+            .semantics { contentDescription = chartCd },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        recent.forEachIndexed { i, n ->
+            val frac = (n.duration.toFloat() / maxDur).coerceIn(0.08f, 1f)
+            // Starts at full height under Reduce Motion so the first frame is
+            // already the resting chart (no clock ever advances it).
+            val grow = remember { Animatable(if (reduceMotion) 1f else 0f) }
+            LaunchedEffect(reduceMotion) {
+                if (reduceMotion) { grow.snapTo(1f); return@LaunchedEffect }
+                kotlinx.coroutines.delay(i * 40L)
+                grow.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
+            }
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                // Fixed 120dp track (the W10 reduce-motion pin measures it).
+                Box(Modifier.height(120.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                    Box(
+                        Modifier.fillMaxWidth().fillMaxHeight(frac * grow.value)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                when {
+                                    n.quality >= 4 -> Brush.verticalGradient(listOf(Cyan, Periwinkle))
+                                    n.quality == 3 -> Brush.verticalGradient(listOf(Periwinkle, Periwinkle.copy(alpha = 0.75f)))
+                                    else -> Brush.verticalGradient(
+                                        listOf(Periwinkle.copy(alpha = 0.45f), Periwinkle.copy(alpha = 0.28f)),
+                                    )
+                                },
+                            )
+                            .clickable { selected = if (selected == n) null else n }
+                            .testTag("night-bar-$i"),
+                    )
                 }
-                Box(
-                    Modifier.weight(1f).fillMaxHeight(frac * grow.value).clip(RoundedCornerShape(6.dp))
-                        .background(Brush.verticalGradient(listOf(Periwinkle, Cyan)))
-                        .testTag("night-bar-$i"),
-                )
+                Text(dayLetterFor(n.date), style = MaterialTheme.typography.labelSmall, color = TextMuted)
             }
         }
-        Text(stringResource(R.string.sleep_chart_footer, minutesLabel(avg), recent.size),
-            style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
+    selected?.let { n ->
+        Text(
+            listOfNotNull(
+                humanDate(n.date), minutesLabel(n.duration),
+                words.getOrNull(n.quality - 1),
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium, color = TextSoft,
+        )
+    }
+    Text(stringResource(R.string.sleep_chart_footer, minutesLabel(avg), recent.size),
+        style = MaterialTheme.typography.labelSmall, color = Periwinkle)
 }
 
 /** A richer standalone section header — a soft lavender glyph leading a title —

@@ -199,6 +199,12 @@
     <string name="sleep_duration_preview">बिस्तर में %1$s</string>
     <string name="sleep_logged_updated">आज का लॉग अपडेट हुआ।</string>
     <string name="sleep_save_hint">सहेजने के लिए चुनें कि आप कितना आराम महसूस कर रहे हैं।</string>
+    <string name="sleep_data_title">आपकी नींद</string>
+    <string name="sleep_log_last_night">कल रात दर्ज करें</string>
+    <string name="sleep_diary_edit_hint">बदलने के लिए किसी रात पर टैप करें</string>
+    <string name="sleep_editing_night">%1$s बदल रहे हैं — सहेजने पर वही रात अपडेट होगी</string>
+    <string name="sleep_bed_window">सोने का समय %1$s–%2$s के बीच रहा</string>
+    <string name="sleep_programs_enrolled">दिन %1$d / %2$d · %3$s</string>
     <string name="sleep_minus_30">−30 मि</string>
     <string name="sleep_plus_30">+30 मि</string>
     <string name="sleep_programs_nav_title">प्रोग्राम</string>
@@ -215,7 +221,7 @@
     <string name="sleep_rhythm_title">आपकी लय</string>
     <string name="sleep_rhythm_line">आपका औसत %1$s रहा। इस हफ़्ते सोने का समय लगभग %2$s आगे-पीछे रहा।</string>
     <string name="sleep_mixer_nav_title">अपना साउंडस्केप बनाएँ</string>
-    <string name="sleep_mixer_nav_subtitle">बारिश, समुद्र, हवा और एक धीमी गूंज मिलाएँ</string>
+    <string name="sleep_mixer_nav_subtitle">वही आवाज़ बनाएँ जो आपको सुला दे</string>
     <string name="sleep_sounds_header">नींद के लिए ध्वनियाँ</string>
     <string name="sleep_winddown_header">सोने से पहले</string>
     <string name="sleep_meta_guide">गाइड</string>

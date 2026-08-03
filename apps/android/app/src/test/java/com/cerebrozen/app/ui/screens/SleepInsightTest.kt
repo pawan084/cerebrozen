@@ -61,6 +61,27 @@ class SleepInsightTest {
         assertEquals(0, nightLengthMinutes(7 * 60, 7 * 60))        // degenerate, not negative
     }
 
+    // ── Merged data card helpers (chart axis, human dates, bed window) ─
+    @Test
+    fun dayLetterFor_maps_dates_and_degrades_on_garbage() {
+        assertEquals("S", dayLetterFor("2026-08-02"))   // Sunday
+        assertEquals("M", dayLetterFor("2026-08-03"))
+        assertEquals("·", dayLetterFor("not-a-date"))
+    }
+
+    @Test
+    fun humanDate_reads_like_a_person_and_passes_garbage_through() {
+        assertEquals("Sun 2 Aug", humanDate("2026-08-02"))
+        assertEquals("bedtime", humanDate("bedtime"))
+    }
+
+    @Test
+    fun bedtimeWindow_spans_midnight_without_splitting() {
+        val logs = listOf(night("23:00", "07:00"), night("00:10", "08:00"))
+        assertEquals(23 * 60 to 10, bedtimeWindow(logs))
+        assertEquals(null, bedtimeWindow(listOf(night(null, "07:00"))))
+    }
+
     // ── Time-aware lead block (morning check-in vs evening wind-down) ─
     @Test
     fun checkInLeadsAt_hands_over_to_winddown_at_five_pm_and_back_at_four_am() {
