@@ -113,7 +113,7 @@
 
     <!-- ── Today ───────────────────────────────────────────────────────── -->
     <string name="today_eyebrow">आज</string>
-    <string name="today_eyebrow_goal">आज · %1$s</string>
+    <string name="today_eyebrow_goal">आपका फ़ोकस · %1$s</string>
     <string name="today_friend">दोस्त</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>

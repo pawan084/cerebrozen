@@ -191,6 +191,65 @@ internal fun checkInLine(m: JSONObject): String {
     return if (note.isEmpty()) mood else "$mood · $note"
 }
 
+/** A recent check-in with everything its row renders: the line, the wire mood
+ * name (for the tint lookup), and when it happened. */
+internal data class RecentCheckIn(val line: String, val mood: String, val createdAt: String)
+
+/** The mood's tile tint for a WIRE name, or null for names this build doesn't
+ * know (a server value from a newer taxonomy renders untinted, never crashes). */
+internal fun moodTintFor(name: String): (@Composable () -> Color)? =
+    MOODS.firstOrNull { it.name.equals(name, ignoreCase = true) }?.tint
+
+/** How long ago an ISO timestamp was, bucketed for a quiet label. Pure — the
+ * composable maps buckets to localized strings. Null when the stamp is missing
+ * or unparseable: an honest row shows no time rather than a wrong one. */
+internal sealed interface RelTime {
+    data object JustNow : RelTime
+    data class Minutes(val m: Int) : RelTime
+    data class Hours(val h: Int) : RelTime
+    data object Yesterday : RelTime
+    data class Days(val d: Int) : RelTime
+}
+
+internal fun relativeTime(iso: String?, now: java.time.OffsetDateTime): RelTime? {
+    val then = runCatching { java.time.OffsetDateTime.parse(iso) }.getOrNull() ?: return null
+    val mins = java.time.Duration.between(then, now).toMinutes()
+    if (mins < 0) return null   // a future stamp is a clock bug, not "in 3 minutes"
+    return when {
+        mins < 2 -> RelTime.JustNow
+        mins < 60 -> RelTime.Minutes(mins.toInt())
+        mins < 24 * 60 -> RelTime.Hours((mins / 60).toInt())
+        mins < 48 * 60 -> RelTime.Yesterday
+        else -> RelTime.Days((mins / (24 * 60)).toInt())
+    }
+}
+
+@Composable
+private fun relativeTimeLabel(t: RelTime?): String? = when (t) {
+    null -> null
+    RelTime.JustNow -> stringResource(R.string.today_time_just_now)
+    is RelTime.Minutes -> stringResource(R.string.today_time_minutes, t.m)
+    is RelTime.Hours -> stringResource(R.string.today_time_hours, t.h)
+    RelTime.Yesterday -> stringResource(R.string.today_time_yesterday)
+    is RelTime.Days -> stringResource(R.string.today_time_days, t.d)
+}
+
+/** Which plan step to suggest right now: prefer an UNDONE step whose title
+ * matches the current part of day (the generator names steps "Morning …",
+ * "Midday …", "Evening …"), else the first undone. At 7 PM, "Next: Morning
+ * Breathing Exercise" was the screen telling the truth in the least useful
+ * order. Pure. */
+internal fun nextPlanStepIndex(titles: List<String>, done: List<Boolean>, hour: Int): Int? {
+    val keywords = when {
+        hour < 12 -> listOf("morning")
+        hour < 17 -> listOf("midday", "afternoon", "noon")
+        else -> listOf("evening", "night", "wind")
+    }
+    val undone = titles.indices.filter { !(done.getOrNull(it) ?: false) }
+    return undone.firstOrNull { i -> keywords.any { titles[i].contains(it, ignoreCase = true) } }
+        ?: undone.firstOrNull()
+}
+
 /** The line under the plan title on Home: never an echo of the title.
  *
  * `title` and `focus` come back identical for rule-generated plans (the
@@ -248,6 +307,10 @@ internal fun checkInsThisWeek(moods: JSONArray, today: LocalDate): Int {
 internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         week.forEachIndexed { i, (day, active) ->
+            // The window is rolling, so the letters can repeat (T W T F S S M) —
+            // marking TODAY (always the last dot) is what makes the row readable
+            // at a glance without re-anchoring the whole week.
+            val isToday = i == week.lastIndex
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -258,10 +321,22 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
                         .size(14.dp)
                         .clip(CircleShape)
                         .background(if (active) Periwinkle else CardFill)
-                        .border(1.dp, if (active) Periwinkle else LineStroke, CircleShape)
+                        .border(
+                            if (isToday) 2.dp else 1.dp,
+                            when {
+                                active -> Periwinkle
+                                isToday -> TextMuted
+                                else -> LineStroke
+                            },
+                            CircleShape,
+                        )
                         .testTag("presence-dot-$i"),
                 )
-                Text(day, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(
+                    day,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isToday) TextSoft else TextMuted,
+                )
             }
         }
     }
@@ -292,6 +367,37 @@ private fun ContentRail(onOpen: (String) -> Unit) {
     val list = items ?: return
     if (list.length() == 0) return
     Text(heading, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+    // ONE item is not a rail: a lone 150dp card beside two-thirds of empty
+    // track read as a broken carousel. A single item gets the full width.
+    if (list.length() == 1) {
+        val c = list.getJSONObject(0)
+        val title = c.optString("title")
+        Column(
+            Modifier.fillMaxWidth()
+                .glass(RoundedCornerShape(16.dp))
+                .clickable { onOpen(route) },
+        ) {
+            Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 110.dp)) {
+                ContentArt(title = title, kind = kind,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
+                val url = c.optString("image_url")
+                if (url.isNotBlank()) {
+                    AsyncImage(model = url, contentDescription = title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
+                }
+            }
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft, maxLines = 1)
+                val d = c.optInt("duration_min")
+                Text(
+                    if (d > 0) stringResource(R.string.common_minutes, d) else stringResource(R.string.today_rail_ambient),
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                )
+            }
+        }
+        return
+    }
     // Edge to edge, with the page inset re-applied inside: the first card still
     // lines up with everything above it, and the last one is cut by the screen
     // rather than stopping neatly short — which is the only reliable way a row
@@ -373,11 +479,12 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, onPick: () -> Unit) {
 /** Today, de-densified (REDESIGN §3.1): greeting → mood check-in → plan hero →
  * one content rail → presence → recent check-ins. One quiet Toolkit row instead
  * of a tile grid. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(onOpen: (String) -> Unit) {
     var userName by remember { mutableStateOf("") }
     var streak by remember { mutableIntStateOf(0) }
-    var recent by remember { mutableStateOf(listOf<String>()) }
+    var recent by remember { mutableStateOf(listOf<RecentCheckIn>()) }
     var weekCheckIns by remember { mutableIntStateOf(0) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     // What was just logged, and its row id, so the tap can be taken back.
@@ -398,8 +505,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var dismissTick by remember { mutableIntStateOf(0) }  // re-reads banner dismissals after prefPut
     val scope = rememberCoroutineScope()
 
-    fun parseRecent(moods: JSONArray): List<String> =
-        (0 until minOf(moods.length(), 3)).map { i -> checkInLine(moods.getJSONObject(i)) }
+    fun parseRecent(moods: JSONArray): List<RecentCheckIn> =
+        (0 until minOf(moods.length(), 3)).map { i ->
+            val m = moods.getJSONObject(i)
+            RecentCheckIn(checkInLine(m), m.optString("mood"), m.optString("created_at"))
+        }
 
     suspend fun reload() {
         // These endpoints are independent. Running them serially made Home take
@@ -442,6 +552,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
 
     LaunchedEffect(Unit) { reload() }
     var showTour by remember { mutableStateOf(!TourState.isDone()) }
+    // Pull-to-refresh: a server-backed dashboard the user could not refresh
+    // meant "kill the app" was the refresh gesture.
+    var refreshing by remember { mutableStateOf(false) }
 
     // A gentle settle-in as the screen arrives (complements the NavHost cross-fade).
     val reduceMotion = rememberReduceMotion()
@@ -451,6 +564,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     }
 
     Box(Modifier.fillMaxSize()) {
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = {
+            scope.launch { refreshing = true; runCatching { reload() }; refreshing = false }
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     Column(
         Modifier
             .fillMaxSize()
@@ -474,6 +594,19 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary,
                 )
+                // One quiet thread of continuity: if there is a check-in from
+                // today, say it back — the greeting stops being generic the
+                // moment the app actually knows something.
+                recent.firstOrNull()?.let { last ->
+                    val t = relativeTime(last.createdAt, java.time.OffsetDateTime.now())
+                    val isToday = t != null && t !is RelTime.Yesterday && t !is RelTime.Days
+                    if (isToday && last.line.isNotBlank()) {
+                        Text(
+                            stringResource(R.string.today_earlier_line, last.line),
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        )
+                    }
+                }
             }
             Box(
                 Modifier.padding(top = 6.dp).size(48.dp)
@@ -670,8 +803,14 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             val steps = p.optJSONArray("steps")
             val total = steps?.length() ?: 0
             val done = (0 until total).count { steps!!.getJSONObject(it).optBoolean("done") }
-            val next = (0 until total).map { steps!!.getJSONObject(it) }
-                .firstOrNull { !it.optBoolean("done") }
+            // Time-aware: at 7 PM the card suggests the evening step, not the
+            // morning one it happens to list first (nextPlanStepIndex).
+            val stepObjs = (0 until total).map { steps!!.getJSONObject(it) }
+            val next = nextPlanStepIndex(
+                titles = stepObjs.map { it.optString("title") },
+                done = stepObjs.map { it.optBoolean("done") },
+                hour = LocalTime.now().hour,
+            )?.let { stepObjs[it] }
             HeroCard(
                 kind = "program",
                 eyebrow = stringResource(R.string.today_plan_eyebrow),
@@ -694,7 +833,30 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 }
                 // This sits on the hero's constant-dark photo scrim, so use the art-text
                 // constant — themed TextSoft resolves to ink on Dawn and vanishes here.
-                if (tail.isNotBlank()) Text(tail, style = MaterialTheme.typography.bodyMedium, color = com.cerebrozen.app.ui.theme.ArtTextSoft)
+                // The verb chip is affordance only (the whole card already opens the
+                // plan): a hero with progress but no verb read as a status poster.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (tail.isNotBlank()) {
+                        Text(tail, style = MaterialTheme.typography.bodyMedium,
+                            color = com.cerebrozen.app.ui.theme.ArtTextSoft,
+                            modifier = Modifier.weight(1f, fill = false))
+                    }
+                    Box(
+                        Modifier.padding(start = 10.dp)
+                            .border(1.dp, com.cerebrozen.app.ui.theme.ArtTextSoft.copy(alpha = 0.5f), CircleShape)
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.common_open).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = com.cerebrozen.app.ui.theme.ArtTextSoft,
+                        )
+                    }
+                }
             }
         }
 
@@ -722,7 +884,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         //
         // Quiet from here down. The check-in and the plan hero are what Home is
         // for; presence and past check-ins are what you read afterwards, and
-        // giving all four the same lifted card made none of them lead.
+        // giving all four the same lifted card made none of them lead. The
+        // header binds the two quiet cards into one readable group.
+        Text(
+            stringResource(R.string.today_week_section),
+            style = MaterialTheme.typography.titleMedium, color = TextSoft,
+            modifier = Modifier.padding(top = 6.dp),
+        )
         SectionCard(quiet = true) {
             val daysPresent = week.count { it.second }
             Text(
@@ -754,13 +922,36 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         if (recent.isNotEmpty()) {
-            SectionCard(quiet = true) {
-                Text(stringResource(R.string.today_recent_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                recent.forEach { line ->
-                    Text(line, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Real rows, not raw lines: the mood's own tint, when it happened,
+            // and the whole card opens Trends — this used to render like debug
+            // output ("Anxious · From onboarding") with no time and no tap.
+            SectionCard(quiet = true, onClick = { onOpen("trends") }) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.today_recent_title),
+                        style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.today_recent_open),
+                        style = MaterialTheme.typography.labelMedium, color = Periwinkle)
+                }
+                val now = java.time.OffsetDateTime.now()
+                recent.forEach { entry ->
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        val tint = moodTintFor(entry.mood)?.invoke() ?: TextMuted
+                        Box(Modifier.size(10.dp).clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(tint.copy(alpha = 0.95f), tint.copy(alpha = 0.35f)))))
+                        Text(entry.line, style = MaterialTheme.typography.bodyMedium,
+                            color = TextSoft, modifier = Modifier.weight(1f), maxLines = 1)
+                        relativeTimeLabel(relativeTime(entry.createdAt, now))?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
                 }
             }
         }
+    }
+
     }
 
     // First-run guided tour (ref GUIDED TOUR OVERLAY) — once per install.

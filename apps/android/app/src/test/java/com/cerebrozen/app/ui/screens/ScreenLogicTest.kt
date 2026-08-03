@@ -601,4 +601,54 @@ class ScreenLogicTest {
         BaselineStore.set(1, 5, "2026-08-01")   // re-save: values move, date doesn't
         assertEquals(Triple(1, 5, "2026-07-07"), BaselineStore.get())
     }
+
+    // ── Wave-1 Home rebuild (2026-08-03): relative time, mood tints,
+    //    time-aware plan step ─────────────────────────────────────────────
+
+    @Test
+    fun relativeTime_buckets_minutes_hours_yesterday_days() {
+        val now = java.time.OffsetDateTime.parse("2026-08-03T20:00:00+05:30")
+        fun at(iso: String) = relativeTime(iso, now)
+        assertEquals(RelTime.JustNow, at("2026-08-03T19:59:30+05:30"))
+        assertEquals(RelTime.Minutes(45), at("2026-08-03T19:15:00+05:30"))
+        assertEquals(RelTime.Hours(3), at("2026-08-03T17:00:00+05:30"))
+        assertEquals(RelTime.Yesterday, at("2026-08-02T19:00:00+05:30"))
+        assertEquals(RelTime.Days(3), at("2026-07-31T12:00:00+05:30"))
+        // Honest degradation: no stamp / garbage / future -> no label.
+        assertNull(relativeTime(null, now))
+        assertNull(relativeTime("not-a-date", now))
+        assertNull(relativeTime("2026-08-03T21:00:00+05:30", now))
+    }
+
+    @Test
+    fun nextPlanStep_prefers_the_step_named_for_this_part_of_day() {
+        val titles = listOf("Morning Breathing Exercise", "Midday Mindfulness", "Evening Unwind")
+        val none = listOf(false, false, false)
+        // 7 PM suggests the evening step, not the morning one listed first.
+        assertEquals(2, nextPlanStepIndex(titles, none, hour = 19))
+        assertEquals(0, nextPlanStepIndex(titles, none, hour = 8))
+        assertEquals(1, nextPlanStepIndex(titles, none, hour = 14))
+        // A done time-matched step falls through to the first undone.
+        assertEquals(0, nextPlanStepIndex(titles, listOf(false, false, true), hour = 19))
+        // Titles without time words keep the old first-undone behavior.
+        assertEquals(1, nextPlanStepIndex(listOf("Stretch", "Journal"), listOf(true, false), hour = 19))
+        // Everything done -> nothing to suggest.
+        assertNull(nextPlanStepIndex(titles, listOf(true, true, true), hour = 19))
+    }
+
+    @Test
+    fun moodTint_knows_every_wire_mood_and_declines_unknowns() {
+        listOf("Good", "Anxious", "Low", "Tired").forEach {
+            assertTrue("tint for $it", moodTintFor(it) != null)
+        }
+        assertNull(moodTintFor("Ecstatic"))   // future taxonomy value: untinted, not a crash
+    }
+
+    @Test
+    fun onboardingMoodNote_uses_taxonomy_notes_never_provenance_jargon() {
+        assertEquals("Loud thoughts", onboardingMoodNote("Anxious"))
+        assertEquals("Need rest", onboardingMoodNote("Tired"))
+        assertEquals("Heavy", onboardingMoodNote("Low"))
+        assertEquals("", onboardingMoodNote("SomethingNew"))
+    }
 }

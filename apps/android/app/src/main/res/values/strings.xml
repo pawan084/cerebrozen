@@ -173,7 +173,7 @@
 
     <!-- ── Today (TodayScreen.kt) ──────────────────────────────────────── -->
     <string name="today_eyebrow">Today</string>
-    <string name="today_eyebrow_goal">Today · %1$s</string>
+    <string name="today_eyebrow_goal">Your focus · %1$s</string>
     <string name="today_greeting_format">%1$s, %2$s</string>
     <string name="today_friend">friend</string>
     <string name="today_search_cd">Search the library</string>
@@ -218,8 +218,8 @@
     <string name="today_insights_title">This week</string>
     <string name="today_insights_subtitle">See what changed</string>
     <plurals name="today_insights_count">
-        <item quantity="one">%1$d check-in in the last 7 days — see what changed.</item>
-        <item quantity="other">%1$d check-ins in the last 7 days — see what changed.</item>
+        <item quantity="one">%1$d check-in this week — see what changed.</item>
+        <item quantity="other">%1$d check-ins this week — see what changed.</item>
     </plurals>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
@@ -229,6 +229,16 @@
     </plurals>
     <string name="today_presence_empty">One small check-in counts as showing up — gentle, no pressure.</string>
     <string name="today_recent_title">Recent check-ins</string>
+    <string name="today_recent_open">Trends</string>
+    <string name="today_week_section">Your week</string>
+    <!-- One line of continuity under the greeting when a check-in exists today. -->
+    <string name="today_earlier_line">Earlier today: %1$s</string>
+    <!-- Relative-time labels for recent check-in rows. -->
+    <string name="today_time_just_now">just now</string>
+    <string name="today_time_minutes">%1$dm ago</string>
+    <string name="today_time_hours">%1$dh ago</string>
+    <string name="today_time_yesterday">yesterday</string>
+    <string name="today_time_days">%1$dd ago</string>
 
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
     <string name="sleep_eyebrow">Improve your sleep, night by night</string>

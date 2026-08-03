@@ -171,6 +171,19 @@ internal fun funnelProgress(step: OStep): Float = when (step) {
  * [id] is our own stable key (saver / selection identity); [labelRes] is the
  * display copy and localizes freely. motivation/goal/mood are WIRE VALUES of the
  * cross-stack taxonomy — never translate them. */
+/** The taxonomy note for a wire mood — what a check-in FROM THE FUNNEL stores
+ * as its note. This used to be the literal string "From onboarding", which then
+ * rendered on Home's Recent check-ins as provenance jargon nobody asked for.
+ * WIRE VALUES (hand-duplicated with iOS/web) — never translated. */
+internal fun onboardingMoodNote(mood: String): String = when (mood) {
+    "Good" -> "Clear"
+    "Anxious" -> "Loud thoughts"
+    "Low" -> "Heavy"
+    "Tired" -> "Need rest"
+    "Okay" -> "Neutral"
+    else -> ""
+}
+
 internal data class StateOption(
     val id: String,
     @androidx.annotation.StringRes val labelRes: Int,
@@ -511,7 +524,9 @@ fun Onboarding() {
                                 .put("motivations", org.json.JSONArray().put(selectedState.motivation)),
                         )
                     }
-                    runCatching { Api.checkIn(selectedState.mood, "From onboarding", "sparkles", 3) }
+                    runCatching {
+                        Api.checkIn(selectedState.mood, onboardingMoodNote(selectedState.mood), "sparkles", 3)
+                    }
                 }
             },
         )
