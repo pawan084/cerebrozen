@@ -1012,6 +1012,23 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### 2026-08-03 pull review: the craft pass (ad163877), reconciled
+The drop is genuinely good (aurora depth field, BreathVoice on-device phase
+narration over the ambient bed, trusted-contact clarity, premium framing on
+six screens, Sleep literals → themed tokens) and is kept whole — EXCEPT its
+last line: "Appearance also becomes global: Sleep and the routes it pushes
+now follow the System/Night/Dawn choice instead of being pinned Night."
+That reverts the Sleep-stays-Night contract for the THIRD time, and this
+time the pinning test was deleted rather than argued with. Restored: the
+route set, the forceNight line, and the test — with comments stating the
+hardware history and the cross-client stakes (web's theme.spec.ts pins the
+same surfaces; the drop made the two clients contradict each other the same
+afternoon both suites were green).
+- [ ] **Owner call, recorded here on purpose:** if Sleep-follows-appearance
+  is genuinely wanted, it must ship on web + iOS + Android in one change,
+  with the e2e pins updated — not by one client deleting its test. Until
+  then the pin stands on all clients.
+
 ### Web 100-point improvement run (2026-08-03, autonomous waves)
 The full list, per-item status, and what stays owner-blocked live in
 **docs/WEB_IMPROVEMENTS.md** (31 shipped / 13 owner-blocked / 9 recorded

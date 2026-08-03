@@ -150,6 +150,26 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     route in setOf("home", "sleep", "talk", "journal", "you")
 
 /**
+ * Everything the Sleep tab can push, not just the tab: the full player, the
+ * soundscape mixer and the wind-down ritual are used with the lights off, and a
+ * bright screen there is worse than anywhere else in the product. Keep this in
+ * step with the NavRows in SleepScreen — a new sleep destination that is not
+ * listed here will flip the theme mid-wind-down (`NavigationChromeTest` pins
+ * the set).
+ *
+ * This set has now been removed twice ("appearance should be global") and
+ * restored twice. The rule is not an aesthetic preference: it came from a
+ * hardware finding (a sleep story at 22:46, one tap on the now-playing bar, a
+ * full-brightness player with the sleep timer running), and the web client
+ * pins the same surfaces in e2e (theme.spec.ts) — removing it here makes the
+ * two clients contradict each other. If it is to go, it goes on every client
+ * in the same change, with the owner's sign-off recorded in docs/TODO.md.
+ */
+internal val SLEEP_CONTEXT_ROUTES = setOf(
+    "sleep", "player", "sounds", "sounds/mixer", "winddown",
+)
+
+/**
  * Whether the nav pill is drawn right now.
  *
  * It is hidden while the keyboard is up, and that is the whole point: the pill
@@ -455,9 +475,10 @@ fun CereBroApp() {
     // and reclaims the slot, instead of keeping an empty one.
     val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val showBottomBar = navVisible(current, imeOpen)
-    // Appearance is global: Sleep and every screen it opens respect the same
-    // System/Night/Dawn choice as the rest of the app. The override was already
-    // cleared above, so a previous route cannot leak a dark palette into You.
+    // Sleep contexts stay Night regardless of the appearance choice — see the
+    // SLEEP_CONTEXT_ROUTES doc above for why this is a wellness rule with a
+    // hardware history and a cross-client contract, not a preference.
+    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
