@@ -206,7 +206,15 @@
     <string name="today_banner_winddown_action">Quieter mix</string>
     <string name="today_banner_program">Day %1$d of %2$d · %3$s</string>
     <string name="today_checkin_title">How are you, really?</string>
-    <string name="today_checkin_subtitle">A 20-second check-in shapes today\'s plan.</string>
+    <string name="today_checkin_subtitle">One tap is enough.</string>
+    <string name="today_checkin_say_more">Say more in Journal</string>
+    <string name="today_checkin_undone">Removed — how are you now?</string>
+    <string name="today_checkin_settled">Logged for today · %1$s</string>
+    <string name="today_plan_start">Start</string>
+    <plurals name="today_plan_left_tonight">
+        <item quantity="one">One step still open tonight</item>
+        <item quantity="other">%1$d steps still open tonight</item>
+    </plurals>
     <string name="today_checkin_cta">Check in</string>
     <string name="today_checkin_done">Checked in — noted gently.</string>
     <string name="today_checkin_logged">%1$s — noted</string>

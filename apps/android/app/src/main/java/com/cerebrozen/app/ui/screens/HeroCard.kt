@@ -52,6 +52,8 @@ internal fun HeroCard(
     eyebrow: String,
     title: String,
     subtitle: String = "",
+    /** Generator prose can run long; heroes are posters, not paragraphs. */
+    subtitleMaxLines: Int = 2,
     kind: String = "",
     imageUrl: String = "",
     height: Dp = 200.dp,
@@ -116,7 +118,8 @@ internal fun HeroCard(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             if (subtitle.isNotBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ArtTextSoft)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = ArtTextSoft,
+                    maxLines = subtitleMaxLines, overflow = TextOverflow.Ellipsis)
             }
             content?.invoke(this)
         }

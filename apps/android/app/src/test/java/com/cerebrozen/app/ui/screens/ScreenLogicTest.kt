@@ -708,6 +708,24 @@ class ScreenLogicTest {
     }
 
     @Test
+    fun planTail_stops_saying_zero_after_five_pm() {
+        assertEquals(false, planTailUsesLeftForm(done = 0, hour = 16))
+        assertTrue(planTailUsesLeftForm(done = 0, hour = 17))
+        assertTrue(planTailUsesLeftForm(done = 0, hour = 23))
+        // Any progress at all keeps the honest count.
+        assertEquals(false, planTailUsesLeftForm(done = 1, hour = 21))
+    }
+
+    @Test
+    fun planArt_follows_the_focus_not_a_fixed_purple() {
+        assertEquals("sleep", planArtKind("Sleep before midnight"))
+        assertEquals("meditation", planArtKind("Reduce stress"))
+        assertEquals("meditation", planArtKind("Ease anxiety"))
+        assertEquals("program", planArtKind("Drink more water"))
+        assertEquals("program", planArtKind(""))
+    }
+
+    @Test
     fun moodTint_knows_every_wire_mood_and_declines_unknowns() {
         listOf("Good", "Anxious", "Low", "Tired").forEach {
             assertTrue("tint for $it", moodTintFor(it) != null)

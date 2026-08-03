@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -325,6 +326,22 @@ internal fun planSubtitle(plan: JSONObject): String {
     }
 }
 
+/** From 17:00 an untouched plan stops reading as "0 of 3 done" — presence
+ * framing counts what's ahead, not the zero. Pure boundary. */
+internal fun planTailUsesLeftForm(done: Int, hour: Int): Boolean = done == 0 && hour >= 17
+
+/** The hero art follows the plan's FOCUS: a sleep plan wears the moon, a calm /
+ * stress / breath plan the meditation rings, anything else the program day
+ * dots. Every plan used to wear the same purple regardless. Pure. */
+internal fun planArtKind(focus: String): String {
+    val f = focus.lowercase()
+    return when {
+        listOf("sleep", "night", "bed", "rest").any { it in f } -> "sleep"
+        listOf("stress", "calm", "breath", "anxi", "mindful").any { it in f } -> "meditation"
+        else -> "program"
+    }
+}
+
 /** True when any sleep-log date covers "last night" — a log saved this morning
  * carries today's date; one saved before midnight carries yesterday's. Pure. */
 internal fun hasLastNightLog(dates: List<String>, today: LocalDate): Boolean =
@@ -507,7 +524,7 @@ private fun ContentRail(onOpen: (String) -> Unit) {
  * check-in; there is no second step.
  */
 @Composable
-private fun MoodTile(mood: MoodOption, enabled: Boolean, onPick: () -> Unit) {
+private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false, onPick: () -> Unit) {
     val tint = mood.tint()
     val shape = RoundedCornerShape(18.dp)
     val interaction = remember { MutableInteractionSource() }
@@ -516,14 +533,22 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, onPick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .pressScale(pressed, down = 0.96f)
+            // While a check-in is in flight the tiles are disabled — say so
+            // (they used to look tappable and silently ignore the tap).
+            .graphicsLayer { alpha = if (enabled) 1f else 0.55f }
             .clip(shape)
             .background(tint.copy(alpha = 0.14f))
-            .border(1.dp, tint.copy(alpha = 0.35f), shape)
+            // [marked]: the mood already logged today wears a firmer ring, so
+            // the second visit reads as a conversation, not a blank slate.
+            .border(if (marked) 2.dp else 1.dp, tint.copy(alpha = if (marked) 0.70f else 0.35f), shape)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
                 Haptics.tap(); onPick()
             }
+            // One TalkBack stop per tile ("Good, Clear, button"), not two.
+            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button }
             .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Box(
             Modifier.size(28.dp).clip(CircleShape)
@@ -545,6 +570,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var recent by remember { mutableStateOf(listOf<RecentCheckIn>()) }
     var weekCheckIns by remember { mutableIntStateOf(0) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
+    var planLoaded by remember { mutableStateOf(false) }
     // What was just logged, and its row id, so the tap can be taken back.
     var loggedMood by remember { mutableStateOf<MoodOption?>(null) }
     var loggedId by remember { mutableStateOf<String?>(null) }
@@ -596,6 +622,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             weekCheckIns = checkInsThisWeek(moods, LocalDate.now())
         }
         planRequest.await().onSuccess { plan = it }
+        planLoaded = true
         programRequest.await().onSuccess { program = it }
         // One extra GET (cached like every read) so the morning banner knows
         // whether last night is already logged — B2.
@@ -808,6 +835,21 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         }
 
         // The primary daily action leads (REDESIGN §3.1): the 1-tap check-in.
+        // After ~8s the confirmation settles into one quiet line — it used to
+        // hold the full confirmation row (and its Undo) forever.
+        var settled by remember { mutableStateOf(false) }
+        LaunchedEffect(loggedMood) {
+            settled = false
+            if (loggedMood != null) {
+                kotlinx.coroutines.delay(8_000)
+                settled = true
+            }
+        }
+        // The mood already logged today, so its tile can wear the "earlier" ring.
+        val earlierTodayMood = recent.firstOrNull()?.takeIf { last ->
+            val t = relativeTime(last.createdAt, java.time.OffsetDateTime.now())
+            t != null && t !is RelTime.Yesterday && t !is RelTime.Days
+        }?.mood
         Box {
         SectionCard {
             val checkinFailed = stringResource(R.string.today_checkin_failed)
@@ -828,7 +870,14 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         pair.forEachIndexed { col, mood ->
                             Box(Modifier.weight(1f).appear(row * 2 + col, rise = 10f)) {
-                                MoodTile(mood, enabled = !busy) {
+                                MoodTile(
+                                    mood, enabled = !busy,
+                                    marked = mood.name.equals(earlierTodayMood, ignoreCase = true),
+                                ) {
+                                    // Two fast taps on different tiles both
+                                    // dispatch before recomposition disables
+                                    // them; the guard makes the second a no-op.
+                                    if (busy) return@MoodTile
                                     busy = true; status = null
                                     scope.launch {
                                         try {
@@ -856,10 +905,26 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         }
                     }
                 }
+            } else if (settled) {
+                // The settled form: one quiet line holding the day's fact, the
+                // vertical space given back to the page.
+                val mood = loggedMood!!
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(12.dp).clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(mood.tint().copy(alpha = 0.95f), mood.tint().copy(alpha = 0.35f)))),
+                    )
+                    Text(
+                        stringResource(R.string.today_checkin_settled, stringResource(mood.labelRes)),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
             } else {
                 // The confirmation IS the moment — the mood said back in its own
                 // colour, with the way out beside it.
                 val mood = loggedMood!!
+                val undoneMsg = stringResource(R.string.today_checkin_undone)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -879,6 +944,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                             else stringResource(mood.noteRes),
                             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                         )
+                        // The bridge for the days one tap isn't enough: a word
+                        // wants a page, and the page is one tap away.
+                        TextButton(
+                            onClick = { onOpen("journal") },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                        ) {
+                            Text(stringResource(R.string.today_checkin_say_more),
+                                style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+                        }
                     }
                     TextButton(
                         enabled = !busy,
@@ -892,7 +966,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                                 } else if (!id.isNullOrBlank()) {
                                     runCatching { Api.deleteMood(id) }
                                 }
-                                loggedMood = null; loggedId = null; loggedQueued = false; status = null
+                                loggedMood = null; loggedId = null; loggedQueued = false
+                                // Close the loop: the tap back is confirmed too.
+                                status = undoneMsg
                                 busy = false
                                 reload()
                             }
@@ -909,6 +985,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         if (bloom > 0) BloomRing(bloom, Accent.home, Modifier.matchParentSize())
         }
 
+        // The plan slot holds its height while loading — the hero used to pop
+        // in whole a beat later, shoving the rail down mid-read.
+        if (!planLoaded && plan == null) {
+            ShimmerBox(Modifier.fillMaxWidth().height(190.dp), shape = RoundedCornerShape(20.dp))
+        }
+
         // The goal-aware next action (mirrors iOS DailyFocus); tapping
         // deep-links to the full plan.
         plan?.let { p ->
@@ -923,10 +1005,14 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 done = stepObjs.map { it.optBoolean("done") },
                 hour = LocalTime.now().hour,
             )?.let { stepObjs[it] }
+            // The named next step deep-links to the surface that runs it; the
+            // card body still opens the full plan.
+            val nextRoute = next?.optString("symbol")?.let { planStepRoute(it) }
             HeroCard(
-                kind = "program",
+                kind = planArtKind(p.optString("focus").ifBlank { p.optString("title") }),
                 eyebrow = stringResource(R.string.today_plan_eyebrow),
                 title = p.optString("title"),
+                subtitleMaxLines = 1,
                 // The generator sets title = the focus goal, so "focus" was the
                 // SAME string and the card printed "Sleep before midnight" twice,
                 // one line under the other. `rationale` is the field worth the
@@ -938,15 +1024,23 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 onClick = { onOpen("plan") },   // full plan route (ref/iOS parity)
             ) {
                 val nextLabel = next?.let { stringResource(R.string.today_plan_next, it.optString("title")) }
-                val doneLabel = if (total > 0) stringResource(R.string.today_plan_done_count, done, total) else null
+                // From 17:00 an untouched plan says what's ahead, not the zero
+                // ("2 steps still open tonight" instead of "0 of 3 done") —
+                // presence framing, REDESIGN §3.6.
+                val doneLabel = when {
+                    total == 0 -> null
+                    planTailUsesLeftForm(done, LocalTime.now().hour) ->
+                        pluralStringResource(R.plurals.today_plan_left_tonight, total, total)
+                    else -> stringResource(R.string.today_plan_done_count, done, total)
+                }
                 val tail = buildString {
                     if (nextLabel != null) append(nextLabel)
                     if (doneLabel != null) { if (isNotEmpty()) append("  ·  "); append(doneLabel) }
                 }
                 // This sits on the hero's constant-dark photo scrim, so use the art-text
                 // constant — themed TextSoft resolves to ink on Dawn and vanishes here.
-                // The verb chip is affordance only (the whole card already opens the
-                // plan): a hero with progress but no verb read as a status poster.
+                // The chip runs the next step where one exists (START), and only
+                // falls back to opening the plan (OPEN) when everything is done.
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -955,18 +1049,41 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     if (tail.isNotBlank()) {
                         Text(tail, style = MaterialTheme.typography.bodyMedium,
                             color = com.cerebrozen.app.ui.theme.ArtTextSoft,
-                            modifier = Modifier.weight(1f, fill = false))
+                            modifier = Modifier.weight(1f, fill = false)
+                                .let { m ->
+                                    if (nextRoute != null) m.clickable { onOpen(nextRoute) } else m
+                                })
                     }
                     Box(
                         Modifier.padding(start = 10.dp)
+                            .clip(CircleShape)
                             .border(1.dp, com.cerebrozen.app.ui.theme.ArtTextSoft.copy(alpha = 0.5f), CircleShape)
+                            .clickable { onOpen(nextRoute ?: "plan") }
                             .padding(horizontal = 12.dp, vertical = 5.dp),
                     ) {
                         Text(
-                            stringResource(R.string.common_open).uppercase(),
+                            stringResource(if (nextRoute != null) R.string.today_plan_start else R.string.common_open).uppercase(),
                             style = MaterialTheme.typography.labelSmall,
                             color = com.cerebrozen.app.ui.theme.ArtTextSoft,
                         )
+                    }
+                }
+                // A 6dp glance of progress under the words — one segment per step.
+                if (total > 0) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        repeat(total) { i ->
+                            Box(
+                                Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp))
+                                    .background(
+                                        com.cerebrozen.app.ui.theme.ArtTextSoft.copy(
+                                            alpha = if (i < done) 0.95f else 0.25f,
+                                        ),
+                                    ),
+                            )
+                        }
                     }
                 }
             }
