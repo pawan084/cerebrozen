@@ -373,6 +373,32 @@ class ScreenLogicTest {
         assertEquals(KeyboardType.Phone, trustedKeyboard("carrier-pigeon"))
     }
 
+    @Test
+    fun theValueFieldKnowsItsShapeBeforeTheBackendDoes() {
+        // Email wants user@domain.tld; the client mirror is deliberately looser
+        // than a full RFC parse — the backend stays the authority.
+        assertEquals(true, trustedValueLooksValid("email", "someone@example.com"))
+        assertEquals(false, trustedValueLooksValid("email", "someone@example"))
+        assertEquals(false, trustedValueLooksValid("email", "someone.example.com"))
+        assertEquals(false, trustedValueLooksValid("email", "so meone@example.com"))
+        assertEquals(false, trustedValueLooksValid("email", ""))
+        // Numbers allow phone punctuation and need at least seven digits.
+        assertEquals(true, trustedValueLooksValid("phone", "+91 98765 43210"))
+        assertEquals(true, trustedValueLooksValid("sms", "(020) 1234-567"))
+        assertEquals(false, trustedValueLooksValid("phone", "12345"))
+        assertEquals(false, trustedValueLooksValid("sms", "call me maybe"))
+    }
+
+    @Test
+    fun theSavedCardReachesOutTheWayTheContactWasSaved() {
+        assertEquals("tel:+919876543210", trustedReachUri("phone", "+919876543210"))
+        assertEquals("smsto:+919876543210", trustedReachUri("sms", "+919876543210"))
+        assertEquals("mailto:a@b.co", trustedReachUri("email", "a@b.co"))
+        // Unknown methods fall back to mail — the only method that can't
+        // misfire from a composer.
+        assertEquals("mailto:a@b.co", trustedReachUri("carrier-pigeon", "a@b.co"))
+    }
+
     // ── ContentList fallback (the offline copy of a section's advice) ──
     @Test
     fun aSectionWithNothingToShowFallsBackToItsOwnCopy() {

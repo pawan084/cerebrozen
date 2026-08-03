@@ -60,7 +60,7 @@
     <string name="trusted_name_label">Their name (optional)</string>
     <string name="trusted_method_label">How to reach them</string>
     <string name="trusted_method_email">Email</string>
-    <string name="trusted_method_sms">Text message</string>
+    <string name="trusted_method_sms">Text</string>
     <string name="trusted_method_phone">Phone</string>
     <string name="trusted_value_label">Email or number</string>
     <string name="trusted_consent_title">Let CereBro contact them</string>
@@ -74,6 +74,11 @@
     <string name="trusted_consent_off">Saved, but contact permission is off</string>
     <string name="trusted_removed">Removed.</string>
     <string name="trusted_failed">Couldn\'t save that — try again.</string>
+    <string name="trusted_value_invalid_email">That doesn\'t look like an email address yet — name@example.com shape.</string>
+    <string name="trusted_value_invalid_number">That doesn\'t look like a phone number yet — at least 7 digits.</string>
+    <string name="trusted_reach_email">Email them now</string>
+    <string name="trusted_reach_sms">Text them now</string>
+    <string name="trusted_reach_phone">Call them now</string>
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
