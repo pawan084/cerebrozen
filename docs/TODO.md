@@ -1058,9 +1058,12 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   before any Hindi ship; and the MBCT module naming ("MBCT", "body scan") should get a
   `WhyThisWorks` provenance footer like every other exercise. Currently none of the offline
   screens carries one.
-- [ ] **`docs/`-adjacent marketing PDFs now live in `apps/android/`** (APPLICATION_MODULES_*.md/
-  html/pdf, ~7 files incl. two PDFs). Harmless but misplaced — product docs belong in `docs/`,
-  and generated HTML/PDF artifacts arguably don't belong in git at all. Move or drop.
+- [x] **Product docs relocated out of `apps/android/`** (2026-08-03 structure pass): the three
+  .md module/guide documents now live in `docs/` (`ANDROID_MODULES_EN.md`, `ANDROID_MODULES_HI.md`,
+  `ANDROID_GUIDE_HI.md`); the four generated HTML/PDF artifacts were dropped from git (derivable
+  from the .md, and recoverable from history). Same pass: README/CLAUDE.md no longer call the
+  169-file lead client a "scaffold", and CI's Android job runs `:app:check` — the 96% coverage
+  gate and full debug lint were previously enforced only on machines that chose to run them.
 
 ### Left by the 2026-08-02 forked-main merge
 - [ ] **Two suggestion engines now ship side by side.** `/interventions` (rule-driven offers

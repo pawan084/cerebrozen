@@ -2,7 +2,8 @@
 
 CereBro is a privacy-first, safety-aware mental-wellness product: a native SwiftUI iOS app
 (primary client) + FastAPI/Postgres backend + Next.js landing & admin, in one monorepo.
-Ships native iOS first (Android scaffold exists); follows Apple App Store guidelines first.
+Two full native clients (Android currently leads the roadmap; iOS ships first on stores);
+follows Apple App Store guidelines first.
 Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 
 ## Read these first
@@ -20,7 +21,7 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 
 ```
 apps/ios/      SwiftUI app (Xcode 27 project, synchronized file groups — new .swift auto-included)
-apps/android/  Compose scaffold only
+apps/android/  Kotlin + Compose full client (5 tabs, ~40 routes, offline queue, FCM-ready)
 apps/web/      Next.js landing :3000        apps/admin/  Next.js dashboard :3001
 apps/app/      Next.js web app :3002 (authenticated client — app.cerebrozen.in)
 backend/       FastAPI + Postgres :8000     e2e/         Playwright (web+admin+app)

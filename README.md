@@ -5,13 +5,16 @@ A calm, proactive mental-wellness product. Monorepo:
 ```
 cere/
   apps/ios/       iOS app (SwiftUI) + live backend cloud sync
-  apps/android/   Android app (Kotlin + Jetpack Compose) — scaffold
-  apps/web/       Next.js marketing site + landing page
-  apps/admin/     Next.js admin dashboard
+  apps/android/   Android app (Kotlin + Jetpack Compose) — full client, leads the roadmap
+  apps/web/       Next.js marketing site + landing page (:3000)
+  apps/admin/     Next.js admin dashboard (:3001)
+  apps/app/       Next.js authenticated web app (:3002 — app.cerebrozen.in)
   backend/        FastAPI + Postgres backend (auth, data, proactive AI, voice)
-  e2e/            Playwright end-to-end tests (web + admin)
-  screenshots/    iOS walkthrough + web/admin/cloud proofs
-  temp/           reference designs + scratch — git-ignored, not part of the build
+  e2e/            Playwright end-to-end tests (web + admin + app)
+  design/         design tokens (tokens.css — synced to clients, drift-gated in CI)
+  scripts/        CI gates: claims, prices, design-token drift
+  deploy/         Caddyfile + one-shot VPS bootstrap
+  docs/           architecture, PRD, runbooks, compliance, TODO ledger
   docker-compose.yml        local dev stack
   docker-compose.e2e.yml    isolated test stack
   .github/workflows/ci.yml  backend · e2e · ios
