@@ -250,6 +250,15 @@
         <item quantity="other">%1$d check-ins — building your first week.</item>
     </plurals>
     <string name="today_toolkit_recent">Last practice · %1$s</string>
+    <string name="today_presence_window">Last 7 days</string>
+    <plurals name="today_presence_merged">
+        <item quantity="one">You showed up — %1$d day this week</item>
+        <item quantity="other">You showed up — %1$d days this week</item>
+    </plurals>
+    <plurals name="today_recent_more">
+        <item quantity="one">+%1$d more today</item>
+        <item quantity="other">+%1$d more today</item>
+    </plurals>
     <string name="today_kind_sleep">Sleep story</string>
     <string name="today_kind_meditation">Meditation</string>
     <string name="today_kind_soundscape">Soundscape</string>

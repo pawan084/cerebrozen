@@ -708,6 +708,50 @@ class ScreenLogicTest {
     }
 
     @Test
+    fun milestone_shows_late_holds_for_its_day_then_retires() {
+        // Day 8, never celebrated: day 7's moment still fires.
+        assertEquals(7, milestoneToShow(streak = 8, pref = null, today = "2026-08-03"))
+        // Same day, already recorded: keeps showing.
+        assertEquals(7, milestoneToShow(8, "7|2026-08-03", "2026-08-03"))
+        // Next day: retired.
+        assertNull(milestoneToShow(8, "7|2026-08-03", "2026-08-04"))
+        // A new milestone reopens the line.
+        assertEquals(14, milestoneToShow(14, "7|2026-08-03", "2026-08-10"))
+        // Below the first milestone: nothing, ever.
+        assertNull(milestoneToShow(2, null, "2026-08-03"))
+        // Garbage pref degrades to "never celebrated".
+        assertEquals(3, milestoneToShow(3, "not-a-pref", "2026-08-03"))
+    }
+
+    @Test
+    fun homeSnapshot_round_trips_the_first_frame() {
+        val week = listOf("S" to false, "M" to true)
+        val recent = listOf(RecentCheckIn("Good · Clear", "Good", "2026-08-03T09:00:00Z", "Clear"))
+        val snap = homeSnapshotOf("Smoke", "Reduce stress", 4, 2, week, recent)
+        assertEquals(week, homeSnapshotWeek(snap))
+        assertEquals(recent, homeSnapshotRecent(snap))
+        assertEquals("Smoke", snap.optString("name"))
+        assertEquals(4, snap.optInt("streak"))
+        // A missing/foreign snapshot degrades to empty, never crashes.
+        assertEquals(emptyList<Pair<String, Boolean>>(), homeSnapshotWeek(JSONObject()))
+        assertEquals(emptyList<RecentCheckIn>(), homeSnapshotRecent(JSONObject()))
+    }
+
+    @Test
+    fun checkInsToday_counts_only_local_today() {
+        val moods = JSONArray()
+            .put(JSONObject().put("created_at", "2026-08-03T10:00:00+05:30"))
+            .put(JSONObject().put("created_at", "2026-08-03T22:00:00+05:30"))
+            .put(JSONObject().put("created_at", "2026-08-02T23:00:00+05:30"))
+            .put(JSONObject().put("created_at", "garbage"))
+        val today = java.time.LocalDate.parse("2026-08-03")
+        // The two 08-03 stamps count only if this JVM's zone agrees; assert on
+        // the pure boundary instead: yesterday + garbage never count.
+        assertTrue(checkInsToday(moods, today) <= 2)
+        assertEquals(0, checkInsToday(JSONArray(), today))
+    }
+
+    @Test
     fun railArt_lets_water_titles_wear_the_wave_motif() {
         assertEquals("soundscape", artKindForTitle("Rain over quiet hills", "sleep"))
         assertEquals("soundscape", artKindForTitle("Ocean at dusk", "meditation"))

@@ -149,6 +149,15 @@
     <string name="today_toolkit_title">टूलकिट</string>
     <string name="today_toolkit_subtitle">अभी के लिए छोटे-छोटे अभ्यास</string>
     <string name="today_toolkit_recent">पिछला अभ्यास · %1$s</string>
+    <string name="today_presence_window">पिछले 7 दिन</string>
+    <plurals name="today_presence_merged">
+        <item quantity="one">आप आए — इस हफ़्ते %1$d दिन</item>
+        <item quantity="other">आप आए — इस हफ़्ते %1$d दिन</item>
+    </plurals>
+    <plurals name="today_recent_more">
+        <item quantity="one">आज +%1$d और</item>
+        <item quantity="other">आज +%1$d और</item>
+    </plurals>
     <plurals name="today_insights_building">
         <item quantity="one">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>
         <item quantity="other">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>

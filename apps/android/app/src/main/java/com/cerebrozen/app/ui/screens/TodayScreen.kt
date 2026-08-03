@@ -149,12 +149,26 @@ internal fun showEarlierLine(t: RelTime?, hour: Int): Boolean = when (t) {
 /** Whether [streak] is a milestone worth a gentle line — presence framing
  * (REDESIGN §3.6): counts showing up, never chains or misses. Pure; the copy
  * itself lives in `today_milestone` so it can localize. */
-internal fun isMilestone(streak: Int): Boolean = streak in setOf(3, 7, 14, 21, 30, 50, 100)
+internal fun isMilestone(streak: Int): Boolean = streak in MILESTONES
 
-/** The milestone line, or null on an ordinary day. */
-@Composable
-internal fun milestoneLine(streak: Int): String? =
-    if (isMilestone(streak)) stringResource(R.string.today_milestone, streak) else null
+internal val MILESTONES = listOf(3, 7, 14, 21, 30, 50, 100)
+
+/** Which milestone line to show today, if any. Exact-day matching used to mean
+ * a user who opened the app on day 8 never saw day 7's moment. Now the newest
+ * REACHED milestone shows the first day it is seen — even late — and for the
+ * rest of that day, then retires. [pref] is "value|date" from the last showing
+ * (null on a fresh install). Pure. */
+internal fun milestoneToShow(streak: Int, pref: String?, today: String): Int? {
+    val reached = MILESTONES.lastOrNull { it <= streak } ?: return null
+    val parts = (pref ?: "").split("|")
+    val seenValue = parts.getOrNull(0)?.toIntOrNull() ?: 0
+    val seenDate = parts.getOrNull(1)
+    return when {
+        reached > seenValue -> reached
+        reached == seenValue && seenDate == today -> reached
+        else -> null
+    }
+}
 
 /** `/users/me/streak` week → (weekday letter, active) pairs for the dot ring. */
 internal fun parseWeek(streak: JSONObject): List<Pair<String, Boolean>> {
@@ -362,6 +376,54 @@ internal fun hasLastNightLog(dates: List<String>, today: LocalDate): Boolean =
  * parse are not counted: a teaser that inflates the number is worse than one
  * that says nothing. Pure.
  */
+/** How many check-ins landed TODAY (local) — the honest "+N more today" count
+ * when the recent list caps at three. Unparseable stamps don't count. Pure. */
+internal fun checkInsToday(moods: JSONArray, today: LocalDate): Int =
+    (0 until moods.length()).count { i ->
+        val iso = moods.optJSONObject(i)?.optString("created_at")
+        runCatching {
+            java.time.OffsetDateTime.parse(iso)
+                .atZoneSameInstant(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+        }.getOrNull() == today
+    }
+
+// ── Cached-first paint (audit #55) ──────────────────────────────────────
+// Home is six network reads; painting nothing until they land made every cold
+// open feel like a reload. A tiny JSON snapshot of the header/presence/recents
+// state persists after each successful load and hydrates the NEXT first frame;
+// the network then refreshes it in place. Plan/program/banners stay
+// network-only — their slots hold shape with skeletons instead.
+
+internal fun homeSnapshotOf(
+    name: String, goal: String, streak: Int, weekCheckIns: Int,
+    week: List<Pair<String, Boolean>>, recent: List<RecentCheckIn>,
+): JSONObject = JSONObject().apply {
+    put("name", name); put("goal", goal); put("streak", streak); put("weekCheckIns", weekCheckIns)
+    put("week", JSONArray().apply { week.forEach { (l, a) -> put(JSONObject().put("l", l).put("a", a)) } })
+    put("recent", JSONArray().apply {
+        recent.forEach { r ->
+            put(JSONObject().put("line", r.line).put("mood", r.mood).put("at", r.createdAt).put("note", r.note))
+        }
+    })
+}
+
+internal fun homeSnapshotWeek(snap: JSONObject): List<Pair<String, Boolean>> {
+    val arr = snap.optJSONArray("week") ?: return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        arr.optJSONObject(i)?.let { it.optString("l") to it.optBoolean("a") }
+    }
+}
+
+internal fun homeSnapshotRecent(snap: JSONObject): List<RecentCheckIn> {
+    val arr = snap.optJSONArray("recent") ?: return emptyList()
+    return (0 until arr.length()).mapNotNull { i ->
+        arr.optJSONObject(i)?.let {
+            RecentCheckIn(it.optString("line"), it.optString("mood"), it.optString("at"), it.optString("note"))
+        }
+    }
+}
+
 internal fun checkInsThisWeek(moods: JSONArray, today: LocalDate): Int {
     val cutoff = today.minusDays(6)
     return (0 until moods.length()).count { i ->
@@ -383,7 +445,7 @@ internal fun checkInsThisWeek(moods: JSONArray, today: LocalDate): Int {
  * Extracted so the reduce-motion branch is testable off-device. */
 @Composable
 internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         week.forEachIndexed { i, (day, active) ->
             // The window is rolling, so the letters can repeat (T W T F S S M) —
             // marking TODAY (always the last dot) is what makes the row readable
@@ -393,23 +455,26 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Box(
-                    Modifier
-                        .popIn(i)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(if (active) Periwinkle else CardFill)
-                        .border(
-                            if (isToday) 2.dp else 1.dp,
-                            when {
-                                active -> Periwinkle
-                                isToday -> TextMuted
-                                else -> LineStroke
-                            },
-                            CircleShape,
+                // Today wears an outer halo instead of a fatter border — the
+                // 2dp Periwinkle-on-Periwinkle border vanished the moment
+                // today was also active.
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(26.dp)) {
+                    if (isToday) {
+                        Box(
+                            Modifier.size(26.dp).clip(CircleShape)
+                                .border(1.5.dp, Periwinkle.copy(alpha = 0.40f), CircleShape),
                         )
-                        .testTag("presence-dot-$i"),
-                )
+                    }
+                    Box(
+                        Modifier
+                            .popIn(i)
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(if (active) Periwinkle else CardFill)
+                            .border(1.dp, if (active) Periwinkle else LineStroke, CircleShape)
+                            .testTag("presence-dot-$i"),
+                    )
+                }
                 Text(
                     day,
                     style = MaterialTheme.typography.labelSmall,
@@ -624,10 +689,14 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(onOpen: (String) -> Unit) {
-    var userName by remember { mutableStateOf("") }
-    var streak by remember { mutableIntStateOf(0) }
-    var recent by remember { mutableStateOf(listOf<RecentCheckIn>()) }
-    var weekCheckIns by remember { mutableIntStateOf(0) }
+    // Hydrate the first frame from the last session's snapshot (see
+    // homeSnapshotOf); the network refreshes everything in place.
+    val snap = remember { runCatching { Session.prefGet("home_snapshot")?.let(::JSONObject) }.getOrNull() }
+    var userName by remember { mutableStateOf(snap?.optString("name").orEmpty()) }
+    var streak by remember { mutableIntStateOf(snap?.optInt("streak") ?: 0) }
+    var recent by remember { mutableStateOf(snap?.let(::homeSnapshotRecent) ?: listOf()) }
+    var weekCheckIns by remember { mutableIntStateOf(snap?.optInt("weekCheckIns") ?: 0) }
+    var todayExtra by remember { mutableIntStateOf(0) }
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     var planLoaded by remember { mutableStateOf(false) }
     // What was just logged, and its row id, so the tap can be taken back.
@@ -639,8 +708,8 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var loggedQueued by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var week by remember { mutableStateOf(listOf<Pair<String, Boolean>>()) }
-    var goal by remember { mutableStateOf("") }
+    var week by remember { mutableStateOf(snap?.let(::homeSnapshotWeek) ?: listOf()) }
+    var goal by remember { mutableStateOf(snap?.optString("goal").orEmpty()) }
     var program by remember { mutableStateOf<JSONObject?>(null) }
     // Optimistically true so the morning banner never flashes before data loads.
     var lastNightLogged by remember { mutableStateOf(true) }
@@ -676,9 +745,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             week = parseWeek(s)
         }
         moodsRequest.await().onSuccess { moods ->
-            // One fetch feeds both the recent-check-ins list and the teaser count.
+            // One fetch feeds the recent list, the teaser count, and the
+            // "+N more today" whisper under the capped rows.
             recent = parseRecent(moods)
             weekCheckIns = checkInsThisWeek(moods, LocalDate.now())
+            todayExtra = (checkInsToday(moods, LocalDate.now()) - 3).coerceAtLeast(0)
         }
         planRequest.await().onSuccess { plan = it }
         planLoaded = true
@@ -691,6 +762,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 LocalDate.now(),
             )
         }
+        }
+        // Persist the next cold open's first frame.
+        runCatching {
+            Session.prefPut(
+                "home_snapshot",
+                homeSnapshotOf(userName, goal, streak, weekCheckIns, week, recent).toString(),
+            )
         }
     }
 
@@ -712,12 +790,25 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     }
 
     Box(Modifier.fillMaxSize()) {
+    // The refresh indicator wears the design tokens — the M3 default disc
+    // ignored the palette and glared on Night.
+    val ptrState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = refreshing,
         onRefresh = {
             scope.launch { refreshing = true; runCatching { reload() }; refreshing = false }
         },
+        state = ptrState,
         modifier = Modifier.fillMaxSize(),
+        indicator = {
+            androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                state = ptrState,
+                isRefreshing = refreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                containerColor = CardFill,
+                color = Periwinkle,
+            )
+        },
     ) {
     Column(
         Modifier
@@ -1209,14 +1300,33 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             style = MaterialTheme.typography.titleMedium, color = TextSoft,
             modifier = Modifier.padding(top = 6.dp),
         )
-        SectionCard(quiet = true) {
+        // The card opens Insights (it was the page's one dead card), carries a
+        // "LAST 7 DAYS" eyebrow so the rolling letters can't read as a typo,
+        // and folds its three stacked headers into one line.
+        SectionCard(quiet = true, onClick = { onOpen("insights") }) {
             val daysPresent = week.count { it.second }
             Text(
-                if (daysPresent > 0 || streak > 0) stringResource(R.string.today_presence_title)
+                stringResource(R.string.today_presence_window).uppercase(),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted,
+            )
+            Text(
+                if (daysPresent > 0)
+                    pluralStringResource(R.plurals.today_presence_merged, daysPresent, daysPresent)
                 else stringResource(R.string.today_presence_ready),
                 style = MaterialTheme.typography.titleMedium, color = TextSoft,
             )
-            milestoneLine(streak)?.let {
+            // Late milestones still get their moment: the newest reached
+            // milestone shows the first day it is seen (day 8 gets day 7's
+            // line), holds for that day, then retires (milestoneToShow).
+            val today = LocalDate.now().toString()
+            val milestonePref = remember { runCatching { Session.prefGet("milestone_celebrated") }.getOrNull() }
+            val milestone = milestoneToShow(streak, milestonePref, today)
+            LaunchedEffect(milestone) {
+                if (milestone != null) {
+                    runCatching { Session.prefPut("milestone_celebrated", "$milestone|$today") }
+                }
+            }
+            milestone?.let {
                 // The halo marks the milestone the line beside it already states —
                 // decoration on top of words, never instead of them (iOS parity).
                 Row(verticalAlignment = Alignment.CenterVertically,
@@ -1225,15 +1335,16 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         RadiatingRing(size = 22.dp, color = Cyan)
                         Box(Modifier.size(6.dp).clip(CircleShape).background(Cyan))
                     }
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                    Text(stringResource(R.string.today_milestone, it),
+                        style = MaterialTheme.typography.bodyMedium, color = Cyan)
                 }
             }
-            Text(
-                if (daysPresent > 0)
-                    pluralStringResource(R.plurals.today_presence_days, daysPresent, daysPresent)
-                else stringResource(R.string.today_presence_empty),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
+            if (daysPresent == 0) {
+                Text(
+                    stringResource(R.string.today_presence_empty),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+            }
             // 7-dot week ring — fills for days present; today is the last dot.
             // E3: dots fill with a one-shot 40ms stagger (instant under Reduce Motion).
             if (week.isNotEmpty()) PresenceWeekRing(week)
@@ -1252,19 +1363,34 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         style = MaterialTheme.typography.labelMedium, color = Periwinkle)
                 }
                 val now = java.time.OffsetDateTime.now()
+                // Consecutive rows in the same time bucket show the time once —
+                // "12h ago / 12h ago" hid the ordering it pretended to give.
+                var prevTimeLabel: String? = null
                 recent.forEach { entry ->
-                    Row(Modifier.fillMaxWidth(),
+                    Row(Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onOpen("trends") }
+                        .padding(vertical = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         val tint = moodTintFor(entry.mood)?.invoke() ?: TextMuted
                         Box(Modifier.size(10.dp).clip(CircleShape)
                             .background(Brush.radialGradient(listOf(tint.copy(alpha = 0.95f), tint.copy(alpha = 0.35f)))))
-                        Text(entry.line, style = MaterialTheme.typography.bodyMedium,
+                        Text(displayCheckInLine(entry), style = MaterialTheme.typography.bodyMedium,
                             color = TextSoft, modifier = Modifier.weight(1f), maxLines = 1)
-                        relativeTimeLabel(relativeTime(entry.createdAt, now))?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        val label = relativeTimeLabel(relativeTime(entry.createdAt, now))
+                        if (label != null && label != prevTimeLabel) {
+                            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
                         }
+                        prevTimeLabel = label
                     }
+                }
+                // Three rows is a cap, not the day: say when today held more.
+                if (todayExtra > 0) {
+                    Text(
+                        pluralStringResource(R.plurals.today_recent_more, todayExtra, todayExtra),
+                        style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                    )
                 }
             }
         }
