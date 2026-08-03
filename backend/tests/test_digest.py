@@ -18,6 +18,12 @@ async def _signup(client, prefix="digest"):
     )
     assert r.status_code == 201
     client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    # Opt in to the data categories (fresh accounts grant nothing) — the digest
+    # reads the same consent-gated sources the weekly insights do, so a user who
+    # granted nothing is a quiet week by definition.
+    r = await client.patch("/users/me/consent", json={
+        "mood_history": True, "journal_memory": True, "sleep_history": True})
+    assert r.status_code == 200
     return addr
 
 

@@ -23,6 +23,11 @@ async def _signup(client):
     r = await client.post("/auth/signup", json={"email": addr, "password": "password123", "name": "S"})
     assert r.status_code == 201
     client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    # Opt in to the data categories (fresh accounts grant nothing) — the same
+    # PATCH a real client sends at the end of onboarding.
+    r = await client.patch("/users/me/consent", json={
+        "mood_history": True, "journal_memory": True, "sleep_history": True})
+    assert r.status_code == 200
     async with SessionLocal() as s:
         return await s.scalar(select(User).where(User.email == addr))
 

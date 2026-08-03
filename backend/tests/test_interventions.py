@@ -28,7 +28,11 @@ async def db():
 
 @pytest_asyncio.fixture
 async def user(db) -> User:
+    """An opted-in user: the engine's inputs are consent-gated (off ⇒ None),
+    so a user who granted nothing produces no signals and no rule ever fires.
+    The tests about the gate itself flip these flags off explicitly."""
     u = User(email=f"iv-{uuid.uuid4().hex[:10]}@test.app", hashed_password="x", name="T")
+    u.consent = Consent(mood_history=True, sleep_history=True)
     db.add(u)
     await db.commit()
     await db.refresh(u)
@@ -123,7 +127,7 @@ async def test_sleep_signals_are_withheld_without_sleep_consent(db, user):
                         bedtime=datetime(2026, 1, 1, 23, 0).time(),
                         wake_time=datetime(2026, 1, 1, 7, 0).time(),
                         quality=1, awakenings=0, source="manual"))
-    db.add(Consent(user_id=user.id, sleep_history=False))
+    user.consent.sleep_history = False
     await db.commit()
     await db.refresh(user)
 
@@ -139,7 +143,7 @@ async def test_mood_signals_are_withheld_without_mood_consent(db, user):
     for i in range(3):
         db.add(MoodLog(user_id=user.id, mood="low", intensity=1,
                        created_at=now - timedelta(days=i)))
-    db.add(Consent(user_id=user.id, mood_history=False))
+    user.consent.mood_history = False
     await db.commit()
     await db.refresh(user)
 
@@ -149,7 +153,8 @@ async def test_mood_signals_are_withheld_without_mood_consent(db, user):
 
 async def test_crisis_is_never_consent_gated(db, user):
     """Safety is the escalation path, not a data-analysis feature."""
-    db.add(Consent(user_id=user.id, mood_history=False, sleep_history=False))
+    user.consent.mood_history = False
+    user.consent.sleep_history = False
     db.add(SafetyEvent(user_id=user.id, source="journal", risk_level="crisis",
                        reason="test", excerpt="", resolved=False))
     await db.commit()

@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.ratelimit import limiter
 from app.models.chat import ChatMessage
+from app.models.consent import consent_allows
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
 from app.services import activities, ai, crisis, language, safety, usage
@@ -63,7 +64,10 @@ async def send_message(
     # Build short context from recent history — but only if the user consents to
     # AI memory. With memory off we pass just the current turn (no long-term
     # recall), honoring the "control what CereBro remembers" promise server-side.
-    memory_on = user.consent is None or user.consent.ai_memory
+    # consent_allows, not a hand-rolled check: this read the same flag with the
+    # opposite default for a missing row, so "no recorded decision" silently
+    # enabled long-term recall on the one surface the promise is about.
+    memory_on = consent_allows(user, "ai_memory")
     if memory_on:
         recent = (
             await db.scalars(

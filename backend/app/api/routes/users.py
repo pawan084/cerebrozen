@@ -425,8 +425,14 @@ async def suppress_pattern(
     the key. Writing a tombstone (rather than persisting the pattern) keeps the
     rule intact that the product never stores its own guesses as user facts.
     Idempotent — suppressing twice is not an error.
+
+    Deliberately NOT behind `_memory_allowed`: that gate protects *remembering*,
+    and a suppression is the opposite — it narrows what the AI may use. Patterns
+    are computed from mood/journal/sleep data, so they render for users who
+    granted those categories but never ai_memory; gating Hide on ai_memory would
+    403 exactly the person trying to reduce what we hold. Same principle as
+    deletion ("consent off must never trap data"), one step earlier.
     """
-    _memory_allowed(user)
     statement = payload.statement.strip()
     existing = await db.scalar(
         select(ContextMemory).where(

@@ -5,13 +5,19 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class ConsentSchema(BaseModel):
+    """What the account currently permits. Every field defaults to False so a
+    user with no consent row is reported as having granted nothing — matching
+    the model and `consent_allows`. These defaults are what `GET /users/me/consent`
+    falls back to, so an optimistic one here would show a settings screen full of
+    switches the user never turned on."""
+
     model_config = ConfigDict(from_attributes=True)
-    mood_history: bool = True
-    ai_memory: bool = True
+    mood_history: bool = False
+    ai_memory: bool = False
     voice_storage: bool = False
     model_training: bool = False
-    journal_memory: bool = True
-    sleep_history: bool = True
+    journal_memory: bool = False
+    sleep_history: bool = False
 
 
 class ConsentUpdate(BaseModel):

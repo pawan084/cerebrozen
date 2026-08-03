@@ -34,21 +34,49 @@ async def _load_user(email: str, db) -> User:
     return user
 
 
-async def test_consent_new_flags_roundtrip(client):
+async def test_a_fresh_account_has_granted_nothing(client):
+    """Signup must not pre-grant anything (DPDP "specific and informed").
+
+    The row is created at signup, but the client does not send the user's actual
+    choices until the END of onboarding — so any category defaulting True was
+    granted by someone who had not been asked, and stayed granted forever if
+    they abandoned onboarding. Insights, the daily plan and the interventions
+    engine all read these, so it was a grant with teeth.
+    """
     await _signup(client)
     body = (await client.get("/users/me/consent")).json()
-    assert body["journal_memory"] is True and body["sleep_history"] is True
+    assert body == {
+        "mood_history": False,
+        "ai_memory": False,
+        "voice_storage": False,
+        "model_training": False,
+        "journal_memory": False,
+        "sleep_history": False,
+    }, "a new account must start with every category off"
+
+
+async def test_consent_new_flags_roundtrip(client):
+    await _signup(client)
     r = await client.patch("/users/me/consent",
-                           json={"journal_memory": False, "sleep_history": False})
+                           json={"journal_memory": True, "sleep_history": True})
     assert r.status_code == 200
     body = r.json()
-    assert body["journal_memory"] is False and body["sleep_history"] is False
-    # Untouched flags keep their values.
-    assert body["ai_memory"] is True
+    assert body["journal_memory"] is True and body["sleep_history"] is True
+    # Untouched flags keep their values — a PATCH is partial, not a replace.
+    assert body["ai_memory"] is False
+    # And switching back off sticks.
+    body = (await client.patch("/users/me/consent",
+                               json={"journal_memory": False})).json()
+    assert body["journal_memory"] is False and body["sleep_history"] is True
 
 
 async def test_plan_signals_respect_itemized_consent(client):
     email = await _signup(client)
+    # Opt in first — a fresh account grants nothing, so the "signals visible"
+    # half of this test needs the consent a real user gives during onboarding.
+    r = await client.patch("/users/me/consent", json={
+        "mood_history": True, "journal_memory": True, "sleep_history": True})
+    assert r.status_code == 200
     await _seed_all_categories(client)
 
     async with SessionLocal() as db:

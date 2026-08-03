@@ -61,12 +61,21 @@ async def client():
 
 @pytest_asyncio.fixture
 async def auth_client(client):
-    """A client with a freshly-registered user's bearer token applied."""
+    """A client signed in as a user who finished onboarding with every consent
+    category ON. A fresh account grants nothing (private by default), so the
+    opt-in is explicit here — the same PATCH the real clients send at the end of
+    onboarding. Tests about the gates themselves flip categories off explicitly,
+    or sign up their own bare user via `client`."""
     email = f"user-{uuid.uuid4().hex[:10]}@test.app"
     resp = await client.post("/auth/signup", json={"email": email, "password": "password123", "name": "Test"})
     assert resp.status_code == 201, resp.text
     token = resp.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
+    resp = await client.patch("/users/me/consent", json={
+        "mood_history": True, "ai_memory": True, "journal_memory": True,
+        "sleep_history": True, "voice_storage": True, "model_training": True,
+    })
+    assert resp.status_code == 200, resp.text
     return client
 
 
@@ -86,4 +95,11 @@ async def admin_client(client):
         await s.execute(update(User).where(User.email == email).values(is_admin=True))
         await s.commit()
     client.headers["Authorization"] = f"Bearer {token}"
+    # Same opt-in as auth_client: fresh accounts grant nothing, and some admin
+    # tests exercise this user's own consent-gated surfaces too.
+    resp = await client.patch("/users/me/consent", json={
+        "mood_history": True, "ai_memory": True, "journal_memory": True,
+        "sleep_history": True, "voice_storage": True, "model_training": True,
+    })
+    assert resp.status_code == 200, resp.text
     return client

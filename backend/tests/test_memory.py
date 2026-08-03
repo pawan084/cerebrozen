@@ -21,6 +21,10 @@ async def _signup(client, prefix="memory"):
     )
     assert r.status_code == 201
     client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    # Opt in to AI memory the way a real client does at the end of onboarding —
+    # a fresh account grants nothing, and this whole surface is ai_memory-gated.
+    r = await client.patch("/users/me/consent", json={"ai_memory": True})
+    assert r.status_code == 200
     return addr
 
 

@@ -23,8 +23,11 @@ async def _make_user(session, *, push_token=None):
         push_token=push_token,
     )
     # Mirror signup: every real account has a Consent row, and the itemized
-    # gates (consent_allows) read it via the loaded relationship.
-    user.consent = Consent()
+    # gates (consent_allows) read it via the loaded relationship. The data
+    # categories are granted here because these are service-level tests of what
+    # the services DO with the data — an opted-in user. The gate itself (off ⇒
+    # sources silenced) is tested where it belongs: test_dpdp / test_patterns.
+    user.consent = Consent(mood_history=True, journal_memory=True, sleep_history=True)
     session.add(user)
     await session.flush()
     return user
