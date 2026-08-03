@@ -12,7 +12,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +45,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +73,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -89,6 +95,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -118,6 +125,33 @@ internal fun spreadLabelText(min: Int): String =
 internal fun hhmm(minutes: Int): String {
     val m = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
     return String.format(Locale.US, "%02d:%02d", m / 60, m % 60)
+}
+
+/** Bed→wake length with the midnight wrap (23:00→07:00 = 480). The one derived
+ * fact the user wants while adjusting the steppers. Pure. */
+internal fun nightLengthMinutes(bed: Int, wake: Int): Int = ((wake - bed) % 1440 + 1440) % 1440
+
+/** Tap fires once; holding arms after 400ms and repeats ~7 steps/sec until
+ * release. Walking 23:00 to 03:30 by nine deliberate taps was stepper
+ * punishment. */
+private fun Modifier.pressRepeat(
+    scope: kotlinx.coroutines.CoroutineScope,
+    step: () -> Unit,
+): Modifier = this.pointerInput(Unit) {
+    detectTapGestures(
+        onTap = { step() },
+        onPress = {
+            val repeater = scope.launch {
+                delay(400)
+                while (true) {
+                    step()
+                    delay(140)
+                }
+            }
+            tryAwaitRelease()
+            repeater.cancel()
+        },
+    )
 }
 
 internal data class SleepNight(
@@ -213,6 +247,8 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     // failed was told, in a friendly voice, that they had never logged a night.
     var loading by remember { mutableStateOf(true) }
     var loadFailed by remember { mutableStateOf(false) }
+    // The saved-night settle line ("Rested · 23:00–07:00"), until Edit reopens.
+    var savedSummaryLine by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     // Duration unit letters — the only localizable part of "7h 30m".
@@ -263,7 +299,14 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-        SleepPremiumHeader()
+        SleepPremiumHeader(
+            liveLine = summary?.takeIf { it.optBoolean("enough_data") }?.let {
+                stringResource(R.string.sleep_premium_subtitle_live, minutesLabel(it.optInt("avg_duration_min")))
+            },
+            onMoonTap = {
+                if (Player.nowPlaying != null) onOpen("player") else onOpen("breathe/box")
+            },
+        )
         // The hero title doubles as the ambient bed's now-playing title, so both
         // read from the same resource and stay consistent.
         val calmerNight = stringResource(R.string.sleep_hero_title)
@@ -282,16 +325,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.18f))
-                        .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                ) {
-                    Text(stringResource(R.string.sleep_tonight_badge), style = MaterialTheme.typography.labelSmall, color = TextPrimary)
-                }
+                // Plain eyebrow, not a chip: the bordered pill styling read as
+                // a button and it was inert.
+                Text(
+                    stringResource(R.string.sleep_tonight_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = com.cerebrozen.app.ui.theme.ArtTextSoft,
+                )
                 val playCd = stringResource(R.string.sleep_play_cd)
+                val heroPlaying = Player.nowPlaying == calmerNight && Player.isPlaying
                 val reduceMotion = rememberReduceMotion()
                 val playTransition = rememberInfiniteTransition(label = "sleepPlay")
                 val playScale by playTransition.animateFloat(
@@ -302,13 +344,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                 Box(
                     Modifier
                         .graphicsLayer {
-                            scaleX = if (reduceMotion) 1f else playScale
-                            scaleY = if (reduceMotion) 1f else playScale
+                            // The pulse asks for the first tap; once playing it rests.
+                            val s = if (reduceMotion || heroPlaying) 1f else playScale
+                            scaleX = s
+                            scaleY = s
                         }
                         .shadow(16.dp, RoundedCornerShape(50), ambientColor = Color(0x557A5CFF), spotColor = Color(0x557A5CFF))
                         .clip(RoundedCornerShape(50))
                         .background(Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9C72FF))))
-                        .clickable { Player.play(context, calmerNight, "sleep") }
+                        .clickable { Player.toggle(context, calmerNight, "sleep") }
                         .semantics { contentDescription = playCd }
                         .padding(horizontal = 18.dp, vertical = 9.dp),
                     contentAlignment = Alignment.Center,
@@ -317,10 +361,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Outlined.PlayArrow, contentDescription = null,
-                            tint = Color.White, modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.common_play_label), color = Color.White, fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.titleSmall)
+                        Icon(
+                            if (heroPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White, modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            stringResource(if (heroPlaying) R.string.sleep_hero_pause else R.string.common_play_label),
+                            color = Color.White, fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
                     }
                 }
             }
@@ -328,9 +378,53 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         }
         val checkInBlock: @Composable () -> Unit = {
         SleepGlassCard {
-            Text(stringResource(R.string.sleep_checkin_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            // After a save the card settles to one line holding the night's
+            // fact, with the way back in beside it — the form used to spring
+            // back blank as if nothing had happened.
+            val settledLine = savedSummaryLine
+            if (settledLine != null) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(Cyan))
+                    Text(
+                        stringResource(R.string.sleep_checkin_settled, settledLine),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { savedSummaryLine = null }) {
+                        Text(stringResource(R.string.sleep_checkin_edit), color = Cyan)
+                    }
+                }
+            } else {
+            // Evening framing: at 11pm "Morning check-in — how rested do you
+            // feel?" is a morning question asked at night. Same card, honest
+            // words for the hour (checkInLeadsAt is the tested boundary).
+            val morning = checkInLeadsAt(LocalTime.now().hour)
+            Text(
+                stringResource(if (morning) R.string.sleep_checkin_title else R.string.sleep_checkin_title_evening),
+                style = MaterialTheme.typography.titleMedium, color = TextSoft,
+            )
             Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Health Connect prefill sits ABOVE the times it prefills — it used
+            // to interrupt between the inputs and Save.
+            if (hcAvailable) {
+                HealthConnectCard(onClick = {
+                    scope.launch {
+                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
+                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
+                    }
+                })
+            }
+            // Edge-bled chip rail: the last chip is cut by the SCREEN, not the
+            // card padding — the only reliable "there's more this way".
+            Row(
+                Modifier.bleed(20.dp).horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 // W10: the quality chips rise in with the shared staggered entrance
                 // (instant under Reduce Motion — handled inside appear).
                 sleepWords().forEachIndexed { i, word ->
@@ -341,37 +435,48 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             }
             TimeRow(stringResource(R.string.sleep_inbed_label), bed, { bed = it })
             TimeRow(stringResource(R.string.sleep_wake_label), wake, { wake = it })
-            if (hcAvailable) {
-                HealthConnectCard(onClick = {
-                    scope.launch {
-                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
-                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
-                    }
-                })
-                // The prefill label and the consent-boundary hint (owner decision
-                // 2026-07-13) are rendered INSIDE HealthConnectCard — repeating
-                // them here would print both twice.
-            }
+            // The derived fact the steppers are FOR: how long that night was.
+            Text(
+                stringResource(R.string.sleep_duration_preview, minutesLabel(nightLengthMinutes(bed, wake))),
+                style = MaterialTheme.typography.labelSmall, color = PeriwinkleSoft,
+            )
             val logged = stringResource(R.string.sleep_logged)
+            val updated = stringResource(R.string.sleep_logged_updated)
             val logFailed = stringResource(R.string.sleep_log_failed)
+            val words = sleepWords()
             SleepGradientButton(
                 text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.sleep_save_cta),
                 enabled = quality > 0 && !busy,
             ) {
                 busy = true; status = null
+                val hadToday = nights.any { it.date == LocalDate.now().toString() }
+                val word = words.getOrNull(quality - 1).orEmpty()
                 scope.launch {
                     try {
                         Api.logSleep(LocalDate.now().toString(), hhmm(bed), hhmm(wake), quality)
-                        Celebrations.trigger()
-                        status = logged
+                        // A rough night is data, not an achievement — celebrate
+                        // only when the user says the night was at least okay.
+                        if (quality >= 3) Celebrations.trigger()
+                        // Say which of the two happened: the backend upserts by
+                        // date, so a second save today EDITS today's entry.
+                        status = if (hadToday) updated else logged
+                        savedSummaryLine = "$word · ${hhmm(bed)}–${hhmm(wake)}"
                         quality = 0
                         reload()
                     } catch (e: Exception) {
-                        status = e.message ?: logFailed
+                        status = e.userMessage(logFailed)
                     } finally {
                         busy = false
                     }
                 }
+            }
+            // Say WHY the button sleeps instead of leaving it mutely grey.
+            if (quality == 0 && !busy) {
+                Text(
+                    stringResource(R.string.sleep_save_hint),
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                )
+            }
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
@@ -550,6 +655,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             }
         }
     }
+
+    // A quiet top scrim so scrolled content fades under the system clock
+    // instead of colliding with it (Home got this in its own polish pass).
+    val topInset = with(androidx.compose.ui.platform.LocalDensity.current) {
+        androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp()
+    }
+    Box(
+        Modifier.align(Alignment.TopCenter).fillMaxWidth().height(topInset + 18.dp)
+            .background(Brush.verticalGradient(listOf(Night.copy(alpha = 0.85f), Night.copy(alpha = 0f)))),
+    )
 }
 
 }
@@ -573,7 +688,7 @@ private fun SleepBackgroundGlow() {
 }
 
 @Composable
-private fun SleepPremiumHeader() {
+private fun SleepPremiumHeader(liveLine: String? = null, onMoonTap: (() -> Unit)? = null) {
     val reduceMotion = rememberReduceMotion()
     val transition = rememberInfiniteTransition(label = "sleepMoon")
     val floatY by transition.animateFloat(-4f, 5f, infiniteRepeatable(tween(2600), RepeatMode.Reverse), label = "moonFloat")
@@ -584,13 +699,33 @@ private fun SleepPremiumHeader() {
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.displayLarge, color = TextPrimary)
-            Text(stringResource(R.string.sleep_premium_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Once there is a week of data the subtitle carries the fact —
+            // the cheapest place to prove the product works.
+            Text(
+                liveLine ?: stringResource(R.string.sleep_premium_subtitle),
+                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            )
+            // The credential that both softens and strengthens the claim above.
+            Text(
+                stringResource(R.string.sleep_evidence_chip),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted.copy(alpha = 0.75f),
+            )
         }
+        // The moon stopped being decoration: it opens the player mid-playback,
+        // or a slow breathing session otherwise — a calm thing to reach for.
+        val moonCd = stringResource(R.string.sleep_moon_cd)
         Box(
             Modifier
                 .size(72.dp)
                 .graphicsLayer { translationY = if (reduceMotion) 0f else floatY.dp.toPx() }
-                .background(Brush.radialGradient(listOf(Color(0x557A5CFF), Color.Transparent))),
+                .clip(CircleShape)
+                .background(Brush.radialGradient(listOf(Color(0x557A5CFF), Color.Transparent)))
+                .let { m ->
+                    if (onMoonTap != null) {
+                        m.clickable(onClick = onMoonTap)
+                            .semantics { contentDescription = moonCd }
+                    } else m
+                },
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Color(0xFFD7CCFF), modifier = Modifier.size(34.dp))
@@ -616,7 +751,9 @@ private fun PremiumWindDownHero(
     Box(
         Modifier
             .fillMaxWidth()
-            .height(height.coerceAtLeast(250.dp))
+            // Respect the caller's height — the old 250dp floor silently grew
+            // every hero and ate half a 720px viewport.
+            .height(height)
             .shadow(28.dp, shape, ambientColor = Color(0x447A5CFF), spotColor = Color(0x337A5CFF))
             .clip(shape)
             .background(Brush.linearGradient(listOf(Color(0xFF30275E), Color(0xFF1D315D), Color(0xFF17213E))))
@@ -693,7 +830,11 @@ private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick:
             .clip(shape)
             .background(fill)
             .border(1.dp, stroke, shape)
-            .clickable { onClick() }
+            .clickable { com.cerebrozen.app.ui.Haptics.tap(); onClick() }
+            // One TalkBack stop per chip ("Rested, button"), not emoji + word.
+            .semantics(mergeDescendants = true) {
+                role = androidx.compose.ui.semantics.Role.Button
+            }
             .padding(horizontal = 15.dp, vertical = 9.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -723,7 +864,9 @@ private fun HealthConnectCard(onClick: () -> Unit) {
         Icon(Icons.Outlined.HealthAndSafety, contentDescription = null, tint = Color(0xFF5CCBFF), modifier = Modifier.size(26.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-            Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted, maxLines = 3)
+            // Unclamped: the consent boundary is an owner decision — cutting it
+            // mid-sentence ("nothing is saved until…") undermined it.
+            Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
         }
         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF5CCBFF))
     }
@@ -871,7 +1014,8 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
         )
         TimeStep(R.string.sleep_minus_30, earlierCd) { onChange(minutes - 30) }
         // ±30m covers the common case; tapping the time itself opens the system
-        // picker for people whose night didn't land on a half hour.
+        // picker for people whose night didn't land on a half hour. The pill
+        // fill is what says "tappable" — colored bare text didn't.
         Text(
             hhmm(minutes),
             style = MaterialTheme.typography.bodyMedium,
@@ -879,7 +1023,9 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
             textAlign = TextAlign.Center,
             maxLines = 1,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(1.dp, LineStroke, RoundedCornerShape(10.dp))
                 .clickable {
                     android.app.TimePickerDialog(
                         context,
@@ -888,25 +1034,29 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
                     ).show()
                 }
                 .semantics { contentDescription = pickCd }
-                .width(56.dp)
+                .width(60.dp)
                 .padding(vertical = 12.dp),
         )
         TimeStep(R.string.sleep_plus_30, laterCd) { onChange(minutes + 30) }
     }
 }
 
-/** One −30m/+30m step: a 48dp touch target that stays one line. */
+/** One −30m/+30m step: a 48dp touch target that stays one line. Holding it
+ * repeats (400ms arm, then ~7 steps/sec) — walking 23:00 to 03:30 by nine
+ * deliberate taps was stepper punishment. */
 @Composable
 private fun TimeStep(
     @androidx.annotation.StringRes labelRes: Int,
     contentDesc: String,
     onClick: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    val current = androidx.compose.runtime.rememberUpdatedState(onClick)
     Box(
         Modifier
             .size(52.dp, 48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .pressRepeat(scope) { current.value() }
             .semantics { contentDescription = contentDesc },
         contentAlignment = Alignment.Center,
     ) {

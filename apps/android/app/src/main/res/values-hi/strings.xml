@@ -189,6 +189,16 @@
     <string name="sleep_time_earlier_cd">%1$s को 30 मिनट पहले करें</string>
     <string name="sleep_time_later_cd">%1$s को 30 मिनट बाद करें</string>
     <string name="sleep_time_pick_cd">%1$s का सटीक समय चुनें</string>
+    <string name="sleep_premium_subtitle_live">इस हफ़्ते औसतन %1$s</string>
+    <string name="sleep_evidence_chip">CBT-I आधारित</string>
+    <string name="sleep_moon_cd">झटपट शांति — साँस लेना, या चलते ऑडियो का प्लेयर</string>
+    <string name="sleep_hero_pause">रोकें</string>
+    <string name="sleep_checkin_title_evening">कल रात</string>
+    <string name="sleep_checkin_settled">दर्ज · %1$s</string>
+    <string name="sleep_checkin_edit">बदलें</string>
+    <string name="sleep_duration_preview">बिस्तर में %1$s</string>
+    <string name="sleep_logged_updated">आज का लॉग अपडेट हुआ।</string>
+    <string name="sleep_save_hint">सहेजने के लिए चुनें कि आप कितना आराम महसूस कर रहे हैं।</string>
     <string name="sleep_minus_30">−30 मि</string>
     <string name="sleep_plus_30">+30 मि</string>
     <string name="sleep_programs_nav_title">प्रोग्राम</string>
@@ -207,7 +217,7 @@
     <string name="sleep_mixer_nav_title">अपना साउंडस्केप बनाएँ</string>
     <string name="sleep_mixer_nav_subtitle">बारिश, समुद्र, हवा और एक धीमी गूंज मिलाएँ</string>
     <string name="sleep_sounds_header">नींद के लिए ध्वनियाँ</string>
-    <string name="sleep_winddown_header">विंड-डाउन गाइड</string>
+    <string name="sleep_winddown_header">सोने से पहले</string>
     <string name="sleep_meta_guide">गाइड</string>
     <string name="sleep_meta_story">नींद की कहानी</string>
     <string name="sleep_diary_title">डायरी</string>

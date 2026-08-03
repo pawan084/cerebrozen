@@ -53,6 +53,14 @@ class SleepInsightTest {
         assertEquals(null, averageSleepMinutes(listOf(night(null, null))))
     }
 
+    // ── Night length preview (the fact the steppers are for) ────────
+    @Test
+    fun nightLengthMinutes_wraps_midnight_like_the_rhythm_math() {
+        assertEquals(480, nightLengthMinutes(23 * 60, 7 * 60))     // 23:00 → 07:00
+        assertEquals(450, nightLengthMinutes(30, 8 * 60))          // 00:30 → 08:00
+        assertEquals(0, nightLengthMinutes(7 * 60, 7 * 60))        // degenerate, not negative
+    }
+
     // ── Time-aware lead block (morning check-in vs evening wind-down) ─
     @Test
     fun checkInLeadsAt_hands_over_to_winddown_at_five_pm_and_back_at_four_am() {

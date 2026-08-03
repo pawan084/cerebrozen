@@ -289,7 +289,7 @@
     <string name="sleep_hero_title">A calmer night</string>
     <string name="sleep_hero_subtitle">A slower evening makes for a softer morning.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
-    <string name="sleep_estimated_duration">About 20 minutes</string>
+    <string name="sleep_estimated_duration">Plays as long as you need — timer optional</string>
     <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
     <string name="sleep_guides_empty">Start your first relaxing session.</string>
     <string name="sleep_play_cd">Play the ambient bed</string>
@@ -300,6 +300,16 @@
     <string name="sleep_time_earlier_cd">Set %1$s 30 minutes earlier</string>
     <string name="sleep_time_later_cd">Set %1$s 30 minutes later</string>
     <string name="sleep_time_pick_cd">Set %1$s to an exact time</string>
+    <string name="sleep_premium_subtitle_live">Averaging %1$s this week</string>
+    <string name="sleep_evidence_chip">CBT-I-informed</string>
+    <string name="sleep_moon_cd">Quick calm — breathing, or the player while something plays</string>
+    <string name="sleep_hero_pause">Pause</string>
+    <string name="sleep_checkin_title_evening">Last night</string>
+    <string name="sleep_checkin_settled">Logged · %1$s</string>
+    <string name="sleep_checkin_edit">Edit</string>
+    <string name="sleep_duration_preview">%1$s in bed</string>
+    <string name="sleep_logged_updated">Updated today\'s log.</string>
+    <string name="sleep_save_hint">Pick how rested you felt to save.</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
     <string name="sleep_programs_nav_title">Programs</string>
@@ -319,7 +329,7 @@
     <string name="sleep_mixer_nav_title">Mix your own soundscape</string>
     <string name="sleep_mixer_nav_subtitle">Blend rain, ocean, wind &amp; a soft drone</string>
     <string name="sleep_sounds_header">Sounds for sleep</string>
-    <string name="sleep_winddown_header">Wind-down guide</string>
+    <string name="sleep_winddown_header">Before bed</string>
     <string name="sleep_meta_guide">Guide</string>
     <string name="sleep_meta_story">Sleep story</string>
     <string name="sleep_bed_title">Bed is for sleep</string>
