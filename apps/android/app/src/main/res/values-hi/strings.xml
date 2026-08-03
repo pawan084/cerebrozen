@@ -529,8 +529,6 @@
     <string name="breath_loops_start">%1$s शुरू करें</string>
     <string name="breath_pattern_box">बॉक्स ब्रीदिंग</string>
     <string name="breath_pattern_box_desc">ध्यान स्थिर करने के लिए बराबर गिनती</string>
-    <string name="breath_pattern_478">4-7-8</string>
-    <string name="breath_pattern_478_desc">शांत होने के लिए लंबी साँस बाहर छोड़ें</string>
     <string name="breath_pattern_coherent">कोहेरेंट</string>
     <string name="breath_pattern_coherent_desc">संतुलित और सहज साँस की लय</string>
     <string name="breath_pattern_triangle">ट्रायंगल</string>

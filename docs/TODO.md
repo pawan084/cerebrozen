@@ -1012,6 +1012,48 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### From the 2026-08-03 deep review (after pulling the device-push/offline/games drop)
+- [x] **Consent was private-by-default on every client and permissive on the server** — FIXED.
+  Four model columns defaulted True and `consent_allows` treated a missing row as granted, so
+  between signup and the end-of-onboarding PATCH (forever, for an abandoned onboarding) the
+  server held grants nobody made — and insights/plans/chat-memory/interventions all read them.
+  Now: every column False, missing row = nothing granted, `/chat`'s hand-rolled check routed
+  through `consent_allows`, `ConsentSchema` response defaults aligned, suppress-pattern un-gated
+  (a suppression narrows what the AI sees — gating it on `ai_memory` 403'd exactly the person
+  reducing what we hold). A test pins that a fresh account has granted nothing; this default has
+  regressed twice on Android already.
+- [x] **Committed conflict markers broke the Android build on main** — FIXED. Six files carried
+  literal `<<<<<<<` blocks from the 2026-08-03 "Resolve merge conflicts" commit; each resolved by
+  intent (both nav-visibility layers kept with both their tests; boot effect drains outbox +
+  registers push + warms media; Trends row kept; funnel constants stay single-valued).
+- [x] **Mindful Games shipped the Lumosity claim vocabulary — third recurrence** — FIXED. Tags
+  now describe the activity, never the faculty; `check-claims.mjs` gained a COGNITIVE_TRAINING
+  ban group so it cannot return. The twelve games themselves are kept.
+- [x] **FCM `INVALID_ARGUMENT` buried installs** — FIXED: DEAD only when FCM blames the token,
+  else RETRY; a payload bug no longer deregisters every Android device silently.
+- [x] **4-7-8 came back inside Breath Loops** — FIXED, fourth recurrence overall of a
+  rejected-on-evidence pattern. Replaced with the cross-client Reset (in 4 / out 6 — the part
+  of slow breathing with real vagal-tone evidence), and 12 rounds is exactly the 120 seconds
+  the "two-minute reset" promises. History decode already skips unknown pattern names.
+- [ ] **Breath Loops is a second breathing engine.** `ui/breathing/` (BreathPattern +
+  BreathingStateMachine + ViewModel + history) duplicates `ui/screens/Breathe.kt`
+  (`breathePhases`, the REDESIGN "one engine" consolidation). It adds real things the first
+  lacks — round counting, session history, Coherent/Triangle pacings — but two pacing sources
+  will drift (they already disagreed once, on 4-7-8). Fold the loop/history layer over
+  `breathePhases`, or retire one. Decide before the next breathing change, not during it.
+- [ ] **Android Trends screen: verify against a live backend + both themes on device.** The
+  backend `/insights/trends` contract is well-tested; the Compose screen is compile+unit-tested
+  only on this host (same standing caveat as every screen — emulator smoke on next dev loop).
+- [ ] **The offline guidance pack (BodyScan / CBT-I / MBCT / journeys / insight reel) carries
+  clinical-adjacent copy added 2026-08-03** — English-only, and deliberately NOT in `values-hi`
+  (same posture as the crisis/TIPP omit list). Wants the same clinical review pass as the rest
+  before any Hindi ship; and the MBCT module naming ("MBCT", "body scan") should get a
+  `WhyThisWorks` provenance footer like every other exercise. Currently none of the offline
+  screens carries one.
+- [ ] **`docs/`-adjacent marketing PDFs now live in `apps/android/`** (APPLICATION_MODULES_*.md/
+  html/pdf, ~7 files incl. two PDFs). Harmless but misplaced — product docs belong in `docs/`,
+  and generated HTML/PDF artifacts arguably don't belong in git at all. Move or drop.
+
 ### Left by the 2026-08-02 forked-main merge
 - [ ] **Two suggestion engines now ship side by side.** `/interventions` (rule-driven offers
   off logged signals — crisis/sleep/mood, one open offer, 72 h cooldown, frozen `reason`,

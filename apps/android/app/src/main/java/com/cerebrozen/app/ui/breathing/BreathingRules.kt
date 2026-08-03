@@ -21,13 +21,21 @@ enum class BreathPattern(
             BreathPhase(BreathPhaseType.Hold, 4),
         ), 4,
     ),
-    FourSevenEight(
-        "4-7-8", "A longer exhale for settling",
+    // NOT 4-7-8. That ratio has been rejected here three times on record (the
+    // web wind-down 2026-07-28, the ritual builder, and Android's own reset
+    // correction): it is a popularised pattern without direct evidence, and
+    // every other exercise in this app carries a citation. The one part of slow
+    // breathing with real vagal-tone evidence is an exhale longer than the
+    // inhale — which is exactly the cross-client Reset preset (iOS
+    // `BreathingPacer.Preset.reset`, `breathePhases`, web `SLOW_EXHALE`).
+    // Twelve rounds of 4 in / 6 out is 120 seconds: the "two-minute reset"
+    // five surfaces promise, measured rather than implied.
+    Reset(
+        "Two-minute reset", "In for four, out for six",
         listOf(
             BreathPhase(BreathPhaseType.Inhale, 4),
-            BreathPhase(BreathPhaseType.Hold, 7),
-            BreathPhase(BreathPhaseType.Exhale, 8),
-        ), 4,
+            BreathPhase(BreathPhaseType.Exhale, 6),
+        ), 12,
     ),
     Coherent(
         "Coherent", "A smooth, balanced breathing rhythm",

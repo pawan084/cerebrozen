@@ -825,8 +825,8 @@
     <string name="breath_loops_start">Start %1$s</string>
     <string name="breath_pattern_box">Box Breathing</string>
     <string name="breath_pattern_box_desc">Equal counts to steady attention</string>
-    <string name="breath_pattern_478">4-7-8</string>
-    <string name="breath_pattern_478_desc">A longer exhale for settling</string>
+    <string name="breath_pattern_reset">Two-minute reset</string>
+    <string name="breath_pattern_reset_desc">In for four, out for six — the longer exhale is the mechanism</string>
     <string name="breath_pattern_coherent">Coherent</string>
     <string name="breath_pattern_coherent_desc">A smooth, balanced breathing rhythm</string>
     <string name="breath_pattern_triangle">Triangle</string>

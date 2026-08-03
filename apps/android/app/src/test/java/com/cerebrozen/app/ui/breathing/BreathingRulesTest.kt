@@ -30,7 +30,10 @@ class BreathingRulesTest {
     @Test
     fun everyPatternHasTheRequiredPhasesRoundsAndDuration() {
         assertPattern(BreathPattern.Box, listOf(Inhale(4), Hold(4), Exhale(4), Hold(4)), 4, 64)
-        assertPattern(BreathPattern.FourSevenEight, listOf(Inhale(4), Hold(7), Exhale(8)), 4, 76)
+        // Reset, not 4-7-8: that ratio is rejected here on evidence grounds (three
+        // times on record). 12 rounds of in-4/out-6 is exactly the 120 seconds the
+        // "two-minute reset" promises — the duration is measured, not implied.
+        assertPattern(BreathPattern.Reset, listOf(Inhale(4), Exhale(6)), 12, 120)
         assertPattern(BreathPattern.Coherent, listOf(Inhale(5), Exhale(5)), 6, 60)
         assertPattern(BreathPattern.Triangle, listOf(Inhale(3), Hold(3), Exhale(3)), 5, 45)
     }
@@ -131,7 +134,7 @@ class BreathLoopsViewModelTest {
         val history = FakeHistory()
         val vm = viewModel(clock, history)
         val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
-        vm.start(BreathPattern.FourSevenEight)
+        vm.start(BreathPattern.Reset)
         clock.value += 4_000
         vm.reconcile()
         vm.stop()

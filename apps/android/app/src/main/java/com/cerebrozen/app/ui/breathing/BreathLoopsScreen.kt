@@ -354,7 +354,7 @@ private fun phaseLabel(type: BreathPhaseType): String = when (type) {
 @Composable
 private fun patternName(pattern: BreathPattern): String = when (pattern) {
     BreathPattern.Box -> stringResource(R.string.breath_pattern_box)
-    BreathPattern.FourSevenEight -> stringResource(R.string.breath_pattern_478)
+    BreathPattern.Reset -> stringResource(R.string.breath_pattern_reset)
     BreathPattern.Coherent -> stringResource(R.string.breath_pattern_coherent)
     BreathPattern.Triangle -> stringResource(R.string.breath_pattern_triangle)
 }
@@ -362,7 +362,7 @@ private fun patternName(pattern: BreathPattern): String = when (pattern) {
 @Composable
 private fun patternDescription(pattern: BreathPattern): String = when (pattern) {
     BreathPattern.Box -> stringResource(R.string.breath_pattern_box_desc)
-    BreathPattern.FourSevenEight -> stringResource(R.string.breath_pattern_478_desc)
+    BreathPattern.Reset -> stringResource(R.string.breath_pattern_reset_desc)
     BreathPattern.Coherent -> stringResource(R.string.breath_pattern_coherent_desc)
     BreathPattern.Triangle -> stringResource(R.string.breath_pattern_triangle_desc)
 }
