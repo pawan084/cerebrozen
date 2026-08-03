@@ -301,7 +301,7 @@ internal fun relativeTime(iso: String?, now: java.time.OffsetDateTime): RelTime?
 }
 
 @Composable
-private fun relativeTimeLabel(t: RelTime?): String? = when (t) {
+internal fun relativeTimeLabel(t: RelTime?): String? = when (t) {
     null -> null
     RelTime.JustNow -> stringResource(R.string.today_time_just_now)
     is RelTime.Minutes -> stringResource(R.string.today_time_minutes, t.m)

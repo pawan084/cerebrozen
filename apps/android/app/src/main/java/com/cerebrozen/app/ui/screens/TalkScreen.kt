@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
@@ -160,6 +161,32 @@ internal fun parseChat(rows: JSONArray): List<Msg> =
         Msg(m.getString("role"), m.getString("text"), createdAt = m.optString("created_at"))
     }
 
+/** Client-side archive line: Talk had no way to start a new conversation, so
+ * last month's thread greeted every open. Messages at/before the cleared stamp
+ * stay on the server (the record stays honest) but stop rendering; local
+ * bubbles (blank stamp) always show. Pure. */
+internal fun visibleAfterClear(messages: List<Msg>, clearedIso: String?): List<Msg> {
+    if (clearedIso.isNullOrBlank()) return messages
+    val cut = runCatching { java.time.OffsetDateTime.parse(clearedIso) }.getOrNull() ?: return messages
+    return messages.filter { m ->
+        val t = runCatching { java.time.OffsetDateTime.parse(m.createdAt) }.getOrNull()
+        t == null || t.isAfter(cut)
+    }
+}
+
+/** "Try together" chips, ordered by the moment instead of a fixed list: words
+ * that sound like spiralling put grounding first, the late evening puts
+ * breathing first, and the default keeps the CBT reframe lead. Pure. */
+internal fun tryTogetherOrder(hour: Int, lastUserText: String?): List<String> {
+    val t = lastUserText.orEmpty().lowercase()
+    return when {
+        listOf("anxi", "panic", "spiral", "overwhelm", "racing").any { it in t } ->
+            listOf("ground", "breathe", "reframe")
+        hour >= 20 || hour < 5 -> listOf("breathe", "ground", "reframe")
+        else -> listOf("reframe", "breathe", "ground")
+    }
+}
+
 /** The backend marks elevated/crisis replies with a `crisis` suggestion
  * action (services/activities.py) — that's the signal for the banner. */
 internal fun hasCrisisSuggestion(suggestions: JSONArray?): Boolean {
@@ -228,9 +255,16 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // Regulatory UX (mirrors iOS AIDisclosure): tappable always-visible pill +
     // a re-shown sheet every 3 h of continuous use (NY companion-law floor).
     var showDisclosure by remember { mutableStateOf(false) }
-    // Sticky once a reply carries crisis risk — the affordance stays reachable
-    // (saved so a rotation can't drop the safety banner).
-    var crisis by rememberSaveable { mutableStateOf(false) }
+    // Sticky once a reply carries crisis risk — the affordance stays reachable.
+    // Backed by a PREF, not just saveable state: a conversation containing a
+    // disclosure kept losing its resources card on app restart. Cleared only
+    // by starting a fresh conversation.
+    var crisis by rememberSaveable {
+        mutableStateOf(runCatching { Session.prefGet("talk_crisis_sticky") == "1" }.getOrDefault(false))
+    }
+    LaunchedEffect(crisis) {
+        if (crisis) runCatching { Session.prefPut("talk_crisis_sticky", "1") }
+    }
     // The clock is a PERSISTED timestamp, not this coroutine's lifetime: the tabs
     // navigate with saveState/restoreState, so Talk's composition is thrown away
     // and rebuilt on every tab switch — a composition-scoped 3h timer restarted
@@ -309,7 +343,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // history load resolves, so nothing animates prematurely.
     var entranceFloor by remember { mutableIntStateOf(Int.MAX_VALUE) }
     LaunchedEffect(Unit) {
-        runCatching { messages = parseChat(Api.chat()) }
+        runCatching {
+            messages = visibleAfterClear(
+                parseChat(Api.chat()),
+                runCatching { Session.prefGet("talk_clear_before") }.getOrNull(),
+            )
+        }
         entranceFloor = messages.size
         // Empty chat → grounded conversation starters (mirrors the iOS rail).
         if (messages.isEmpty()) runCatching { starters = parseStarters(Api.starters()) }
@@ -402,7 +441,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         (0 until arr.length()).map { arr.getJSONObject(it).getString("label") }
                     } ?: emptyList()
                     if (hasCrisisSuggestion(suggestions)) crisis = true
-                    if (speak) speakReply(replyText)
+                    // A felt "reply's here" for the text path too (the voice
+                    // path already lands its success haptic in speakReply).
+                    if (speak) speakReply(replyText) else com.cerebrozen.app.ui.Haptics.tap()
                 }
             } catch (e: Session.FreeLimitException) {
                 // The cap is a product state, not a failure — say what it is,
@@ -514,7 +555,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     fun onOrbTap() {
-        if (!voice.available && !cloudVoice) return
+        // A dead tap on an unavailable orb used to say nothing at all.
+        if (!voice.available && !cloudVoice) { status = micUnavailable; return }
         com.cerebrozen.app.ui.Haptics.tap()
         when {
             cloud.speaking -> cloud.stopPlayback()          // tap-to-interrupt
@@ -708,6 +750,25 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
             TryTogetherRow(onOpen)
         } else {
+            // A way OUT of the endless thread: archive the view client-side and
+            // begin again (the server record stays; the crisis flag resets with
+            // the conversation it belonged to).
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = {
+                    runCatching { Session.prefPut("talk_clear_before", java.time.OffsetDateTime.now().toString()) }
+                    runCatching { Session.prefPut("talk_crisis_sticky", "0") }
+                    crisis = false
+                    messages = emptyList()
+                    chips = emptyList()
+                    scope.launch { runCatching { starters = parseStarters(Api.starters()) } }
+                }) {
+                    Text(stringResource(R.string.talk_start_fresh),
+                        style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                }
+            }
+            // Long-press reveals a bubble's time (and still copies it).
+            var timeShownKey by remember { mutableStateOf<Int?>(null) }
+            val nowStamp = remember(messages.size) { java.time.OffsetDateTime.now() }
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Keyed on the absolute index so the sliding 12-message window
                 // never re-runs an old bubble's entrance (W10).
@@ -730,7 +791,21 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             )
                         }
-                        ChatBubble(m, animate = windowStart + i >= entranceFloor)
+                        ChatBubble(
+                            m, animate = windowStart + i >= entranceFloor,
+                            onLongPress = {
+                                timeShownKey = if (timeShownKey == windowStart + i) null else windowStart + i
+                            },
+                        )
+                        if (timeShownKey == windowStart + i) {
+                            relativeTimeLabel(relativeTime(m.createdAt, nowStamp))?.let { t ->
+                                Text(
+                                    t, style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                                    textAlign = if (m.role == "user") TextAlign.End else TextAlign.Start,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
                         m.widget?.let { WidgetCard(it, onOpen) }
                     }
                 }
@@ -743,13 +818,24 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 }
                 // Structured exercises as first-class offers (REDESIGN §3.3) —
                 // quiet, after the companion's latest reply, never while composing.
+                // Ordered by the moment: spiralling words put grounding first,
+                // late evening puts breathing first.
                 if (showTryTogether(messages.size, messages.lastOrNull()?.role, busy, streamText.isNotBlank())) {
-                    TryTogetherRow(onOpen)
+                    TryTogetherRow(
+                        onOpen,
+                        order = tryTogetherOrder(
+                            java.time.LocalTime.now().hour,
+                            messages.lastOrNull { it.role == "user" }?.text,
+                        ),
+                    )
                 }
             }
             val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
             val savedStatus = stringResource(R.string.talk_saved_status)
             val saveFailed = stringResource(R.string.talk_save_failed)
+            // The save row answers itself: once saved it flips to "Saved ·
+            // View" until new messages arrive (then there's new content to save).
+            var savedToJournal by remember(messages.size) { mutableStateOf(false) }
             // An outlined row with an icon, not bare periwinkle text: unstyled,
             // it sat between two sections reading as a heading — the same weight
             // and colour as the "Try together" / "Type instead" labels above and
@@ -759,12 +845,20 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, Periwinkle.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                    .border(
+                        1.dp,
+                        (if (savedToJournal) Cyan else Periwinkle).copy(alpha = 0.45f),
+                        RoundedCornerShape(14.dp),
+                    )
                     .clickable {
-                        scope.launch {
-                            runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
-                                .onSuccess { status = savedStatus }
-                                .onFailure { status = saveFailed }
+                        if (savedToJournal) {
+                            onOpen("journal")
+                        } else {
+                            scope.launch {
+                                runCatching { Api.createJournal(journalEntryTitle, talkTranscript(messages)) }
+                                    .onSuccess { status = savedStatus; savedToJournal = true }
+                                    .onFailure { status = saveFailed }
+                            }
                         }
                     }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -774,13 +868,15 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Icon(
                     Icons.Outlined.BookmarkBorder,
                     contentDescription = null,
-                    tint = Periwinkle,
+                    tint = if (savedToJournal) Cyan else Periwinkle,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    stringResource(R.string.talk_save_journal),
+                    stringResource(
+                        if (savedToJournal) R.string.talk_saved_view else R.string.talk_save_journal,
+                    ),
                     style = MaterialTheme.typography.titleSmall,
-                    color = Periwinkle,
+                    color = if (savedToJournal) Cyan else Periwinkle,
                 )
             }
         }
@@ -819,14 +915,41 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
         // Fast escape hatch when talking feels like too much (mirrors iOS) —
         // except while the crisis card is up: two urgent doors stacked compete,
-        // and the crisis one must win.
+        // and the crisis one must win. Mid-conversation it compacts to a chip:
+        // the full card duplicated the Toolkit door in prime transcript space.
         if (!crisis) {
-            NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
+            if (messages.isEmpty()) {
+                NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    PickChip(selected = false, label = stringResource(R.string.talk_sos_title)) { onOpen("toolkit") }
+                }
+            }
         }
 
     }
 
     // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
+    // Reading history? One tap back to the newest reply — a long thread had no
+    // way down but scrolling.
+    val farFromLatest = messages.size > 6 && chatScroll.maxValue > 0 &&
+        chatScroll.value < chatScroll.maxValue - 900
+    if (farFromLatest && !voiceSession) {
+        val jumpCd = stringResource(R.string.talk_jump_latest_cd)
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 168.dp)
+                .size(42.dp).clip(CircleShape)
+                .background(CardFill)
+                .border(1.dp, LineStroke, CircleShape)
+                .clickable { scope.launch { chatScroll.animateScrollTo(chatScroll.maxValue) } }
+                .semantics { contentDescription = jumpCd },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowDownward, contentDescription = null,
+                tint = TextSoft, modifier = Modifier.size(18.dp))
+        }
+    }
+
     if (voiceSession) {
         VoiceSessionOverlay(
             seconds = sessionSeconds,
@@ -961,7 +1084,10 @@ private fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun TryTogetherRow(onOpen: (String) -> Unit) {
+private fun TryTogetherRow(
+    onOpen: (String) -> Unit,
+    order: List<String> = listOf("reframe", "breathe", "ground"),
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.talk_try_together), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         Row(
@@ -969,9 +1095,13 @@ private fun TryTogetherRow(onOpen: (String) -> Unit) {
                 .padding(horizontal = pageHorizontalPadding()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
-            PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
-            PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("toolkit") }
+            order.forEach { kindKey ->
+                when (kindKey) {
+                    "reframe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
+                    "breathe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
+                    "ground" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("ground") }
+                }
+            }
         }
     }
 }
@@ -1004,12 +1134,13 @@ private fun WidgetCard(w: ChatWidget, onOpen: (String) -> Unit) {
  * arrive during this session; restored history renders settled (W10). The
  * Reduce-Motion branch lives inside [appear] (static, never blank). */
 @Composable
-private fun ChatBubble(m: Msg, animate: Boolean = false) {
+private fun ChatBubble(m: Msg, animate: Boolean = false, onLongPress: (() -> Unit)? = null) {
     val user = m.role == "user"
     val entrance = if (animate) Modifier.appear(rise = 8f, durationMs = 150) else Modifier
     // Long-press copies the bubble (quoting your own words into the journal is
     // the common case). Android 13+ shows the system clipboard chip, so the
-    // haptic plus that chip is the whole feedback loop.
+    // haptic plus that chip is the whole feedback loop. [onLongPress] also
+    // lets the caller reveal the bubble's time.
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     Row(
         Modifier.fillMaxWidth().then(entrance),
@@ -1024,13 +1155,16 @@ private fun ChatBubble(m: Msg, animate: Boolean = false) {
             ),
             modifier = Modifier.widthIn(max = 320.dp)
                 .border(
-                    1.dp, if (user) Periwinkle.copy(alpha = 0.35f) else LineStroke,
+                    // The companion's bubbles wear a faint cyan edge — white-on-
+                    // cream left the two voices distinguished by alignment alone.
+                    1.dp, if (user) Periwinkle.copy(alpha = 0.35f) else Cyan.copy(alpha = 0.22f),
                     RoundedCornerShape(18.dp),
                 )
                 .pointerInput(m.text) {
                     detectTapGestures(onLongPress = {
                         com.cerebrozen.app.ui.Haptics.tap()
                         clipboard.setText(androidx.compose.ui.text.AnnotatedString(m.text))
+                        onLongPress?.invoke()
                     })
                 },
         ) {

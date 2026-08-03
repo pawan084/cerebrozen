@@ -119,6 +119,9 @@
     <string name="today_search_hint">लाइब्रेरी</string>
     <string name="today_profile_cd">अपनी जगह खोलें</string>
     <string name="today_banner_offline_send">अभी भेजें</string>
+    <string name="talk_start_fresh">नई शुरुआत</string>
+    <string name="talk_saved_view">सहेजा गया — जर्नल में देखें</string>
+    <string name="talk_jump_latest_cd">सबसे नए जवाब पर जाएँ</string>
     <string name="today_friend">दोस्त</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>

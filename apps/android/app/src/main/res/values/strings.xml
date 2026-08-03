@@ -190,6 +190,9 @@
     <string name="today_search_hint">Library</string>
     <string name="today_profile_cd">Open your space</string>
     <string name="today_banner_offline_send">Send now</string>
+    <string name="talk_start_fresh">Start fresh</string>
+    <string name="talk_saved_view">Saved — view in Journal</string>
+    <string name="talk_jump_latest_cd">Jump to the latest reply</string>
     <string name="today_greeting_format">%1$s, %2$s</string>
     <string name="today_friend">friend</string>
     <string name="today_search_cd">Search the library</string>

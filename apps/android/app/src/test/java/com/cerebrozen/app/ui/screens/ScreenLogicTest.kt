@@ -352,6 +352,33 @@ class ScreenLogicTest {
         assertEquals(fallback, com.cerebrozen.app.net.Session.ApiException(500, "").userMessage(fallback))
     }
 
+    // ── Talk polish (2026-08-04): fresh start + moment-aware offers ──
+    @Test
+    fun startFresh_hides_older_messages_but_keeps_local_bubbles() {
+        val msgs = listOf(
+            Msg("user", "old", createdAt = "2026-08-01T10:00:00Z"),
+            Msg("assistant", "old reply", createdAt = "2026-08-01T10:00:05Z"),
+            Msg("user", "new", createdAt = "2026-08-04T09:00:00Z"),
+            Msg("user", "local this session", createdAt = ""),
+        )
+        val visible = visibleAfterClear(msgs, "2026-08-03T00:00:00Z")
+        assertEquals(listOf("new", "local this session"), visible.map { it.text })
+        // No cleared stamp (or garbage) → everything shows.
+        assertEquals(4, visibleAfterClear(msgs, null).size)
+        assertEquals(4, visibleAfterClear(msgs, "not-a-date").size)
+    }
+
+    @Test
+    fun tryTogether_orders_by_the_moment() {
+        // Spiralling words put grounding first, whatever the hour.
+        assertEquals(listOf("ground", "breathe", "reframe"), tryTogetherOrder(14, "my thoughts are racing"))
+        // Late evening leads with breathing.
+        assertEquals(listOf("breathe", "ground", "reframe"), tryTogetherOrder(22, "long day"))
+        assertEquals(listOf("breathe", "ground", "reframe"), tryTogetherOrder(2, null))
+        // An ordinary afternoon keeps the CBT reframe lead.
+        assertEquals(listOf("reframe", "breathe", "ground"), tryTogetherOrder(14, "thinking about work"))
+    }
+
     // ── Trusted contact (the crisis surface's one editable thing) ──
     @Test
     fun aContactIsSavableOnceThereIsSomewhereToSendIt() {
