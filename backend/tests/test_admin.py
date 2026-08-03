@@ -91,10 +91,38 @@ async def test_admin_safety_queue_and_resolve(admin_client):
     assert listing.status_code == 200
     events = listing.json()
     assert events, "expected a flagged safety event"
-    event_id = events[0]["id"]
-    resolved = await admin_client.patch(f"/admin/safety/{event_id}/resolve")
-    assert resolved.status_code == 200 and resolved.json()["resolved"] is True
-    assert (await admin_client.patch(f"/admin/safety/{uuid.uuid4()}/resolve")).status_code == 404
+    event = events[0]
+    event_id = event["id"]
+
+    # The queue is a triage surface: it says how much text is behind the flag,
+    # never the text itself.
+    assert "excerpt" not in event
+    assert event["excerpt_chars"] > 0
+
+    # Reading someone's words is a separate, deliberate request.
+    excerpt = await admin_client.get(f"/admin/safety/{event_id}/excerpt")
+    assert excerpt.status_code == 200
+    assert "end my life" in excerpt.json()["excerpt"]
+    assert (await admin_client.get(f"/admin/safety/{uuid.uuid4()}/excerpt")).status_code == 404
+
+    # Closing a flag without saying why is not allowed.
+    assert (await admin_client.patch(f"/admin/safety/{event_id}/resolve", json={})).status_code == 422
+    assert (
+        await admin_client.patch(f"/admin/safety/{event_id}/resolve", json={"note": "   "})
+    ).status_code == 422
+
+    resolved = await admin_client.patch(
+        f"/admin/safety/{event_id}/resolve", json={"note": "Called the user; safe with family."}
+    )
+    assert resolved.status_code == 200
+    body = resolved.json()
+    assert body["resolved"] is True
+    assert body["resolution_note"] == "Called the user; safe with family."
+    # A resolved row can always answer who decided, and when.
+    assert body["resolved_by"] and body["resolved_at"]
+    assert (
+        await admin_client.patch(f"/admin/safety/{uuid.uuid4()}/resolve", json={"note": "n/a"})
+    ).status_code == 404
 
 
 async def test_admin_waitlist_and_nudge_dispatch(admin_client, client):

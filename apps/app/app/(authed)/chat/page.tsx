@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { FreeLimitError, api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
 import { AppHeader } from "@/components/AppHeader";
+import { CrisisLines } from "@/components/CrisisLines";
+import type { CrisisLine } from "@/lib/crisis";
 
 const STARTERS = [
   "I feel anxious and I don't know why",
@@ -12,21 +14,38 @@ const STARTERS = [
   "I want to talk through a hard day",
   "Just two minutes to reset",
 ];
-// Offline fallback when the server sends no resources — mirrors backend
-// services/crisis.py IN (Tele-MANAS leads every crisis surface, REDESIGN §2.3).
-const CRISIS_FALLBACK = [
-  { name: "Tele-MANAS mental health support", number: "14416" },
-  { name: "Emergency services (India)", number: "112" },
-  { name: "KIRAN mental-health helpline", number: "1800-599-0019" },
-  { name: "Find a helpline", number: "https://findahelpline.com" },
-];
-// Phone numbers open the dialler (never auto-call); anything with letters is a URL.
-const supportHref = (target: string) =>
-  target.startsWith("http") ? target : `tel:${target.replace(/[^0-9+]/g, "")}`;
+// The offline fallback list and the tel:/http href rule used to live here. Both
+// moved to `lib/crisis` + <CrisisLines>, so chat, journal and /support cannot
+// drift apart on "Tele-MANAS first, every number tappable".
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; widget?: OracleWidget | null };
 type Suggestion = { label: string; action: string };
-type CrisisInfo = { message?: string; resources?: { name: string; number: string }[] };
+type CrisisInfo = { message?: string; lines?: CrisisLine[] };
+// A paused write tool. `summary` is what the server *should* send; `tool`/`args`
+// are what it always sends, and the card falls back to them so nobody approves
+// an account write blind.
+type ConfirmReq = { thread_id: string; summary?: string; tool?: string; args?: Record<string, unknown> };
+
+const TOOL_ACTIONS: Record<string, string> = {
+  log_mood: "save a mood check-in",
+  save_journal: "save a journal entry",
+  log_sleep: "save last night's sleep diary",
+};
+
+function confirmHeadline(req: ConfirmReq): string {
+  if (req.summary?.trim()) return req.summary;
+  const action = req.tool && TOOL_ACTIONS[req.tool];
+  if (action) return `The companion wants to ${action}.`;
+  if (req.tool) return `The companion wants to run “${req.tool}” on your account.`;
+  return "The companion wants to change something in your account — it didn't say what.";
+}
+
+function confirmDetail(req: ConfirmReq): string {
+  const args = Object.entries(req.args ?? {}).filter(([, v]) => v !== "" && v !== null && v !== undefined);
+  if (args.length) return args.map(([k, v]) => `${k.replace(/_/g, " ")}: ${String(v)}`).join(" · ");
+  if (req.tool) return "No details came with this request.";
+  return "Nothing here describes the change — if you're unsure, choose Not now.";
+}
 
 // Where an inline activity lands on the web; unmapped kinds stay app-only
 // (mirror of Android TalkScreen widgetRoute — add mappings, never remove
@@ -63,8 +82,10 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [useOracle, setUseOracle] = useState(false);
   const [threadId, setThreadId] = useState("web");
-  const [confirmReq, setConfirmReq] = useState<{ thread_id: string; summary?: string } | null>(null);
+  const [confirmReq, setConfirmReq] = useState<ConfirmReq | null>(null);
   const [crisis, setCrisis] = useState<CrisisInfo | null>(null);
+  // The free daily cap, shown as its own calm card rather than an error bubble.
+  const [freeLimit, setFreeLimit] = useState<FreeLimitError | null>(null);
   const [started, setStarted] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -94,9 +115,10 @@ export default function Chat() {
       } else if (ev.type === "widget") {
         widget = ev.widget;
       } else if (ev.type === "crisis") {
-        setCrisis(ev.resources ?? {});
+        const block = ev.resources;
+        setCrisis({ message: block?.message, lines: block?.lines ?? block?.resources });
       } else if (ev.type === "tool_confirm") {
-        setConfirmReq({ thread_id: ev.thread_id, summary: ev.summary });
+        setConfirmReq({ thread_id: ev.thread_id, summary: ev.summary, tool: ev.tool, args: ev.args });
       } else if (ev.type === "done" || ev.type === "error") {
         const text = ev.type === "done" ? ev.text || acc : acc || ev.detail;
         if (text.trim() || widget) {
@@ -131,12 +153,19 @@ export default function Chat() {
         setSuggestions(sugg.filter((s) => s.action !== "crisis"));
       }
     } catch (err: any) {
-      push({
-        id: uid(),
-        role: "assistant",
-        text: err?.message === "unauthorized" ? "Your session expired — please sign in again."
-          : "I couldn't reach the companion just now — please try again.",
-      });
+      // The free cap is a product state, not a failure. Before this it fell
+      // into the generic branch below and the server's explanation — the
+      // number, the reset time — never reached anyone.
+      if (err instanceof FreeLimitError) {
+        setFreeLimit(err);
+      } else {
+        push({
+          id: uid(),
+          role: "assistant",
+          text: err?.message === "unauthorized" ? "Your session expired — please sign in again."
+            : "I couldn't reach the companion just now — please try again.",
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -163,40 +192,56 @@ export default function Chat() {
     <>
       <AppHeader eyebrow="Talk" title="A space to be heard" />
       <div className="page-body">
+      {/* Free daily cap. A card, not an error bubble: it states the number, when
+          the count clears in LOCAL time, and what still works meanwhile. */}
+      {freeLimit && (
+        <div className="card" style={{ marginBottom: 14 }} role="status">
+          <h2 style={{ fontSize: 17 }}>Today&apos;s free messages are used</h2>
+          <p className="sub" style={{ maxWidth: 560 }}>
+            {freeLimit.limit > 0 && <>Free includes {freeLimit.limit} messages a day; y</>}
+            {freeLimit.limit === 0 && <>Y</>}our count resets at {freeLimit.resetText}. Journal,
+            sleep, breathing and your plan are all still here in the meantime.
+          </p>
+          <div className="row" style={{ gap: 10, marginTop: 10 }}>
+            <Link className="btn" href="/account" style={{ padding: "6px 14px" }}>See plans</Link>
+            <button className="btn ghost" style={{ padding: "6px 14px" }} onClick={() => setFreeLimit(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {crisis && (
         <div className="crisis" role="alert">
           <strong>{crisis.message || "If things feel heavy right now, you deserve support."}</strong>
-          <br />
-          {(crisis.resources && crisis.resources.length > 0
-            ? crisis.resources
-            : CRISIS_FALLBACK
-          ).map((r) => (
-            <span key={r.name}>
-              {r.name}:{" "}
-              <a href={supportHref(r.number)} style={{ color: "inherit" }}
-                target={r.number.startsWith("http") ? "_blank" : undefined}
-                rel={r.number.startsWith("http") ? "noreferrer" : undefined}>
-                <strong>{r.number}</strong>
-              </a>{" "}
-              ·{" "}
-            </span>
-          ))}
-          <Link href="/crisis" style={{ color: "inherit", fontWeight: 700 }}>All support options</Link>
-          <button className="btn ghost" style={{ marginLeft: 8, padding: "4px 12px" }} onClick={() => setCrisis(null)}>
-            Dismiss
-          </button>
+          {/* Tele-MANAS leads, every number dials — and the conversation is never
+              blocked. Region-aware when the server sent a block; the component's
+              own list otherwise, so this never renders empty. */}
+          <CrisisLines lines={crisis.lines?.length ? crisis.lines : undefined} compact />
+          <div className="row" style={{ gap: 10, marginTop: 10 }}>
+            <Link className="btn ghost" href="/support" style={{ padding: "6px 14px" }}>More ways to get help</Link>
+            <button className="btn ghost" style={{ padding: "6px 14px" }} onClick={() => setCrisis(null)}>
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
       {!started && messages.length === 0 ? (
         <>
+          {/* One honest CTA: there is no voice session on the web, so there is no
+              live affordance to imply one (the footnote below says where voice lives). */}
           <section className="talk-hero cz-in">
             <div className="talk-orb" aria-hidden="true" />
             <h2>I'm here whenever you're ready</h2>
+            {/* Says where voice is: the browser client has text only, and the
+                orb above otherwise reads like a mic. */}
             <p>Just type — no pressure to have the right words. Voice lives in the apps.</p>
             <div className="talk-actions">
               <button className="pill-btn" onClick={() => begin()}>Start talking</button>
             </div>
+            <p className="footnote" style={{ marginTop: 14 }}>
+              Voice conversations live in the iOS app. Here, the companion listens in writing.
+            </p>
           </section>
           <div className="dash-grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
             <div className="cz-in cz-d1">
@@ -205,10 +250,10 @@ export default function Chat() {
                 <button key={s} className="suggest-row" onClick={() => begin(s)}>{s}</button>
               ))}
             </div>
-            {/* Merge note: main's slot here was a hardcoded "Recent
-                conversations" list, deleted in WEB_PARITY Wave A as a fake.
-                v1's real "Try together" rail wins; main's entrance class is
-                kept so the motion system still staggers this column. */}
+            {/* The "Try together" rail (WEB_PARITY Wave C, iOS/Android parity):
+                a structured exercise offered before a conversation, per the
+                rule-based-first evidence. The slot it replaced was a hardcoded
+                "Recent conversations" list — deleted in Wave A as a fake. */}
             <div className="cz-in cz-d2">
               <h2 className="serif-h" style={{ marginBottom: 14 }}>Try together</h2>
               {TRY_TOGETHER.map((t) => (
@@ -256,7 +301,8 @@ export default function Chat() {
         {confirmReq && (
           <div className="widgetcard" role="alertdialog" aria-label="Confirm action">
             <span className="eyebrow">The companion wants to act</span>
-            <strong>{confirmReq.summary || "Approve this action?"}</strong>
+            <strong>{confirmHeadline(confirmReq)}</strong>
+            <p className="sub">{confirmDetail(confirmReq)}</p>
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn" onClick={() => resolveConfirm(true)}>Approve</button>
               <button className="btn ghost" onClick={() => resolveConfirm(false)}>Not now</button>

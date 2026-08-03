@@ -106,13 +106,59 @@ export async function authedFetch(
   return res;
 }
 
+/**
+ * The free-tier daily cap.
+ *
+ * Its own error type because the IP rate limiter ALSO returns 429 and means
+ * something entirely different — offering an upgrade to someone who merely
+ * typed too fast would be wrong and manipulative. Only `detail.code` is
+ * trusted, never the status alone.
+ */
+export class FreeLimitError extends Error {
+  readonly limit: number;
+  readonly used: number;
+  /** ISO instant. The quota window is UTC, so this is rendered in the user's
+   *  own timezone rather than described as "midnight". */
+  readonly resetsAt: string;
+
+  constructor(detail: { message?: string; limit?: number; used?: number; resets_at?: string }) {
+    super(detail.message ?? "You've used today's free messages.");
+    this.name = "FreeLimitError";
+    this.limit = detail.limit ?? 0;
+    this.used = detail.used ?? 0;
+    this.resetsAt = detail.resets_at ?? "";
+  }
+
+  /** "5:30 AM" in the browser's timezone. */
+  get resetText(): string {
+    if (!this.resetsAt) return "midnight UTC";
+    const d = new Date(this.resetsAt);
+    return Number.isNaN(d.getTime())
+      ? "midnight UTC"
+      : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+}
+
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await authedFetch(path, init);
   if (!res.ok) {
     let detail = `Request failed: ${res.status}`;
     try {
-      detail = (await res.json()).detail ?? detail;
-    } catch {}
+      const body = await res.json();
+      // `detail` may be an OBJECT (the cap) or a string. Reading it blindly
+      // would put "[object Object]" in front of the user.
+      if (res.status === 429 && body?.detail?.code === "free_daily_limit") {
+        throw new FreeLimitError(body.detail);
+      }
+      // `error` is slowapi's key for the IP rate limiter — without it a
+      // throttled user only sees "Request failed: 429".
+      detail =
+        (typeof body?.detail === "string" ? body.detail : body?.detail?.message) ??
+        body?.error ??
+        detail;
+    } catch (e) {
+      if (e instanceof FreeLimitError) throw e;
+    }
     throw new Error(detail);
   }
   if (res.status === 204) return undefined as T;

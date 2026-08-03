@@ -101,7 +101,7 @@ function LibraryCatalogue() {
         </section>
       ))}
       <p className="footnote">
-        Items with narration play right here — the full mixer and offline playback live in the iOS &amp; Android apps.
+        Items with narration play right here — the full soundscape mixer lives in the iOS &amp; Android apps.
       </p>
       </div>
     </>

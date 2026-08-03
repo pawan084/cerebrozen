@@ -268,22 +268,24 @@ class SoundscapeService : Service() {
     }
 
     private fun buildNotification(playing: Boolean): Notification {
+        // A Service has a Context — nothing user-facing here needs to be a
+        // hardcoded English literal.
         val toggle =
-            if (playing) action("Pause", ACTION_PAUSE, android.R.drawable.ic_media_pause)
-            else action("Play", ACTION_PLAY, android.R.drawable.ic_media_play)
+            if (playing) action(getString(R.string.notif_action_pause), ACTION_PAUSE, android.R.drawable.ic_media_pause)
+            else action(getString(R.string.notif_action_play), ACTION_PLAY, android.R.drawable.ic_media_play)
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_orb)
-            .setContentTitle("Soundscape")
-            .setContentText("CereBro · your own calm mix")
+            .setContentTitle(getString(R.string.notif_soundscape_title))
+            .setContentText(getString(R.string.notif_soundscape_text))
             .setContentIntent(open)
             .setOngoing(playing)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .addAction(toggle)
-            .addAction(action("Stop", ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel))
+            .addAction(action(getString(R.string.notif_action_stop), ACTION_STOP, android.R.drawable.ic_menu_close_clear_cancel))
             .setStyle(
                 Notification.MediaStyle()
                     .setMediaSession(session?.sessionToken)
@@ -296,8 +298,8 @@ class SoundscapeService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Soundscape mix", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Controls for your layered ambient soundscape."
+                NotificationChannel(CHANNEL, getString(R.string.notif_channel_soundscape), NotificationManager.IMPORTANCE_LOW).apply {
+                    description = getString(R.string.notif_channel_soundscape_desc)
                     setShowBadge(false)
                 },
             )

@@ -1,9 +1,12 @@
 "use client";
 
-// The top bar shared by every authed screen: eyebrow + serif title on the left,
-// an optional per-page action slot on the right. (A search field and a
-// notification bell used to render here, but neither had a backend — dead,
-// focusable-but-inert chrome fails the credibility bar and keyboard a11y.)
+// The top bar shared by every authed screen: eyebrow + serif title, plus an
+// optional per-page action slot.
+//
+// It used to carry a "Search calm…" field and a notification bell. Neither had a
+// handler — web has no search backend and no in-app notifications — so they were
+// focusable dead ends with aria-labels promising features that don't exist. They
+// are gone until they're real; the Support door lives in the nav, always visible.
 import type { ReactNode } from "react";
 
 export function AppHeader({

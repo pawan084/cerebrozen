@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { WhyThisWorks } from "@/components/WhyThisWorks";
 import { Icon } from "@/components/icons";
+import { JourneyPath, type DayGuide } from "@/components/JourneyPath";
 import { API_URL, api } from "@/lib/api";
 
 // Same served catalogue the iOS/Android rails read — no hardcoded programs.
@@ -25,11 +26,18 @@ const THUMBS = [
   "linear-gradient(160deg,#7a4a7a,#301640)",
 ];
 
-// today_guide is additive/optional (W15): older servers and guide-less
-// programs simply omit it — tolerate absence, never require it.
+// `today_guide` and `guides` are both additive — omitted for programs with no
+// day guides, and by servers older than the migrations that added them. `guides`
+// is the whole ordered week; `today_guide` stays for older clients and as the
+// fallback when a server sends only that. Tolerate absence, never require it.
 type Active = {
-  content_id: string; title: string; day: number; days: number; completed: boolean;
-  today_guide?: { title?: string; body?: string } | null;
+  content_id: string;
+  title: string;
+  day: number;
+  days: number;
+  completed: boolean;
+  today_guide?: DayGuide | null;
+  guides?: DayGuide[] | null;
 };
 
 export default function Programs() {
@@ -116,15 +124,38 @@ export default function Programs() {
                 ? "Complete — beautifully done. Start another whenever you like."
                 : "The day counts itself from when you started — showing up is the whole assignment."}
             </p>
-            {active.today_guide?.title?.trim() && (
-              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "var(--card-strong)" }}>
-                <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s focus</p>
-                <strong>{active.today_guide.title}</strong>
-                {active.today_guide.body?.trim() && (
-                  <p style={{ color: "var(--muted)", fontSize: 13, margin: "6px 0 0" }}>{active.today_guide.body}</p>
-                )}
-              </div>
-            )}
+            {/* The whole week, or — on a server that sends only `today_guide` —
+                just today's. Blank titles AND bodies count as no guide, matching
+                the mobile clients. */}
+            {(() => {
+              const week = (active.guides ?? []).filter(
+                (g) => g.title.trim() || g.body.trim(),
+              );
+              if (week.length > 0) {
+                return (
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                    <p className="eyebrow" style={{ marginBottom: 2 }}>The week ahead</p>
+                    <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 0 6px" }}>
+                      Every day is open — read ahead, or go back. Nothing here locks.
+                    </p>
+                    <JourneyPath guides={week} currentDay={active.day} />
+                  </div>
+                );
+              }
+              const today = active.today_guide;
+              if (!today || !(today.title.trim() || today.body.trim())) return null;
+              return (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                  <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s guide</p>
+                  {today.title.trim() && (
+                    <h4 style={{ margin: "0 0 4px", fontSize: 14 }}>{today.title}</h4>
+                  )}
+                  {today.body.trim() && (
+                    <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>{today.body}</p>
+                  )}
+                </div>
+              );
+            })()}
             <button
               onClick={leave}
               style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--muted)", padding: 0, marginTop: 10 }}

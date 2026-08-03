@@ -69,10 +69,17 @@ struct ProfileView: View {
                 GuidedTourOverlay.reset()
                 state.tourRequested = true
             }
+            // The one screen the user fills in rather than reads.
+            NavRow(title: "Goals & habits", subtitle: "The part you decide", systemImage: "target", imageURL: Dummy.Img.plan) { GoalsHabitsView() }
             NavRow(title: "Weekly insights", subtitle: "Your progress and patterns", systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }
             NavRow(title: "Premium plan", subtitle: "Manage your subscription", systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }
+            // Written when things are steady, so it sits with the calm settings
+            // rather than filed under crisis, where nobody browses.
+            NavRow(title: "My safety plan", subtitle: "Yours, in your words · works offline", systemImage: "shield.lefthalf.filled", imageURL: Dummy.Img.privacy) { SafetyPlanView() }
+            // Subtitle names the line: "Emergency resources" tells someone in a
+            // heavy moment nothing they can act on — a number does.
             NavRow(title: "Urgent support", subtitle: "Tele-MANAS 14416 · real people, 24/7", systemImage: "phone.fill", imageURL: Dummy.Img.support) { CrisisView() }
             NavRow(title: "Crisis region", subtitle: CrisisDirectory.displayName(state.crisisRegion), systemImage: "globe", imageURL: Dummy.Img.privacy) { CrisisRegionView() }
             NavRow(title: "Human support", subtitle: "Coach or therapist handoff", systemImage: "person.2", imageURL: Dummy.Img.meditate) { HumanSupportView() }

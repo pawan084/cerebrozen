@@ -13,6 +13,20 @@ import android.os.VibratorManager
  * (Compose's LocalHapticFeedback only exposes a couple of constants). Every call
  * is a no-op until [init] runs and on devices without a vibrator, so callers can
  * fire freely. Kept deliberately gentle — this is a wellness app, not a game.
+ *
+ * **Which one do I use?** This object — always, for anything we author. App code
+ * must not reach for Compose's `LocalHapticFeedback` / `HapticFeedbackType`:
+ * two vocabularies drifting apart is how "yes" and "no" end up feeling the same.
+ * `LocalHapticFeedback` is left to Material components' own internals (long-press
+ * on a text selection handle and the like), which we don't drive.
+ *
+ * The vocabulary, and when each is right:
+ * - [soft] — a press landed (popping a bubble, a chip going down).
+ * - [selection] — a discrete choice changed (tab switch, settings row, toggle).
+ * - [tap] — a deliberate primary action (the voice orb).
+ * - [success] — ONE pulse per completion (a saved entry, a finished round).
+ *   Never fire it for progress; never fire it twice for the same moment.
+ * - [warning] — something didn't work, or a destructive button was pressed.
  */
 object Haptics {
     private var vibrator: Vibrator? = null

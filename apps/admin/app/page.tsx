@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { API_URL, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
+import { useEffect, useId, useState } from "react";
+import { API_URL, ApiError, api, clearToken, getToken, login, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
 type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
@@ -31,18 +31,46 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  // Narrow viewports get an off-canvas drawer; ≥900px the CSS ignores this.
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     setAuthed(!!getToken());
     setReady(true);
   }, []);
 
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNavOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
+
   if (!ready) return null;
   if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
 
+  const current = TABS.find((t) => t.key === tab);
+
   return (
-    <div className="shell">
-      <aside className="sidebar">
+    <>
+      <div className="navbar">
+        <button
+          className="iconbtn"
+          aria-label={navOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((o) => !o)}
+        >
+          {navOpen ? <Icon.close /> : <Icon.menu />}
+        </button>
+        <div className="brand">
+          <BrandMark size={22} /> {current?.label ?? "CereBro"}
+        </div>
+      </div>
+      {navOpen && (
+        <button className="scrim" aria-label="Close navigation" onClick={() => setNavOpen(false)} />
+      )}
+      <div className="shell">
+        <aside className={`sidebar ${navOpen ? "open" : ""}`}>
         <div className="brand">
           <BrandMark size={26} /> CereBro
         </div>
@@ -53,7 +81,8 @@ export default function AdminPage() {
             <button
               key={t.key}
               className={`navitem ${tab === t.key ? "active" : ""}`}
-              onClick={() => setTab(t.key)}
+              aria-current={tab === t.key ? "page" : undefined}
+              onClick={() => { setTab(t.key); setNavOpen(false); }}
             >
               <I /> {t.label}
             </button>
@@ -82,17 +111,34 @@ export default function AdminPage() {
         {tab === "safety" && <Safety />}
         {tab === "waitlist" && <WaitlistTab />}
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 
 // Dev-only convenience: prefill + hint for the locally seeded admin account.
-// NODE_ENV is inlined at build time, so none of this ships in production.
-const IS_DEV = process.env.NODE_ENV !== "production";
+// Every condition below is inlined at build time, so a production bundle can't
+// contain the credentials at all — and no single flag being wrong is enough to
+// leak them. All three must agree that this is a local/dev build:
+//   1. a non-production NODE_ENV,
+//   2. the API pointed at a loopback/dev host (never a real domain),
+//   3. no explicit opt-out (NEXT_PUBLIC_HIDE_DEV_LOGIN=1 for demo builds).
+const DEV_API_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "api", "host.docker.internal"];
+const SHOW_DEV_CREDENTIALS = (() => {
+  if (process.env.NODE_ENV === "production") return false;
+  if (process.env.NEXT_PUBLIC_HIDE_DEV_LOGIN === "1") return false;
+  try {
+    const host = new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").hostname;
+    return DEV_API_HOSTS.includes(host) || host.endsWith(".local");
+  } catch {
+    return false;
+  }
+})();
 
 function Login({ onAuthed }: { onAuthed: () => void }) {
-  const [email, setEmail] = useState(IS_DEV ? "admin@cerebro.app" : "");
-  const [password, setPassword] = useState(IS_DEV ? "admin12345" : "");
+  const uid = useId();
+  const [email, setEmail] = useState(SHOW_DEV_CREDENTIALS ? "admin@cerebro.app" : "");
+  const [password, setPassword] = useState(SHOW_DEV_CREDENTIALS ? "admin12345" : "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -104,8 +150,15 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
       const token = await login(email, password);
       setToken(token);
       onAuthed();
-    } catch {
-      setErr("Invalid email or password");
+    } catch (e: any) {
+      // A down backend is not a wrong password — say which one it was.
+      if (e instanceof ApiError && e.kind === "offline") {
+        setErr("We couldn't reach the server. Your details are probably fine — try again in a moment.");
+      } else if (e instanceof ApiError && e.kind !== "unauthorized") {
+        setErr("The server had trouble signing you in. Try again shortly.");
+      } else {
+        setErr("That email and password don't match an admin account.");
+      }
     } finally {
       setBusy(false);
     }
@@ -118,18 +171,32 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
         <h1>CereBro Admin</h1>
         <p>Sign in to manage the platform</p>
         <div className="field">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <label htmlFor={`${uid}-email`}>Email</label>
+          <input
+            id={`${uid}-email`}
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
         <div className="field">
-          <label>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <label htmlFor={`${uid}-password`}>Password</label>
+          <input
+            id={`${uid}-password`}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </div>
         <button className="btn btn-primary" style={{ width: "100%" }} disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
-        <div className="err">{err}</div>
-        {IS_DEV && <div className="hint">Seeded admin: admin@cerebro.app / admin12345</div>}
+        <div className="err" role="alert">{err}</div>
+        {SHOW_DEV_CREDENTIALS && <div className="hint">Seeded admin: admin@cerebro.app / admin12345</div>}
       </form>
     </div>
   );
@@ -137,23 +204,82 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
 
 function useData<T>(loader: () => Promise<T>, deps: any[] = []) {
   const [data, setData] = useState<T | null>(null);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState<ApiError | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     // Ignore a stale in-flight response when deps change (e.g. a slow unfiltered
     // fetch resolving after a search) so the newest request always wins.
     let ignore = false;
     loader()
-      .then((d) => { if (!ignore) { setData(d); setErr(""); } })
-      .catch((e) => { if (!ignore) setErr(e.message === "unauthorized" ? "Session expired — reload to sign in." : e.message); });
+      .then((d) => { if (!ignore) { setData(d); setErr(null); } })
+      .catch((e) => {
+        if (ignore) return;
+        setErr(e instanceof ApiError ? e : new ApiError("request", String(e?.message || e)));
+      });
     return () => { ignore = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
   return { data, err, reload: () => setTick((t) => t + 1) };
 }
 
+/** The one place a failed load is explained. Plain words, and a way forward. */
+function Problem({ err, onRetry }: { err: ApiError | null; onRetry?: () => void }) {
+  if (!err) return null;
+  const expired = err.kind === "unauthorized";
+  const offline = err.kind === "offline";
+  return (
+    <div className="state" role="status">
+      <strong>
+        {expired ? "Your session ended" : offline ? "We can't reach the server" : "The server had trouble with that"}
+      </strong>
+      <p>
+        {expired
+          ? "Sign in again to pick up where you left off."
+          : offline
+            ? "Nothing loaded because the CereBro API didn't answer. It may be restarting, or this machine is offline."
+            : `The request came back as an error${err.status ? ` (${err.status})` : ""}. Nothing was changed.`}
+      </p>
+      {expired ? (
+        <button className="btn btn-ghost btn-sm" type="button" onClick={() => window.location.reload()}>
+          Sign in again
+        </button>
+      ) : (
+        onRetry && (
+          <button className="btn btn-ghost btn-sm" type="button" onClick={onRetry}>
+            Try again
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Honest empty state — shown only when the load succeeded and returned nothing. */
+function Empty({ children }: { children: React.ReactNode }) {
+  return <div className="empty">{children}</div>;
+}
+
+/** Live character budget for the length-capped fields. */
+function Counter({ value, max, id }: { value: string; max: number; id?: string }) {
+  const used = value.length;
+  return (
+    <span className={`counter ${used > max * 0.9 ? "near" : ""}`} id={id}>
+      {used} / {max} characters
+    </span>
+  );
+}
+
+/** A short, human message for an action that failed mid-flight. */
+function actionMessage(e: unknown, fallback: string) {
+  if (e instanceof ApiError) {
+    if (e.kind === "offline") return "We couldn't reach the server — nothing was changed.";
+    if (e.kind === "unauthorized") return "Your session ended — reload to sign in again.";
+  }
+  return fallback;
+}
+
 function Overview() {
-  const { data, err } = useData<Record<string, number>>(() => api("/admin/stats"));
+  const { data, err, reload } = useData<Record<string, number>>(() => api("/admin/stats"));
   const [nudgeMsg, setNudgeMsg] = useState("");
   const [nudgeBusy, setNudgeBusy] = useState(false);
   const cards = [
@@ -171,7 +297,7 @@ function Overview() {
       const res = await api<{ sent: number }>("/admin/nudges/dispatch", { method: "POST" });
       setNudgeMsg(`${res.sent} dispatched`);
     } catch (e: any) {
-      setNudgeMsg(e.message === "unauthorized" ? "Session expired — reload to sign in." : e.message);
+      setNudgeMsg(actionMessage(e, "Dispatch didn't go through — try again."));
     } finally {
       setNudgeBusy(false);
     }
@@ -181,7 +307,7 @@ function Overview() {
     <>
       <h1 className="page-title serif">Overview</h1>
       <div className="page-sub">Platform at a glance</div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       <div className="stats">
         {cards.map((c) => (
           <div className="stat" key={c.k}>
@@ -190,18 +316,61 @@ function Overview() {
           </div>
         ))}
       </div>
-      <div className="toolbar" style={{ marginTop: 20, alignItems: "center", gap: 12, display: "flex" }}>
+      <div className="toolbar inline-actions stack">
         <button className="btn btn-primary" onClick={dispatchNudges} disabled={nudgeBusy}>
           {nudgeBusy ? "Dispatching…" : "Dispatch due nudges"}
         </button>
-        {nudgeMsg && <span className="page-sub" style={{ marginBottom: 0 }}>{nudgeMsg}</span>}
+        {nudgeMsg && <span className="page-sub flush">{nudgeMsg}</span>}
       </div>
     </>
   );
 }
 
+// Display names for the anonymous onboarding steps (backend
+// services/metrics.py ONBOARDING_STEPS — keep the two lists in step).
+// Written as what a person did, not as the event key.
+const ONBOARDING_LABELS: Record<string, string> = {
+  welcome: "Opened the app",
+  age_gate: "Confirmed their age",
+  disclosure: "Read the AI disclosure",
+  language: "Chose a language",
+  state_check: "Said how they were doing",
+  first_reset: "Tried a first breathing reset",
+  first_plan: "Saw their starting plan",
+  signup: "Created an account",
+  consent: "Made their consent choices",
+  notifications: "Answered the notifications ask",
+};
+
+const ENGAGEMENT_LABELS: Record<string, string> = {
+  mood_logs: "Mood check-ins",
+  journal_entries: "Journal entries",
+  chat_messages: "Messages sent to the companion",
+  sleep_logs: "Sleep logs",
+  plan_steps_done: "Plan steps completed",
+};
+
+function label(map: Record<string, string>, key: string) {
+  return map[key] ?? key.replace(/_/g, " ");
+}
+
+/** One labelled bar in a funnel. */
+function Meter({ label: text, n, max }: { label: string; n: number; max: number }) {
+  return (
+    <div className="meter-row">
+      <div className="meter-label">
+        <span>{text}</span>
+        <span className="mono">{n}</span>
+      </div>
+      <div className="meter">
+        <i style={{ width: `${(n / max) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function Analytics() {
-  const { data, err } = useData<any>(() => api("/admin/metrics/overview"));
+  const { data, err, reload } = useData<any>(() => api("/admin/metrics/overview"));
   const { data: onb } = useData<any>(() => api("/admin/metrics/funnel?days=30"));
   const pct = (r: number | null) => (r === null || r === undefined ? "n/a" : `${Math.round(r * 100)}%`);
   const onbMax = Math.max(1, ...(onb?.steps ?? []).map((s: any) => s.installs));
@@ -223,7 +392,7 @@ function Analytics() {
         First-party aggregates computed on our own Postgres — no third-party SDKs,
         no per-user browsing, no content read.
       </div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       {data && (
         <>
           <div className="stats">
@@ -234,8 +403,8 @@ function Analytics() {
             <div className="stat"><div className="n">{data.signups.total}</div><div className="l">Accounts</div></div>
           </div>
 
-          <div className="card" style={{ marginTop: 16, padding: 18 }}>
-            <h3 className="serif" style={{ marginBottom: 10 }}>Retention (signup cohorts, last 35 days)</h3>
+          <div className="panel">
+            <h3 className="serif">Retention (signup cohorts, last 35 days)</h3>
             <table>
               <thead><tr><th>Window</th><th>Cohort</th><th>Retained</th><th>Rate</th></tr></thead>
               <tbody>
@@ -251,54 +420,34 @@ function Analytics() {
             </table>
           </div>
 
-          <div className="card" style={{ marginTop: 16, padding: 18 }}>
-            <h3 className="serif" style={{ marginBottom: 10 }}>Activation funnel (lifetime)</h3>
+          <div className="panel">
+            <h3 className="serif">Activation funnel (lifetime)</h3>
             {funnelSteps.map((s) => (
-              <div key={s.l} style={{ margin: "8px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <span>{s.l}</span><span className="mono">{s.n}</span>
-                </div>
-                <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,0.08)", marginTop: 4 }}>
-                  <div style={{
-                    height: "100%", borderRadius: 99, width: `${(s.n / funnelMax) * 100}%`,
-                    background: "linear-gradient(90deg, var(--lav), var(--lav-2))",
-                  }} />
-                </div>
-              </div>
+              <Meter key={s.l} label={s.l} n={s.n} max={funnelMax} />
             ))}
           </div>
 
           {onb && (
-            <div className="card" style={{ marginTop: 16, padding: 18 }}>
+            <div className="panel">
               <h3 className="serif" style={{ marginBottom: 4 }}>Onboarding funnel (30 days)</h3>
-              <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 10 }}>
+              <div className="note">
                 Unique installs per step — anonymous events, never linked to accounts.
                 Completed: <span className="mono">{onb.completed}</span> · Paywall views:{" "}
                 <span className="mono">{onb.paywall_views}</span> · Paywall taps:{" "}
                 <span className="mono">{onb.paywall_taps}</span>
               </div>
               {onb.steps.map((s: any) => (
-                <div key={s.step} style={{ margin: "8px 0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span>{s.step.replace(/_/g, " ")}</span><span className="mono">{s.installs}</span>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,0.08)", marginTop: 4 }}>
-                    <div style={{
-                      height: "100%", borderRadius: 99, width: `${(s.installs / onbMax) * 100}%`,
-                      background: "linear-gradient(90deg, var(--lav), var(--lav-2))",
-                    }} />
-                  </div>
-                </div>
+                <Meter key={s.step} label={label(ONBOARDING_LABELS, s.step)} n={s.installs} max={onbMax} />
               ))}
             </div>
           )}
 
-          <div className="card" style={{ marginTop: 16, padding: 18 }}>
-            <h3 className="serif" style={{ marginBottom: 10 }}>Engagement, trailing 7 days</h3>
+          <div className="panel">
+            <h3 className="serif">Engagement, trailing 7 days</h3>
             <table>
               <tbody>
                 {Object.entries(data.engagement_7d).map(([k, v]) => (
-                  <tr key={k}><td>{k.replace(/_/g, " ")}</td><td className="mono">{String(v)}</td></tr>
+                  <tr key={k}><td>{label(ENGAGEMENT_LABELS, k)}</td><td className="mono">{String(v)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -310,19 +459,19 @@ function Analytics() {
 }
 
 function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
-  const { data, err } = useData<any>(() => api(`/admin/users/${id}`), [id]);
+  const { data, err, reload } = useData<any>(() => api(`/admin/users/${id}`), [id]);
   return (
-    <div className="card" style={{ marginTop: 16, padding: 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+    <div className="panel">
+      <div className="panel-head">
         <h3 className="serif">Account details</h3>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
       </div>
       <div className="page-sub" style={{ marginTop: 4 }}>
         Counts and account state only — journal, chat, and sleep contents never leave the user's space.
       </div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       {data && (
-        <table style={{ marginTop: 8 }}>
+        <table>
           <tbody>
             <tr><td>Email</td><td className="mono">{data.user.email}</td></tr>
             <tr><td>Tier</td><td>{data.user.subscription_tier || "free"}</td></tr>
@@ -372,9 +521,11 @@ function Users() {
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [nudgeUser, setNudgeUser] = useState<any | null>(null);
+  // Revoking access is destructive: it needs a second step and a reason.
+  const [disabling, setDisabling] = useState<any | null>(null);
 
-  async function toggle(u: any) {
-    await api(`/admin/users/${u.id}/active?active=${!u.is_active}`, { method: "PATCH" });
+  async function setActive(u: any, active: boolean) {
+    await api(`/admin/users/${u.id}/active?active=${active}`, { method: "PATCH" });
     reload();
   }
 
@@ -392,7 +543,7 @@ function Users() {
           />
         </div>
       </div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
           <thead>
@@ -413,27 +564,100 @@ function Users() {
                   <div className="row-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => setSelected(u.id === selected ? null : u.id)}>Details</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setNudgeUser(u)}>Nudge</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>{u.is_active ? "Disable" : "Enable"}</button>
+                    {u.is_active ? (
+                      <button className="btn btn-danger btn-sm" onClick={() => setDisabling(u)}>Disable</button>
+                    ) : (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setActive(u, true)}>Enable</button>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">No matching users.</div>}
+        {data && data.length === 0 && !err && (
+          <Empty>{q ? `No account matches "${q}".` : "No accounts yet."}</Empty>
+        )}
         {data && data.length >= limit && (
           <div style={{ padding: 12, textAlign: "center" }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setLimit((l) => l + 50)}>Load more</button>
           </div>
         )}
       </div>
+      {disabling && (
+        <DisableUserPanel
+          user={disabling}
+          onCancel={() => setDisabling(null)}
+          onDone={() => { setDisabling(null); reload(); }}
+        />
+      )}
       {selected && <UserDetail id={selected} onClose={() => setSelected(null)} />}
       {nudgeUser && <NudgeUserModal user={nudgeUser} onClose={() => setNudgeUser(null)} />}
     </>
   );
 }
 
+// Step two of disabling an account: name the reason, then confirm. The reason
+// is sent alongside the PATCH so it can be recorded once the backend keeps an
+// admin action log (see report — the endpoint currently ignores the body).
+function DisableUserPanel({ user, onCancel, onDone }: { user: any; onCancel: () => void; onDone: () => void }) {
+  const uid = useId();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function confirm() {
+    setBusy(true);
+    setMsg("");
+    try {
+      await api(`/admin/users/${user.id}/active?active=false`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      onDone();
+    } catch (e) {
+      setMsg(actionMessage(e, "That didn't go through — the account is unchanged."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <h3 className="serif">Disable <span className="mono">{user.email}</span>?</h3>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+      </div>
+      <div className="warn">
+        <strong>They'll be signed out and locked out.</strong>
+        Their data stays untouched, and you can re-enable the account at any time.
+      </div>
+      <div className="mt-3">
+        <label htmlFor={`${uid}-reason`}>Why are you disabling this account?</label>
+        <input
+          id={`${uid}-reason`}
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={255}
+          placeholder="e.g. account holder asked us to pause access"
+        />
+        <Counter value={reason} max={255} />
+      </div>
+      <div className="inline-actions mt-3">
+        <button className="btn btn-danger" disabled={busy || !reason.trim()} onClick={confirm}>
+          {busy ? "Disabling…" : "Yes, disable access"}
+        </button>
+        <button className="btn btn-ghost" onClick={onCancel}>Keep access</button>
+        {!reason.trim() && <span className="page-sub flush">A reason is required.</span>}
+        {msg && <span className="page-sub flush">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
 function NudgeUserModal({ user, onClose }: { user: any; onClose: () => void }) {
+  const uid = useId();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -445,20 +669,46 @@ function NudgeUserModal({ user, onClose }: { user: any; onClose: () => void }) {
       await api("/admin/nudges", { method: "POST", body: JSON.stringify({ title, body, user_id: user.id }) });
       setMsg("Queued ✓ — the scheduler delivers it.");
       setTitle(""); setBody("");
-    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+    } catch (e: any) {
+      setMsg(actionMessage(e, "That didn't queue — try again."));
+    } finally { setBusy(false); }
   }
   return (
-    <div className="card" style={{ marginTop: 16, padding: 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+    <div className="panel">
+      <div className="panel-head">
         <h3 className="serif">Nudge <span className="mono">{user.email}</span></h3>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
       </div>
-      <form className="cform" onSubmit={send} style={{ marginTop: 8 }}>
-        <div className="full"><label>Title</label><input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} /></div>
-        <div className="full"><label>Body</label><input value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} /></div>
-        <div className="full" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <form className="cform" onSubmit={send} style={{ marginTop: 8, padding: 0 }}>
+        <div className="full">
+          <label htmlFor={`${uid}-title`}>Title</label>
+          <input
+            id={`${uid}-title`}
+            type="text"
+            aria-describedby={`${uid}-title-count`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            maxLength={160}
+          />
+          <Counter id={`${uid}-title-count`} value={title} max={160} />
+        </div>
+        <div className="full">
+          <label htmlFor={`${uid}-body`}>Body</label>
+          <input
+            id={`${uid}-body`}
+            type="text"
+            aria-describedby={`${uid}-body-count`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            required
+            maxLength={500}
+          />
+          <Counter id={`${uid}-body-count`} value={body} max={500} />
+        </div>
+        <div className="full inline-actions">
           <button className="btn btn-primary" disabled={busy || !title.trim() || !body.trim()}>{busy ? "Queuing…" : "Queue nudge"}</button>
-          {msg && <span className="page-sub" style={{ marginBottom: 0 }}>{msg}</span>}
+          {msg && <span className="page-sub flush">{msg}</span>}
         </div>
       </form>
     </div>
@@ -466,6 +716,30 @@ function NudgeUserModal({ user, onClose }: { user: any; onClose: () => void }) {
 }
 
 const KINDS = ["sleep", "meditation", "breath", "soundscape", "program", "wind_down"];
+
+// The icon the apps draw in the artwork well when an item has no image.
+// Values are SF Symbol names (iOS renders them directly); the list mirrors the
+// symbols already used by the seeded catalogue. Any name the backend already
+// holds is kept selectable even if it isn't listed here.
+const SYMBOLS: { value: string; label: string }[] = [
+  { value: "sparkles", label: "Sparkles (default)" },
+  { value: "moon.stars", label: "Moon and stars" },
+  { value: "moon.zzz", label: "Moon asleep" },
+  { value: "moon.haze", label: "Moon in haze" },
+  { value: "sun.max", label: "Sun" },
+  { value: "waveform", label: "Waveform" },
+  { value: "wind", label: "Wind" },
+  { value: "leaf", label: "Leaf" },
+  { value: "brain", label: "Brain" },
+  { value: "scope", label: "Focus ring" },
+  { value: "alarm", label: "Alarm clock" },
+  { value: "bed.double", label: "Bed" },
+  { value: "figure.mind.and.body", label: "Mind and body" },
+  { value: "heart", label: "Heart" },
+  { value: "drop", label: "Water drop" },
+  { value: "book", label: "Book" },
+];
+
 const EMPTY_CONTENT = {
   title: "", subtitle: "", kind: "meditation", symbol: "sparkles",
   image_url: "", duration_min: 0, premium: false, published: true,
@@ -543,7 +817,7 @@ function Media() {
         </div>
       </div>
 
-      {err && <div className="card">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       {msg && <div className="card" style={{ marginBottom: 12 }}>{msg}</div>}
 
       {groups.map((kind) => (
@@ -617,6 +891,7 @@ function Media() {
 }
 
 function Content() {
+  const uid = useId();
   const { data, err, reload } = useData<any[]>(() => api("/admin/content"));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>(EMPTY_CONTENT);
@@ -624,6 +899,9 @@ function Content() {
   const [busy, setBusy] = useState(false);
   const [narratingId, setNarratingId] = useState<string | null>(null);
   const [audioMsg, setAudioMsg] = useState("");
+  // Deleting is permanent, so it takes two deliberate clicks.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleteMsg, setDeleteMsg] = useState("");
 
   function set(k: string, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
   function closeForm() { setForm(EMPTY_CONTENT); setEditId(null); setShowForm(false); }
@@ -674,8 +952,14 @@ function Content() {
     reload();
   }
   async function remove(id: string) {
-    await api(`/admin/content/${id}`, { method: "DELETE" });
-    reload();
+    setDeleteMsg("");
+    try {
+      await api(`/admin/content/${id}`, { method: "DELETE" });
+      setConfirmDelete(null);
+      reload();
+    } catch (e) {
+      setDeleteMsg(actionMessage(e, "That didn't delete — the item is still here."));
+    }
   }
   async function narrate(id: string) {
     setNarratingId(id);
@@ -686,8 +970,8 @@ function Content() {
     } catch (e: any) {
       setAudioMsg(
         String(e?.message || e).includes("503")
-          ? "Text-to-speech isn't configured (no ElevenLabs key)."
-          : "Narration failed — try again."
+          ? "Audio narration isn't configured yet — no text-to-speech service is connected."
+          : "The narration didn't generate — try again."
       );
     } finally {
       setNarratingId(null);
@@ -699,7 +983,7 @@ function Content() {
       <div className="page-head">
         <div>
           <h1 className="page-title serif">Content library</h1>
-          <div className="page-sub" style={{ marginBottom: 0 }}>{data?.length ?? 0} items</div>
+          <div className="page-sub flush">{data?.length ?? 0} items</div>
         </div>
         <button className="btn btn-primary" onClick={() => (showForm ? closeForm() : setShowForm(true))}>
           {showForm ? "Close" : "+ New item"}
@@ -709,82 +993,98 @@ function Content() {
       {showForm && (
         <form className="card cform" onSubmit={save}>
           <div className="full" style={{ marginBottom: -2 }}>
-            <strong className="serif" style={{ fontSize: 16 }}>{editId ? "Edit item" : "New item"}</strong>
+            <strong className="serif ttl">{editId ? "Edit item" : "New item"}</strong>
           </div>
           <div className="full">
-            <label>Title</label>
-            <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required />
+            <label htmlFor={`${uid}-title`}>Title</label>
+            <input id={`${uid}-title`} type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required />
           </div>
           <div className="full">
-            <label>Subtitle</label>
-            <input type="text" value={form.subtitle} onChange={(e) => set("subtitle", e.target.value)} />
+            <label htmlFor={`${uid}-subtitle`}>Subtitle</label>
+            <input id={`${uid}-subtitle`} type="text" value={form.subtitle} onChange={(e) => set("subtitle", e.target.value)} />
           </div>
           <div>
-            <label>Kind</label>
-            <select value={form.kind} onChange={(e) => set("kind", e.target.value)}>
+            <label htmlFor={`${uid}-kind`}>Kind</label>
+            <select id={`${uid}-kind`} value={form.kind} onChange={(e) => set("kind", e.target.value)}>
               {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
           <div>
-            <label>Duration (min)</label>
-            <input type="number" min={0} value={form.duration_min} onChange={(e) => set("duration_min", e.target.value)} />
+            <label htmlFor={`${uid}-duration`}>Duration (min)</label>
+            <input id={`${uid}-duration`} type="number" min={0} value={form.duration_min} onChange={(e) => set("duration_min", e.target.value)} />
             <small className="field-hint">
               Generating audio overwrites this with the real length of the MP3 —
               for a narrated item the file is the content, so the number clients
               show has to match it.
             </small>
           </div>
-          <div className="full">
-            <label>Image URL</label>
-            <input type="text" value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://…" />
+          <div>
+            <label htmlFor={`${uid}-symbol`}>Icon</label>
+            <select id={`${uid}-symbol`} value={form.symbol} onChange={(e) => set("symbol", e.target.value)}>
+              {!SYMBOLS.some((s) => s.value === form.symbol) && form.symbol && (
+                <option value={form.symbol}>{form.symbol} (current)</option>
+              )}
+              {SYMBOLS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+            <div className="note tight" style={{ marginTop: 6 }}>
+              Drawn in the artwork well when the item has no image.
+            </div>
+          </div>
+          <div>
+            <label htmlFor={`${uid}-image`}>Image URL</label>
+            <input id={`${uid}-image`} type="text" value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://…" />
+            <div className="note tight" style={{ marginTop: 6 }}>Optional — leave empty to use the icon.</div>
           </div>
           <div className="full">
-            <label>Narration script</label>
+            <label htmlFor={`${uid}-script`}>Narration script</label>
             <textarea
+              id={`${uid}-script`}
               rows={6}
               value={form.narration_script}
               onChange={(e) => set("narration_script", e.target.value)}
               placeholder="Read aloud by the narrator voice — keep it calm and non-clinical. Leave empty for ambient-only items."
-              style={{ width: "100%", resize: "vertical" }}
             />
           </div>
-          <div className="full">
-            <label>Day guides (programs)</label>
-            <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 8 }}>
+          <div className="full" role="group" aria-labelledby={`${uid}-guides-label`}>
+            <div className="flabel" id={`${uid}-guides-label`}>Day guides (programs)</div>
+            <div className="note tight">
               One guide per program day — day N of an enrollment reads guide N. Leave empty for non-programs.
             </div>
             {form.day_guides.map((g: any, i: number) => (
               <div key={i} className="card" style={{ padding: 12, marginBottom: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div className="row-between" style={{ marginBottom: 6 }}>
                   <span className="tag muted">Day {i + 1}</span>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeGuide(i)}>Remove</button>
                 </div>
-                <label>Title</label>
+                <label htmlFor={`${uid}-guide-${i}-title`}>Title</label>
                 <input
+                  id={`${uid}-guide-${i}-title`}
                   type="text"
+                  aria-describedby={`${uid}-guide-${i}-title-count`}
                   value={g.title}
                   onChange={(e) => setGuide(i, "title", e.target.value)}
                   placeholder="Day title"
                   required
                   maxLength={160}
                 />
-                <label style={{ marginTop: 8, display: "block" }}>Body</label>
+                <Counter id={`${uid}-guide-${i}-title-count`} value={g.title} max={160} />
+                <label htmlFor={`${uid}-guide-${i}-body`} style={{ marginTop: 8 }}>Body</label>
                 <textarea
+                  id={`${uid}-guide-${i}-body`}
                   rows={3}
                   value={g.body}
                   onChange={(e) => setGuide(i, "body", e.target.value)}
                   placeholder="What this day asks of the user — calm, one focus."
-                  style={{ width: "100%", resize: "vertical" }}
                 />
               </div>
             ))}
             <button type="button" className="btn btn-ghost btn-sm" onClick={addGuide}>+ Add day</button>
           </div>
-          <label className="check">
-            <input type="checkbox" checked={form.premium} onChange={(e) => set("premium", e.target.checked)} /> Premium
+          <label className="check" htmlFor={`${uid}-premium`}>
+            <input id={`${uid}-premium`} type="checkbox" checked={form.premium} onChange={(e) => set("premium", e.target.checked)} /> Premium
           </label>
-          <label className="check">
-            <input type="checkbox" checked={form.published} onChange={(e) => set("published", e.target.checked)} /> Published
+          <label className="check" htmlFor={`${uid}-published`}>
+            <input id={`${uid}-published`} type="checkbox" checked={form.published} onChange={(e) => set("published", e.target.checked)} /> Published
           </label>
           <div className="full">
             <button className="btn btn-primary" disabled={busy}>{busy ? (editId ? "Saving…" : "Creating…") : (editId ? "Save changes" : "Create item")}</button>
@@ -792,16 +1092,18 @@ function Content() {
         </form>
       )}
 
-      {err && <div className="empty">{err}</div>}
-      {audioMsg && <div className="empty">{audioMsg}</div>}
+      <Problem err={err} onRetry={reload} />
+      {audioMsg && <div className="empty" role="status">{audioMsg}</div>}
+      {deleteMsg && <div className="empty" role="status">{deleteMsg}</div>}
       <div className="card">
         <table>
           <thead>
-            <tr><th>Title</th><th>Kind</th><th>Duration</th><th>Tier</th><th>Audio</th><th>Status</th><th></th></tr>
+            <tr><th>Art</th><th>Title</th><th>Kind</th><th>Duration</th><th>Tier</th><th>Audio</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             {(data || []).map((c) => (
               <tr key={c.id}>
+                <td><Thumb item={c} /></td>
                 <td>{c.title}</td>
                 <td><span className="tag muted">{c.kind}</span></td>
                 <td>{c.duration_min ? `${c.duration_min} min` : "—"}</td>
@@ -809,6 +1111,13 @@ function Content() {
                 <td>{c.audio_url ? <span className="tag ok">narrated</span> : c.narration_script ? <span className="tag muted">script only</span> : "—"}</td>
                 <td>{c.published ? "Published" : "Draft"}</td>
                 <td>
+                  {confirmDelete === c.id ? (
+                    <div className="confirm">
+                      <span className="ask">Delete “{c.title}” for good?</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => remove(c.id)}>Yes, delete</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(null)}>Keep it</button>
+                    </div>
+                  ) : (
                   <div className="row-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => startEdit(c)}>Edit</button>
                     {c.narration_script && (
@@ -826,42 +1135,98 @@ function Content() {
                     <button className="btn btn-ghost btn-sm" onClick={() => patch(c.id, { premium: !c.premium })}>
                       {c.premium ? "Make free" : "Make premium"}
                     </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => remove(c.id)}>Delete</button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => { setDeleteMsg(""); setConfirmDelete(c.id); }}
+                    >
+                      Delete
+                    </button>
                   </div>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">No content yet.</div>}
+        {data && data.length === 0 && !err && <Empty>No content yet — add the first item.</Empty>}
       </div>
     </>
   );
 }
 
+/** Small artwork preview for a content row: the image if there is one, the
+ *  icon name if there isn't, and the icon name again if the image 404s. */
+function Thumb({ item }: { item: any }) {
+  const [broken, setBroken] = useState(false);
+  const symbol = item.symbol || "sparkles";
+  if (item.image_url && !broken) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        className="thumb"
+        src={item.image_url}
+        alt=""
+        loading="lazy"
+        // The CSP lets admin load images from any https host (operators paste
+        // third-party CDN URLs). Don't hand that host a referrer revealing the
+        // admin origin/path. Deliberately NOT crossOrigin="anonymous" — that
+        // would make this a CORS request and blank the preview on any CDN
+        // that doesn't send Access-Control-Allow-Origin.
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return (
+    <div className="thumb thumb-empty" title={broken ? `Image didn't load — showing ${symbol}` : symbol}>
+      {broken ? "no image" : symbol.split(".")[0]}
+    </div>
+  );
+}
+
+// Editing one of these changes how risk is detected in journal and chat text,
+// so it gets a warning, an acknowledgement, and a second confirmation click.
+const RISK_PROMPTS = ["safety_classifier"];
+
 // Versioned LLM prompt registry (backend services/prompts.py): every save is a
 // new immutable version, rollback = activate an old one, revert = the code
 // default serves again. Prompt edits reach production without a deploy.
 function PromptsTab() {
+  const uid = useId();
   const { data, err, reload } = useData<any[]>(() => api("/admin/prompts"));
   const [open, setOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ack, setAck] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [msg, setMsg] = useState("");
 
   function startEdit(p: any) {
     setOpen(p.name);
     setDraft(p.template);
     setNotes("");
+    setAck(false);
+    setConfirming(false);
+    setMsg("");
   }
 
   async function save(name: string) {
     if (!draft.trim()) return;
+    // Risk prompts: first click asks, second click saves.
+    if (RISK_PROMPTS.includes(name) && !confirming) {
+      setConfirming(true);
+      return;
+    }
     setBusy(true);
+    setMsg("");
     try {
       await api(`/admin/prompts/${name}`, { method: "POST", body: JSON.stringify({ template: draft, notes }) });
       setOpen(null);
+      setConfirming(false);
       reload();
+    } catch (e) {
+      setMsg(actionMessage(e, "That didn't save — the active version is unchanged."));
     } finally {
       setBusy(false);
     }
@@ -881,20 +1246,23 @@ function PromptsTab() {
       <div className="page-head">
         <div>
           <h1 className="page-title serif">Prompt registry</h1>
-          <div className="page-sub" style={{ marginBottom: 0 }}>
+          <div className="page-sub flush">
             Versioned LLM prompts — edits go live without a deploy; the code default is always the safe floor.
           </div>
         </div>
       </div>
-      {err && <div className="empty">{err}</div>}
-      {(data || []).map((p) => (
-        <div className="card" key={p.name} style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <Problem err={err} onRetry={reload} />
+      {(data || []).map((p) => {
+        const risky = RISK_PROMPTS.includes(p.name);
+        return (
+        <div className="card" key={p.name} style={{ padding: 18, marginBottom: 14 }}>
+          <div className="row-between">
             <div>
-              <strong className="serif" style={{ fontSize: 16 }}>{p.name}</strong>{" "}
+              <strong className="serif ttl">{p.name}</strong>{" "}
               {p.source === "registry"
                 ? <span className="tag elevated">v{p.active_version} active</span>
                 : <span className="tag ok">code default</span>}
+              {risky && <span className="tag crisis" style={{ marginLeft: 6 }}>affects risk detection</span>}
             </div>
             <div className="row-actions">
               {open === p.name
@@ -909,21 +1277,63 @@ function PromptsTab() {
             {open === p.name ? "" : p.template.length > 400 ? `${p.template.slice(0, 400)}…` : p.template}
           </p>
           {open === p.name && (
-            <div style={{ marginTop: 10 }}>
-              <label>Template</label>
+            <div className="mt-3">
+              {risky && (
+                <div className="warn" style={{ marginBottom: 12 }}>
+                  <strong>This prompt decides what counts as a risk signal.</strong>
+                  It classifies journal and chat text, so a weaker version can mean distress
+                  goes unflagged. Safety never blocks a message — but this is what decides
+                  whether support is offered at all. Prefer a small, tested change, and say
+                  what you changed in the notes. The code default stays available as a floor:
+                  “Revert to code default” restores it instantly.
+                </div>
+              )}
+              <label htmlFor={`${uid}-${p.name}-template`}>Template</label>
               <textarea
+                id={`${uid}-${p.name}-template`}
                 aria-label={`Template for ${p.name}`}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => { setDraft(e.target.value); setConfirming(false); }}
                 rows={10}
                 style={{ width: "100%", fontFamily: "monospace", fontSize: 12.5 }}
               />
-              <label>Notes (what changed)</label>
-              <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={255} />
-              <div style={{ marginTop: 10 }}>
-                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => save(p.name)}>
-                  {busy ? "Saving…" : "Save as new version"}
+              <label htmlFor={`${uid}-${p.name}-notes`}>Notes (what changed)</label>
+              <input
+                id={`${uid}-${p.name}-notes`}
+                type="text"
+                aria-describedby={`${uid}-${p.name}-notes-count`}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={255}
+              />
+              <Counter id={`${uid}-${p.name}-notes-count`} value={notes} max={255} />
+              {risky && (
+                <label className="ack" htmlFor={`${uid}-${p.name}-ack`}>
+                  <input
+                    id={`${uid}-${p.name}-ack`}
+                    type="checkbox"
+                    checked={ack}
+                    onChange={(e) => { setAck(e.target.checked); setConfirming(false); }}
+                  />
+                  I understand this changes how risk is detected for every user, as soon as it saves.
+                </label>
+              )}
+              <div className="inline-actions mt-3">
+                <button
+                  className={`btn btn-sm ${risky && confirming ? "btn-danger" : "btn-primary"}`}
+                  disabled={busy || (risky && !ack)}
+                  onClick={() => save(p.name)}
+                >
+                  {busy
+                    ? "Saving…"
+                    : risky && confirming
+                      ? "Confirm — make this the live risk prompt"
+                      : "Save as new version"}
                 </button>
+                {risky && confirming && !busy && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>Cancel</button>
+                )}
+                {msg && <span className="page-sub flush">{msg}</span>}
               </div>
             </div>
           )}
@@ -950,13 +1360,15 @@ function PromptsTab() {
             </table>
           )}
         </div>
-      ))}
-      {data && data.length === 0 && <div className="empty">No prompts registered.</div>}
+        );
+      })}
+      {data && data.length === 0 && !err && <Empty>No prompts registered.</Empty>}
     </>
   );
 }
 
 function NudgesTab() {
+  const uid = useId();
   const { data, err, reload } = useData<any[]>(() => api("/admin/nudges"));
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -977,7 +1389,7 @@ function NudgesTab() {
       setBody("");
       reload();
     } catch (e: any) {
-      setMsg(e.message);
+      setMsg(actionMessage(e, "That didn't queue — nothing was sent."));
     } finally {
       setBusy(false);
     }
@@ -992,21 +1404,39 @@ function NudgesTab() {
       </div>
       <form className="card cform" onSubmit={send}>
         <div className="full">
-          <label>Title</label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} />
+          <label htmlFor={`${uid}-title`}>Title</label>
+          <input
+            id={`${uid}-title`}
+            type="text"
+            aria-describedby={`${uid}-title-count`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            maxLength={160}
+          />
+          <Counter id={`${uid}-title-count`} value={title} max={160} />
         </div>
         <div className="full">
-          <label>Body</label>
-          <input type="text" value={body} onChange={(e) => setBody(e.target.value)} required maxLength={500} />
+          <label htmlFor={`${uid}-body`}>Body</label>
+          <input
+            id={`${uid}-body`}
+            type="text"
+            aria-describedby={`${uid}-body-count`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            required
+            maxLength={500}
+          />
+          <Counter id={`${uid}-body-count`} value={body} max={500} />
         </div>
-        <div className="full" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="full inline-actions">
           <button className="btn btn-primary" disabled={busy || !title.trim() || !body.trim()}>
             {busy ? "Queuing…" : "Queue for all active users"}
           </button>
-          {msg && <span className="page-sub" style={{ marginBottom: 0 }}>{msg}</span>}
+          {msg && <span className="page-sub flush">{msg}</span>}
         </div>
       </form>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
           <thead>
@@ -1024,10 +1454,20 @@ function NudgesTab() {
             ))}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">No nudges yet.</div>}
+        {data && data.length === 0 && !err && <Empty>No nudges yet.</Empty>}
       </div>
     </>
   );
+}
+
+function fmtWhen(s: string) {
+  try {
+    return new Date(s).toLocaleString(undefined, {
+      month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+    });
+  } catch {
+    return s;
+  }
 }
 
 function Safety() {
@@ -1036,56 +1476,199 @@ function Safety() {
     () => api(`/admin/safety?resolved=${showResolved}`),
     [showResolved]
   );
-  async function resolve(id: string) {
-    await api(`/admin/safety/${id}/resolve`, { method: "PATCH" });
-    reload();
+  // Someone's own words are never on screen until a reviewer asks for them,
+  // one row at a time. Revealing is per-session and never sticky.
+  // Someone's own words never travel with the list — the server sends only a
+  // character count. Revealing fetches that one row's text, which is what
+  // writes the audit line server-side. Never sticky, never bulk.
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealErr, setRevealErr] = useState<Record<string, string>>({});
+  const [resolving, setResolving] = useState<string | null>(null);
+
+  async function reveal(s: any) {
+    setRevealErr((e) => ({ ...e, [s.id]: "" }));
+    try {
+      const r = await api<{ id: string; excerpt: string }>(`/admin/safety/${s.id}/excerpt`);
+      setRevealed((prev) => ({ ...prev, [s.id]: r.excerpt || "" }));
+    } catch (e) {
+      setRevealErr((prev) => ({
+        ...prev,
+        [s.id]: actionMessage(e, "That excerpt didn't load — it stays hidden."),
+      }));
+    }
   }
+  function hide(id: string) {
+    setRevealed((r) => {
+      const next = { ...r };
+      delete next[id];
+      return next;
+    });
+    setRevealErr((e) => ({ ...e, [id]: "" }));
+  }
+
   return (
     <>
       <h1 className="page-title serif">Safety review</h1>
-      <div className="page-sub">Flagged signals from journal &amp; chat — wellness support, never a clinical gate.</div>
+      <div className="page-sub">
+        Flagged signals from journal &amp; chat — wellness support, never a clinical gate.
+      </div>
+      <div className="warn" style={{ marginBottom: 16 }}>
+        <strong>What people wrote stays hidden until you ask for it.</strong>
+        Triage from the risk level and reason where you can. If you need someone's own
+        words to make a call, reveal that one row — the reveal is noted on the row, and
+        everything hides again when you leave this page.
+      </div>
       <div className="toolbar">
-        <select value={String(showResolved)} onChange={(e) => setShowResolved(e.target.value === "true")}>
+        <label htmlFor="safety-filter" className="flabel" style={{ marginBottom: 0 }}>Showing</label>
+        <select
+          id="safety-filter"
+          value={String(showResolved)}
+          onChange={(e) => { setShowResolved(e.target.value === "true"); setRevealed({}); setResolving(null); }}
+        >
           <option value="false">Open</option>
           <option value="true">Resolved</option>
         </select>
       </div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
           <thead>
-            <tr><th>Source</th><th>Risk</th><th>Reason</th><th>Excerpt</th><th>When</th><th></th></tr>
+            <tr>
+              <th>Source</th><th>Risk</th><th>Reason</th><th>What they wrote</th><th>When</th><th></th>
+            </tr>
           </thead>
           <tbody>
-            {(data || []).map((s) => (
-              <tr key={s.id}>
-                <td>{s.source}</td>
-                <td><span className={`tag ${s.risk_level === "crisis" ? "crisis" : "elevated"}`}>{s.risk_level}</span></td>
-                <td>{s.reason || "—"}</td>
-                <td style={{ maxWidth: 300, color: "var(--muted)" }}>{s.excerpt}</td>
-                <td>{fmtDate(s.created_at)}</td>
-                <td>
-                  {!s.resolved && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => resolve(s.id)}>Resolve</button>
-                  )}
+            {(data || []).map((s) => {
+              // undefined = never fetched; "" = fetched and genuinely empty.
+              const shownText = revealed[s.id];
+              return (
+                <tr key={s.id}>
+                  <td>{s.source}</td>
+                  <td><span className={`tag ${s.risk_level === "crisis" ? "crisis" : "elevated"}`}>{s.risk_level}</span></td>
+                  <td>{s.reason || "—"}</td>
+                  <td className="cell-narrow">
+                    {shownText !== undefined ? (
+                      <>
+                        <div className="excerpt">{shownText || "—"}</div>
+                        <div className="note tight" style={{ marginTop: 6, marginBottom: 0 }}>
+                          You opened this. The server logged it.
+                        </div>
+                        <button className="btn btn-ghost btn-sm mt-2" onClick={() => hide(s.id)}>
+                          <Icon.eyeOff /> Hide again
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="redacted" aria-hidden="true">••••• ••••••• •••• •••••</div>
+                        <div className="note tight" style={{ marginTop: 4, marginBottom: 0 }}>
+                          Hidden{s.excerpt_chars ? ` · ${s.excerpt_chars} characters` : ""}
+                        </div>
+                        {revealErr[s.id] && <div className="state warn tight">{revealErr[s.id]}</div>}
+                        <button className="btn btn-ghost btn-sm mt-2" onClick={() => reveal(s)}>
+                          <Icon.eye /> Reveal excerpt
+                        </button>
+                      </>
+                    )}
+                  </td>
+                  <td>{fmtDate(s.created_at)}</td>
+                  <td>
+                    {s.resolved ? (
+                      <div className="note tight" style={{ marginBottom: 0, textAlign: "right" }}>
+                        {/* Rendered only if the API sends them back — see report. */}
+                        Closed{s.resolved_by ? ` by ${s.resolved_by}` : ""}
+                        {s.resolved_at ? ` · ${fmtWhen(s.resolved_at)}` : ""}
+                        {s.resolution_note ? <div style={{ marginTop: 2 }}>“{s.resolution_note}”</div> : null}
+                      </div>
+                    ) : (
+                      <div className="row-actions">
+                        <button className="btn btn-ghost btn-sm" onClick={() => setResolving(resolving === s.id ? null : s.id)}>
+                          {resolving === s.id ? "Cancel" : "Resolve"}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {resolving && (data || []).some((s) => s.id === resolving) && (
+              <tr>
+                <td colSpan={6} style={{ paddingTop: 0 }}>
+                  <ResolvePanel
+                    id={resolving}
+                    onCancel={() => setResolving(null)}
+                    onDone={() => { setResolving(null); reload(); }}
+                  />
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">Nothing here. 🌙</div>}
+        {data && data.length === 0 && !err && (
+          <Empty>{showResolved ? "Nothing has been closed yet." : "Nothing open right now. 🌙"}</Empty>
+        )}
       </div>
     </>
   );
 }
 
+// Closing a flag records what the reviewer did about it. The note is required
+// server-side (SafetyResolve.note, min_length=1) and is persisted alongside the
+// resolving admin's id and a timestamp, so a closed row can always say who
+// decided it was handled, and why.
+function ResolvePanel({ id, onCancel, onDone }: { id: string; onCancel: () => void; onDone: () => void }) {
+  const uid = useId();
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function confirm() {
+    setBusy(true);
+    setMsg("");
+    try {
+      await api(`/admin/safety/${id}/resolve`, {
+        method: "PATCH",
+        body: JSON.stringify({ note: note.trim() }),
+      });
+      onDone();
+    } catch (e) {
+      setMsg(actionMessage(e, "That didn't save — the flag is still open."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel" style={{ marginTop: 0 }}>
+      <label htmlFor={`${uid}-note`}>What happened with this one?</label>
+      <textarea
+        id={`${uid}-note`}
+        rows={3}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={500}
+        aria-describedby={`${uid}-note-count`}
+        placeholder="e.g. reached out, support resources shared, follow-up not needed"
+      />
+      <Counter id={`${uid}-note-count`} value={note} max={500} />
+      <div className="inline-actions mt-3">
+        <button className="btn btn-primary btn-sm" disabled={busy || !note.trim()} onClick={confirm}>
+          {busy ? "Closing…" : "Close this flag"}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+        {!note.trim() && <span className="page-sub flush">A short note is required.</span>}
+        {msg && <span className="page-sub flush">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
 function WaitlistTab() {
-  const { data, err } = useData<any[]>(() => api("/admin/waitlist"));
+  const { data, err, reload } = useData<any[]>(() => api("/admin/waitlist"));
   return (
     <>
       <h1 className="page-title serif">Waitlist</h1>
       <div className="page-sub">{data?.length ?? 0} signups from the landing page</div>
-      {err && <div className="empty">{err}</div>}
+      <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
           <thead><tr><th>Email</th><th>Source</th></tr></thead>
@@ -1095,7 +1678,7 @@ function WaitlistTab() {
             ))}
           </tbody>
         </table>
-        {data && data.length === 0 && <div className="empty">No signups yet.</div>}
+        {data && data.length === 0 && !err && <Empty>No signups yet.</Empty>}
       </div>
     </>
   );
@@ -1144,7 +1727,7 @@ function OracleTab() {
         What the agent did, and what it is still waiting on. Tool arguments are recorded
         by name only — never their values.
       </div>
-      {statusErr && <div className="empty">{statusErr}</div>}
+      <Problem err={statusErr} />
 
       <div className="stats">
         <div className="stat"><div className="n">{status?.enabled ? "Live" : "Off"}</div><div className="l">Agent</div></div>
@@ -1169,7 +1752,7 @@ function OracleTab() {
       )}
 
       <h3 className="serif" style={{ marginBottom: 10 }}>Awaiting a decision</h3>
-      {pendingErr && <div className="empty">{pendingErr}</div>}
+      <Problem err={pendingErr} />
       <div className="card">
         <table>
           <thead><tr><th>Tool</th><th>Arguments</th><th>Thread</th><th>Waiting</th></tr></thead>
@@ -1188,7 +1771,7 @@ function OracleTab() {
       </div>
 
       <h3 className="serif" style={{ marginTop: 24, marginBottom: 10 }}>Recent tool calls</h3>
-      {trailErr && <div className="empty">{trailErr}</div>}
+      <Problem err={trailErr} />
       <div className="card">
         <table>
           <thead><tr><th>Tool</th><th>Tier</th><th>Decision</th><th>Arguments</th><th>When</th></tr></thead>

@@ -2,6 +2,7 @@ package com.cerebrozen.app.ui.screens
 
 import org.json.JSONArray
 import org.json.JSONObject
+import com.cerebrozen.app.R
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -13,7 +14,7 @@ import org.junit.Test
 class SleepInsightTest {
 
     private fun night(bed: String?, wake: String?) =
-        Night("2026-07-10", 0, 3, parseClockMinutes(bed), parseClockMinutes(wake))
+        SleepNight("2026-07-10", 0, 3, parseClockMinutes(bed), parseClockMinutes(wake))
 
     // ── Clock parsing ───────────────────────────────────────────────
     @Test
@@ -69,11 +70,18 @@ class SleepInsightTest {
     }
 
     // ── The principle line follows the data ─────────────────────────
+    // rhythmPrinciple returns the string RESOURCE for the principle (so the copy
+    // localizes); the 90-minute boundary is what's under test.
     @Test
-    fun rhythm_principle_switches_on_the_90_minute_boundary() {
+    fun rhythmPrinciple_switches_on_the_90_minute_boundary() {
+        // Both seams exist and must agree on the boundary: the screen branches on
+        // the boolean, and rhythmPrinciple names the copy for the same threshold.
         assertEquals(true, isVariedRhythm(91))
         assertEquals(false, isVariedRhythm(90))
         assertEquals(false, isVariedRhythm(0))
+        assertEquals(R.string.sleep_rhythm_vary, rhythmPrinciple(91))
+        assertEquals(R.string.sleep_rhythm_steady, rhythmPrinciple(90))
+        assertEquals(R.string.sleep_rhythm_steady, rhythmPrinciple(0))
     }
 
     @Test

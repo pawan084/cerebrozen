@@ -14,10 +14,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models.user import User
+from app.models.webhook_event import ProcessedWebhook
 from app.services import appstore, stripe_billing
 
 logger = logging.getLogger("cerebro.webhooks")
@@ -77,13 +80,40 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     if entitlement is None:
         return {"handled": False, "reason": "ignored event"}
     raw_user_id, tier, expires = entitlement
+    customer_id = stripe_billing.customer_id_from_event(event)
+
+    # Idempotency BEFORE any write. Stripe delivers at least once and retries on
+    # any non-2xx or timeout, so a replayed `subscription.deleted` arriving after
+    # a re-subscribe would silently downgrade a paying customer. The uniqueness
+    # is the database's, not this function's — two concurrent deliveries race,
+    # and exactly one may win.
+    event_id = str(event.get("id") or "")
+    if event_id:
+        db.add(ProcessedWebhook(provider="stripe", event_id=event_id))
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            logger.info("Stripe webhook %s already processed — ignoring replay", event_id)
+            return {"handled": False, "reason": "duplicate"}
+
+    user = None
     try:
-        user_id = uuid.UUID(str(raw_user_id))
+        user = await db.get(User, uuid.UUID(str(raw_user_id)))
     except (ValueError, TypeError):
-        return {"handled": False, "reason": "bad user reference"}
-    user = await db.get(User, user_id)
+        user = None
+    if user is None and customer_id:
+        # Subscriptions edited in the Stripe dashboard or the billing portal
+        # arrive without our metadata; the stored customer id is how they map.
+        user = await db.scalar(select(User).where(User.stripe_customer_id == customer_id))
     if user is None:
+        await db.rollback()
         return {"handled": False, "reason": "unknown user"}
+
+    # Remember the customer for events that carry no metadata, and for the
+    # billing portal.
+    if customer_id and user.stripe_customer_id != customer_id:
+        user.stripe_customer_id = customer_id
 
     user.subscription_tier = tier
     # checkout.session.completed carries no period end — keep any prior expiry
@@ -91,5 +121,5 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     if expires is not None or tier == "free":
         user.subscription_expires_at = expires
     await db.commit()
-    logger.info("Stripe %s → user %s tier=%s", event.get("type"), user_id, tier)
+    logger.info("Stripe %s → user %s tier=%s", event.get("type"), user.id, tier)
     return {"handled": True, "tier": tier}

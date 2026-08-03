@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+# `env/` too, not just venv/.venv: a Windows virtualenv under this name (plus a
+# second at backend/env/) was committed whole — 10,804 files including Scripts/*.exe.
 env/
 *.egg-info/
 .pytest_cache/
@@ -42,9 +44,16 @@ temp/
 
 # OS / editor
 .DS_Store
+# macOS writes __MACOSX/._* AppleDouble stubs when unzipping; 3,466 of them were
+# committed alongside an unpacked third-party APK.
 __MACOSX/
 .idea/
 .vscode/
+
+# Unpacked/downloaded app bundles used as references — never source
+*.xapk
+*.apk
+*.aab
 
 # Xcode
 xcuserdata/
@@ -78,3 +87,13 @@ apps/ios/Gemfile.lock
 
 # Local design reference / mockups (large, not source)
 ref/
+
+# Dev-stack PID file written by `npm run stack:up` — runtime state, not source.
+/.launch-dev.pids
+
+# A stray working copy of the SIBLING codebase (the services/engine +
+# services/platform layout lives on origin/main-sibling-legacy, not here).
+# 754 MB, referenced by nothing tracked in this repo, and it carries a real
+# services/engine/.env plus .venv/.next/*.db — none of which may enter history.
+# Ignored rather than deleted: it is not this project's to remove.
+/services/

@@ -22,10 +22,15 @@ type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
 type Plan = { id: string; title: string; steps: Step[] };
-// today_guide is additive/optional (W15) — omit-tolerant like Android.
+// `today_guide` is additive — absent for programs with no day guides, and for
+// servers older than the migration that added them. Omit-tolerant like Android.
 type Program = {
-  content_id: string; title: string; day: number; days: number; completed: boolean;
-  today_guide?: { title?: string; body?: string } | null;
+  content_id: string;
+  title: string;
+  day: number;
+  days: number;
+  completed: boolean;
+  today_guide?: { title: string; body: string } | null;
 };
 
 // Step wells cycle these gradients; the step's SF-symbol name picks the web
@@ -96,9 +101,10 @@ export default function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const days = ["S", "M", "T", "W", "T", "F", "S"];
-  // A gentle mood line for the rail chart — only ever the user's real days.
-  // (Merge note: main's `[3,4,3,4,3,4,4]` fallback shape was an invented mood
-  // line, deleted in WEB_PARITY Wave A. The empty state is honest instead.)
+  // A gentle mood line for the rail chart, scored by recency — only ever the
+  // user's real days. When there aren't two real check-ins yet the card says so;
+  // it never draws an invented shape (the `[3,4,3,4,3,4,4]` fallback that used
+  // to stand in here was deleted in WEB_PARITY Wave A).
   const pts = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
   const presentDays = streak?.week?.filter((d) => d.active).length ?? 0;
   // One honest line for the weekly-insights teaser, from the same mood fetch.
@@ -179,11 +185,21 @@ export default function Home() {
                 <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0" }}>
                   {program.completed ? "Complete — beautifully done." : "Showing up is the whole assignment today."}
                 </p>
-                {program.today_guide?.title?.trim() && (
-                  <p style={{ color: "var(--text)", fontSize: 13, margin: "8px 0 0" }}>
-                    <strong>Today&apos;s focus · </strong>{program.today_guide.title}
-                  </p>
-                )}
+                {/* The day's own guide, so the card is not day-blind. */}
+                {program.today_guide &&
+                  (program.today_guide.title.trim() || program.today_guide.body.trim()) && (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+                      <p className="eyebrow" style={{ marginBottom: 4 }}>Today&apos;s guide</p>
+                      {program.today_guide.title.trim() && (
+                        <h4 style={{ margin: "0 0 4px", fontSize: 14 }}>{program.today_guide.title}</h4>
+                      )}
+                      {program.today_guide.body.trim() && (
+                        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
+                          {program.today_guide.body}
+                        </p>
+                      )}
+                    </div>
+                  )}
               </Link>
             )}
 
@@ -246,6 +262,11 @@ export default function Home() {
                 no loss language — so v1's card wins and the streak-milestone
                 ring goes with it. The entrance class is kept. */}
             <div className="rail-card cz-in cz-d2">
+              {/* Days present in the week, not a consecutive run: a run is a
+                  thing that breaks, which is the loss framing the presence pass
+                  removed — and the sub-line right below already promises "no
+                  streaks to break". iOS and Android both show the weekly count,
+                  so this keeps the three clients saying the same thing. */}
               <span className="kicker">This week</span>
               <div className="rail-big"><b>{presentDays}</b><span>{presentDays === 1 ? "day present" : "days present"}</span></div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
@@ -270,11 +291,13 @@ export default function Home() {
                     fill="none" stroke="url(#mg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                     points={pts.map((s, i) => `${(i / (pts.length - 1)) * 290 + 5},${80 - ((s - 1) / 4) * 66}`).join(" ")}
                   />
-                  <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="#8fe6ee" /><stop offset="1" stopColor="#8a7bf0" /></linearGradient></defs>
+                  {/* Tokens, not literals: this chart sits on a page that flips
+                      to Dawn, where the Night cyan/lavender lose their ground. */}
+                  <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stopColor="var(--cyan)" /><stop offset="1" stopColor="var(--lav)" /></linearGradient></defs>
                 </svg>
               ) : (
                 <p className="sub" style={{ marginTop: 12 }}>
-                  Your line starts after two check-ins.
+                  Your line starts after two check-ins — tap a face above and it begins.
                 </p>
               )}
             </div>

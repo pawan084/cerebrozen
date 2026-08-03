@@ -1,5 +1,7 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.ui.text.input.KeyboardType
+import com.cerebrozen.app.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -30,15 +32,17 @@ class ScreenLogicTest {
         assertEquals("23:30", hhmm(-30))        // −30m from midnight wraps back a day
     }
 
-    // ── Greeting buckets (copy resolves via resources — i18n) ───────
+    // ── Greeting buckets ────────────────────────────────────────────
+    // greetingFor returns the string RESOURCE for the bucket (so the copy can
+    // localize); the buckets themselves are what's under test.
     @Test
     fun greeting_buckets_by_hour() {
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_morning, greetingResFor(5))
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_morning, greetingResFor(11))
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_afternoon, greetingResFor(12))
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_afternoon, greetingResFor(16))
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_evening, greetingResFor(17))
-        assertEquals(com.cerebrozen.app.R.string.today_greeting_evening, greetingResFor(2))   // small hours
+        assertEquals(R.string.today_greeting_morning, greetingFor(5))
+        assertEquals(R.string.today_greeting_morning, greetingFor(11))
+        assertEquals(R.string.today_greeting_afternoon, greetingFor(12))
+        assertEquals(R.string.today_greeting_afternoon, greetingFor(16))
+        assertEquals(R.string.today_greeting_evening, greetingFor(17))
+        assertEquals(R.string.today_greeting_evening, greetingFor(2))   // small hours
     }
 
     // ── Parsers (JSON → model) ──────────────────────────────────────
@@ -49,7 +53,7 @@ class ScreenLogicTest {
             .put(JSONObject().put("date", "2026-07-05").put("quality", 3))  // no duration_min
         val nights = parseNights(rows)
         assertEquals(2, nights.size)
-        assertEquals(Night("2026-07-04", 445, 4), nights[0])
+        assertEquals(SleepNight("2026-07-04", 445, 4), nights[0])
         assertEquals(0, nights[1].duration)   // optInt default
     }
 
@@ -140,12 +144,12 @@ class ScreenLogicTest {
 
     // ── Presence milestones (REDESIGN §3.6 — counts showing up, never misses) ──
     @Test
-    fun milestoneFor_fires_only_on_milestone_days() {
-        assertEquals(3, milestoneFor(3))
-        assertEquals(7, milestoneFor(7))
-        assertEquals(null, milestoneFor(0))
-        assertEquals(null, milestoneFor(4))
-        assertEquals(null, milestoneFor(15))
+    fun milestone_fires_only_on_milestone_days() {
+        assertEquals(true, isMilestone(3))
+        assertEquals(true, isMilestone(7))
+        assertEquals(false, isMilestone(0))
+        assertEquals(false, isMilestone(4))
+        assertEquals(false, isMilestone(15))
     }
 
     // ── Home banner slot (W9) — priority order, time windows, dismissal ──
@@ -307,12 +311,168 @@ class ScreenLogicTest {
     private fun freshStore() = com.cerebrozen.app.net.Session
         .resetForTest(FakeStore()) { _, _, _, _, _ -> 200 to "{}" }
 
-    // ── Breathe engine (one engine, three presets; labels are res-driven) ──
+    // ── Onboarding funnel progress (must not key off translated copy) ──
+    @Test
+    fun funnelProgress_climbs_with_the_step_not_the_language() {
+        // The bug this replaced: the fraction matched the English eyebrow copy,
+        // so on a Hindi device every step after Language fell through to 1f.
+        val fractions = OStep.entries.map { funnelProgress(it) }
+        assertEquals(OStep.entries.size, fractions.size)
+        assertEquals(0f, funnelProgress(OStep.Welcome), 0.0001f)
+        assertEquals(1f, funnelProgress(OStep.SignUp), 0.0001f)
+        fractions.zipWithNext().forEach { (a, b) ->
+            assertTrue("the bar never goes backwards", b > a)
+        }
+    }
+
+    // ── Failure text a user is actually allowed to see ──
+    @Test
+    fun aNetworkFailureShowsOurWordsNotTheJvmS() {
+        // Pulling the plug on the dev stack used to put "Failed to connect to
+        // localhost/127.0.0.1:8000" on the Programs screen, because 19 call
+        // sites did `it.message ?: fallback`. In the field that reads "Unable to
+        // resolve host ..." — true, and meaningless to someone who lost signal.
+        val fallback = "We couldn't reach the server."
+        assertEquals(fallback, java.net.ConnectException("Failed to connect to localhost/127.0.0.1:8000").userMessage(fallback))
+        assertEquals(fallback, java.net.UnknownHostException("api.cerebrozen.in").userMessage(fallback))
+        assertEquals(fallback, org.json.JSONException("End of input at character 0").userMessage(fallback))
+    }
+
+    @Test
+    fun theServersOwnDetailIsKeptBecauseItIsWrittenForPeople() {
+        // Session.raw already curates ApiException's message from the server's
+        // `detail` — including the free-tier cap and the rate limiter — so that
+        // one must survive rather than be flattened into a generic line.
+        val fallback = "generic"
+        assertEquals(
+            "You've used your 50 messages for today.",
+            com.cerebrozen.app.net.Session.ApiException(429, "You've used your 50 messages for today.").userMessage(fallback),
+        )
+        // A blank server detail is no better than nothing — fall back.
+        assertEquals(fallback, com.cerebrozen.app.net.Session.ApiException(500, "").userMessage(fallback))
+    }
+
+    // ── Trusted contact (the crisis surface's one editable thing) ──
+    @Test
+    fun aContactIsSavableOnceThereIsSomewhereToSendIt() {
+        // Name stays optional on purpose: the escalation mail addresses the
+        // person generically when it is blank, and demanding a name before
+        // someone can nominate a lifeline is friction in the wrong place.
+        assertEquals(true, trustedContactReady("someone@example.com"))
+        assertEquals(true, trustedContactReady("+91 98765 43210"))
+        assertEquals(false, trustedContactReady(""))
+        assertEquals(false, trustedContactReady("   "))
+    }
+
+    @Test
+    fun theKeyboardMatchesHowTheContactIsReached() {
+        assertEquals(KeyboardType.Email, trustedKeyboard("email"))
+        assertEquals(KeyboardType.Phone, trustedKeyboard("sms"))
+        assertEquals(KeyboardType.Phone, trustedKeyboard("phone"))
+        // An unknown method must not silently become an email keyboard.
+        assertEquals(KeyboardType.Phone, trustedKeyboard("carrier-pigeon"))
+    }
+
+    // ── ContentList fallback (the offline copy of a section's advice) ──
+    @Test
+    fun aSectionWithNothingToShowFallsBackToItsOwnCopy() {
+        // Sleep's wind-down guidance is why the slot exists. Its bundled CBT-I
+        // stimulus-control advice used to render UNCONDITIONALLY beneath the
+        // served list, so online users met the same two ideas twice within one
+        // screen — once as a served guide, once as a card, with the same
+        // citation printed under each.
+        val empty = JSONArray()
+        val one = JSONArray().put(JSONObject().put("title", "Dim the inputs"))
+
+        assertEquals(ContentListState.Items, contentListState(null, one, hasFallback = true))
+        assertEquals(ContentListState.Fallback, contentListState(null, empty, hasFallback = true))
+        assertEquals(ContentListState.Fallback, contentListState("boom", null, hasFallback = true))
+
+        // Without a fallback the caller still gets the honest empty/error line.
+        assertEquals(ContentListState.Empty, contentListState(null, empty, hasFallback = false))
+        assertEquals(ContentListState.Error, contentListState("boom", null, hasFallback = false))
+    }
+
+    @Test
+    fun loadingNeverShowsTheFallbackFirst() {
+        // A flash of the offline copy before the real list lands would be worse
+        // than the shimmer — the user would read advice, then watch it replaced.
+        assertEquals(ContentListState.Loading, contentListState(null, null, hasFallback = true))
+        assertEquals(ContentListState.Loading, contentListState(null, null, hasFallback = false))
+    }
+
+    // ── Home content rail follows the same clock the theme does ──
+    @Test
+    fun theSmallHoursBelongToTheNightBefore() {
+        // Seen on device at 00:09: the theme had gone Night for wind-down while
+        // the rail offered "For this morning · Body scan" — a 10-minute
+        // meditation, to someone still awake past midnight. The rail and the
+        // theme now read the same clock.
+        assertEquals("sleep", railKindFor(0).first)
+        assertEquals("sleep", railKindFor(3).first)
+        assertEquals("sleep", railKindFor(23).first)
+        assertEquals("sleep", railKindFor(21).first)
+        // Daytime is unchanged.
+        assertEquals("meditation", railKindFor(9).first)
+        assertEquals("soundscape", railKindFor(14).first)
+        assertEquals("sleep", railKindFor(19).first)
+        // 06:00 is the boundary: the night is over, the morning has started.
+        assertEquals("meditation", railKindFor(6).first)
+    }
+
+    // ── Onboarding reminder options (every chip must mean something) ──
+    @Test
+    fun everyReminderChipResolvesToARealChoice() {
+        // A "Private previews" chip shipped in this single-select group. Nothing
+        // read the value, no preview setting exists, and the reminder it would
+        // have hidden says only "A moment for you" — so what it actually did was
+        // fall through to the else branch and turn reminders OFF. A user who
+        // asked for a discreet daily nudge got no nudge, and was told nothing.
+        //
+        // The rule this pins: an option in NOTIFY is a TIME, or it is the
+        // explicit "none". There is no third, silent meaning.
+        val timed = NOTIFY.filter { it.id != "none" }
+        assertTrue("the group must still offer real times", timed.size >= 2)
+        timed.forEach { option ->
+            val hour = reminderHourFor(option.id)
+            assertTrue(
+                "NOTIFY option '${option.id}' silently means no-reminder",
+                hour != null && hour in 0..23,
+            )
+        }
+        assertEquals(null, reminderHourFor("none"))
+        assertEquals(9, reminderHourFor("morning"))
+        assertEquals(19, reminderHourFor("evening"))
+    }
+
+    // ── AI-disclosure cadence (re-show every 3h, across tab switches) ──
+    @Test
+    fun disclosureDue_only_after_the_full_interval() {
+        val now = 1_000_000_000_000L
+        assertEquals(false, disclosureDue(now, now))
+        assertEquals(false, disclosureDue(now - DISCLOSURE_INTERVAL_MS + 1, now))
+        assertEquals(true, disclosureDue(now - DISCLOSURE_INTERVAL_MS, now))
+        assertEquals(true, disclosureDue(now - DISCLOSURE_INTERVAL_MS * 5, now))
+    }
+
+    @Test
+    fun disclosureDue_treats_an_unset_or_backwards_clock_as_due() {
+        val now = 1_000_000_000_000L
+        assertEquals(true, disclosureDue(0L, now))
+        assertEquals(true, disclosureDue(-1L, now))
+        assertEquals(true, disclosureDue(now + 60_000, now))   // clock stepped back
+    }
+
+    // ── Breathe engine (one engine, three presets) ──────────────────
     @Test
     fun breathePhases_box_paces_four_beats_of_four() {
         val phases = breathePhases(BreathePreset.Box)
-        assertEquals(listOf(BreathKind.IN, BreathKind.HOLD, BreathKind.OUT, BreathKind.HOLD),
-                     phases.map { it.kind })
+        // Asserted on the KIND, not the label resource: cues and haptics branch
+        // on the enum, so that is the thing the pacing must get right.
+        assertEquals(
+            listOf(BreathKind.IN, BreathKind.HOLD, BreathKind.OUT, BreathKind.HOLD),
+            phases.map { it.kind },
+        )
         assertEquals(List(4) { 4 }, phases.map { it.seconds })
         assertEquals(listOf(true, true, false, false), phases.map { it.expanded })
         assertEquals(phases, breathePhases(BreathePreset.Color))   // Color shares the pacing

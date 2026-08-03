@@ -2,14 +2,17 @@ package com.cerebrozen.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,10 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,6 +75,8 @@ import com.cerebrozen.app.ui.screens.BubblePopScreen
 import com.cerebrozen.app.ui.screens.Celebration
 import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.CbtReframeScreen
+import com.cerebrozen.app.ui.screens.IntentionScreen
+import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
@@ -87,7 +91,9 @@ import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
 import com.cerebrozen.app.ui.screens.PlayerScreen
+import com.cerebrozen.app.ui.screens.GoalsScreen
 import com.cerebrozen.app.ui.screens.RitualBuilderScreen
+import com.cerebrozen.app.ui.screens.SafetyPlanScreen
 import com.cerebrozen.app.ui.screens.SearchScreen
 import com.cerebrozen.app.ui.screens.PremiumScreen
 import com.cerebrozen.app.ui.screens.PrivacyPolicyScreen
@@ -97,7 +103,7 @@ import com.cerebrozen.app.ui.screens.RemindersScreen
 import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
-import com.cerebrozen.app.ui.screens.TalkMode
+import com.cerebrozen.app.ui.screens.TrustedContactScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
@@ -119,12 +125,73 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 
 // W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
 // instead of stock Material glyphs — one consistent 2dp rounded-line set.
-private enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
+internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
     Home("home", R.string.tab_home, R.drawable.ic_tab_home),
     Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
     Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
+}
+
+/**
+ * The floating tab bar — and the rule that it yields to the keyboard.
+ *
+ * With the IME up this emits **nothing**, so Scaffold reserves no bottom slot for
+ * it. It used to emit the pill unconditionally: the keyboard drew over it, but
+ * Scaffold still charged the content that height, and every screen body already
+ * carries `imePadding()` (see Common.kt `Page`). The two stacked, so a composer
+ * floated ~78dp above the keyboard with an empty band under it — worst on Talk and
+ * Journal, the two screens where you type most. Nav that hides while typing is
+ * also the Material behaviour, and typing is the one moment nobody is navigating.
+ *
+ * [imeVisible] is a parameter, defaulting to the real inset, so the rule is
+ * renderable off-device (`BottomNavImeTest`).
+ */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+internal fun BottomNavBar(
+    currentRoute: String,
+    compact: Boolean,
+    imeVisible: Boolean = WindowInsets.isImeVisible,
+    onSelect: (Tab) -> Unit,
+) {
+    if (imeVisible) return
+    // A floating lavender pill over a dark scrim — the tabs read as a lifted
+    // capsule rather than a flat system bar.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
+            .navigationBarsPadding()
+            .padding(horizontal = 13.dp, vertical = 4.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(if (compact) 72.dp else 78.dp)
+                .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
+                    ),
+                )
+                .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
+                .padding(horizontal = 9.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tab.entries.forEach { tab ->
+                BottomTabItem(
+                    tab = tab,
+                    selected = currentRoute == tab.route,
+                    compact = compact,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelect(tab) },
+                )
+            }
+        }
+    }
 }
 
 /** One tab in the floating pill nav: a rounded cell that lights up with a soft
@@ -167,7 +234,13 @@ private fun BottomTabItem(
                 if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
                 RoundedCornerShape(20.dp),
             )
-            .clickable { onClick() }
+            // TalkBack must announce these as tabs, and say which one is
+            // selected — a bare clickable Column announces neither.
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                onClick = onClick,
+            )
             .padding(vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -182,7 +255,9 @@ private fun BottomTabItem(
         ) {
             Icon(
                 painterResource(tab.icon),
-                contentDescription = label,
+                // The label Text below carries the name; a description here
+                // would make TalkBack say it twice inside the tab node.
+                contentDescription = null,
                 tint = tint,
                 // Thin 2dp-line icons carry far less visual weight than filled
                 // glyphs — owner feedback (2026-07-13): 18dp read tiny on device.
@@ -236,7 +311,15 @@ private fun ThemeGlideScrim() {
 }
 
 /** Keeps the status/navigation-bar icon appearance in step with the theme:
- * light icons over Night, dark icons over Dawn. */
+ * light icons over Night, dark icons over Dawn.
+ *
+ * **Call this AFTER the frame's `AppTheme.forceNight` decision.** It reads the
+ * theme during composition, so a call placed above the assignment sees the
+ * previous value. Found on a physical device: this used to sit at the top of
+ * [CereBroApp], above `forceNight = true`, and painted near-black clock and
+ * status icons over the deep-indigo Night splash for its full 1.1s — the very
+ * first frame of the app, on any phone whose system theme is light.
+ */
 @Composable
 private fun SyncSystemBarIcons() {
     val view = androidx.compose.ui.platform.LocalView.current
@@ -259,19 +342,49 @@ private fun SyncSystemBarIcons() {
     }
 }
 
+
+/** Routes that are a "sleep context" and therefore always Night (REDESIGN §4.1).
+ *
+ * Everything the Sleep tab can push, not just the tab: the full player and the
+ * soundscape mixer are used with the lights off, and a bright screen there is
+ * worse than anywhere else in the product. Keep this in step with the NavRows
+ * in SleepScreen — a new sleep destination that is not listed here will flip
+ * the theme mid-wind-down.
+ */
+private val SLEEP_CONTEXT_ROUTES = setOf(
+    Tab.Sleep.route, "player", "sounds", "sounds/mixer",
+)
+
 @Composable
 fun CereBroApp() {
     // Dusk & Dawn wiring (REDESIGN §4.1): feed the system dark/light signal in,
     // restore the persisted preference once, and keep the bar icons in step.
     AppTheme.systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    remember { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")); true }
-    SyncSystemBarIcons()
+    // Wind-down hours need the clock, and the clock moves while the app is open —
+    // someone reading at 20:58 should not still be on a bright screen at 21:30.
+    LaunchedEffect(Unit) {
+        while (true) {
+            AppTheme.hour = java.time.LocalTime.now().hour
+            delay(60_000)
+        }
+    }
+    // Restore the persisted Appearance choice exactly once. A `remember { … }`
+    // calc lambda must stay side-effect free (Compose may run it speculatively),
+    // so the write lives in a LaunchedEffect like the splash below.
+    LaunchedEffect(Unit) { AppTheme.mode = themeModeFromPref(Session.prefGet("theme_mode")) }
 
     // A brief branded splash on cold launch — always Night (brand moment).
+    // Reduce Motion gets the settled frame instantly, so holding it for the full
+    // animation length would just be a longer dead screen: shorten the hold too.
+    val splashReduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     var showSplash by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { delay(1100); showSplash = false }
+    LaunchedEffect(splashReduceMotion) {
+        delay(if (splashReduceMotion) 450 else 1100)
+        showSplash = false
+    }
     if (showSplash) {
         AppTheme.forceNight = true
+        SyncSystemBarIcons()
         Splash()
         return
     }
@@ -281,6 +394,7 @@ fun CereBroApp() {
     // bespoke night art doesn't theme, so it is always Night.
     if (!Session.signedIn) {
         AppTheme.forceNight = true
+        SyncSystemBarIcons()
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             AuroraBackground()
             Onboarding()
@@ -308,8 +422,14 @@ fun CereBroApp() {
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
     // Sleep contexts always keep the night palette (REDESIGN §4.1).
-    AppTheme.forceNight = current == Tab.Sleep.route || current.startsWith("sounds")
-    val haptics = LocalHapticFeedback.current
+    //
+    // The TAB alone is not the context. Found on a physical device: playing a
+    // sleep story and tapping the now-playing bar pushed `player`, which fell
+    // out of this check and rendered a full-screen bright Dawn player at 22:46
+    // — with the sleep timer running, from a Night tab. That is the exact harm
+    // the rule exists to prevent, and it was invisible to every test.
+    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
+    SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
     // E6: the accent cross-fades between tabs instead of snapping; Reduce Motion
@@ -353,48 +473,17 @@ fun CereBroApp() {
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
+            // Tabs only on tab routes — a pushed sub-screen owns the whole screen.
+            // (BottomNavBar itself additionally yields to the keyboard.)
             if (Tab.entries.any { it.route == current }) {
-            // A floating lavender pill over a dark scrim — the tabs read as a lifted
-            // capsule rather than a flat system bar.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
-                    .navigationBarsPadding()
-                    .padding(horizontal = 13.dp, vertical = 4.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(if (compactNav) 72.dp else 78.dp)
-                        .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
-                            ),
-                        )
-                        .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Tab.entries.forEach { tab ->
-                        BottomTabItem(
-                            tab = tab,
-                            selected = current == tab.route,
-                            compact = compactNav,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (current != tab.route) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                        )
-                    }
+            BottomNavBar(currentRoute = current, compact = compactNav) { tab ->
+                // One haptic vocabulary app-wide: the custom
+                // Haptics object (see ui/Haptics.kt).
+                if (current != tab.route) Haptics.selection()
+                navController.navigate(tab.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
                 }
             }
             }
@@ -418,25 +507,17 @@ fun CereBroApp() {
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
             composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
-            composable("talk/live") {
-                TalkScreen(
-                    onOpen = open,
-                    mode = TalkMode.Live,
-                    onBack = back,
-                    onChat = {
-                        navController.navigate("talk/chat") {
-                            popUpTo("talk/live") { inclusive = true }
-                        }
-                    },
-                )
-            }
-            composable("talk/chat") {
-                TalkScreen(onOpen = open, mode = TalkMode.Chat, onBack = back)
-            }
+            // The live/chat split belonged to the two-mode Talk screen. Talk is
+            // one surface again — voice and typing live together, with the
+            // composer pinned below the transcript — so both routes land on it
+            // rather than dead-ending anything still pointing at them.
+            composable("talk/live") { TalkScreen(onOpen = open) }
+            composable("talk/chat") { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
+            composable("trustedcontact") { TrustedContactScreen(onBack = back) }
             // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
             // a pill switch. `sounds/mixer` deep-links straight to the Mixer (the
             // old standalone `soundscape` route folded in here).
@@ -453,6 +534,8 @@ fun CereBroApp() {
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }
+            composable("safetyplan") { SafetyPlanScreen(onBack = back) }
+            composable("goals") { GoalsScreen(onBack = back) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
@@ -475,7 +558,9 @@ fun CereBroApp() {
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
-            composable("crisis") { CrisisScreen(onBack = back) }
+            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
+            composable("intention") { IntentionScreen(onBack = back) }
+            composable("crisis") { CrisisScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }

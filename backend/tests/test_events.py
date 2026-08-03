@@ -81,3 +81,45 @@ async def test_onboarding_funnel_counts_unique_installs(admin_client):
 
 async def test_funnel_requires_admin(auth_client):
     assert (await auth_client.get("/admin/metrics/funnel")).status_code == 403
+
+
+def test_onboarding_step_vocabulary_is_a_cross_stack_contract():
+    """iOS, Android and the web client all send these exact strings, and the
+    admin funnel joins on them. A rename drops a bar silently instead of
+    erroring, so the list is pinned here as well as in each client.
+
+    Mirrors `apps/app/lib/analytics.ts::ONBOARDING_STEPS`.
+    """
+    from app.services.metrics import ONBOARDING_STEPS
+
+    assert ONBOARDING_STEPS == [
+        "welcome", "age_gate", "disclosure", "language", "state_check",
+        "first_reset", "first_plan", "signup", "consent", "notifications",
+    ]
+
+
+async def test_web_source_is_accepted_and_kept(client):
+    """`web`/`app` were valid in the schema but no client ever sent them, so the
+    browser funnel was invisible. Pin that the app source round-trips."""
+    r = await client.post("/events", json={
+        "anon_id": "a" * 16,
+        "source": "app",
+        "events": [{"name": "onboarding_step", "step": "consent"},
+                   {"name": "paywall_view"}],
+    })
+    assert r.status_code == 202
+    assert r.json()["accepted"] == 2
+
+
+async def test_events_ignore_a_bearer_token(client):
+    """The endpoint takes no auth on purpose — events must not be joinable to a
+    user even by accident. Sending a token must not change the outcome."""
+    signup = await client.post("/auth/signup", json={
+        "email": "ev-auth@test.app", "password": "password123", "name": "E"})
+    client.headers["Authorization"] = f"Bearer {signup.json()['access_token']}"
+
+    r = await client.post("/events", json={
+        "anon_id": "b" * 16, "source": "app",
+        "events": [{"name": "onboarding_done"}],
+    })
+    assert r.status_code == 202 and r.json()["accepted"] == 1

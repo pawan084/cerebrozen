@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Diversity3
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,6 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material3.AlertDialog
+import com.cerebrozen.app.ui.theme.Danger
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -58,6 +65,7 @@ fun YouScreen(onOpen: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var companion by remember { mutableStateOf("") }
     var language by remember { mutableStateOf("") }
+    var signOutAsked by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -113,7 +121,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     Text(stringResource(R.string.crisis_telemanas_line),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
-                Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
+                // The same AutoMirrored chevron every NavRow on this screen uses.
+                // This one was a literal "›" glyph at a different size and colour,
+                // and it does not mirror in RTL.
+                Icon(
+                    Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextMuted2,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -127,14 +143,31 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.DarkMode) { onOpen("appearance") }
         PremiumNavRow(stringResource(R.string.you_reminder_title), stringResource(R.string.you_reminder_subtitle),
             icon = Icons.Outlined.NotificationsNone) { onOpen("reminders") }
+        // Re-run the four-stop Home tour (iOS parity). Clears only `tour_done`
+        // and lands on Home, where the overlay re-arms itself.
+        PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
+            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
+        // The one screen the user fills in rather than reads.
+        PremiumNavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
+            icon = Icons.Outlined.Flag) { onOpen("goals") }
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
         PremiumNavRow(stringResource(R.string.you_privacy_title), stringResource(R.string.privacy_control_line),
             icon = Icons.Outlined.Lock) { onOpen("privacy") }
         PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
             icon = Icons.Outlined.Psychology) { onOpen("patterns") }
-        PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
-            icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        PremiumNavRow(stringResource(R.string.you_safetyplan_title), stringResource(R.string.you_safetyplan_subtitle),
+            icon = Icons.Outlined.Shield) { onOpen("safetyplan") }
+        // The Crisis screen's "add one in Settings" now has a Settings to mean.
+        PremiumNavRow(stringResource(R.string.trusted_title), stringResource(R.string.you_trusted_subtitle),
+            icon = Icons.Outlined.PersonAddAlt) { onOpen("trustedcontact") }
+        // The one upsell surface carries an occasional sheen (iOS parity) — the
+        // rest of You stays still, which is what makes this row read as the
+        // offer rather than as another setting.
+        Box(Modifier.sheen()) {
+            PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        }
         PremiumNavRow(stringResource(R.string.you_crisisregion_title), stringResource(R.string.you_crisisregion_subtitle),
             icon = Icons.Outlined.Public) { onOpen("crisisregion") }
         PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
@@ -146,10 +179,41 @@ fun YouScreen(onOpen: (String) -> Unit) {
             icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
         PremiumNavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
             icon = Icons.Outlined.FileDownload) { onOpen("export") }
-        PremiumNavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
-            icon = Icons.Outlined.DeleteOutline) { onOpen("delete") }
+        // Deliberately NOT a PremiumNavRow like every row above it: as a premium
+        // row, "Delete account · Permanently erase everything" was pixel-identical
+        // to "Privacy policy · How we handle your data", so the single most
+        // irreversible action in the app looked like a link to a document. The
+        // danger tint is the difference (2026-07-31 module audit).
+        NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
+            icon = Icons.Outlined.DeleteOutline, tint = Danger) { onOpen("delete") }
 
-        TextButton(onClick = { Session.signOut() }) { Text(stringResource(R.string.you_signout), color = TextMuted) }
+        // Sign out was a bare TextButton in TextMuted — a caption, on a screen
+        // where every other action is a bordered card — and it signed you out on
+        // the first tap. Session.signOut() clears the local store, so an
+        // accidental tap took the cached reads and any unsaved draft with it.
+        // Now a row that looks like a control, and one question first.
+        NavRow(
+            stringResource(R.string.you_signout),
+            stringResource(R.string.you_signout_subtitle),
+            icon = Icons.AutoMirrored.Outlined.Logout,
+        ) { signOutAsked = true }
+        if (signOutAsked) {
+            AlertDialog(
+                onDismissRequest = { signOutAsked = false },
+                title = { Text(stringResource(R.string.you_signout_confirm_title)) },
+                text = { Text(stringResource(R.string.you_signout_confirm_body)) },
+                confirmButton = {
+                    TextButton(onClick = { signOutAsked = false; Session.signOut() }) {
+                        Text(stringResource(R.string.you_signout), color = Danger)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { signOutAsked = false }) {
+                        Text(stringResource(R.string.common_cancel), color = TextMuted)
+                    }
+                },
+            )
+        }
         Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))

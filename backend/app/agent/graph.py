@@ -16,6 +16,7 @@ import asyncio
 import logging
 
 from langchain_core.messages import SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -118,11 +119,15 @@ async def get_graph():
         return None
     llm = model.bind_tools(TOOLS)
 
-    async def agent(state: MessagesState):
+    async def agent(state: MessagesState, config: RunnableConfig | None = None):
         # Live registry lookup per turn (own short session; falls back to the
         # registered default) — prompt edits apply without rebuilding the graph.
         system = await prompts.get("oracle_system")
-        messages = [SystemMessage(content=system), *state["messages"]]
+        # The graph is compiled once and shared, so the user's language cannot
+        # live in the closure — it rides the per-turn config alongside
+        # thread_id. Empty for English, which is what the prompt already is.
+        directive = ((config or {}).get("configurable") or {}).get("language_directive", "")
+        messages = [SystemMessage(content=system + directive), *state["messages"]]
         return {"messages": [await llm.ainvoke(messages)]}
 
     builder = StateGraph(MessagesState)

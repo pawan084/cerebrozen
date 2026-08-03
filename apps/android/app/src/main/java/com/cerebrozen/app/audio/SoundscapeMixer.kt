@@ -20,10 +20,17 @@ import com.cerebrozen.app.R
  * mixer. [stop] never counter-calls the other engine, so the pair can't loop.
  */
 object SoundscapeMixer {
-    /** One blendable ambient layer: display-name resource (i18n — resolved at
-     * the UI), bundled loop, symbol, and the catalogue key whose server asset
-     * supersedes the bundled loop when uploaded. */
-    data class Layer(val nameRes: Int, val rawRes: Int, val symbol: String, val key: String)
+    /** One blendable ambient layer. [symbol] is the stable id (icon lookup, and
+     * the same key the presets are documented against); [nameRes] is the display
+     * label, resolved in composition so it localizes — same treatment the
+     * presets one block below already get. [key] is the media-catalogue key whose
+     * uploaded server asset supersedes the bundled loop. */
+    data class Layer(
+        @androidx.annotation.StringRes val nameRes: Int,
+        val rawRes: Int,
+        val symbol: String,
+        val key: String,
+    )
 
     val layers = listOf(
         Layer(R.string.mixer_layer_rain, R.raw.rain, "rain", MediaCatalog.Keys.AMBIENCE_RAIN),

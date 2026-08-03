@@ -6,6 +6,9 @@ import { API_URL } from "@/lib/api";
 export default function Waitlist() {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
+  // Success swaps the form out entirely, so there's no half-filled field left to
+  // resubmit; errors keep the form (with what you typed) so you can retry.
+  const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
   // Honeypot: hidden from humans; bots that auto-fill it get a fake success.
   const [company, setCompany] = useState("");
@@ -16,6 +19,7 @@ export default function Waitlist() {
     if (company) {
       // Bot filled the honeypot — pretend it worked, skip the API.
       setMsg("You're in. We'll send a calm note when it's ready.");
+      setJoined(true);
       setEmail("");
       return;
     }
@@ -33,12 +37,24 @@ export default function Waitlist() {
           ? "You're already on the list — we'll be in touch."
           : "You're in. We'll send a calm note when it's ready."
       );
+      setJoined(true);
       setEmail("");
     } catch {
       setMsg("Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (joined) {
+    return (
+      <div className="wl-done">
+        <div className="wl-done-title">Thank you</div>
+        {/* Polite live region: the confirmation replaces the form, so screen
+            readers are told what happened rather than losing focus context. */}
+        <div className="wl-msg" role="status" aria-live="polite">{msg}</div>
+      </div>
+    );
   }
 
   return (
@@ -73,7 +89,7 @@ export default function Waitlist() {
           {busy ? "Joining…" : "Join the waitlist"}
         </button>
       </form>
-      <div className="wl-msg">{msg}</div>
+      <div className="wl-msg" role="status" aria-live="polite">{msg}</div>
     </div>
   );
 }

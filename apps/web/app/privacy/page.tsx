@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — CereBro",
   description: "How CereBro collects, uses, and protects your data. Privacy by design.",
+  alternates: { canonical: "/privacy" },
 };
 
 const UPDATED = "4 July 2026";
@@ -11,10 +14,12 @@ const UPDATED = "4 July 2026";
 export default function Privacy() {
   return (
     <>
+      <a className="skip-link" href="#main">Skip to content</a>
+
       <nav className="nav">
         <div className="container nav-inner">
           <Link className="brand" href="/">
-            <span className="dot" /> CereBro
+            <BrandMark size={26} /> CereBro
           </Link>
           <div className="nav-links">
             <Link href="/">Home</Link>
@@ -23,7 +28,7 @@ export default function Privacy() {
         </div>
       </nav>
 
-      <main className="section">
+      <main className="section" id="main">
         <div className="container legal">
           <p className="eyebrow">Privacy by design</p>
           <h1>Privacy Policy</h1>
@@ -40,9 +45,13 @@ export default function Privacy() {
           <h2>1. Who we are</h2>
           <p>
             CereBro (&quot;we&quot;, &quot;us&quot;) provides the CereBro mobile app and related
-            services. For business (B2B) customers, your employer or organization may sponsor your
-            access, but your individual reflections, mood logs, journal entries, and conversations
-            are private to you and are <strong>never shared with your employer</strong> in an
+            services directly to you. Your account is your own.
+          </p>
+          <p>
+            If a third party ever sponsors your access — for example an employer or an
+            institution paying for a plan on your behalf — that changes nothing about your
+            privacy here: your reflections, mood logs, journal entries, and conversations
+            remain private to you and are <strong>never shared with the sponsor</strong> in an
             identifiable form.
           </p>
 
@@ -119,17 +128,7 @@ export default function Privacy() {
         </div>
       </main>
 
-      <footer className="footer">
-        <div className="container footer-inner">
-          <Link className="brand" href="/" style={{ fontSize: 17 }}>
-            <span className="dot" /> CereBro
-          </Link>
-          <div>
-            © {new Date().getFullYear()} CereBro · <Link href="/privacy">Privacy</Link> ·{" "}
-            <Link href="/terms">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

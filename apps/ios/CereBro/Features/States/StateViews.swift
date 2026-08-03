@@ -1,22 +1,10 @@
 import SwiftUI
 
-// MARK: - Offline mode
-struct OfflineView: View {
-    var body: some View {
-        ScreenScaffold(eyebrow: "Offline support state", title: "Offline Mode", trailingSystemImage: "wifi.slash") {
-            DangerPanel {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("You're offline").appFont(14, weight: .bold).foregroundStyle(Theme.Palette.danger)
-                    Text("Available offline: saved breathing, local journal drafts, downloaded sounds.")
-                        .appFont(12).foregroundStyle(Theme.Palette.muted)
-                }
-            }
-            ForEach(Dummy.offline) { item in
-                ListRow(title: item.title, subtitle: item.subtitle, systemImage: item.symbol, imageURL: item.imageURL)
-            }
-        }
-    }
-}
+// The "Offline Mode" showcase screen was deleted 2026-07-30: it was unreachable
+// (no reference anywhere in the app) and advertised a "Downloaded soundscape",
+// while no client implements downloads. Offline behaviour that IS real —
+// curated local fallbacks on Home/Sleep, on-device journal analysis,
+// LocalCompanion chat — needs no screen of its own.
 
 // MARK: - Empty journal
 struct EmptyJournalView: View {

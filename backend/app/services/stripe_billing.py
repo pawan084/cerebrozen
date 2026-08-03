@@ -85,32 +85,29 @@ async def create_checkout_session(user_id: str, tier: str, annual: bool) -> str:
     return url
 
 
-async def create_portal_session(user_id: str) -> str:
-    """Create a Billing Portal session (manage/cancel) and return its URL.
+async def create_portal_session(customer_id: str) -> str:
+    """Stripe's own billing portal: change card, switch plan, cancel.
 
-    The customer is found by searching subscriptions for our ``user_id``
-    metadata (set at checkout) — consistent with the no-customer-store design.
-    Raises when the user has no Stripe subscription (e.g. App Store billing).
+    Deliberately NOT a hand-rolled cancel endpoint. Cancellation carries proration,
+    trial and dunning rules that Stripe already implements correctly and that a
+    local reimplementation would get subtly wrong — and getting it wrong means
+    either charging someone who cancelled or refunding someone who didn't.
+    The portal is also where card updates and invoices live, so one route covers
+    every "manage my billing" need instead of three.
+
+    Takes the stored ``stripe_customer_id`` rather than searching subscriptions by
+    ``user_id`` metadata: the customer mapping is persisted on the user now
+    (stripe-hardening), so the extra search round-trip — and its "no subscription"
+    failure mode for a customer who has one — is gone.
     """
     if not settings.stripe_enabled:
         raise StripeError("Stripe is not configured")
-    query = f"metadata['user_id']:'{user_id}'"
+    if not customer_id:
+        raise StripeError("no billing account yet")
+    data = {"customer": customer_id, "return_url": settings.stripe_return_url}
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(f"{_API}/subscriptions/search",
-                                    params={"query": query, "limit": "1"},
-                                    auth=(settings.stripe_secret_key, ""))
-            if resp.status_code != 200:
-                logger.warning("Stripe subscription search failed (%s): %s",
-                               resp.status_code, resp.text[:300])
-                raise StripeError("subscription lookup failed")
-            rows = resp.json().get("data") or []
-            customer = (rows[0] or {}).get("customer") if rows else None
-            if not customer:
-                raise StripeError("no Stripe subscription for user")
-            resp = await client.post(f"{_API}/billing_portal/sessions",
-                                     data={"customer": customer,
-                                           "return_url": settings.stripe_return_url},
+            resp = await client.post(f"{_API}/billing_portal/sessions", data=data,
                                      auth=(settings.stripe_secret_key, ""))
     except httpx.HTTPError as exc:  # pragma: no cover - network path
         raise StripeError(f"Stripe unreachable: {exc}") from exc
@@ -149,9 +146,23 @@ def verify_webhook(payload: bytes, sig_header: str) -> dict:
         raise StripeError("payload is not JSON") from exc
 
 
+def customer_id_from_event(event: dict) -> str:
+    """Stripe's customer id, if the event carries one."""
+    obj = (event.get("data") or {}).get("object") or {}
+    customer = obj.get("customer")
+    return customer if isinstance(customer, str) else ""
+
+
 def entitlement_from_event(event: dict) -> tuple[str, str, datetime | None] | None:
     """(user_id, tier, expires_at) from a subscription-relevant event, or None
-    for event types we deliberately ignore."""
+    for event types we deliberately ignore.
+
+    A missing `user_id` is NOT necessarily an ignorable event: subscriptions
+    changed in the Stripe dashboard or through the billing portal arrive
+    without the metadata we set at checkout. Those return an empty user id and
+    the caller resolves the account by `stripe_customer_id` instead — which is
+    why that column exists.
+    """
     kind = event.get("type", "")
     obj = (event.get("data") or {}).get("object") or {}
     metadata = obj.get("metadata") or {}
@@ -164,8 +175,6 @@ def entitlement_from_event(event: dict) -> tuple[str, str, datetime | None] | No
     if kind in {"customer.subscription.created", "customer.subscription.updated",
                 "customer.subscription.deleted"}:
         user_id = metadata.get("user_id") or ""
-        if not user_id:
-            return None
         period_end = obj.get("current_period_end")
         expires = (datetime.fromtimestamp(period_end, tz=timezone.utc)
                    if isinstance(period_end, (int, float)) else None)

@@ -6,64 +6,61 @@ import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 
 type Mood = { mood: string; created_at: string };
-// Real learned patterns from the transparent-memory engine (same source as
-// /patterns) — statements carry their supporting basis counts; never invented.
+// The honest pattern engine: server statements, each with the count that
+// supports it. Nothing here is written on the client (/patterns is the same
+// feed) — a claim about someone's life has to come from their own data.
 type Pattern = { statement: string; basis: string };
+
 const SCORE: Record<string, number> = { Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 };
-
-// Honest week-over-week delta: only when both halves have enough check-ins.
-function weekDelta(moods: Mood[]): string | null {
-  const now = Date.now();
-  const week = 7 * 24 * 3600 * 1000;
-  const recent = moods.filter((m) => now - new Date(m.created_at).getTime() < week);
-  const prior = moods.filter((m) => {
-    const age = now - new Date(m.created_at).getTime();
-    return age >= week && age < 2 * week;
-  });
-  if (recent.length < 2 || prior.length < 2) return null;
-  const avg = (xs: Mood[]) => xs.reduce((a, m) => a + (SCORE[m.mood] ?? 3), 0) / xs.length;
-  const diff = avg(recent) - avg(prior);
-  if (diff > 0.3) return "▲ gentler than last week";
-  if (diff < -0.3) return "▼ heavier than last week";
-  return "≈ steady with last week";
-}
-
-// Most common check-in window, only once there's enough data to mean anything.
-function bestTime(moods: Mood[]): { label: string; note: string } | null {
-  if (moods.length < 3) return null;
-  const buckets: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
-  for (const m of moods) {
-    const h = new Date(m.created_at).getHours();
-    const b = h < 5 ? "Night" : h < 12 ? "Morning" : h < 18 ? "Afternoon" : "Evening";
-    buckets[b]++;
-  }
-  const [label, n] = Object.entries(buckets).sort((a, b) => b[1] - a[1])[0];
-  return { label, note: `${n} of your last ${moods.length} check-ins` };
-}
+const PARTS = ["at night", "in the morning", "in the afternoon", "in the evening"];
 
 export default function Insights() {
   const [moods, setMoods] = useState<Mood[]>([]);
-  const [patterns, setPatterns] = useState<Pattern[] | null>(null);
   const [calmSessions, setCalmSessions] = useState<number | null>(null);
+  const [patterns, setPatterns] = useState<Pattern[] | null>(null);
 
   useEffect(() => {
     api<Mood[]>("/moods?limit=14").then(setMoods).catch(() => {});
-    api<{ patterns: Pattern[] }>("/insights/patterns")
-      .then((r) => setPatterns(r.patterns))
-      .catch(() => setPatterns([]));
     api<any>("/insights/weekly").then((w) => {
-      const m = (w.metrics || []).find((x: any) => /calm|session/i.test(x.label));
-      if (m) setCalmSessions(parseInt(m.value) || (w.metrics?.length ?? 0));
+      const m = (w.metrics || []).find((x: any) => x.label === "Calm sessions");
+      const n = parseInt(m?.value, 10);
+      if (Number.isFinite(n)) setCalmSessions(n);
     }).catch(() => {});
+    api<{ patterns: Pattern[] }>("/insights/patterns")
+      .then((r) => setPatterns(r.patterns ?? []))
+      .catch(() => setPatterns([]));
   }, []);
 
   const scores = moods.map((m) => SCORE[m.mood] ?? 3).reverse();
   const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   const avgLabel = avg >= 4.2 ? "Bright" : avg >= 3 ? "Steady" : avg > 0 ? "Tender" : "—";
   const avgEmoji = avg >= 4.2 ? "😊" : avg >= 3 ? "🙂" : avg > 0 ? "😔" : "";
-  const delta = weekDelta(moods);
-  const best = bestTime(moods);
-  const hasLine = scores.length >= 2;
+
+  // Drift is only stated when there are enough check-ins on both sides of the
+  // window to compare — no "▲ gentler than last week" out of thin air.
+  const drift = (() => {
+    if (scores.length < 6) return "";
+    const half = Math.floor(scores.length / 2);
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const gap = mean(scores.slice(half)) - mean(scores.slice(0, half));
+    if (gap >= 0.4) return "a little brighter than the days before";
+    if (gap <= -0.4) return "a little heavier than the days before";
+    return "steady across these days";
+  })();
+
+  // When you check in, counted from your own check-ins (needs a real plurality).
+  const timeOfDay = (() => {
+    if (moods.length < 5) return "";
+    const tally = [0, 0, 0, 0];
+    for (const m of moods) {
+      const h = new Date(m.created_at).getHours();
+      tally[h < 5 || h >= 22 ? 0 : h < 12 ? 1 : h < 17 ? 2 : 3] += 1;
+    }
+    const top = tally.indexOf(Math.max(...tally));
+    return tally[top] * 2 > moods.length ? PARTS[top] : "";
+  })();
+
+  const enoughForChart = scores.length >= 2;
 
   return (
     <>
@@ -73,27 +70,35 @@ export default function Insights() {
           <div className="stat-tile cz-in">
             <div className="lbl">Average mood</div>
             <div className="val">{avgLabel} {avgEmoji}</div>
-            {delta && <div className="delta">{delta}</div>}
+            <div className="lbl" style={{ fontSize: 13 }}>
+              {scores.length === 0
+                ? "after your first check-in"
+                : drift || `across ${scores.length} check-in${scores.length === 1 ? "" : "s"}`}
+            </div>
           </div>
           <div className="stat-tile cz-in cz-d1">
             <div className="lbl">Calm sessions</div>
-            <div className="val">{calmSessions ?? 0}</div>
-            <div className="lbl" style={{ fontSize: 13 }}>this week</div>
+            <div className="val">{calmSessions ?? "—"}</div>
+            <div className="lbl" style={{ fontSize: 13 }}>
+              {calmSessions === null ? "not counted yet" : "this week"}
+            </div>
           </div>
           <div className="stat-tile cz-in cz-d2">
-            <div className="lbl">Best time of day</div>
-            <div className="val">{best?.label ?? "—"}</div>
+            <div className="lbl">When you check in</div>
+            <div className="val">{timeOfDay ? timeOfDay.replace(/^(at|in the) /, "") : "—"}</div>
             <div className="lbl" style={{ fontSize: 13 }}>
-              {best?.note ?? "shows after a few check-ins"}
+              {timeOfDay ? `most of your check-ins land ${timeOfDay}` : "a few more check-ins and this fills in"}
             </div>
           </div>
         </div>
 
-        <div className="dash-grid" style={{ marginTop: 20, gridTemplateColumns: "minmax(0,1fr) 380px" }}>
+        {/* rail-380 instead of an inline column template: an inline style beats
+            the responsive media query and left this grid two-up on phones. */}
+        <div className="dash-grid rail-380" style={{ marginTop: 20 }}>
           <div className="chart-card cz-in cz-d3">
             <h3>Mood, last 14 days</h3>
             <p className="sub">A gentle line, not a scoreboard.</p>
-            {hasLine ? (
+            {enoughForChart ? (
               <>
                 <svg viewBox="0 0 560 210" style={{ width: "100%", height: 210 }} aria-hidden="true">
                   <defs><linearGradient id="ig" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="rgba(138,123,240,0.35)" /><stop offset="1" stopColor="rgba(138,123,240,0)" /></linearGradient></defs>
@@ -103,17 +108,19 @@ export default function Insights() {
                     const area = `10,180 ${line} 550,180`;
                     return (<>
                       <polygon points={area} fill="url(#ig)" />
-                      <polyline points={line} fill="none" stroke="#a99cf0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                      {P.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="4" fill="#cbb6ff" />)}
+                      <polyline points={line} fill="none" stroke="var(--lav-2)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      {P.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="4" fill="var(--soft)" />)}
                     </>);
                   })()}
                 </svg>
                 <div className="chart-x"><span>2 weeks ago</span><span>1 week</span><span>Today</span></div>
               </>
             ) : (
-              <p className="sub" style={{ padding: "48px 0", textAlign: "center" }}>
-                Your line starts after two check-ins — it only ever draws your real days.
-              </p>
+              // No invented line: an empty chart says so, and offers the step.
+              <div className="empty-note">
+                <p>Your line starts after two check-ins — there {scores.length === 1 ? "is one" : "are none"} so far.</p>
+                <Link href="/home" className="link">Check in on Home →</Link>
+              </div>
             )}
           </div>
 
@@ -124,21 +131,21 @@ export default function Insights() {
                 <p className="sub">Looking at your data…</p>
               ) : patterns.length === 0 ? (
                 <p className="sub">
-                  Nothing yet. Patterns appear once a few weeks of real check-ins support
-                  them — no guesses, ever.
+                  Nothing to say yet. Patterns appear only once enough of your own check-ins
+                  support them — CereBro doesn&apos;t guess about your life.
                 </p>
               ) : (
                 patterns.map((p) => (
                   <div key={p.statement} className="pattern-row">
                     <div>
                       <strong>{p.statement}</strong>
-                      <p style={{ color: "var(--cyan)" }}>{p.basis}</p>
+                      <p>{p.basis}</p>
                     </div>
                   </div>
                 ))
               )}
             </div>
-            <Link href="/patterns" className="link" style={{ display: "inline-block", marginTop: 10 }}>
+            <Link href="/patterns" className="link" style={{ display: "inline-block", marginTop: 12 }}>
               See everything CereBro remembers →
             </Link>
           </div>

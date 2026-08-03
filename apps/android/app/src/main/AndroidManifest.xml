@@ -25,8 +25,11 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
+    <!-- enableOnBackInvokedCallback: targetSdk 35 opt-in to predictive back —
+         the system back gesture previews the destination instead of cutting. -->
     <application
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
@@ -35,6 +38,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CereBro">
 
+        <!-- windowSoftInputMode=adjustResize, not the default adjustUnspecified.
+             Left unset, the system chose PAN for our scrolling screens: opening
+             the keyboard slid the whole window upward, so content that sat
+             correctly below the status bar was pushed behind it — a Talk bubble
+             drawn straight through the clock. No padding inside the app can fix
+             a window the OS is translating; resizing keeps the insets meaningful. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

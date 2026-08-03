@@ -43,6 +43,48 @@ final class CereBroUITests: XCTestCase {
         _ = notNow.waitForNonExistence(timeout: 3)
     }
 
+    /// True when the run targets a real backend over the LAN — i.e. a physical
+    /// device pointed at the dev Mac. Only those runs can raise the Local
+    /// Network prompt, so only those pay for waiting on it.
+    private var isDeviceRun: Bool {
+        !(ProcessInfo.processInfo.environment["CEREBRO_TEST_SERVER"] ?? "").isEmpty
+    }
+
+    /// Dismiss iOS's "…would like to find and connect to devices on your local
+    /// network" alert.
+    ///
+    /// On a physical device the DEBUG build reaches the dev Mac over Bonjour,
+    /// which raises this the first time after install. It belongs to
+    /// springboard, so it blocks every subsequent tap and the run dies at the
+    /// first assertion with a misleading "element not found".
+    ///
+    /// It must be ALLOWED, not dismissed: denying it makes every live-backend
+    /// test fail for the rest of the install, which is a far more confusing
+    /// state than the prompt itself.
+    ///
+    /// Cost control: the alert cannot appear on a simulator run, so those poll
+    /// for 0s and fall straight through. Twenty-three launches × a real wait
+    /// would add over a minute to a suite that already takes ~22.
+    private func allowLocalNetworkIfAsked(wait: TimeInterval? = nil) {
+        let timeout = wait ?? (isDeviceRun ? 5 : 0)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        // Label varies by iOS version ("Allow" / "OK"); match either.
+        for label in ["Allow", "OK"] {
+            let button = springboard.buttons[label].firstMatch
+            guard button.waitForExistence(timeout: timeout) else { continue }
+            // Only act on the local-network alert — "OK" in particular is a
+            // common label and tapping the wrong sheet would hide a real bug.
+            let alert = springboard.alerts.firstMatch
+            let text = alert.exists ? alert.label : ""
+            guard text.localizedCaseInsensitiveContains("local network")
+                    || text.localizedCaseInsensitiveContains("find and connect")
+            else { return }
+            if button.isHittable { button.tap() }
+            _ = button.waitForNonExistence(timeout: 3)
+            return
+        }
+    }
+
     private func snapshot(_ app: XCUIApplication, _ name: String) {
         let att = XCTAttachment(screenshot: app.screenshot())
         att.name = name
@@ -56,6 +98,11 @@ final class CereBroUITests: XCTestCase {
     private func launchIntoApp(_ app: XCUIApplication) {
         app.launchArguments += ["-hasOnboarded", "YES", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
+        // The prompt fires on the app's first LAN request, which is moments
+        // after launch — before the tab bar assertion below would otherwise
+        // fail with a misleading "element not found".
+        allowLocalNetworkIfAsked()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 12), "Tab bar never appeared")
     }
 
@@ -163,6 +210,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
 
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
@@ -207,6 +255,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
 
         // 0 — Welcome (the promise is an immediate reset, not a setup marathon)
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
@@ -277,6 +326,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "I already have an account")
@@ -303,6 +353,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "I already have an account")
@@ -327,6 +378,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
         XCTAssertTrue(app.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10),
                       "Welcome screen did not appear")
         tap(app, "Try a 2-minute reset")
@@ -356,6 +408,7 @@ final class CereBroUITests: XCTestCase {
         let app = makeApp()
         app.launchArguments += ["-hasOnboarded", "NO", "-resetState", "YES"]
         app.launch()
+        allowLocalNetworkIfAsked()
 
         // Walk the 90-second flow, picking the DISTINCTIVE confidence state.
         // "Doubting myself" maps to Confidence / Build confidence, and the
@@ -432,6 +485,7 @@ final class CereBroUITests: XCTestCase {
         app.launchArguments += ["-hasOnboarded", "YES", "-resetState", "YES",
                                 "-AppleLocale", "en_US", "-AppleLanguages", "(en)"]
         app.launch()
+        allowLocalNetworkIfAsked()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 12), "Tab bar never appeared")
 
         rootYou(app)

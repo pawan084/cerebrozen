@@ -2,6 +2,9 @@ import SwiftUI
 
 @main
 struct CereBroApp: App {
+    /// SwiftUI has no hook for the APNs device-token callbacks — see AppDelegate
+    /// in PushRegistrar.swift. Without this, remote push is unreachable.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var state = AppState()
     @StateObject private var backend = BackendService()
     @StateObject private var theme = AppTheme.shared
@@ -28,6 +31,9 @@ struct CereBroApp: App {
                 // Support Dynamic Type, but cap scaling so the tightly-tuned
                 // fixed-height layouts don't clip at the largest sizes.
                 .dynamicTypeSize(.xSmall ... .accessibility1)
+                // Returning users who already allowed notifications: refresh the
+                // APNs token each launch (it can be reissued). Never prompts.
+                .task { await PushRegistrar.registerIfAuthorized() }
         }
     }
 }

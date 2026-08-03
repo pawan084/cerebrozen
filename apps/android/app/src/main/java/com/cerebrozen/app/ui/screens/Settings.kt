@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,17 +33,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Analytics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.ThemeMode
@@ -67,6 +70,11 @@ internal fun NavRow(
     subtitle: String,
     icon: ImageVector? = null,
     emphasis: Boolean = false,
+    /** Overrides the icon tint. For rows whose destination is destructive: on
+     * You, "Delete account · Permanently erase everything" was pixel-identical
+     * to "Privacy policy · How we handle your data", so the single most
+     * irreversible action in the app looked exactly like a link to a document. */
+    tint: Color? = null,
     onClick: () -> Unit,
 ) {
     SectionCard(onClick = onClick) {
@@ -82,24 +90,28 @@ internal fun NavRow(
             ) {
                 if (icon != null) {
                     Icon(icon, contentDescription = null,
-                        tint = if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
+                        tint = tint ?: if (emphasis) Cyan else Periwinkle, modifier = Modifier.size(22.dp))
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, color = if (emphasis) Cyan else TextSoft)
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
-            Text("›", style = MaterialTheme.typography.titleMedium, color = TextMuted2)
+            // AutoMirrored so the affordance points the right way in RTL
+            // (the DPDP notice renders Urdu right-to-left — PrivacyScreen).
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = TextMuted2,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
 
 @Composable
 private fun SelectableRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
-    val haptics = LocalHapticFeedback.current
-    SectionCard(onClick = {
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
-    }) {
+    SectionCard(onClick = { Haptics.selection(); onClick() }) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,27 +121,36 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
                 Text(title, style = MaterialTheme.typography.titleMedium, color = if (selected) Cyan else TextSoft)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             }
-            if (selected) Text("✓", style = MaterialTheme.typography.titleMedium, color = Cyan)
+            if (selected) Icon(
+                Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.common_selected_cd),
+                tint = Cyan,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
-/** Companion styles: `value` is the server-side `companion` profile string
- * (cross-stack contract — stays English); labels/details are display copy
- * (i18n label/value split). */
-private data class CompanionOption(val value: String, val labelRes: Int, val detailRes: Int)
+/** A companion style. [value] is the server-side `companion` profile value —
+ * a cross-stack contract with iOS/web, so it is NEVER translated; the title and
+ * detail are display copy and localize freely. */
+private data class CompanionStyle(
+    val value: String,
+    @androidx.annotation.StringRes val titleRes: Int,
+    @androidx.annotation.StringRes val detailRes: Int,
+)
 
 private val COMPANIONS = listOf(
-    CompanionOption("Calm Guide", R.string.companion_calm_guide, R.string.companion_calm_guide_detail),
-    CompanionOption("Warm Friend", R.string.companion_warm_friend, R.string.companion_warm_friend_detail),
-    CompanionOption("Straight Talker", R.string.companion_straight_talker, R.string.companion_straight_talker_detail),
-    CompanionOption("Quiet Coach", R.string.companion_quiet_coach, R.string.companion_quiet_coach_detail),
+    CompanionStyle("Calm Guide", R.string.companion_calm_title, R.string.companion_calm_detail),
+    CompanionStyle("Warm Friend", R.string.companion_warm_title, R.string.companion_warm_detail),
+    CompanionStyle("Straight Talker", R.string.companion_direct_title, R.string.companion_direct_detail),
+    CompanionStyle("Quiet Coach", R.string.companion_quiet_title, R.string.companion_quiet_detail),
 )
 
 /** Display label for a PERSISTED companion value (You header/rows render
  * server data); unknown values show as stored. */
 internal fun companionLabelRes(value: String): Int? =
-    COMPANIONS.firstOrNull { it.value == value }?.labelRes
+    COMPANIONS.firstOrNull { it.value == value }?.titleRes
 
 @Composable
 fun CompanionStyleScreen(onBack: () -> Unit) {
@@ -139,13 +160,15 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     PremiumSubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
         Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        COMPANIONS.forEach { option ->
-            SelectableRow(stringResource(option.labelRes), stringResource(option.detailRes),
-                          selected = current == option.value) {
+        COMPANIONS.forEach { style ->
+            SelectableRow(
+                stringResource(style.titleRes), stringResource(style.detailRes),
+                selected = current == style.value,
+            ) {
                 val prev = current
-                current = option.value
+                current = style.value
                 scope.launch {
-                    runCatching { Api.updateProfile(JSONObject().put("companion", option.value)) }
+                    runCatching { Api.updateProfile(JSONObject().put("companion", style.value)) }
                         .onFailure { current = prev }   // don't show a choice the server didn't accept
                 }
             }
@@ -211,21 +234,73 @@ fun PrivacyScreen(onBack: () -> Unit) {
     var noticeLang by remember { mutableStateOf("en") }
     var loaded by remember { mutableStateOf(false) }
     var consentError by remember { mutableStateOf<String?>(null) }
+    // Onboarding's consent write can fail after the funnel is gone; it leaves a
+    // flag rather than passing silently. These switches show what the server
+    // actually holds, so the honest thing is to say the setup choices were lost
+    // and let the user set them again here. Cleared once they've seen it.
+    var setupSyncFailed by remember {
+        mutableStateOf(runCatching { Session.prefGet(CONSENT_SYNC_FAILED_KEY) }.getOrNull() == "true")
+    }
     val notice = noticeFor(noticeLang)
     val activity = LocalContext.current as? FragmentActivity
-    LaunchedEffect(Unit) {
-        runCatching { val c = Api.consent(); CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
-        runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
-        loaded = true
+    // A failed read must not render as "you consented to nothing".
+    //
+    // This used to be a bare runCatching with no failure branch: if the GET threw
+    // and there was no cached copy, the map stayed empty, every switch drew OFF,
+    // and the screen said nothing. On a consent surface that is not a blank
+    // state, it is a false statement about what the user has agreed to — and the
+    // obvious reaction, re-toggling, would write consents they already had.
+    var consentLoadFailed by remember { mutableStateOf(false) }
+    fun loadConsent() {
+        consentLoadFailed = false
+        scope.launch {
+            runCatching { Api.consent() }
+                .onSuccess { c -> CONSENT_KEY_ORDER.forEach { consent[it] = c.optBoolean(it) } }
+                .onFailure { consentLoadFailed = true }
+            runCatching { noticeLang = defaultNoticeCode(Api.me().optString("language")) }
+            loaded = true
+        }
     }
+    // Without this the screen drew every consent switch from its initial state —
+    // i.e. all off — before the real values arrived (2026-07-31 audit).
+    LaunchedEffect(Unit) { loadConsent() }
     PremiumSubPage(stringResource(R.string.privacy_control_line), notice.title, onBack) {
         Text(notice.caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        // The picker was thirteen unlabelled chips filling the first screen, with
+        // nothing saying what they change — easily read as the app's language
+        // rather than the notice's (DPDP s.5(3): the notice must be readable in
+        // English or an Eighth-Schedule language, which is what this is for).
+        Text(stringResource(R.string.privacy_notice_language_label),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
         ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
             noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
         }
         if (!loaded) {
             Text(stringResource(R.string.privacy_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
+            if (setupSyncFailed) {
+                SectionCard {
+                    Text(stringResource(R.string.privacy_setup_sync_failed_title),
+                        style = MaterialTheme.typography.titleMedium, color = Danger)
+                    Text(stringResource(R.string.privacy_setup_sync_failed_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    TextButton(onClick = {
+                        setupSyncFailed = false
+                        runCatching { Session.prefPut(CONSENT_SYNC_FAILED_KEY, "false") }
+                    }) { Text(stringResource(R.string.common_got_it), color = Periwinkle) }
+                }
+            }
+            if (consentLoadFailed) {
+                SectionCard {
+                    Text(stringResource(R.string.privacy_consent_load_failed_title),
+                        style = MaterialTheme.typography.titleMedium, color = Danger)
+                    Text(stringResource(R.string.privacy_consent_load_failed_body),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    TextButton(onClick = { loadConsent() }) {
+                        Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                    }
+                }
+            }
             val consentSaveError = stringResource(R.string.privacy_consent_error)
             val layoutDir = if (noticeLang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
@@ -313,7 +388,7 @@ fun PremiumScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.p
         stringResource(R.string.premium_monthly_note), featured = false)
     PrimaryButton(text = stringResource(R.string.premium_cta), enabled = false, modifier = Modifier.fillMaxWidth()) {}
     Text(stringResource(R.string.premium_billing_note),
-        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        style = MaterialTheme.typography.bodySmall, color = TextMuted)
 }
 
 @Composable
@@ -398,7 +473,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.st
     InfoCard(stringResource(R.string.privacypolicy_not_title), stringResource(R.string.privacypolicy_not_body))
     InfoCard(stringResource(R.string.privacypolicy_professional_title), stringResource(R.string.privacypolicy_professional_body))
 
-    Text(stringResource(R.string.privacypolicy_full_policy), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Text(stringResource(R.string.privacypolicy_full_policy), style = MaterialTheme.typography.bodySmall, color = TextMuted)
 }
 
 @Composable
@@ -421,7 +496,7 @@ fun DataExportScreen(onBack: () -> Unit) {
             scope.launch {
                 runCatching { Api.exportData() }
                     .onSuccess { exportOk = true; status = successTemplate.format(it.length) }
-                    .onFailure { exportOk = false; status = it.message ?: exportFailed }
+                    .onFailure { exportOk = false; status = it.userMessage(exportFailed) }
                 busy = false
             }
         }
@@ -455,7 +530,7 @@ fun AccountDeletionScreen(onBack: () -> Unit) {
                             .onSuccess { Session.signOut() }
                             .onFailure {
                                 busy = false
-                                error = it.message ?: deleteFailed
+                                error = it.userMessage(deleteFailed)
                             }
                     }
                 }

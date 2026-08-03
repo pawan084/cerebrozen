@@ -100,6 +100,11 @@ struct TalkView: View {
         }
         .aiDisclosure(show: $showDisclosure)
         .celebration(trigger: $savedToJournal)
+        // The free daily cap is a product state, not an error. Presented as a
+        // sheet so the conversation is still behind it — nothing is taken away.
+        .sheet(item: $backend.freeLimit) { info in
+            NavigationStack { FreeLimitView(info: info) }
+        }
     }
 
     /// Capture the whole spoken exchange (every turn) into the journal.
@@ -187,9 +192,12 @@ struct StreamingBubble: View {
             guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { caretVisible = false }
         }
-        // VoiceOver: announce state, not every token (the finished reply is read once).
+        // VoiceOver: the label carries the text SO FAR, so a user who focuses
+        // the bubble mid-stream hears what has arrived rather than a frozen
+        // "is replying". Announcements (BackendService) still handle the
+        // unfocused case; per-token announcing would be unusable noise.
         .accessibilityAddTraits(.updatesFrequently)
-        .accessibilityLabel("CereBro is replying")
+        .accessibilityLabel(text.isEmpty ? "CereBro is replying" : "CereBro is replying. \(text)")
     }
 }
 

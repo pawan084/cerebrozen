@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -50,6 +51,7 @@ import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Violet
 import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.sin
 
 /**
@@ -150,6 +152,16 @@ internal fun splashGlowBloom(t: Float): Float =
 /** Wordmark: fades up beneath the orb over the last ~55%. */
 internal fun splashWordmarkAppear(t: Float): Float = ((t - 0.45f) / 0.55f).coerceIn(0f, 1f)
 
+/** How far the sky has opened: 0 = flat [Night] (exactly the platform splash's
+ * window background), 1 = the app's own [NightMid]→[Night] backdrop.
+ *
+ * The platform splash hands over on a flat window and Compose used to take
+ * over with the gradient already at full strength — measured on device, the
+ * top of the screen jumped #100D2B → #3A3372 in one frame, roughly five times
+ * the luminance, at 22:54. Opening the sky over the settle turns that cut into
+ * the brand moment it was always described as. */
+internal fun splashSkyOpen(t: Float): Float = (t / 0.8f).coerceIn(0f, 1f)
+
 /** A brief branded launch: a night scene — starfield + soft aurora ribbons —
  * with the orb settling into the wordmark: the mark scales 0.92→1 under a soft
  * glow bloom while "CereBro" fades up beneath (one-shot, ≤900ms). Reduce
@@ -168,15 +180,30 @@ fun Splash() {
     )
     val drift = if (reduceMotion) 0.5f else animatedDrift
 
+    // Continue the flat window the platform splash handed over, then open into
+    // the app's own backdrop as the orb settles — no cut, no brightness jump.
+    val skyTop = lerp(Night, NightMid, splashSkyOpen(appear))
     Box(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(NightMid, Night))),
+        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(skyTop, Night))),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            // Soft aurora ribbons across the upper sky.
+            // Aurora ribbons across the upper sky. A single stroke has a hard
+            // perpendicular edge — on device the band went from backdrop to full
+            // colour inside four pixels, which reads as a painted stripe, not as
+            // light. So each ribbon is stroked several times over: same path,
+            // widening, at one low alpha each. Where the passes overlap they
+            // compound, so the ribbon is brightest at its core and fades out
+            // continuously, and no single pass is strong enough for its own edge
+            // to show. Even alphas over geometric widths on purpose — three
+            // heavier passes left three visible plateaus (measured 47→58→82).
+            //
+            // Done in passes rather than with Modifier.blur because blur is API
+            // 31+ (minSdk 26) and would soften the starfield and the mark too.
             val ribbonColors = listOf(Periwinkle, Violet, Cyan)
+            val feather = List(6) { (46f * 1.3f.pow(it)) to 0.045f }
             for (r in 0 until 3) {
                 val yBase = h * (0.16f + r * 0.09f)
                 val sway = h * 0.05f * (drift - 0.5f) * (if (r % 2 == 0) 1f else -1f)
@@ -185,13 +212,19 @@ fun Splash() {
                     quadraticTo(w * 0.3f, yBase - h * 0.06f + sway, w * 0.55f, yBase)
                     quadraticTo(w * 0.82f, yBase + h * 0.06f - sway, w * 1.1f, yBase - h * 0.02f)
                 }
-                drawPath(
-                    path,
-                    brush = Brush.horizontalGradient(
-                        listOf(Color.Transparent, ribbonColors[r].copy(alpha = 0.20f * appear), Color.Transparent),
-                    ),
-                    style = Stroke(width = 46f, cap = StrokeCap.Round),
-                )
+                for ((width, alpha) in feather) {
+                    drawPath(
+                        path,
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                ribbonColors[r].copy(alpha = alpha * appear),
+                                Color.Transparent,
+                            ),
+                        ),
+                        style = Stroke(width = width, cap = StrokeCap.Round),
+                    )
+                }
             }
             // A calm starfield in the top two-thirds.
             for (i in 0 until 46) {
@@ -210,7 +243,12 @@ fun Splash() {
                     Modifier.size(150.dp)
                         .alpha((0.5f * splashGlowBloom(appear) * appear).coerceAtMost(1f))
                         .background(
-                            Brush.radialGradient(listOf(Color(0x668A7BF0), Color(0x00000000))),
+                            // Token, not a literal: this was hardcoded 0x668A7BF0,
+                            // the periwinkle retired on 2026-07-12 — the brand
+                            // glow was a colour the palette no longer contained.
+                            Brush.radialGradient(
+                                listOf(Periwinkle.copy(alpha = 0.4f), Color.Transparent),
+                            ),
                             CircleShape,
                         ),
                 )

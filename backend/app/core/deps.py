@@ -38,6 +38,37 @@ async def get_current_user(
     return user
 
 
+_optional_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+
+async def get_optional_user(
+    token: str | None = Depends(_optional_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """The signed-in user, or None — for routes that serve anonymous callers too.
+
+    The public catalogue is one of these: it must keep working with no token at
+    all, while still recognising a paid user so their premium narration can be
+    unlocked. Anything unusable as an identity (absent, malformed, expired,
+    revoked, disabled) is simply "anonymous" rather than an error.
+    """
+    if not token:
+        return None
+    payload = decode_token(token, expected_type=ACCESS)
+    if not payload or "sub" not in payload:
+        return None
+    try:
+        user_id = uuid.UUID(payload["sub"])
+    except (ValueError, TypeError):
+        return None
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        return None
+    if payload.get("ver", 0) != user.token_version:
+        return None
+    return user
+
+
 async def get_current_admin(user: User = Depends(get_current_user)) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")

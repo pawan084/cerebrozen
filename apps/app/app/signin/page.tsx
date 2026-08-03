@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AuthPanel from "@/components/AuthPanel";
 import { unlockAnalytics } from "@/lib/analytics";
 import { setOnboarded } from "@/lib/api";
+import { safeNext } from "@/lib/nextPath";
 
 export default function SignIn() {
   const router = useRouter();
@@ -15,7 +16,15 @@ export default function SignIn() {
     // An authenticated session also unlocks anonymous telemetry (DPDP gate).
     unlockAnalytics();
     setOnboarded();
-    router.replace("/home");
+    // A returning user consented at some point; matching iOS/Android, an
+    // authenticated session unlocks counting without re-asking.
+    unlockAnalytics();
+    // Land on whatever sent them here (a landing-page deep link, or the screen
+    // their session expired on). `safeNext` rejects anything off-origin —
+    // read via `window` rather than useSearchParams so no Suspense boundary is
+    // needed for this one value.
+    const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    router.replace(next ?? "/home");
   }
 
   return (
@@ -29,6 +38,11 @@ export default function SignIn() {
         <AuthPanel initialMode="signIn" onAuthed={onAuthed} />
         <p className="swap">
           New here? <Link href="/onboarding">Start with a 2-minute reset</Link>
+        </p>
+        {/* Support stays reachable without an account — signing in is never a
+            condition of finding a helpline. */}
+        <p className="footnote">
+          Need urgent help? <Link href="/support">Support — real people, 24/7</Link>
         </p>
       </div>
     </div>

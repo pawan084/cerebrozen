@@ -3,9 +3,28 @@ import hashlib
 import hmac
 import json
 import time
+import uuid
+
+from sqlalchemy import update
 
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models.user import User
 from app.services import stripe_billing
+
+
+async def _give_customer_id(auth_client, customer_id: str = "cus_test123") -> None:
+    """Put a Stripe customer on the authed user, as a real checkout would.
+
+    The portal reads `user.stripe_customer_id` (stripe-hardening); a user who has
+    never checked out has none, which is the 409 case rather than an error.
+    """
+    me = (await auth_client.get("/users/me")).json()
+    async with SessionLocal() as s:
+        await s.execute(
+            update(User).where(User.id == uuid.UUID(me["id"])).values(stripe_customer_id=customer_id)
+        )
+        await s.commit()
 
 _SECRET = "whsec_testsecret"
 
@@ -99,9 +118,11 @@ async def test_portal_503_when_unconfigured(auth_client):
 
 async def test_portal_returns_url_when_configured(auth_client, monkeypatch):
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
+    await _give_customer_id(auth_client, "cus_abc")
 
-    async def fake_portal(user_id):
-        assert user_id
+    async def fake_portal(customer_id):
+        # The route passes the stored customer straight through — no lookup.
+        assert customer_id == "cus_abc"
         return "https://billing.stripe.com/p/session/test123"
 
     monkeypatch.setattr(stripe_billing, "create_portal_session", fake_portal)
@@ -110,16 +131,31 @@ async def test_portal_returns_url_when_configured(auth_client, monkeypatch):
     assert r.json()["url"].startswith("https://billing.stripe.com/")
 
 
-async def test_portal_502_when_no_stripe_subscription(auth_client, monkeypatch):
+async def test_portal_409_when_never_checked_out(auth_client, monkeypatch):
+    """No Stripe customer is a state, not a failure — and App Store subscribers
+    land here too, so the copy must not report a gateway error at them."""
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
 
-    async def boom(user_id):
-        raise stripe_billing.StripeError("no Stripe subscription for user")
+    async def unreachable(customer_id):  # pragma: no cover - must not be called
+        raise AssertionError("Stripe must not be called without a customer")
+
+    monkeypatch.setattr(stripe_billing, "create_portal_session", unreachable)
+    r = await auth_client.post("/billing/portal")
+    assert r.status_code == 409
+    assert "subscribe first" in r.json()["detail"].lower()
+
+
+async def test_portal_502_when_stripe_errors(auth_client, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
+    await _give_customer_id(auth_client)
+
+    async def boom(customer_id):
+        raise stripe_billing.StripeError("portal session creation failed")
 
     monkeypatch.setattr(stripe_billing, "create_portal_session", boom)
     r = await auth_client.post("/billing/portal")
     assert r.status_code == 502
-    assert "App Store" in r.json()["detail"]
+    assert "try again shortly" in r.json()["detail"]
 
 
 class _FakeResponse:
@@ -182,38 +218,34 @@ async def test_create_checkout_session_builds_stripe_request(monkeypatch):
         pass
 
 
-async def test_create_portal_session_looks_up_customer(monkeypatch):
+async def test_create_portal_session_posts_the_stored_customer(monkeypatch):
     import httpx
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_x")
     monkeypatch.setattr(httpx, "AsyncClient", _FakeClient)
 
-    # Happy path: subscription search finds the customer, portal returns a URL.
-    _FakeClient.get_response = _FakeResponse(200, {"data": [{"customer": "cus_9"}]})
+    # Happy path: the stored customer goes straight to the portal endpoint.
+    # There is deliberately no subscription search any more — the customer
+    # mapping is persisted on the user, so the round-trip (and its "no
+    # subscription" failure mode for a customer who has one) is gone.
     _FakeClient.response = _FakeResponse(200, {"url": "https://billing.stripe.com/p/ok"})
-    url = await stripe_billing.create_portal_session("user-123")
+    url = await stripe_billing.create_portal_session("cus_9")
     assert url == "https://billing.stripe.com/p/ok"
-    assert "user-123" in _FakeClient.last_params["query"]
     assert _FakeClient.last_data["customer"] == "cus_9"
+    assert _FakeClient.last_data["return_url"] == settings.stripe_return_url
 
-    # No subscription carrying our metadata (e.g. App Store billing) → error.
-    _FakeClient.get_response = _FakeResponse(200, {"data": []})
+    # An empty customer never reaches the network.
+    _FakeClient.last_data = None
     try:
-        await stripe_billing.create_portal_session("user-123")
+        await stripe_billing.create_portal_session("")
         raise AssertionError("expected StripeError")
     except stripe_billing.StripeError as exc:
-        assert "no Stripe subscription" in str(exc)
+        assert "no billing account" in str(exc)
+    assert _FakeClient.last_data is None
 
     # Stripe-side failures surface as StripeError (route maps them to 502).
-    _FakeClient.get_response = _FakeResponse(401, {"error": {"message": "bad key"}})
-    try:
-        await stripe_billing.create_portal_session("user-123")
-        raise AssertionError("expected StripeError")
-    except stripe_billing.StripeError:
-        pass
-    _FakeClient.get_response = _FakeResponse(200, {"data": [{"customer": "cus_9"}]})
     _FakeClient.response = _FakeResponse(400, {"error": {"message": "no portal config"}})
     try:
-        await stripe_billing.create_portal_session("user-123")
+        await stripe_billing.create_portal_session("cus_9")
         raise AssertionError("expected StripeError")
     except stripe_billing.StripeError:
         pass

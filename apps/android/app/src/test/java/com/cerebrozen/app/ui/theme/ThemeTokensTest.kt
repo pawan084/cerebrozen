@@ -38,6 +38,46 @@ class ThemeTokensTest {
         AppTheme.mode = ThemeMode.System
         AppTheme.systemDark = true
         AppTheme.forceNight = false
+        AppTheme.hour = 12
+    }
+
+    @Test
+    fun theWindowBackgroundResourceMatchesTheNightFloor() {
+        // res/values/colors.xml paints the window and, on Android 12+, the
+        // platform splash the launcher icon sits on. NightPalette.night is what
+        // Compose paints one frame later. When these disagree, every cold launch
+        // steps from one dark indigo to a different one — which is exactly what
+        // shipped: the resource still held the iOS #080B22 while the Android
+        // palette had moved to #100D2B.
+        val resource = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()
+            .getColor(com.cerebrozen.app.R.color.night)
+        assertEquals(
+            "@color/night must equal NightPalette.night",
+            NightPalette.night,
+            Color(resource),
+        )
+    }
+
+    @Test
+    fun windDownHoursAreNightOnSystem_butNeverOverruleAnExplicitChoice() {
+        // REDESIGN §4.1 says "Sleep tab AND wind-down hours always Night". Only
+        // the first half was built. Found on a device at 23:43: Home was showing
+        // a banner reading "The day is winding down" in full-brightness Dawn.
+        assertTrue("21:00 is wind-down", isWindDownHour(21))
+        assertTrue("and so is 03:00", isWindDownHour(3))
+        assertFalse("but 20:00 is not", isWindDownHour(20))
+        assertFalse("nor is 09:00", isWindDownHour(9))
+
+        // System follows the clock as well as the OS toggle.
+        assertTrue("light OS, but it is 23:00", nightFor(ThemeMode.System, systemDark = false, hour = 23))
+        assertFalse("light OS at midday stays Dawn", nightFor(ThemeMode.System, systemDark = false, hour = 12))
+        assertTrue("dark OS at midday is still Night", nightFor(ThemeMode.System, systemDark = true, hour = 12))
+
+        // An explicit choice is a choice. The clock does not get a vote.
+        assertFalse("explicit Dawn survives 23:00", nightFor(ThemeMode.Dawn, systemDark = false, hour = 23))
+        assertFalse("explicit Dawn survives 03:00", nightFor(ThemeMode.Dawn, systemDark = true, hour = 3))
+        assertTrue("explicit Night survives midday", nightFor(ThemeMode.Night, systemDark = false, hour = 12))
     }
 
     @Test

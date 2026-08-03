@@ -50,6 +50,12 @@ object Chime {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
 
+    /** The synthesized waveform, built once and reused. It's ~44KB of constant
+     * PCM — re-deriving it (22,050 sin() calls plus a fresh ShortArray) on every
+     * breath phase was pure churn. AudioTrack still has to be per-play: a STATIC
+     * track can't be safely re-written while the previous one rings out. */
+    private val samples: ShortArray by lazy { synthesize() }
+
     /** Play the soft chime once. Never throws; never blocks the caller. */
     fun play() {
         playSamples(synthesize(), DURATION_MS)

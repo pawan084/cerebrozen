@@ -34,6 +34,14 @@ export const FEELINGS: {
 export const LANGUAGES = ["English", "Hindi", "Hinglish", "Punjabi", "Tamil"];
 export const REMINDER_TIMES = ["Morning 9 AM", "Evening 7 PM", "No reminders"];
 
+// `planTitle` and `PLAN_STEPS` used to live here, feeding a "your first plan"
+// preview step. They are gone with it: the three steps were static and identical
+// for every user, so the screen presented a canned list as personalization. iOS
+// and Android had already dropped the same fake; web was the last one carrying it.
+
+// All six DPDP categories — the same set the account page and the 13-language
+// notice carry. "Specific and informed" means the category is shown at the
+// moment of consent, not defaulted quietly and surfaced later.
 export type Consent = {
   mood_history: boolean;
   ai_memory: boolean;
@@ -78,11 +86,12 @@ export function loadDraft(): Draft {
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
     if (!raw) return freshDraft();
-    const parsed = JSON.parse(raw);
-    // Deep-merge consent so drafts saved before a category existed (e.g.
-    // model_training) still carry every key, private-by-default.
-    const fresh = freshDraft();
-    return { ...fresh, ...parsed, consent: { ...fresh.consent, ...(parsed.consent ?? {}) } };
+    // Deep-merge `consent` so a draft saved before a category existed (e.g.
+    // model_training) still yields a boolean for it, private-by-default — an
+    // undefined toggle would also go uncontrolled.
+    const base = freshDraft();
+    const saved = JSON.parse(raw) as Partial<Draft>;
+    return { ...base, ...saved, consent: { ...base.consent, ...(saved.consent ?? {}) } };
   } catch {
     return freshDraft();
   }

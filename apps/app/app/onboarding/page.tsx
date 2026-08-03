@@ -51,14 +51,18 @@ export default function Onboarding() {
   // Anonymous funnel: which step each install reached (name only — never any
   // answer or content). No-ops until the Consent step unlocks telemetry, so
   // pre-consent steps are deliberately uncounted (owner decision 2026-07-13).
+  //
+  // Indexed by STEP_NAMES, NOT the backend's 10-name ONBOARDING_STEPS: this
+  // funnel is 8 steps, so the backend list would label step 4 "state_check"
+  // when it is actually "first_reset" and shift every bar after it.
   useEffect(() => {
     if (ready) track("onboarding_step", STEP_NAMES[step] ?? "");
   }, [ready, step]);
 
   async function finish() {
-    track("onboarding_done");
     await applyOnboarding(draft);
     setOnboarded();
+    track("onboarding_done");
     clearDraft();
     router.replace("/home");
   }
@@ -80,8 +84,19 @@ export default function Onboarding() {
         {step === 4 && <FirstReset onContinue={next} onBack={back} />}
         {step === 5 && <Signup onAuthed={next} onBack={back} />}
         {step === 6 && (
-          <ConsentStep draft={draft} update={update}
-            onContinue={() => { unlockAnalytics(); next(); }} onBack={back} />
+          <ConsentStep
+            draft={draft}
+            update={update}
+            onContinue={() => {
+              // Passing Consent is what unlocks counting at all — and the
+              // step-change effect already fired while analytics was still
+              // locked, so this step counts itself once it is allowed to.
+              unlockAnalytics();
+              track("onboarding_step", "consent");
+              next();
+            }}
+            onBack={back}
+          />
         )}
         {step === 7 && (
           <Notifications draft={draft} update={update} onFinish={finish} onBack={back} />
@@ -152,7 +167,7 @@ function Welcome({ onBegin }: { onBegin: () => void }) {
       <p className="onb-caption">
         Your quiet space for daily mental fitness, better sleep, and calmer focus.
       </p>
-      <p className="onb-fine">Private by design — nothing is ever shared.</p>
+      <p className="onb-fine">Private by design — no ads, nothing sold, and nothing remembered unless you allow it.</p>
       <div className="onb-footer">
         <Progress value={PROGRESS[0]} />
         <button className="btn pill-cta" onClick={onBegin}>
@@ -342,10 +357,11 @@ function Signup({ onAuthed, onBack }: { onAuthed: () => void; onBack: () => void
 
 /* ---------- 6 · Consent ---------- */
 
-// All 6 DPDP categories render here (Android redesign W3 precedent) — DPDP
+// All six DPDP categories are shown here, in the account page's order — DPDP
 // "specific and informed" is better served by showing a category than by
-// silently defaulting it. The set-all row still excludes voice_storage and
-// model_training: sensitive opt-ins stay individual.
+// silently defaulting it. Nothing is pre-ticked, and the "remember my patterns"
+// shortcut deliberately leaves voice_storage + model_training alone — sensitive
+// categories stay individual, deliberate opt-ins (design system §8).
 const CONSENT_KEYS: (keyof Draft["consent"])[] = [
   "mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training",
 ];

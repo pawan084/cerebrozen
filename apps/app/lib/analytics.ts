@@ -1,60 +1,121 @@
-// First-party anonymous product analytics — the web twin of iOS/Android
-// `Analytics`. Allowlisted names only (backend routes/events.ALLOWED_EVENTS),
-// a random install id, and NO auth header — rows can never join accounts.
-//
-// DPDP posture (owner decision 2026-07-13, cross-client): NO telemetry before
-// consent. track() stays silent until the onboarding Consent step is passed or
-// a session authenticates (an existing account has an established
-// relationship); pre-consent funnel steps are deliberately uncounted. After
-// unlock, the "Anonymous usage stats" opt-out governs.
+/**
+ * Anonymous, first-party product analytics for the browser client.
+ *
+ * The mobile apps have posted to `/events` since 2026-07-04; the web clients
+ * never did, so the `source` values `web`/`app` were unused and the browser
+ * funnel was invisible in admin. This is the missing half — deliberately a port
+ * of the same contract rather than a new one, because the admin funnel counts
+ * iOS, Android and web together and a different vocabulary would silently
+ * corrupt it.
+ *
+ * The rules it inherits, all of which matter more than the measurement:
+ *
+ *  - **Zero third-party SDKs.** Counts go to our own backend, nowhere else.
+ *  - **Never account-linked.** A random per-install id, and `/events` takes no
+ *    auth on purpose — a bearer token on the request is ignored, so events
+ *    cannot be joined to a user even by accident.
+ *  - **Allowlisted names only**, no free-form payload. Unknown names are
+ *    dropped server-side.
+ *  - **Nothing fires before consent** (`unlock()`), matching the 2026-07-13
+ *    decision on Android: funnel steps reached before the Consent screen are
+ *    intentionally uncounted rather than retroactively sent.
+ *  - **Opt-out** honoured, and failures are swallowed — analytics must never
+ *    affect the product.
+ */
 import { API_URL } from "@/lib/api";
 
 const ID_KEY = "cerebro_anon_id";
-const UNLOCK_KEY = "analytics_unlocked";
-const OPT_KEY = "usage_stats_on";
+const OPT_KEY = "cerebro_usage_stats";
+/** Set once the user passes the Consent step (or signs in as a returning user). */
+const UNLOCK_KEY = "cerebro_analytics_unlocked";
 
-function store(): Storage | null {
-  try { return typeof window === "undefined" ? null : window.localStorage; } catch { return null; }
+/** The complete vocabulary, mirroring `routes/events.ALLOWED_EVENTS`. */
+export type EventName =
+  | "onboarding_step"
+  | "onboarding_done"
+  | "paywall_view"
+  | "paywall_cta";
+
+/**
+ * Step names live in `lib/onboarding.ts` as `STEP_NAMES`, not here.
+ *
+ * There were briefly two lists: this one mirroring the backend's ten-name
+ * `services/metrics.ONBOARDING_STEPS`, and the funnel's own eight. The browser
+ * funnel is eight steps — `age_gate` folded into `disclosure` and the invented
+ * `first_plan` preview is gone — so indexing the ten-name list by the UI's step
+ * number labelled step 4 "state_check" when it was "first_reset", and shifted
+ * every bar after it. The admin funnel joins on these strings, so a wrong name
+ * is a silently wrong chart rather than an error. One list, next to the steps
+ * it names.
+ */
+
+function safeGet(key: string): string | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
-export function analyticsUnlocked(): boolean {
-  return store()?.getItem(UNLOCK_KEY) === "true";
-}
-
-/** Called when the Consent step is passed or a session authenticates. */
-export function unlockAnalytics() {
-  store()?.setItem(UNLOCK_KEY, "true");
+function safeSet(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* private mode / full store — analytics is never worth an exception */
+  }
 }
 
 export function analyticsEnabled(): boolean {
-  return store()?.getItem(OPT_KEY) !== "false";
+  return safeGet(OPT_KEY) !== "false";
 }
 
 export function setAnalyticsEnabled(on: boolean) {
-  store()?.setItem(OPT_KEY, String(on));
+  safeSet(OPT_KEY, String(on));
+}
+
+/** Called once the user has passed Consent. Idempotent. */
+export function unlockAnalytics() {
+  safeSet(UNLOCK_KEY, "1");
+}
+
+function unlocked(): boolean {
+  return safeGet(UNLOCK_KEY) === "1";
 }
 
 function anonId(): string {
-  const s = store();
-  const existing = s?.getItem(ID_KEY);
+  const existing = safeGet(ID_KEY);
   if (existing) return existing;
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  const id = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  s?.setItem(ID_KEY, id);
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "")
+      : Math.random().toString(36).slice(2).padEnd(16, "0");
+  safeSet(ID_KEY, id);
   return id;
 }
 
-/** Fire-and-forget: never blocks a screen and never surfaces errors — these
- * are counts, not truth. */
-export function track(name: string, step = "") {
-  if (!analyticsUnlocked() || !analyticsEnabled()) return;
+/**
+ * Fire-and-forget. Returns nothing and never throws.
+ *
+ * `keepalive` so an event sent as the user navigates away still leaves — the
+ * last step of a funnel is the one most likely to be lost otherwise.
+ */
+export function track(name: EventName, step = "") {
+  if (typeof window === "undefined") return;
+  if (!unlocked() || !analyticsEnabled()) return;
   try {
     void fetch(`${API_URL}/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // No credentials, no Authorization: the endpoint ignores auth by design
+      // and sending one would only create the appearance of linkage.
+      body: JSON.stringify({
+        anon_id: anonId(),
+        source: "app",
+        events: [{ name, step }],
+      }),
       keepalive: true,
-      body: JSON.stringify({ anon_id: anonId(), source: "app", events: [{ name, step }] }),
     }).catch(() => {});
-  } catch {}
+  } catch {
+    /* never let a count break a screen */
+  }
 }

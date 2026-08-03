@@ -112,6 +112,24 @@ object Session {
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
+    /**
+     * The free-tier daily cap, specifically.
+     *
+     * A subclass rather than a flag because the IP rate limiter ALSO returns
+     * 429 and means something entirely different — offering an upgrade to
+     * someone who merely typed too fast would be wrong and manipulative. The
+     * server marks this one with `detail.code`, and only that is trusted.
+     *
+     * [resetsAtUtc] is an ISO timestamp, not the word "midnight": the window is
+     * UTC, so in India it clears at 05:30 local.
+     */
+    class FreeLimitException(
+        message: String,
+        val limit: Int,
+        val used: Int,
+        val resetsAtUtc: String,
+    ) : Exception(message)
+
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
     private suspend fun raw(
@@ -124,8 +142,26 @@ object Session {
         val (code, text) = http(BuildConfig.API_BASE_URL + path, method, body, contentType, if (authed) access else null)
         logApiResponse(method, path, code, text)
         if (code !in 200..299) {
-            val detail = runCatching { JSONObject(text).optString("detail") }
-                .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
+            // `detail` may be an OBJECT (the free-tier cap) or a string. Reading
+            // it blindly with optString would print raw JSON at the user.
+            val body = runCatching { JSONObject(text) }.getOrNull()
+            val obj = body?.optJSONObject("detail")
+            if (code == 429 && obj?.optString("code") == "free_daily_limit") {
+                throw FreeLimitException(
+                    obj.optString("message"),
+                    obj.optInt("limit"),
+                    obj.optInt("used"),
+                    obj.optString("resets_at"),
+                )
+            }
+            // `error` is slowapi's key for the IP rate limiter — without it a
+            // throttled user just sees "Request failed (429)", which teaches
+            // them nothing about what to do.
+            val detail = listOfNotNull(
+                obj?.optString("message"),
+                body?.optString("detail"),
+                body?.optString("error"),
+            ).firstOrNull { it.isNotBlank() } ?: "Request failed ($code)"
             throw ApiException(code, detail)
         }
         return text
@@ -504,6 +540,11 @@ object Api {
     suspend fun me(): JSONObject = JSONObject(Session.api("/auth/me"))
     suspend fun streak(): JSONObject = JSONObject(Session.api("/users/me/streak"))
     suspend fun moods(): JSONArray = JSONArray(Session.api("/moods"))
+
+    /** Take back a check-in. The tap that logs one is single, so the tap that
+     * undoes it has to exist — and a stray mood otherwise sits in the 60-day
+     * window that patterns and the weekly read are computed from. */
+    suspend fun deleteMood(id: String) { Session.api("/moods/$id", "DELETE") }
     suspend fun checkIn(mood: String, note: String, symbol: String, intensity: Int): JSONObject =
         JSONObject(
             Session.api(
@@ -557,8 +598,92 @@ object Api {
     /** Transparent AI memory: honest learned statements + their data basis. */
     suspend fun patterns(): JSONObject = JSONObject(Session.api("/insights/patterns"))
 
-    /** Wipe the AI's memory (chat history + insights + Oracle thread state). */
+    /** Wipe the AI's memory (chat history + insights + saved notes + Oracle thread state). */
     suspend fun deleteMemory(): JSONObject = JSONObject(Session.api("/users/me/memory", "DELETE"))
+
+    // ── Per-item memory ──
+    // Patterns above are computed and can only be hidden; these are rows the
+    // user wrote or approved, so they can be edited and deleted individually.
+    suspend fun memories(): JSONArray = JSONArray(Session.api("/users/me/memory"))
+
+    suspend fun addMemory(body: String): JSONObject =
+        JSONObject(Session.api("/users/me/memory", "POST", JSONObject().put("body", body)))
+
+    suspend fun editMemory(id: String, body: String): JSONObject =
+        JSONObject(Session.api("/users/me/memory/$id", "PATCH", JSONObject().put("body", body)))
+
+    suspend fun deleteOneMemory(id: String) {
+        Session.api("/users/me/memory/$id", "DELETE")
+    }
+
+    // ── Goals + habits (the things the user defines) ──
+    /** Active goals, or every goal including the ones finished and let go.
+     *
+     * The client only ever asked for active ones, so "Done" and "Let it go" —
+     * two one-tap buttons sitting beside "Make today's plan" — made a
+     * user-authored goal vanish from the app with no way back, while the server
+     * had been keeping it and offering this flag all along. */
+    suspend fun goals(includeResolved: Boolean = false): JSONArray =
+        JSONArray(Session.api("/goals" + if (includeResolved) "?include_resolved=true" else ""))
+
+    suspend fun addGoal(title: String): JSONObject =
+        JSONObject(Session.api("/goals", "POST", JSONObject().put("title", title)))
+
+    suspend fun setGoalStatus(id: String, status: String): JSONObject =
+        JSONObject(Session.api("/goals/$id", "PATCH", JSONObject().put("status", status)))
+
+    /** Turn a goal into today's plan — replaces the active plan, since the
+     * product has exactly one at a time. */
+    suspend fun decomposeGoal(id: String): JSONObject =
+        JSONObject(Session.api("/goals/$id/decompose", "POST", JSONObject()))
+
+    suspend fun habits(): JSONArray = JSONArray(Session.api("/habits"))
+
+    suspend fun addHabit(title: String, cue: String): JSONObject =
+        JSONObject(Session.api("/habits", "POST",
+            JSONObject().put("title", title).put("cue", cue)))
+
+    /** Toggle today. Idempotent server-side and undoable — a mis-tap is never
+     * permanent. */
+    suspend fun setHabitToday(id: String, done: Boolean): JSONObject {
+        val body = Session.api(
+            "/habits/$id/complete",
+            if (done) "POST" else "DELETE",
+            if (done) JSONObject() else null,
+        )
+        return JSONObject(body)
+    }
+
+    // ── Recommendations (derived from the user's own patterns) ──
+    /** Pending suggestions. The server seeds from current patterns on read and
+     * returns [] for thin data, so this is safe to call unconditionally. */
+    suspend fun recommendations(): JSONArray = JSONArray(Session.api("/recommendations/mine"))
+
+    suspend fun resolveRecommendation(id: String, accept: Boolean) {
+        Session.api("/recommendations/$id/${if (accept) "accept" else "dismiss"}", "POST", JSONObject())
+    }
+
+    // ── Safety plan (user-authored; the model never writes one) ──
+    /** The live plan, or null when the user hasn't written one — a normal
+     * state, never an error. */
+    suspend fun safetyPlan(): JSONObject? {
+        val body = Session.api("/safety-plan/me")
+        if (body.isBlank() || body == "null") return null
+        return JSONObject(body)
+    }
+
+    /** Save one or more sections; unset fields carry over server-side. */
+    suspend fun saveSafetyPlan(fields: JSONObject): JSONObject =
+        JSONObject(Session.api("/safety-plan/me", "PUT", fields))
+
+    /** Stop showing one computed pattern. Keyed by the statement — patterns
+     * are derived per request and have no id of their own. */
+    suspend fun suppressPattern(statement: String) {
+        Session.api(
+            "/users/me/memory/suppress-pattern", "POST",
+            JSONObject().put("statement", statement),
+        )
+    }
 
     // ── Programs (multi-day journeys — ref "DAY X OF Y" card) ──
     suspend fun activeProgram(): JSONObject? =
@@ -595,14 +720,25 @@ object Api {
         Session.api("/users/me/trusted-contact").let {
             if (it.isBlank() || it.trim() == "null") null else JSONObject(it)
         }
-    suspend fun setTrustedContact(name: String, method: String, value: String): JSONObject =
+    /** [notifyConsent] is the USER's answer, never assumed. This used to hardcode
+     * `true`, so naming a trusted contact silently agreed to messaging them at
+     * the worst moment of someone's life — and nothing on Android ever called
+     * this, so no one had been asked at all. */
+    suspend fun setTrustedContact(
+        name: String,
+        method: String,
+        value: String,
+        notifyConsent: Boolean,
+    ): JSONObject =
         JSONObject(
             Session.api(
                 "/users/me/trusted-contact", "PUT",
                 JSONObject().put("name", name).put("method", method)
-                    .put("value", value).put("notify_consent", true),
+                    .put("value", value).put("notify_consent", notifyConsent),
             ),
         )
+
+    suspend fun deleteTrustedContact() { Session.api("/users/me/trusted-contact", "DELETE") }
 
     /** Full personal-data export (privacy screen). Returns the raw JSON text. */
     suspend fun exportData(): String = Session.api("/users/me/export")

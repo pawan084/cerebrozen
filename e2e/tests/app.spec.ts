@@ -155,7 +155,13 @@ test.describe("Web app (authenticated client)", () => {
     // Safety: real human pathways render (Tele-MANAS leads), and the sidebar
     // carries a persistent Support door (crisis ≤2 clicks from anywhere).
     await expect(page.getByRole("heading", { name: "Talk to a human" })).toBeVisible({ timeout: 20_000 });
-    await expect(nav(page, "Support")).toBeVisible();
+    // The door is the styled `.support-door`, not a plain nav row, so its
+    // accessible name is "Support Real people, 24/7" — matched on the prefix
+    // rather than exactly, because what this pins is that a Support door exists
+    // in the sidebar, not how its label reads.
+    await expect(
+      page.locator(".sidebar").getByRole("link", { name: /^Support/ }),
+    ).toBeVisible();
     const aiMemory = page.getByRole("switch", { name: "AI memory" });
     await expect(aiMemory).toBeVisible({ timeout: 20_000 });
     const before = await aiMemory.isChecked();
@@ -181,8 +187,34 @@ test.describe("Web app (authenticated client)", () => {
     // Programs: enroll in a journey (ref "PROGRAM · DAY X OF Y") — the active
     // banner appears here and the journey card lands on Home.
     await nav(page, "Programs").click();
-    await page.getByRole("button", { name: "Start this journey" }).first().click();
+    // Sleep Reset specifically, not .first(): it is the one seeded program that
+    // ships day_guides, and the journey path only exists where a week does.
+    // Enrolling in "Ease work stress" instead renders no path and no guide,
+    // which is correct behaviour and tells us nothing.
+    await page
+      .locator(".program-card", { hasText: "Sleep Reset" })
+      .getByRole("button", { name: "Start this journey" })
+      .click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
+
+    // The journey path: the whole week, and none of it gated. Day 1 is today, so
+    // it carries aria-current="step"; every other day must still be reachable —
+    // that is the product rule, not a nicety, and a regression here would be a
+    // lock quietly appearing on a wellness programme.
+    await expect(page.getByText("Every day is open — read ahead, or go back. Nothing here locks."))
+      .toBeVisible();
+    await expect(page.getByRole("button", { name: "Day 1, today" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    const laterDay = page.getByRole("button", { name: "Day 5, later in this program" });
+    await expect(laterDay).toBeEnabled();
+    await laterDay.click();
+    await expect(page.getByText("Day 5 · coming up")).toBeVisible();
+    // And back again — nothing one-way.
+    await page.getByRole("button", { name: "Day 1, today" }).click();
+    await expect(page.getByText("Day 1 · today")).toBeVisible();
+
     await nav(page, "Home").click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
 
@@ -218,5 +250,40 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByRole("link", { name: /Tele-MANAS/ })).toHaveAttribute("href", "tel:14416");
     await expect(page.getByRole("link", { name: /Find a helpline/ })).toHaveAttribute(
       "href", "https://findahelpline.com/in");
+  });
+
+  // The landing deep-links into app screens ("Open Sleep →"), which only works
+  // if a signed-out visitor is carried through sign-in back to what they
+  // clicked. Without this the links resolve but every one of them lands on Home.
+  test("a signed-out deep link returns to where it pointed after sign-in", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = `e2e-next-${Date.now()}@test.app`;
+
+    await page.goto(`${APP}/sleep`, { waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/signin\?next=%2Fsleep$/);
+
+    await page.getByRole("tab", { name: "Create account" }).click();
+    await page.locator('input[autocomplete="name"]').fill("E2E Next");
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill("password123");
+    await page.getByRole("button", { name: "Create my account" }).click();
+
+    await expect(page).toHaveURL(/\/sleep$/, { timeout: 20_000 });
+  });
+
+  // `next` is attacker-controlled, so it is an allow-list: same-origin absolute
+  // paths only. A protocol-relative URL must not become an open redirect.
+  test("refuses an off-origin next and falls back to Home", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = `e2e-evil-${Date.now()}@test.app`;
+
+    await page.goto(`${APP}/signin?next=//example.com/evil`, { waitUntil: "networkidle" });
+    await page.getByRole("tab", { name: "Create account" }).click();
+    await page.locator('input[autocomplete="name"]').fill("E2E Evil");
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill("password123");
+    await page.getByRole("button", { name: "Create my account" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`^${APP}/(home|onboarding)`), { timeout: 20_000 });
   });
 });

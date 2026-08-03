@@ -13,6 +13,7 @@ ACCESS = "access"
 REFRESH = "refresh"
 VERIFY = "verify"      # email-verification link token
 RESET = "reset"        # password-reset link token
+MEDIA = "media"        # short-lived narration-playback grant (see create_media_token)
 
 
 def hash_password(password: str) -> str:
@@ -64,6 +65,19 @@ def create_verify_token(subject: str) -> str:
 
 def create_reset_token(subject: str) -> str:
     return _create_token(subject, RESET, timedelta(hours=1))
+
+
+def create_media_token(item_id: str) -> str:
+    """Grant playback of one narration file for a bounded window.
+
+    Audio is fetched by native players (AVPlayer, ExoPlayer, ``<audio>``) that
+    cannot reasonably attach an Authorization header, so the grant rides in the
+    URL instead. Scoped to a single content id so a leaked URL unlocks one track
+    and not the catalogue, and short-lived so it stops working long before it
+    can be shared around. The entitlement decision happens when this is minted
+    (see ``services.media.playback_url``) — this token only proves it happened.
+    """
+    return _create_token(item_id, MEDIA, timedelta(hours=settings.media_token_ttl_hours))
 
 
 def decode_token(token: str, expected_type: str | None = None) -> dict[str, Any] | None:

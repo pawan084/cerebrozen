@@ -31,6 +31,12 @@ const bodyBg = (page: Page) =>
 const nightVar = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--night").trim());
 
+// The Dawn page ground. Named rather than inlined because it is pinned twice,
+// and because it MOVED: Dawn was a cool near-white (#fafafc) until the
+// 2026-07-31 depth pass found a raised card sitting at 1.09:1 against it. The
+// ground is warm paper now, so a cool-white card separates by temperature.
+const DAWN_BASE = "#f2eee5";
+
 test.describe("Dawn theme (System + light OS)", () => {
   test.use({ colorScheme: "light" });
 
@@ -45,7 +51,7 @@ test.describe("Dawn theme (System + light OS)", () => {
     await signup(page);
 
     // Dawn vars active at :root under a light OS with no explicit choice.
-    expect(await nightVar(page)).toBe("#fafafc");
+    expect(await nightVar(page)).toBe(DAWN_BASE);
     await page.screenshot({ path: "shots/home-dawn.png", fullPage: true });
 
     await page.goto(`${APP}/insights`, { waitUntil: "networkidle" });
@@ -70,7 +76,7 @@ test.describe("Dawn theme (System + light OS)", () => {
 
     // Back to System — Dawn again on this light OS.
     await page.getByRole("button", { name: "System", exact: true }).click();
-    expect(await nightVar(page)).toBe("#fafafc");
+    expect(await nightVar(page)).toBe(DAWN_BASE);
   });
 });
 

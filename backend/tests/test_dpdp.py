@@ -78,7 +78,13 @@ async def test_weekly_insights_respect_itemized_consent(client):
     by_label = {m["label"]: m["value"] for m in weekly["metrics"]}
     assert by_label["Journal entries"] == "0"
     assert by_label["Sleep"] == "No diary yet"
-    assert by_label["Mood stability"] == "Steady"   # neutral default, not derived
+    # Was `== "Steady"  # neutral default, not derived` — which is the opposite of
+    # what a test named "respect itemized consent" should assert. A user who
+    # switched mood history OFF was still shown a mood reading, at 70%, drawn
+    # from nothing. Withheld data must read as withheld.
+    assert by_label["Mood stability"] == "No check-ins yet"
+    by_progress = {m["label"]: m["progress"] for m in weekly["metrics"]}
+    assert by_progress["Mood stability"] == 0.0, "and it must not draw a bar either"
 
 
 async def test_delete_account_writes_minimal_ledger(client):

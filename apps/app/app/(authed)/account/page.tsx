@@ -17,6 +17,13 @@ import { CONSENT_NOTICE, NOTICE_LANGS } from "@/lib/consentNotice";
 import { getThemeMode, setThemeMode, type ThemeMode } from "@/lib/theme";
 import { AppHeader } from "@/components/AppHeader";
 import { resetTour } from "@/components/GuidedTour";
+
+/** Fires `paywall_view` once, when the upgrade block is actually rendered —
+ *  mounting is the honest definition of "seen", not opening the page. */
+function PaywallSeen() {
+  useEffect(() => { track("paywall_view"); }, []);
+  return null;
+}
 import { Icon } from "@/components/icons";
 
 type Consent = {
@@ -47,6 +54,9 @@ export default function Account() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [consent, setConsent] = useState<Consent | null>(null);
+  // Local-only preference (localStorage): analytics never touches the account,
+  // so it is not a server consent flag.
+  const [usageStats, setUsageStats] = useState(true);
   const [region, setRegion] = useState("");
   const [contact, setContact] = useState<Contact>({
     name: "", method: "email", value: "", relationship: "", notify_consent: false,
@@ -66,6 +76,7 @@ export default function Account() {
   const notice = CONSENT_NOTICE[noticeLang] ?? CONSENT_NOTICE.en;
 
   useEffect(() => {
+    setUsageStats(analyticsEnabled());
     api("/auth/me").then((u) => {
       setMe(u);
       setRegion(u.region ?? "");
@@ -158,9 +169,19 @@ export default function Account() {
     }
   }
 
-  async function upgrade() {
+  async function openPortal() {
     setBillingMsg("");
+    try {
+      const { url } = await api<{ url: string }>("/billing/portal", { method: "POST" });
+      window.location.href = url;
+    } catch (err: any) {
+      setBillingMsg(err.message || "Couldn't open the billing portal.");
+    }
+  }
+
+  async function upgrade() {
     track("paywall_cta", "premium");
+    setBillingMsg("");
     try {
       const { url } = await api<{ url: string }>("/billing/checkout", {
         method: "POST",
@@ -170,16 +191,6 @@ export default function Account() {
     } catch (err: any) {
       // 503 until Stripe is configured — show the honest server message.
       setBillingMsg(err.message || "Web billing isn't available yet.");
-    }
-  }
-
-  async function openPortal() {
-    setBillingMsg("");
-    try {
-      const { url } = await api<{ url: string }>("/billing/portal", { method: "POST" });
-      window.location.href = url;
-    } catch (err: any) {
-      setBillingMsg(err.message || "Couldn't open the billing portal.");
     }
   }
 
@@ -234,17 +245,23 @@ export default function Account() {
           </label>
           {(me.subscription_tier ?? "free") === "free" ? (
             <div style={{ marginTop: 12 }}>
+              <PaywallSeen />
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
               {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
             </div>
           ) : (
             <div style={{ marginTop: 12 }}>
-              {/* Cancelling must be as easy as subscribing (OECD checklist). */}
+              {/* Stripe's own portal rather than a hand-rolled cancel: proration,
+                  trials and dunning are its rules, and a local reimplementation
+                  gets them subtly wrong in ways that cost real people money.
+                  The label keeps the word "cancel" — cancelling must be as easy
+                  to find as subscribing was (OECD dark-pattern checklist), and a
+                  button reading only "Manage billing" hides it one click deeper. */}
               <button className="btn ghost" onClick={openPortal}>Manage or cancel subscription</button>
               <p className="footnote">
-                Opens Stripe&apos;s billing portal. Subscribed on iPhone? Manage it in the App Store instead.
+                Change your card, switch plan, or cancel. Subscribed on iPhone? Manage it in the App Store instead.
               </p>
-              {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
+              {billingMsg &&<p className="footnote" role="status">{billingMsg}</p>}
             </div>
           )}
         </section>
@@ -321,6 +338,33 @@ export default function Account() {
               />
             </div>
           ))}
+
+        {/* Analytics is NOT a consent category — it never touches account data.
+            It lives here because this is where someone looks for the off
+            switch, and shipping counting without one would break the promise
+            the copy already makes. */}
+        <div className="row" style={{ marginTop: 14, gap: 12, alignItems: "flex-start" }}>
+          <div className="grow">
+            <strong>Anonymous usage stats</strong>
+            <div className="sub">
+              Counts only — which onboarding step was reached, whether the plans page was
+              opened. Tied to a random id for this browser, never to your account, and never
+              shared. Switch it off and nothing is sent.
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={usageStats}
+            onChange={() => {
+              const next = !usageStats;
+              setUsageStats(next);
+              setAnalyticsEnabled(next);
+            }}
+            aria-label="Anonymous usage stats"
+            style={{ width: 20, height: 20 }}
+          />
+        </div>
       </section>
 
       {/* Real human pathways — mirrors Android Settings.kt HumanSupportScreen.

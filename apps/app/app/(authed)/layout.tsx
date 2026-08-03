@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { hasSession, signOut } from "@/lib/api";
+import { currentPath } from "@/lib/nextPath";
 import { BrandMark, Icon } from "@/components/icons";
 
 const MENU = [
@@ -15,42 +16,70 @@ const MENU = [
 ];
 const EXPLORE = [
   { href: "/plan", label: "Plan", icon: Icon.plan },
+  { href: "/goals", label: "Goals & habits", icon: Icon.spark },
   { href: "/programs", label: "Programs", icon: Icon.spark },
   { href: "/library", label: "Library", icon: Icon.library },
+  // "Toolkit", not "Games": the hub is Ground/Breathe/Reframe/Settle, and the
+  // four mini-games REDESIGN §2.2 removed are exactly what the old name promised.
   { href: "/games", label: "Toolkit", icon: Icon.games },
+  // A plan is written when things are steady, so it belongs in the calm part of
+  // the nav — not filed under crisis, where nobody browses.
+  { href: "/safety-plan", label: "Safety plan", icon: Icon.support },
   { href: "/account", label: "Settings", icon: Icon.settings },
-  // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3): a calm, persistent
-  // door — the /crisis page itself is static and works signed-out too.
-  { href: "/crisis", label: "Support", icon: Icon.heart },
+  // Crisis stays ≤2 clicks from anywhere (REDESIGN §2.3), but as the single
+  // styled `.support-door` below the nav rather than a row here — two entries
+  // both labelled "Support" is what merging the two designs first produced.
 ];
-// The mobile bottom bar keeps the five primary spaces (mirrors iOS).
+// The mobile bottom bar keeps the primary spaces (mirrors iOS) plus the Support
+// door — crisis has to stay one tap away on a phone too (design system §1).
 const MOBILE = [
   { href: "/home", label: "Home", icon: Icon.home },
   { href: "/chat", label: "Talk", icon: Icon.talk },
   { href: "/sleep", label: "Sleep", icon: Icon.sleep },
   { href: "/journal", label: "Journal", icon: Icon.journal },
+  { href: "/support", label: "Support", icon: Icon.support },
   { href: "/account", label: "You", icon: Icon.account },
 ];
+
+// The upsell is dismissible per device — an always-on upgrade card in a wellness
+// app is the OECD "nagging" indicator (design system §8).
+const PREMIUM_DISMISSED = "cerebro_app_premium_dismissed";
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
-  const [tier, setTier] = useState("free");
+  // `null` until /auth/me answers: defaulting to "free" flashed a "Free plan"
+  // chip at paying users on every load.
+  const [tier, setTier] = useState<string | null>(null);
+  const [upsell, setUpsell] = useState(false);
 
   useEffect(() => {
-    if (!hasSession()) { router.replace("/signin"); return; }
+    if (!hasSession()) {
+      // Carry the destination through sign-in, so a landing-page link like
+      // "Open Sleep →" actually lands on Sleep instead of dumping everyone on
+      // Home. Read from `window` rather than the `pathname` hook so this effect
+      // keeps its one-shot deps and doesn't refetch /auth/me on every nav.
+      router.replace(`/signin?next=${encodeURIComponent(currentPath())}`);
+      return;
+    }
     setReady(true);
     // A live session = established relationship → telemetry unlocked (the
     // same rule iOS/Android apply on connect; the opt-out still governs).
     import("@/lib/analytics").then(({ unlockAnalytics }) => unlockAnalytics());
+    setUpsell(window.localStorage.getItem(PREMIUM_DISMISSED) !== "1");
     import("@/lib/api").then(({ api }) =>
       api("/auth/me").then((me: any) => {
         setName(me.name || "");
         setTier(me.subscription_tier || "free");
       }).catch(() => {}));
   }, [router]);
+
+  function dismissUpsell() {
+    window.localStorage.setItem(PREMIUM_DISMISSED, "1");
+    setUpsell(false);
+  }
 
   if (!ready) return null;
   const active = (href: string) => pathname.startsWith(href);
@@ -71,14 +100,24 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         <div className="nav-group-label">Explore</div>
         <nav className="nav-group">{EXPLORE.map(NavLink)}</nav>
 
-        {/* Shown to free accounts only — a permanent upsell in a wellness app
-            leans on the OECD "nagging" indicator, and premium users never
-            need it. */}
-        {tier === "free" && (
+        {/* A calm, always-there door — crisis stays ≤2 taps from every screen. */}
+        <Link href="/support" className={active("/support") ? "support-door active" : "support-door"}>
+          <Icon.support size={19} />
+          <span>
+            <strong>Support</strong>
+            <small>Real people, 24/7</small>
+          </span>
+        </Link>
+
+        {/* Free accounts only, and dismissible — a permanent upsell in a
+            wellness app leans on the OECD "nagging" indicator, and premium
+            users never need it. */}
+        {upsell && tier === "free" && (
           <div className="premium-card">
             <strong>Unlock Premium</strong>
             <p>Unlimited talks, the full sleep library, and deeper insights.</p>
             <Link href="/account" className="premium-btn">See plans</Link>
+            <button type="button" className="premium-dismiss" onClick={dismissUpsell}>Not now</button>
           </div>
         )}
 
@@ -87,7 +126,13 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             <span className="user-avatar" aria-hidden="true" />
             <div className="user-meta">
               <strong>{name || "Your space"}</strong>
-              <small>{{ premium: "Premium", premium_human: "Premium + Human" }[tier] ?? "Free plan"}</small>
+              {/* Named map, not a capitalise: the tier value is `premium_human`,
+                  which generic title-casing renders as "Premium_human plan". */}
+              {tier && (
+                <small>
+                  {{ premium: "Premium", premium_human: "Premium + Human" }[tier] ?? "Free plan"}
+                </small>
+              )}
             </div>
           </div>
           <button

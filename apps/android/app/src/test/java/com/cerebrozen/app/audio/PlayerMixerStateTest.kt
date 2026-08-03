@@ -106,8 +106,9 @@ class PlayerMixerStateTest {
 
     @Test
     fun mixer_ships_four_layers_with_rain_as_the_primary() {
-        // Stable symbols pin the layer set; display names are res-driven (i18n).
+        // The stable symbol keys are the contract; the names are display copy now.
         assertEquals(listOf("rain", "ocean", "wind", "drone"), SoundscapeMixer.layers.map { it.symbol })
+        assertEquals("rain", SoundscapeMixer.layers[0].symbol)
         assertEquals(
             listOf(com.cerebrozen.app.R.string.mixer_layer_rain, com.cerebrozen.app.R.string.mixer_layer_ocean,
                    com.cerebrozen.app.R.string.mixer_layer_wind, com.cerebrozen.app.R.string.mixer_layer_drone),

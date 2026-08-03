@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,7 @@ from app.schemas.content_data import (
     ContentCreate,
     ContentUpdate,
     SafetyEventOut,
+    SafetyExcerptOut,
 )
 from app.schemas.media import (
     MEDIA_KINDS,
@@ -37,10 +38,11 @@ from app.schemas.media import (
     MediaAssetUpdate,
 )
 from app.schemas.user import UserOut
-from app.services import media, metrics, nudges, oracle_audit, voice
+from app.models.agent_action import AgentAction
+from app.services import digest, media, metrics, nudges, oracle_audit, voice
 from app.services import prompts as prompt_registry
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("cerebro.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -424,12 +426,57 @@ async def list_safety_events(
     return rows.all()
 
 
+@router.get("/safety/{event_id}/excerpt", response_model=SafetyExcerptOut)
+async def read_safety_excerpt(
+    event_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Serve the verbatim text behind one flagged event.
+
+    Separate from the list route on purpose: reading a person's private words is
+    a deliberate act, so it takes a deliberate request, and it leaves a log line
+    naming the admin who made it.
+    """
+    event = await db.get(SafetyEvent, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    logger.info(
+        "admin.safety.excerpt_read admin_id=%s event_id=%s risk=%s",
+        admin.id,
+        event.id,
+        event.risk_level,
+    )
+    return event
+
+
+class SafetyResolve(BaseModel):
+    # Required: an unattributed, unexplained close is not an audit trail.
+    note: str = Field(min_length=1, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def _note_has_substance(cls, v: str) -> str:
+        # A note of spaces satisfies min_length but says nothing.
+        if not v.strip():
+            raise ValueError("note cannot be blank")
+        return v
+
+
 @router.patch("/safety/{event_id}/resolve", response_model=SafetyEventOut)
-async def resolve_safety_event(event_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def resolve_safety_event(
+    event_id: uuid.UUID,
+    body: SafetyResolve,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
     event = await db.get(SafetyEvent, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     event.resolved = True
+    event.resolved_by = admin.id
+    event.resolved_at = utcnow()
+    event.resolution_note = body.note.strip()
     await db.commit()
     await db.refresh(event)
     return event
@@ -505,6 +552,42 @@ async def list_nudges(
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
     sent = await nudges.dispatch_due(db)
     return {"sent": sent}
+
+
+@router.get("/agent-actions")
+async def agent_action_stats(db: AsyncSession = Depends(get_db)):
+    """Per-tool proposal/approval counts — how often users accept what the
+    agent wants to write.
+
+    Counts only, never summaries: a summary can quote the user's own words
+    back ("Save a journal entry about your argument with…"), which is content,
+    not metadata. A persistently declined tool is the signal worth surfacing.
+    """
+    rows = (await db.scalars(select(AgentAction))).all()
+    by_tool: dict[str, dict] = {}
+    for row in rows:
+        entry = by_tool.setdefault(
+            row.tool, {"tool": row.tool, "proposed": 0, "approved": 0, "declined": 0}
+        )
+        entry["proposed"] += 1
+        if row.status == "approved":
+            entry["approved"] += 1
+        elif row.status == "declined":
+            entry["declined"] += 1
+    return sorted(by_tool.values(), key=lambda e: -e["proposed"])
+
+
+@router.post("/digest/run")
+async def run_weekly_digest(db: AsyncSession = Depends(get_db)):
+    """Snapshot + queue this week's digest for every active user.
+
+    The in-process loop does this on its own; this is the manual pass for
+    deployments running the dispatcher on an external cron
+    (NUDGE_DISPATCH_INTERVAL_MINUTES=0), and for verifying a week by hand.
+    Idempotent per ISO week.
+    """
+    queued = await digest.run_weekly_pass(db)
+    return {"queued": queued}
 
 
 # ── Prompt registry (versioned LLM prompts; services/prompts.py) ─────────

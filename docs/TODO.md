@@ -124,6 +124,64 @@
 
 ## Done — recent
 
+### `main` ⟵ `origin/main` merge (2026-08-02) — the forked-main reconciliation
+`main` had **forked**. A `git fetch` reported `origin/v1` deleted and `origin/main`
+force-updated; the two lines shared no history after `5ef7416` (13 Jul). Local carried 27
+commits (13–29 Jul, author `pawancerebro`) — the web/iOS parity waves, Dawn on both, Android
+i18n, the Oracle audit, interventions, the guided routines. `origin/main` carried 72 (30–31
+Jul, 70 authored `Pawan Kumar <ohgrtai@gmail.com>` — the same owner on a second identity,
+plus 2 by Abhimanyu Kumar) — goals & habits, safety plan, editable memory, recommendations,
+the claims gate, Stripe hardening, the free-tier cap, and a 16-screen module audit run on
+hardware. **Neither contained the other**, so nothing here was a fast-forward.
+
+Rule applied: **remote wins on defects found on hardware** (this host cannot reproduce them),
+**local wins on documented cross-stack contracts**, keep-both wherever additive.
+- **Stripe → remote.** The merged `User` has `stripe_customer_id`, so local's
+  subscription-search lookup was obsolete; the portal now 409s (a state) instead of 502ing (a
+  failure) when there is no customer. Three local tests were rewritten to the kept behaviour
+  and a 409 case added.
+- **Web Dawn → remote's architecture, local's scoping.** Took the `--dawn-*` scale (values
+  declared once, hooks only map), then grafted back `.theme-night` — six pages depend on it
+  and remote had no equivalent, so Sleep, `/crisis` and the signed-out funnel would have gone
+  light. Also restored the `.cursor` reduce-motion gate remote had lost, and the guided-imagery
+  CSS; dropped orphaned `.live-dot`.
+  The graft was subtly wrong at first and **only `theme.spec.ts` caught it**: folding
+  `.theme-night` into remote's `.onb-root, .authwrap` rule inherited a block that paints from
+  `--panel-*` and never redeclares `--night`. The funnel containers don't need it; a
+  `.theme-night` *section* wraps ordinary content whose cards and scrims resolve `--night`
+  themselves — so Sleep re-themed its text to Night ink but kept the warm-paper ground. Night
+  ink on Dawn paper, i.e. the bright-screen-at-bedtime regression the scope exists to prevent.
+  `.theme-night` now re-scopes the ground as well.
+- **Android theme → remote.** Its Dawn is the on-device fix for a raised card at **1.09:1**
+  against its page; local's white-on-near-white had the same flaw. Night went back to the brand
+  indigo `#100D2B`: local's navy re-theme never updated `colors.xml`, which remote's new
+  `ThemeTokensTest` catches. The five constant brand marks `PremiumFrames.kt` needs were kept.
+- **Breathe reset → local.** Remote's tests asserted a *symmetric* reset — the exact
+  cross-client bug local fixed on 2026-07-29 (ARCHITECTURE contract: 4 in / 6 out). The
+  implementation was right and the two `twoMinutesReached` tests had stale arithmetic; fixed.
+- **Onboarding → remote** (removes the "Private previews" chip that silently disabled
+  reminders), but **web onboarding → local**: remote still shipped the fake `first_plan`
+  preview iOS and Android had already dropped.
+- **Talk / Today → remote** (device-audited: pinned composer, free-limit card, Home rhythm,
+  and the insights teaser that closes the Android-parity item). **Sleep → welded**: remote's
+  `fallback` dedup fix (the stimulus-control advice printed twice) *plus* local's wind-down
+  ritual door, which remote lacked.
+- **Six defects came from *clean* auto-merges, not conflicts**: duplicate onboarding
+  step-tracking effects (double-counting the funnel), a doubled `onboarding_done`, a duplicated
+  `openPortal`, duplicate imports, admin error states rendering `ApiError` objects as
+  ReactNode, and an `ONBOARDING_STEPS` list whose 10 names indexed against an 8-step UI would
+  have labelled step 4 `state_check` instead of `first_reset`.
+- Alembic forked at `c93f2b7a5e18` (local +2, remote +8) → new empty merge revision
+  `f4b7c2e9a815`; single head restored.
+- Verified: backend **448 passed / 2 skipped, 96 %**; `apps/app` tsc + `next build` (23 routes)
+  + `scripts/check-claims.mjs`; admin tsc + build; Android **`:app:check` green — 286 tests,
+  lint clean, coverage 95.13 %** (added the missing `Api` endpoint tests for goals/habits,
+  safety plan, recommendations and per-item memory to get there). **iOS remains uncompiled** —
+  static-verified only, and now the strongest reason to run `xcodebuild test` on a Mac.
+- Inherited, not caused: `apps/web` is byte-identical to `origin/main` and its `/icon` route
+  fails to prerender (`next/og` "Invalid URL", font fetch) — confirm in CI, where the network
+  is available.
+
 ### `main` ⟵ `v1` merge (2026-07-29) — two design eras reconciled
 `main` had been a 13-July snapshot plus 7 commits of 10-July work; `v1` had run 26 commits
 past it. The merge auto-resolved everything except 9 files / 15 hunks, which were **not**
@@ -585,6 +643,219 @@ addition), e2e spec updated in the same commits; tsc + backend suite green.
   persistence, with screenshots for the visual pass. admin/web stay
   Night-only (hand-duplicated globals — follow-up only if wanted). Web
   analytics (item 14) stays decision-gated.
+### CI: the Android job was watching main break and saying nothing (2026-07-31)
+The root cause behind that morning's broken `main`, fixed rather than just cleaned up
+after. The `android` job already ran `testDebugUnitTest` + `assembleDebug`, so it
+*did* fail on the stray `/sdfsdkjfk` in `Session.kt` — but it carried
+`continue-on-error: true` from when `apps/android` was a scaffold, so the failure
+was a non-blocking annotation and the pipeline stayed green. The flag's own comment
+said "flip to blocking once it's built once green"; that condition had been met long
+ago, and Android is now the lead client.
+- [x] `continue-on-error` removed — the job that compiles the lead client is the one
+  job that was allowed to fail. Verified: it is now the only `continue-on-error` in
+  the file, and no job carries it.
+- [x] Added `:app:lintVitalRelease` to the same step (release-blocking lint was
+  running on nobody's machine but a developer's), and lint HTML is uploaded
+  alongside the test reports on failure.
+- [x] Switched `gradle` → `./gradlew`, dropping the separately pinned
+  `gradle-version: 8.11.1`. The wrapper already pins 8.11.1, and two pins that can
+  disagree is a drift waiting to happen; now CI runs exactly what everyone runs.
+- Verified by running CI's exact command locally: `./gradlew :app:testDebugUnitTest
+  :app:assembleDebug :app:lintVitalRelease --no-daemon --stacktrace` → BUILD
+  SUCCESSFUL, 244 tests.
+- [ ] **Unverified until the next push:** local is macOS + Android Studio's JBR, CI
+  is Linux + Temurin 17. If the job has been failing on Linux for something
+  platform-specific, this change is what will finally surface it — which is the
+  point, but expect the first red to be informative rather than a regression.
+- [x] **And the second breakage was invisible too.** The two-heads incident could
+  never have failed CI: the suite builds its schema with `Base.metadata.create_all`
+  (`init_db`), so pytest never executes a migration — a forked or broken Alembic
+  history is simply not exercised, and green CI could ship an API that won't boot.
+  The backend job now asserts a single head and runs `alembic upgrade head` against
+  its own scratch database (`migrations_ci`, so the pytest path is untouched),
+  proving the chain applies from empty rather than merely parsing.
+  Verified by reproducing the failure: with `8c27b8990a90` moved aside, `alembic
+  heads` reports **2** and the step fails; restored, it reports **1** and passes.
+- [ ] Still worth doing and needs GitHub access: a **branch-protection rule** so
+  these checks must pass before `main` accepts a push. CI going red does not
+  currently stop anything from landing.
+
+### The three open PRs, resolved (2026-07-31)
+All three were opened 3 weeks ago off a base that `main` has since moved **135 commits**
+past. Dispositions, with the evidence for each:
+- **PR #3 (`cc7cbd4`, "ui")** — zero commits and an empty diff against `main`; already
+  contained. Nothing to merge.
+- **PR #1 (`9cb3da4`, ".gitignore")** — its two commits are both ancestors of PR #2, so it
+  is a strict subset. Superseded.
+- **PR #2 (`d5c20be`, "Add Android v1 updates")** — **not merged, deliberately.** It
+  predates two things that landed on `main` since: the string externalisation and the Dawn
+  theme. Measured, not guessed: PR #2's TodayScreen/SleepScreen/TalkScreen contain **0**
+  `stringResource` calls against main's 33/49/67, and its `Color.kt` has **0** `isNight`
+  references against main's 35. A test merge conflicts in 11 files — every major screen.
+  Merging it would put hardcoded English and raw hex back into the app and undo W11/W16
+  and the Dawn work.
+- [x] **Salvaged from PR #2 — the two prompts worth keeping**: "One good thing" and
+  "Tomorrow's intention", ported onto today's `main` rather than merged. They reuse the
+  existing `JournalingTool`, take their copy from `strings.xml`, and each carries a
+  "why this works" provenance line like CBT and TIPP do. Verified end to end on a
+  CPH2681 against the local API: `POST /journal 201`, and the row reads
+  `One good thing today: shipped the keyboard fix` — the compose template doing its job.
+- **Rejected from PR #2, on purpose:**
+  - `StressAlertCard` — a Home card reading "ELEVATED STRESS DETECTED / Your heart rate
+    variability dipped / From Apple Watch" with **no HRV source anywhere in the app**, on
+    Android. Fabricated data presented as a measurement; exactly what
+    `docs/CLAIMS_MAP.md` and `scripts/check-claims.mjs` exist to prevent. (The genuine
+    version of this idea is still open below under proactive stress detection.)
+  - `MorningCheckInScreen` — not a missing feature. `main`'s SleepScreen already does this
+    inline (quality chips, bed/wake times, `Api.logSleep`); PR #2's copy is the same
+    capability as a separate screen with 9 raw-hex values.
+  - Journal biometric lock — already on `main` in 5 files.
+- [ ] **The PRs still need closing on GitHub** — `gh` is not installed here and there is no
+  API token, so this could not be done from the CLI. #1 and #3 close as superseded/contained;
+  #2 closes with the note above. PR #1 would now also conflict with the `.gitignore` rewrite.
+
+### main was unbuildable and unbootable for ~40 minutes (2026-07-31)
+`d40a3d4` was cut from an old `1a27bbf` and merged in via `009250f`. Three separate
+breakages, fixed in that order:
+- [x] **Build**: `/sdfsdkjfk` between `SENSITIVE_KEYS` and `signedIn` in `Session.kt` —
+  a stray keystroke that failed `compileDebugKotlin`, so nothing Android could build.
+  Line removed, nothing around it touched.
+- [x] **Boot**: two alembic heads. `c93f2b7a5e18` (media_assets) claimed
+  `b8e6d1a4f527` as its parent, which `c7a4e91b6d38` already held, and `prestart.py`
+  runs `upgrade head` at boot — which refuses to choose. Merge revision
+  `8c27b8990a90` joins them; empty on purpose (the branches touch disjoint tables).
+  **Generated with `alembic merge`, not hand-written** — this is exactly the case the
+  CLAUDE.md gotcha warns about. Verified by applying the whole chain to a virgin
+  database: both branches converge, `media_assets` + `content_items.video_url` exist,
+  `alembic_version` = the merge.
+- [x] **Repo hygiene**: 14,270 tracked junk files removed — two Windows virtualenvs
+  (`env/` 4,624 and `backend/env/` 6,180, including `Scripts/*.exe`) and 3,466
+  `__MACOSX/` AppleDouble stubs from an unpacked third-party APK. Nothing tracked
+  referenced them. `.gitignore` now covers `env/` (it only had `venv/`/`.venv/`),
+  `__MACOSX/`, and `*.xapk`/`*.apk`/`*.aab`.
+  **History is not rewritten** — `.git` stays ~233 MB. Recovering that needs a
+  force-push and every clone re-made; left as the owner's call.
+- Checked and clean: no secrets entered history (no `.env`/`.pem`/`.key`), and the
+  decompiled Calm APK's audio was never committed — only the `__MACOSX/._*` metadata
+  stubs that name it.
+- [ ] **Follow-up: `media_assets` is schema with no code behind it** — the migration
+  landed without a SQLAlchemy model, a route, or a seed, and nothing in `backend/app`
+  references `media_assets` or `video_url`. Harmless (the column has a server default)
+  but dead until the model lands. Whoever owns the media work should either bring the
+  ORM side or drop the table.
+- Verified after all three: backend **379 passed, 2 skipped, 95% coverage**; Android
+  **229 unit tests green**; claims gate clean.
+
+### Android: the tab bar now yields its slot to the keyboard (2026-07-31)
+The last unblocked item from the 2026-07-31 audit list. `BottomNavBar` emitted the pill
+unconditionally, so with the IME up Scaffold still charged the body the bar's ~78dp for a
+bar the keyboard was covering — and every screen body also carries `imePadding()`
+(Common.kt `Page`), so the two stacked into an empty band above the keyboard. Measured on a
+CPH2681 (Android 14): ~90dp of dead space between the Talk composer and the keyboard.
+- [x] The pill is hoisted out of the Scaffold into `BottomNavBar`, which returns before
+  emitting anything when the IME is visible — Scaffold then reserves nothing. `imeVisible`
+  is a parameter defaulting to `WindowInsets.isImeVisible`, so the rule renders off-device.
+- [x] `BottomNavImeTest` (Robolectric) measures the **reserved slot**, not the pill's
+  presence: keyboard up → the body reaches the window bottom; keyboard down → ≥72dp is
+  reserved and the tabs are displayed. Confirmed to fail with the guard removed.
+- [x] Verified on the device both ways: composer flush against the keyboard while typing,
+  nav back and focus retained after dismissing it.
+- Note for whoever runs the suite cold: the first full `testDebugUnitTest` on a cold
+  Robolectric cache took 11m and threw 12 `AppNotIdleException`s across three unrelated
+  Compose classes. Warm runs are ~15s and green (229 tests). It's an Espresso idle timeout
+  under first-run load, not a real failure — re-run before chasing it.
+
+### Landing → web app: the missing front door (2026-07-30)
+The landing had **zero** links to `apps/app`. Every CTA was "Join the waitlist" and the only
+other button was the App Store "coming soon" chip, so a visitor could not reach a product
+that has been live at `app.cerebrozen.in` the whole time. Structure borrowed from the Aira
+HTML reference (nav sign-in + pill CTA, hero primary/secondary, per-feature "Open X →",
+grouped footer); **palette deliberately unchanged** — CereBro's dark indigo tokens stay, so
+the landing still matches the app a visitor clicks into and the "web mirrors the iOS palette"
+rule in CLAUDE.md holds.
+- [x] `apps/web/lib/appUrl.ts` + `NEXT_PUBLIC_APP_URL` build arg in all three compose files
+  (default `http://localhost:3002`, prod `https://app.cerebrozen.in` via `PUBLIC_APP_URL`).
+  **This fails silently if unset** — the page builds fine and points every link at localhost
+  — so `landing.spec.ts` now asserts the hrefs against `APP_URL`.
+- [x] Links from four places: nav (Sign in · Open the app), hero (primary CTA; waitlist
+  demoted to secondary), the five space cards (Home/Sleep/Talk/Journal/You → their routes),
+  and a grouped footer (Open the app · Account · Trust).
+- [x] **`?next=` return path in `apps/app`** — without it every deep link resolved and then
+  dumped the visitor on Home, so the links would have been a lie. `(authed)/layout.tsx`
+  redirects to `/signin?next=<path>`; `signin/page.tsx` returns there. `lib/nextPath.ts` is
+  an allow-list (same-origin absolute paths only) because `next` is attacker-controlled —
+  `//evil.com`, backslash variants and auth-route loops all fall back to `/home`. Both
+  directions pinned in `app.spec.ts`.
+- [x] Copy that the change would have made false: the FAQ said "iOS comes first" and "no
+  committed public date" — now states the browser version is open today and iOS is next; the
+  offline answer is scoped to the mobile apps (the browser client has no offline caching —
+  `sw.js` is push-only); hero trust chip "Built for iOS" → "Works in your browser".
+- Verified: `tsc --noEmit` on web + app, both containers rebuilt, and a live browser check of
+  the whole hand-off (landing link → signed-out bounce → sign-in → lands on /sleep, and an
+  off-origin `next` refused). Full e2e suite green.
+- [x] Found doing this: `/privacy`, `/terms`, `/support` and the 404 each carried their own
+  hand-copied footer, so the app links would have existed on the landing alone — a reader of
+  the privacy policy had no door. All five now render one `components/SiteFooter.tsx`.
+- [ ] Not done: **admin (:3001) is deliberately not linked** from a public landing page.
+- [ ] Follow-up: the App Store badge is still a "coming soon" chip pointing at `#waitlist`;
+  when iOS ships, `NEXT_PUBLIC_APP_STORE_URL` turns it into a real listing link.
+
+### PRD checklist #1 / #6 / #7 — the last Phase-0 code (2026-07-30)
+Phase 0 (TestFlight) is now entirely owner-blocked; no code is left in it.
+- [x] **#6 iOS remote push made reachable.** The server half was always real (ES256
+  APNs sender + nudge dispatcher), but nothing populated `user.push_token`:
+  no `AppDelegate`, no `registerForRemoteNotifications()`, and
+  `APIClient.registerPushToken` had zero call sites. New
+  `Features/Notifications/PushRegistrar.swift` (delegate + hex token + UserDefaults
+  cache), `@UIApplicationDelegateAdaptor` in `CereBroApp`,
+  `BackendService.syncPushToken()` drained on every connect (and on the
+  `tokenReceived` notification, for a token that arrives mid-session),
+  `aps-environment` in the entitlement. Two rules kept from `ReminderManager`:
+  registration never prompts on its own (it is gated on authorization the user
+  already granted, and re-attempted right after they grant it), and it is a no-op
+  under `-resetState`. Sign-out clears the synced mark so the next account
+  re-registers — and, found while reviewing this change, sign-out now also PUTs an empty
+  token *before* revoking the session: otherwise the departing account keeps this device as
+  its APNs destination and its nudges arrive for whoever holds the phone next (the server
+  reads `""` as no token and falls back to Web Push/email). **Deliberate deviation from the
+  checklist text:**
+  `remote-notification` was NOT added to `UIBackgroundModes` — the server sends
+  `apns-push-type: alert` only, so the mode would be unused, and unused background
+  modes draw App Review rejections. Still owner-blocked: APNs `.p8` + the Push
+  Notifications capability on the App ID (adding `aps-environment` means device
+  builds will not sign until that capability exists — simulator is unaffected).
+- [x] **#7 iOS Insights wired to the real insight.** `InsightsView` renders
+  `backend.insight` — server `headline`/`summary` as the hero, server metrics as the
+  bars. Went further than the item asked and **deleted `Dummy.weeklyMetrics`** instead
+  of keeping it as the `insight == nil` fallback: two of its four rows ("Sleep
+  consistency / Improving / 0.62", "Mood stability / Steady / 0.7") were numbers
+  nobody measured. Signed out, the screen now counts only what is on the device
+  (check-ins + plan steps, journal entries, the sleep diary's own 7-day average) and
+  says "Nothing to measure yet" when there is none. `Dummy.baselineMetrics` went with
+  it (also unused; the real baseline comes from `state.baselineStress/Sleep`).
+- [x] **#1 the last three paywall/feature over-claims.** Android `premium_intro` said
+  "unlimited voice", implying a voice meter that does not exist — voice is not metered
+  at all; it now names the quota `services/usage.py` actually enforces ("unlimited
+  daily conversations — free includes 50 messages a day"), en + hi. The web library
+  footnote no longer promises "offline playback"; it scopes the claim to the mixer.
+  iOS `Dummy.offline` and its unreachable `OfflineView` are deleted rather than
+  reworded — no client implements downloads. Note the Hindi `premium_intro` now carries a
+  numeric entitlement claim ("हर दिन 50 मैसेज"); it is machine-assisted like the rest of
+  the draft `values-hi`, so add it to the reviewer's list — a mistranslated quota is a
+  pricing claim, not a tone problem.
+- [ ] Follow-up found while doing this: the other three views in
+  `apps/ios/CereBro/Features/States/StateViews.swift` (`EmptyJournalView`,
+  `VoiceLoadingView`, `VoiceErrorView`) are also unreferenced. Their copy is honest,
+  so they were left alone — but they are dead code either way.
+- [x] **#8 `today_guide` on iOS and web** (checklist item 8, Phase 1) — "Sleep Reset" was a
+  7-day program only on Android; iOS and web showed "day N of 7" and nothing about day N.
+  iOS `RemoteProgram.today_guide` → a guide block in `ProgramProgressCard`; web
+  `Active.today_guide` → a guide section on the programs page. Additive on all three:
+  no `day_guides` ⇒ the field is absent ⇒ the card renders exactly as before, and a blank
+  title+body counts as no guide (matching Android's `parseTodayGuide`). New contract row
+  in ARCHITECTURE.
+- Verified: iOS `BUILD SUCCEEDED` + UITest suite, Android `testDebugUnitTest` green,
+  `tsc --noEmit` clean on `apps/app`. Backend untouched.
 
 ### Evidence-based redesign, Phases 1–2 (2026-07-12) — 6 implementation waves
 Research-driven redesign per docs/REDESIGN.md (verified findings F1–F11). All waves
@@ -741,6 +1012,46 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
 
 ## Open — code/product work
 
+### Left by the 2026-08-02 forked-main merge
+- [ ] **Two suggestion engines now ship side by side.** `/interventions` (rule-driven offers
+  off logged signals — crisis/sleep/mood, one open offer, 72 h cooldown, frozen `reason`,
+  rendered on Home) and `/recommendations` (practice suggestions off *pattern statements*,
+  rendered on the Patterns dashboard, with admin accept/dismiss stats). Different triggers,
+  different surfaces, entirely disjoint tables — so the merge did not have to choose, and
+  deliberately didn't. But a user can now be offered something in two places by two systems
+  with two rationales. Decide whether they unify (likeliest: keep the interventions engine's
+  consent-gating/cooldown/audit and give it a pattern-derived rule source, with
+  `practice_catalog` as the action vocabulary) or stay separate with clearer boundaries.
+- [ ] **`/crisis` and `/support` are two public static pages doing the same job.** Both
+  survived because both are linked from safety surfaces (5 pages → `/crisis`, 6 → `/support`)
+  and a 404 on a crisis route is the last acceptable regression. `/support` is the factored
+  one (`components/CrisisLines` + `lib/crisis`); the sidebar door and the chat/journal banners
+  point at it. Fold `/crisis` into it and leave a redirect, rather than maintaining two.
+- [ ] **Neither test stack is hermetic on a dev box** — both read the developer's real keys,
+  so they exercise a different code path than CI *and* bill real API calls.
+  - `pytest`: a populated `backend/.env` makes
+    `test_habits::test_decompose_names_the_goal_even_without_an_llm_key` and
+    `test_safety_plan::test_crisis_reply_is_unchanged_with_and_without_a_plan` take the
+    live-LLM path and fail their own keyless assertions. Run with the keys blanked, or have
+    `conftest` blank them under `TESTING=1` (preferred — the tests then match CI by default).
+  - `docker-compose.e2e.yml`: the `api` service does `env_file: ./backend/.env` wholesale, so
+    the e2e run logs real `POST https://api.openai.com/v1/chat/completions`. CLAUDE.md says
+    hermetic tests run with blank keys; the compose file should pin `OPENAI_API_KEY: ""` (and
+    the voice keys) in its `environment:` block, which overrides `env_file`.
+- [ ] **iOS Dawn is now the odd one out, and it carries the bug the other two just fixed.**
+  iOS `Theme.Dawn` was hand-synced to the *old* web Dawn: ground `0xFAFAFC`, resting card
+  `0xFFFFFF` — a white card on a near-white ground, ≈**1.02:1**. That is the same flatness
+  Android/web corrected on 2026-07-31 by moving the ground to warm paper (web `#f2eee5`,
+  Android `#F5F2EC`) and letting shadow carry elevation. iOS `ContrastTest` passes and always
+  will: it gates *text* contrast, and card-versus-ground separation is not a text pair, so no
+  test catches this. Port the warm ground + a Dawn shadow tier, then re-run the two-theme
+  screenshot pass. (Also worth settling while there: web `#f2eee5` and Android `#F5F2EC` are
+  not the same warm paper — pick one and sync all three.)
+- [ ] `rhythmPrinciple` / `spreadLabel` (SleepScreen) are now exercised only by
+  `SleepInsightTest`; the screen branches on `isVariedRhythm` / `spreadLabelText`. Keep the
+  pure twins (they pin the boundary and are the non-composable path) or collapse to one pair.
+
+
 ### Adopting from the `workspace/cerebro` sibling build (assessed 2026-07-28)
 The owner's other, much larger Cerebro implementation (5 repos: api/web/admin/mobile/infra,
 ~120 API domains) sits beside this one and is a legitimate internal reference — unlike
@@ -793,6 +1104,71 @@ at the same weight as the copy they're meant to sit under. The fix is one line
 specific and keep winning), but it changes the look of six shipped, screenshot-reviewed
 pages, so it wants to land as its own change with a fresh visual pass rather than riding
 along inside a feature commit.
+
+### B2C Tier 1 — SHIPPED 2026-07-30 (see the commits on `fix/ui-worldclass-103`)
+- [x] **Persisted, addressable memory** (`context_memories`) — closes the PRD note that
+  granular editing was "not implementable against the current schema". Only what the user
+  wrote or approved is stored; mined patterns stay computed and are *hidden* via a
+  tombstone, never persisted as facts. Per-item edit/delete on all three clients.
+- [x] **Personal safety plan** (Stanley-Brown, versioned, archive-not-delete) — **user-authored**;
+  the reference implementation's AI risk-classifier authorship was deliberately not copied.
+  Guided flow + offline copy on all three clients, print-ready page instead of a PDF dependency.
+- [x] **Weekly digest** — `compute_weekly` was computed but never delivered. Snapshots one
+  `Insight` row per ISO week (the model's first ever writer) and rides the existing dispatcher.
+  A quiet week is not sent.
+- [x] **Recommendations** — closes "an interventions engine that acts on mined patterns".
+  Hand-authored `practice_catalog`, every suggestion carries its reason verbatim, dismissing
+  is permanent. The reference's `interventions` rule engine was NOT ported (its own clinical
+  review puts it in the always-excluded tier).
+- [x] **Goals + habits** — the first things in the app the *user* defines. `decompose` feeds
+  the one existing plan; habits have no streak field by design.
+- [x] **Claims gate revived** (`scripts/check-claims.mjs` + `docs/CLAIMS_MAP.md`, in CI),
+  widened from the sibling's web-only scan to iOS Swift and Android strings.xml — where
+  every over-claim actually found here was living.
+- [x] Recommendations now render on iOS and Android too — all three clients in step.
+- [x] Goals & habits on iOS and Android — all three clients in step.
+- [x] Rituals / commitments / affirmations **assessed and mostly dropped** — the reasoning
+  is in B2C_BACKLOG.md §4b. Commitments duplicate goals + plan steps; gratitude is a
+  journal entry; custom rituals are habits and daily quests are the plan + streak;
+  affirmations should be a `content_items` kind, not three new tables. One survivor left
+  open on purpose: a **daily intention**, which needs a product call first (does it replace
+  the generated `Plan.focus`, or sit beside it?).
+
+### B2C feature candidates — plan in [B2C_BACKLOG.md](B2C_BACKLOG.md) (2026-07-30)
+Filtered from the second CereBro codebase at `~/Desktop/workspace/cerebro` (a **different
+product**, `cerebrolearning.com`, 111 API domains). B2B/HR and clinical/EHR planes are
+excluded by the B2C-only decision; the doc says why per category.
+> **Re-checked against the code 2026-07-31.** Tiers 1 and 2 below were written as a
+> plan and then shipped, but the checkboxes here were never ticked — so this section
+> claimed work was open that the section above records as done, and a "what's next?"
+> read landed on already-built features. Verified against `backend/app/models/`
+> rather than against the other section.
+
+- [x] **Tier 1 (each closes a gap PRD.md already documents)** — SHIPPED; see the
+  Tier 1 section above for the detail. `models/memory.py` (addressable per-item
+  memory), `models/recommendation.py` (recommendations + practice catalogue),
+  `models/safety_plan.py` (Stanley-Brown, user-authored — the sibling's
+  AI-authorship deliberately not copied), weekly digest delivery.
+- [x] **Tier 2 — the consumer habit loop** — SHIPPED. `models/habit.py` carries
+  `Goal`, `Habit` and `HabitCompletion`, and `POST /goals/{id}/decompose` feeds the
+  existing agentic planner. **The old parenthetical here — "No `Habit` or `Goal`
+  model exists here at all" — was simply out of date.** Rituals / commitments /
+  affirmations were assessed and mostly dropped with reasons (B2C_BACKLOG §4b).
+- [ ] **Tier 2's one survivor, still an owner call:** a **daily intention** — does it
+  replace the generated `Plan.focus` or sit beside it? (Note: the "Tomorrow's
+  intention" journaling tool added 2026-07-31 is *not* this. That one writes a
+  journal entry; this question is about what Home leads with.)
+- [ ] **Tier 3 — skills content:** genuinely open, and the only tier that is.
+  Shipped so far: DBT TIPP and CBT reframe. Absent from both `backend/app` and the
+  Android source: MBCT, behavioural activation, role-play, guided imagery, dreams.
+  Each needs the non-clinical framing pass + its own PRD row.
+- [ ] **Flagged, needs an owner decision before any code:** gamification/leaderboard vs
+  the OECD dark-pattern checklist; peer community (24/7 moderation commitment —
+  recommend deferring the whole category).
+- [x] **The two owner decisions that blocked the first slice were made** (2026-07-30,
+  recorded in the Tier 1 section): memory persists only what the user wrote or
+  approved, and the safety plan is user-authored.
+
 
 ### Narrated-audio content pipeline (2026-07-07) — content depth, the biggest retention lever
 - [x] Backend: `content_items` gains `narration_script` (admin-authored) + `audio_url`
@@ -890,9 +1266,36 @@ Remaining iOS deltas the mock still wins on — CLOSED for iOS + web 2026-07-09
   entrance staggers on all authed pages, selection pop, orb breathe, premium
   sheen, streak ring, button press springs, one `prefers-reduced-motion` kill
   switch.
-- [ ] Android parity for the new bits it lacks (insights teaser card,
-  state-tuned journal prompt, tour re-trigger row, ring/sheen accents) —
-  quick-grid it already has.
+- [x] Android parity for the new bits it lacks — DONE 2026-07-31. All four, each
+  verified on the `cere_smoke` emulator against the local API:
+  - **Weekly-insights teaser on Home.** Insights was reachable only from You, so the
+    one screen answering "did any of this help?" sat two taps off the main surface.
+    The subtitle carries the real last-7-days count (`checkInsThisWeek`, seven days
+    *inclusive* so it matches the presence ring beside it) and falls back to plain
+    copy at zero. Seen live: "1 check-in in the last 7 days".
+  - **State-tuned journal prompt.** Mirrors `JournalPrompts.tuned(toMood:)`; an
+    Anxious check-in turns the hero into "For a tense day / Name the worry". Two
+    deliberate divergences from iOS, both pinned in `TunedPromptTest`: the match is
+    **case-insensitive** (mobile posts "Anxious", the browser client posts "anxious",
+    and iOS's exact-string `switch` silently misses the latter — both castings are in
+    the dev database), and "today" is resolved in the **reader's timezone**, not the
+    UTC one the server stamps, so a late-night entry still tunes. "Try another" opts
+    out into the rotation.
+  - **Tour re-trigger row in You.** `TourState.reset()` clears only `tour_done`;
+    verified the four-stop overlay re-runs from stop 1.
+  - **Motion accents.** `RadiatingRing` (iOS's numbers exactly: 0.6→1.35, 0.5→0
+    opacity, 2s ease-out) on the streak-milestone line, and `Modifier.sheen()` on the
+    Premium row. Both Reduce-Motion-gated, and both take the gate as a *parameter* —
+    an endless animation is how a Compose test stops going idle.
+- [x] Follow-up from that pass, now closed: **the milestone halo is verified on a
+  device**. It only draws when `milestoneLine(streak)` is non-null, so the demo
+  account's streak of 1 could never show it; two backdated `mood_logs` rows took the
+  server-computed streak to 3 (`isMilestone` = 3/7/14/21/30/50/100), and four frames
+  0.7s apart caught the ring mid-swell, gone, mid-swell, gone — expanding and fading
+  on its 2s loop as designed. The seeded rows were deleted afterwards and the streak
+  confirmed back at 1. (The sheen was caught on device in both themes too — and
+  needed fixing: a white sweep is invisible on Dawn's near-white card, so the
+  highlight is now theme-aware.)
 - [ ] Splash consolidation nice-to-haves (review-2 deferrals, 2026-07-10):
   OrbMark's three breathing circles vs `RadiatingRing` are two names for one
   ring vocabulary; the Wordmark glint is a third shimmer implementation
@@ -1440,6 +1843,31 @@ sensitive) apply **today** and are already satisfied. Ordered by lead time:
 - [x] Waitlist spam — hidden honeypot field client-side + 10/min IP rate limit server-side.
 - [x] Transaction ownership — reviewed: services `flush()`, routes `commit()`; the flagged
   double-commit did not exist (dispatch_due commits by design — it's a job, not a route).
+
+## Open after the 2026-07-31 module-audit run
+
+Everything the audits found is fixed and merged; these are the items deliberately
+left, each with the reason it was left rather than done.
+
+- [ ] **iOS catch-up** — iOS still reads `today_guide` only, so it has no journey path;
+  the backend already sends `guides`. Parked by the user: Android leads, iOS follows once
+  Android is finished. First item in the iOS queue.
+- [ ] **Content art needs real imagery** — `artVariant` now varies composition, anchor and
+  gradient axis within a kind (verified), but at 48dp it is incremental. Genuinely
+  distinctive art needs commissioned illustration; that is an asset/budget decision, not
+  a code change.
+- [ ] **Two DPDP consent hints describe the default, not the category** — "Voice storage ·
+  Off by default", "Model training · Separate opt-in only". True, but they say nothing
+  about what the data is for, and they are stale once someone switches one on. The fix is
+  26 strings inside a hand-shipped 13-language notice — legally-operative text that needs a
+  translator, not a coder.
+- [ ] **Goal `e484cbe9` on the demo account** — a mis-tap during the Goals audit moved it
+  from a resolved state to `active`. The pre-audit read proves it was not active before but
+  not which resolved state it held, so it was flagged rather than guessed at. One PATCH if
+  anyone knows.
+- [ ] **`services/engine/.env` in the working tree** — gitignored (never entered history),
+  but if it holds live keys the "rotate anything exposed" rule may apply. Whoever put that
+  checkout there should decide.
 
 Verification: backend **177 passed, 95% coverage** (in-container, live Postgres); web +
 admin `tsc --noEmit` clean; iOS `xcodebuild build` succeeded with the new entitlement.

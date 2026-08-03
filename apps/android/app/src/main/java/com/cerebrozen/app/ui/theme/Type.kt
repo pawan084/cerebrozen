@@ -102,8 +102,13 @@ val Typography = Typography(
         fontFamily = Nunito, fontWeight = FontWeight.Medium,
         fontSize = 13.sp, lineHeight = 18.sp,
     ),
-    // Small-caps eyebrows. 1.4sp tracking (was 1.6) — Nunito's rounder counters
-    // need less air than the old serif did.
+    // The small-caps EYEBROW: "WIND DOWN", "TONIGHT", "TODAY'S PLAN". Two to four
+    // words, above a heading. It is not a body style — 1.6sp of tracking on bold
+    // 11sp with no lineHeight is close to unreadable over three lines, and it had
+    // drifted onto ten paragraphs, among them the Health Connect consent boundary
+    // and TIPP's "if the urge to hurt yourself is present" line. Paragraphs use
+    // [bodySmall]; see the 2026-07-31 Sleep audit. Tracking is 1.4sp (was 1.6) —
+    // Nunito's rounder counters need less air than the old serif did.
     labelSmall = TextStyle(
         fontFamily = Nunito, fontWeight = FontWeight.Bold,
         fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 1.4.sp,

@@ -71,4 +71,48 @@ class ContentArtTest {
         assertEquals(ArtPeriwinkle, artAccent(""))
         assertEquals(ArtPeriwinkle, artAccent("journal"))
     }
+
+    // ── Variety WITHIN a kind (the "three near-identical teal cards" problem) ──
+    @Test
+    fun artVariant_isDeterministicAndSpreadAcrossAllThree() {
+        // The kind picks the motif family; this picks the arrangement. Without
+        // it, every meditation drew the same concentric rings in the same place
+        // and a rail of three read as one design printed three times.
+        listOf("Body scan", "Morning calm", "Soft focus", "").forEach {
+            assertEquals(artVariant(it), artVariant(it))
+            assertTrue(artVariant(it) in 0..2)
+        }
+        val counts = IntArray(3)
+        (0 until 300).forEach { counts[artVariant("Title $it")]++ }
+        counts.forEach { assertTrue("every arrangement must get used: ${counts.toList()}", it > 60) }
+    }
+
+    @Test
+    fun theSeededRailOfMeditationsNoLongerRepeatsItself() {
+        // The exact case behind the complaint: three seeded meditations shown
+        // together on Home. They must not share an arrangement.
+        val rail = listOf("Body scan", "Morning calm", "Soft focus").map(::artVariant)
+        assertEquals("siblings on one rail must differ", rail.size, rail.toSet().size)
+    }
+
+    @Test
+    fun artVariant_isIndependentOfArtSeed() {
+        // Composition and hue come from different hashes on purpose: two titles
+        // landing on close hues should still be laid out differently.
+        val sameVariant = (0 until 200).map { "T$it" }.groupBy(::artVariant)
+        sameVariant.values.forEach { group ->
+            val seeds = group.take(12).map(::artSeed)
+            assertTrue("hue must still vary inside one arrangement", seeds.toSet().size > 6)
+        }
+    }
+
+    @Test
+    fun artHueShift_wandersWiderThanItUsedTo() {
+        // Was 0.25..0.70; siblings separated by a few degrees, which reads as
+        // "the same teal" at tile size.
+        val shifts = (0 until 200).map { artHueShift("Title $it") }
+        assertTrue(shifts.min() < 0.25f)
+        assertTrue(shifts.max() > 0.70f)
+        shifts.forEach { assertTrue(it in 0f..1f) }
+    }
 }

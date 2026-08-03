@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Alignment
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Cyan
@@ -55,7 +56,7 @@ fun BreathingScreen(onBack: () -> Unit) {
                     scope.launch {
                         runCatching { Api.createJournal(journalTitle, journalBody) }
                             .onSuccess { saved = true; Celebrations.trigger() }
-                            .onFailure { status = it.message ?: saveFailed }
+                            .onFailure { status = it.userMessage(saveFailed) }
                     }
                 }
             },
@@ -111,7 +112,7 @@ private fun JournalingTool(
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
                     .onSuccess { saved = true; Celebrations.trigger() }
-                    .onFailure { status = it.message ?: saveFailed }
+                    .onFailure { status = it.userMessage(saveFailed) }
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
@@ -139,6 +140,42 @@ fun CbtReframeScreen(onBack: () -> Unit) {
     )
 }
 
+/**
+ * Two one-field journaling tools, salvaged from PR #2 (3 weeks stale, pre-i18n and
+ * pre-Dawn, so the branch itself was not mergeable). Only the prompts survived; the
+ * rendering is today's [JournalingTool], the copy lives in strings.xml, and each
+ * carries the "why this works" provenance every other tool here has.
+ */
+@Composable
+fun OneGoodThingScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.onegood_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.onegood_eyebrow),
+        title = stringResource(R.string.onegood_title),
+        intro = stringResource(R.string.onegood_intro),
+        journalTitle = stringResource(R.string.onegood_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.onegood_field) to ""),
+        provenance = stringResource(R.string.onegood_why),
+    )
+}
+
+@Composable
+fun IntentionScreen(onBack: () -> Unit) {
+    val composeTemplate = stringResource(R.string.intention_compose_format)
+    JournalingTool(
+        eyebrow = stringResource(R.string.intention_eyebrow),
+        title = stringResource(R.string.intention_title),
+        intro = stringResource(R.string.intention_intro),
+        journalTitle = stringResource(R.string.intention_journal_title),
+        onBack = onBack,
+        compose = { v -> composeTemplate.format(v[0]) },
+        fields = listOf(stringResource(R.string.intention_field) to ""),
+        provenance = stringResource(R.string.intention_why),
+    )
+}
+
 /** DBT TIPP — a guided walkthrough, no data collected. */
 @Composable
 fun TippScreen(onBack: () -> Unit) {
@@ -160,17 +197,33 @@ fun TippScreen(onBack: () -> Unit) {
             Text(how, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
             Text(why, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = idx > 0, onClick = { idx-- }) { Text(stringResource(R.string.tipp_previous), color = TextMuted) }
-            Text(stringResource(R.string.tipp_progress, idx + 1, steps.size), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        // maxLines/weight rather than a bare SpaceBetween: three labelled controls
+        // on one line is the shape that broke the Goals row and the sleep TimeRow
+        // at 720px, and every label here is longer in Hindi.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(enabled = idx > 0, onClick = { idx-- }) {
+                Text(stringResource(R.string.tipp_previous), color = TextMuted, maxLines = 1)
+            }
+            Text(
+                stringResource(R.string.tipp_progress, idx + 1, steps.size),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted, maxLines = 1,
+            )
             if (idx < steps.size - 1) {
-                TextButton(onClick = { idx++ }) { Text(stringResource(R.string.common_next), color = Periwinkle) }
+                TextButton(onClick = { idx++ }) {
+                    Text(stringResource(R.string.common_next), color = Periwinkle, maxLines = 1)
+                }
             } else {
-                TextButton(onClick = onBack) { Text(stringResource(R.string.tipp_done), color = Ok) }
+                TextButton(onClick = onBack) {
+                    Text(stringResource(R.string.tipp_done), color = Ok, maxLines = 1)
+                }
             }
         }
         Text(stringResource(R.string.tipp_urge_note),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
         WhyThisWorks(stringResource(R.string.tipp_why))
     }
 }
