@@ -25,8 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -417,6 +420,15 @@ internal fun PresenceWeekRing(week: List<Pair<String, Boolean>>) {
     }
 }
 
+/** Title-aware motif override for the rail's art: a title that names water gets
+ * the wave motif (soundscape family — the same night palette) instead of a
+ * rainless moon sky. Routing and labels still follow the real kind; only the
+ * picture follows the words. Pure. */
+internal fun artKindForTitle(title: String, kind: String): String {
+    val t = title.lowercase()
+    return if (listOf("rain", "storm", "ocean", "wave", "river", "sea", "water").any { it in t }) "soundscape" else kind
+}
+
 /** Time-matched rail kind + heading (mirrors the iOS Home rails). The kind is a
  * backend content-kind WIRE VALUE; the heading is a resource id, so the pairing
  * stays a pure unit-testable function and the copy still localizes. */
@@ -431,16 +443,51 @@ internal fun railKindFor(hour: Int): Pair<String, Int> = when {
     else -> "sleep" to R.string.today_rail_tonight
 }
 
-/** A horizontal card rail of served content, matched to the time of day. */
+/** The kind's one-word meta label, so "18 min" can read "18 min · Sleep story"
+ * and an ambient piece can say what it is rather than just "Ambient". */
+@Composable
+private fun railKindLabel(kind: String): String = stringResource(
+    when (kind) {
+        "sleep" -> R.string.today_kind_sleep
+        "meditation" -> R.string.today_kind_meditation
+        "soundscape" -> R.string.today_kind_soundscape
+        else -> R.string.today_rail_ambient
+    },
+)
+
+/** A horizontal card rail of served content, matched to the time of day.
+ * Tapping a card PLAYS that piece and opens the player — it used to dump the
+ * user at the top of the destination tab to find the title again. */
 @Composable
 private fun ContentRail(onOpen: (String) -> Unit) {
     val (kind, headingRes) = remember { railKindFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
     val heading = stringResource(headingRes)
-    val route = if (kind == "sleep") "sleep" else "sounds"
+    val context = androidx.compose.ui.platform.LocalContext.current
     var items by remember { mutableStateOf<JSONArray?>(null) }
-    LaunchedEffect(kind) { runCatching { items = Api.content(kind) } }
-    val list = items ?: return
+    var loaded by remember { mutableStateOf(false) }
+    LaunchedEffect(kind) { runCatching { items = Api.content(kind) }; loaded = true }
+    fun playItem(title: String) {
+        com.cerebrozen.app.audio.Player.play(context, title, kind)
+        onOpen("player")
+    }
+    // The slot holds its shape while loading (no layout shift), and quietly
+    // yields nothing only once the load has actually answered empty.
+    val list = items
+    if (list == null) {
+        if (!loaded) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ShimmerBox(Modifier.fillMaxWidth().height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ShimmerBox(Modifier.weight(1f).height(140.dp), shape = RoundedCornerShape(16.dp))
+                    ShimmerBox(Modifier.weight(1f).height(140.dp), shape = RoundedCornerShape(16.dp))
+                }
+            }
+        }
+        return
+    }
     if (list.length() == 0) return
+    // Header tied to its rail (8dp), not floating a full page-gap above it.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(heading, style = MaterialTheme.typography.titleMedium, color = TextSoft)
     // ONE item is not a rail: a lone 150dp card beside two-thirds of empty
     // track read as a broken carousel. A single item gets the full width.
@@ -450,10 +497,10 @@ private fun ContentRail(onOpen: (String) -> Unit) {
         Column(
             Modifier.fillMaxWidth()
                 .glass(RoundedCornerShape(16.dp))
-                .clickable { onOpen(route) },
+                .clickable { playItem(title) },
         ) {
             Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 110.dp)) {
-                ContentArt(title = title, kind = kind,
+                ContentArt(title = title, kind = artKindForTitle(title, kind),
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
                 val url = c.optString("image_url")
                 if (url.isNotBlank()) {
@@ -461,18 +508,27 @@ private fun ContentRail(onOpen: (String) -> Unit) {
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
                 }
+                // A media card without a play glyph reads as a banner.
+                Box(
+                    Modifier.align(Alignment.BottomStart).padding(10.dp).size(34.dp)
+                        .clip(CircleShape).background(Color(0x66101228)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null,
+                        tint = Color.White, modifier = Modifier.size(20.dp))
+                }
             }
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft, maxLines = 1)
                 val d = c.optInt("duration_min")
                 Text(
-                    if (d > 0) stringResource(R.string.common_minutes, d) else stringResource(R.string.today_rail_ambient),
+                    if (d > 0) stringResource(R.string.common_minutes, d) + "  ·  " + railKindLabel(kind)
+                    else railKindLabel(kind),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                 )
             }
         }
-        return
-    }
+    } else {
     // Edge to edge, with the page inset re-applied inside: the first card still
     // lines up with everything above it, and the last one is cut by the screen
     // rather than stopping neatly short — which is the only reliable way a row
@@ -488,13 +544,13 @@ private fun ContentRail(onOpen: (String) -> Unit) {
             Column(
                 Modifier.width(150.dp)
                     .glass(RoundedCornerShape(16.dp))
-                    .clickable { onOpen(route) }
+                    .clickable { playItem(title) }
                     .padding(0.dp),
             ) {
                 Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {
                     // W21: designed generative art always; a real image (when the
                     // backend serves one AND it loads) simply covers it.
-                    ContentArt(title = title, kind = kind,
+                    ContentArt(title = title, kind = artKindForTitle(title, kind),
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)))
                     val url = c.optString("image_url")
                     if (url.isNotBlank()) {
@@ -507,12 +563,15 @@ private fun ContentRail(onOpen: (String) -> Unit) {
                     Text(title, style = MaterialTheme.typography.bodyMedium, color = TextSoft, maxLines = 1)
                     val d = c.optInt("duration_min")
                     Text(
-                        if (d > 0) stringResource(R.string.common_minutes, d) else stringResource(R.string.today_rail_ambient),
+                        if (d > 0) stringResource(R.string.common_minutes, d) + "  ·  " + railKindLabel(kind)
+                        else railKindLabel(kind),
                         style = MaterialTheme.typography.labelSmall, color = TextMuted,
                     )
                 }
             }
         }
+    }
+    }
     }
 }
 
@@ -1092,21 +1151,51 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         // An active journey now lives in the banner slot under the greeting
         // (W9 B4) — the full surface stays in `programs`.
 
+        // The two doors, with the art-tile treatment every other door in the
+        // app already leads with (they were the page's only bare-text rows).
+        // The Toolkit subtitle whispers the last practice when one is on
+        // record; the insights copy only promises "what changed" once there
+        // are enough check-ins for anything to have changed.
+        val toolkitRow: @Composable () -> Unit = {
+            val recentRoute = remember { runCatching { Session.prefGet("toolkit_recent") }.getOrNull() }
+            val recentLabelRes = recentRoute?.let { toolkitRecentLabelRes(it) }
+            NavRow(
+                stringResource(R.string.today_toolkit_title),
+                if (recentLabelRes != null)
+                    stringResource(R.string.today_toolkit_recent, stringResource(recentLabelRes))
+                else stringResource(R.string.today_toolkit_subtitle),
+                icon = Icons.Outlined.Spa,
+            ) { onOpen("toolkit") }
+        }
+        val insightsRow: @Composable () -> Unit = {
+            NavRow(
+                stringResource(R.string.today_insights_title),
+                when {
+                    weekCheckIns >= 3 ->
+                        pluralStringResource(R.plurals.today_insights_count, weekCheckIns, weekCheckIns)
+                    weekCheckIns > 0 ->
+                        pluralStringResource(R.plurals.today_insights_building, weekCheckIns, weekCheckIns)
+                    else -> stringResource(R.string.today_insights_subtitle)
+                },
+                icon = Icons.Outlined.Insights,
+            ) { onOpen("insights") }
+        }
+
+        // With no plan to lead the page, the actionable doors climb above the
+        // rail instead of sitting under an absence.
+        val doorsFirst = planLoaded && plan == null
+        if (doorsFirst) {
+            toolkitRow()
+            insightsRow()
+        }
+
         // Time-matched content rail (mirrors the iOS Home rails).
         ContentRail(onOpen)
 
-        NavRow(stringResource(R.string.today_toolkit_title), stringResource(R.string.today_toolkit_subtitle)) { onOpen("toolkit") }
-
-        // Weekly-insights teaser (iOS/web parity). Insights was reachable only
-        // from You, so the one screen that answers "did any of this help?" was
-        // two taps off the main surface. The subtitle carries the real count
-        // when there is one and claims nothing when there isn't.
-        NavRow(
-            stringResource(R.string.today_insights_title),
-            if (weekCheckIns > 0)
-                pluralStringResource(R.plurals.today_insights_count, weekCheckIns, weekCheckIns)
-            else stringResource(R.string.today_insights_subtitle),
-        ) { onOpen("insights") }
+        if (!doorsFirst) {
+            toolkitRow()
+            insightsRow()
+        }
 
         // Presence (REDESIGN §3.6): count the days you showed up, never the
         // days you didn't. The ring fills; it never breaks or resets.

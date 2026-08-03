@@ -148,6 +148,14 @@
     <string name="today_rail_ambient">एंबिएंट</string>
     <string name="today_toolkit_title">टूलकिट</string>
     <string name="today_toolkit_subtitle">अभी के लिए छोटे-छोटे अभ्यास</string>
+    <string name="today_toolkit_recent">पिछला अभ्यास · %1$s</string>
+    <plurals name="today_insights_building">
+        <item quantity="one">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>
+        <item quantity="other">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>
+    </plurals>
+    <string name="today_kind_sleep">नींद की कहानी</string>
+    <string name="today_kind_meditation">ध्यान</string>
+    <string name="today_kind_soundscape">साउंडस्केप</string>
     <string name="today_presence_title">आप आए</string>
     <string name="today_presence_ready">जब भी आप तैयार हों</string>
     <plurals name="today_presence_days">

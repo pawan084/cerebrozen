@@ -239,12 +239,20 @@
     <!-- Weekly-insights teaser (iOS/web parity). The subtitle states the real
          last-7-days check-in count when there is one, and promises nothing when
          there isn't. -->
-    <string name="today_insights_title">This week</string>
+    <string name="today_insights_title">Weekly insights</string>
     <string name="today_insights_subtitle">See what changed</string>
     <plurals name="today_insights_count">
         <item quantity="one">%1$d check-in this week — see what changed.</item>
         <item quantity="other">%1$d check-ins this week — see what changed.</item>
     </plurals>
+    <plurals name="today_insights_building">
+        <item quantity="one">%1$d check-in — building your first week.</item>
+        <item quantity="other">%1$d check-ins — building your first week.</item>
+    </plurals>
+    <string name="today_toolkit_recent">Last practice · %1$s</string>
+    <string name="today_kind_sleep">Sleep story</string>
+    <string name="today_kind_meditation">Meditation</string>
+    <string name="today_kind_soundscape">Soundscape</string>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">

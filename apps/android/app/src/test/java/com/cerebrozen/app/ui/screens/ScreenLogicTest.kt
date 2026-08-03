@@ -708,6 +708,14 @@ class ScreenLogicTest {
     }
 
     @Test
+    fun railArt_lets_water_titles_wear_the_wave_motif() {
+        assertEquals("soundscape", artKindForTitle("Rain over quiet hills", "sleep"))
+        assertEquals("soundscape", artKindForTitle("Ocean at dusk", "meditation"))
+        assertEquals("sleep", artKindForTitle("Moonlit meadow", "sleep"))
+        assertEquals("meditation", artKindForTitle("Body scan", "meditation"))
+    }
+
+    @Test
     fun planTail_stops_saying_zero_after_five_pm() {
         assertEquals(false, planTailUsesLeftForm(done = 0, hour = 16))
         assertTrue(planTailUsesLeftForm(done = 0, hour = 17))
