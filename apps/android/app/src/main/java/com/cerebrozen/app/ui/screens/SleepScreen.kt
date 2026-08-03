@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -45,6 +46,8 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
@@ -251,15 +254,65 @@ internal fun bedtimeWindow(logs: List<SleepNight>): Pair<Int, Int>? {
     return ((anchored.min() + 720) % 1440) to ((anchored.max() + 720) % 1440)
 }
 
+/** The diary's quiet milestone line — presence-framed status, not confetti.
+ * Shows at the first night, and while the first full week forms. Pure. */
+@androidx.annotation.StringRes
+internal fun sleepMilestoneRes(count: Int): Int? = when {
+    count == 1 -> R.string.sleep_milestone_first
+    count in 7..9 -> R.string.sleep_milestone_week
+    else -> null
+}
+
+/** Which glyph identifies a wind-down guide, by title keywords — sibling ring
+ * art made four guides read as one card printed four times. Null = no badge. */
+internal fun windDownGlyph(title: String): androidx.compose.ui.graphics.vector.ImageVector? {
+    val t = title.lowercase()
+    return when {
+        listOf("bed").any { it in t } -> Icons.Outlined.Bedtime
+        listOf("dim", "screen", "light").any { it in t } -> Icons.Outlined.LightMode
+        listOf("wake", "clock", "steady").any { it in t } -> Icons.Outlined.Alarm
+        listOf("slow", "breath", "body").any { it in t } -> Icons.Outlined.Spa
+        else -> null
+    }
+}
+
+// ── Cached-first paint (mirrors Home's snapshot) ────────────────────────
+// The tab shimmer-then-popped on every visit; the last session's summary and
+// nights now hydrate the first frame and the network refreshes in place.
+
+internal fun sleepSnapshotOf(summary: JSONObject?, nights: List<SleepNight>): JSONObject =
+    JSONObject().apply {
+        summary?.let { put("summary", it) }
+        put("nights", JSONArray().apply {
+            nights.forEach { n ->
+                put(
+                    JSONObject().put("date", n.date).put("duration_min", n.duration)
+                        .put("quality", n.quality)
+                        .put("bedtime", n.bedMin?.let { hhmm(it) } ?: "")
+                        .put("wake_time", n.wakeMin?.let { hhmm(it) } ?: ""),
+                )
+            }
+        })
+    }
+
+internal fun sleepSnapshotNights(snap: JSONObject): List<SleepNight> =
+    snap.optJSONArray("nights")?.let { parseNights(it) } ?: emptyList()
+
 /** Sleep: morning check-in + honest weekly summary + diary, with a CBT-I-informed
  * layer on top — the job is improving sleep night by night, not measuring it. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SleepScreen(onOpen: (String) -> Unit = {}) {
     var quality by remember { mutableIntStateOf(0) }
     var bed by remember { mutableIntStateOf(23 * 60) }
     var wake by remember { mutableIntStateOf(7 * 60) }
-    var summary by remember { mutableStateOf<JSONObject?>(null) }
-    var nights by remember { mutableStateOf(listOf<SleepNight>()) }
+    // Hydrate the first frame from the last session's snapshot; the network
+    // refreshes everything in place (sleepSnapshotOf).
+    val snap = remember {
+        runCatching { com.cerebrozen.app.net.Session.prefGet("sleep_snapshot")?.let(::JSONObject) }.getOrNull()
+    }
+    var summary by remember { mutableStateOf(snap?.optJSONObject("summary")) }
+    var nights by remember { mutableStateOf(snap?.let(::sleepSnapshotNights) ?: listOf()) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     // Three states this screen used to collapse into one. A first load in
@@ -312,6 +365,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             val gotNights = nightsReq.await().onSuccess { nights = parseNights(it) }.isSuccess
             programReq.await().onSuccess { program = it }
             loadFailed = !(gotSummary && gotNights)
+            if (gotSummary && gotNights) {
+                runCatching {
+                    com.cerebrozen.app.net.Session.prefPut(
+                        "sleep_snapshot", sleepSnapshotOf(summary, nights).toString(),
+                    )
+                }
+            }
         }
         loading = false
     }
@@ -319,6 +379,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
     LaunchedEffect(Unit) { reload() }
 
     val scrollState = rememberScrollState()
+    var refreshing by remember { mutableStateOf(false) }
     Box(
         Modifier
             .fillMaxSize()
@@ -327,9 +388,29 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             ),
     ) {
         SleepBackgroundGlow()
+        // Pull-to-refresh, same themed indicator as Home — the tab is just as
+        // server-backed and had no refresh gesture at all.
+        val ptrState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { scope.launch { refreshing = true; runCatching { reload() }; refreshing = false } },
+            state = ptrState,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = ptrState, isRefreshing = refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    containerColor = CardFill, color = Periwinkle,
+                )
+            },
+        ) {
         Column(
             Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .fillMaxHeight()
+                // Tablets and landscape read a centred column, not a wall.
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -580,6 +661,11 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         summary?.let { s ->
             SleepGlassCard {
                 Text(stringResource(R.string.sleep_data_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                // A quiet status line for the diary's own milestones — the
+                // first night, the first week forming. Never confetti.
+                sleepMilestoneRes(nights.size)?.let {
+                    Text(stringResource(it), style = MaterialTheme.typography.labelSmall, color = Cyan)
+                }
                 if (s.optBoolean("enough_data")) {
                     Text(
                         stringResource(
@@ -690,7 +776,38 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         }
         if (checkInFirst) doorsBlock()
 
-        SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
+            // The Sounds hub exists; this section used to dead-end at whatever
+            // the API returned.
+            TextButton(onClick = { onOpen("sounds") }) {
+                Text(stringResource(R.string.sleep_sounds_all), color = Cyan)
+            }
+        }
+        // While something plays at night, the auto-stop timer is the killer
+        // feature — surfaced as a real row, not small text in the transport.
+        if (Player.nowPlaying != null) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                    .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(18.dp))
+                    .clickable { Player.cycleTimer(context) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.sleep_timer_row), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text(
+                    if (Player.timerMinutes > 0) stringResource(R.string.sleep_timer_min, Player.timerMinutes)
+                    else stringResource(R.string.sleep_timer_off),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (Player.timerMinutes > 0) Cyan else TextMuted,
+                )
+            }
+        }
         // metaLabel lambdas are not composable — capture the templates here.
         val minutesTemplate = stringResource(R.string.common_minutes)
         val storyMeta = stringResource(R.string.sleep_meta_story)
@@ -698,7 +815,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         ContentList(
             "sleep",
             { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            onItemTap = { title -> Player.toggle(context, title, "sleep") },
+            // Same catalogue item, same behaviour as Home's rail: play it and
+            // open the player. A second tap on the playing row pauses in place.
+            onItemTap = { title ->
+                if (Player.nowPlaying == title && Player.isPlaying) {
+                    Player.toggle(context, title, "sleep")
+                } else {
+                    Player.play(context, title, "sleep")
+                    onOpen("player")
+                }
+            },
             emptyText = stringResource(R.string.sleep_sounds_empty),
             emptyIcon = Icons.Outlined.LibraryMusic,
         )
@@ -731,6 +857,11 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         ContentList(
             "wind_down",
             { d -> if (d > 0) minutesTemplate.format(d) else guideMeta },
+            // Reference cards, honestly dressed: the muted meta stops "Guide"
+            // reading as a link, and each guide wears its own identifying
+            // glyph over the sibling ring art.
+            metaColor = TextMuted,
+            glyphFor = ::windDownGlyph,
             fallback = {
                 SleepGlassCard {
                     Text(stringResource(R.string.sleep_bed_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -752,6 +883,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         // One citation for the section, not one under each card. The diary now
         // lives inside the merged "Your sleep" card above.
         WhyThisWorks(stringResource(R.string.sleep_cbti_why))
+    }
     }
 
     // A quiet top scrim so scrolled content fades under the system clock

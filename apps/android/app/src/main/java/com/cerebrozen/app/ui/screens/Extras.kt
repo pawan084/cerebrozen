@@ -276,6 +276,12 @@ internal fun ContentRow(
     onTap: (() -> Unit)? = null,
     fav: Boolean? = null,
     onFav: (() -> Unit)? = null,
+    /** Reference rows (no onTap) pass a muted color so their meta stops
+     * dressing like a link — "Guide" in periwinkle read as tappable. */
+    metaColor: Color = Periwinkle,
+    /** A small identifying glyph over the thumb corner — four wind-down
+     * guides with sibling ring art read as one card printed four times. */
+    glyph: ImageVector? = null,
 ) {
     SectionCard(onClick = onTap) {
         Row(
@@ -296,6 +302,16 @@ internal fun ContentRow(
                     )
                 }
                 Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.12f), thumbShape))
+                if (glyph != null) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).padding(3.dp).size(20.dp)
+                            .clip(CircleShape).background(Color(0x66101228)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(glyph, contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(12.dp))
+                    }
+                }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextBright,
@@ -303,7 +319,7 @@ internal fun ContentRow(
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = metaColor,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -379,6 +395,8 @@ internal fun ContentList(
      * the four served guides were repeated verbatim in substance a few hundred
      * pixels below the list. */
     fallback: (@Composable () -> Unit)? = null,
+    metaColor: Color = Periwinkle,
+    glyphFor: ((String) -> ImageVector?)? = null,
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -431,6 +449,8 @@ internal fun ContentList(
                 onTap = onItemTap?.let { { it(title) } },
                 fav = favs?.contains(title),
                 onFav = onFav?.let { { it(title) } },
+                metaColor = metaColor,
+                glyph = glyphFor?.invoke(title),
             )
         }
     }

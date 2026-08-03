@@ -71,6 +71,25 @@ tappable, late-milestone catch-up), recents (localized display copy, row taps,
 time dedup, "+N more today"), cached-first snapshot paint (verified offline),
 themed refresh indicator. Point 15 (fifth mood) queued below.
 
+## Done — 2026-08-03/04 Android Sleep deep polish (56-point audit, 3 commits)
+
+`b8b5bda5` → S4: live header subtitle + CBT-I chip + moon shortcut + scrim;
+honest hero (no fake duration, Play↔Pause state, plain TONIGHT, 220dp); check-in
+(evening framing, settle line + Edit, duration preview, upsert honesty, quiet
+celebration gate, unclamped HC consent, chip bleed/haptics/semantics, time
+pills, press-repeat steppers, save hint); merged "Your sleep" card (chart axis +
+quality tint + tap-a-bar, humanized editable diary via upsert, bedtime window,
+empty-state action, milestone lines); night-aware door order + enrolled
+Programs copy; sounds tap→player + All-sounds link + Sleep-timer row; guide
+rows honestly dressed (muted meta + per-guide glyphs); pull-to-refresh +
+cached-first snapshot + parallel reload + 640dp max-width.
+
+Deferred from that audit (need decisions or hardware):
+- [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
+- [ ] **Collapsing Sleep header** (audit #4) — design decision on scroll behavior.
+- [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
+- [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.
+
 ## Open — owner decisions queued by the 2026-08-02 Android page-by-page polish (waves 1–8)
 
 The 8-wave UI/UX pass (commits `655b0cb6` → `2ad7697e`: Home, Talk, Journal, You,

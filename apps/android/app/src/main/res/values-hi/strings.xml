@@ -205,6 +205,12 @@
     <string name="sleep_editing_night">%1$s बदल रहे हैं — सहेजने पर वही रात अपडेट होगी</string>
     <string name="sleep_bed_window">सोने का समय %1$s–%2$s के बीच रहा</string>
     <string name="sleep_programs_enrolled">दिन %1$d / %2$d · %3$s</string>
+    <string name="sleep_sounds_all">सभी आवाज़ें</string>
+    <string name="sleep_timer_row">स्लीप टाइमर</string>
+    <string name="sleep_timer_off">बंद — सेट करने के लिए टैप करें</string>
+    <string name="sleep_timer_min">%1$d मिनट</string>
+    <string name="sleep_milestone_first">पहली रात दर्ज — तस्वीर यहीं से शुरू होती है।</string>
+    <string name="sleep_milestone_week">एक हफ़्ते की रातें — तस्वीर बनने लगी है।</string>
     <string name="sleep_minus_30">−30 मि</string>
     <string name="sleep_plus_30">+30 मि</string>
     <string name="sleep_programs_nav_title">प्रोग्राम</string>

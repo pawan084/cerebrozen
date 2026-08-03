@@ -316,6 +316,12 @@
     <string name="sleep_editing_night">Editing %1$s — Save updates that night</string>
     <string name="sleep_bed_window">Bedtimes landed %1$s–%2$s</string>
     <string name="sleep_programs_enrolled">Day %1$d of %2$d · %3$s</string>
+    <string name="sleep_sounds_all">All sounds</string>
+    <string name="sleep_timer_row">Sleep timer</string>
+    <string name="sleep_timer_off">Off — tap to set</string>
+    <string name="sleep_timer_min">%1$d min</string>
+    <string name="sleep_milestone_first">First night logged — the picture starts here.</string>
+    <string name="sleep_milestone_week">A week of nights — the picture is forming.</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
     <string name="sleep_programs_nav_title">Programs</string>
