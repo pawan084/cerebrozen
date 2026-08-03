@@ -55,6 +55,26 @@
   governs server-side memory). SleepScreen states the boundary next to the prefill button
   (`sleep_hc_boundary_hint`).
 
+## Open — owner decisions queued by the 2026-08-02 Android page-by-page polish (waves 1–8)
+
+The 8-wave UI/UX pass (commits `655b0cb6` → `2ad7697e`: Home, Talk, Journal, You,
+Toolkit + GroundingScreen, Breath Loops pause/partial-credit, Sleep time-aware
+layout, Trusted-contact field validation + reach actions) implemented the
+mechanical audit points and deliberately queued these for the owner:
+
+- [ ] **4 vs 5 moods on Home** — the check-in rail shows 4; taxonomy has 5 (cross-stack contract).
+- [ ] **Merge Trends / Insights / Patterns doors on You** — three analytics doors overlap; one hub?
+- [ ] **Crisis screen always-dark** — force Night on the crisis surface regardless of theme?
+- [ ] **Configurable breathing rounds** — Breath Loops rounds are fixed per pattern today.
+- [ ] **Home search scope** — what the Search door should actually index.
+- [ ] **Journal voice entry** — dictation into entries (permissions + privacy copy needed).
+- [ ] **Premium door placement** — the sheen row sits standalone on You; keep or move.
+- [ ] **Trusted-contact "what gets sent" copy** — show the escalation message body verbatim
+  before consent. (The consent switch stays default-OFF — decided 2026-07-13, unchanged.)
+- Device-only checks outstanding: haptic feel (`Haptics.tap` on breath phase change,
+  `success` on completion), TTS voice-cue quality, and a TalkBack pass — the emulator rig
+  can't judge these.
+
 ## Open — redesign follow-ups (from docs/REDESIGN.md, Phases 1–2 shipped 2026-07-12)
 
 - [x] **Dawn light theme** (REDESIGN §4.1 Phase 2 remainder) — shipped 2026-07-12 without a
