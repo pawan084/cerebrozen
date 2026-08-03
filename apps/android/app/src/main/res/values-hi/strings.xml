@@ -114,12 +114,17 @@
     <!-- ── Today ───────────────────────────────────────────────────────── -->
     <string name="today_eyebrow">आज</string>
     <string name="today_eyebrow_goal">आपका फ़ोकस · %1$s</string>
+    <string name="today_eyebrow_goal_working">काम जारी · %1$s</string>
+    <string name="today_eyebrow_goal_return">फिर से · %1$s</string>
+    <string name="today_search_hint">लाइब्रेरी</string>
+    <string name="today_profile_cd">अपनी जगह खोलें</string>
+    <string name="today_banner_offline_send">अभी भेजें</string>
     <string name="today_friend">दोस्त</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>
     <string name="today_banner_sleep">कल रात कैसी रही? 20 सेकंड का चेक-इन।</string>
     <string name="today_banner_sleep_action">दर्ज करें</string>
-    <string name="today_banner_winddown">दिन ढल रहा है।</string>
+    <string name="today_banner_winddown">एक शांत मिक्स के साथ दिन को विदा करें</string>
     <string name="today_banner_winddown_action">शांत मिक्स</string>
     <string name="today_banner_program">दिन %1$d / %2$d · %3$s</string>
     <string name="today_checkin_title">आप सच में कैसे हैं?</string>

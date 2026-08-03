@@ -662,6 +662,51 @@ class ScreenLogicTest {
         assertNull(nextPlanStepIndex(titles, listOf(true, true, true), hour = 19))
     }
 
+    // ── Home polish waves (2026-08-03): header, banners, display mapping ──
+
+    @Test
+    fun eyebrowTemplate_rotates_daily_through_three_framings() {
+        val a = eyebrowTemplateRes(30)
+        val b = eyebrowTemplateRes(31)
+        val c = eyebrowTemplateRes(32)
+        // Three consecutive days wear three different framings, then repeat.
+        assertEquals(3, setOf(a, b, c).size)
+        assertEquals(a, eyebrowTemplateRes(33))
+    }
+
+    @Test
+    fun earlierLine_holds_through_the_small_hours_then_lets_go() {
+        val now = java.time.OffsetDateTime.parse("2026-08-03T01:00:00+05:30")
+        val lastNight = relativeTime("2026-08-02T23:50:00+05:30", now)   // Hours bucket
+        assertTrue(showEarlierLine(lastNight, hour = 1))
+        // A Yesterday-bucket stamp still shows before 4am, not after.
+        assertTrue(showEarlierLine(RelTime.Yesterday, hour = 3))
+        assertEquals(false, showEarlierLine(RelTime.Yesterday, hour = 4))
+        assertEquals(false, showEarlierLine(RelTime.Days(2), hour = 1))
+        assertEquals(false, showEarlierLine(null, hour = 9))
+    }
+
+    @Test
+    fun checkInLine_hides_the_legacy_onboarding_provenance_note() {
+        val legacy = JSONObject().put("mood", "Anxious").put("note", "From onboarding")
+        assertEquals("Anxious", checkInLine(legacy))
+        val real = JSONObject().put("mood", "Good").put("note", "Clear")
+        assertEquals("Good · Clear", checkInLine(real))
+        val noteless = JSONObject().put("mood", "Low")
+        assertEquals("Low", checkInLine(noteless))   // no dangling separator
+    }
+
+    @Test
+    fun wireMoodNames_map_to_display_resources_and_unknowns_stay_raw() {
+        assertEquals(R.string.mood_good, moodLabelResFor("Good"))
+        assertEquals(R.string.mood_anxious, moodLabelResFor("anxious"))   // case-insensitive
+        assertNull(moodLabelResFor("Ecstatic"))
+        // The note maps only when it is the taxonomy's own preset for that mood.
+        assertEquals(R.string.mood_good_note, moodNoteResFor("Good", "Clear"))
+        assertNull(moodNoteResFor("Good", "had a nice walk"))
+        assertNull(moodNoteResFor("Ecstatic", "Clear"))
+    }
+
     @Test
     fun moodTint_knows_every_wire_mood_and_declines_unknowns() {
         listOf("Good", "Anxious", "Low", "Tired").forEach {

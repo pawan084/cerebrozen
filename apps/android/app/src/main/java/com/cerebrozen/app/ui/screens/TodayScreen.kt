@@ -42,7 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -95,6 +99,10 @@ private data class MoodOption(
     val tint: @Composable () -> Color,
 )
 
+/** Process-lifetime flag: the Home settle-in animation plays once per app
+ * session, not once per tab visit. */
+private var homeIntroPlayed = false
+
 private val MOODS = listOf(
     MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note) { Ok },
     MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note) { Warm },
@@ -114,6 +122,25 @@ internal fun greetingFor(hour: Int): Int = when (hour) {
 @Composable
 private fun greeting(): String =
     stringResource(greetingFor(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)))
+
+/** The goal eyebrow's framing rotates by day — focus / working-on / coming-back —
+ * so day 40 doesn't read like day 1. Pure; the templates localize. */
+@androidx.annotation.StringRes
+internal fun eyebrowTemplateRes(dayOfYear: Int): Int = when (dayOfYear % 3) {
+    0 -> R.string.today_eyebrow_goal
+    1 -> R.string.today_eyebrow_goal_working
+    else -> R.string.today_eyebrow_goal_return
+}
+
+/** Whether the greeting still threads the last check-in under it: anything from
+ * today, plus yesterday's through the small hours (before 4am the day hasn't
+ * really turned — a 11:58pm check-in shouldn't vanish at midnight sharp). Pure. */
+internal fun showEarlierLine(t: RelTime?, hour: Int): Boolean = when (t) {
+    null -> false
+    RelTime.Yesterday -> hour < 4
+    is RelTime.Days -> false
+    else -> true
+}
 
 /** Whether [streak] is a milestone worth a gentle line — presence framing
  * (REDESIGN §3.6): counts showing up, never chains or misses. Pure; the copy
@@ -187,18 +214,49 @@ internal fun homeBannerPriority(
  * section vanish rather than degrade. Pure. */
 internal fun checkInLine(m: JSONObject): String {
     val mood = m.optString("mood").trim()
-    val note = m.optString("note").trim()
+    // "From onboarding" was a debug-flavoured note this client wrote before
+    // 2026-08-02; historic rows still carry it, and it reads like leaked
+    // internals. Render those rows as note-less rather than reprinting it.
+    val note = m.optString("note").trim().takeUnless { it.equals("From onboarding", ignoreCase = true) }.orEmpty()
     return if (note.isEmpty()) mood else "$mood · $note"
 }
 
 /** A recent check-in with everything its row renders: the line, the wire mood
- * name (for the tint lookup), and when it happened. */
-internal data class RecentCheckIn(val line: String, val mood: String, val createdAt: String)
+ * name + note (for tint and display-copy lookup), and when it happened. */
+internal data class RecentCheckIn(
+    val line: String,
+    val mood: String,
+    val createdAt: String,
+    val note: String = "",
+)
 
 /** The mood's tile tint for a WIRE name, or null for names this build doesn't
  * know (a server value from a newer taxonomy renders untinted, never crashes). */
 internal fun moodTintFor(name: String): (@Composable () -> Color)? =
     MOODS.firstOrNull { it.name.equals(name, ignoreCase = true) }?.tint
+
+/** Display-copy resource for a WIRE mood name — the server stores taxonomy wire
+ * values ("Good"), which happen to be English; rendering them raw would freeze
+ * the Hindi UI's check-in rows in English. Null for unknown names (render raw). */
+@androidx.annotation.StringRes
+internal fun moodLabelResFor(name: String): Int? =
+    MOODS.firstOrNull { it.name.equals(name, ignoreCase = true) }?.labelRes
+
+/** Same for the note, matched only when it is the taxonomy's own preset note —
+ * a note the user (or an older build) wrote freely renders verbatim. */
+@androidx.annotation.StringRes
+internal fun moodNoteResFor(name: String, note: String): Int? =
+    MOODS.firstOrNull { it.name.equals(name, ignoreCase = true) && it.note.equals(note, ignoreCase = true) }?.noteRes
+
+/** The localized row line: wire values mapped to display copy where the
+ * taxonomy knows them, raw values passed through where it doesn't. */
+@Composable
+internal fun displayCheckInLine(entry: RecentCheckIn): String {
+    val label = moodLabelResFor(entry.mood)?.let { stringResource(it) } ?: entry.mood
+    val rawNote = entry.note.trim().takeUnless { it.equals("From onboarding", ignoreCase = true) }.orEmpty()
+    val note = moodNoteResFor(entry.mood, rawNote)?.let { stringResource(it) } ?: rawNote
+    return if (note.isBlank()) label else "$label · $note"
+}
 
 /** How long ago an ISO timestamp was, bucketed for a quiet label. Pure — the
  * composable maps buckets to localized strings. Null when the stamp is missing
@@ -508,7 +566,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     fun parseRecent(moods: JSONArray): List<RecentCheckIn> =
         (0 until minOf(moods.length(), 3)).map { i ->
             val m = moods.getJSONObject(i)
-            RecentCheckIn(checkInLine(m), m.optString("mood"), m.optString("created_at"))
+            RecentCheckIn(checkInLine(m), m.optString("mood"), m.optString("created_at"), m.optString("note"))
         }
 
     suspend fun reload() {
@@ -556,11 +614,15 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     // meant "kill the app" was the refresh gesture.
     var refreshing by remember { mutableStateOf(false) }
 
-    // A gentle settle-in as the screen arrives (complements the NavHost cross-fade).
+    // A gentle settle-in as the screen arrives — ONCE per app session. It used
+    // to replay on every tab return, which made coming back from Sleep feel
+    // like a reload rather than a return.
     val reduceMotion = rememberReduceMotion()
-    val rise = remember { Animatable(26f) }
+    val rise = remember { Animatable(if (homeIntroPlayed) 0f else 26f) }
     LaunchedEffect(reduceMotion) {
-        if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(460, easing = FastOutSlowInEasing))
+        if (reduceMotion || homeIntroPlayed) rise.snapTo(0f)
+        else rise.animateTo(0f, tween(460, easing = FastOutSlowInEasing))
+        homeIntroPlayed = true
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -579,45 +641,72 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // Goal-aware eyebrow + serif greeting (mirrors iOS DailyFocus header),
-        // with the working search affordance top-right (ref SEARCH route).
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Goal-aware eyebrow + serif greeting (mirrors iOS DailyFocus header).
+        // The eyebrow shares its row with the avatar (a You shortcut) and the
+        // search pill; the greeting gets the full width below and ellipsizes —
+        // it used to fight a search circle and wrap long names against it.
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     (if (goal.isBlank()) stringResource(R.string.today_eyebrow)
-                    else stringResource(R.string.today_eyebrow_goal, goal)).uppercase(),
+                    else stringResource(eyebrowTemplateRes(LocalDate.now().dayOfYear), goal)).uppercase(),
                     style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-                val friend = stringResource(R.string.today_friend)
-                Text(
-                    stringResource(R.string.today_greeting_format, greeting(), userName.ifBlank { friend }),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = TextPrimary,
-                )
-                // One quiet thread of continuity: if there is a check-in from
-                // today, say it back — the greeting stops being generic the
-                // moment the app actually knows something.
-                recent.firstOrNull()?.let { last ->
-                    val t = relativeTime(last.createdAt, java.time.OffsetDateTime.now())
-                    val isToday = t != null && t !is RelTime.Yesterday && t !is RelTime.Days
-                    if (isToday && last.line.isNotBlank()) {
-                        Text(
-                            stringResource(R.string.today_earlier_line, last.line),
-                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                        )
-                    }
+                // The search pill says what it searches, which a bare magnifier
+                // never did; the avatar makes the person greeted tappable.
+                Row(
+                    Modifier.clip(RoundedCornerShape(50))
+                        .background(CardFill)
+                        .border(1.dp, LineStroke, RoundedCornerShape(50))
+                        .clickable { onOpen("search") }
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.today_search_cd),
+                        tint = TextSoft, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.today_search_hint),
+                        style = MaterialTheme.typography.labelMedium, color = TextMuted, maxLines = 1)
+                }
+                val profileCd = stringResource(R.string.today_profile_cd)
+                Box(
+                    Modifier.size(38.dp).clip(CircleShape)
+                        .background(Periwinkle.copy(alpha = 0.16f))
+                        .border(1.dp, Periwinkle.copy(alpha = 0.35f), CircleShape)
+                        .clickable { onOpen("you") }
+                        .semantics { contentDescription = profileCd },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        userName.trim().firstOrNull()?.uppercase() ?: "·",
+                        style = MaterialTheme.typography.titleSmall, color = Periwinkle,
+                    )
                 }
             }
-            Box(
-                Modifier.padding(top = 6.dp).size(48.dp)
-                    .clip(CircleShape)
-                    .background(CardFill)
-                    .border(1.dp, LineStroke, CircleShape)
-                    .clickable { onOpen("search") },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.today_search_cd),
-                    tint = TextSoft, modifier = Modifier.size(19.dp))
+            val friend = stringResource(R.string.today_friend)
+            Text(
+                stringResource(R.string.today_greeting_format, greeting(), userName.ifBlank { friend }),
+                style = MaterialTheme.typography.displaySmall,
+                color = TextPrimary,
+                maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            // One quiet thread of continuity: if there is a check-in from today
+            // (or yesterday's, through the small hours), say it back — the
+            // greeting stops being generic the moment the app knows something.
+            recent.firstOrNull()?.let { last ->
+                val t = relativeTime(last.createdAt, java.time.OffsetDateTime.now())
+                if (showEarlierLine(t, LocalTime.now().hour) && last.line.isNotBlank()) {
+                    Text(
+                        stringResource(R.string.today_earlier_line, displayCheckInLine(last)),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                }
             }
         }
 
@@ -640,20 +729,33 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 if (Session.prefGet("windDownBannerDismissed") == today) add("winddown")
             }
         }
-        when (
-            homeBannerPriority(
-                offline = Session.servedStale,
-                hour = LocalTime.now().hour,
-                lastNightLogged = lastNightLogged,
-                dismissed = dismissed,
-                enrolledInProgram = program != null,
-            )
+        val banner = homeBannerPriority(
+            offline = Session.servedStale,
+            hour = LocalTime.now().hour,
+            lastNightLogged = lastNightLogged,
+            dismissed = dismissed,
+            enrolledInProgram = program != null,
+        )
+        // Banners ease in and out instead of popping — dismissal used to remove
+        // the row frame-to-frame while everything else on the page eases.
+        // [lastBanner] holds the outgoing content through the exit animation.
+        var lastBanner by remember { mutableStateOf(banner) }
+        if (banner != HomeBanner.NONE) lastBanner = banner
+        androidx.compose.animation.AnimatedVisibility(
+            visible = banner != HomeBanner.NONE,
+            enter = if (reduceMotion) androidx.compose.animation.EnterTransition.None
+            else androidx.compose.animation.fadeIn(tween(220)) + androidx.compose.animation.expandVertically(tween(220)),
+            exit = if (reduceMotion) androidx.compose.animation.ExitTransition.None
+            else androidx.compose.animation.fadeOut(tween(180)) + androidx.compose.animation.shrinkVertically(tween(180)),
         ) {
+        when (lastBanner) {
             HomeBanner.OFFLINE -> {
                 // Two different offline facts, and conflating them is what the
                 // banner used to do. "You're seeing the last copy" is about
                 // reads; "3 things you wrote are waiting" is about the user's
-                // own writing, which is the one they will worry about.
+                // own writing, which is the one they will worry about — so
+                // that one also gets the way to act on it: a retry that
+                // drains the outbox now instead of waiting for the next write.
                 val waiting = com.cerebrozen.app.net.Outbox.count()
                 InfoBanner(
                     icon = Icons.Outlined.CloudOff,
@@ -662,22 +764,31 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     } else {
                         stringResource(R.string.today_banner_offline)
                     },
+                    actionLabel = if (waiting > 0) stringResource(R.string.today_banner_offline_send) else null,
+                    onAction = if (waiting > 0) {
+                        { scope.launch { runCatching { com.cerebrozen.app.net.Outbox.drain() }; reload() } }
+                    } else null,
                 )
             }
             HomeBanner.SLEEP_CHECKIN -> InfoBanner(
                 icon = Icons.Outlined.LightMode,
                 text = stringResource(R.string.today_banner_sleep),
                 actionLabel = stringResource(R.string.today_banner_sleep_action),
+                // Sleep's tab is time-aware since 2026-08-03: through the
+                // morning the check-in card IS the top of that tab, so this
+                // lands the user directly on it.
                 onAction = openSleep,
                 onDismiss = dismissSleep,
             )
             HomeBanner.WIND_DOWN -> InfoBanner(
                 icon = Icons.Outlined.Bedtime,
                 text = stringResource(R.string.today_banner_winddown),
-                actionLabel = stringResource(R.string.today_banner_winddown_action),
+                actionLabel = stringResource(R.string.common_open),
                 onAction = openMixer,
                 onDismiss = dismissWindDown,
-                artKind = "sleep",   // W21: content invitation → art medallion
+                // The action opens the MIXER, so the medallion wears the wave
+                // motif (soundscape family), not the generic sleep moon.
+                artKind = "soundscape",
             )
             HomeBanner.PROGRAM -> program?.let { prog ->
                 // B4: the day strip is status, not a nudge — never dismissible.
@@ -693,6 +804,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 )
             }
             HomeBanner.NONE -> {}
+        }
         }
 
         // The primary daily action leads (REDESIGN §3.1): the 1-tap check-in.
@@ -953,6 +1065,24 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     }
 
     }
+
+    // A quiet top scrim so scrolled content fades under the system clock
+    // instead of colliding with it. Themed [Night] resolves per palette, so
+    // Dawn fades to cream and Night to night.
+    val topInset = with(androidx.compose.ui.platform.LocalDensity.current) {
+        androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp()
+    }
+    Box(
+        Modifier.align(Alignment.TopCenter).fillMaxWidth().height(topInset + 18.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        com.cerebrozen.app.ui.theme.Night.copy(alpha = 0.88f),
+                        com.cerebrozen.app.ui.theme.Night.copy(alpha = 0f),
+                    ),
+                ),
+            ),
+    )
 
     // First-run guided tour (ref GUIDED TOUR OVERLAY) — once per install.
     if (showTour) {

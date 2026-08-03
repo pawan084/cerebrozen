@@ -185,6 +185,11 @@
     <!-- ── Today (TodayScreen.kt) ──────────────────────────────────────── -->
     <string name="today_eyebrow">Today</string>
     <string name="today_eyebrow_goal">Your focus · %1$s</string>
+    <string name="today_eyebrow_goal_working">Working on · %1$s</string>
+    <string name="today_eyebrow_goal_return">Back to · %1$s</string>
+    <string name="today_search_hint">Library</string>
+    <string name="today_profile_cd">Open your space</string>
+    <string name="today_banner_offline_send">Send now</string>
     <string name="today_greeting_format">%1$s, %2$s</string>
     <string name="today_friend">friend</string>
     <string name="today_search_cd">Search the library</string>
@@ -197,7 +202,7 @@
          visible — and it named a destination the button does not open: the
          action is openMixer, not the wind-down guide. Copy, label and action
          now all mean the same thing. -->
-    <string name="today_banner_winddown">The day is winding down.</string>
+    <string name="today_banner_winddown">Wind down with a quieter mix</string>
     <string name="today_banner_winddown_action">Quieter mix</string>
     <string name="today_banner_program">Day %1$d of %2$d · %3$s</string>
     <string name="today_checkin_title">How are you, really?</string>
@@ -243,7 +248,7 @@
     <string name="today_recent_open">Trends</string>
     <string name="today_week_section">Your week</string>
     <!-- One line of continuity under the greeting when a check-in exists today. -->
-    <string name="today_earlier_line">Earlier today: %1$s</string>
+    <string name="today_earlier_line">Earlier · %1$s</string>
     <!-- Relative-time labels for recent check-in rows. -->
     <string name="today_time_just_now">just now</string>
     <string name="today_time_minutes">%1$dm ago</string>
