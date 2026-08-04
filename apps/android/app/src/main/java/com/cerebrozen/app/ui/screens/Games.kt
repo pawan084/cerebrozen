@@ -335,7 +335,10 @@ internal fun flowerFor(index: Int): String = FLOWERS[index % FLOWERS.size]
 /** Deterministic 0..1 planting fraction per entry — a stable scatter so a saved
  * flower lands in the same spot on every launch. Pure, so it's unit-testable. */
 internal fun plantFraction(index: Int, salt: Int): Float =
-    ((index * 73 + salt * 149 + 31) % 100) / 100f
+    // B41: per-axis slopes (73 vs 37, both coprime with 100) — one shared
+    // slope meant y - x was constant, so the whole garden grew on a single
+    // diagonal and later flowers hid earlier ones.
+    ((index * (if (salt == 1) 73 else 37) + salt * 149 + 31) % 100) / 100f
 
 @Composable
 fun GratitudeGardenScreen(onBack: () -> Unit) {

@@ -32,8 +32,14 @@ object ToolAmbience {
     /** Begin (or switch to) a soft looping bed from a raw resource, fading in.
      * Plays the catalogue's asset for the matching key when one is uploaded, and
      * the bundled resource otherwise ([ambientUri]). */
-    fun start(context: Context, rawRes: Int) {
-        if (player != null && currentRes == rawRes) return   // already on this bed
+    /** Monotonic ownership token: [stop] with a stale token is a no-op, so
+     * navigation ordering (incoming start() before outgoing onDispose) can
+     * never tear down the incoming screen's bed (audit B32). */
+    private var generation = 0
+
+    fun start(context: Context, rawRes: Int): Int {
+        generation += 1
+        if (player != null && currentRes == rawRes) return generation   // already on this bed
         release()
         currentRes = rawRes
         val uri = ambientUri(context.packageName, keyFor(rawRes), rawRes)
@@ -48,6 +54,7 @@ object ToolAmbience {
         }.getOrNull()
         playing = player != null
         fadeTo(if (muted) 0f else BED_VOLUME)
+        return generation
     }
 
     /** The catalogue key whose server asset supersedes a given bundled loop. Kept
@@ -63,8 +70,11 @@ object ToolAmbience {
         else -> ""
     }
 
-    /** Fade out and tear down — call when the tool screen leaves. */
-    fun stop() {
+    /** Fade out and tear down — call when the tool screen leaves. Pass the
+     * token [start] returned; a stale token means another screen has since
+     * taken the bed over, and this stop is ignored. */
+    fun stop(token: Int? = null) {
+        if (token != null && token != generation) return
         val p = player ?: run { playing = false; return }
         rampVolume(from = p.volume, to = 0f) { release() }
     }

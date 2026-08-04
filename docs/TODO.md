@@ -114,6 +114,24 @@
   Remaining token notes: games category accents (gameAccent) are deliberate
   identities, BubblePop pool gradient is art — both left; B87 title-vs-id
   enrollment match needs a backend payload check first.
+- [x] **Wave 8 — timers, layout resilience, last races** (register: B30, B32,
+  B33, B35-B41, B54, B87, B91, B92): breathe pacer reads haptics/chime via
+  rememberUpdatedState (a mid-session toggle no longer stretches the second or
+  replays a cue); ToolAmbience start() returns an ownership token so a
+  disposing screen can't kill the bed the incoming screen just started;
+  SoundscapeMixer gained TIMER_CYCLE + setTimer() — the sleep-timer card picks
+  a target with ONE intent instead of four blind cycles; ContentList state
+  keyed on kind; Trends picker is a FlowRow (720px/large-font) and a stale
+  chart is marked while a new window loads; onboarding consent hints wrap
+  (no "…" at the moment of consent) and StateOptionRow/game tiles grow at
+  large font; unknown gameId renders words + Browse instead of a blank
+  screen; GratitudeGarden per-axis slopes (the whole garden grew on one
+  mod-100 diagonal); BubblePop bubbles carry name+role for TalkBack;
+  enrollment matches by content_id (title only as legacy fallback — backend
+  _view verified to send content_id); Insights metric rows keyed by label.
+  Remaining (small): B29 imagery ticker robustness, B31 BubblePop drift perf,
+  B34 body-scan pause restarts step wait, B84-B85 Session i18n + cache cap,
+  B56 PickChip role, B59 RTL scope.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

@@ -231,8 +231,13 @@ fun BreatheEngine(
     // W27 §4: the haptic is now user-toggleable, and an OFF-by-default soft
     // chime can mark phase changes too. Both are guidance, not motion —
     // Reduce Motion deliberately leaves them alone.
-    LaunchedEffect(preset, secondsPerPhase, hapticsOn, chimeOn) {
-        if (chimeOn) playBreathingCue(phases[phase])
+    // B30: the flags are read through rememberUpdatedState so a mid-session
+    // toggle changes behaviour WITHOUT restarting the tick coroutine — keying
+    // on them stretched the current second and replayed a cue mid-phase.
+    val liveHaptics by androidx.compose.runtime.rememberUpdatedState(hapticsOn)
+    val liveChime by androidx.compose.runtime.rememberUpdatedState(chimeOn)
+    LaunchedEffect(preset, secondsPerPhase) {
+        if (liveChime) playBreathingCue(phases[phase])
         while (true) {
             delay(1_000)
             if (count > 1) {
@@ -242,8 +247,8 @@ fun BreatheEngine(
                 phase = next
                 count = phases[next].seconds
                 if (next == 0) breaths += 1
-                if (hapticsOn) Haptics.soft(if (phases[next].kind != BreathKind.HOLD) 0.5f else 0.3f)
-                if (chimeOn) playBreathingCue(phases[next])
+                if (liveHaptics) Haptics.soft(if (phases[next].kind != BreathKind.HOLD) 0.5f else 0.3f)
+                if (liveChime) playBreathingCue(phases[next])
             }
         }
     }

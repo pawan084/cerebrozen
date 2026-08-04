@@ -215,13 +215,24 @@ object SoundscapeMixer {
     }
 
     /** Off → 15 → 30 → 45 → 60 → off (same steps as the sleep player). */
-    fun cycleTimer(context: Context) {
-        val next = when (timerMinutes) { 0 -> 15; 15 -> 30; 30 -> 45; 45 -> 60; else -> 0 }
+    /** The selectable timer stops, in cycle order — the ONE list the pill
+     * rail and the cycle step both read (audit B33). */
+    val TIMER_CYCLE = listOf(0, 15, 30, 45, 60)
+
+    /** Arm the timer at exactly [minutes] with one service intent — the card
+     * used to reach a target by firing up to four blind cycle intents, each
+     * resetting the service's fade state. */
+    fun setTimer(context: Context, minutes: Int) {
         context.startService(
             intent(context, SoundscapeService.ACTION_TIMER)
-                .putExtra(SoundscapeService.EXTRA_MINUTES, next),
+                .putExtra(SoundscapeService.EXTRA_MINUTES, minutes),
         )
-        timerMinutes = next   // optimistic; the service confirms via publishTimer
+        timerMinutes = minutes   // optimistic; the service confirms via publishTimer
+    }
+
+    fun cycleTimer(context: Context) {
+        val at = TIMER_CYCLE.indexOf(timerMinutes).coerceAtLeast(0)
+        setTimer(context, TIMER_CYCLE[(at + 1) % TIMER_CYCLE.size])
     }
 
     /** m:ss label for the live countdown, or null when disarmed. */

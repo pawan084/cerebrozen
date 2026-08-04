@@ -39,8 +39,8 @@ import com.cerebrozen.app.ui.theme.TextSoft
 internal fun ToolAmbienceEffect(rawRes: Int) {
     val context = LocalContext.current
     DisposableEffect(rawRes) {
-        ToolAmbience.start(context, rawRes)
-        onDispose { ToolAmbience.stop() }
+        val token = ToolAmbience.start(context, rawRes)
+        onDispose { ToolAmbience.stop(token) }
     }
 }
 

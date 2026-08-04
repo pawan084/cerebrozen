@@ -1653,6 +1653,11 @@
     <string name="mg_colour_amber">Amber</string>
     <string name="mg_colour_rose">Rose</string>
     <string name="mg_watch_sequence">Watch the order</string>
+    <string name="bubble_pop_cd">Pop a bubble</string>
+    <string name="mg_missing_eyebrow">Mindful games</string>
+    <string name="mg_missing_title">That game isn\'t here anymore</string>
+    <string name="mg_missing_body">It may have been renamed or retired. The full catalogue has everything current.</string>
+    <string name="mg_missing_cta">Browse the games</string>
     <string name="mg_cell_cd">Cell %1$d</string>
     <string name="mg_timer_cd">Time remaining in this round</string>
     <string name="mg_sequence_progress">%1$d of %2$d</string>

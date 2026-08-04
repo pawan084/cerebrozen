@@ -417,9 +417,9 @@ internal fun ContentList(
     metaColor: Color = Periwinkle,
     glyphFor: ((String) -> ImageVector?)? = null,
 ) {
-    var items by remember { mutableStateOf<JSONArray?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var reloadKey by remember { mutableStateOf(0) }
+    var items by remember(kind) { mutableStateOf<JSONArray?>(null) }
+    var error by remember(kind) { mutableStateOf<String?>(null) }   // B35: keyed like the fetch
+    var reloadKey by remember(kind) { mutableStateOf(0) }
     val loadFailed = stringResource(R.string.content_error_fallback)
     LaunchedEffect(kind, reloadKey) {
         error = null
@@ -597,6 +597,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 val reduceMotion = rememberReduceMotion()
                 (0 until m.length()).forEach { i ->
                     val row = m.getJSONObject(i)
+                    androidx.compose.runtime.key(row.optString("label", i.toString())) {
                     val p = row.optDouble("progress", 0.0).toFloat().coerceIn(0f, 1f)
                     val fill = remember { Animatable(if (reduceMotion) 1f else 0f) }
                     LaunchedEffect(reduceMotion) {
@@ -638,6 +639,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                     if (i < m.length() - 1) {
                         HorizontalDivider(color = LineStroke.copy(alpha = 0.48f))
                     }
+                    }   // key(label) — B92: identity keying for the fill state
                 }
             }
         }
@@ -891,7 +893,12 @@ fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         val enrolledStatus = stringResource(R.string.programs_enrolled_status)
         val enrollFailed = stringResource(R.string.programs_enroll_error)
         rows.forEach { (id, title, subtitle) ->
-            val isActive = active?.optString("title") == title
+            // B87: match by content id — two programs sharing a title used to
+            // BOTH render as enrolled. Title stays only as a legacy fallback.
+            val activeContentId = active?.optString("content_id").orEmpty()
+            val isActive =
+                if (activeContentId.isNotBlank()) activeContentId == id
+                else active?.optString("title") == title
             SectionCard {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -1647,9 +1654,9 @@ private fun PremiumSleepTimerCard(context: android.content.Context) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val current = SoundscapeMixer.timerMinutes
     fun choose(target: Int) {
-        repeat(5) {
-            if (SoundscapeMixer.timerMinutes != target) SoundscapeMixer.cycleTimer(context)
-        }
+        // B33: one intent straight to the target — the blind cycle loop reset
+        // the service's fade state up to four times per pick.
+        SoundscapeMixer.setTimer(context, target)
         expanded = false
     }
     MixerGlassCard {
@@ -1671,7 +1678,7 @@ private fun PremiumSleepTimerCard(context: android.content.Context) {
         }
         if (expanded) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0, 15, 30, 45, 60).forEach { minutes ->
+                SoundscapeMixer.TIMER_CYCLE.forEach { minutes ->
                     PremiumPresetPill(
                         selected = current == minutes,
                         label = if (minutes == 0) stringResource(R.string.common_off) else stringResource(R.string.common_minutes, minutes),
@@ -2428,6 +2435,7 @@ fun BubblePopScreen(onBack: () -> Unit) {
                     center = Offset(size.width * 0.48f, size.height * 0.48f),
                 )
             }
+            val popCd = stringResource(R.string.bubble_pop_cd)
             bubbles.forEach { b ->
                 Box(
                     Modifier.offset(x = w * b.x, y = h * b.y).size(b.size.dp)
@@ -2438,10 +2446,13 @@ fun BubblePopScreen(onBack: () -> Unit) {
                             listOf(Color.White.copy(alpha = 0.96f), b.hue.copy(alpha = 0.78f), b.hue),
                             center = Offset(0.34f, 0.28f),
                         )).border(1.dp, Color.White.copy(alpha = 0.52f), CircleShape)
-                        .clickable {
+                        // B54: the featured Toolkit activity was invisible
+                        // to screen readers — anonymous clickable Boxes.
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
                             com.cerebrozen.app.ui.Haptics.soft()
                             bubbles = bubbles.filterNot { it.id == b.id }; score++
-                        },
+                        }
+                        .semantics { contentDescription = popCd },
                 ) {
                     Box(
                         Modifier.align(Alignment.TopStart)

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -87,7 +88,19 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun MindfulGameScreen(gameId: String?, onBack: () -> Unit, onBackToGames: () -> Unit) {
-    val game = MindfulGameRegistry.find(gameId) ?: return
+    val game = MindfulGameRegistry.find(gameId)
+    // B40: a stale deeplink or retired id used to render a completely blank
+    // screen with no back affordance.
+    if (game == null) {
+        SubPage(stringResource(R.string.mg_missing_eyebrow), stringResource(R.string.mg_missing_title), onBack) {
+            Text(stringResource(R.string.mg_missing_body), color = TextMuted)
+            PrimaryButton(
+                text = stringResource(R.string.mg_missing_cta),
+                modifier = Modifier.fillMaxWidth(),
+            ) { onBackToGames() }
+        }
+        return
+    }
     val gameName = stringResource(game.nameRes)
     val reduceMotion = rememberReduceMotion()
     val accent = gameAccent(game.category)
@@ -194,7 +207,7 @@ fun MindfulGameScreen(gameId: String?, onBack: () -> Unit, onBackToGames: () -> 
                 }
 
                 Box(
-                    Modifier.fillMaxWidth().height(410.dp)
+                    Modifier.fillMaxWidth().heightIn(min = 410.dp)   // B39: prompts wrap, never clip
                         .shadow(22.dp, RoundedCornerShape(30.dp), ambientColor = accent.copy(alpha = 0.22f), spotColor = accent.copy(alpha = 0.28f))
                         .clip(RoundedCornerShape(30.dp))
                         .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.22f), CardFill, accent.copy(alpha = 0.07f))))

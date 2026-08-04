@@ -200,7 +200,10 @@ internal fun TrendsScreen(onBack: () -> Unit) {
         // Window picker. Three windows, not a slider: the question is "this
         // month or this season", and a continuous control invites reading
         // precision into a self-reported diary that does not have it.
-        Row(
+        // B36: FlowRow — three labelled chips do not fit one 720px line at
+        // large font scale (the exact failure GoalsScreen documents).
+        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+        androidx.compose.foundation.layout.FlowRow(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -216,6 +219,12 @@ internal fun TrendsScreen(onBack: () -> Unit) {
             }
         }
 
+        // B91: switching windows used to render the OLD window's chart
+        // unmarked under the newly selected chip until the fetch landed.
+        if (loading && trends != null) {
+            Text(stringResource(R.string.search_loading),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
         when {
             loading && trends == null -> {
                 repeat(2) {

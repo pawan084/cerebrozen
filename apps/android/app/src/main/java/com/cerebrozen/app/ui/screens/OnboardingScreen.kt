@@ -471,17 +471,17 @@ fun Onboarding() {
                     Triple("model_training", stringResource(R.string.ob_consent_training), stringResource(R.string.ob_consent_training_hint)),
                 )
                 rows.forEachIndexed { index, (key, label, hint) ->
+                    // B37: heightIn + wrapping hint — "specific and
+                    // informed" must not end in "…" exactly where the choice
+                    // is made (large font / longer locales).
                     Row(
-                        Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 18.dp),
+                        Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 18.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                            Text(
-                                hint, style = MaterialTheme.typography.bodySmall, color = InfoCardHint,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            )
+                            Text(hint, style = MaterialTheme.typography.bodySmall, color = InfoCardHint)
                         }
                         AppSwitch(checked = consent[key] == true, onCheckedChange = { consent[key] = it })
                     }
@@ -789,7 +789,7 @@ private fun ReferenceCard(
 @Composable
 private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(55.dp).clip(RoundedCornerShape(16.dp))
+        Modifier.fillMaxWidth().heightIn(min = 55.dp).clip(RoundedCornerShape(16.dp))   // B38: grows at large font
             .background(if (selected) PickRowSelectedFill else PickRowFill)
             .border(1.dp, PickRowStroke, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick).padding(horizontal = 18.dp),

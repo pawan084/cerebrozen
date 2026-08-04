@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -95,7 +96,7 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                     val name = stringResource(game.nameRes)
                     val description = stringResource(game.descriptionRes)
                     val accent = gameAccent(game.category)
-                    Box(Modifier.weight(1f).height(210.dp)) {
+                    Box(Modifier.weight(1f).heightIn(min = 210.dp)) {   // B39: grows at large font
                     SectionCard(onClick = { onOpenGame(game.id) }, modifier = Modifier.fillMaxSize()) {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(accent.copy(alpha = 0.75f)))
