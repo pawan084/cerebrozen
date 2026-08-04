@@ -388,6 +388,25 @@ class ScreenLogicTest {
         assertEquals(listOf("reframe", "breathe", "ground"), tryTogetherOrder(14, "thinking about work"))
     }
 
+    // ── Sounds 56-point wave (2026-08-04) ──
+    @Test
+    fun mixer_presets_align_with_layers_and_lead_with_just_rain() {
+        val mixer = com.cerebrozen.app.audio.SoundscapeMixer
+        // Every preset's vector is exactly one volume per layer.
+        mixer.presets.forEach { assertEquals(mixer.layers.size, it.volumes.size) }
+        // "Just rain" leads and matches the factory blend, so a first visit
+        // names itself instead of reading "Custom mix".
+        assertEquals("just_rain", mixer.presets.first().key)
+        assertEquals(listOf(0.7f, 0f, 0f, 0f), mixer.presets.first().volumes)
+    }
+
+    @Test
+    fun mixer_dominant_layer_names_the_loudest_audible_voice() {
+        val mixer = com.cerebrozen.app.audio.SoundscapeMixer
+        // Factory blend: rain leads.
+        assertEquals(mixer.layers[0].nameRes, mixer.dominantLayerRes())
+    }
+
     // ── Chat 52-point wave (2026-08-04) ──
     @Test
     fun phoneSpans_finds_helplines_and_ignores_breath_counts() {

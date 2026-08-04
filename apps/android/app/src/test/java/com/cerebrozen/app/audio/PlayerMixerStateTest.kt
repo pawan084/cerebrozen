@@ -144,12 +144,14 @@ class PlayerMixerStateTest {
     }
 
     @Test
-    fun mixer_toggleLayer_flips_between_silent_and_the_default_level() {
-        SoundscapeMixer.setLayerVolume(context, 3, 0f)
-        SoundscapeMixer.toggleLayer(context, 3)
-        assertEquals(0.7f, SoundscapeMixer.volumes[3])
+    fun mixer_toggleLayer_flips_between_silent_and_the_users_last_level() {
+        // 2026-08-04 Sounds audit #42: re-enabling a layer restores the level
+        // YOU had it at, not a fixed 0.7.
+        SoundscapeMixer.setLayerVolume(context, 3, 0.4f)
         SoundscapeMixer.toggleLayer(context, 3)
         assertEquals(0f, SoundscapeMixer.volumes[3])
+        SoundscapeMixer.toggleLayer(context, 3)
+        assertEquals(0.4f, SoundscapeMixer.volumes[3])
         SoundscapeMixer.toggleLayer(context, -1)   // out of range → no-op
     }
 

@@ -98,6 +98,14 @@ Deferred from that audit (need decisions or hardware):
   conflicts with the long-press copy gesture; needs a design call.
 - [ ] **CBT reframe seeded from the conversation** (chat audit #22) — route arg design.
 - [ ] **Chip-rail collection semantics + RTL bubble pass** (chat audit #47/#49) — device-only.
+- [ ] **Sounds audit deferrals (2026-08-04)**: favourites recency order + pruning of
+  renamed titles (needs a richer SleepFavs store); premium-row upsell path (needs a
+  client entitlement signal); named saved mixes (backlog, sibling CustomRituals shape);
+  "Activity sounds" placement (owner call — it's an app-wide setting living in the
+  Mixer); loop-seam listen + server-asset supersede check (device/asset-gated).
+  DONE from that audit: mix persistence, fav-kind fix, preset-tap-plays, Just-rain
+  preset, duck, MediaSession callback, toggle-restore, honesty hints, token pill.
+  (The `caae1caf` merge's pending mixer visual pass also cleared — verified live.)
 - [ ] **Collapsing Sleep header** (audit #4) — design decision on scroll behavior.
 - [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
 - [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.

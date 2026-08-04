@@ -2,9 +2,13 @@ package com.cerebrozen.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.ui.semantics.role
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -159,7 +163,15 @@ import org.json.JSONArray
 
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
-internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun SubPage(
+    eyebrow: String,
+    title: String,
+    onBack: () -> Unit,
+    /** Callers with switchable panes pass their own state so a pane change can
+     * reset to top (the Sounds hub's Library↔Mixer flip kept mid-scroll). */
+    scrollState: androidx.compose.foundation.ScrollState? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val reduceMotion = rememberReduceMotion()
     val rise = remember { Animatable(24f) }
     LaunchedEffect(reduceMotion) {
@@ -169,7 +181,8 @@ internal fun SubPage(eyebrow: String, title: String, onBack: () -> Unit, content
     // scrolled text cannot pass behind the status bar. Top padding drops from
     // 22dp to 4dp so every pushed screen's header stays where it was.
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().statusBarsPadding().imePadding()
+            .verticalScroll(scrollState ?: rememberScrollState())
             .graphicsLayer { translationY = rise.value }
             .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 22.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -879,16 +892,52 @@ fun ProgramsScreen(onBack: () -> Unit) {
 @Composable
 fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer: Boolean = false) {
     val context = LocalContext.current
-    // W27 §2: the list a title comes from declares its kind — the aurora's tint signal.
-    val playSoundscape: (String) -> Unit = { title -> Player.toggle(context, title, "soundscape") }
-    val playSleep: (String) -> Unit = { title -> Player.toggle(context, title, "sleep") }
+    // Sleep-story TITLES, so a favourite plays back with its REAL kind: the
+    // favourites section hardcoded "soundscape" and a favourited story played
+    // with the wrong kind and the wrong aurora tint (W27 §2).
+    var sleepTitles by remember { mutableStateOf(setOf<String>()) }
+    // Narration truth for the footnote: only claim narration is coming when
+    // this deployment can actually speak.
+    var ttsAvailable by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        SoundscapeMixer.ensureLoaded()
+        runCatching {
+            val arr = Api.content("sleep")
+            sleepTitles = (0 until arr.length()).mapNotNull {
+                arr.optJSONObject(it)?.optString("title")?.takeIf(String::isNotBlank)
+            }.toSet()
+        }
+        runCatching {
+            val v = Api.voiceStatus()
+            ttsAvailable = v.optBoolean("tts")
+        }
+    }
+    fun kindOf(title: String): String = if (title in sleepTitles) "sleep" else "soundscape"
+    // W27 §2: the list a title comes from declares its kind — the aurora's tint
+    // signal. Playing also remembers (the recents chip) and opens the player
+    // like the Sleep tab's rows (same item, same behavior, at last).
+    val playAs: (String, String) -> Unit = { title: String, kind: String ->
+        if (Player.nowPlaying == title && Player.isPlaying) {
+            Player.toggle(context, title, kind)
+        } else {
+            runCatching { com.cerebrozen.app.net.Session.prefPut("sounds_recent", title) }
+            Player.play(context, title, kind)
+            onOpen("player")
+        }
+    }
     var favs by remember { mutableStateOf(SleepFavs.all()) }
-    val toggleFav: (String) -> Unit = { favs = SleepFavs.toggle(it) }
+    val toggleFav: (String) -> Unit = { com.cerebrozen.app.ui.Haptics.tap(); favs = SleepFavs.toggle(it) }
     var section by rememberSaveable { mutableStateOf(if (startInMixer) "mixer" else "library") }
+    // Each pane opens at its top — the flip used to keep mid-scroll position.
+    val paneScroll = remember(section) { androidx.compose.foundation.ScrollState(0) }
+    // Back from the Mixer visits the Library once before leaving the hub, so a
+    // mixer deep-link (Sleep's door) still discovers the other pane.
+    androidx.activity.compose.BackHandler(enabled = section == "mixer") { section = "library" }
     SubPage(
         if (section == "mixer") stringResource(R.string.mixer_eyebrow) else stringResource(R.string.sounds_eyebrow),
         if (section == "mixer") stringResource(R.string.mixer_title) else stringResource(R.string.sounds_title),
         onBack,
+        scrollState = paneScroll,
     ) {
         PremiumSoundSegment(
             mixerSelected = section == "mixer",
@@ -899,18 +948,46 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
             MixerSection()
             return@SubPage
         }
+        // Offline: the served lists will be stale or empty, but the Mixer is
+        // bundled — point across the pane instead of failing quietly.
+        if (com.cerebrozen.app.net.Session.servedStale) {
+            InfoBanner(
+                icon = Icons.Outlined.CloudOff,
+                text = stringResource(R.string.sounds_offline_banner),
+                actionLabel = stringResource(R.string.sounds_offline_action),
+                onAction = { section = "mixer" },
+            )
+        }
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
         SleepTimerPill()
+        // Pick up where you left off — the audio hub finally remembers the
+        // one thing its users repeat nightly.
+        run {
+            val recent: String? = remember {
+                runCatching { com.cerebrozen.app.net.Session.prefGet("sounds_recent") }.getOrNull()
+            }
+            if (Player.nowPlaying == null && !recent.isNullOrBlank()) {
+                PickChip(
+                    selected = false,
+                    label = stringResource(R.string.sounds_recent_chip, recent),
+                ) { playAs(recent, kindOf(recent)) }
+            }
+        }
         Text(stringResource(R.string.sounds_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
         if (favs.isNotEmpty()) {
             Text(stringResource(R.string.sounds_favourites_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             favs.sorted().forEach { title ->
+                val kind = kindOf(title)
                 ContentRow(
-                    title, "", stringResource(R.string.sounds_meta_favourite), false,
+                    title, "",
+                    // The row keeps its true meta — "Favourite" hid what a thing was.
+                    if (kind == "sleep") stringResource(R.string.sleep_meta_story)
+                    else stringResource(R.string.sounds_meta_ambient),
+                    false,
                     playing = Player.nowPlaying == title && Player.isPlaying,
-                    kind = "soundscape",
-                    onTap = { playSoundscape(title) }, fav = true, onFav = { toggleFav(title) },
+                    kind = kind,
+                    onTap = { playAs(title, kind) }, fav = true, onFav = { toggleFav(title) },
                 )
             }
         }
@@ -918,13 +995,18 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         val minutesTemplate = stringResource(R.string.common_minutes)
         val ambientMeta = stringResource(R.string.sounds_meta_ambient)
         val storyMeta = stringResource(R.string.sleep_meta_story)
+        // The first list gets its header like the two sections after it.
+        Text(stringResource(R.string.sounds_soundscapes_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
-            onItemTap = playSoundscape, favs = favs, onFav = toggleFav)
+            onItemTap = { playAs(it, "soundscape") }, favs = favs, onFav = toggleFav)
         Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            onItemTap = playSleep, favs = favs, onFav = toggleFav)
-        Text(stringResource(R.string.sounds_narration_note),
-            style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            onItemTap = { playAs(it, "sleep") }, favs = favs, onFav = toggleFav)
+        // Only promise narration where the deployment can actually speak.
+        if (!ttsAvailable) {
+            Text(stringResource(R.string.sounds_narration_note),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
     }
 }
 
@@ -952,15 +1034,27 @@ private fun PremiumSoundSegment(
 
 @Composable
 private fun PremiumSegmentItem(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val fill by animateColorAsState(if (selected) Color(0xFF6550D7) else Color.Transparent, label = "segmentFill")
+    // Brand token, not raw hex (the merge converted the pane below; the pill
+    // above it was missed), and real Tab semantics so TalkBack announces the
+    // selected pane instead of two anonymous buttons.
+    val fill by animateColorAsState(
+        if (selected) com.cerebrozen.app.ui.theme.BrandPrimary else Color.Transparent,
+        label = "segmentFill",
+    )
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val itemShape = RoundedCornerShape(23.dp)
     Box(
         modifier.pressScale(pressed, down = 0.97f).height(48.dp).clip(itemShape)
             .background(fill)
-            .then(if (selected) Modifier.border(1.dp, Color(0x667A5CFF), itemShape) else Modifier)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            .then(if (selected) Modifier.border(1.dp, Periwinkle.copy(alpha = 0.5f), itemShape) else Modifier)
+            .selectable(
+                selected = selected,
+                interactionSource = interaction,
+                indication = null,
+                role = androidx.compose.ui.semantics.Role.Tab,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else TextMuted)
@@ -969,14 +1063,23 @@ private fun PremiumSegmentItem(label: String, selected: Boolean, modifier: Modif
 
 @Composable
 private fun SleepTimerPill() {
+    val context = LocalContext.current
+    val mixerOwns = SoundscapeMixer.remainingText() != null || SoundscapeMixer.timerMinutes > 0
     val label = SoundscapeMixer.remainingText()?.let { stringResource(R.string.sounds_fading_out_in, it) }
         ?: Player.timerMinutes.takeIf { it > 0 }?.let { stringResource(R.string.sounds_sleep_timer_short, it) }
         ?: return
+    val cycleCd = stringResource(R.string.sounds_timer_cycle_cd)
     Row(
         Modifier
             .clip(RoundedCornerShape(Radius.round))
             .background(CardFill)
             .border(1.dp, LineStroke, RoundedCornerShape(Radius.round))
+            // The pill looked tappable and wasn't — now a tap cycles the timer
+            // of whichever engine owns it (one Sleep timer, wherever you are).
+            .clickable {
+                if (mixerOwns) SoundscapeMixer.cycleTimer(context) else Player.cycleTimer(context)
+            }
+            .semantics { contentDescription = cycleCd }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1000,12 +1103,17 @@ private fun layerIcon(symbol: String): ImageVector = when (symbol) {
 @Composable
 private fun MixerSection() {
     val context = LocalContext.current
+    LaunchedEffect(Unit) { SoundscapeMixer.ensureLoaded() }
     val playing = SoundscapeMixer.isPlaying
     val matching = SoundscapeMixer.matchingPreset()
+    // A non-preset blend is named by its loudest layer ("Mostly rain") —
+    // "Custom mix" told the user nothing.
     val mixName = matching?.let { presetLabel(SoundscapeMixer.presets[it].key) }
+        ?: SoundscapeMixer.dominantLayerRes()?.let { stringResource(R.string.mixer_mostly, stringResource(it)) }
         ?: stringResource(R.string.mixer_custom_mix)
-    val session = SoundscapeMixer.remainingText()
-        ?: SoundscapeMixer.timerMinutes.takeIf { it > 0 }?.let { stringResource(R.string.common_minutes, it) }
+    val session = SoundscapeMixer.remainingText()?.let { stringResource(R.string.sounds_fading_out_in, it) }
+        ?: SoundscapeMixer.timerMinutes.takeIf { it > 0 }
+            ?.let { stringResource(R.string.mixer_fades_after, it) }
         ?: stringResource(R.string.mixer_open_ended)
 
     Text(stringResource(R.string.mixer_subtitle), style = MaterialTheme.typography.bodyLarge, color = TextMuted)
@@ -1013,23 +1121,39 @@ private fun MixerSection() {
         playing = playing,
         mixName = mixName,
         session = session,
-        onToggle = { SoundscapeMixer.toggle(context) },
+        onToggle = { com.cerebrozen.app.ui.Haptics.tap(); SoundscapeMixer.toggle(context) },
     )
     MasterVolumeCard(
         value = SoundscapeMixer.master,
         onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
     )
+    // Honesty hints: a lit mix at master-zero is silence; a tuned blend while
+    // stopped is silence too. Say which, quietly.
+    if (playing && SoundscapeMixer.master < 0.02f) {
+        Text(stringResource(R.string.mixer_muted_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    } else if (!playing) {
+        Text(stringResource(R.string.mixer_press_play_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
 
     Text(stringResource(R.string.mixer_presets), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+    // Edge-bled like every other rail, so a clipped pill reads as "scrolls".
     Row(
-        Modifier.horizontalScroll(rememberScrollState()),
+        Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+            .padding(horizontal = pageHorizontalPadding()),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         SoundscapeMixer.presets.forEachIndexed { index, preset ->
             PremiumPresetPill(
                 selected = matching == index,
                 label = presetLabel(preset.key),
-            ) { SoundscapeMixer.applyPreset(context, index) }
+            ) {
+                // A preset tap is one-tap-to-calm: apply, make sure it's
+                // audible, and PLAY — applying silent numbers was homework.
+                com.cerebrozen.app.ui.Haptics.tap()
+                SoundscapeMixer.applyPreset(context, index)
+                if (SoundscapeMixer.master < 0.5f) SoundscapeMixer.setMasterVolume(context, 0.7f)
+                if (!SoundscapeMixer.isPlaying) SoundscapeMixer.play(context)
+            }
         }
     }
 
@@ -1050,9 +1174,8 @@ private fun MixerSection() {
     PremiumSleepTimerCard(context)
     PremiumBellCard()
     PremiumActivitySoundsCard()
-    SoundscapeMixer.remainingText()?.let {
-        Text(stringResource(R.string.mixer_fades_note, it), style = MaterialTheme.typography.labelMedium, color = TextMuted)
-    }
+    // (The remaining-time note that used to sit here duplicated the hero's
+    // session line — one source of truth per pane.)
 }
 
 @Composable
@@ -1066,8 +1189,12 @@ private fun MixerHeroCard(
     val transition = rememberInfiniteTransition(label = "mixerHero")
     val glow by transition.animateFloat(0.45f, 0.9f, infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "heroGlow")
     val shape = RoundedCornerShape(32.dp)
+    // A third of a small screen was hero before any control — scale with the
+    // viewport (260dp on tall phones, tighter on 720px-class devices).
+    val heroHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.28f).dp
+        .coerceIn(190.dp, 260.dp)
     Box(
-        Modifier.fillMaxWidth().height(260.dp).clip(shape)
+        Modifier.fillMaxWidth().height(heroHeight).clip(shape)
             .background(Brush.linearGradient(listOf(Color(0xFF30265F), Color(0xFF18375B), Color(0xFF131D35))))
             .border(1.dp, Color(0x557A5CFF), shape),
     ) {
@@ -1087,8 +1214,19 @@ private fun MixerHeroCard(
             Modifier.fillMaxSize().padding(22.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(stringResource(R.string.mixer_now_mixing), style = MaterialTheme.typography.labelSmall, color = Color(0xFF64C9FF))
+            // Art-surface constants (deep-night hero in both themes, like
+            // HeroCard) — deliberately NOT theme tokens; see the night-contract
+            // note in docs/TODO.md before "fixing" these.
+            val heroSummary = stringResource(R.string.mixer_hero_cd, mixName, session)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = heroSummary },
+            ) {
+                Text(
+                    // The eyebrow tells the truth when stopped.
+                    stringResource(if (playing) R.string.mixer_now_mixing else R.string.mixer_paused_eyebrow),
+                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF64C9FF),
+                )
                 Text(mixName, style = MaterialTheme.typography.headlineSmall, color = Color.White)
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Timer, contentDescription = null, tint = Color(0xFFB18CFF), modifier = Modifier.size(16.dp))
@@ -1098,12 +1236,19 @@ private fun MixerHeroCard(
             MixerWaveform(active = playing)
             val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val pressed by interaction.collectIsPressedAsState()
+            val toggleCd = stringResource(
+                if (playing) R.string.mixer_pause_cd else R.string.mixer_play_cd,
+            )
             Row(
                 Modifier.pressScale(pressed, down = 0.96f)
                     .clip(RoundedCornerShape(26.dp))
                     .background(Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9A70FF))))
                     .border(1.dp, Color.White.copy(alpha = if (reduceMotion) 0.18f else glow * 0.28f), RoundedCornerShape(26.dp))
                     .clickable(interactionSource = interaction, indication = null, onClick = onToggle)
+                    .semantics {
+                        role = androidx.compose.ui.semantics.Role.Button
+                        contentDescription = toggleCd
+                    }
                     .padding(horizontal = 20.dp, vertical = 13.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1122,6 +1267,25 @@ private fun MixerHeroCard(
 @Composable
 private fun MixerWaveform(active: Boolean, bars: Int = 17) {
     val reduceMotion = rememberReduceMotion()
+    // The static branch renders WITHOUT an infinite transition — up to five
+    // waveforms per pane used to keep their clocks ticking while drawing
+    // fixed-height bars.
+    if (!active || reduceMotion) {
+        Row(
+            Modifier.fillMaxWidth().height(38.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(bars) {
+                Box(
+                    Modifier.size(3.dp, 6.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Brush.verticalGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF)))),
+                )
+            }
+        }
+        return
+    }
     val transition = rememberInfiniteTransition(label = "mixerWave")
     Row(
         Modifier.fillMaxWidth().height(38.dp),
@@ -1136,7 +1300,7 @@ private fun MixerWaveform(active: Boolean, bars: Int = 17) {
                 label = "mixBar$i",
             )
             Box(
-                Modifier.size(3.dp, (if (!active || reduceMotion) 6f else wave).dp)
+                Modifier.size(3.dp, wave.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(Brush.verticalGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF)))),
             )
@@ -1207,7 +1371,17 @@ private fun MixerLayerCard(
         }
         if (playing) MixerWaveform(active = true, bars = 12)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Cyan else TextMuted)
+            Text(
+                // "Playing" only when the MIX is playing — an audible layer on
+                // a stopped mix used to claim it was playing.
+                when {
+                    playing -> stringResource(R.string.mixer_playing)
+                    active -> stringResource(R.string.common_on)
+                    else -> stringResource(R.string.common_off)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = if (playing) Cyan else TextMuted,
+            )
             Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Periwinkle)
         }
         PremiumMixerSlider(volume, onVolume, title)
@@ -1221,6 +1395,8 @@ private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
         Modifier.fillMaxWidth().clip(shape)
             .background(CardFill)
             .border(1.dp, LineStroke, shape)
+            // Expanding content (the timer's chips) eases instead of popping.
+            .animateContentSize()
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
@@ -1390,7 +1566,10 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
 @Composable
 private fun PremiumMixerSwitch(checked: Boolean, label: String, onToggle: () -> Unit) {
     val thumbX by animateDpAsState(if (checked) 24.dp else 3.dp, label = "switchThumb")
-    val track by animateColorAsState(if (checked) Color(0xFF7258EB) else LineStroke, label = "switchTrack")
+    val track by animateColorAsState(
+        if (checked) com.cerebrozen.app.ui.theme.BrandPrimary else LineStroke,
+        label = "switchTrack",
+    )
     Box(
         Modifier.size(52.dp, 31.dp).clip(CircleShape).background(track)
             .border(1.dp, if (checked) Periwinkle.copy(alpha = 0.55f) else TextMuted.copy(alpha = 0.35f), CircleShape)
@@ -1490,124 +1669,11 @@ private fun layerDescription(symbol: String): String = when (symbol) {
     else -> stringResource(R.string.mixer_drone_description)
 }
 
-@Composable
-private fun LegacyMixerSectionUnused() {
-    val context = LocalContext.current
-    val playing = SoundscapeMixer.isPlaying
-    Text(stringResource(R.string.mixer_intro),
-        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-
-    PrimaryButton(
-        text = if (playing) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        SoundscapeMixer.toggle(context)
-    }
-
-    SectionCard {
-        Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        Slider(
-            value = SoundscapeMixer.master,
-            onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
-            valueRange = 0f..1f,
-            colors = mixSliderColors(),
-        )
-    }
-
-    // W27 §3 (Calm study): named one-tap starting blends over the four layers.
-    // Selection is derived by vector match, so nudging any slider honestly
-    // deselects the chip; the sliders below remain the power path.
-    val matching = SoundscapeMixer.matchingPreset()
-    Row(
-        Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        SoundscapeMixer.presets.forEachIndexed { i, preset ->
-            PickChip(selected = matching == i, label = presetLabel(preset.key)) {
-                SoundscapeMixer.applyPreset(context, i)
-            }
-        }
-    }
-
-    SoundscapeMixer.layers.forEachIndexed { i, layer ->
-        val vol = SoundscapeMixer.volumes[i]
-        val on = vol > 0.02f
-        // W10: the card's hairline warms with the layer's volume — LineStroke at
-        // rest, easing toward the accent as the layer rises. A pure state mapping
-        // (no animation loop), so Reduce Motion needs no branch.
-        val layerShape = RoundedCornerShape(Radius.card)
-        val borderTint = lerp(LineStroke, Periwinkle.copy(alpha = 0.7f), vol.coerceIn(0f, 1f))
-        Column(
-            Modifier.fillMaxWidth()
-                .glass(layerShape)
-                .border(1.dp, borderTint, layerShape)
-                .padding(cardPadding()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Tap the tinted well to toggle the layer on/off.
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape)
-                        .background(
-                            if (on) Brush.verticalGradient(listOf(Periwinkle.copy(alpha = 0.34f), Periwinkle.copy(alpha = 0.14f)))
-                            else Brush.verticalGradient(listOf(CardFill, CardFill)),
-                        )
-                        .border(1.dp, if (on) Periwinkle.copy(alpha = 0.4f) else LineStroke, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(layerIcon(layer.symbol), contentDescription = null,
-                        tint = if (on) Periwinkle else TextMuted, modifier = Modifier.size(20.dp))
-                }
-                Text(stringResource(layer.nameRes), style = MaterialTheme.typography.titleMedium,
-                    color = if (on) TextPrimary else TextMuted, modifier = Modifier.weight(1f))
-                TextButton(onClick = { SoundscapeMixer.toggleLayer(context, i) }) {
-                    Text(
-                        if (on) stringResource(R.string.common_on) else stringResource(R.string.common_off),
-                        color = if (on) Cyan else TextMuted,
-                    )
-                }
-            }
-            Slider(
-                value = vol,
-                onValueChange = { SoundscapeMixer.setLayerVolume(context, i, it) },
-                valueRange = 0f..1f,
-                colors = mixSliderColors(),
-            )
-        }
-    }
-
-    // Sleep auto-stop: off → 15 → 30 → 45 → 60, fades out then stops.
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Bedtime, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-            Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        }
-        TextButton(onClick = { SoundscapeMixer.cycleTimer(context) }) {
-            Text(
-                if (SoundscapeMixer.timerMinutes > 0) stringResource(R.string.common_minutes, SoundscapeMixer.timerMinutes)
-                else stringResource(R.string.common_off),
-                color = if (SoundscapeMixer.timerMinutes > 0) Cyan else TextMuted,
-            )
-        }
-    }
-    TimerBellRow()
-    SoundscapeMixer.remainingText()?.let {
-        Text(stringResource(R.string.mixer_fades_note, it),
-            style = MaterialTheme.typography.labelSmall, color = TextMuted)
-    }
-}
 
 /** Localized label for a mixer preset's stable key. */
 @Composable
 private fun presetLabel(key: String): String = when (key) {
+    "just_rain" -> stringResource(R.string.mixer_preset_just_rain)
     "monsoon_night" -> stringResource(R.string.mixer_preset_monsoon)
     "shoreline" -> stringResource(R.string.mixer_preset_shoreline)
     else -> stringResource(R.string.mixer_preset_still_air)

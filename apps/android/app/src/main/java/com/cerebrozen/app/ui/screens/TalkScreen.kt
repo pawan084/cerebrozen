@@ -378,9 +378,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var sessionSeconds by remember { mutableStateOf(0) }
     // Live mic level for the cloud recording path (the on-device path uses voice.level).
     var cloudLevel by remember { mutableStateOf(0f) }
-    // Duck the ambient bed under the companion's voice while it speaks.
+    // Duck whichever ambience is playing under the companion's voice — the
+    // mixer used to keep full volume while CereBro spoke.
     LaunchedEffect(voice.speaking, cloud.speaking) {
-        if (Player.isPlaying) Player.duck(context, voice.speaking || cloud.speaking)
+        val speaking = voice.speaking || cloud.speaking
+        if (Player.isPlaying) Player.duck(context, speaking)
+        if (com.cerebrozen.app.audio.SoundscapeMixer.isPlaying) {
+            com.cerebrozen.app.audio.SoundscapeMixer.duck(context, speaking)
+        }
     }
     LaunchedEffect(voiceSession) {
         sessionSeconds = 0

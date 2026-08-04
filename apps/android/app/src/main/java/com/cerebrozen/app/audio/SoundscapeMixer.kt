@@ -46,10 +46,21 @@ object SoundscapeMixer {
     data class Preset(val key: String, val volumes: List<Float>)
 
     val presets = listOf(
+        // First and matching the factory blend, so a first visit reads
+        // "Just rain" instead of the puzzling "Custom mix".
+        Preset("just_rain", listOf(0.7f, 0f, 0f, 0f)),
         Preset("monsoon_night", listOf(0.8f, 0f, 0.35f, 0.2f)),
         Preset("shoreline", listOf(0f, 0.8f, 0.3f, 0f)),
         Preset("still_air", listOf(0f, 0f, 0.25f, 0.5f)),
     )
+
+    /** The loudest audible layer's display name, for naming a non-preset blend
+     * ("Mostly rain" beats "Custom mix"). Null when everything is silent. */
+    @androidx.annotation.StringRes
+    fun dominantLayerRes(): Int? = volumes.withIndex()
+        .filter { it.value > 0.02f }
+        .maxByOrNull { it.value }
+        ?.let { layers[it.index].nameRes }
 
     /** Apply a preset's blend through the existing per-layer path (so a live
      * service hears each change); out-of-range indices are a no-op. */
@@ -75,6 +86,49 @@ object SoundscapeMixer {
     /** Per-layer volumes (0–1); starts with just rain, like iOS's primary layer. */
     val volumes = mutableStateListOf(0.7f, 0f, 0f, 0f)
 
+    /** The last audible volume per layer, so a toggle restores YOUR level —
+     * muting rain at 0.9 and re-enabling used to snap it to a fixed 0.7. */
+    private val lastNonZero = floatArrayOf(0.7f, 0.7f, 0.7f, 0.7f)
+
+    // ── Persistence: the mix a user tunes for a week of nights must survive
+    // process death. One small JSON in the session store; loaded lazily the
+    // first time anything touches the mixer, saved on every change.
+    private const val STATE_KEY = "mixer_state"
+    private var loaded = false
+
+    fun ensureLoaded() {
+        if (loaded) return
+        loaded = true
+        runCatching {
+            val raw = com.cerebrozen.app.net.Session.prefGet(STATE_KEY) ?: return
+            val o = org.json.JSONObject(raw)
+            master = o.optDouble("master", master.toDouble()).toFloat().coerceIn(0f, 1f)
+            o.optJSONArray("volumes")?.let { arr ->
+                for (i in volumes.indices) if (i < arr.length()) {
+                    volumes[i] = arr.optDouble(i, volumes[i].toDouble()).toFloat().coerceIn(0f, 1f)
+                }
+            }
+            o.optJSONArray("last")?.let { arr ->
+                for (i in lastNonZero.indices) if (i < arr.length()) {
+                    lastNonZero[i] = arr.optDouble(i, lastNonZero[i].toDouble()).toFloat().coerceIn(0.05f, 1f)
+                }
+            }
+        }
+    }
+
+    private fun persist() {
+        runCatching {
+            com.cerebrozen.app.net.Session.prefPut(
+                STATE_KEY,
+                org.json.JSONObject()
+                    .put("master", master.toDouble())
+                    .put("volumes", org.json.JSONArray().apply { volumes.forEach { put(it.toDouble()) } })
+                    .put("last", org.json.JSONArray().apply { lastNonZero.forEach { put(it.toDouble()) } })
+                    .toString(),
+            )
+        }
+    }
+
     /** Armed sleep-timer duration in minutes (0 = off). */
     var timerMinutes by mutableStateOf(0)
         private set
@@ -94,6 +148,7 @@ object SoundscapeMixer {
     fun toggle(context: Context) { if (isPlaying) pause(context) else play(context) }
 
     fun play(context: Context) {
+        ensureLoaded()
         // Exactly one audio engine at a time (REDESIGN §3.4): a playing ambient
         // bed yields to the mixer. Its stop() has no counter-call — no loop.
         if (Player.isPlaying) Player.stop(context)
@@ -120,6 +175,8 @@ object SoundscapeMixer {
     fun setLayerVolume(context: Context, index: Int, v: Float) {
         if (index !in volumes.indices) return
         volumes[index] = v.coerceIn(0f, 1f)
+        if (volumes[index] > 0.02f) lastNonZero[index] = volumes[index]
+        persist()
         if (isPlaying) {
             context.startService(
                 intent(context, SoundscapeService.ACTION_LAYER)
@@ -129,20 +186,32 @@ object SoundscapeMixer {
         }
     }
 
-    /** Tap a layer on/off (0 ↔ 0.7), mirroring iOS `toggleLayer`. */
+    /** Tap a layer off and back to the level YOU had it at (0 ↔ last audible),
+     * not a fixed 0.7. */
     fun toggleLayer(context: Context, index: Int) {
         if (index !in volumes.indices) return
-        setLayerVolume(context, index, if (volumes[index] > 0.02f) 0f else 0.7f)
+        setLayerVolume(context, index, if (volumes[index] > 0.02f) 0f else lastNonZero[index])
     }
 
     fun setMasterVolume(context: Context, v: Float) {
         master = v.coerceIn(0f, 1f)
+        persist()
         if (isPlaying) {
             context.startService(
                 intent(context, SoundscapeService.ACTION_MASTER)
                     .putExtra(SoundscapeService.EXTRA_VOLUME, master),
             )
         }
+    }
+
+    /** Duck the mix under the companion's voice (Talk TTS) — [Player] has had
+     * this from the start; the mixer kept full volume while CereBro spoke. */
+    fun duck(context: Context, ducked: Boolean) {
+        if (!isPlaying) return
+        context.startService(
+            intent(context, SoundscapeService.ACTION_DUCK)
+                .putExtra(SoundscapeService.EXTRA_DUCKED, ducked),
+        )
     }
 
     /** Off → 15 → 30 → 45 → 60 → off (same steps as the sleep player). */

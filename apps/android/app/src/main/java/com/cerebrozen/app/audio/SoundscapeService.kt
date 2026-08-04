@@ -37,6 +37,8 @@ class SoundscapeService : Service() {
         const val ACTION_LAYER = "com.cerebrozen.app.SS_LAYER"
         const val ACTION_MASTER = "com.cerebrozen.app.SS_MASTER"
         const val ACTION_TIMER = "com.cerebrozen.app.SS_TIMER"
+        const val ACTION_DUCK = "com.cerebrozen.app.SS_DUCK"
+        const val EXTRA_DUCKED = "ducked"
         const val EXTRA_VOLUMES = "volumes"
         const val EXTRA_MASTER = "master"
         const val EXTRA_INDEX = "index"
@@ -59,6 +61,9 @@ class SoundscapeService : Service() {
     private val ramp = VolumeRamp()
     private var timerMinutes = 0
     private var remaining = 0
+    // Ducked under the companion's voice: the mix drops to a quarter while
+    // CereBro speaks, and returns when the reply ends (parity with Player).
+    private var duckFactor = 1f
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -66,10 +71,20 @@ class SoundscapeService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
-        session = MediaSession(this, "cerebro-soundscape").apply { isActive = true }
+        session = MediaSession(this, "cerebro-soundscape").apply {
+            // Headset / lockscreen media keys drive the mix — the session had
+            // actions declared but no callback, so the buttons did nothing.
+            setCallback(object : MediaSession.Callback() {
+                override fun onPlay() { play() }
+                override fun onPause() { pause() }
+                override fun onStop() { stopWithRamp() }
+            })
+            isActive = true
+        }
     }
 
-    private fun effective(i: Int): Float = (volumes[i] * master * fade * rampFactor).coerceIn(0f, 1f)
+    private fun effective(i: Int): Float =
+        (volumes[i] * master * fade * rampFactor * duckFactor).coerceIn(0f, 1f)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -94,6 +109,10 @@ class SoundscapeService : Service() {
                 applyVolumes()
             }
             ACTION_TIMER -> setTimer(intent.getIntExtra(EXTRA_MINUTES, 0))
+            ACTION_DUCK -> {
+                duckFactor = if (intent.getBooleanExtra(EXTRA_DUCKED, false)) 0.25f else 1f
+                applyVolumes()
+            }
         }
         return START_STICKY
     }
