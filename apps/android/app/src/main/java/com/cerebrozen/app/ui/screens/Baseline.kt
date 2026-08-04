@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,9 +39,10 @@ internal fun sleepWords(): List<String> = listOf(
 
 @Composable
 fun BaselineScreen(onBack: () -> Unit) {
-    var stress by remember { mutableIntStateOf(0) }   // 0 = not chosen yet
-    var sleep by remember { mutableIntStateOf(0) }
-    var saved by remember { mutableStateOf(false) }
+    // Saveable: recreation used to wipe both picks on a one-shot screen (B2).
+    var stress by rememberSaveable { mutableIntStateOf(0) }   // 0 = not chosen yet
+    var sleep by rememberSaveable { mutableIntStateOf(0) }
+    var saved by rememberSaveable { mutableStateOf(false) }
 
     PremiumSubPage(stringResource(R.string.baseline_eyebrow), stringResource(R.string.insights_baseline_title), onBack) {
         Text(

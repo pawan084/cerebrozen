@@ -38,6 +38,18 @@
   cluster: A10/A11 duplicate-surface retirements (guidedimagery ×2,
   onegoodthing/intention) → owner call; A66/A67 onboarding notify-before-
   account sequence.
+- [x] **Wave 3 — state & logic bugs** (register: B1-B3, B7-B9, B11-B13, B16,
+  B42-B45): sequence/path memory games score the FULL sequence in order with a
+  progress line + lit retraced prefix (was: one tap of cell one passed span 6);
+  rememberSaveable sweep (Grounding step, Baseline picks, CBT-reframe answers
+  via listSaver, Tipp step, ritual body-scan index, Pattern edit draft,
+  PatternGlow best); BreatheEngine defaults now read the persisted
+  haptics/chime prefs so ritual/tool/onboarding hosts honor the user's choice;
+  BreathLoops completion no longer double-fires success haptics; WritingStep
+  save errors go through userMessage (no more raw localhost text); Goals day
+  dots use the locale's narrow weekday name; Trends duration units come from
+  resources; Insights clamps the baseline read to 1..5 instead of crashing on
+  a corrupt pref. Device-only check outstanding: hand-play the sequence game.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

@@ -199,8 +199,12 @@ fun BreatheEngine(
     preset: BreathePreset,
     modifier: Modifier = Modifier,
     secondsPerPhase: Int = 4,
-    hapticsOn: Boolean = true,
-    chimeOn: Boolean = false,
+    // Defaults read the persisted choice: the ritual/tool/onboarding hosts
+    // never passed these, so a user who turned breathe haptics off in
+    // BreatheScreen was still pulsed every phase everywhere else (audit B9).
+    // Hosts that pass explicit values (BreatheScreen's own toggles) still win.
+    hapticsOn: Boolean = com.cerebrozen.app.audio.Chime.breatheHapticsEnabled,
+    chimeOn: Boolean = com.cerebrozen.app.audio.Chime.breatheChimeEnabled,
     compact: Boolean = false,
 ) {
     val context = LocalContext.current

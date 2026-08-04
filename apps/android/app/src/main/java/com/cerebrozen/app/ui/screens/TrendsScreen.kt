@@ -117,9 +117,10 @@ internal fun parseTrends(payload: JSONObject): Trends {
     )
 }
 
-/** Minutes → "6h 40m", the only place duration copy is built. */
-internal fun durationLabel(minutes: Int): String =
-    if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
+/** Minutes → "6h 40m". Units come from resources at the call site — the
+ * hardcoded "h"/"m" literals were the one unlocalizable duration (B13). */
+internal fun durationLabel(minutes: Int, hourUnit: String = "h", minuteUnit: String = "m"): String =
+    if (minutes >= 60) "${minutes / 60}$hourUnit ${minutes % 60}$minuteUnit" else "${minutes}$minuteUnit"
 
 /**
  * Which empty-state line an empty Trends screen shows.
@@ -277,7 +278,7 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                     accent = Violet,
                     range = null,   // duration has no natural ceiling; scale to the data
                     summary = data.sleep.summary?.let {
-                        stringResource(R.string.trends_sleep_summary, durationLabel(it.toInt()), data.sleep.logged)
+                        stringResource(R.string.trends_sleep_summary, durationLabel(it.toInt(), stringResource(R.string.unit_hour_short), stringResource(R.string.unit_minute_short)), data.sleep.logged)
                     },
                     notEnough = stringResource(R.string.trends_sleep_not_enough, data.sleep.logged),
                 )

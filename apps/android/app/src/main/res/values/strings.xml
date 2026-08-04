@@ -1641,6 +1641,7 @@
     <string name="mg_colour_amber">Amber</string>
     <string name="mg_colour_rose">Rose</string>
     <string name="mg_watch_sequence">Watch the order</string>
+    <string name="mg_sequence_progress">%1$d of %2$d</string>
     <string name="mg_repeat_sequence">Now tap where it started</string>
     <string name="mg_study_tray">Take it in…</string>
     <string name="mg_find_new">One is new — which?</string>

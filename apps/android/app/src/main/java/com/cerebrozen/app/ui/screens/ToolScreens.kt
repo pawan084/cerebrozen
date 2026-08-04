@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,7 +103,14 @@ private fun JournalingTool(
     fields: List<Pair<String, String>>,   // label → placeholder-ish hint
     provenance: String? = null,           // "why this works" footer (REDESIGN §2.4)
 ) {
-    val values = remember { mutableStateOf(List(fields.size) { "" }) }
+    // Saveable: four fields of unguarded personal writing were lost on any
+    // activity recreation (audit B3).
+    val values = rememberSaveable(
+        stateSaver = androidx.compose.runtime.saveable.listSaver(
+            save = { ArrayList(it) },
+            restore = { it.toList() },
+        ),
+    ) { mutableStateOf(List(fields.size) { "" }) }
     var saved by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -233,7 +241,7 @@ fun TippScreen(onBack: () -> Unit) {
         Triple(stringResource(R.string.tipp_step3_title), stringResource(R.string.tipp_step3_how), stringResource(R.string.tipp_step3_why)),
         Triple(stringResource(R.string.tipp_step4_title), stringResource(R.string.tipp_step4_how), stringResource(R.string.tipp_step4_why)),
     )
-    var idx by remember { mutableIntStateOf(0) }
+    var idx by rememberSaveable { mutableIntStateOf(0) }   // B42: walkthrough keeps its step
     val (heading, how, why) = steps[idx]
     PremiumSubPage(stringResource(R.string.tipp_eyebrow), stringResource(R.string.tipp_title), onBack) {
         Text(

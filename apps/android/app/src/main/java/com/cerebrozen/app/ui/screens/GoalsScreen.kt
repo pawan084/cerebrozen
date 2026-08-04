@@ -283,7 +283,9 @@ fun GoalsScreen(onBack: () -> Unit) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    day.dayOfWeek.name.take(1),
+                                    // Locale-correct narrow name — the enum
+                                    // initial is English on every locale (B12).
+                                    day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (hit) Ink else TextMuted,
                                 )

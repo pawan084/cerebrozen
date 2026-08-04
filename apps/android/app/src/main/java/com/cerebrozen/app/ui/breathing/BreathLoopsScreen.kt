@@ -432,8 +432,10 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
 @Composable
 private fun CompletionScreen(pattern: BreathPattern, model: BreathLoopsViewModel) {
     LaunchedEffect(Unit) {
+        // Celebrations.trigger() fires Haptics.success() itself — a second
+        // direct call here double-pulsed one moment, against Haptics.kt's own
+        // "never fire it twice for the same moment" rule (audit B8).
         Celebrations.trigger()
-        Haptics.success()
     }
     Column(
         Modifier.fillMaxSize().padding(28.dp),

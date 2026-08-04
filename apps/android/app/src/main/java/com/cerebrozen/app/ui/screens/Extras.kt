@@ -511,8 +511,12 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         // The honest "before" — renders only when a real baseline was saved;
         // otherwise the invitation lives here (REDESIGN §2.2: baseline is the
         // Insights starting point, not a Home row).
+        // Clamped to the scales' 1..5 — BaselineStore returns whatever int
+        // parses from the pref, and an out-of-range value indexed straight
+        // into stressWords()[stress - 1]: a corrupt pref crashed Insights
+        // with IndexOutOfBounds (audit B16).
         val baseline = BaselineStore.get()
-        if (baseline != null) {
+        if (baseline != null && baseline.first in 1..5 && baseline.second in 1..5) {
             val (stress, sleep, date) = baseline
             SectionCard {
                 Row(
@@ -2422,8 +2426,11 @@ internal fun groundSteps(): List<Pair<String, String>> = listOf(
  * evidence attached rather than floating after it. */
 @Composable
 fun GroundingScreen(onBack: () -> Unit) {
-    var step by remember { mutableIntStateOf(0) }
-    var done by remember { mutableStateOf(false) }
+    // Saveable: a theme switch or process death mid-exercise must not
+    // restart 5-4-3-2-1 at step 1 (audit B1) — losing your place is the
+    // worst moment for it, as the wind-down ritual already documents.
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var done by rememberSaveable { mutableStateOf(false) }
     val steps = groundSteps()
     val last = step == steps.lastIndex
     PremiumSubPage(

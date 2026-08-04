@@ -418,6 +418,11 @@ private fun SequenceBody(
     val prompt = round.prompt as? RoundPrompt.Sequence ?: return
     var showing by remember(prompt) { mutableIntStateOf(-1) }
     var playing by remember(prompt) { mutableStateOf(true) }
+    // How far into the sequence the player has correctly retraced. The round
+    // used to settle on ONE tap of the first cell — the engine grows span 3→6
+    // for "working memory", and a six-item sequence was scored by remembering
+    // item one (audit B7). Now every cell must land, in order.
+    var progress by remember(prompt) { mutableIntStateOf(0) }
 
     LaunchedEffect(prompt) {
         delay(350)
@@ -435,12 +440,28 @@ private fun SequenceBody(
         stringResource(if (playing) R.string.mg_watch_sequence else R.string.mg_repeat_sequence),
         color = TextMuted,
     )
+    if (!playing && prompt.cells.size > 1) {
+        Text(
+            stringResource(R.string.mg_sequence_progress, progress, prompt.cells.size),
+            color = TextMuted,
+        )
+    }
     Grid(
-        highlighted = if (playing && showing >= 0) setOf(prompt.cells[showing]) else emptySet(),
+        highlighted = when {
+            playing && showing >= 0 -> setOf(prompt.cells[showing])
+            // The retraced prefix stays lit — the player sees their own steps.
+            !playing && progress > 0 -> prompt.cells.take(progress).toSet()
+            else -> emptySet()
+        },
         accent = accent,
         enabled = !playing,
     ) { cell ->
-        onAnswer(cell == prompt.cells.first())
+        if (cell == prompt.cells[progress]) {
+            progress += 1
+            if (progress == prompt.cells.size) onAnswer(true)
+        } else {
+            onAnswer(false)
+        }
     }
 }
 

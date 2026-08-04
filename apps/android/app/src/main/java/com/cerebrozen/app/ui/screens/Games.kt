@@ -86,7 +86,9 @@ fun PatternGlowScreen(onBack: () -> Unit) {
     var lit by remember { mutableIntStateOf(-1) }
     var inputPos by remember { mutableIntStateOf(0) }
     var showing by remember { mutableStateOf(true) }
-    var best by remember { mutableIntStateOf(0) }
+    // Saveable: the "Best: N" claim must not reset mid-session on a theme
+    // switch (B45); the sequence itself replays fresh by design.
+    var best by rememberSaveable { mutableIntStateOf(0) }
     // Templates for the tap() closure below (not a composable context).
     val noteStart = stringResource(R.string.patternglow_note_start)
     val noteSuccess = stringResource(R.string.patternglow_note_success)

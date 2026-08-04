@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,8 +96,9 @@ fun PatternScreen(onBack: () -> Unit) {
     var remembered by remember { mutableStateOf<List<Remembered>?>(null) }
     var suggestions by remember { mutableStateOf<List<Suggested>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
-    var editingId by remember { mutableStateOf<String?>(null) }
-    var editText by remember { mutableStateOf("") }
+    // Saveable: an in-progress memory edit is the user's words (B44).
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editText by rememberSaveable { mutableStateOf("") }
     var patternsError by remember { mutableStateOf<String?>(null) }
     var memoryError by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }

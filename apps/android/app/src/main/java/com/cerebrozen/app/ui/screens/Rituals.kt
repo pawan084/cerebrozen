@@ -225,7 +225,10 @@ private fun WritingStep(
                 scope.launch {
                     runCatching { Api.createJournal(journalTitle, text) }
                         .onSuccess { saved = true }
-                        .onFailure { status = it.message ?: saveFailed }
+                        // userMessage, not raw exception text — it.message leaks
+                        // "Failed to connect to localhost/…:8000" onto the
+                        // writing surface (audit B11).
+                        .onFailure { status = it.userMessage(saveFailed) }
                 }
             },
         ) {
@@ -270,7 +273,7 @@ private fun ThreeGoodThingsStep(
 
 @Composable
 private fun BodyScanStep(eyebrow: String, prompts: List<String>, why: String, cta: String, onNext: () -> Unit) {
-    var i by remember { mutableIntStateOf(0) }
+    var i by rememberSaveable { mutableIntStateOf(0) }   // B43: the scan keeps its place like every sibling step
     val last = nextPromptIndex(i, prompts.size) == null
 
     LaunchedEffect(i) {
