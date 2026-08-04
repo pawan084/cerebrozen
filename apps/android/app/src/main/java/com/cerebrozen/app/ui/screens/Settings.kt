@@ -172,12 +172,29 @@ internal fun companionLabelRes(value: String): Int? =
 
 @Composable
 fun CompanionStyleScreen(onBack: () -> Unit) {
-    var current by remember { mutableStateOf("") }
+    // null = not yet known — a failed read used to leave "" (no row selected,
+    // nothing said) and any pick then overwrote a server value this screen
+    // never actually learned (audit B21).
+    var current by remember { mutableStateOf<String?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { runCatching { current = Api.me().optString("companion") } }
+    LaunchedEffect(reloadKey) {
+        loadFailed = false
+        runCatching { Api.me().optString("companion") }
+            .onSuccess { current = it }
+            .onFailure { loadFailed = true }
+    }
     PremiumSubPage(stringResource(R.string.companion_eyebrow), stringResource(R.string.companion_title), onBack) {
         Text(stringResource(R.string.companion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        if (loadFailed) {
+            Text(stringResource(R.string.crisisregion_load_failed),
+                style = MaterialTheme.typography.bodySmall, color = Danger)
+            TextButton(onClick = { reloadKey++ }) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
+        }
         COMPANIONS.forEach { style ->
             SelectableRow(
                 stringResource(style.titleRes), stringResource(style.detailRes),
@@ -426,7 +443,11 @@ fun PremiumScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.p
         stringResource(R.string.premium_annual_note), featured = true)
     PlanCard(stringResource(R.string.premium_monthly), stringResource(R.string.premium_monthly_price),
         stringResource(R.string.premium_monthly_note), featured = false)
-    PrimaryButton(text = stringResource(R.string.premium_cta), enabled = false, modifier = Modifier.fillMaxWidth()) {}
+    // No dead CTA: the permanently-disabled "Start free trial" button walked
+    // users into a paywall where nothing could be bought (audit H1). Until
+    // Play Billing is configured, the honest state is pricing for
+    // transparency + the note — a PrimaryButton returns with the Play
+    // Console setup (external blocker, ledgered in TODO.md).
     Text(stringResource(R.string.premium_billing_note),
         style = MaterialTheme.typography.bodySmall, color = TextMuted)
 }
@@ -593,7 +614,11 @@ fun DataExportScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     var exportOk by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
+    // Held in memory only for the share sheet — deliberately NOT cached by
+    // Session (see cacheablePath) and gone when the screen goes.
+    var payload by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
     val successTemplate = stringResource(R.string.export_success)
     val exportFailed = stringResource(R.string.export_failed)
     PremiumSubPage(stringResource(R.string.export_eyebrow), stringResource(R.string.export_title), onBack) {
@@ -607,12 +632,33 @@ fun DataExportScreen(onBack: () -> Unit) {
             busy = true
             scope.launch {
                 runCatching { Api.exportData() }
-                    .onSuccess { exportOk = true; status = successTemplate.format(it.length) }
-                    .onFailure { exportOk = false; status = it.userMessage(exportFailed) }
+                    .onSuccess { exportOk = true; payload = it; status = successTemplate.format(it.length) }
+                    .onFailure { exportOk = false; payload = null; status = it.userMessage(exportFailed) }
                 busy = false
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = if (exportOk) Ok else Danger) }
+        // The point of a DPDP export is to LEAVE with your data. The screen
+        // used to report a character count and stop — the payload was
+        // unreachable (audit H3). The system share sheet reaches files, drive,
+        // mail — the user picks where their data goes.
+        payload?.let { data ->
+            PrimaryButton(
+                text = stringResource(R.string.export_share),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                runCatching {
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, ctx.getString(R.string.export_share_subject))
+                        putExtra(android.content.Intent.EXTRA_TEXT, data)
+                    }
+                    ctx.startActivity(android.content.Intent.createChooser(send, null))
+                }
+            }
+            Text(stringResource(R.string.export_share_note),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
     }
 }
 

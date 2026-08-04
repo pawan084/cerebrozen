@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -172,8 +173,9 @@ internal fun TrendsScreen(onBack: () -> Unit) {
     // failed consent read falls back to the default copy rather than blocking.
     var emptyBodyRes by remember { mutableIntStateOf(R.string.trends_empty_body) }
 
+    var reloadKey by remember { mutableIntStateOf(0) }
     val loadFailed = stringResource(R.string.trends_load_failed)
-    LaunchedEffect(days) {
+    LaunchedEffect(days, reloadKey) {
         loading = true
         error = null
         runCatching { parseTrends(Api.trends(days)) }
@@ -231,6 +233,11 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium, color = TextSoft,
                     )
                     Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    // A dead end on failure — the one screen about your own
+                    // data had no way to ask again (audit H23).
+                    TextButton(onClick = { reloadKey++ }) {
+                        Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                    }
                 }
             }
 

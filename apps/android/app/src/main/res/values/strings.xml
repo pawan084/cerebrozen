@@ -906,6 +906,9 @@
     <string name="export_eyebrow">Your data, your copy</string>
     <string name="export_title">Export my data</string>
     <string name="export_intro">Download everything CereBro has stored for you — mood, journal, sleep and chat.</string>
+    <string name="export_share">Save or share your data</string>
+    <string name="export_share_subject">Your CereBro data export</string>
+    <string name="export_share_note">Opens the system share sheet — save to Files or Drive, or send it to yourself.</string>
     <string name="export_preparing">Preparing…</string>
     <string name="export_success">Exported %1$d characters of your data.</string>
     <string name="export_failed">Export failed.</string>

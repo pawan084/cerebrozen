@@ -50,6 +50,21 @@
   dots use the locale's narrow weekday name; Trends duration units come from
   resources; Insights clamps the baseline read to 1..5 instead of crashing on
   a corrupt pref. Device-only check outstanding: hand-play the sequence game.
+- [x] **Wave 4 — honest errors & dead CTAs** (register: H1, H3, H23-H26, B15,
+  B21, B83): DPDP export now leaves the phone — a share-sheet button with the
+  payload held in memory only, and `Session.cacheablePath` excludes
+  `/users/me/export` from the pref-backed response cache entirely (pinned:
+  online GET stores no cache key, offline export fails honestly instead of
+  replaying stale personal data); PremiumScreen's permanently-disabled
+  "Start free trial" button removed — pricing + honest note until Play Billing
+  is configured; retry buttons on Trends, Insights, Programs, and every
+  ContentList error; CompanionStyleScreen failed read no longer renders as
+  no-selection-and-silence (null-state + error + retry, pref-safe writes);
+  BreathingScreen/JournalingTool saves gained in-flight guards (rapid taps
+  queued identical journal writes). Remaining from this cluster: B5 plan
+  toggle race, B6 pattern-delete leaves suggestions, B17-B22 failed-read
+  branches on Goals/Patterns/Search/Crisis-contact (partial: crisis + trusted
+  contact done in Wave 1), H7-H22 forward-CTA additions.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

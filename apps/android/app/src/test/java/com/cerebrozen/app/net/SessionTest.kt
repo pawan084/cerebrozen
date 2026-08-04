@@ -81,6 +81,38 @@ class SessionTest {
     }
 
     @Test
+    fun the_personal_data_export_never_enters_the_response_cache() = runTest {
+        // The full DPDP export is the one payload that must not persist at
+        // rest in the pref-backed cache (plaintext on keystore-fallback
+        // devices, and it sat there until sign-out — audit B83).
+        val store = FakeStore("refresh_token" to "r1")
+        var online = true
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
+            if (!online) throw IOException("offline")
+            when {
+                url.endsWith("/auth/refresh") -> 200 to tokens
+                url.endsWith("/users/me/export") -> 200 to """{"everything":"here"}"""
+                else -> 200 to "{}"
+            }
+        }
+        assertEquals("""{"everything":"here"}""", Session.api("/users/me/export"))
+        assertTrue(
+            "no cache: key may hold the export",
+            store.keys().none { it.contains("/users/me/export") },
+        )
+        // And offline it fails honestly instead of replaying stale personal data.
+        online = false
+        try {
+            Session.api("/users/me/export")
+            throw AssertionError("expected the offline export to fail, not serve stale")
+        } catch (e: IOException) {
+            // expected
+        }
+        assertFalse(Session.cacheablePath("/users/me/export"))
+        assertTrue(Session.cacheablePath("/safety-plan"))
+    }
+
+    @Test
     fun servedStale_flips_on_cache_fallback_and_clears_when_back_online() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var online = true

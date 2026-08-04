@@ -415,8 +415,10 @@ internal fun ContentList(
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableStateOf(0) }
     val loadFailed = stringResource(R.string.content_error_fallback)
-    LaunchedEffect(kind) {
+    LaunchedEffect(kind, reloadKey) {
+        error = null
         runCatching { Api.content(kind) }
             .onSuccess { items = it }
             .onFailure { error = it.userMessage(loadFailed) }
@@ -432,8 +434,13 @@ internal fun ContentList(
     }
     when (contentListState(error, items, hasFallback = fallback != null)) {
         ContentListState.Fallback -> fallback!!.invoke()
-        ContentListState.Error ->
+        ContentListState.Error -> Column {
             Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            // Every catalogue section was a dead end on failure (audit B26).
+            TextButton(onClick = { reloadKey++ }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
+        }
         ContentListState.Loading -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
         // The empty state keeps its icon well and caller-supplied line — the
         // state machine decides WHICH state renders, not how it looks.
@@ -480,7 +487,9 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
+    var reloadKey by remember { mutableStateOf(0) }
+    LaunchedEffect(reloadKey) {
+        loading = true; error = null
         runCatching { Api.insightsWeekly() }
             .onSuccess {
                 headline = it.optString("headline", defaultHeadline)
@@ -502,6 +511,9 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 message = it,
                 isError = true,
             )
+            TextButton(onClick = { reloadKey++ }) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
             return@SubPage
         }
         // Real weekly read in a gradient hero — only when the backend returned one.
@@ -784,6 +796,9 @@ fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         }
         error?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            TextButton(onClick = { scope.launch { loading = true; refresh() } }) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
             return@SubPage
         }
 

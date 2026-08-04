@@ -616,6 +616,9 @@
     <string name="export_eyebrow">आपका डेटा, आपकी कॉपी</string>
     <string name="export_title">मेरा डेटा निर्यात करें</string>
     <string name="export_intro">CereBro ने आपके लिए जो भी सहेजा है, सब डाउनलोड करें — मूड, जर्नल, नींद और चैट।</string>
+    <string name="export_share">अपना डेटा सहेजें या साझा करें</string>
+    <string name="export_share_subject">आपका CereBro डेटा निर्यात</string>
+    <string name="export_share_note">सिस्टम शेयर शीट खुलेगी — Files या Drive में सहेजें, या खुद को भेज दें।</string>
     <string name="export_preparing">तैयार हो रहा है…</string>
     <string name="export_success">आपके डेटा के %1$d अक्षर निर्यात हुए।</string>
     <string name="export_failed">निर्यात नहीं हो पाया।</string>

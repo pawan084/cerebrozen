@@ -69,13 +69,18 @@ fun BreathingScreen(onBack: () -> Unit) {
         val journalTitle = stringResource(R.string.breathing_journal_title)
         val journalBody = stringResource(R.string.breathing_journal_body)
         val saveFailed = stringResource(R.string.common_save_failed)
+        // In-flight guard: `saved` only flips on success, so rapid taps
+        // before the network returned queued identical writes (audit B15).
+        var saving by remember { mutableStateOf(false) }
         SectionCard(
             onClick = {
-                if (!saved) {
+                if (!saved && !saving) {
+                    saving = true
                     scope.launch {
                         runCatching { Api.createJournal(journalTitle, journalBody) }
                             .onSuccess { saved = true; Celebrations.trigger() }
                             .onFailure { status = it.userMessage(saveFailed) }
+                        saving = false
                     }
                 }
             },
@@ -156,11 +161,13 @@ private fun JournalingTool(
             }
         }
         val saveFailed = stringResource(R.string.common_save_failed)
+        var saving by remember { mutableStateOf(false) }   // B15: one write per tap
         PrimaryButton(
             text = if (saved) stringResource(R.string.tool_saved_cta) else stringResource(R.string.tool_save_cta),
-            enabled = !saved && values.value.all { it.isNotBlank() },
+            enabled = !saved && !saving && values.value.all { it.isNotBlank() },
             modifier = Modifier.fillMaxWidth(),
         ) {
+            saving = true
             scope.launch {
                 runCatching { Api.createJournal(journalTitle, compose(values.value)) }
                     .onSuccess {
@@ -169,6 +176,7 @@ private fun JournalingTool(
                         Celebrations.trigger()
                     }
                     .onFailure { status = it.userMessage(saveFailed) }
+                saving = false
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }

@@ -523,7 +523,7 @@ object Session {
                     throw e
                 }
             }
-            if (isGet) {
+            if (isGet && cacheablePath(path)) {
                 cachePut(path, result)
                 servedStale = false   // a live network read — we're online again
             }
@@ -533,7 +533,7 @@ object Session {
             // (5xx) errors — a 4xx is a real, actionable response (bad request,
             // not-found, forbidden) and must not be masked behind stale data.
             val serveStale = e !is ApiException || e.code >= 500
-            if (isGet && serveStale) {
+            if (isGet && cacheablePath(path) && serveStale) {
                 cacheGet(path)?.let {
                     servedStale = true   // honest signal: this is the last copy
                     return it
@@ -542,6 +542,14 @@ object Session {
             throw e
         }
     }
+
+    /** Whether a GET may enter the pref-backed response cache. The full
+     * personal-data export must never persist at rest here — on keystore-
+     * fallback devices this cache is plaintext, and the payload would sit
+     * until sign-out (audit B83). Everything else keeps the offline-first
+     * behavior screens like the safety plan depend on. */
+    internal fun cacheablePath(path: String): Boolean =
+        !path.startsWith("/users/me/export")
 
     private fun cacheKey(path: String) = "cache:$path"
     private fun cachePut(path: String, body: String) {
