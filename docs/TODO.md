@@ -4,6 +4,12 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+> **2026-08-04 — the 500-point register:** a full placement/sequence/bug audit
+> across all clients + backend produced **679 justified points** in
+> [AUDIT_500.md](AUDIT_500.md) (index + ranked top 20) with the evidence in
+> `docs/audit/A–H`. Nothing from it is fixed yet; it supersedes nothing here —
+> §H of the register is this file's open items, restated with citations.
+
 ## Open — needs the owner's accounts/credentials (no code left to write)
 
 - [ ] **Rotate any previously shared provider keys** (OpenAI/Deepgram/ElevenLabs) and the
