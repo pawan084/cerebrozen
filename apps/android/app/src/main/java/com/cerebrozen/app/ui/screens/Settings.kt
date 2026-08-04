@@ -461,11 +461,38 @@ fun RemindersScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("cerebro", Context.MODE_PRIVATE) }
     var on by remember { mutableStateOf(prefs.getBoolean("reminder_on", false)) }
+    // The hour finally has a home outside onboarding: the toggle and the boot
+    // re-arm now schedule at this stored choice instead of a hardcoded 9
+    // (audit A2-A4), and it can be changed here at any time.
+    var hour by remember { mutableStateOf(com.cerebrozen.app.notify.Reminders.storedHour(context)) }
+    // A permission denial used to be a silent no-op: the switch just didn't
+    // move, with no words and no path (audit H5/B93). Denied says denied.
+    var denied by remember { mutableStateOf(false) }
+    // Re-check on every resume: the user may revoke POST_NOTIFICATIONS in
+    // system settings while the toggle still claims reminders are on.
+    var permTick by remember { mutableStateOf(0) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) permTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    val notifsBlocked = remember(permTick) {
+        Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    }
 
     fun persist(value: Boolean) { on = value; prefs.edit().putBoolean("reminder_on", value).apply() }
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) { com.cerebrozen.app.notify.Reminders.schedule(context); persist(true) }
+        if (granted) {
+            denied = false
+            com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
+        } else {
+            denied = true
+        }
     }
     fun enable() {
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -475,6 +502,14 @@ fun RemindersScreen(onBack: () -> Unit) {
             return
         }
         com.cerebrozen.app.notify.Reminders.schedule(context); persist(true)
+    }
+    fun openNotificationSettings() {
+        runCatching {
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+        }
     }
 
     PremiumSubPage(stringResource(R.string.reminders_eyebrow), stringResource(R.string.reminders_title), onBack) {
@@ -489,6 +524,43 @@ fun RemindersScreen(onBack: () -> Unit) {
                 AppSwitch(checked = on, onCheckedChange = {
                     if (it) enable() else { com.cerebrozen.app.notify.Reminders.cancel(context); persist(false) }
                 })
+            }
+        }
+        // The reminder time, visible and editable. Onboarding's morning/evening
+        // chip used to be the only writer, and any toggle lost it.
+        SectionCard(onClick = {
+            android.app.TimePickerDialog(
+                context,
+                { _, h, _ ->
+                    hour = h
+                    if (on) com.cerebrozen.app.notify.Reminders.schedule(context, h)
+                    else com.cerebrozen.app.notify.Reminders.rememberHour(context, h)
+                },
+                hour, 0, android.text.format.DateFormat.is24HourFormat(context),
+            ).show()
+        }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(stringResource(R.string.reminders_time_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.reminders_time_hint),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+                Text(
+                    java.time.LocalTime.of(hour, 0).format(
+                        java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT),
+                    ),
+                    style = MaterialTheme.typography.titleMedium, color = Periwinkle,
+                )
+            }
+        }
+        if (denied || (on && notifsBlocked)) {
+            SectionCard {
+                Text(stringResource(R.string.reminders_perm_denied),
+                    style = MaterialTheme.typography.bodyMedium, color = Danger)
+                TextButton(onClick = { openNotificationSettings() }) {
+                    Text(stringResource(R.string.reminders_open_settings), color = Periwinkle)
+                }
             }
         }
         TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context) }) {

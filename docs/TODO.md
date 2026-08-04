@@ -23,6 +23,21 @@
   moved above recents + acts (dial pill + More support). SafetyPlan values
   survive recreation (JSON saver, pinned), fields named for TalkBack, Done CTA.
   CrisisRegionScreen no longer renders a failed read as "Auto-detect selected".
+- [x] **Wave 2 — reachability** (register: A1-A6, A9, A7, A12, A24, A26, A53,
+  B93, H5): notification deeplinks navigate (`routeForDeeplink` allowlist +
+  `DeeplinkBus`, MainActivity reads launch intent + onNewIntent; pinned in
+  NavigationChromeTest); reminder hour persisted (`Reminders.storedHour/`
+  `rememberHour`, toggle + BootReceiver re-arm at the user's hour, pinned) with
+  a time row + TimePickerDialog on RemindersScreen, denial feedback and an
+  on-resume revoked-permission banner with a settings door; orphaned surfaces
+  wired (CBT-I + MBCT doors on Programs, Body Scan card in Toolkit Settle,
+  Insight Reel row on Insights, crisis grounding via Wave 1); talk/live+chat
+  aliases keep tab chrome; server "breathing" chip and widget open the same
+  surface; cross-tab open() uses the tab pop/save/restore pattern (no dup tab
+  entries); journal/new back arrow matches system back. Still open from this
+  cluster: A10/A11 duplicate-surface retirements (guidedimagery ×2,
+  onegoodthing/intention) → owner call; A66/A67 onboarding notify-before-
+  account sequence.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

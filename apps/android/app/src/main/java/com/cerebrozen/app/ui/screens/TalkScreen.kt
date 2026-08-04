@@ -1217,7 +1217,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                             // send itself back as chat text.
                             "crisis" -> onOpen("crisis")
                             "human_support" -> onOpen("humansupport")
-                            "breathing" -> onOpen("breathe/box")
+                            // Same surface as the Oracle's breathing WIDGET —
+                            // the identical server suggestion used to open two
+                            // different screens depending on transport (A24).
+                            "breathing" -> onOpen("breathing")
                             "grounding" -> onOpen("ground")
                             else -> send(rawLabel)
                         }

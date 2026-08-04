@@ -194,7 +194,14 @@ internal fun wordCount(s: String): Int =
  * [startInEntry] lands straight in the composer — the Home check-in's
  * "Say more in Journal" bridge used to drop people at the hub. */
 @Composable
-fun JournalScreen(startInEntry: Boolean = false, onOpen: (String) -> Unit = {}) {
+fun JournalScreen(
+    startInEntry: Boolean = false,
+    onOpen: (String) -> Unit = {},
+    // Set on the journal/new route: the composer's back arrow then leaves the
+    // route (matching system back) instead of revealing the hub — the two back
+    // affordances on one screen used to go two different places (audit A53).
+    onExit: (() -> Unit)? = null,
+) {
     // Draft survives rotation / tab switch / process death — this is the user's
     // own writing, so losing it silently is the worst thing this screen can do.
     var title by rememberSaveable { mutableStateOf("") }
@@ -292,7 +299,11 @@ fun JournalScreen(startInEntry: Boolean = false, onOpen: (String) -> Unit = {}) 
 
     when (mode) {
         JournalMode.Entry -> {
-            PremiumSubPage(stringResource(R.string.journal_entry_eyebrow), stringResource(R.string.journal_entry_title), onBack = { mode = JournalMode.Home }) {
+            PremiumSubPage(
+                stringResource(R.string.journal_entry_eyebrow),
+                stringResource(R.string.journal_entry_title),
+                onBack = { if (startInEntry && onExit != null) onExit() else mode = JournalMode.Home },
+            ) {
                 // Prompt rotation moved into the composer as a gentle guide.
                 SectionCard {
                     Text(stringResource(R.string.journal_prompt_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)

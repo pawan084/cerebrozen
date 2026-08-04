@@ -148,7 +148,48 @@ internal enum class Tab(val route: String, @androidx.annotation.StringRes val la
 }
 
 internal fun shouldShowBottomBar(route: String?): Boolean =
-    route in setOf("home", "sleep", "talk", "journal", "you")
+    // talk/live + talk/chat are legacy aliases that render the Talk tab —
+    // without them here a stale entry point showed Talk with no tab pill.
+    route in setOf("home", "sleep", "talk", "journal", "you", "talk/live", "talk/chat")
+
+/**
+ * Resolve a notification deeplink to an in-app route, or null to stay Home.
+ *
+ * The server's nudge vocabulary is `cerebro://mood|breathe|sleep|insights`
+ * (backend services/nudges.py + digest.py), and admins can author free-form
+ * links — so this is an allowlist, not a passthrough: a notification must
+ * never navigate to an arbitrary graph node. Push.kt has attached this URI to
+ * the launch intent since FCM landed; until now nothing read it, so every
+ * nudge dumped the user on Home regardless of what it promised (audit A1).
+ */
+internal fun routeForDeeplink(raw: String?): String? {
+    val uri = (raw ?: "").trim()
+    if (!uri.startsWith("cerebro://")) return null
+    val path = uri.removePrefix("cerebro://").trim('/').lowercase(java.util.Locale.ROOT)
+    val resolved = when (path) {
+        // Nudge vocabulary → where the promise actually lives.
+        "mood", "checkin" -> "home"
+        "breathe" -> "breathe/reset"
+        "chat", "oracle" -> "talk"
+        else -> path
+    }
+    val allowed = setOf(
+        "home", "sleep", "talk", "journal", "journal/new", "you",
+        "insights", "trends", "toolkit", "crisis", "safetyplan",
+        "sounds", "sounds/mixer", "winddown", "plan", "goals", "programs",
+        "breathe/reset", "breathe/box",
+    )
+    return resolved.takeIf { it in allowed }
+}
+
+/** The pending notification route, offered by MainActivity (launch intent or
+ * onNewIntent) and consumed by the signed-in NavHost once it exists. */
+object DeeplinkBus {
+    var pending by androidx.compose.runtime.mutableStateOf<String?>(null)
+        private set
+    fun offer(raw: String?) { routeForDeeplink(raw)?.let { pending = it } }
+    fun clear() { pending = null }
+}
 
 // The Sleep-stays-Night forcing (SLEEP_CONTEXT_ROUTES + AppTheme.forceNight)
 // was REMOVED here on 2026-08-04 by OWNER DECISION, recorded in docs/TODO.md:
@@ -451,6 +492,15 @@ fun CereBroApp() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Home.route
+    // Honor the notification's promise: navigate to the deeplink the nudge
+    // carried. Signed-out sessions never reach this point, so the route waits
+    // on the bus until the NavHost exists.
+    LaunchedEffect(DeeplinkBus.pending) {
+        DeeplinkBus.pending?.let { route ->
+            DeeplinkBus.clear()
+            navController.navigate(route) { launchSingleTop = true }
+        }
+    }
     // The primary navigation belongs only to the five root destinations. Detail,
     // player, tool and game screens get the full viewport and one clear Back path.
     // WindowInsets.ime reports the keyboard's height; > 0 means it is up. Read
@@ -506,7 +556,11 @@ fun CereBroApp() {
             // keyboard); BottomNavBar re-checks the live IME inset itself, so
             // the guard holds even mid-frame while the inset animates.
             if (showBottomBar) {
-            BottomNavBar(currentRoute = current, compact = compactNav) { tab ->
+            // The talk/* aliases render the Talk tab, so the pill highlights it.
+            BottomNavBar(
+                currentRoute = if (current.startsWith("talk/")) Tab.Talk.route else current,
+                compact = compactNav,
+            ) { tab ->
                 // One haptic vocabulary app-wide: the custom
                 // Haptics object (see ui/Haptics.kt).
                 if (current != tab.route) Haptics.selection()
@@ -532,8 +586,21 @@ fun CereBroApp() {
             popEnterTransition = { if (reduceMotion) EnterTransition.None else fadeIn(tween(280)) + scaleIn(initialScale = 1.02f, animationSpec = tween(280)) },
             popExitTransition = { if (reduceMotion) ExitTransition.None else fadeOut(tween(170)) + scaleOut(targetScale = 0.98f, animationSpec = tween(170)) },
         ) {
+            // Cross-tab links use the SAME pop/save/restore pattern as the tab
+            // pill — a plain navigate() pushed duplicate tab entries, so back
+            // from Home's avatar walked Home→Talk→Home instead of tab history
+            // (audit A26). Non-tab routes push normally.
+            val tabRoutes = Tab.entries.map { it.route }.toSet()
             val open: (String) -> Unit = { route ->
-                navController.navigate(route) { launchSingleTop = true }
+                if (route in tabRoutes) {
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                } else {
+                    navController.navigate(route) { launchSingleTop = true }
+                }
             }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
@@ -547,10 +614,10 @@ fun CereBroApp() {
             composable("talk/chat") { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen(onOpen = open) }
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
-            composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open) }
+            composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
-            composable("programs") { ProgramsScreen(onBack = back) }
+            composable("programs") { ProgramsScreen(onBack = back, onOpen = open) }
             composable("trustedcontact") { TrustedContactScreen(onBack = back) }
             // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
             // a pill switch. `sounds/mixer` deep-links straight to the Mixer (the

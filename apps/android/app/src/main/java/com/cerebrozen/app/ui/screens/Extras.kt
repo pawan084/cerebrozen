@@ -621,6 +621,11 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 }
             }
         }
+        // The offline insight reel had zero inbound links (audit A9) — quiet
+        // local cards, exactly the read-only pause this screen already sells.
+        NavRow(stringResource(R.string.oir_title), stringResource(R.string.oir_subtitle)) {
+            onOpen("insightreel")
+        }
         Text(stringResource(R.string.insights_privacy_footer),
             style = MaterialTheme.typography.bodySmall, color = TextMuted,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -726,7 +731,7 @@ internal fun parseDayGuides(program: org.json.JSONObject?): List<Pair<String, St
 }
 
 @Composable
-fun ProgramsScreen(onBack: () -> Unit) {
+fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     // Real enrollment (ref "PROGRAM · DAY X OF Y"): one journey at a time,
     // the day counts itself from the start date — nothing to fail.
     var rows by remember { mutableStateOf(listOf<Triple<String, String, String>>()) } // id, title, subtitle
@@ -885,6 +890,17 @@ fun ProgramsScreen(onBack: () -> Unit) {
             }
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
+
+        // The complete offline education courses shipped route-registered with
+        // zero inbound links (audit A5/A6) — whole CBT-I/MBCT journeys with
+        // their own per-module progress, unreachable. The journeys hub is
+        // their natural home, and they need neither account nor network.
+        Text(stringResource(R.string.programs_offline_header),
+            style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        NavRow(stringResource(R.string.ocbti_title),
+            stringResource(R.string.programs_offline_cbti_sub)) { onOpen("cbti") }
+        NavRow(stringResource(R.string.ombct_title),
+            stringResource(R.string.programs_offline_mbct_sub)) { onOpen("mbct") }
     }
 }
 
@@ -2021,6 +2037,13 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
             ) { openTool("imagery") }
+            // The standalone body scan shipped route-registered but door-less
+            // (audit A7) — only the wind-down ritual's embedded step existed.
+            ToolkitExerciseCard(
+                stringResource(R.string.obs_title), stringResource(R.string.toolkit_bodyscan_subtitle),
+                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
+                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Spa, Color(0xFF64C9FF), 7,
+            ) { openTool("bodyscan") }
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
             // setup comes before use.

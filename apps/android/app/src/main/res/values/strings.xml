@@ -807,6 +807,9 @@
     <string name="programs_path_a11y_passed">Day %1$d, earlier in this program</string>
     <string name="programs_path_a11y_ahead">Day %1$d, later in this program</string>
     <string name="programs_start_new_header">Start something new</string>
+    <string name="programs_offline_header">Always available</string>
+    <string name="programs_offline_cbti_sub">Sleep education · works offline, no account</string>
+    <string name="programs_offline_mbct_sub">Mindfulness education · works offline, no account</string>
     <string name="programs_default_subtitle">A few minutes a day</string>
     <string name="programs_enrolled_status">Enrolled — day 1 starts now.</string>
     <string name="programs_enroll_error">Couldn\'t enroll.</string>
@@ -878,6 +881,10 @@
     <string name="reminders_title">Daily reminder</string>
     <string name="reminders_toggle_title">Daily check-in reminder</string>
     <string name="reminders_toggle_hint">Once a day around 9am — gentle, no pressure.</string>
+    <string name="reminders_time_title">Reminder time</string>
+    <string name="reminders_time_hint">One gentle nudge a day, at your hour</string>
+    <string name="reminders_perm_denied">Notifications are blocked for CereBro, so reminders can\'t be delivered.</string>
+    <string name="reminders_open_settings">Open notification settings</string>
     <string name="reminders_test">Send a test reminder now</string>
     <string name="reminders_delivery_note">Delivered on-device via a scheduled alarm — no server or FCM required.</string>
     <string name="privacypolicy_eyebrow">How we handle your data</string>
@@ -1286,6 +1293,7 @@
     <string name="imagery_closing_body">You built it, so you can get back to it — it takes less time each go.</string>
     <string name="imagery_why">Guided imagery is a standard relaxation component in stress and anxiety protocols. The detail is what does the work — which is why these prompts ask about sound, light and temperature rather than just telling you to picture somewhere nice.</string>
     <string name="toolkit_imagery_title">A place you can go</string>
+    <string name="toolkit_bodyscan_subtitle">Attention through the body, nothing to force</string>
     <string name="toolkit_imagery_subtitle">Build somewhere calm, one sense at a time</string>
     <string name="toolkit_ritual_title">Your ritual</string>
     <string name="toolkit_ritual_subtitle">String a few of these together, on a cue you already have</string>

@@ -108,6 +108,40 @@ class RemindersTest {
         assertEquals(1, shadowOf(alarmManager).scheduledAlarms.size)
     }
 
+    @Test
+    fun the_chosen_hour_is_remembered_and_survives_a_rearm() {
+        // The audit's A2/A3: schedule(context) used to default to a literal 9,
+        // so the Settings toggle and every reboot silently moved an "evening"
+        // (19:00) onboarding choice back to the morning.
+        Reminders.schedule(context, hour = 19)
+        assertEquals(19, Reminders.storedHour(context))
+
+        // A no-hour re-arm (Settings toggle, BootReceiver) keeps 19:00.
+        Reminders.cancel(context)
+        Reminders.schedule(context)
+        assertEquals(19, Reminders.storedHour(context))
+        val cal = java.util.Calendar.getInstance()
+            .apply { timeInMillis = shadowOf(alarmManager).scheduledAlarms.single().triggerAtMs }
+        assertEquals(19, cal.get(java.util.Calendar.HOUR_OF_DAY))
+    }
+
+    @Test
+    fun boot_rearm_uses_the_stored_hour() {
+        prefsOn(true)
+        Reminders.rememberHour(context, 19)
+        BootReceiver().onReceive(context, Intent(Intent.ACTION_BOOT_COMPLETED))
+        val cal = java.util.Calendar.getInstance()
+            .apply { timeInMillis = shadowOf(alarmManager).scheduledAlarms.single().triggerAtMs }
+        assertEquals(19, cal.get(java.util.Calendar.HOUR_OF_DAY))
+    }
+
+    @Test
+    fun a_corrupt_or_absent_stored_hour_falls_back_to_the_default() {
+        assertEquals(Reminders.DEFAULT_HOUR, Reminders.storedHour(context))
+        Reminders.rememberHour(context, 99)   // coerced, never a crash or a 99:00 alarm
+        assertEquals(23, Reminders.storedHour(context))
+    }
+
     private fun prefsOn(on: Boolean) {
         context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
             .edit().putBoolean("reminder_on", on).commit()

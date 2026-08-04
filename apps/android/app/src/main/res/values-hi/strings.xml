@@ -546,6 +546,9 @@
     <string name="programs_path_a11y_ahead">दिन %1$d, इस प्रोग्राम में बाद में</string>
     <string name="programs_leave">यह यात्रा छोड़ें</string>
     <string name="programs_start_new_header">कुछ नया शुरू करें</string>
+    <string name="programs_offline_header">हमेशा उपलब्ध</string>
+    <string name="programs_offline_cbti_sub">नींद की शिक्षा · बिना इंटरनेट, बिना खाते के</string>
+    <string name="programs_offline_mbct_sub">माइंडफुलनेस शिक्षा · बिना इंटरनेट, बिना खाते के</string>
     <string name="programs_default_subtitle">दिन में बस कुछ मिनट</string>
     <string name="programs_enrolled_status">नामांकित — दिन 1 अभी से शुरू।</string>
     <string name="programs_enroll_error">नामांकन नहीं हो पाया।</string>
@@ -594,6 +597,10 @@
     <string name="reminders_title">दैनिक रिमाइंडर</string>
     <string name="reminders_toggle_title">दैनिक चेक-इन रिमाइंडर</string>
     <string name="reminders_toggle_hint">दिन में एक बार, सुबह करीब 9 बजे — हल्का, कोई दबाव नहीं।</string>
+    <string name="reminders_time_title">रिमाइंडर का समय</string>
+    <string name="reminders_time_hint">दिन में एक कोमल याद, आपके चुने घंटे पर</string>
+    <string name="reminders_perm_denied">CereBro के लिए सूचनाएँ बंद हैं, इसलिए रिमाइंडर नहीं पहुँच सकते।</string>
+    <string name="reminders_open_settings">सूचना सेटिंग्स खोलें</string>
     <string name="reminders_test">अभी एक टेस्ट रिमाइंडर भेजें</string>
     <string name="reminders_delivery_note">फ़ोन पर ही, तय समय के अलार्म से — किसी सर्वर या FCM की ज़रूरत नहीं।</string>
     <string name="privacypolicy_eyebrow">हम आपका डेटा कैसे सँभालते हैं</string>

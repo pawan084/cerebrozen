@@ -20,6 +20,21 @@ object Reminders {
     private const val CHANNEL_ID = "daily_reminder"
     private const val REQ = 4271
     private const val NOTIF_ID = 42
+    private const val PREFS = "cerebro"
+    private const val HOUR_KEY = "reminder_hour"
+    const val DEFAULT_HOUR = 9
+
+    /** The hour the user chose (onboarding chip or the Reminders screen). */
+    fun storedHour(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(HOUR_KEY, DEFAULT_HOUR).coerceIn(0, 23)
+
+    /** Persist the chosen hour without touching the alarm (used while the
+     * reminder is switched off, so the choice survives until it's back on). */
+    fun rememberHour(context: Context, hour: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putInt(HOUR_KEY, hour.coerceIn(0, 23)).apply()
+    }
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -42,11 +57,18 @@ object Reminders {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    /** Schedule a gentle daily reminder (inexact — needs no exact-alarm perm). */
-    fun schedule(context: Context, hour: Int = 9) {
+    /** Schedule a gentle daily reminder (inexact — needs no exact-alarm perm).
+     *
+     * Pass [hour] to change the time (it is remembered); omit it to re-arm at
+     * the user's stored choice. The default used to be a literal 9, so the
+     * Settings toggle and every reboot silently moved an "evening" user's
+     * reminder to the morning (audit A2/A3). */
+    fun schedule(context: Context, hour: Int? = null) {
+        hour?.let { rememberHour(context, it) }
+        val at = storedHour(context)
         ensureChannel(context)
         val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
+            set(Calendar.HOUR_OF_DAY, at); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_MONTH, 1)
         }
         context.getSystemService(AlarmManager::class.java)
