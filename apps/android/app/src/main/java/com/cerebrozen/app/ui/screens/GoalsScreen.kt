@@ -107,7 +107,7 @@ internal fun lastSevenDays(today: LocalDate = LocalDate.now()): List<LocalDate> 
 // OnboardingScreen.
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun GoalsScreen(onBack: () -> Unit) {
+fun GoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var goals by remember { mutableStateOf<List<UserGoal>>(emptyList()) }
     var habits by remember { mutableStateOf<List<UserHabit>>(emptyList()) }
     var goalDraft by remember { mutableStateOf("") }
@@ -119,17 +119,25 @@ fun GoalsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val saveFailed = stringResource(R.string.goals_save_failed)
 
+    // B17: a failed read must not render the "No goals yet" empty copy —
+    // that is the documented anti-pattern (a confident answer about data the
+    // screen never learned).
+    var loadFailed by remember { mutableStateOf(false) }
     LaunchedEffect(reload) {
         if (!Session.signedIn) { loading = false; return@LaunchedEffect }
-        runCatching { parseGoals(Api.goals(includeResolved = true)) }.onSuccess { goals = it }
-        runCatching { parseHabits(Api.habits()) }.onSuccess { habits = it }
+        var failures = 0
+        runCatching { parseGoals(Api.goals(includeResolved = true)) }
+            .onSuccess { goals = it }.onFailure { failures++ }
+        runCatching { parseHabits(Api.habits()) }
+            .onSuccess { habits = it }.onFailure { failures++ }
+        loadFailed = failures > 0
         loading = false
     }
 
-    fun act(block: suspend () -> Unit) {
+    fun act(onDone: (() -> Unit)? = null, block: suspend () -> Unit) {
         scope.launch {
             runCatching { block() }
-                .onSuccess { error = null }
+                .onSuccess { error = null; onDone?.invoke() }
                 .onFailure { error = it.userMessage(saveFailed) }
             reload++
         }
@@ -150,6 +158,16 @@ fun GoalsScreen(onBack: () -> Unit) {
         if (loading) {
             Text(stringResource(R.string.patterns_loading),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            return@SubPage
+        }
+        if (loadFailed) {
+            SectionCard {
+                Text(stringResource(R.string.goals_load_failed),
+                    style = MaterialTheme.typography.bodyMedium, color = Danger)
+                TextButton(onClick = { loading = true; reload++ }) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
+            }
             return@SubPage
         }
 
@@ -184,7 +202,9 @@ fun GoalsScreen(onBack: () -> Unit) {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        TextButton(onClick = { act { Api.decomposeGoal(goal.id) } }) {
+                        // H7: the plan is created AND shown — the button
+                        // used to resolve invisibly on the goals screen.
+                        TextButton(onClick = { act(onDone = { onOpen("plan") }) { Api.decomposeGoal(goal.id) } }) {
                             Text(stringResource(R.string.goals_make_plan), color = Periwinkle, maxLines = 1)
                         }
                         TextButton(onClick = { act { Api.setGoalStatus(goal.id, "achieved") } }) {
@@ -208,8 +228,9 @@ fun GoalsScreen(onBack: () -> Unit) {
                 enabled = goalDraft.isNotBlank(),
                 onClick = {
                     val title = goalDraft.trim()
-                    act { Api.addGoal(title) }
-                    goalDraft = ""
+                    // B89: cleared on SUCCESS — a failed add used to eat the
+                    // typed title and leave only a generic error line.
+                    act(onDone = { goalDraft = "" }) { Api.addGoal(title) }
                 },
             ) { Text(stringResource(R.string.common_add), color = Periwinkle) }
         }
@@ -323,8 +344,7 @@ fun GoalsScreen(onBack: () -> Unit) {
                 onClick = {
                     val title = habitDraft.trim()
                     val cue = cueDraft.trim()
-                    act { Api.addHabit(title, cue) }
-                    habitDraft = ""; cueDraft = ""
+                    act(onDone = { habitDraft = ""; cueDraft = "" }) { Api.addHabit(title, cue) }
                 },
             ) { Text(stringResource(R.string.common_add), color = Periwinkle) }
         }

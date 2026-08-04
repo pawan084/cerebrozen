@@ -434,6 +434,12 @@ fun JournalScreen(
                             Text(e.body, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                         }
                     }
+                    // H20: after reading there was nothing to do but back out.
+                    // Writing again is the natural next step on this tab.
+                    PrimaryButton(
+                        text = stringResource(R.string.journal_new_title),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { reading = null; mode = JournalMode.Entry }
                 }
             }
             return

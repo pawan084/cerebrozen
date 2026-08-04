@@ -1757,12 +1757,21 @@ private fun mixSliderColors() = SliderDefaults.colors(
 /** Full-screen player for the ambient bed: art, transport, sleep timer,
  * volume (mirrors the iOS sleep player; mixing arrives with real tracks). */
 @Composable
-fun PlayerScreen(onBack: () -> Unit) {
+fun PlayerScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     val context = LocalContext.current
     val title = Player.nowPlaying
     val reduceMotion = rememberReduceMotion()
     val playing = title != null && Player.isPlaying
     SubPage(stringResource(R.string.player_eyebrow), title ?: stringResource(R.string.player_nothing), onBack) {
+        // H8: nothing playing used to be an inert page — the library is the
+        // obvious way forward.
+        if (title == null) {
+            PrimaryButton(
+                text = stringResource(R.string.player_browse_sounds),
+                modifier = Modifier.fillMaxWidth(),
+            ) { onOpen("sounds") }
+            return@SubPage
+        }
         // Centered art + transport (teammate player look), our tokens throughout.
         Column(
             Modifier.fillMaxWidth(),
@@ -2339,7 +2348,12 @@ fun BubblePopScreen(onBack: () -> Unit) {
     }
     // Reduce Motion is a contract: no spawn loop, no drift loop. The field
     // still gets one static set of bubbles to pop — static, never blank.
+    // B10: "never blank" now includes AFTER the seventh pop — the spawn loop
+    // exited under RM, so an emptied pool stayed empty until the small Reset.
     val reduceMotion = rememberReduceMotion()
+    LaunchedEffect(reduceMotion, bubbles.isEmpty()) {
+        if (reduceMotion && bubbles.isEmpty()) bubbles = freshBubbles()
+    }
     // Spawn near the bottom…
     LaunchedEffect(reduceMotion) {
         if (bubbles.isEmpty()) bubbles = freshBubbles()
@@ -2463,8 +2477,13 @@ fun GroundingScreen(onBack: () -> Unit) {
             SectionCard {
                 Text(stringResource(R.string.ground_done_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(stringResource(R.string.ground_done_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                PrimaryButton(text = stringResource(R.string.ground_start_again), modifier = Modifier.fillMaxWidth()) {
-                    step = 0; done = false
+                // H14: completion offered only "Start again" — finishing is the
+                // likelier intent, so Done leads.
+                PrimaryButton(text = stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth()) {
+                    onBack()
+                }
+                TextButton(onClick = { step = 0; done = false }) {
+                    Text(stringResource(R.string.ground_start_again), color = Periwinkle)
                 }
             }
         } else {

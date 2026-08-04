@@ -177,8 +177,12 @@ fun MindfulGameScreen(gameId: String?, onBack: () -> Unit, onBackToGames: () -> 
                 val settle: (Boolean) -> Unit = { correct ->
                     if (answered == null) {
                         answered = correct
-                        if (correct) { GameSound.correct(game.id); Haptics.success() }
-                        else { GameSound.wrong(game.id); Haptics.soft() }
+                        // B69: Haptics.kt's vocabulary — selection says "yes"
+                        // per round, warning says "no"; success() fires ONCE at
+                        // session completion (Celebrations.trigger), matching
+                        // PatternGlow. success-per-round made every game shout.
+                        if (correct) { GameSound.correct(game.id); Haptics.selection() }
+                        else { GameSound.wrong(game.id); Haptics.warning() }
                         scope.launch {
                             delay(if (reduceMotion) 220 else 420)
                             if (correct) score++

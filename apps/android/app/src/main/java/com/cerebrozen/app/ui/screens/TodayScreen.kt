@@ -1057,9 +1057,16 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 }
             } else if (settled) {
                 // The settled form: one quiet line holding the day's fact, the
-                // vertical space given back to the page.
+                // vertical space given back to the page. H21: the line is a
+                // door — today's fact in the context of the month is Trends.
                 val mood = loggedMood!!
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                val trendsCd = stringResource(R.string.today_settled_trends_cd)
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp))
+                        .clickable { onOpen("trends") }
+                        .semantics { contentDescription = trendsCd }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.size(12.dp).clip(CircleShape)

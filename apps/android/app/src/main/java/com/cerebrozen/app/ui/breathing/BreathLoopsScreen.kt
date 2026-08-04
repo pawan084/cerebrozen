@@ -94,6 +94,7 @@ import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.VeilWell
+import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -204,9 +205,21 @@ private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel,
             Text(stringResource(R.string.breath_history_title), style = MaterialTheme.typography.headlineSmall,
                 color = TextPrimary, modifier = Modifier.weight(1f))
             if (state.history.isNotEmpty()) {
-                TextButton(onClick = model::clearHistory) {
-                    Icon(Icons.Outlined.DeleteOutline, null, tint = TextMuted2, modifier = Modifier.size(18.dp))
-                    Text(stringResource(R.string.breath_history_clear), color = TextMuted2)
+                // B71: the app's own arm/confirm pattern (patterns hide,
+                // memory delete, account delete) — one tap arms, the second
+                // deletes, and looking away disarms.
+                var armed by remember { mutableStateOf(false) }
+                LaunchedEffect(armed) { if (armed) { delay(4_000); armed = false } }
+                TextButton(onClick = {
+                    if (armed) { model.clearHistory(); armed = false } else armed = true
+                }) {
+                    Icon(Icons.Outlined.DeleteOutline, null,
+                        tint = if (armed) com.cerebrozen.app.ui.theme.Danger else TextMuted2,
+                        modifier = Modifier.size(18.dp))
+                    Text(
+                        stringResource(if (armed) R.string.breath_history_clear_confirm else R.string.breath_history_clear),
+                        color = if (armed) com.cerebrozen.app.ui.theme.Danger else TextMuted2,
+                    )
                 }
             }
         }

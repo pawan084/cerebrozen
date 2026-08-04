@@ -80,8 +80,23 @@
   counter (stale response can no longer revert a newer toggle) + selection
   haptic; pattern "Delete everything" also clears the derived suggestions.
   Still open: B54/B56 (BubblePop semantics, recents-chip role — PickChip API
-  change), B28 BreatheWhyCard motion rule, B59 RTL scope, token-drift sweep
-  (B60-B68), haptic grammar B69, BreathLoops clear confirm B71.
+  change), B59 RTL scope, token-drift sweep (B60-B68).
+- [x] **Wave 6 — failed reads honest, dead ends opened** (register: B10, B17-
+  B19, B22, B28, B69, B71, B89, B90, H7-H9, H14, H17, H20-H22): Goals load
+  failure no longer renders "No goals yet" (error + retry; drafts survive a
+  failed add); Patterns' memories/recommendations failures say so with retry
+  instead of "nothing saved yet"/vanishing, and accept/dismiss report their
+  outcome; Search shows a partial-failure hint when some kinds 500; "Make
+  today's plan" opens the plan it made; empty Player offers Browse sounds;
+  saved Baseline offers See your insights; Grounding completion leads with
+  Done; PatternGlow has a finish; Journal Read offers Write another; Home's
+  settled check-in line and Sleep's "Your sleep" card open Trends; BubblePop
+  under Reduce Motion respawns a static set when emptied; game answer haptics
+  follow the documented vocabulary (selection/warning per round, success once
+  at completion); BreathLoops Clear is two-tap armed; BreatheWhyCard holds
+  still under Reduce Motion like its sibling. Deferred: H12/H13 programs
+  completion journeys, H18 gratitude read-back, H19 reel ending (design
+  calls), B84-B88/B91-B92 net-layer polish.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

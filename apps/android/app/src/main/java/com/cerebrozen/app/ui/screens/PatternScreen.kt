@@ -95,6 +95,8 @@ fun PatternScreen(onBack: () -> Unit) {
     var hiddenCount by remember { mutableIntStateOf(0) }
     var remembered by remember { mutableStateOf<List<Remembered>?>(null) }
     var suggestions by remember { mutableStateOf<List<Suggested>>(emptyList()) }
+    // True when the memories/recommendations reads failed (B18/B19).
+    var auxFailed by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
     // Saveable: an in-progress memory edit is the user's words (B44).
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -104,6 +106,8 @@ fun PatternScreen(onBack: () -> Unit) {
     var reload by remember { mutableIntStateOf(0) }
     var confirming by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    val recAccepted = stringResource(R.string.recs_accepted)
+    val recFailed = stringResource(R.string.recs_failed)
     val scope = rememberCoroutineScope()
     val loadFailed = stringResource(R.string.patterns_error_fallback)
     val memoryOff = stringResource(R.string.patterns_memory_off)
@@ -117,12 +121,14 @@ fun PatternScreen(onBack: () -> Unit) {
                 hiddenCount = it.optInt("suppressed")
             }
             .onFailure { patternsError = it.userMessage(loadFailed) }
+        // B18/B19: a failed auxiliary read must not render as "nothing
+        // saved yet" or silently drop the recommendations section.
         runCatching { parseMemories(Api.memories()) }
-            .onSuccess { remembered = it }
-            .onFailure { remembered = emptyList() }
+            .onSuccess { remembered = it; auxFailed = false }
+            .onFailure { remembered = null; auxFailed = true }
         runCatching { parseRecommendations(Api.recommendations()) }
             .onSuccess { suggestions = it }
-            .onFailure { suggestions = emptyList() }
+            .onFailure { suggestions = emptyList(); auxFailed = true }
     }
 
     // Two-tap delete: fall back out of the armed state if left untouched.
@@ -167,6 +173,15 @@ fun PatternScreen(onBack: () -> Unit) {
             }
         }
 
+        if (auxFailed) {
+            SectionCard {
+                Text(stringResource(R.string.patterns_aux_failed),
+                    style = MaterialTheme.typography.bodyMedium, color = Danger)
+                TextButton(onClick = { reload++ }) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
+            }
+        }
         // Suggestions sit directly under the patterns that produced them, so
         // the basis is on the same screen as the advice.
         if (suggestions.isNotEmpty()) {
@@ -187,15 +202,20 @@ fun PatternScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
+                            // B90/H11: resolving used to be silent — on
+                            // failure the card just reappeared with no words.
                             TextButton(onClick = {
                                 scope.launch {
                                     runCatching { Api.resolveRecommendation(rec.id, true) }
+                                        .onSuccess { status = recAccepted }
+                                        .onFailure { status = it.userMessage(recFailed) }
                                     reload++
                                 }
                             }) { Text(stringResource(R.string.recs_accept), color = Periwinkle) }
                             TextButton(onClick = {
                                 scope.launch {
                                     runCatching { Api.resolveRecommendation(rec.id, false) }
+                                        .onFailure { status = it.userMessage(recFailed) }
                                     reload++
                                 }
                             }) { Text(stringResource(R.string.recs_dismiss), color = TextMuted) }

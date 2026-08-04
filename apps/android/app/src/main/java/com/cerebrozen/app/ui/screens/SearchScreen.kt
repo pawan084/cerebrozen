@@ -53,6 +53,7 @@ fun SearchScreen(onBack: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
+    var partialError by remember { mutableStateOf(false) }
 
     LaunchedEffect(reload) {
         loading = true
@@ -75,6 +76,9 @@ fun SearchScreen(onBack: () -> Unit) {
         }
         pool = all
         loadError = failures == SEARCH_KINDS.size
+        // B22: one kind 500-ing used to silently narrow the pool — a user
+        // searching sleep stories got "no match" with no hint anything failed.
+        partialError = failures in 1 until SEARCH_KINDS.size
         loading = false
     }
 
@@ -113,12 +117,25 @@ fun SearchScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.common_try_again), color = Periwinkle)
                 }
             }
-            hits.isEmpty() -> PremiumStateCard(
-                icon = Icons.Outlined.Search,
-                message = stringResource(R.string.search_no_match, query.trim()),
-                accent = Periwinkle,
-            )
+            hits.isEmpty() -> {
+                if (partialError) {
+                    Text(stringResource(R.string.search_partial_error),
+                        style = MaterialTheme.typography.bodySmall, color = com.cerebrozen.app.ui.theme.Danger)
+                    TextButton(onClick = { reload++ }) {
+                        Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                    }
+                }
+                PremiumStateCard(
+                    icon = Icons.Outlined.Search,
+                    message = stringResource(R.string.search_no_match, query.trim()),
+                    accent = Periwinkle,
+                )
+            }
             else -> {
+                if (partialError) {
+                    Text(stringResource(R.string.search_partial_error),
+                        style = MaterialTheme.typography.bodySmall, color = com.cerebrozen.app.ui.theme.Danger)
+                }
                 Text(stringResource(R.string.search_results), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 hits.take(20).forEach { item ->
                     val playable = item.kind in listOf("soundscape", "sleep", "meditation")

@@ -630,14 +630,18 @@ private fun BreatheDoneButton(label: String, onClick: () -> Unit) {
 @Composable
 private fun BreatheWhyCard(text: String) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    // B28: WhyThisWorks is deliberately unanimated "so it's the same with or
+    // without Reduce Motion" — this sibling now follows the same rule.
+    val reduceMotion = rememberReduceMotion()
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = if (reduceMotion) snap() else spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
         label = "breatheWhyArrow",
     )
     val shape = RoundedCornerShape(24.dp)
     Column(
-        Modifier.fillMaxWidth().animateContentSize(spring(dampingRatio = Spring.DampingRatioNoBouncy))
+        Modifier.fillMaxWidth()
+            .then(if (reduceMotion) Modifier else Modifier.animateContentSize(spring(dampingRatio = Spring.DampingRatioNoBouncy)))
             .clip(shape).background(CardFill).border(1.dp, LineStroke, shape)
             .clickable { expanded = !expanded }.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),

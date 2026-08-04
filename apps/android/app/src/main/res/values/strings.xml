@@ -267,6 +267,7 @@
     <string name="today_checkin_say_more">Say more in Journal</string>
     <string name="today_checkin_undone">Removed — how are you now?</string>
     <string name="today_checkin_settled">Logged for today · %1$s</string>
+    <string name="today_settled_trends_cd">Open trends</string>
     <string name="today_plan_start">Start</string>
     <plurals name="today_plan_left_tonight">
         <item quantity="one">One step still open tonight</item>
@@ -755,6 +756,7 @@
     <string name="mixer_activity_description">Soft tones as you play the calming activities.</string>
     <string name="player_eyebrow">Now playing</string>
     <string name="player_nothing">Nothing playing</string>
+    <string name="player_browse_sounds">Browse sounds</string>
     <string name="player_empty_hint">Pick a soundscape or story from Sounds and it plays here.</string>
     <string name="player_ambient_note">Continuous ambient bed · this title has no narration yet.</string>
     <string name="player_narrated_note">Narrated track · streams from your library.</string>
@@ -1028,6 +1030,7 @@
     <string name="breath_complete_body">%1$d rounds of %2$s breathing</string>
     <string name="breath_history_title">History</string>
     <string name="breath_history_clear">Clear</string>
+    <string name="breath_history_clear_confirm">Tap again to clear</string>
     <string name="breath_history_empty">Completed sessions will appear here.</string>
     <plurals name="breath_history_rounds">
         <item quantity="one">%1$d round</item>
@@ -1101,6 +1104,7 @@
     <string name="patterns_delete_title">Delete all memory</string>
     <string name="patterns_delete_body">Removes chat history, computed insights, saved notes and the companion\'s thread memory — it starts fresh. Your journal, check-ins and sleep diary stay: they\'re your content, with their own controls.</string>
     <string name="patterns_cleared">Memory cleared — %1$d messages, %2$d insights and %3$d saved notes forgotten.</string>
+    <string name="patterns_aux_failed">Some sections couldn\'t load — saved notes and suggestions may be missing.</string>
     <string name="patterns_delete_failed">Couldn\'t delete — try again.</string>
     <string name="patterns_confirm">Tap again to confirm</string>
     <!-- Per-item memory (2026-07-30): patterns are computed and can only be
@@ -1131,6 +1135,7 @@
     <string name="search_loading">Searching the library…</string>
     <string name="search_error">Couldn\'t load the library — check your connection and try again.</string>
     <string name="search_no_match">Nothing matches \"%1$s\" — try a different word.</string>
+    <string name="search_partial_error">Some of the library couldn\'t load — results may be incomplete.</string>
     <string name="search_results">RESULTS</string>
     <string name="search_refine">Showing first 20 — refine your search.</string>
 
@@ -1153,6 +1158,7 @@
     <string name="baseline_stress_q">How stressed have you felt lately?</string>
     <string name="baseline_sleep_q">How has sleep felt lately?</string>
     <string name="baseline_saved">Saved — thank you</string>
+    <string name="baseline_see_insights">See your insights</string>
     <string name="baseline_save_cta">Save my starting point</string>
     <string name="baseline_privacy">Stays on this device — used only to show your progress in Insights.</string>
     <string name="baseline_stress_1">Very calm</string>
@@ -1468,6 +1474,8 @@
 
     <!-- Recommendations on the Pattern Dashboard (2026-07-30) -->
     <string name="recs_title">Something you could try</string>
+    <string name="recs_accepted">Added to your plan.</string>
+    <string name="recs_failed">Couldn\'t update that just now.</string>
     <string name="recs_body">Suggested because of a pattern above — never a general prescription. Dismissing one means it won\'t come back.</string>
     <string name="recs_because">Because: %1$s</string>
     <string name="recs_accept">I\'ll try this</string>
@@ -1492,6 +1500,7 @@
     <string name="goals_status_released">You let this go</string>
     <string name="goals_restore">Bring it back</string>
     <string name="goals_save_failed">Couldn\'t save that — try again.</string>
+    <string name="goals_load_failed">Couldn\'t load your goals and habits.</string>
     <string name="habits_section">Small things you repeat</string>
     <string name="habits_body">The last seven days, so you can see the shape of it. No streak to break.</string>
     <string name="habits_empty">Nothing yet.</string>

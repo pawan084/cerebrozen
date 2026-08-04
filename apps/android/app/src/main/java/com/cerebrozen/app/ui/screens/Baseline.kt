@@ -38,7 +38,7 @@ internal fun sleepWords(): List<String> = listOf(
 )
 
 @Composable
-fun BaselineScreen(onBack: () -> Unit) {
+fun BaselineScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     // Saveable: recreation used to wipe both picks on a one-shot screen (B2).
     var stress by rememberSaveable { mutableIntStateOf(0) }   // 0 = not chosen yet
     var sleep by rememberSaveable { mutableIntStateOf(0) }
@@ -63,6 +63,14 @@ fun BaselineScreen(onBack: () -> Unit) {
         ) {
             BaselineStore.set(stress, sleep, LocalDate.now().toString())
             saved = true
+        }
+        // H9: "Saved" used to lock the button and strand the user — the point
+        // of a baseline is the comparison, which lives on Insights.
+        if (saved) {
+            PrimaryButton(
+                text = stringResource(R.string.baseline_see_insights),
+                modifier = Modifier.fillMaxWidth(),
+            ) { onOpen("insights") }
         }
 
         Text(

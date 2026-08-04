@@ -659,7 +659,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
         // Averages, chart, rhythm and diary were FOUR stacked cards doing one
         // job; they now read as one story: headline, picture, principle, log.
         summary?.let { s ->
-            SleepGlassCard {
+            // H22: the data card is a door to Trends — the month-scale view of
+            // exactly what this card summarizes was one unlinked tap away.
+            SleepGlassCard(onClick = { onOpen("trends") }) {
                 Text(stringResource(R.string.sleep_data_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 // A quiet status line for the diary's own milestones — the
                 // first night, the first week forming. Never confetti.
@@ -1032,6 +1034,7 @@ private fun PremiumWindDownHero(
 @Composable
 private fun SleepGlassCard(
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(28.dp)
@@ -1042,6 +1045,7 @@ private fun SleepGlassCard(
             .clip(shape)
             .background(CardFill)
             .border(1.dp, LineStroke, shape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,

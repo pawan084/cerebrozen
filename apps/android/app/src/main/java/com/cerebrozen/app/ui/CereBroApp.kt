@@ -631,13 +631,13 @@ fun CereBroApp() {
                 exitTransition = { scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(tween(200)) },
                 popEnterTransition = { fadeIn(tween(240)) + scaleIn(initialScale = 1.05f, animationSpec = tween(240)) },
                 popExitTransition = { scaleOut(targetScale = 0.85f, animationSpec = tween(260)) + fadeOut(tween(260)) },
-            ) { PlayerScreen(onBack = back) }
+            ) { PlayerScreen(onBack = back, onOpen = open) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { PatternScreen(onBack = back) }
             composable("trends") { TrendsScreen(onBack = back) }
             composable("safetyplan") { SafetyPlanScreen(onBack = back) }
-            composable("goals") { GoalsScreen(onBack = back) }
+            composable("goals") { GoalsScreen(onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
@@ -670,7 +670,7 @@ fun CereBroApp() {
             composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
-            composable("baseline") { BaselineScreen(onBack = back) }
+            composable("baseline") { BaselineScreen(onBack = back, onOpen = open) }
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }

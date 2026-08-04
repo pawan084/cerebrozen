@@ -218,6 +218,11 @@ fun PatternGlowScreen(onBack: () -> Unit) {
             stringResource(R.string.patternglow_best_suffix, best).trim(),
             style = MaterialTheme.typography.bodySmall, color = TextMuted,
         )
+        // H17: the screen had no finish control at all — the round loops by
+        // design, so Done is the only honest ending.
+        PrimaryButton(text = stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth()) {
+            onBack()
+        }
     }
 }
 
