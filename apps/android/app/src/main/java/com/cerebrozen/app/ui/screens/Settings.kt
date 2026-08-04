@@ -224,18 +224,40 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
         "CA" to stringResource(R.string.region_ca), "AU" to stringResource(R.string.region_au),
         "NZ" to stringResource(R.string.region_nz), "EU" to stringResource(R.string.region_eu),
     )
-    var region by remember { mutableStateOf("") }
+    // null = not yet known. A failed read used to leave "" — which rendered the
+    // "Auto-detect" row as confidently SELECTED, a false answer about crisis
+    // routing. Unknown now selects nothing and says so.
+    var region by remember { mutableStateOf<String?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { runCatching { region = Api.me().optString("region") } }
+    LaunchedEffect(reloadKey) {
+        loadFailed = false
+        runCatching { Api.me().optString("region") }
+            .onSuccess {
+                region = it
+                // Mirror for the offline-first crisis surfaces (CrisisDirectory).
+                runCatching { Session.prefPut(CRISIS_REGION_PREF, it) }
+            }
+            .onFailure { loadFailed = true }
+    }
     PremiumSubPage(stringResource(R.string.crisisregion_eyebrow), stringResource(R.string.crisisregion_title), onBack) {
         Text(stringResource(R.string.crisisregion_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        if (loadFailed) {
+            Text(stringResource(R.string.crisisregion_load_failed),
+                style = MaterialTheme.typography.bodySmall, color = Danger)
+            TextButton(onClick = { reloadKey++ }) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
+        }
         regions.forEach { (code, label) ->
             SelectableRow(label, "", selected = region == code) {
                 val prev = region
                 region = code
                 scope.launch {
                     runCatching { Api.updateProfile(JSONObject().put("region", code)) }
+                        .onSuccess { runCatching { Session.prefPut(CRISIS_REGION_PREF, code) } }
                         .onFailure { region = prev }
                 }
             }

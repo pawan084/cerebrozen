@@ -14,10 +14,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
@@ -46,6 +50,14 @@ internal fun parseSafetyPlan(payload: JSONObject?): Map<String, String> {
     return SAFETY_PLAN_FIELDS.associateWith { payload.optString(it) }
 }
 
+/** Round-trips the section texts through one JSON string so the whole plan
+ * survives activity recreation — a theme switch, resize or process death must
+ * never discard the user's words on this screen of all screens. */
+internal val SAFETY_PLAN_VALUES_SAVER = Saver<Map<String, String>, String>(
+    save = { JSONObject(it).toString() },
+    restore = { raw -> runCatching { parseSafetyPlan(JSONObject(raw)) }.getOrDefault(emptyMap()) },
+)
+
 /**
  * A personal safety plan, in the user's own words.
  *
@@ -59,7 +71,12 @@ internal fun parseSafetyPlan(payload: JSONObject?): Map<String, String> {
  */
 @Composable
 fun SafetyPlanScreen(onBack: () -> Unit) {
-    var values by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var values by rememberSaveable(stateSaver = SAFETY_PLAN_VALUES_SAVER) {
+        mutableStateOf<Map<String, String>>(emptyMap())
+    }
+    // True once the first server read has run — after recreation the restored
+    // (possibly unsaved) texts must NOT be clobbered by a refetch.
+    var hydrated by rememberSaveable { mutableStateOf(false) }
     var version by remember { mutableStateOf<Int?>(null) }
     var loading by remember { mutableStateOf(true) }
     var savingField by remember { mutableStateOf<String?>(null) }
@@ -106,6 +123,7 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
+        if (hydrated) { loading = false; return@LaunchedEffect }
         runCatching { Api.safetyPlan() }
             .onSuccess { plan ->
                 values = parseSafetyPlan(plan)
@@ -113,6 +131,7 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                 servedFromCache = Session.servedStale
             }
             .onFailure { values = emptyMap(); loadFailed = true; servedFromCache = false }
+        hydrated = true
         loading = false
     }
 
@@ -170,10 +189,15 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(hints[field] ?: "",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    // The visible section title is a sibling Text, so without
+                    // this the field reaches TalkBack as a bare "edit box" —
+                    // on this screen field identity is safety-relevant.
+                    val fieldLabel = labels[field] ?: field
                     OutlinedTextField(
                         value = values[field] ?: "",
                         onValueChange = { values = values + (field to it) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp)
+                            .semantics { contentDescription = fieldLabel },
                         singleLine = false,
                     )
                     Row(
@@ -221,6 +245,13 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                 Text(stringResource(R.string.safetyplan_version, it),
                     style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
+            // Seven per-section saves need one ending — without this the only
+            // way out of the screen is the back arrow, which reads as
+            // abandoning rather than finishing (CTA audit H16).
+            PrimaryButton(
+                text = stringResource(R.string.safetyplan_done),
+                modifier = Modifier.fillMaxWidth(),
+            ) { onBack() }
         }
     }
 }

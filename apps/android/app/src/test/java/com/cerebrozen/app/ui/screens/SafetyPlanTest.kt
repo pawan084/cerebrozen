@@ -51,4 +51,21 @@ class SafetyPlanTest {
     fun noPlanYetIsAnEmptyMapNotACrash() {
         assertEquals(emptyMap<String, String>(), parseSafetyPlan(null))
     }
+
+    @Test
+    fun unsavedSectionTextsSurviveTheSaverRoundTrip() {
+        // The audit found all seven sections in plain remember {} — a theme
+        // switch or process death mid-edit silently discarded the user's plan.
+        // The saver serializes the whole map, so recreation restores every word.
+        val values = SAFETY_PLAN_FIELDS.associateWith { "my words for $it" }
+        val saved = with(SAFETY_PLAN_VALUES_SAVER) {
+            androidx.compose.runtime.saveable.SaverScope { true }.save(values)
+        } as String
+        assertEquals(values, SAFETY_PLAN_VALUES_SAVER.restore(saved))
+    }
+
+    @Test
+    fun aCorruptSavedBundleRestoresToEmptyNotACrash() {
+        assertEquals(emptyMap<String, String>(), SAFETY_PLAN_VALUES_SAVER.restore("not json"))
+    }
 }

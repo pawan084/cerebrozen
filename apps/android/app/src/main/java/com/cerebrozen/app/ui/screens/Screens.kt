@@ -139,7 +139,13 @@ fun YouScreen(onOpen: (String) -> Unit) {
         }
 
         // The persistent Support door (REDESIGN §2.3): calm, visually distinct,
-        // and always two taps from anywhere — never a scare button.
+        // and always two taps from anywhere — never a scare button. The line it
+        // names and the number the pill dials follow the user's crisis region
+        // (CrisisDirectory mirrors backend crisis.py) — a GB user gets
+        // Samaritans, not an India-only number.
+        val supportRegion by rememberCrisisRegion()
+        val supportLine = primaryCrisisLine(supportRegion)
+        val supportIsUrl = isSupportUrl(supportLine.target)
         SectionCard(onClick = { onOpen("crisis") }) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -150,32 +156,32 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     tint = Warm, modifier = Modifier.size(24.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.you_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                    Text(stringResource(R.string.crisis_telemanas_line),
+                    Text(
+                        if (supportIsUrl) stringResource(supportLine.nameRes)
+                        else stringResource(R.string.you_support_line,
+                            stringResource(supportLine.nameRes), supportLine.target),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 // One tap fewer on the path that matters most: a direct dial
                 // action (ACTION_DIAL — opens the dialler, never places the
-                // call itself). The card still opens the full crisis screen.
+                // call itself; a finder URL opens the browser). The card still
+                // opens the full crisis screen.
                 run {
                     val ctx = androidx.compose.ui.platform.LocalContext.current
-                    val callCd = stringResource(R.string.you_support_call_cd)
+                    val callCd =
+                        if (supportIsUrl) stringResource(R.string.crisis_open_cd, stringResource(supportLine.nameRes))
+                        else stringResource(R.string.you_support_call_cd,
+                            stringResource(supportLine.nameRes), supportLine.target)
                     Box(
                         Modifier.clip(RoundedCornerShape(50))
                             .border(1.dp, Warm.copy(alpha = 0.5f), RoundedCornerShape(50))
-                            .clickable {
-                                runCatching {
-                                    ctx.startActivity(
-                                        android.content.Intent(
-                                            android.content.Intent.ACTION_DIAL,
-                                            android.net.Uri.parse("tel:14416"),
-                                        ),
-                                    )
-                                }
-                            }
+                            .clickable { openSupportTarget(ctx, supportLine.target) }
                             .semantics { contentDescription = callCd }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {
-                        Text(stringResource(R.string.you_support_call),
+                        Text(
+                            if (supportIsUrl) stringResource(R.string.you_support_open)
+                            else stringResource(R.string.you_support_call),
                             style = MaterialTheme.typography.labelLarge, color = Warm)
                     }
                 }

@@ -902,27 +902,27 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Text(stringResource(R.string.talk_crisis_subtitle),
                     style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                 // One tap fewer on the worst path: dial directly (ACTION_DIAL
-                // opens the dialler, never places the call itself). The full
+                // opens the dialler, never places the call itself). The number
+                // follows the user's crisis region (CrisisDirectory) — the full
                 // regional list stays one tap away on the card.
                 Row {
-                    val callCd = stringResource(R.string.you_support_call_cd)
+                    val pillRegion by rememberCrisisRegion()
+                    val pillLine = primaryCrisisLine(pillRegion)
+                    val pillIsUrl = isSupportUrl(pillLine.target)
+                    val callCd =
+                        if (pillIsUrl) stringResource(R.string.crisis_open_cd, stringResource(pillLine.nameRes))
+                        else stringResource(R.string.you_support_call_cd,
+                            stringResource(pillLine.nameRes), pillLine.target)
                     Box(
                         Modifier.clip(RoundedCornerShape(50))
                             .border(1.dp, Danger.copy(alpha = 0.6f), RoundedCornerShape(50))
-                            .clickable {
-                                runCatching {
-                                    context.startActivity(
-                                        android.content.Intent(
-                                            android.content.Intent.ACTION_DIAL,
-                                            android.net.Uri.parse("tel:14416"),
-                                        ),
-                                    )
-                                }
-                            }
+                            .clickable { openSupportTarget(context, pillLine.target) }
                             .semantics { contentDescription = callCd }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
-                        Text(stringResource(R.string.talk_crisis_call),
+                        Text(
+                            if (pillIsUrl) stringResource(pillLine.nameRes)
+                            else stringResource(R.string.talk_crisis_call, pillLine.target),
                             style = MaterialTheme.typography.labelLarge, color = Danger)
                     }
                 }

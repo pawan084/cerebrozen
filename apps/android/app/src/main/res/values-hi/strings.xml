@@ -135,7 +135,7 @@
     <string name="talk_offline_compose">आप ऑफ़लाइन हैं — बातचीत के लिए कनेक्शन चाहिए। टूलकिट बिना कनेक्शन काम करता है।</string>
     <string name="talk_show_earlier">पहले के संदेश देखें</string>
     <string name="talk_fresh_started">नई शुरुआत हुई — आपका इतिहास आपके रिकॉर्ड में सुरक्षित है।</string>
-    <string name="talk_crisis_call">14416 पर कॉल करें</string>
+    <string name="talk_crisis_call">%1$s पर कॉल करें</string>
     <string name="talk_send_disabled_cd">भेजें — पहले कुछ लिखें</string>
     <string name="talk_typing_cd">आपका साथी जवाब लिख रहा है</string>
     <string name="talk_mic_composer_cd">बोलकर कहें</string>
@@ -886,6 +886,19 @@
     <string name="crisis_line_emergency">आपातकालीन सेवाएँ</string>
     <string name="crisis_line_kiran">किरण मानसिक स्वास्थ्य हेल्पलाइन</string>
     <string name="crisis_line_find_helpline">हेल्पलाइन खोजें</string>
+    <!-- Helpline names are proper nouns and stay as-is in every locale. -->
+    <string name="crisis_line_us_lifeline">988 Suicide &amp; Crisis Lifeline</string>
+    <string name="crisis_line_ca_lifeline">9-8-8 Suicide Crisis Helpline</string>
+    <string name="crisis_line_samaritans">Samaritans</string>
+    <string name="crisis_line_au_lifeline">Lifeline</string>
+    <string name="crisis_line_nz_1737">बात करनी है? मुफ़्त कॉल या टेक्स्ट</string>
+    <string name="crisis_region_showing">%1$s के नंबर</string>
+    <string name="crisis_region_change">क्षेत्र बदलें</string>
+    <string name="crisis_trusted_contact_unknown">अभी जाँच नहीं हो सकी — देखने या जोड़ने के लिए टैप करें</string>
+    <string name="crisis_safety_plan_title">आपकी सुरक्षा योजना</string>
+    <string name="crisis_safety_plan_sub">आपके अपने शब्द, ठीक इसी पल के लिए</string>
+    <string name="crisis_ground_title">अभी कॉल नहीं कर सकते?</string>
+    <string name="crisis_ground_sub">दो मिनट का ग्राउंडिंग अभ्यास — बिना इंटरनेट भी</string>
     <string name="crisis_trusted_contact_title">भरोसेमंद संपर्क</string>
     <string name="trusted_eyebrow">अगर हालात कठिन हों</string>
     <string name="trusted_title">भरोसेमंद संपर्क</string>
@@ -893,7 +906,9 @@
     <string name="you_trusted_saved">सहेजा गया · %1$s</string>
     <string name="you_crisisregion_state">अभी · %1$s</string>
     <string name="you_support_call">कॉल</string>
-    <string name="you_support_call_cd">टेली-मानस 14416 पर कॉल करें</string>
+    <string name="you_support_open">खोलें</string>
+    <string name="you_support_call_cd">%1$s (%2$s) पर कॉल करें</string>
+    <string name="you_support_line">%1$s · %2$s</string>
     <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">एक व्यक्ति जिससे CereBro संपर्क कर सके, अगर बातचीत से लगे कि आप खतरे में हैं। जब तक आप नीचे इसे चालू न करें, कुछ नहीं भेजा जाता — और किसी सामान्य बुरे दिन पर कुछ नहीं भेजा जाता।</string>
     <string name="trusted_name_label">उनका नाम (वैकल्पिक)</string>
@@ -921,7 +936,6 @@
     <string name="crisis_trusted_contact_empty">सेट नहीं है — सेटिंग्स में एक जोड़ें ताकि संकट के समय CereBro उन तक पहुँच सके (आपकी सहमति से)।</string>
     <string name="crisis_open_cd">%1$s खोलें</string>
     <string name="crisis_call_cd">%1$s %2$s पर कॉल करें</string>
-    <string name="crisis_telemanas_line">टेली-मानस 14416 · असली लोग, चौबीसों घंटे</string>
 
     <!-- Human support directory -->
     <string name="humansupport_eyebrow">ऐप से आगे</string>
@@ -957,7 +971,8 @@
     <string name="toolkit_support_title">क्या अभी सहायता चाहिए?</string>
     <string name="journal_telemanas">भारत में टेली-मानस किसी भी समय उपलब्ध है — 14416 पर कॉल करें, निःशुल्क, दिन हो या रात।</string>
     <string name="journal_support_title">आपको यह अकेले नहीं उठाना है</string>
-    <string name="journal_support_body">वह प्रविष्टि भारी लगी। अगर बात तत्काल की है, तो असली लोग अभी मदद कर सकते हैं — भारत में टेली-मानस को 14416 पर कॉल करें, या अपना स्थानीय आपातकालीन नंबर मिलाएँ।</string>
+    <string name="journal_support_body">वह प्रविष्टि भारी लगी। अगर बात तत्काल की है, तो असली लोग अभी मदद कर सकते हैं।</string>
+    <string name="journal_support_more">और सहायता</string>
     <string name="journal_support_badge">सहायता</string>
 
     <!-- Crisis region picker -->
@@ -972,6 +987,9 @@
     <string name="region_au">ऑस्ट्रेलिया</string>
     <string name="region_nz">न्यूज़ीलैंड</string>
     <string name="region_eu">यूरोप</string>
+    <string name="region_ie">आयरलैंड</string>
+    <string name="region_intl">अंतरराष्ट्रीय</string>
+    <string name="crisisregion_load_failed">कौन-सा क्षेत्र सहेजा है, यह अभी जाँच नहीं हो सका। नीचे चुनना फिर भी सहेजा जाएगा।</string>
 
     <!-- ── Newly externalized copy (2026-07 i18n pass) ──────────────────── -->
     <string name="common_got_it">समझ गए</string>
@@ -1045,6 +1063,7 @@
     <string name="safetyplan_load_failed_title">आपकी योजना लोड नहीं हो सकी</string>
     <string name="safetyplan_load_failed_body">इस डिवाइस पर अभी कोई प्रति सहेजी नहीं है, इसलिए नीचे के बॉक्स खाली हैं। कुछ भी हटाया नहीं गया — आपकी योजना आपके खाते में सुरक्षित है।</string>
     <string name="safetyplan_saved">सहेजा गया।</string>
+    <string name="safetyplan_done">हो गया</string>
     <string name="safetyplan_save_failed">यह हिस्सा सहेजा नहीं जा सका — लिखा हुआ यहीं है, थोड़ी देर में फिर कोशिश करें।</string>
     <string name="safetyplan_version">वर्ज़न %1$d</string>
     <string name="safetyplan_warning_signs">जो चेतावनी संकेत मुझे दिखते हैं</string>

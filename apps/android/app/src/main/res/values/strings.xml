@@ -49,6 +49,20 @@
     <string name="crisis_line_emergency">Emergency services</string>
     <string name="crisis_line_kiran">KIRAN mental-health helpline</string>
     <string name="crisis_line_find_helpline">Find a helpline</string>
+    <!-- Regional crisis lines (CrisisDirectory mirrors backend crisis.py).
+         Helpline names are proper nouns and stay as-is in every locale. -->
+    <string name="crisis_line_us_lifeline">988 Suicide &amp; Crisis Lifeline</string>
+    <string name="crisis_line_ca_lifeline">9-8-8 Suicide Crisis Helpline</string>
+    <string name="crisis_line_samaritans">Samaritans</string>
+    <string name="crisis_line_au_lifeline">Lifeline</string>
+    <string name="crisis_line_nz_1737">Need to talk? Free call or text</string>
+    <string name="crisis_region_showing">Numbers for %1$s</string>
+    <string name="crisis_region_change">Change region</string>
+    <string name="crisis_trusted_contact_unknown">Couldn\'t check just now — tap to view or add</string>
+    <string name="crisis_safety_plan_title">Your safety plan</string>
+    <string name="crisis_safety_plan_sub">Your own words, for exactly this moment</string>
+    <string name="crisis_ground_title">Can\'t call right now?</string>
+    <string name="crisis_ground_sub">A two-minute grounding practice — works offline</string>
     <string name="crisis_trusted_contact_title">Trusted contact</string>
     <!-- Trusted contact editor. The Crisis screen said "add one in Settings" and
          Settings had no such setting: the backend and iOS and web all had it,
@@ -59,7 +73,9 @@
     <string name="you_trusted_saved">Saved · %1$s</string>
     <string name="you_crisisregion_state">Current · %1$s</string>
     <string name="you_support_call">Call</string>
-    <string name="you_support_call_cd">Call Tele-MANAS 14416</string>
+    <string name="you_support_open">Open</string>
+    <string name="you_support_call_cd">Call %1$s (%2$s)</string>
+    <string name="you_support_line">%1$s · %2$s</string>
     <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">One person CereBro can reach out to if a conversation suggests you are in danger. Nothing is sent unless you switch it on below, and nothing is sent for an ordinary bad day.</string>
     <string name="trusted_name_label">Their name (optional)</string>
@@ -87,7 +103,6 @@
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
-    <string name="crisis_telemanas_line">Tele-MANAS 14416 · real people, 24/7</string>
 
     <!-- ── Human support (Settings.kt) ─────────────────────────────────── -->
     <string name="humansupport_eyebrow">Beyond the app</string>
@@ -211,7 +226,7 @@
     <string name="talk_offline_compose">You\'re offline — a conversation needs a connection. The Toolkit works without one.</string>
     <string name="talk_show_earlier">Show earlier</string>
     <string name="talk_fresh_started">Started fresh — your history stays in your record.</string>
-    <string name="talk_crisis_call">Call 14416</string>
+    <string name="talk_crisis_call">Call %1$s</string>
     <string name="talk_send_disabled_cd">Send — type a message first</string>
     <string name="talk_typing_cd">Your companion is writing a reply</string>
     <string name="talk_mic_composer_cd">Speak instead</string>
@@ -504,7 +519,8 @@
     <string name="journal_private_mode">Private mode</string>
     <string name="journal_private_subtitle">Lock the journal, manage privacy</string>
     <string name="journal_support_title">You don\'t have to carry this alone</string>
-    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now — in India, call Tele-MANAS at 14416, or dial your local emergency number.</string>
+    <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now.</string>
+    <string name="journal_support_more">More support</string>
     <string name="journal_support_badge">Support</string>
 
     <!-- ── You (Screens.kt) ────────────────────────────────────────────── -->
@@ -824,6 +840,9 @@
     <string name="region_au">Australia</string>
     <string name="region_nz">New Zealand</string>
     <string name="region_eu">Europe</string>
+    <string name="region_ie">Ireland</string>
+    <string name="region_intl">International</string>
+    <string name="crisisregion_load_failed">Couldn\'t check which region is saved. Your pick below will still save.</string>
     <string name="privacy_loading">Loading your choices…</string>
     <string name="privacy_consent_error">Couldn\'t save that change — check your connection and try again.</string>
     <string name="privacy_notice_language_label">Read this notice in</string>
@@ -1418,6 +1437,7 @@
     <string name="safetyplan_load_failed_title">We couldn\u0027t load your plan</string>
     <string name="safetyplan_load_failed_body">There is no copy saved on this device yet, so the boxes below are empty. Nothing has been deleted — your plan is still on your account.</string>
     <string name="safetyplan_saved">Saved.</string>
+    <string name="safetyplan_done">Done</string>
     <string name="safetyplan_save_failed">Couldn\'t save that section — it\'s still here, try again in a moment.</string>
     <string name="safetyplan_version">Version %1$d</string>
     <string name="safetyplan_warning_signs">Warning signs I notice</string>

@@ -7,8 +7,22 @@
 > **2026-08-04 — the 500-point register:** a full placement/sequence/bug audit
 > across all clients + backend produced **679 justified points** in
 > [AUDIT_500.md](AUDIT_500.md) (index + ranked top 20) with the evidence in
-> `docs/audit/A–H`. Nothing from it is fixed yet; it supersedes nothing here —
-> §H of the register is this file's open items, restated with citations.
+> `docs/audit/A–H`. Fixes are landing as Android waves (ledger below); §H of
+> the register is this file's open items, restated with citations.
+
+## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
+
+- [x] **Wave 1 — crisis & safety cluster** (register: G crisis-region cluster,
+  A16-21, B4/B14/B20/B53, H2/H4/H16): `CrisisDirectory.kt` mirrors backend
+  `crisis.py` (US/CA/GB/IE/AU/NZ/IN + 112/findahelpline default; pinned in
+  `CrisisDirectoryTest`); every dial surface (Crisis list, You pill+subtitle,
+  Talk pill, Toolkit support card, Journal card) now follows the crisis region,
+  offline-first via `crisis_region` pref mirror + device locale. CrisisScreen
+  gained region row, grounding door (orphaned `crisisgrounding` reachable),
+  safety-plan door, honest trusted-contact unknown state. Journal support card
+  moved above recents + acts (dial pill + More support). SafetyPlan values
+  survive recreation (JSON saver, pinned), fields named for TalkBack, Done CTA.
+  CrisisRegionScreen no longer renders a failed read as "Auto-detect selected".
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

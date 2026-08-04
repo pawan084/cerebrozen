@@ -194,7 +194,7 @@ internal fun wordCount(s: String): Int =
  * [startInEntry] lands straight in the composer — the Home check-in's
  * "Say more in Journal" bridge used to drop people at the hub. */
 @Composable
-fun JournalScreen(startInEntry: Boolean = false) {
+fun JournalScreen(startInEntry: Boolean = false, onOpen: (String) -> Unit = {}) {
     // Draft survives rotation / tab switch / process death — this is the user's
     // own writing, so losing it silently is the worst thing this screen can do.
     var title by rememberSaveable { mutableStateOf("") }
@@ -613,6 +613,50 @@ fun JournalScreen(startInEntry: Boolean = false) {
             mode = JournalMode.Private
         }
 
+        // Safety contract: support is surfaced, the entry is never blocked.
+        // It renders ABOVE the recent entries — after a heavy entry this card
+        // is the point of the page, not a footnote below the fold — and it
+        // acts: a one-tap dial of the region's crisis line plus the full
+        // support directory, never risk stated without a tappable pathway.
+        if (showSupport) {
+            val supportRegion by rememberCrisisRegion()
+            val supportLine = primaryCrisisLine(supportRegion)
+            val supportIsUrl = isSupportUrl(supportLine.target)
+            SectionCard {
+                Text(stringResource(R.string.journal_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(
+                    stringResource(R.string.journal_support_body),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val ctx = LocalContext.current
+                    val callCd =
+                        if (supportIsUrl) stringResource(R.string.crisis_open_cd, stringResource(supportLine.nameRes))
+                        else stringResource(R.string.you_support_call_cd,
+                            stringResource(supportLine.nameRes), supportLine.target)
+                    Box(
+                        Modifier.clip(RoundedCornerShape(50))
+                            .border(1.dp, Warm.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .clickable { openSupportTarget(ctx, supportLine.target) }
+                            .semantics { contentDescription = callCd }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            if (supportIsUrl) stringResource(supportLine.nameRes)
+                            else stringResource(R.string.talk_crisis_call, supportLine.target),
+                            style = MaterialTheme.typography.labelLarge, color = Warm)
+                    }
+                    TextButton(onClick = { onOpen("crisis") }) {
+                        Text(stringResource(R.string.journal_support_more),
+                            style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+                    }
+                }
+            }
+        }
+
         // Your writing, on the tab named for it: the two most recent entries
         // inline (History keeps the full list). A journal hub that never shows
         // a word you wrote feels empty even when it isn't.
@@ -629,17 +673,6 @@ fun JournalScreen(startInEntry: Boolean = false) {
                 stringResource(R.string.journal_recent_empty),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
-        }
-
-        // Safety contract: support is surfaced, the entry is never blocked.
-        if (showSupport) {
-            SectionCard {
-                Text(stringResource(R.string.journal_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    stringResource(R.string.journal_support_body),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
-            }
         }
 
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }

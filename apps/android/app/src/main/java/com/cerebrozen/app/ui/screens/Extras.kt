@@ -68,6 +68,8 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.FactCheck
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -2042,8 +2044,14 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
             ) { openTool("sounds") }
+            // Region-aware subtitle: the card names the user's actual crisis
+            // line (CrisisDirectory), not a hardcoded India number.
+            val toolkitSupportLine = primaryCrisisLine(rememberCrisisRegion().value)
             ToolkitExerciseCard(
-                stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
+                stringResource(R.string.toolkit_support_title),
+                if (isSupportUrl(toolkitSupportLine.target)) stringResource(toolkitSupportLine.nameRes)
+                else stringResource(R.string.you_support_line,
+                    stringResource(toolkitSupportLine.nameRes), toolkitSupportLine.target),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_support), Icons.Outlined.HealthAndSafety, Color(0xFFFF6B81), 10, true,
             ) { onOpen("crisis") }
@@ -2536,25 +2544,30 @@ private fun CrisisSupportRow(title: String, detail: String, target: String, prim
 @Composable
 fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var contact by remember { mutableStateOf<String?>(null) }
+    // A failed read must not render as "add one" — on this surface a false
+    // empty state tells someone their person isn't there. Unknown says unknown.
+    var contactUnknown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        runCatching { Api.trustedContact() }.onSuccess { tc ->
-            contact = tc?.let { "${it.optString("name")} · ${it.optString("value")}" }
-        }
+        runCatching { Api.trustedContact() }
+            .onSuccess { tc ->
+                contactUnknown = false
+                contact = tc?.let { "${it.optString("name")} · ${it.optString("value")}" }
+            }
+            .onFailure { contactUnknown = true }
     }
-    // Static (offline-safe) directory — Tele-MANAS leads every crisis surface
-    // (REDESIGN §2.3), then emergency services, then an international finder.
-    // Numbers/targets are dial/URL contracts and stay literal.
-    // W25 (CTA audit): the former "Tele-MANAS on WhatsApp" row (wa.me/9114416)
-    // was removed — no official national Tele-MANAS WhatsApp number exists, and
-    // wa.me parses that target as an invalid +91-14416 account. A crisis surface
-    // must never point at a dead chat; the 14416 voice line is the real pathway
-    // (also restores parity with iOS CrisisResources + backend crisis.py).
-    val lines = listOf(
-        stringResource(R.string.crisis_line_telemanas) to "14416",
-        stringResource(R.string.crisis_line_emergency) to "112",
-        stringResource(R.string.crisis_line_kiran) to "1800-599-0019",
-        stringResource(R.string.crisis_line_find_helpline) to "findahelpline.com",
-    )
+    // Region-aware (offline-safe) directory — CrisisDirectory mirrors backend
+    // crisis.py; the You → Crisis region setting finally governs the numbers
+    // this surface shows. Tele-MANAS leads in India (REDESIGN §2.3); elsewhere
+    // the backend's emergency-first order holds. Targets are dial/URL contracts
+    // and stay literal. The findahelpline finder is appended for every region
+    // as the universal escape hatch (the default region already carries it).
+    // W25 (CTA audit): no WhatsApp row — no official Tele-MANAS WhatsApp exists.
+    val region by rememberCrisisRegion()
+    val regional = crisisLinesFor(region)
+    val lines = (
+        if (regional.any { isSupportUrl(it.target) }) regional
+        else regional + CrisisLine(R.string.crisis_line_find_helpline, "findahelpline.com")
+    ).map { stringResource(it.nameRes) to it.target }
     SubPage(stringResource(R.string.crisis_eyebrow), stringResource(R.string.crisis_title), onBack) {
         val heroShape = RoundedCornerShape(24.dp)
         Column(
@@ -2580,13 +2593,37 @@ fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         lines.forEachIndexed { index, (name, number) ->
             CrisisSupportRow(name, number, number, primary = index == 0)
         }
+        // The region setting, visible where it acts — a wrong-country list is
+        // one tap from correct instead of buried under You → Settings.
+        NavRow(
+            stringResource(R.string.crisis_region_showing, stringResource(regionLabelRes(region))),
+            stringResource(R.string.crisis_region_change),
+            icon = Icons.Outlined.Public,
+        ) { onOpen("crisisregion") }
+        // For the person who cannot make a call right now: the crisis-specific
+        // grounding practice (offline), built for exactly this screen.
+        NavRow(
+            stringResource(R.string.crisis_ground_title),
+            stringResource(R.string.crisis_ground_sub),
+            icon = Icons.Outlined.SelfImprovement,
+        ) { onOpen("crisisgrounding") }
         // A door, not a notice. It used to be an inert card telling the user to
         // "add one in Settings" — where no such setting existed on Android.
         NavRow(
             stringResource(R.string.crisis_trusted_contact_title),
-            contact ?: stringResource(R.string.crisis_trusted_contact_empty),
+            contact ?: stringResource(
+                if (contactUnknown) R.string.crisis_trusted_contact_unknown
+                else R.string.crisis_trusted_contact_empty,
+            ),
             icon = Icons.Outlined.PersonAddAlt,
         ) { onOpen("trustedcontact") }
+        // The plan written for this moment, reachable in this moment — not only
+        // via the calm-state path through You.
+        NavRow(
+            stringResource(R.string.crisis_safety_plan_title),
+            stringResource(R.string.crisis_safety_plan_sub),
+            icon = Icons.Outlined.FactCheck,
+        ) { onOpen("safetyplan") }
         Text(stringResource(R.string.common_wellness_footer),
             style = MaterialTheme.typography.bodySmall, color = TextMuted,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
