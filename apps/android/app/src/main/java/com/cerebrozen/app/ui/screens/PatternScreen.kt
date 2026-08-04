@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -245,12 +244,10 @@ fun PatternScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 else -> remembered!!.forEach { m ->
                     if (editingId == m.id) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = editText,
                             onValueChange = { editText = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.patterns_edit)) },
-                            singleLine = false,
+                            label = stringResource(R.string.patterns_edit),
                         )
                         // FlowRow: Save/Cancel beside a memory whose text can be
                         // long, and both labels grow in Hindi.
@@ -295,11 +292,10 @@ fun PatternScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            OutlinedTextField(
+            AppTextField(
                 value = draft,
                 onValueChange = { draft = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.patterns_add_hint)) },
+                label = stringResource(R.string.patterns_add_hint),
                 singleLine = true,
             )
             TextButton(

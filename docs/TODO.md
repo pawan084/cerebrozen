@@ -97,6 +97,23 @@
   still under Reduce Motion like its sibling. Deferred: H12/H13 programs
   completion journeys, H18 gratitude read-back, H19 reel ending (design
   calls), B84-B88/B91-B92 net-layer polish.
+- [x] **Wave 7 — token discipline & component grammar** (register: B60-B63,
+  B65-B68, B86, B88; B64 reviewed-and-kept): Grounding's step UI wears
+  Ok/TextSoft tokens and its bespoke gradient CTA became PrimaryButton (role +
+  haptic + 48dp for free); the Toolkit hub's near-BrandPrimary purple
+  (0xFF7A5CFF vs token 0xFF7C6FF0) now IS BrandPrimary, as is
+  BreathePaceControl's selected fill (was a third distinct purple); the
+  imagery caution card uses the Danger token (theme-aware); game
+  progress/success/warning colors use Ok/Warm tokens — the stroop/go-no-go
+  color literals stay raw BY DESIGN (a "green" word must be green), and
+  BreathLoops' orb phase palette is documented as a deliberate art surface
+  like the mixer hero; all seven raw OutlinedTextFields (Goals ×3, Patterns
+  ×2, SafetyPlan ×1 + edit) became AppTextField with real labels; onboarding's
+  Welcome/Funnel CTAs carry Role.Button; Search's five catalogue reads load
+  concurrently (were strictly sequential); Programs' Leave failure says so.
+  Remaining token notes: games category accents (gameAccent) are deliberate
+  identities, BubblePop pool gradient is art — both left; B87 title-vs-id
+  enrollment match needs a backend payload check first.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -217,11 +216,10 @@ fun GoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                     }
                 }
             }
-            OutlinedTextField(
+            AppTextField(
                 value = goalDraft,
                 onValueChange = { goalDraft = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.goals_add_hint)) },
+                label = stringResource(R.string.goals_add_hint),
                 singleLine = true,
             )
             TextButton(
@@ -323,20 +321,18 @@ fun GoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                     }
                 }
             }
-            OutlinedTextField(
+            AppTextField(
                 value = habitDraft,
                 onValueChange = { habitDraft = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.habits_add_hint)) },
+                label = stringResource(R.string.habits_add_hint),
                 singleLine = true,
             )
             // An implementation intention gets its own field — it is the one
             // habit mechanism with decent evidence behind it.
-            OutlinedTextField(
+            AppTextField(
                 value = cueDraft,
                 onValueChange = { cueDraft = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.habits_cue_hint)) },
+                label = stringResource(R.string.habits_cue_hint),
                 singleLine = true,
             )
             TextButton(

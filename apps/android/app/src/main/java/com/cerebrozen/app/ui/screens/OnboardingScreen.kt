@@ -583,7 +583,10 @@ private fun Welcome(onStart: () -> Unit, onSignIn: () -> Unit) {
         ) {
             Row(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp))
-                    .background(PrimaryButtonFill).clickable(onClick = onStart),
+                    // B68: the shared PrimaryButton sets the role; the
+                    // funnel's own CTAs now do too.
+                    .background(PrimaryButtonFill)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onStart),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -753,7 +756,7 @@ private fun Funnel(
             Row(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(29.dp))
                     .background(if (primaryEnabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
-                    .clickable(enabled = primaryEnabled, onClick = onPrimary),
+                    .clickable(enabled = primaryEnabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onPrimary),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {

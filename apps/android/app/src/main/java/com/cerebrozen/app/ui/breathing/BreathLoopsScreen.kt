@@ -99,6 +99,10 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
+// Deliberate ART-SURFACE constants (like the mixer hero's): the immersive
+// orb keeps its own phase colours in both themes — swapping in the theme's
+// Ok/Cyan/Iris (dark in Dawn) would break the gradient the pacing reads by.
+// Audit B64 reviewed; kept by design.
 private val InhaleTop = Color(0xFF34D399)
 private val InhaleBottom = Color(0xFF10B981)
 private val HoldTop = Color(0xFF22D3EE)

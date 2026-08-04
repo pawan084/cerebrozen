@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -880,7 +881,9 @@ private fun ImageryIntro(onOpen: (String) -> Unit, onBegin: () -> Unit) {
                 val shape = RoundedCornerShape(18.dp)
                 Column(
                     Modifier.fillMaxWidth().clip(shape)
-                        .background(Color(0x10FF6B81)).border(1.dp, Color(0x35FF6B81), shape)
+                        // B65: Danger token (theme-aware) — the raw pink
+                        // ignored Night/Dawn.
+                        .background(Danger.copy(alpha = 0.06f)).border(1.dp, Danger.copy(alpha = 0.21f), shape)
                         .padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {

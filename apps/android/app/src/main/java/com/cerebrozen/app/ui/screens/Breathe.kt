@@ -561,7 +561,8 @@ private fun BreathePaceControl(pace: Int, onPaceChange: (Int) -> Unit) {
                 8 to stringResource(R.string.breathe_pace_slow),
             ).forEach { (value, label) ->
                 val selected = pace == value
-                val fill by animateColorAsState(if (selected) Color(0xFF7158E8) else Color.Transparent, label = "paceFill")
+                // B63: BrandPrimary, not a third near-brand purple on a primary control.
+                val fill by animateColorAsState(if (selected) com.cerebrozen.app.ui.theme.BrandPrimary else Color.Transparent, label = "paceFill")
                 Box(
                     Modifier.weight(1f).height(44.dp).clip(CircleShape).background(fill)
                         // B49: selected-state semantics, same fix as ChipWrap.

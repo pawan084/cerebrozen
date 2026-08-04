@@ -26,6 +26,8 @@ import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.json.JSONObject
 
 // The whole served catalogue as the search pool (ref SEARCH route; mirrors the
@@ -58,22 +60,29 @@ fun SearchScreen(onBack: () -> Unit) {
     LaunchedEffect(reload) {
         loading = true
         loadError = false
-        val all = mutableListOf<SearchItem>()
-        var failures = 0
-        SEARCH_KINDS.forEach { kind ->
-            runCatching {
-                val arr = Api.content(kind)
-                (0 until arr.length()).forEach { i ->
-                    val c: JSONObject = arr.getJSONObject(i)
-                    val audio = MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL)
-                    MediaUrls.register(c.optString("title"), audio)
-                    all += SearchItem(
-                        c.optString("title"), c.optString("subtitle"), kind,
-                        c.optInt("duration_min"), c.optString("image_url"), audio,
-                    )
+        // B86: five independent catalogue reads, concurrently — they ran
+        // strictly sequentially, five serial round-trips before the pool
+        // was searchable.
+        val results = coroutineScope {
+            SEARCH_KINDS.map { kind ->
+                async {
+                    runCatching {
+                        val arr = Api.content(kind)
+                        (0 until arr.length()).map { i ->
+                            val c: JSONObject = arr.getJSONObject(i)
+                            val audio = MediaUrls.resolve(c.optString("audio_url"), BuildConfig.API_BASE_URL)
+                            MediaUrls.register(c.optString("title"), audio)
+                            SearchItem(
+                                c.optString("title"), c.optString("subtitle"), kind,
+                                c.optInt("duration_min"), c.optString("image_url"), audio,
+                            )
+                        }
+                    }
                 }
-            }.onFailure { failures++ }
+            }.map { it.await() }
         }
+        val all = results.mapNotNull { it.getOrNull() }.flatten()
+        val failures = results.count { it.isFailure }
         pool = all
         loadError = failures == SEARCH_KINDS.size
         // B22: one kind 500-ing used to silently narrow the pool — a user

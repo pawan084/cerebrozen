@@ -63,6 +63,8 @@ import com.cerebrozen.app.ui.screens.SectionCard
 import com.cerebrozen.app.ui.screens.SubPage
 import com.cerebrozen.app.ui.screens.ToolAmbienceEffect
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
+import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
@@ -148,7 +150,7 @@ fun MindfulGameScreen(gameId: String?, onBack: () -> Unit, onBackToGames: () -> 
                         Modifier.weight(1f).height(7.dp).clip(CircleShape)
                             .background(
                                 when {
-                                    step < index -> Color(0xFF34D399)
+                                    step < index -> Ok   // B62: token, was raw green
                                     step == index -> accent
                                     else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
                                 },
@@ -296,7 +298,7 @@ private fun RoundTimer(
     ) {
         Box(
             Modifier.fillMaxWidth(remaining).height(5.dp).clip(CircleShape)
-                .background(if (warning) Color(0xFFF59E0B) else accent),
+                .background(if (warning) Warm else accent),   // B62: warning wears the warm token
         )
     }
 }
@@ -735,7 +737,7 @@ private fun GameTapFeedback(accent: Color, result: Boolean?) {
                 Text(
                     if (result == false) "↺" else "✓",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = if (result == false) Color(0xFFF59E0B) else accent,
+                    color = if (result == false) Warm else accent,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
@@ -776,8 +778,8 @@ private fun GameResultPanel(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(132.dp).clip(CircleShape).background(Color(0x2234D399)))
-            Box(Modifier.size(94.dp).clip(CircleShape).background(Color(0xFF34D399)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(132.dp).clip(CircleShape).background(Ok.copy(alpha = 0.14f)))
+            Box(Modifier.size(94.dp).clip(CircleShape).background(Ok), contentAlignment = Alignment.Center) {
                 Text("✓", style = MaterialTheme.typography.displayMedium, color = Color(0xFF08251B), fontWeight = FontWeight.Black)
             }
         }

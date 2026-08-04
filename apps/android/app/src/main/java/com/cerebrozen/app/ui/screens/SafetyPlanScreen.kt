@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -189,16 +188,14 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(hints[field] ?: "",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                    // The visible section title is a sibling Text, so without
-                    // this the field reaches TalkBack as a bare "edit box" —
-                    // on this screen field identity is safety-relevant.
-                    val fieldLabel = labels[field] ?: field
-                    OutlinedTextField(
+                    // B66: AppTextField (the app's own field chrome), with
+                    // the section name as a REAL label — TalkBack used to hear
+                    // a bare "edit box", and field identity is safety-relevant.
+                    AppTextField(
                         value = values[field] ?: "",
                         onValueChange = { values = values + (field to it) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp)
-                            .semantics { contentDescription = fieldLabel },
-                        singleLine = false,
+                        label = labels[field] ?: field,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

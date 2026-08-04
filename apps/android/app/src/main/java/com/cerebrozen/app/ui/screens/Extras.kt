@@ -154,6 +154,7 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.Radius
@@ -844,8 +845,15 @@ fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                             .background(Cream))
                     }
                 }
+                val leaveFailed = stringResource(R.string.programs_error_fallback)
                 TextButton(onClick = {
-                    scope.launch { runCatching { Api.leaveProgram() }; refresh() }
+                    scope.launch {
+                        // B88: failure used to be swallowed — indistinguishable
+                        // from a mis-tap.
+                        runCatching { Api.leaveProgram() }
+                            .onFailure { status = it.userMessage(leaveFailed) }
+                        refresh()
+                    }
                 }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     Text(stringResource(R.string.programs_leave), color = Cream.copy(alpha = 0.85f))
                 }
@@ -2056,7 +2064,10 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.SelfImprovement, Color(0xFF7A5CFF), 4,
+                stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.SelfImprovement,
+                // B60: this was 0xFF7A5CFF — a NEAR-BrandPrimary purple subtly
+                // disagreeing with the brand purple on the same screen.
+                com.cerebrozen.app.ui.theme.BrandPrimary, 4,
             ) { openTool("breathe/reset") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Color(0xFFB18CFF))
@@ -2493,36 +2504,32 @@ fun GroundingScreen(onBack: () -> Unit) {
                     steps.indices.forEach { index ->
                         Box(
                             Modifier.weight(1f).height(5.dp).clip(CircleShape)
-                                .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
+                                .background(if (index <= step) Ok else LineStroke),
                         )
                     }
                 }
-                Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
+                // B61: theme tokens, not raw hex — the counter now follows
+                // Night/Dawn like everything else on the screen.
+                Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Ok)
                 Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                 Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.height(48.dp).clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(Color(0xFF4BAE83), Color(0xFF64C9FF))))
-                            .clickable {
-                                if (last) {
-                                    done = true
-                                    Celebrations.trigger()
-                                } else {
-                                    step += 1
-                                }
-                            }
-                            .padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center,
+                    // B67: the bespoke gradient Box (no Role.Button, no haptic)
+                    // becomes the app's own PrimaryButton like every other
+                    // primary action.
+                    PrimaryButton(
+                        text = if (last) stringResource(R.string.common_done) else stringResource(R.string.common_next),
+                        modifier = Modifier.weight(1f),
                     ) {
-                        Text(
-                            if (last) stringResource(R.string.common_done) else stringResource(R.string.common_next),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White,
-                        )
+                        if (last) {
+                            done = true
+                            Celebrations.trigger()
+                        } else {
+                            step += 1
+                        }
                     }
                     if (step > 0) TextButton(onClick = { step -= 1 }) {
-                        Text(stringResource(R.string.common_back), color = Color(0xFFB8C2D9))
+                        Text(stringResource(R.string.common_back), color = TextSoft)
                     }
                 }
             }
