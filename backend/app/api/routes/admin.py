@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,8 @@ from app.core.config import settings
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_admin
 from app.core.ratelimit import limiter
+from app.services import admin_audit
+from app.models.admin_audit import AdminAuditLog
 from app.models.chat import ChatMessage
 from app.models.consent import Consent
 from app.models.content import ContentItem
@@ -162,15 +164,69 @@ async def user_detail(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     }
 
 
+class UserActiveChange(BaseModel):
+    """Why an account was disabled or restored.
+
+    Register E33: the admin panel required a reason and PATCHed it in the
+    body, but this route declared only the `active` QUERY param — so FastAPI
+    discarded the body and no record existed of who disabled which account or
+    why. (The frontend comment admitted it.) The reason is now accepted and
+    written to the audit log; it stays optional so re-enabling does not
+    demand an explanation the operator may not have.
+    """
+
+    reason: str = Field(default="", max_length=500)
+
+
 @router.patch("/users/{user_id}/active", response_model=UserOut)
-async def set_user_active(user_id: uuid.UUID, active: bool, db: AsyncSession = Depends(get_db)):
+async def set_user_active(
+    user_id: uuid.UUID,
+    active: bool,
+    payload: UserActiveChange | None = None,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     user.is_active = active
+    await admin_audit.record(
+        db, admin,
+        "user.enable" if active else "user.disable",
+        target_type="user", target_id=user.id,
+        reason=(payload.reason if payload else ""),
+        detail={"email": user.email},
+    )
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# ── Operator audit trail ────────────────────────────────────────────────
+class AdminAuditOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    admin_email: str
+    action: str
+    target_type: str
+    target_id: str
+    reason: str
+    detail: dict
+    created_at: datetime
+
+
+@router.get("/audit", response_model=list[AdminAuditOut])
+async def admin_audit_trail(limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """What operators have done, newest first (register E34).
+
+    Read-only by design: there is no route that edits or deletes these rows,
+    because a trail the trailed party can rewrite is not a trail.
+    """
+    limit = max(1, min(limit, 500))
+    rows = await db.scalars(
+        select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(limit)
+    )
+    return rows.all()
 
 
 # ── Content CRUD ────────────────────────────────────────────────────────
@@ -181,33 +237,63 @@ async def admin_list_content(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/content", response_model=AdminContentOut, status_code=201)
-async def create_content(payload: ContentCreate, db: AsyncSession = Depends(get_db)):
+async def create_content(
+    payload: ContentCreate,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     item = ContentItem(**payload.model_dump())
     db.add(item)
+    await db.flush()
+    await admin_audit.record(
+        db, admin, "content.create",
+        target_type="content", target_id=item.id,
+        detail={"title": item.title, "kind": item.kind},
+    )
     await db.commit()
     await db.refresh(item)
     return item
 
 
 @router.patch("/content/{item_id}", response_model=AdminContentOut)
-async def update_content(item_id: uuid.UUID, payload: ContentUpdate, db: AsyncSession = Depends(get_db)):
+async def update_content(
+    item_id: uuid.UUID,
+    payload: ContentUpdate,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     item = await db.get(ContentItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Content not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changed = payload.model_dump(exclude_unset=True)
+    for field, value in changed.items():
         setattr(item, field, value)
+    await admin_audit.record(
+        db, admin, "content.update",
+        target_type="content", target_id=item.id,
+        detail={"title": item.title, "fields": sorted(changed.keys())},
+    )
     await db.commit()
     await db.refresh(item)
     return item
 
 
 @router.delete("/content/{item_id}", status_code=204)
-async def delete_content(item_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_content(
+    item_id: uuid.UUID,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     item = await db.get(ContentItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Content not found")
     if item.audio_url.startswith("/media/narration/"):
         media.delete_narration(item.id)
+    await admin_audit.record(
+        db, admin, "content.delete",
+        target_type="content", target_id=item.id,
+        detail={"title": item.title, "kind": item.kind},
+    )
     await db.delete(item)
     await db.commit()
 
@@ -447,6 +533,17 @@ async def read_safety_excerpt(
         event.id,
         event.risk_level,
     )
+    # Register E35: the log line above is erased by rotation, while the UI
+    # tells reviewers "the reveal is noted on the row / the server logged it"
+    # and CLAIMS_MAP leans on "a separate, logged, per-row GET". The claim is
+    # now true: the reveal is a durable row. It records THAT the excerpt was
+    # opened and by whom — never a word of what was read.
+    await admin_audit.record(
+        db, admin, "safety.excerpt_read",
+        target_type="safety_event", target_id=event.id,
+        detail={"risk_level": event.risk_level, "source": event.source},
+    )
+    await db.commit()
     return event
 
 
@@ -492,7 +589,11 @@ class NudgeAuthor(BaseModel):
 
 
 @router.post("/nudges", status_code=201)
-async def author_nudge(payload: NudgeAuthor, db: AsyncSession = Depends(get_db)):
+async def author_nudge(
+    payload: NudgeAuthor,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     """Create a one-off nudge for one user or (user_id omitted) every active
     user. Delivery stays with the existing scheduler/dispatch pass."""
     when = payload.scheduled_for or utcnow()
@@ -515,6 +616,13 @@ async def author_nudge(payload: NudgeAuthor, db: AsyncSession = Depends(get_db))
                 scheduled_for=when,
             )
         )
+    # Register E31/E34: a broadcast to every active user was a single
+    # unconfirmed click and left no record of who sent it.
+    await admin_audit.record(
+        db, admin, "nudge.broadcast" if payload.user_id is None else "nudge.author",
+        target_type="nudge", target_id=payload.user_id or "",
+        detail={"recipients": len(targets), "title": payload.title},
+    )
     await db.commit()
     return {"created": len(targets)}
 
@@ -633,7 +741,12 @@ async def list_prompts(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/prompts/{name}", status_code=201)
-async def save_prompt(name: str, payload: PromptSave, db: AsyncSession = Depends(get_db)):
+async def save_prompt(
+    name: str,
+    payload: PromptSave,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     """Save a new immutable version and activate it. Names are curated: only
     prompts the code registered (or that already have rows) are editable."""
     known = name in prompt_registry.registered()
@@ -650,13 +763,25 @@ async def save_prompt(name: str, payload: PromptSave, db: AsyncSession = Depends
         active=True,
     )
     db.add(new)
+    await db.flush()
+    await admin_audit.record(
+        db, admin, "prompt.save",
+        target_type="prompt", target_id=name,
+        reason=payload.notes or "",
+        detail={"version": new.version},
+    )
     await db.commit()
     await db.refresh(new)
     return _prompt_row(new) | {"name": name}
 
 
 @router.post("/prompts/{name}/versions/{version}/activate")
-async def activate_prompt_version(name: str, version: int, db: AsyncSession = Depends(get_db)):
+async def activate_prompt_version(
+    name: str,
+    version: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     """Roll back/forward by activating an existing version."""
     versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()
     target = next((v for v in versions if v.version == version), None)
@@ -664,12 +789,24 @@ async def activate_prompt_version(name: str, version: int, db: AsyncSession = De
         raise HTTPException(status_code=404, detail="Version not found")
     for row in versions:
         row.active = row.version == version
+    # Register E32: activating an old version bypasses every guard the save
+    # path builds (acknowledgement + two-step confirm for safety_classifier).
+    # It cannot bypass the record of who did it.
+    await admin_audit.record(
+        db, admin, "prompt.activate",
+        target_type="prompt", target_id=name,
+        detail={"version": version},
+    )
     await db.commit()
     return _prompt_row(target) | {"name": name}
 
 
 @router.post("/prompts/{name}/revert")
-async def revert_prompt(name: str, db: AsyncSession = Depends(get_db)):
+async def revert_prompt(
+    name: str,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
     """Deactivate every stored version — the code default serves again.
     History is kept, so any version can be re-activated later."""
     versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()

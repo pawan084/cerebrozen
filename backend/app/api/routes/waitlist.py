@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,11 @@ router = APIRouter(tags=["waitlist"])
 
 class WaitlistJoin(BaseModel):
     email: EmailStr
-    source: str = "landing"
+    # Register E36: `source` was any string from a public, unauthenticated
+    # endpoint, exported to CSV and rendered in admin. Bounded and restricted
+    # to a plain slug so nothing exotic reaches either surface; the CSV writer
+    # escapes formulas as well (defence at both ends).
+    source: str = Field(default="landing", max_length=40, pattern=r"^[A-Za-z0-9 _.:/-]*$")
 
 
 class WaitlistOut(BaseModel):

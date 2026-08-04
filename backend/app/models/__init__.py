@@ -6,6 +6,7 @@ from app.models.device_token import DeviceToken
 from app.models.idempotency import IdempotencyRecord
 from app.models.mood import MoodLog
 from app.models.journal import JournalEntry
+from app.models.admin_audit import AdminAuditLog
 from app.models.agent_action import AgentAction
 from app.models.chat import ChatMessage
 from app.models.plan import Plan, PlanStep
@@ -65,4 +66,5 @@ __all__ = [
     "WaitlistEntry",
     "WebPushSubscription",
     "ProcessedWebhook",
+    "AdminAuditLog",
 ]

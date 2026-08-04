@@ -21,6 +21,26 @@ export function clearToken() {
   if (typeof window !== "undefined") window.localStorage.removeItem(REFRESH_KEY);
 }
 
+/** Sign out for real: revoke server-side, then clear locally.
+ *
+ * Register E37: the shell only ever called clearToken(), so a previously
+ * exfiltrated refresh token kept working after the operator believed they had
+ * signed out. POST /auth/logout bumps the user's token_version, which
+ * invalidates every outstanding access AND refresh token — it authenticates
+ * with the access token, so it goes through the normal authed path (which
+ * refreshes first if this tab has no access token yet). The local clear runs
+ * either way: a failed revoke must never strand someone signed in.
+ */
+export async function logout(): Promise<void> {
+  try {
+    await api("/auth/logout", { method: "POST" });
+  } catch {
+    // Offline, already-expired session, or server down — clear locally anyway.
+  } finally {
+    clearToken();
+  }
+}
+
 /** Whether a (possibly stale) session exists — the login-screen gate. The
  * access token being memory-only means a reload always starts without one;
  * what decides "signed in" is having a refresh token to rotate. */

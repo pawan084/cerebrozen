@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { API_URL, ApiError, api, clearToken, hasSession, login, setToken, upload } from "@/lib/api";
+import { API_URL, ApiError, api, clearToken, hasSession, login, logout, setToken, upload } from "@/lib/api";
 import { BrandMark, Icon } from "@/components/icons";
 
 type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
@@ -93,8 +93,12 @@ export default function AdminPage() {
         })}
         <button
           className="navitem logout"
-          onClick={() => {
-            clearToken();
+          onClick={async () => {
+            // Register E37: clearToken() only wiped memory + localStorage,
+            // so a refresh token lifted earlier stayed valid after the
+            // operator "signed out". POST /auth/logout revokes it
+            // server-side; a failed revoke must still sign them out here.
+            await logout();
             setAuthed(false);
           }}
         >
@@ -1665,9 +1669,24 @@ function ResolvePanel({ id, onCancel, onDone }: { id: string; onCancel: () => vo
   );
 }
 
-/** RFC-4180-enough CSV: quote everything, double internal quotes. */
+/** RFC-4180-enough CSV: quote everything, double internal quotes — and
+ * neutralise spreadsheet formulas.
+ *
+ * Register E36: a cell beginning `=`, `+`, `-`, `@` (or a leading tab/CR,
+ * which Excel strips before parsing) is EXECUTED on open in Excel and
+ * Sheets, and the waitlist `source` column is attacker-controlled through
+ * the public POST /waitlist. Quoting alone does not stop it; a prefixed
+ * apostrophe does, and spreadsheets hide it on display.
+ */
+function csvCell(value: unknown): string {
+  const raw = String(value ?? "");
+  const dangerous = /^[=+@\-\t\r]/.test(raw);
+  const safe = dangerous ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 function toCsv(rows: string[][]): string {
-  return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  return rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
 }
 
 function WaitlistTab() {

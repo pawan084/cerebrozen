@@ -58,6 +58,20 @@
 > `content_id` not title equality; Goals' week circles use LOCAL day keys (the
 > UTC key shifted "today" for IST users before ~05:30); "Make this today's
 > plan" has a busy guard. e2e suite 25 passed / exit 0.
+>
+> **Wave 14 — operator accountability (register E31-E37):** new
+> `admin_audit_logs` table + `services/admin_audit.py` + read-only
+> `GET /admin/audit` (Alembic `c3f8a1d64b27`), wired into content CRUD, user
+> enable/disable, prompt save/activate/revert and nudge broadcasts — the
+> operator surface was entirely unattributable; the disable **reason** is no
+> longer discarded (the route declared only the `active` query param, so
+> FastAPI dropped the body the panel sent); the safety-excerpt reveal is a
+> durable row, matching what the UI and CLAIMS_MAP already claimed (was a
+> rotating `logger.info`) and recording THAT it happened, never what was read;
+> waitlist CSV escapes formula-injection cells and the public `source` field
+> is bounded/validated; admin sign-out calls `POST /auth/logout` so a lifted
+> refresh token stops working. Pinned in `tests/test_admin_audit_log.py`
+> (backend 518 passed / 96%; e2e 25 passed / exit 0).
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 
