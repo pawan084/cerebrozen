@@ -53,6 +53,13 @@ class User(Base):
     # Subscription entitlement ("free" | "premium" | "premium_human"). Set by the
     # StoreKit receipt/entitlement flow; gates server-side usage quotas.
     subscription_tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free")
+    # The Apple subscription this account's entitlement came from. UNIQUE:
+    # one signed transaction used to grant premium on unlimited accounts
+    # (register C2) — the first account to verify a family of transactions
+    # owns it, and every later account is refused.
+    apple_original_transaction_id: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
+    )
     # When the current subscription lapses (from the verified transaction).
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Stripe's own id for this customer. Persisted because the webhook mapping

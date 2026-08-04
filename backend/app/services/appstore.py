@@ -142,6 +142,8 @@ def verify_notification(signed_payload: str) -> dict:
     return {
         "notification_type": outer.get("notificationType", ""),
         "subtype": outer.get("subtype", ""),
+        # Apple's per-delivery id — the replay/dedupe key (register C3).
+        "notification_uuid": outer.get("notificationUUID", ""),
         "transaction": transaction,
     }
 

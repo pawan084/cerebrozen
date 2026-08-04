@@ -7,8 +7,19 @@
 > **2026-08-04 — the 500-point register:** a full placement/sequence/bug audit
 > across all clients + backend produced **679 justified points** in
 > [AUDIT_500.md](AUDIT_500.md) (index + ranked top 20) with the evidence in
-> `docs/audit/A–H`. Fixes are landing as Android waves (ledger below); §H of
-> the register is this file's open items, restated with citations.
+> `docs/audit/A–H`. Fixes are landing as waves (ledger below); §H of the
+> register is this file's open items, restated with citations.
+>
+> **Wave 10 — backend security cluster (register C1-C3) is CLOSED:** oracle
+> threads are namespaced per caller (`scoped_thread_id` — a foreign UUID
+> resumes nothing; existing default threads preserved, custom client thread
+> ids migrate into the caller's namespace one time); StoreKit receipts are
+> bound to their buyer (appAccountToken must match the caller AND
+> `users.apple_original_transaction_id` is unique — first verifier owns the
+> subscription; Alembic `b7e4c9a2d615`); the App Store webhook has the same
+> ProcessedWebhook replay guard Stripe always had (keyed on
+> notificationUUID). All pinned in `tests/test_subscription_binding.py`;
+> hermetic suite 506 passed / 96%.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

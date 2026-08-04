@@ -53,6 +53,22 @@ async def appstore_notifications(payload: AppStoreNotification, db: AsyncSession
     if user is None:
         return {"handled": False, "reason": "unknown user"}
 
+    # Idempotency BEFORE the entitlement write — the same contract the Stripe
+    # handler below has always had, and the register's C3: App Store server
+    # notifications are also at-least-once, so a re-delivered EXPIRED or
+    # REVOKE arriving after a re-subscribe would silently downgrade a paying
+    # subscriber. The uniqueness is the database's; concurrent deliveries
+    # race and exactly one wins.
+    event_id = str(note.get("notification_uuid") or "")
+    if event_id:
+        db.add(ProcessedWebhook(provider="appstore", event_id=event_id))
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            logger.info("App Store notification %s already processed — ignoring replay", event_id)
+            return {"handled": False, "reason": "duplicate"}
+
     tier, expires = appstore.tier_from_notification(note)
     user.subscription_tier = tier
     user.subscription_expires_at = expires

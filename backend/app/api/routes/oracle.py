@@ -144,6 +144,24 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
             current_risk.reset(t_risk)
 
 
+def scoped_thread_id(user_id, requested: str | None) -> str:
+    """Namespace a caller-supplied thread id inside the caller's own threads.
+
+    The register's C1: both streaming endpoints accepted any ``thread_id``
+    verbatim, and thread ids default to ``str(user.id)`` — so another user's
+    UUID resumed *their* LangGraph checkpoint, and a paused ``save_journal``
+    could be approved by an attacker. A supplied id now lands at
+    ``"<caller>:<id>"``: the caller's own namespace, where a foreign UUID
+    resumes nothing. The bare default (no id, or the caller's own id) stays
+    ``str(user.id)`` so every existing conversation is preserved.
+    """
+    own = str(user_id)
+    requested = (requested or "").strip()
+    if not requested or requested == own:
+        return own
+    return f"{own}:{requested}"
+
+
 @router.post("/messages")
 @limiter.limit("30/minute")
 async def messages(
@@ -155,7 +173,7 @@ async def messages(
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
-    thread_id = payload.thread_id or str(user.id)
+    thread_id = scoped_thread_id(user.id, payload.thread_id)
     gen = _run({"messages": [HumanMessage(content=payload.text)]}, thread_id, user.id,
                persist_user=payload.text, region=user.region,
                language_directive=language.for_user(user))
@@ -211,7 +229,8 @@ async def confirm(request: Request, payload: OracleConfirm, user: User = Depends
                   db: AsyncSession = Depends(get_db)):
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
-    await _record_decision(db, user, payload.thread_id, payload.approved)
-    gen = _run(Command(resume={"approved": payload.approved}), payload.thread_id, user.id,
+    thread_id = scoped_thread_id(user.id, payload.thread_id)
+    await _record_decision(db, user, thread_id, payload.approved)
+    gen = _run(Command(resume={"approved": payload.approved}), thread_id, user.id,
                persist_user=None, language_directive=language.for_user(user))
     return StreamingResponse(gen, media_type="text/event-stream")

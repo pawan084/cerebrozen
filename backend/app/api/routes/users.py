@@ -131,6 +131,36 @@ async def verify_subscription(
         payload_data = appstore.verify_transaction(payload.signed_transaction)
     except appstore.ReceiptError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid receipt: {exc}")
+
+    # Register C2 — the receipt must belong to THIS account. Two independent
+    # checks, because either alone has a hole:
+    #  1. appAccountToken: the app stamps the purchase with the buyer's user
+    #     id. A verified transaction carrying someone else's token is someone
+    #     else's purchase, however valid the signature.
+    account_token = str(payload_data.get("appAccountToken") or "").strip().lower()
+    if account_token and account_token != str(user.id).lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This receipt was purchased for a different account.",
+        )
+    #  2. originalTransactionId uniqueness: without it, one signed transaction
+    #     (which carries no token on older clients) granted premium on
+    #     unlimited accounts. First verifier owns the subscription.
+    original_txn = str(payload_data.get("originalTransactionId") or "").strip()
+    if original_txn:
+        owner = await db.scalar(
+            select(User).where(
+                User.apple_original_transaction_id == original_txn,
+                User.id != user.id,
+            )
+        )
+        if owner is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This subscription is already linked to another account.",
+            )
+        user.apple_original_transaction_id = original_txn
+
     tier, expires = appstore.tier_for(payload_data)
     user.subscription_tier = tier
     user.subscription_expires_at = expires
