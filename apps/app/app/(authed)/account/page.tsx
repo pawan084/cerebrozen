@@ -285,11 +285,12 @@ export default function Account() {
         <span className="ui-row-chevron" aria-hidden="true">›</span>
       </button>
 
-      {/* Appearance — Android You→Appearance parity. Sleep, onboarding and the
-          signed-out pages deliberately stay Night in every mode. */}
+      {/* Appearance — Android You→Appearance parity. Your choice applies to
+          every signed-in page (owner decision 2026-08-04); onboarding and the
+          signed-out pages keep their Night branding. */}
       <section className="card cz-in cz-d2" aria-label="Appearance">
         <h2>Appearance</h2>
-        <p className="sub">Dawn is a warm-light look; Sleep keeps its calm Night either way.</p>
+        <p className="sub">Dawn is a warm-light look; your choice applies everywhere, Sleep included.</p>
         <div className="ui-chips" style={{ marginTop: 10 }}>
           {([["system", "System"], ["night", "Night"], ["dawn", "Dawn"]] as [ThemeMode, string][]).map(([mode, label]) => (
             <button

@@ -21,7 +21,9 @@
 // personal ritual builder (/games/ritual). The words stay here: this screen
 // speaks to someone already in bed.
 //
-// The Sleep tab is `.theme-night`-scoped, so this page stays Night in Dawn too.
+// Follows the selected appearance like every authed page (owner decision
+// 2026-08-04 — appearance is global; the Sleep tab's Night scoping was
+// removed on all clients in the same change).
 
 import Link from "next/link";
 import { useState } from "react";

@@ -150,25 +150,12 @@ internal enum class Tab(val route: String, @androidx.annotation.StringRes val la
 internal fun shouldShowBottomBar(route: String?): Boolean =
     route in setOf("home", "sleep", "talk", "journal", "you")
 
-/**
- * Everything the Sleep tab can push, not just the tab: the full player, the
- * soundscape mixer and the wind-down ritual are used with the lights off, and a
- * bright screen there is worse than anywhere else in the product. Keep this in
- * step with the NavRows in SleepScreen — a new sleep destination that is not
- * listed here will flip the theme mid-wind-down (`NavigationChromeTest` pins
- * the set).
- *
- * This set has now been removed twice ("appearance should be global") and
- * restored twice. The rule is not an aesthetic preference: it came from a
- * hardware finding (a sleep story at 22:46, one tap on the now-playing bar, a
- * full-brightness player with the sleep timer running), and the web client
- * pins the same surfaces in e2e (theme.spec.ts) — removing it here makes the
- * two clients contradict each other. If it is to go, it goes on every client
- * in the same change, with the owner's sign-off recorded in docs/TODO.md.
- */
-internal val SLEEP_CONTEXT_ROUTES = setOf(
-    "sleep", "player", "sounds", "sounds/mixer", "winddown",
-)
+// The Sleep-stays-Night forcing (SLEEP_CONTEXT_ROUTES + AppTheme.forceNight)
+// was REMOVED here on 2026-08-04 by OWNER DECISION, recorded in docs/TODO.md:
+// appearance is global, on every client in the same change — web unwrapped its
+// .theme-night sleep scope in this same commit; iOS already conformed. The
+// hardware concern it served (a bright player mid-wind-down) is answered by
+// the user's own theme choice: Night remains one tap away in Appearance.
 
 /**
  * Whether the nav pill is drawn right now.
@@ -335,8 +322,7 @@ private fun BottomTabItem(
  * instead a full-screen wash of the NEW theme's backdrop appears the instant
  * the preference flips and fades away over 350ms — the re-tokened screen
  * emerges from a calm solid, never a hard cut. Keyed on the *preference*-
- * resolved theme only (Appearance choice / system dark), deliberately ignoring
- * the Sleep tab's forceNight flips, which keep their existing nav cross-fade.
+ * resolved theme (Appearance choice / system dark).
  * Reduce Motion: no scrim — the honest instant snap. */
 @Composable
 private fun ThemeGlideScrim() {
@@ -367,12 +353,8 @@ private fun ThemeGlideScrim() {
 /** Keeps the status/navigation-bar icon appearance in step with the theme:
  * light icons over Night, dark icons over Dawn.
  *
- * **Call this AFTER the frame's `AppTheme.forceNight` decision.** It reads the
- * theme during composition, so a call placed above the assignment sees the
- * previous value. Found on a physical device: this used to sit at the top of
- * [CereBroApp], above `forceNight = true`, and painted near-black clock and
- * status icons over the deep-indigo Night splash for its full 1.1s — the very
- * first frame of the app, on any phone whose system theme is light.
+ * It reads the resolved appearance during composition so the icon contrast
+ * changes together with the selected theme.
  */
 @Composable
 private fun SyncSystemBarIcons() {
@@ -418,8 +400,8 @@ fun CereBroApp() {
     // A brief branded splash on cold launch — always Night (brand moment).
     // Reduce Motion gets the settled frame instantly, so holding it for the full
     // animation length would just be a longer dead screen: shorten the hold too.
-    // Clear route overrides before early-returning into splash/auth. This also
-    // prevents a Sleep-route forceNight value leaking through after sign-out.
+    // Production screens follow the selected appearance. Clear the internal
+    // preview/test override before any early return.
     AppTheme.forceNight = false
     val splashReduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     var showSplash by remember { mutableStateOf(true) }
@@ -476,10 +458,6 @@ fun CereBroApp() {
     // and reclaims the slot, instead of keeping an empty one.
     val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val showBottomBar = navVisible(current, imeOpen)
-    // Sleep contexts stay Night regardless of the appearance choice — see the
-    // SLEEP_CONTEXT_ROUTES doc above for why this is a wellness rule with a
-    // hardware history and a cross-client contract, not a preference.
-    AppTheme.forceNight = current in SLEEP_CONTEXT_ROUTES
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).

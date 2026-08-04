@@ -806,7 +806,7 @@
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
     <string name="appearance_eyebrow">Night or dawn</string>
     <string name="appearance_title">Appearance</string>
-    <string name="appearance_intro">Dawn is a light, warm look that\'s easier to read in daylight. Sleep always stays night — it\'s a wind-down space.</string>
+    <string name="appearance_intro">Dawn is a light, warm look that\'s easier to read in daylight. Your choice applies everywhere — pick Night for winding down with the lights off.</string>
     <string name="theme_system_title">System default</string>
     <string name="theme_system_hint">Follows your phone\'s light/dark setting</string>
     <string name="theme_night_title">Always night</string>

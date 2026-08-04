@@ -7,7 +7,10 @@ const APP = process.env.APP_URL || "http://app:3002";
 // - The /account picker pins Night or Dawn via data-theme + localStorage,
 //   and the nonce'd pre-paint script must re-apply it after reload under
 //   the enforced production CSP.
-// - Sleep + signed-out surfaces stay Night in every mode.
+// - Signed-out surfaces stay Night in every mode. Sleep FOLLOWS the theme
+//   (owner decision 2026-08-04, docs/TODO.md — appearance is global; the
+//   old Sleep-pins-Night assertion is retired with the rule, on every
+//   client in the same change).
 // Screenshots land in /app/shots for a human visual pass (docker cp).
 
 async function signup(page: Page) {
@@ -46,7 +49,7 @@ const DAWN_BASE = "#f2eee5";
 test.describe("Dawn theme (System + light OS)", () => {
   test.use({ colorScheme: "light" });
 
-  test("system-light renders Dawn; Sleep and signed-out stay Night; picker + reload persist", async ({ page }) => {
+  test("system-light renders Dawn everywhere signed-in; signed-out stays Night; picker + reload persist", async ({ page }) => {
     test.setTimeout(120_000);
 
     // Signed-out surfaces stay Night even on a light OS.
@@ -63,12 +66,14 @@ test.describe("Dawn theme (System + light OS)", () => {
     await page.goto(`${APP}/insights`, { waitUntil: "networkidle" });
     await page.screenshot({ path: "shots/insights-dawn.png", fullPage: true });
 
-    // Sleep pins Night: the wrapper re-scopes --night to the dark value.
+    // Sleep follows the theme (owner decision 2026-08-04): under system-light
+    // it renders Dawn like every other signed-in page, and no .theme-night
+    // scope wraps it any more.
     await page.goto(`${APP}/sleep`, { waitUntil: "networkidle" });
-    const sleepNight = await page.evaluate(() =>
-      getComputedStyle(document.querySelector(".theme-night")!).getPropertyValue("--night").trim());
-    expect(sleepNight).toBe("#0e0c22");
-    await page.screenshot({ path: "shots/sleep-night-pinned.png", fullPage: true });
+    expect(await nightVar(page)).toBe(DAWN_BASE);
+    expect(await page.evaluate(() => !!document.querySelector(".page-body .theme-night, main .theme-night")))
+      .toBe(false);
+    await page.screenshot({ path: "shots/sleep-dawn.png", fullPage: true });
 
     // Picker: pin Night, survive a reload (pre-paint script under real CSP).
     await page.goto(`${APP}/account`, { waitUntil: "networkidle" });
