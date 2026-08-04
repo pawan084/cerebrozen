@@ -118,8 +118,12 @@ def route(text: str, risk: str) -> tuple[WidgetSpec | None, list[Suggestion]]:
             break
 
     suggestions: list[Suggestion] = []
-    if risk in {"elevated", "crisis"}:
+    if risk == "elevated":
+        # The middle tier (crisis early-returns above): urgent support leads,
+        # and a gentle real-person path rides beside it — claims-safe copy,
+        # directories not "handoff".
         suggestions.append(Suggestion(label="Urgent support", action="crisis"))
+        suggestions.append(Suggestion(label="Talk to a person", action="human_support"))
 
     # Offer complementary activities to whatever was (or wasn't) surfaced.
     kind = widget.widget_kind if widget else None

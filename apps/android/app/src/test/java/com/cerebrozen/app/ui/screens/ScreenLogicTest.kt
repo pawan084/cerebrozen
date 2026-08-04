@@ -388,6 +388,33 @@ class ScreenLogicTest {
         assertEquals(listOf("reframe", "breathe", "ground"), tryTogetherOrder(14, "thinking about work"))
     }
 
+    // ── Chat 52-point wave (2026-08-04) ──
+    @Test
+    fun phoneSpans_finds_helplines_and_ignores_breath_counts() {
+        val text = "contact Tele-MANAS mental health support (14416) or Emergency services (112) right now."
+        val found = phoneSpans(text).map { text.substring(it) }
+        assertEquals(listOf("14416", "112"), found)
+        // Breath pacing and clock times never become phone links.
+        assertEquals(emptyList<String>(), phoneSpans("try 4-7-8 breathing at 9 pm").map { "x" })
+        assertEquals(listOf("1800-599-0019"), phoneSpans("KIRAN 1800-599-0019").map { "KIRAN 1800-599-0019".substring(it) })
+    }
+
+    @Test
+    fun stripMarkdownLite_neutralizes_llm_markup() {
+        assertEquals("Take a slow breath.", stripMarkdownLite("Take a **slow** breath."))
+        assertEquals("Take a slow breath.", stripMarkdownLite("Take a *slow* breath."))
+        assertEquals("One step", stripMarkdownLite("## One step"))
+        // Arithmetic and mid-word asterisks survive.
+        assertEquals("4*5 is 20", stripMarkdownLite("4*5 is 20"))
+    }
+
+    @Test
+    fun chipLabels_localize_known_wire_labels_only() {
+        assertEquals(R.string.chip_urgent_support, chipLabelResFor("Urgent support"))
+        assertEquals(R.string.chip_human, chipLabelResFor("Talk to a person"))
+        assertNull(chipLabelResFor("Some future chip"))
+    }
+
     // ── Trusted contact (the crisis surface's one editable thing) ──
     @Test
     fun aContactIsSavableOnceThereIsSomewhereToSendIt() {

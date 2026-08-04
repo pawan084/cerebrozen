@@ -40,19 +40,34 @@ _FALLBACKS = [
     "That sounds heavy. What part of it feels loudest right now?",
     "Thank you for naming that. Want to calm the body first, or unpack the thought?",
     "I'm here with you. Could we try one slow breath together before we continue?",
+    "I hear you. If you had to put it in one sentence, what's underneath it?",
+    "That's a lot to carry. What would feel like even a small relief right now?",
+    "Okay — we don't have to solve it. What does it feel like in your body?",
 ]
 
 
 def _fallback_reply(text: str) -> str:
-    return _FALLBACKS[len(text) % len(_FALLBACKS)]
+    # Deterministic but varied: keyless regulars were cycling three lines by
+    # bare length; folding the first character spreads adjacent messages.
+    seed = len(text) + (ord(text[0]) if text else 0)
+    return _FALLBACKS[seed % len(_FALLBACKS)]
 
 
 @router.get("", response_model=list[ChatOut])
-async def history(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def history(
+    limit: int = 200,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Newest N, returned oldest-first — every open used to pull up to 200
+    # messages so the client could render twelve.
     rows = await db.scalars(
-        select(ChatMessage).where(ChatMessage.user_id == user.id).order_by(ChatMessage.created_at.asc()).limit(200)
+        select(ChatMessage)
+        .where(ChatMessage.user_id == user.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(max(1, min(limit, 200)))
     )
-    return rows.all()
+    return list(reversed(rows.all()))
 
 
 @router.post("/messages", response_model=ChatReply, status_code=201)

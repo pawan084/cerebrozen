@@ -88,7 +88,16 @@ Deferred from that audit (need decisions or hardware):
 - [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
 - [ ] **PUT /journal/{id} backend route** — entries can be read but not edited on any client (Others audit #35).
 - [ ] **You page compact density + collapsed header** (Others audit #42/#45) — owner call on the 72dp-row look before reworking PremiumNavRow/PremiumPage.
-- [ ] **Talk conversation search + companion-style whisper in Talk** (Others audit #15/#20) — needs a history surface design.
+- [ ] **Talk conversation search** (Others audit #20) — needs a history surface design.
+- [ ] **Talk voice-engine work** (chat audit 2026-08-04 #29-32/34): compact-orb ripple,
+  in-session mic mute, full-caption view, TTS voice preview, presence debounce — all
+  need VoiceEngine/CloudVoice changes, not screen work.
+- [ ] **Talk page width cap on tablets** (chat audit #5) — shared Page component change;
+  same bucket as the You density rework.
+- [ ] **Partial text selection in bubbles** (chat audit #10) — SelectionContainer
+  conflicts with the long-press copy gesture; needs a design call.
+- [ ] **CBT reframe seeded from the conversation** (chat audit #22) — route arg design.
+- [ ] **Chip-rail collection semantics + RTL bubble pass** (chat audit #47/#49) — device-only.
 - [ ] **Collapsing Sleep header** (audit #4) — design decision on scroll behavior.
 - [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
 - [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.

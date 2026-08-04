@@ -34,6 +34,13 @@ def test_route_none_still_suggests_chips():
     assert suggestions  # always offers a couple of quick replies
 
 
+def test_elevated_risk_offers_urgent_and_a_real_person():
+    _, suggestions = activities.route("it all feels like too much", "elevated")
+    actions = [s.action for s in suggestions]
+    assert actions[0] == "crisis"
+    assert "human_support" in actions
+
+
 def test_crisis_risk_adds_urgent_suggestion():
     _, suggestions = activities.route("everything is too much", "crisis")
     assert any(s.action == "crisis" for s in suggestions)
