@@ -63,6 +63,9 @@ export default function Account() {
   });
   const [contactSaved, setContactSaved] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  // Deletion and crisis-region failures are stated, never swallowed (D8/D10).
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [regionError, setRegionError] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [billingMsg, setBillingMsg] = useState("");
   const [push, setPush] = useState<PushStatus | null>(null);
@@ -125,10 +128,18 @@ export default function Account() {
   }
 
   async function saveRegion(value: string) {
+    const previous = region;
     setRegion(value);
+    setRegionError(null);
     try {
       await api("/users/me", { method: "PATCH", body: JSON.stringify({ region: value }) });
-    } catch {}
+    } catch {
+      // Register D10: this decides which emergency numbers the crisis screen
+      // shows. A silent failure left it LOOKING changed while the server kept
+      // the old region — the one place a cosmetic optimistic update is unsafe.
+      setRegion(previous);
+      setRegionError("We couldn't save that region — your previous choice is still in effect.");
+    }
   }
 
   async function saveContact(e: React.FormEvent) {
@@ -196,12 +207,22 @@ export default function Account() {
 
   async function deleteAccount() {
     if (confirmText !== "DELETE") return;
+    // The `finally` here used to clear the session and redirect even when the
+    // DELETE had failed — so a user whose data still existed was shown the
+    // signed-out screen and reasonably concluded it was gone (register D8).
+    // Deletion is the one action that must never be claimed optimistically.
     try {
       await api("/users/me", { method: "DELETE" });
-    } finally {
-      clearSession();
-      router.replace("/signin");
+    } catch (err: any) {
+      setDeleteError(
+        err?.message === "unauthorized"
+          ? "Your session expired before we could delete the account. Sign in and try again."
+          : "We couldn't delete your account just now — nothing was removed. Please try again.",
+      );
+      return;
     }
+    clearSession();
+    router.replace("/signin");
   }
 
   return (
@@ -414,6 +435,9 @@ export default function Account() {
             <option key={code} value={code}>{label}</option>
           ))}
         </select>
+        {regionError && (
+          <p className="sub" role="alert" style={{ color: "var(--danger)" }}>{regionError}</p>
+        )}
       </section>
 
       <form className="card cz-in cz-d4" onSubmit={saveContact} aria-label="Trusted contact">
@@ -517,6 +541,9 @@ export default function Account() {
         >
           Delete my account
         </button>
+        {deleteError && (
+          <p className="sub" role="alert" style={{ color: "var(--danger)" }}>{deleteError}</p>
+        )}
       </section>
       </div>
     </>

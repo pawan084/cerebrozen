@@ -240,6 +240,34 @@ test.describe("Web app (authenticated client)", () => {
     await nav(page, "Home").click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
 
+    // Pattern dashboard with AI MEMORY OFF must not sign the user out.
+    // The backend answers 403 for the consent-gated memory route, and
+    // authedFetch used to read any 403 as an expired session: visiting
+    // /patterns silently destroyed the session of every memory-off user, and
+    // buried the page's own explanation behind "unauthorized" (register D1).
+    await page.goto(`${APP}/account`, { waitUntil: "networkidle" });
+    const memorySwitch = page.getByRole("switch", { name: "AI memory" });
+    await expect(memorySwitch).toBeVisible({ timeout: 20_000 });
+    if (await memorySwitch.isChecked()) await memorySwitch.click();
+    await expect(memorySwitch).not.toBeChecked();
+
+    await page.goto(`${APP}/patterns`, { waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/patterns$/);
+    // Writing a memory with the category off is the path the backend really
+    // gates (`_memory_allowed` guards POST/PATCH/DELETE; the GET does not).
+    // It must explain itself and leave the session intact — before the fix
+    // authedFetch read that 403 as a dead session, so the user was signed out
+    // and the page's own message could never appear.
+    await page.getByLabel("Add a memory").fill("please remember this");
+    await page.getByRole("button", { name: "Remember this" }).click();
+    await expect(page.getByText(/is AI memory switched on/)).toBeVisible();
+    await expect(page).toHaveURL(/\/patterns$/);
+
+    // Back on, so the rest of the run sees the normal surface.
+    await page.goto(`${APP}/account`, { waitUntil: "networkidle" });
+    await page.getByRole("switch", { name: "AI memory" }).click();
+    await expect(page.getByRole("switch", { name: "AI memory" })).toBeChecked();
+
     // Pattern dashboard: honest empty state for a fresh account, and the
     // delete-memory two-step actually round-trips.
     await page.goto(`${APP}/patterns`, { waitUntil: "networkidle" });

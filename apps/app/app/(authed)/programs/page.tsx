@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { WhyThisWorks } from "@/components/WhyThisWorks";
 import { Icon } from "@/components/icons";
 import { JourneyPath, type DayGuide } from "@/components/JourneyPath";
-import { API_URL, api } from "@/lib/api";
+import { authedFetch, api } from "@/lib/api";
 
 // Same served catalogue the iOS/Android rails read — no hardcoded programs.
 type Item = {
@@ -70,7 +70,7 @@ export default function Programs() {
 
   useEffect(() => {
     refreshActive();
-    fetch(`${API_URL}/content?kind=program`)
+    authedFetch(`/content?kind=program`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setPrograms)
       .catch(() => setError("Couldn't load programs."));

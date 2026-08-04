@@ -98,7 +98,13 @@ export async function authedFetch(
       ...(init.headers || {}),
     },
   });
-  if (res.status === 401 || res.status === 403) {
+  // 401 means "this token is no longer good" — refresh once, then give up and
+  // sign out. 403 does NOT: the backend answers 403 for consent-gated routes
+  // (`_memory_allowed`), so treating it as a dead session silently destroyed
+  // the session of anyone visiting /patterns with AI memory switched off, and
+  // buried the page's own friendly explanation behind "unauthorized"
+  // (register D1). A 403 is now returned to the caller to interpret.
+  if (res.status === 401) {
     if (allowRetry && (await refreshSession())) return authedFetch(path, init, false);
     clearSession();
     throw new Error("unauthorized");

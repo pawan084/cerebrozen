@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { api } from "@/lib/api";
@@ -48,6 +49,7 @@ export default function Patterns() {
   const [confirming, setConfirming] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [memoryOff, setMemoryOff] = useState(false);
 
   const loadPatterns = useCallback(() => {
     api<{ patterns: Pattern[]; suppressed?: number }>("/insights/patterns")
@@ -60,8 +62,20 @@ export default function Patterns() {
 
   const loadMemories = useCallback(() => {
     api<Memory[]>("/users/me/memory")
-      .then(setMemories)
-      .catch(() => setMemories([]));
+      .then((rows) => {
+        setMemories(rows);
+        setMemoryOff(false);
+      })
+      // Defensive: the READ is not consent-gated today (only POST/PATCH/
+      // DELETE call `_memory_allowed`), so this branch is a failed load
+      // rather than a refusal. It is kept because the register's D1 fix means
+      // a 403 now reaches the caller instead of destroying the session — if
+      // the GET is ever gated too, this explains itself rather than showing
+      // "Nothing saved yet" about data the user does have.
+      .catch(() => {
+        setMemories([]);
+        setMemoryOff(true);
+      });
   }, []);
 
   const loadRecs = useCallback(() => {
@@ -251,7 +265,13 @@ export default function Patterns() {
             Your words, not its guesses. Edit or delete any of them.
           </p>
 
-          {memories === null ? (
+          {memoryOff ? (
+            <p className="sub">
+              We couldn&apos;t load your saved notes just now. If AI memory is switched off in{" "}
+              <Link href="/account">privacy settings</Link>, nothing is being remembered —
+              otherwise this is a connection problem, not an empty list.
+            </p>
+          ) : memories === null ? (
             <p className="sub">Loading…</p>
           ) : memories.length === 0 ? (
             <p className="sub">Nothing saved yet.</p>

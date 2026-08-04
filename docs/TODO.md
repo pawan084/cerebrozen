@@ -31,6 +31,21 @@
 > `model_training` gained `services/training.py` — the single gate any future
 > corpus build must pass (no pipeline exists; the seam does). Pinned in
 > `tests/test_consent_enforced.py`; hermetic suite 512 passed / 96%.
+>
+> **Wave 12 — web app cluster (register D1, D8, D10 + premium narration):**
+> `authedFetch` no longer treats **403 as a dead session** (401 still refreshes
+> once then signs out) — a consent-gated refusal now reaches the caller, so the
+> Patterns page's own "is AI memory switched on?" message can finally appear
+> instead of the user being signed out; the catalogue is fetched **as the
+> signed-in user** on library/sleep/programs, so premium narration keeps its
+> `audio_url` (the anonymous read stripped it from the very items a subscriber
+> pays for); deleting an account no longer claims success on failure (was:
+> `finally` cleared the session and redirected even when the DELETE failed);
+> the crisis-region select reverts and states the failure instead of silently
+> looking saved. Pinned in `e2e/tests/app.spec.ts`; **e2e suite 25 passed,
+> exit 0**. NOTE: register D1's claim that the GET signs users out was
+> **inaccurate** — only the write path is consent-gated; corrected in
+> `docs/audit/D-web-app.md`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

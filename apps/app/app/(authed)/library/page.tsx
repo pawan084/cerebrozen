@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { API_URL } from "@/lib/api";
+import { API_URL, authedFetch } from "@/lib/api";
 
 // Public catalogue (no auth required) — the same /content the iOS rails read.
 type Item = {
@@ -53,7 +53,12 @@ function LibraryCatalogue() {
     : undefined;
 
   useEffect(() => {
-    fetch(`${API_URL}/content`)
+    // Authenticated: /content only attaches premium `audio_url`s for a
+    // recognised paid caller (backend media.playback_url), so the anonymous
+    // fetch stripped audio from the very items a subscriber pays for
+    // (register D). authedFetch falls back to an anonymous read when there is
+    // no session, so signed-out browsing is unchanged.
+    authedFetch(`/content`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setItems)
       .catch(() => setError("Couldn't load the library."));

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, API_URL } from "@/lib/api";
+import { api, API_URL, authedFetch } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { WhyThisWorks } from "@/components/WhyThisWorks";
 
@@ -74,8 +74,10 @@ export default function Sleep() {
       setNights(l);
       if (l[0]) { setBedtime(l[0].bedtime.slice(0, 5)); setWake(l[0].wake_time.slice(0, 5)); }
     }).catch(() => {});
-    fetch(`${API_URL}/content?kind=soundscape`).then((r) => (r.ok ? r.json() : [])).then(setSoundscapes).catch(() => {});
-    fetch(`${API_URL}/content?kind=sleep`).then((r) => (r.ok ? r.json() : [])).then(setStories).catch(() => {});
+    // Authenticated so premium narration actually carries its audio_url
+    // (register D — the anonymous read stripped it for paying users).
+    authedFetch(`/content?kind=soundscape`).then((r) => (r.ok ? r.json() : [])).then(setSoundscapes).catch(() => {});
+    authedFetch(`/content?kind=sleep`).then((r) => (r.ok ? r.json() : [])).then(setStories).catch(() => {});
   }, []);
 
   function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
