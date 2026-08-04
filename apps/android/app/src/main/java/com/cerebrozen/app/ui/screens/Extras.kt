@@ -940,8 +940,8 @@ private fun PremiumSoundSegment(
     val shape = RoundedCornerShape(28.dp)
     Row(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Color(0xA61A2340))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -963,7 +963,7 @@ private fun PremiumSegmentItem(label: String, selected: Boolean, modifier: Modif
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else Color(0xFFAEB9D0))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else TextMuted)
     }
 }
 
@@ -1008,7 +1008,7 @@ private fun MixerSection() {
         ?: SoundscapeMixer.timerMinutes.takeIf { it > 0 }?.let { stringResource(R.string.common_minutes, it) }
         ?: stringResource(R.string.mixer_open_ended)
 
-    Text(stringResource(R.string.mixer_subtitle), style = MaterialTheme.typography.bodyLarge, color = Color(0xFFB7C2DA))
+    Text(stringResource(R.string.mixer_subtitle), style = MaterialTheme.typography.bodyLarge, color = TextMuted)
     MixerHeroCard(
         playing = playing,
         mixName = mixName,
@@ -1020,7 +1020,7 @@ private fun MixerSection() {
         onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
     )
 
-    Text(stringResource(R.string.mixer_presets), style = MaterialTheme.typography.titleMedium, color = Color.White)
+    Text(stringResource(R.string.mixer_presets), style = MaterialTheme.typography.titleMedium, color = TextSoft)
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1033,7 +1033,7 @@ private fun MixerSection() {
         }
     }
 
-    Text(stringResource(R.string.mixer_layers), style = MaterialTheme.typography.titleMedium, color = Color.White)
+    Text(stringResource(R.string.mixer_layers), style = MaterialTheme.typography.titleMedium, color = TextSoft)
     SoundscapeMixer.layers.forEachIndexed { index, layer ->
         val volume = SoundscapeMixer.volumes[index]
         MixerLayerCard(
@@ -1051,7 +1051,7 @@ private fun MixerSection() {
     PremiumBellCard()
     PremiumActivitySoundsCard()
     SoundscapeMixer.remainingText()?.let {
-        Text(stringResource(R.string.mixer_fades_note, it), style = MaterialTheme.typography.labelMedium, color = Color(0xFFAEB9D0))
+        Text(stringResource(R.string.mixer_fades_note, it), style = MaterialTheme.typography.labelMedium, color = TextMuted)
     }
 }
 
@@ -1151,11 +1151,11 @@ private fun MasterVolumeCard(value: Float, onValueChange: (Float) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 MixerIconWell(Icons.AutoMirrored.Outlined.VolumeUp, active = true)
                 Column {
-                    Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    Text(stringResource(R.string.mixer_all_layers), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                    Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                    Text(stringResource(R.string.mixer_all_layers), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
             }
-            Text("${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Color(0xFF64C9FF))
+            Text("${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Cyan)
         }
         PremiumMixerSlider(value, onValueChange, stringResource(R.string.mixer_master_volume))
     }
@@ -1168,12 +1168,12 @@ private fun PremiumPresetPill(selected: Boolean, label: String, onClick: () -> U
     val pressed by interaction.collectIsPressedAsState()
     Box(
         Modifier.pressScale(pressed, down = 0.94f).clip(shape)
-            .background(if (selected) Brush.linearGradient(listOf(Color(0xFF6B52E5), Color(0xFF9670F4))) else Brush.linearGradient(listOf(Color(0xA61A2340), Color(0xA61A2340))))
-            .border(1.dp, if (selected) Color(0x887A5CFF) else Color.White.copy(alpha = 0.1f), shape)
+            .background(if (selected) Brush.linearGradient(listOf(Color(0xFF6B52E5), Color(0xFF9670F4))) else Brush.linearGradient(listOf(CardFill, CardFill)))
+            .border(1.dp, if (selected) Color(0x887A5CFF) else LineStroke, shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 17.dp, vertical = 12.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else TextPrimary)
     }
 }
 
@@ -1188,11 +1188,11 @@ private fun MixerLayerCard(
     onVolume: (Float) -> Unit,
 ) {
     val active = volume > 0.02f
-    val border by animateColorAsState(if (active) Color(0x667A5CFF) else Color.White.copy(alpha = 0.09f), label = "layerBorder")
+    val border by animateColorAsState(if (active) Periwinkle.copy(alpha = 0.55f) else LineStroke, label = "layerBorder")
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xC91A2340), Color(0xA8262B4A))))
+            .background(CardFill)
             .border(1.dp, border, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1200,15 +1200,15 @@ private fun MixerLayerCard(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(icon, active)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(active, title, onToggle)
         }
         if (playing) MixerWaveform(active = true, bars = 12)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Color(0xFF4ADE80) else Color(0xFF8993AA))
-            Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Color(0xFFB18CFF))
+            Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Cyan else TextMuted)
+            Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Periwinkle)
         }
         PremiumMixerSlider(volume, onVolume, title)
     }
@@ -1219,8 +1219,8 @@ private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xC91A2340), Color(0xA8262B4A))))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
@@ -1231,11 +1231,11 @@ private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
 private fun MixerIconWell(icon: ImageVector, active: Boolean) {
     Box(
         Modifier.size(52.dp).clip(RoundedCornerShape(19.dp))
-            .background(if (active) Brush.linearGradient(listOf(Color(0x557A5CFF), Color(0x335CCBFF))) else Brush.linearGradient(listOf(Color(0x332D3651), Color(0x332D3651))))
-            .border(1.dp, if (active) Color(0x557A5CFF) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(19.dp)),
+            .background(if (active) Periwinkle.copy(alpha = 0.18f) else LineStroke.copy(alpha = 0.35f))
+            .border(1.dp, if (active) Periwinkle.copy(alpha = 0.45f) else LineStroke, RoundedCornerShape(19.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = if (active) Color(0xFFBFDFFF) else Color(0xFF818BA2), modifier = Modifier.size(25.dp))
+        Icon(icon, contentDescription = null, tint = if (active) Periwinkle else TextMuted, modifier = Modifier.size(25.dp))
     }
 }
 
@@ -1284,7 +1284,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.VolumeUp,
             contentDescription = null,
-            tint = if (value > 0.02f) Color(0xFFB9C8FF) else Color(0xFF77829E),
+            tint = if (value > 0.02f) Periwinkle else TextMuted,
             modifier = Modifier.size(20.dp),
         )
         Slider(
@@ -1353,8 +1353,8 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(CircleShape)
-                            .background(Color(0x4D2A3455))
-                            .border(1.dp, Color.White.copy(alpha = 0.07f), CircleShape),
+                            .background(LineStroke.copy(alpha = 0.55f))
+                            .border(1.dp, LineStroke, CircleShape),
                     )
                     if (fraction > 0f) {
                         Box(
@@ -1380,7 +1380,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
         Text(
             text = "$percentage%",
             style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFFDCE5FF),
+            color = TextSoft,
             textAlign = TextAlign.End,
             modifier = Modifier.size(width = 38.dp, height = 20.dp),
         )
@@ -1390,10 +1390,10 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
 @Composable
 private fun PremiumMixerSwitch(checked: Boolean, label: String, onToggle: () -> Unit) {
     val thumbX by animateDpAsState(if (checked) 24.dp else 3.dp, label = "switchThumb")
-    val track by animateColorAsState(if (checked) Color(0xFF7258EB) else Color(0xFF37415C), label = "switchTrack")
+    val track by animateColorAsState(if (checked) Color(0xFF7258EB) else LineStroke, label = "switchTrack")
     Box(
         Modifier.size(52.dp, 31.dp).clip(CircleShape).background(track)
-            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+            .border(1.dp, if (checked) Periwinkle.copy(alpha = 0.55f) else TextMuted.copy(alpha = 0.35f), CircleShape)
             .clickable(role = androidx.compose.ui.semantics.Role.Switch, onClickLabel = label, onClick = onToggle),
     ) {
         Box(
@@ -1421,14 +1421,14 @@ private fun PremiumSleepTimerCard(context: android.content.Context) {
         ) {
             MixerIconWell(Icons.Outlined.Bedtime, active = current > 0)
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                 Text(
                     if (current > 0) stringResource(R.string.common_minutes, current) else stringResource(R.string.common_off),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (current > 0) Color(0xFF64C9FF) else Color(0xFFAEB9D0),
+                    color = if (current > 0) Cyan else TextMuted,
                 )
             }
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFFB18CFF), modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 90f else 0f })
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Periwinkle, modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 90f else 0f })
         }
         if (expanded) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1450,8 +1450,8 @@ private fun PremiumBellCard() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(Icons.Outlined.NotificationsNone, bellOn)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(stringResource(R.string.mixer_bell_description), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(stringResource(R.string.mixer_bell_description), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(bellOn, stringResource(R.string.sounds_timer_bell)) {
                 bellOn = !bellOn
@@ -1471,8 +1471,8 @@ private fun PremiumActivitySoundsCard() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(Icons.Outlined.MusicNote, soundsOn)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.sounds_activity), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(stringResource(R.string.mixer_activity_description), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(stringResource(R.string.sounds_activity), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(stringResource(R.string.mixer_activity_description), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(soundsOn, stringResource(R.string.sounds_activity)) {
                 soundsOn = !soundsOn

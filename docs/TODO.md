@@ -102,6 +102,19 @@ Deferred from that audit (need decisions or hardware):
 - [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
 - [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.
 
+## Standing decision under repeated challenge: Sleep-stays-Night (4th removal, 2026-08-04)
+
+AbhiV2 commit `408b954b` removed `SLEEP_CONTEXT_ROUTES` + the `forceNight`
+mechanism + its pinning test (`sleepContextsStayNightIncludingEverythingSleepCanPush`)
+— the **fourth** removal, this time unannounced inside a commit message describing
+unrelated work. Restored a fourth time in the reconciling merge. The rule's basis
+is unchanged: a hardware finding (full-brightness player mid-wind-down), a
+cross-client contract (web pins the same surfaces in `theme.spec.ts`), and an
+explicit process note in the code: **it goes on every client in the same change,
+with the owner's sign-off recorded here — never by deleting its test.**
+→ Owner: if "appearance should be global" is the intended direction, decide it
+here and all three clients change together. Until then the contract stands.
+
 ## Open — owner decisions queued by the 2026-08-02 Android page-by-page polish (waves 1–8)
 
 The 8-wave UI/UX pass (commits `655b0cb6` → `2ad7697e`: Home, Talk, Journal, You,
