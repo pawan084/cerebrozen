@@ -1,5 +1,10 @@
 package com.cerebrozen.app.ui.screens
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Spa
 import org.json.JSONArray
 import org.json.JSONObject
 import com.cerebrozen.app.R
@@ -51,6 +56,78 @@ class SleepInsightTest {
         assertEquals(420, averageSleepMinutes(logs))
         assertEquals(null, averageSleepMinutes(emptyList()))
         assertEquals(null, averageSleepMinutes(listOf(night(null, null))))
+    }
+
+    // ── Night length preview (the fact the steppers are for) ────────
+    @Test
+    fun nightLengthMinutes_wraps_midnight_like_the_rhythm_math() {
+        assertEquals(480, nightLengthMinutes(23 * 60, 7 * 60))     // 23:00 → 07:00
+        assertEquals(450, nightLengthMinutes(30, 8 * 60))          // 00:30 → 08:00
+        assertEquals(0, nightLengthMinutes(7 * 60, 7 * 60))        // degenerate, not negative
+    }
+
+    // ── Merged data card helpers (chart axis, human dates, bed window) ─
+    @Test
+    fun dayLetterFor_maps_dates_and_degrades_on_garbage() {
+        assertEquals("S", dayLetterFor("2026-08-02"))   // Sunday
+        assertEquals("M", dayLetterFor("2026-08-03"))
+        assertEquals("·", dayLetterFor("not-a-date"))
+    }
+
+    @Test
+    fun humanDate_reads_like_a_person_and_passes_garbage_through() {
+        assertEquals("Sun 2 Aug", humanDate("2026-08-02"))
+        assertEquals("bedtime", humanDate("bedtime"))
+    }
+
+    @Test
+    fun bedtimeWindow_spans_midnight_without_splitting() {
+        val logs = listOf(night("23:00", "07:00"), night("00:10", "08:00"))
+        assertEquals(23 * 60 to 10, bedtimeWindow(logs))
+        assertEquals(null, bedtimeWindow(listOf(night(null, "07:00"))))
+    }
+
+    // ── S4: snapshot round-trip, guide glyphs, diary milestones ──────
+    @Test
+    fun sleepSnapshot_round_trips_nights_including_missing_times() {
+        val nights = listOf(
+            SleepNight("2026-08-02", 480, 4, 23 * 60, 7 * 60),
+            SleepNight("2026-08-01", 450, 3, null, null),
+        )
+        val snap = sleepSnapshotOf(org.json.JSONObject().put("enough_data", false), nights)
+        assertEquals(nights, sleepSnapshotNights(snap))
+        assertEquals(emptyList<SleepNight>(), sleepSnapshotNights(org.json.JSONObject()))
+    }
+
+    @Test
+    fun windDownGlyph_identifies_each_guide_and_declines_unknowns() {
+        assertEquals(Icons.Outlined.Bedtime, windDownGlyph("Bed is for sleep"))
+        assertEquals(Icons.Outlined.LightMode, windDownGlyph("Dim the inputs"))
+        assertEquals(Icons.Outlined.Alarm, windDownGlyph("Keep a steady wake time"))
+        assertEquals(Icons.Outlined.Spa, windDownGlyph("Slow the body first"))
+        assertEquals(null, windDownGlyph("Something served later"))
+    }
+
+    @Test
+    fun sleepMilestone_marks_the_first_night_and_the_forming_week_only() {
+        assertEquals(R.string.sleep_milestone_first, sleepMilestoneRes(1))
+        assertEquals(null, sleepMilestoneRes(2))
+        assertEquals(R.string.sleep_milestone_week, sleepMilestoneRes(7))
+        assertEquals(R.string.sleep_milestone_week, sleepMilestoneRes(9))
+        assertEquals(null, sleepMilestoneRes(10))
+        assertEquals(null, sleepMilestoneRes(0))
+    }
+
+    // ── Time-aware lead block (morning check-in vs evening wind-down) ─
+    @Test
+    fun checkInLeadsAt_hands_over_to_winddown_at_five_pm_and_back_at_four_am() {
+        assertEquals(false, checkInLeadsAt(3))    // 3am: help going down, not a survey
+        assertEquals(true, checkInLeadsAt(4))
+        assertEquals(true, checkInLeadsAt(9))
+        assertEquals(true, checkInLeadsAt(16))
+        assertEquals(false, checkInLeadsAt(17))   // evening: wind-down leads
+        assertEquals(false, checkInLeadsAt(23))
+        assertEquals(false, checkInLeadsAt(0))
     }
 
     // ── Bedtime spread (max−min, anchored so midnight doesn't split) ─

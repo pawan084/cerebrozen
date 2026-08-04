@@ -125,26 +125,36 @@ struct SleepEntry: Identifiable, Hashable, Codable {
 /// Persisted privacy/consent choices, shared by onboarding + the Privacy
 /// dashboard. One flag per data category (DPDP itemization) — the server
 /// enforces each at its read sites.
+///
+/// Every default is FALSE: a fresh install has granted nothing (matching the
+/// server's all-false model and both other clients). These defaults were true
+/// for four categories until 2026-08-03, which made `Consent()` itself a
+/// phantom grant — a fresh-device sign-in synced it to the server before any
+/// consent screen was seen, overwriting the account's real recorded choices.
 struct Consent: Hashable, Codable {
-    var moodHistory = true
-    var aiMemory = true
+    var moodHistory = false
+    var aiMemory = false
     var voiceStorage = false
     var modelTraining = false
-    var journalMemory = true
-    var sleepHistory = true
+    var journalMemory = false
+    var sleepHistory = false
 }
 
 extension Consent {
-    /// Tolerant decoding so pre-itemization stored consent keeps the user's
-    /// choices: the journal category inherits the old AI-memory umbrella.
+    /// Tolerant decoding for STORED payloads only (a blob exists ⇒ the user
+    /// went through a consent flow on some build). The journal category
+    /// inherits the old AI-memory umbrella — a choice the user really made.
+    /// The other fallbacks are FALSE: a key missing from a stored blob is a
+    /// decision never presented, and "never asked" cannot decode as "granted"
+    /// (the same missing-row-means-denied rule the server applies).
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        moodHistory = try c.decodeIfPresent(Bool.self, forKey: .moodHistory) ?? true
-        aiMemory = try c.decodeIfPresent(Bool.self, forKey: .aiMemory) ?? true
+        moodHistory = try c.decodeIfPresent(Bool.self, forKey: .moodHistory) ?? false
+        aiMemory = try c.decodeIfPresent(Bool.self, forKey: .aiMemory) ?? false
         voiceStorage = try c.decodeIfPresent(Bool.self, forKey: .voiceStorage) ?? false
         modelTraining = try c.decodeIfPresent(Bool.self, forKey: .modelTraining) ?? false
         journalMemory = try c.decodeIfPresent(Bool.self, forKey: .journalMemory) ?? aiMemory
-        sleepHistory = try c.decodeIfPresent(Bool.self, forKey: .sleepHistory) ?? true
+        sleepHistory = try c.decodeIfPresent(Bool.self, forKey: .sleepHistory) ?? false
     }
 }
 

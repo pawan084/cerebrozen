@@ -40,19 +40,34 @@ _FALLBACKS = [
     "That sounds heavy. What part of it feels loudest right now?",
     "Thank you for naming that. Want to calm the body first, or unpack the thought?",
     "I'm here with you. Could we try one slow breath together before we continue?",
+    "I hear you. If you had to put it in one sentence, what's underneath it?",
+    "That's a lot to carry. What would feel like even a small relief right now?",
+    "Okay — we don't have to solve it. What does it feel like in your body?",
 ]
 
 
 def _fallback_reply(text: str) -> str:
-    return _FALLBACKS[len(text) % len(_FALLBACKS)]
+    # Deterministic but varied: keyless regulars were cycling three lines by
+    # bare length; folding the first character spreads adjacent messages.
+    seed = len(text) + (ord(text[0]) if text else 0)
+    return _FALLBACKS[seed % len(_FALLBACKS)]
 
 
 @router.get("", response_model=list[ChatOut])
-async def history(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def history(
+    limit: int = 200,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Newest N, returned oldest-first — every open used to pull up to 200
+    # messages so the client could render twelve.
     rows = await db.scalars(
-        select(ChatMessage).where(ChatMessage.user_id == user.id).order_by(ChatMessage.created_at.asc()).limit(200)
+        select(ChatMessage)
+        .where(ChatMessage.user_id == user.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(max(1, min(limit, 200)))
     )
-    return rows.all()
+    return list(reversed(rows.all()))
 
 
 @router.post("/messages", response_model=ChatReply, status_code=201)
@@ -91,10 +106,22 @@ async def send_message(
     else:
         transcript = f"user: {payload.text}"
 
+    # The activity card is chosen from the USER's message BEFORE the reply is
+    # generated, and the model is told it exists — so it can never say "I can't
+    # start an exercise" above a working exercise card (the reference app hit
+    # exactly that contradiction and fixed it with this ordering + hint).
+    widget, suggestions = activities.route(payload.text, risk)
+
     system = _SCIENTIFIC if user.companion == "Scientific" else _CALM_GUIDE
     # Onboarding asks which language the user wants; until 2026-07-30 only
     # starter-topic generation read the answer.
     system += language.for_user(user)
+    if widget is not None:
+        system += (
+            f" A '{widget.title}' activity card appears directly under your reply; "
+            "you may point at it in at most one short sentence, and you must never "
+            "say you cannot start, play or run activities."
+        )
     reply_text = await ai.complete(system, transcript, max_tokens=200) or _fallback_reply(payload.text)
 
     if risk == "crisis":
@@ -107,6 +134,4 @@ async def send_message(
     await db.refresh(user_msg)
     await db.refresh(reply)
 
-    # Offer an inline activity (breathing, grounding, …) + quick-reply chips.
-    widget, suggestions = activities.route(payload.text, risk)
     return ChatReply(user_message=user_msg, reply=reply, widget=widget, suggestions=suggestions)

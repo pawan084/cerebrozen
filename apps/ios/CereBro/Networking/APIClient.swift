@@ -661,6 +661,13 @@ actor APIClient {
                                  "journal_memory": journalMemory, "sleep_history": sleepHistory])
     }
 
+    /// The account's recorded consent. Read so a fresh device can ADOPT the
+    /// server's truth (Privacy & Memory then shows what the account really
+    /// granted) — never the other direction.
+    func consent() async throws -> RemoteConsent {
+        try await request("/users/me/consent", method: "GET")
+    }
+
     /// Generate personalized, tappable conversation starters. Passing the
     /// selection explicitly lets onboarding preview topics before they're saved.
     func assessmentTopics(motivations: [String], goals: [String],
@@ -735,9 +742,24 @@ actor APIClient {
             }
             // `error` is slowapi's key for the IP rate limiter; without it a
             // throttled user sees only "Server error (429)".
-            let detail = (body?["detail"] as? String) ?? (body?["error"] as? String)
+            let detail = (body?["detail"] as? String)
+                ?? Self.validationMessage(from: body)
+                ?? (body?["error"] as? String)
             throw APIError.server(http.statusCode, detail ?? "")
         }
+    }
+
+    /// Pydantic validation errors (422) carry `detail` in a THIRD shape — an
+    /// ARRAY of {loc, msg, type}, with the human-written reason in `msg`
+    /// behind a "Value error, " prefix. Without this the server's own
+    /// sentence ("That doesn't look like an email address.") collapsed to
+    /// "Server error (422)". Android's `Session.raw` closed the same gap the
+    /// same day (e5697f83).
+    static func validationMessage(from body: [String: Any]?) -> String? {
+        guard let items = body?["detail"] as? [[String: Any]],
+              let msg = items.first?["msg"] as? String else { return nil }
+        let prefix = "Value error, "
+        return msg.hasPrefix(prefix) ? String(msg.dropFirst(prefix.count)) : msg
     }
 
     /// Recognise the quota 429 by its `code`, never by the status alone.
@@ -818,7 +840,17 @@ actor APIClient {
         case 401, 403:
             throw APIError.unauthorized
         default:
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
+            // Same fallback chain as `rawRequest`: string `detail`, then the
+            // pydantic array shape (the server's own validation sentence),
+            // then slowapi's `error`. This path also recognises the free-tier
+            // cap so a JSON call never renders it as a bare 429.
+            let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if http.statusCode == 429, let info = Self.freeLimit(from: body) {
+                throw APIError.freeLimit(info)
+            }
+            let detail = (body?["detail"] as? String)
+                ?? Self.validationMessage(from: body)
+                ?? (body?["error"] as? String)
             throw APIError.server(http.statusCode, detail ?? "")
         }
     }

@@ -33,6 +33,48 @@ async def test_trusted_contact_crud(auth_client):
     assert (await auth_client.get("/users/me/trusted-contact")).json() is None
 
 
+async def test_trusted_contact_value_must_match_its_method(auth_client):
+    """The one contact the product may use in someone's worst moment cannot be
+    a typo: found on-device 2026-08-03, when an adb-mangled
+    "sister%40example.com" saved without complaint and would have failed
+    silently at escalation time."""
+    # A mangled email is refused, with the reason in the response.
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Sis", "method": "email", "value": "sister%40example.com",
+        "relationship": "Sister", "notify_consent": True})
+    assert r.status_code == 422
+    assert "email" in str(r.json()["detail"]).lower()
+
+    # A non-numeric phone value is refused.
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Pat", "method": "sms", "value": "call me maybe",
+        "relationship": "Parent", "notify_consent": True})
+    assert r.status_code == 422
+
+    # An unknown method is refused (was free text up to 20 chars).
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "X", "method": "carrier-pigeon", "value": "coop 7",
+        "relationship": "", "notify_consent": False})
+    assert r.status_code == 422
+
+    # Consent to contact nobody cannot be switched on.
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Draft", "method": "email", "value": "",
+        "relationship": "", "notify_consent": True})
+    assert r.status_code == 422
+
+    # But an empty draft with consent off is fine, and valid values still save.
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Draft", "method": "email", "value": "",
+        "relationship": "", "notify_consent": False})
+    assert r.status_code == 200
+    r = await auth_client.put("/users/me/trusted-contact", json={
+        "name": "Pat", "method": "phone", "value": "+91 (555) 000-1111",
+        "relationship": "Parent", "notify_consent": True})
+    assert r.status_code == 200
+    assert r.json()["value"] == "+91 (555) 000-1111"
+
+
 async def test_crisis_escalates_to_consented_contact(auth_client):
     await auth_client.put("/users/me/trusted-contact", json={
         "name": "Sam", "method": "email", "value": "sam@example.org",

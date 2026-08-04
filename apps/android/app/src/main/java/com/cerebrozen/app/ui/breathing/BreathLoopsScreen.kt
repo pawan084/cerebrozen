@@ -34,6 +34,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.VolumeOff
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Icon
@@ -58,6 +60,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -73,6 +77,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.PrimaryButton
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
 import com.cerebrozen.app.ui.theme.CardFill
@@ -139,10 +145,12 @@ fun BreathLoopsScreen(onBack: () -> Unit) {
     val spokenPhase = position?.let { phaseLabel(it.phase.type) }
     LaunchedEffect(
         state.core.mode, position?.phaseIndex, position?.roundIndex,
-        state.core.voiceEnabled, ttsReady, resumeSignal,
+        state.core.voiceEnabled, state.core.paused, ttsReady, resumeSignal,
     ) {
         val engine = ttsHolder[0]
-        if (state.core.mode == BreathScreenMode.Active && state.core.voiceEnabled && ttsReady && position != null) {
+        if (state.core.mode == BreathScreenMode.Active && state.core.voiceEnabled &&
+            !state.core.paused && ttsReady && position != null
+        ) {
             engine?.speak(spokenPhase, TextToSpeech.QUEUE_FLUSH, null, "breath-phase")
         } else {
             engine?.stop()
@@ -275,12 +283,23 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
         animationSpec = if (reduceMotion) snap() else tween(1_200, easing = FastOutSlowInEasing),
         label = "breath-loop-glow",
     )
+    // Keyed on paused too: pausing cancels the animateTo (the ring freezes at its
+    // current sweep), and resuming continues from that value over the remaining
+    // seconds instead of snapping back to zero.
     val phaseProgress = remember { Animatable(0f) }
-    LaunchedEffect(position.phaseIndex, position.roundIndex, reduceMotion) {
-        phaseProgress.snapTo(0f)
+    LaunchedEffect(position.phaseIndex, position.roundIndex, reduceMotion, state.paused) {
+        if (state.paused) return@LaunchedEffect
+        if (phaseProgress.value >= 1f || state.remainingSeconds >= phase.seconds) phaseProgress.snapTo(0f)
         if (!reduceMotion) {
-            phaseProgress.animateTo(1f, tween(phase.seconds * 1_000, easing = LinearEasing))
+            val remainingMillis = state.remainingSeconds.coerceIn(1, phase.seconds) * 1_000
+            phaseProgress.animateTo(1f, tween(remainingMillis, easing = LinearEasing))
         }
+    }
+    LaunchedEffect(position.phaseIndex, position.roundIndex) { Haptics.tap() }
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
     }
     val ringProgress = if (reduceMotion) {
         ((phase.seconds - state.remainingSeconds).toFloat() / phase.seconds).coerceIn(0f, 1f)
@@ -317,7 +336,10 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(phaseLabel(phase.type), style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+            Text(
+                if (state.paused) stringResource(R.string.breath_paused) else phaseLabel(phase.type),
+                style = MaterialTheme.typography.displaySmall, color = TextPrimary,
+            )
             Spacer(Modifier.height(14.dp))
             Box(Modifier.fillMaxWidth().height(330.dp), contentAlignment = Alignment.Center) {
                 Box(
@@ -378,19 +400,41 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                 modifier = Modifier.padding(top = 7.dp),
             )
         }
-        Box(
-            Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(27.dp))
-                .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(27.dp))
-                .clickable(onClick = model::stop),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(stringResource(R.string.breath_stop), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(27.dp))
+                    .background(CardFill).border(1.dp, Periwinkle.copy(alpha = 0.55f), RoundedCornerShape(27.dp))
+                    .clickable(onClick = model::togglePause),
+                horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (state.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                    null, tint = TextPrimary, modifier = Modifier.size(19.dp),
+                )
+                Text(
+                    stringResource(if (state.paused) R.string.breath_resume else R.string.breath_pause),
+                    style = MaterialTheme.typography.titleMedium, color = TextPrimary,
+                )
+            }
+            Box(
+                Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(27.dp))
+                    .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(27.dp))
+                    .clickable(onClick = model::stop),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.breath_stop), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            }
         }
     }
 }
 
 @Composable
 private fun CompletionScreen(pattern: BreathPattern, model: BreathLoopsViewModel) {
+    LaunchedEffect(Unit) {
+        Celebrations.trigger()
+        Haptics.success()
+    }
     Column(
         Modifier.fillMaxSize().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -434,7 +478,7 @@ private fun HistoryRow(record: BreathingSessionRecord) {
             Text(patternName(record.pattern), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             Text(date, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        Text(stringResource(R.string.breath_history_rounds, record.rounds),
+        Text(pluralStringResource(R.plurals.breath_history_rounds, record.rounds, record.rounds),
             style = MaterialTheme.typography.labelSmall, color = Periwinkle)
     }
 }

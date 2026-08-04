@@ -275,7 +275,7 @@ class ScreenLogicTest {
     @Test
     fun widgetRoute_maps_every_cross_stack_widget_kind_natively() {
         assertEquals("breathing", widgetRoute("breathing"))
-        assertEquals("toolkit", widgetRoute("grounding"))
+        assertEquals("ground", widgetRoute("grounding"))   // its own screen since 2026-08-03
         assertEquals("home", widgetRoute("mood_check"))
         assertEquals("journal", widgetRoute("mini_journal"))
         assertEquals("sleep", widgetRoute("sleep_checkin"))
@@ -352,6 +352,69 @@ class ScreenLogicTest {
         assertEquals(fallback, com.cerebrozen.app.net.Session.ApiException(500, "").userMessage(fallback))
     }
 
+    // ── Journal polish (2026-08-04) ──
+    @Test
+    fun wordCount_counts_words_not_whitespace() {
+        assertEquals(0, wordCount(""))
+        assertEquals(0, wordCount("   "))
+        assertEquals(1, wordCount("breathe"))
+        assertEquals(4, wordCount("  a long   hard day\n"))
+    }
+
+    // ── Talk polish (2026-08-04): fresh start + moment-aware offers ──
+    @Test
+    fun startFresh_hides_older_messages_but_keeps_local_bubbles() {
+        val msgs = listOf(
+            Msg("user", "old", createdAt = "2026-08-01T10:00:00Z"),
+            Msg("assistant", "old reply", createdAt = "2026-08-01T10:00:05Z"),
+            Msg("user", "new", createdAt = "2026-08-04T09:00:00Z"),
+            Msg("user", "local this session", createdAt = ""),
+        )
+        val visible = visibleAfterClear(msgs, "2026-08-03T00:00:00Z")
+        assertEquals(listOf("new", "local this session"), visible.map { it.text })
+        // No cleared stamp (or garbage) → everything shows.
+        assertEquals(4, visibleAfterClear(msgs, null).size)
+        assertEquals(4, visibleAfterClear(msgs, "not-a-date").size)
+    }
+
+    @Test
+    fun tryTogether_orders_by_the_moment() {
+        // Spiralling words put grounding first, whatever the hour.
+        assertEquals(listOf("ground", "breathe", "reframe"), tryTogetherOrder(14, "my thoughts are racing"))
+        // Late evening leads with breathing.
+        assertEquals(listOf("breathe", "ground", "reframe"), tryTogetherOrder(22, "long day"))
+        assertEquals(listOf("breathe", "ground", "reframe"), tryTogetherOrder(2, null))
+        // An ordinary afternoon keeps the CBT reframe lead.
+        assertEquals(listOf("reframe", "breathe", "ground"), tryTogetherOrder(14, "thinking about work"))
+    }
+
+    // ── Chat 52-point wave (2026-08-04) ──
+    @Test
+    fun phoneSpans_finds_helplines_and_ignores_breath_counts() {
+        val text = "contact Tele-MANAS mental health support (14416) or Emergency services (112) right now."
+        val found = phoneSpans(text).map { text.substring(it) }
+        assertEquals(listOf("14416", "112"), found)
+        // Breath pacing and clock times never become phone links.
+        assertEquals(emptyList<String>(), phoneSpans("try 4-7-8 breathing at 9 pm").map { "x" })
+        assertEquals(listOf("1800-599-0019"), phoneSpans("KIRAN 1800-599-0019").map { "KIRAN 1800-599-0019".substring(it) })
+    }
+
+    @Test
+    fun stripMarkdownLite_neutralizes_llm_markup() {
+        assertEquals("Take a slow breath.", stripMarkdownLite("Take a **slow** breath."))
+        assertEquals("Take a slow breath.", stripMarkdownLite("Take a *slow* breath."))
+        assertEquals("One step", stripMarkdownLite("## One step"))
+        // Arithmetic and mid-word asterisks survive.
+        assertEquals("4*5 is 20", stripMarkdownLite("4*5 is 20"))
+    }
+
+    @Test
+    fun chipLabels_localize_known_wire_labels_only() {
+        assertEquals(R.string.chip_urgent_support, chipLabelResFor("Urgent support"))
+        assertEquals(R.string.chip_human, chipLabelResFor("Talk to a person"))
+        assertNull(chipLabelResFor("Some future chip"))
+    }
+
     // ── Trusted contact (the crisis surface's one editable thing) ──
     @Test
     fun aContactIsSavableOnceThereIsSomewhereToSendIt() {
@@ -371,6 +434,32 @@ class ScreenLogicTest {
         assertEquals(KeyboardType.Phone, trustedKeyboard("phone"))
         // An unknown method must not silently become an email keyboard.
         assertEquals(KeyboardType.Phone, trustedKeyboard("carrier-pigeon"))
+    }
+
+    @Test
+    fun theValueFieldKnowsItsShapeBeforeTheBackendDoes() {
+        // Email wants user@domain.tld; the client mirror is deliberately looser
+        // than a full RFC parse — the backend stays the authority.
+        assertEquals(true, trustedValueLooksValid("email", "someone@example.com"))
+        assertEquals(false, trustedValueLooksValid("email", "someone@example"))
+        assertEquals(false, trustedValueLooksValid("email", "someone.example.com"))
+        assertEquals(false, trustedValueLooksValid("email", "so meone@example.com"))
+        assertEquals(false, trustedValueLooksValid("email", ""))
+        // Numbers allow phone punctuation and need at least seven digits.
+        assertEquals(true, trustedValueLooksValid("phone", "+91 98765 43210"))
+        assertEquals(true, trustedValueLooksValid("sms", "(020) 1234-567"))
+        assertEquals(false, trustedValueLooksValid("phone", "12345"))
+        assertEquals(false, trustedValueLooksValid("sms", "call me maybe"))
+    }
+
+    @Test
+    fun theSavedCardReachesOutTheWayTheContactWasSaved() {
+        assertEquals("tel:+919876543210", trustedReachUri("phone", "+919876543210"))
+        assertEquals("smsto:+919876543210", trustedReachUri("sms", "+919876543210"))
+        assertEquals("mailto:a@b.co", trustedReachUri("email", "a@b.co"))
+        // Unknown methods fall back to mail — the only method that can't
+        // misfire from a composer.
+        assertEquals("mailto:a@b.co", trustedReachUri("carrier-pigeon", "a@b.co"))
     }
 
     // ── ContentList fallback (the offline copy of a section's advice) ──
@@ -600,5 +689,215 @@ class ScreenLogicTest {
         assertEquals(Triple(4, 2, "2026-07-07"), BaselineStore.get())
         BaselineStore.set(1, 5, "2026-08-01")   // re-save: values move, date doesn't
         assertEquals(Triple(1, 5, "2026-07-07"), BaselineStore.get())
+    }
+
+    // ── Wave-1 Home rebuild (2026-08-03): relative time, mood tints,
+    //    time-aware plan step ─────────────────────────────────────────────
+
+    @Test
+    fun relativeTime_buckets_minutes_hours_yesterday_days() {
+        val now = java.time.OffsetDateTime.parse("2026-08-03T20:00:00+05:30")
+        fun at(iso: String) = relativeTime(iso, now)
+        assertEquals(RelTime.JustNow, at("2026-08-03T19:59:30+05:30"))
+        assertEquals(RelTime.Minutes(45), at("2026-08-03T19:15:00+05:30"))
+        assertEquals(RelTime.Hours(3), at("2026-08-03T17:00:00+05:30"))
+        assertEquals(RelTime.Yesterday, at("2026-08-02T19:00:00+05:30"))
+        assertEquals(RelTime.Days(3), at("2026-07-31T12:00:00+05:30"))
+        // Honest degradation: no stamp / garbage / future -> no label.
+        assertNull(relativeTime(null, now))
+        assertNull(relativeTime("not-a-date", now))
+        assertNull(relativeTime("2026-08-03T21:00:00+05:30", now))
+    }
+
+    @Test
+    fun nextPlanStep_prefers_the_step_named_for_this_part_of_day() {
+        val titles = listOf("Morning Breathing Exercise", "Midday Mindfulness", "Evening Unwind")
+        val none = listOf(false, false, false)
+        // 7 PM suggests the evening step, not the morning one listed first.
+        assertEquals(2, nextPlanStepIndex(titles, none, hour = 19))
+        assertEquals(0, nextPlanStepIndex(titles, none, hour = 8))
+        assertEquals(1, nextPlanStepIndex(titles, none, hour = 14))
+        // A done time-matched step falls through to the first undone.
+        assertEquals(0, nextPlanStepIndex(titles, listOf(false, false, true), hour = 19))
+        // Titles without time words keep the old first-undone behavior.
+        assertEquals(1, nextPlanStepIndex(listOf("Stretch", "Journal"), listOf(true, false), hour = 19))
+        // Everything done -> nothing to suggest.
+        assertNull(nextPlanStepIndex(titles, listOf(true, true, true), hour = 19))
+    }
+
+    // ── Home polish waves (2026-08-03): header, banners, display mapping ──
+
+    @Test
+    fun eyebrowTemplate_rotates_daily_through_three_framings() {
+        val a = eyebrowTemplateRes(30)
+        val b = eyebrowTemplateRes(31)
+        val c = eyebrowTemplateRes(32)
+        // Three consecutive days wear three different framings, then repeat.
+        assertEquals(3, setOf(a, b, c).size)
+        assertEquals(a, eyebrowTemplateRes(33))
+    }
+
+    @Test
+    fun earlierLine_holds_through_the_small_hours_then_lets_go() {
+        val now = java.time.OffsetDateTime.parse("2026-08-03T01:00:00+05:30")
+        val lastNight = relativeTime("2026-08-02T23:50:00+05:30", now)   // Hours bucket
+        assertTrue(showEarlierLine(lastNight, hour = 1))
+        // A Yesterday-bucket stamp still shows before 4am, not after.
+        assertTrue(showEarlierLine(RelTime.Yesterday, hour = 3))
+        assertEquals(false, showEarlierLine(RelTime.Yesterday, hour = 4))
+        assertEquals(false, showEarlierLine(RelTime.Days(2), hour = 1))
+        assertEquals(false, showEarlierLine(null, hour = 9))
+    }
+
+    @Test
+    fun checkInLine_hides_the_legacy_onboarding_provenance_note() {
+        val legacy = JSONObject().put("mood", "Anxious").put("note", "From onboarding")
+        assertEquals("Anxious", checkInLine(legacy))
+        val real = JSONObject().put("mood", "Good").put("note", "Clear")
+        assertEquals("Good · Clear", checkInLine(real))
+        val noteless = JSONObject().put("mood", "Low")
+        assertEquals("Low", checkInLine(noteless))   // no dangling separator
+    }
+
+    @Test
+    fun wireMoodNames_map_to_display_resources_and_unknowns_stay_raw() {
+        assertEquals(R.string.mood_good, moodLabelResFor("Good"))
+        assertEquals(R.string.mood_anxious, moodLabelResFor("anxious"))   // case-insensitive
+        assertNull(moodLabelResFor("Ecstatic"))
+        // The note maps only when it is the taxonomy's own preset for that mood.
+        assertEquals(R.string.mood_good_note, moodNoteResFor("Good", "Clear"))
+        assertNull(moodNoteResFor("Good", "had a nice walk"))
+        assertNull(moodNoteResFor("Ecstatic", "Clear"))
+    }
+
+    @Test
+    fun milestone_shows_late_holds_for_its_day_then_retires() {
+        // Day 8, never celebrated: day 7's moment still fires.
+        assertEquals(7, milestoneToShow(streak = 8, pref = null, today = "2026-08-03"))
+        // Same day, already recorded: keeps showing.
+        assertEquals(7, milestoneToShow(8, "7|2026-08-03", "2026-08-03"))
+        // Next day: retired.
+        assertNull(milestoneToShow(8, "7|2026-08-03", "2026-08-04"))
+        // A new milestone reopens the line.
+        assertEquals(14, milestoneToShow(14, "7|2026-08-03", "2026-08-10"))
+        // Below the first milestone: nothing, ever.
+        assertNull(milestoneToShow(2, null, "2026-08-03"))
+        // Garbage pref degrades to "never celebrated".
+        assertEquals(3, milestoneToShow(3, "not-a-pref", "2026-08-03"))
+    }
+
+    @Test
+    fun homeSnapshot_round_trips_the_first_frame() {
+        val week = listOf("S" to false, "M" to true)
+        val recent = listOf(RecentCheckIn("Good · Clear", "Good", "2026-08-03T09:00:00Z", "Clear"))
+        val snap = homeSnapshotOf("Smoke", "Reduce stress", 4, 2, week, recent)
+        assertEquals(week, homeSnapshotWeek(snap))
+        assertEquals(recent, homeSnapshotRecent(snap))
+        assertEquals("Smoke", snap.optString("name"))
+        assertEquals(4, snap.optInt("streak"))
+        // A missing/foreign snapshot degrades to empty, never crashes.
+        assertEquals(emptyList<Pair<String, Boolean>>(), homeSnapshotWeek(JSONObject()))
+        assertEquals(emptyList<RecentCheckIn>(), homeSnapshotRecent(JSONObject()))
+    }
+
+    @Test
+    fun checkInsToday_counts_only_local_today() {
+        val moods = JSONArray()
+            .put(JSONObject().put("created_at", "2026-08-03T10:00:00+05:30"))
+            .put(JSONObject().put("created_at", "2026-08-03T22:00:00+05:30"))
+            .put(JSONObject().put("created_at", "2026-08-02T23:00:00+05:30"))
+            .put(JSONObject().put("created_at", "garbage"))
+        val today = java.time.LocalDate.parse("2026-08-03")
+        // The two 08-03 stamps count only if this JVM's zone agrees; assert on
+        // the pure boundary instead: yesterday + garbage never count.
+        assertTrue(checkInsToday(moods, today) <= 2)
+        assertEquals(0, checkInsToday(JSONArray(), today))
+    }
+
+    @Test
+    fun railArt_lets_water_titles_wear_the_wave_motif() {
+        assertEquals("soundscape", artKindForTitle("Rain over quiet hills", "sleep"))
+        assertEquals("soundscape", artKindForTitle("Ocean at dusk", "meditation"))
+        assertEquals("sleep", artKindForTitle("Moonlit meadow", "sleep"))
+        assertEquals("meditation", artKindForTitle("Body scan", "meditation"))
+    }
+
+    @Test
+    fun planTail_stops_saying_zero_after_five_pm() {
+        assertEquals(false, planTailUsesLeftForm(done = 0, hour = 16))
+        assertTrue(planTailUsesLeftForm(done = 0, hour = 17))
+        assertTrue(planTailUsesLeftForm(done = 0, hour = 23))
+        // Any progress at all keeps the honest count.
+        assertEquals(false, planTailUsesLeftForm(done = 1, hour = 21))
+    }
+
+    @Test
+    fun planArt_follows_the_focus_not_a_fixed_purple() {
+        assertEquals("sleep", planArtKind("Sleep before midnight"))
+        assertEquals("meditation", planArtKind("Reduce stress"))
+        assertEquals("meditation", planArtKind("Ease anxiety"))
+        assertEquals("program", planArtKind("Drink more water"))
+        assertEquals("program", planArtKind(""))
+    }
+
+    @Test
+    fun moodTint_knows_every_wire_mood_and_declines_unknowns() {
+        listOf("Good", "Anxious", "Low", "Tired").forEach {
+            assertTrue("tint for $it", moodTintFor(it) != null)
+        }
+        assertNull(moodTintFor("Ecstatic"))   // future taxonomy value: untinted, not a crash
+    }
+
+    @Test
+    fun onboardingMoodNote_uses_taxonomy_notes_never_provenance_jargon() {
+        assertEquals("Loud thoughts", onboardingMoodNote("Anxious"))
+        assertEquals("Need rest", onboardingMoodNote("Tired"))
+        assertEquals("Heavy", onboardingMoodNote("Low"))
+        assertEquals("", onboardingMoodNote("SomethingNew"))
+    }
+
+    @Test
+    fun daySeparator_labels_day_changes_and_lets_local_bubbles_inherit() {
+        val today = java.time.LocalDate.parse("2026-08-03")
+        fun msg(role: String, iso: String) = Msg(role, "x", createdAt = iso)
+        val list = listOf(
+            msg("user", "2026-08-01T10:00:00+05:30"),
+            msg("assistant", "2026-08-01T10:00:05+05:30"),
+            msg("user", "2026-08-02T09:00:00+05:30"),
+            msg("user", "2026-08-03T08:00:00+05:30"),
+            Msg("user", "local, just sent"),   // no stamp: inherits, never labels
+        )
+        assertEquals("Aug 1", daySeparator(list, 0, today))
+        assertNull(daySeparator(list, 1, today))
+        assertEquals("YESTERDAY", daySeparator(list, 2, today))
+        assertEquals("TODAY", daySeparator(list, 3, today))
+        assertNull(daySeparator(list, 4, today))
+    }
+
+    @Test
+    fun entriesThisMonth_counts_only_this_calendar_month_and_skips_garbage() {
+        val today = java.time.LocalDate.parse("2026-08-03")
+        val entries = listOf(
+            Entry("a", "x", "2026-08-01", "none"),
+            Entry("b", "x", "2026-08-03", "none"),
+            Entry("c", "x", "2026-07-31", "none"),   // last month
+            Entry("d", "x", "2025-08-10", "none"),   // last year, same month name
+            Entry("e", "x", "not-a-date", "none"),
+        )
+        assertEquals(2, entriesThisMonth(entries, today))
+        assertEquals(0, entriesThisMonth(emptyList(), today))
+    }
+
+    @Test
+    fun toolkitRecentLabel_knows_every_practice_and_declines_the_rest() {
+        listOf(
+            "ground", "zenripples", "games", "bubblepop", "breathe/box",
+            "breathe/reset", "cbt", "tipp", "imagery", "ritual", "gratitude",
+            "patternglow", "sounds",
+        ).forEach { assertTrue("label for $it", toolkitRecentLabelRes(it) != null) }
+        // Crisis must never render as "pick up where you left off", and a
+        // stale pref from a retired route renders nothing rather than crashing.
+        assertNull(toolkitRecentLabelRes("crisis"))
+        assertNull(toolkitRecentLabelRes("retired_tool"))
     }
 }

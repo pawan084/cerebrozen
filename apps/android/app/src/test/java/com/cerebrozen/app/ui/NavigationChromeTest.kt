@@ -29,4 +29,5 @@ class NavigationChromeTest {
         assertFalse(navVisible("player", imeOpen = false))
         assertFalse(navVisible("player", imeOpen = true))
     }
+
 }

@@ -55,6 +55,73 @@
   governs server-side memory). SleepScreen states the boundary next to the prefill button
   (`sleep_hc_boundary_hint`).
 
+## Done — 2026-08-03 Android Home deep polish (58-point audit, 4 commits)
+
+`03806ead` → `08699a49`: header (rotating goal eyebrow, Library search pill,
+avatar shortcut, small-hours continuity, once-per-session rise, status scrim),
+banners (eased entrance/exit, offline "Send now" drain, wind-down copy+wave
+medallion), check-in (earlier-mood ring, say-more bridge, 8s settle, undo
+feedback, merged semantics, tap-race guard), plan hero (focus-keyed art,
+1-line subtitle, evening "steps still open tonight", next-step deep link,
+START chip, per-step progress bar, skeleton), rail (tap plays the item →
+player, title-keyed wave art, play pill, kind meta, skeleton), doors (icons,
+"Weekly insights" rename, tiered copy, toolkit recents subtitle, state-aware
+order), presence (folded header, 18dp dots, today halo, LAST 7 DAYS eyebrow,
+tappable, late-milestone catch-up), recents (localized display copy, row taps,
+time dedup, "+N more today"), cached-first snapshot paint (verified offline),
+themed refresh indicator. Point 15 (fifth mood) queued below.
+
+## Done — 2026-08-03/04 Android Sleep deep polish (56-point audit, 3 commits)
+
+`b8b5bda5` → S4: live header subtitle + CBT-I chip + moon shortcut + scrim;
+honest hero (no fake duration, Play↔Pause state, plain TONIGHT, 220dp); check-in
+(evening framing, settle line + Edit, duration preview, upsert honesty, quiet
+celebration gate, unclamped HC consent, chip bleed/haptics/semantics, time
+pills, press-repeat steppers, save hint); merged "Your sleep" card (chart axis +
+quality tint + tap-a-bar, humanized editable diary via upsert, bedtime window,
+empty-state action, milestone lines); night-aware door order + enrolled
+Programs copy; sounds tap→player + All-sounds link + Sleep-timer row; guide
+rows honestly dressed (muted meta + per-guide glyphs); pull-to-refresh +
+cached-first snapshot + parallel reload + 640dp max-width.
+
+Deferred from that audit (need decisions or hardware):
+- [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
+- [ ] **PUT /journal/{id} backend route** — entries can be read but not edited on any client (Others audit #35).
+- [ ] **You page compact density + collapsed header** (Others audit #42/#45) — owner call on the 72dp-row look before reworking PremiumNavRow/PremiumPage.
+- [ ] **Talk conversation search** (Others audit #20) — needs a history surface design.
+- [ ] **Talk voice-engine work** (chat audit 2026-08-04 #29-32/34): compact-orb ripple,
+  in-session mic mute, full-caption view, TTS voice preview, presence debounce — all
+  need VoiceEngine/CloudVoice changes, not screen work.
+- [ ] **Talk page width cap on tablets** (chat audit #5) — shared Page component change;
+  same bucket as the You density rework.
+- [ ] **Partial text selection in bubbles** (chat audit #10) — SelectionContainer
+  conflicts with the long-press copy gesture; needs a design call.
+- [ ] **CBT reframe seeded from the conversation** (chat audit #22) — route arg design.
+- [ ] **Chip-rail collection semantics + RTL bubble pass** (chat audit #47/#49) — device-only.
+- [ ] **Collapsing Sleep header** (audit #4) — design decision on scroll behavior.
+- [ ] **Dawn→Night crossfade on tab entry** (audit #52) — needs a theme-layer transition, not screen work.
+- [ ] **TalkBack traversal pass for the time-aware order** (audit #54) — device-only.
+
+## Open — owner decisions queued by the 2026-08-02 Android page-by-page polish (waves 1–8)
+
+The 8-wave UI/UX pass (commits `655b0cb6` → `2ad7697e`: Home, Talk, Journal, You,
+Toolkit + GroundingScreen, Breath Loops pause/partial-credit, Sleep time-aware
+layout, Trusted-contact field validation + reach actions) implemented the
+mechanical audit points and deliberately queued these for the owner:
+
+- [ ] **4 vs 5 moods on Home** — the check-in rail shows 4; taxonomy has 5 (cross-stack contract).
+- [ ] **Merge Trends / Insights / Patterns doors on You** — three analytics doors overlap; one hub?
+- [ ] **Crisis screen always-dark** — force Night on the crisis surface regardless of theme?
+- [ ] **Configurable breathing rounds** — Breath Loops rounds are fixed per pattern today.
+- [ ] **Home search scope** — what the Search door should actually index.
+- [ ] **Journal voice entry** — dictation into entries (permissions + privacy copy needed).
+- [ ] **Premium door placement** — the sheen row sits standalone on You; keep or move.
+- [ ] **Trusted-contact "what gets sent" copy** — show the escalation message body verbatim
+  before consent. (The consent switch stays default-OFF — decided 2026-07-13, unchanged.)
+- Device-only checks outstanding: haptic feel (`Haptics.tap` on breath phase change,
+  `success` on completion), TTS voice-cue quality, and a TalkBack pass — the emulator rig
+  can't judge these.
+
 ## Open — redesign follow-ups (from docs/REDESIGN.md, Phases 1–2 shipped 2026-07-12)
 
 - [x] **Dawn light theme** (REDESIGN §4.1 Phase 2 remainder) — shipped 2026-07-12 without a
@@ -1011,6 +1078,68 @@ components, then fixed the findings (compiles clean via the AS-bundled JDK 21;
   settle-in) already existed on iOS at parity-or-better, so nothing else ported.
 
 ## Open — code/product work
+
+### iOS world-class pass (2026-08-03 — STATIC ONLY, Windows host; needs one
+### macOS `xcodebuild test` before shipping)
+- [x] **iOS was the phantom-grant client.** `Consent()` defaulted four
+  categories true, and RootView pushed `state.consent` to the server on every
+  launch — so a returning user signing in on a fresh iPhone had their real
+  recorded choices OVERWRITTEN by defaults nobody chose (the funnel's
+  all-off reset only runs if the consent step is reached; sign-in skips it).
+  Fixed with the exact guard the assessment push has always had:
+  `hasConsentChoice` (set by passing the consent step or moving a Privacy
+  switch), defaults all-false, decoder missing-key = not granted (journal
+  keeps its umbrella inheritance), and a new `GET /users/me/consent` adoption
+  on connect so a fresh device mirrors the account instead of the reverse.
+  Pinned in ConsentAndErrorsTest; the funnel UITest already asserted
+  "must not be pre-ticked".
+- [x] **Pydantic-422 sentences now surface on iOS too** — both APIClient
+  status-handling paths parse the array `detail` shape (and the JSON path
+  now recognises the free-tier cap). Same fix as Android e5697f83, pinned in
+  ConsentAndErrorsTest.
+- Checked, clean: breathing presets (box 4-4-4-4 / color 4-2-6 / reset 4-6,
+  RitualsTest pins the 4-7-8 rejection), crisis directory Tele-MANAS-first,
+  claims/prices gates green over Swift copy, reminder hour is a real local
+  notification.
+- Respected, not "fixed": **Sleep does NOT pin Night on iOS** — a recorded
+  2026-07-28 decision with a real technical argument (global-static tokens;
+  subtree pinning needs the Environment-palette refactor). That refactor is
+  the honest fix and stays open; it is also what would let iOS rejoin the
+  cross-client pin web/Android hold.
+- [ ] **macOS verification owed:** `xcodebuild test` (unit + UITests) on the
+  consent-guard changes before any store build; the funnel walk and a
+  fresh-device sign-in walk are the two flows to exercise.
+
+### 2026-08-03 pull review: the craft pass (ad163877), reconciled
+The drop is genuinely good (aurora depth field, BreathVoice on-device phase
+narration over the ambient bed, trusted-contact clarity, premium framing on
+six screens, Sleep literals → themed tokens) and is kept whole — EXCEPT its
+last line: "Appearance also becomes global: Sleep and the routes it pushes
+now follow the System/Night/Dawn choice instead of being pinned Night."
+That reverts the Sleep-stays-Night contract for the THIRD time, and this
+time the pinning test was deleted rather than argued with. Restored: the
+route set, the forceNight line, and the test — with comments stating the
+hardware history and the cross-client stakes (web's theme.spec.ts pins the
+same surfaces; the drop made the two clients contradict each other the same
+afternoon both suites were green).
+- [ ] **Owner call, recorded here on purpose:** if Sleep-follows-appearance
+  is genuinely wanted, it must ship on web + iOS + Android in one change,
+  with the e2e pins updated — not by one client deleting its test. Until
+  then the pin stands on all clients.
+- [x] **Trusted-contact values are validated against their method** (found
+  while emulator-testing the drop's clarity card: an adb-mangled
+  "sister%40example.com" saved fine and would have failed silently at
+  escalation). method is now a strict enum; email values must parse as
+  email, sms/phone as ≥7-digit numbers; consent cannot be switched on over
+  an empty value. Reads are deliberately unvalidated so historical rows
+  stay visible — the clarity card shows the typo, the validator prevents
+  the next one. Pinned in test_escalation.py.
+- [x] Follow-up nit FIXED (e5697f83): Android now surfaces the server's 422
+  sentence. The bug was two layers deep in Session.raw — pydantic's array
+  `detail` shape was unparsed, and org.json's optString was serializing it
+  to raw JSON (the exact failure the code's own comment warned about for
+  objects). Fixed at the Session layer, so all 19 userMessage call sites
+  benefit; pinned in SessionTest.
 
 ### Web 100-point improvement run (2026-08-03, autonomous waves)
 The full list, per-item status, and what stays owner-blocked live in

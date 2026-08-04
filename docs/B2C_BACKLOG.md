@@ -9,6 +9,28 @@
 > Companions: [PRD.md](PRD.md) (what ships today, with honest status),
 > [ARCHITECTURE.md](ARCHITECTURE.md) (cross-stack contracts), [TODO.md](TODO.md).
 
+## 0.1 Harvested 2026-08-04 (chat deep-comparison — see the Talk audit)
+
+Adopted from the sibling's Oracle chat, on our contracts:
+- **Card-before-reply + no-contradiction hint** (`chat.py` — widget chosen from the
+  user's message before generation; the model is told the card exists).
+- **Grade-analogue crisis narrowing** (`activities.route`: crisis → no activity
+  widget, chips reduce to Urgent support + Breathe) and **agent write-suppression**
+  (`agent/tools.py::write_suppressed` via the `current_risk` contextvar — read-only
+  tools during elevated/crisis turns; reference clinical finding C1).
+- **Resilient send** (Android Talk: Oracle SSE failure auto-falls back to the
+  deterministic path with the same words).
+- **Presence + memory honesty lines** (persona · state; "Memory off · in the
+  moment" ↔ `ai_memory` consent) and a **today's-mood opener chip**.
+
+Still open from that comparison (their design, our fit TBD):
+- Ambient-fragment gate + idle watchdog — only relevant if/when we adopt realtime
+  (LiveKit-style) voice; their `voice_agent/worker.py` is the reference.
+- LLM conversation summaries ("what shifted", not persisted) feeding Save-to-journal.
+- Multi-conversation history (their history→thread deep-link bug: pin the param).
+- Deliberately NOT adopted: points/leaderboard framing, always-live auto-connect,
+  uncapped chat, memory without a consent gate, dropping the disclosure pill.
+
 ## 0. What this doc does and does not claim
 
 **Does:** list features that (a) make sense for a B2C-only product, (b) do not already

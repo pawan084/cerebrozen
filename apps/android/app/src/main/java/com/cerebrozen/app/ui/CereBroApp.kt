@@ -69,6 +69,7 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.GroundingScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
@@ -314,8 +315,7 @@ private fun BottomTabItem(
  * instead a full-screen wash of the NEW theme's backdrop appears the instant
  * the preference flips and fades away over 350ms — the re-tokened screen
  * emerges from a calm solid, never a hard cut. Keyed on the *preference*-
- * resolved theme only (Appearance choice / system dark), deliberately ignoring
- * the Sleep tab's forceNight flips, which keep their existing nav cross-fade.
+ * resolved theme (Appearance choice / system dark).
  * Reduce Motion: no scrim — the honest instant snap. */
 @Composable
 private fun ThemeGlideScrim() {
@@ -346,12 +346,8 @@ private fun ThemeGlideScrim() {
 /** Keeps the status/navigation-bar icon appearance in step with the theme:
  * light icons over Night, dark icons over Dawn.
  *
- * **Call this AFTER the frame's `AppTheme.forceNight` decision.** It reads the
- * theme during composition, so a call placed above the assignment sees the
- * previous value. Found on a physical device: this used to sit at the top of
- * [CereBroApp], above `forceNight = true`, and painted near-black clock and
- * status icons over the deep-indigo Night splash for its full 1.1s — the very
- * first frame of the app, on any phone whose system theme is light.
+ * It reads the resolved appearance during composition so the icon contrast
+ * changes together with the selected theme.
  */
 @Composable
 private fun SyncSystemBarIcons() {
@@ -397,8 +393,8 @@ fun CereBroApp() {
     // A brief branded splash on cold launch — always Night (brand moment).
     // Reduce Motion gets the settled frame instantly, so holding it for the full
     // animation length would just be a longer dead screen: shorten the hold too.
-    // Clear route overrides before early-returning into splash/auth. This also
-    // prevents a Sleep-route forceNight value leaking through after sign-out.
+    // Production screens follow the selected appearance. Clear the internal
+    // preview/test override before any early return.
     AppTheme.forceNight = false
     val splashReduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     var showSplash by remember { mutableStateOf(true) }
@@ -455,9 +451,6 @@ fun CereBroApp() {
     // and reclaims the slot, instead of keeping an empty one.
     val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     val showBottomBar = navVisible(current, imeOpen)
-    // Appearance is global: Sleep and every screen it opens respect the same
-    // System/Night/Dawn choice as the rest of the app. The override was already
-    // cleared above, so a previous route cannot leak a dark palette into You.
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).
@@ -546,6 +539,8 @@ fun CereBroApp() {
             composable("talk/live") { TalkScreen(onOpen = open) }
             composable("talk/chat") { TalkScreen(onOpen = open) }
             composable(Tab.Journal.route) { JournalScreen() }
+            // The Home check-in's "Say more" bridge lands in the composer, not the hub.
+            composable("journal/new") { JournalScreen(startInEntry = true) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
             composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back) }
@@ -598,6 +593,7 @@ fun CereBroApp() {
             composable("ritual") { RitualBuilderScreen(onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
             composable("patternglow") { PatternGlowScreen(onBack = back) }
+            composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
             composable("baseline") { BaselineScreen(onBack = back) }

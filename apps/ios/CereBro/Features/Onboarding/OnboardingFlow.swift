@@ -318,7 +318,12 @@ private struct ConsentScreen: View {
     var body: some View {
         StepScaffold(eyebrow: "Privacy choices", title: notice.title,
                      caption: notice.caption,
-                     progress: 0.88, onContinue: onContinue, onBack: onBack) {
+                     progress: 0.88,
+                     // Continuing past this screen IS the consent decision —
+                     // all-off included. The flag is what lets RootView sync
+                     // consent at all (it must never push defaults nobody saw).
+                     onContinue: { state.hasConsentChoice = true; onContinue() },
+                     onBack: onBack) {
             HStack { NoticeLanguageMenu(code: $noticeLang); Spacer() }
             ListRow(title: remembering ? notice.recommendOn : notice.recommendOff,
                     subtitle: remembering ? notice.recommendOnSub : notice.recommendOffSub,

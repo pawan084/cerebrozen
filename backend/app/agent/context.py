@@ -21,3 +21,8 @@ current_user_id: contextvars.ContextVar[uuid.UUID] = contextvars.ContextVar("cur
 current_thread_id: contextvars.ContextVar[str] = contextvars.ContextVar("current_thread_id")
 # Inline activity widgets emitted by tools during a run; drained by the route.
 emitted_widgets: contextvars.ContextVar[list[dict[str, Any]]] = contextvars.ContextVar("emitted_widgets")
+# The safety-scan risk level of the user turn driving this run ("none" when the
+# turn carried no user text). Write tools consult it: during an elevated/crisis
+# turn the agent runs read-only, so a "Shall I log this?" confirm card can
+# never interleave with crisis support (reference clinical-safety finding C1).
+current_risk: contextvars.ContextVar[str] = contextvars.ContextVar("current_risk", default="none")

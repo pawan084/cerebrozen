@@ -57,6 +57,7 @@ final class AppState: ObservableObject {
         static let journalLock = "journalLocked"
         static let toolSound = "toolSoundOn"
         static let hasAssessment = "hasAssessment"
+        static let hasConsentChoice = "hasConsentChoice"
         static let favSleep = "favoriteSleep"
         static let crisisRegion = "crisisRegion"
         static let lastMilestone = "lastStreakMilestone"
@@ -109,6 +110,13 @@ final class AppState: ObservableObject {
     /// for a returning sign-in, adopted from the server). Guards the profile
     /// push so app defaults never overwrite a real server-side selection.
     @Published var hasAssessment: Bool     { didSet { UserDefaults.standard.set(hasAssessment, forKey: Key.hasAssessment) } }
+    /// True once the user has made a consent decision ON THIS DEVICE (passed
+    /// the onboarding consent step, or moved a switch in Privacy & Memory).
+    /// The same guard `hasAssessment` gives the profile push: without it, a
+    /// fresh-device sign-in synced `Consent()`'s in-memory defaults to the
+    /// server before any consent screen was seen — overwriting the account's
+    /// real recorded choices with values nobody chose here.
+    @Published var hasConsentChoice: Bool  { didSet { UserDefaults.standard.set(hasConsentChoice, forKey: Key.hasConsentChoice) } }
     /// Favorited sleep stories/sounds, keyed by their stable title.
     @Published private(set) var favoriteSleep: Set<String> { didSet { Self.save(Array(favoriteSleep), Key.favSleep) } }
     /// Sleep diary — one entry per wake-up morning, newest first (local-first;
@@ -150,7 +158,7 @@ final class AppState: ObservableObject {
         if seedDemo {
             [Key.journal, Key.chat, Key.moods, Key.steps, Key.consent,
              Key.goals, Key.motivations, Key.language, Key.companion, Key.activeDays,
-             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.favSleep, Key.sleep, Key.hkSleep, Key.crisisRegion, Key.lastMilestone,
+             Key.journalLock, Key.toolSound, Key.hasAssessment, Key.hasConsentChoice, Key.favSleep, Key.sleep, Key.hkSleep, Key.crisisRegion, Key.lastMilestone,
              Key.reminderOn, Key.reminderHour,
              Key.baselineStress, Key.baselineSleep, Key.baselineDate, Key.ageConfirmed,
              Key.usageStats,
@@ -184,6 +192,7 @@ final class AppState: ObservableObject {
         journalLocked  = UserDefaults.standard.bool(forKey: Key.journalLock)
         toolSoundOn    = UserDefaults.standard.object(forKey: Key.toolSound) as? Bool ?? true
         hasAssessment  = UserDefaults.standard.bool(forKey: Key.hasAssessment)
+        hasConsentChoice = UserDefaults.standard.bool(forKey: Key.hasConsentChoice)
         // Trim on load: migrates favorites saved before catalogue titles were trimmed.
         favoriteSleep  = Set((Self.load([String].self, Key.favSleep) ?? [])
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
@@ -228,6 +237,7 @@ final class AppState: ObservableObject {
         journalLocked = false
         toolSoundOn = true
         hasAssessment = false
+        hasConsentChoice = false
         favoriteSleep = []
         sleepEntries = []
         healthKitSleepEnabled = false

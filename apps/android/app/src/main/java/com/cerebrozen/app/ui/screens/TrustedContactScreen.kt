@@ -17,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,6 +50,42 @@ internal fun trustedKeyboard(method: String): KeyboardType =
  * place. Pure. */
 internal fun trustedContactReady(value: String): Boolean = value.trim().isNotBlank()
 
+/** Client-side mirror of the backend's method-aware validation: an email needs
+ * a user@domain.tld shape; sms/phone need only phone punctuation and at least
+ * seven digits. Catches the obvious slip before a round-trip and lets the form
+ * say which FIELD is wrong instead of surfacing a whole-form 422 afterwards.
+ * The backend stays the authority. Pure. */
+internal fun trustedValueLooksValid(method: String, value: String): Boolean {
+    val v = value.trim()
+    if (v.isBlank()) return false
+    return if (method == "email") {
+        Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").matches(v)
+    } else {
+        v.all { it.isDigit() || it in "+ ()-" } && v.count { it.isDigit() } >= 7
+    }
+}
+
+/** Which inline error fits the method — email-shaped or number-shaped. Pure. */
+@androidx.annotation.StringRes
+internal fun trustedValueErrorRes(method: String): Int =
+    if (method == "email") R.string.trusted_value_invalid_email else R.string.trusted_value_invalid_number
+
+/** The way to actually reach the saved person, as a URI the system resolves:
+ * dialer for phone, SMS composer for sms, mail composer for email. Pure. */
+internal fun trustedReachUri(method: String, value: String): String = when (method) {
+    "phone" -> "tel:$value"
+    "sms" -> "smsto:$value"
+    else -> "mailto:$value"
+}
+
+/** The action label for the saved-contact card, matched to the method. Pure. */
+@androidx.annotation.StringRes
+internal fun trustedReachLabelRes(method: String): Int = when (method) {
+    "phone" -> R.string.trusted_reach_phone
+    "sms" -> R.string.trusted_reach_sms
+    else -> R.string.trusted_reach_email
+}
+
 /**
  * The person CereBro may reach out to if a crisis is detected.
  *
@@ -76,11 +113,13 @@ fun TrustedContactScreen(onBack: () -> Unit) {
     var loaded by remember { mutableStateOf(false) }
     var hasSavedContact by remember { mutableStateOf(false) }
     var savedName by remember { mutableStateOf("") }
+    var savedMethod by remember { mutableStateOf("email") }
     var savedValue by remember { mutableStateOf("") }
     var savedConsent by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val savedMsg = stringResource(R.string.trusted_saved)
     val removedMsg = stringResource(R.string.trusted_removed)
     val failedMsg = stringResource(R.string.trusted_failed)
@@ -94,6 +133,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                 value = tc.optString("value")
                 consent = tc.optBoolean("notify_consent")
                 savedName = name
+                savedMethod = method
                 savedValue = value
                 savedConsent = consent
             }
@@ -116,6 +156,20 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = if (savedConsent) Ok else TextMuted,
                 )
+                // Reaching out yourself beats waiting for an escalation: the
+                // saved card carries the direct action — dialer, SMS or mail
+                // composer, matched to the saved method. Composer only; nothing
+                // is sent or dialed without the user finishing it there.
+                TextButton(onClick = {
+                    runCatching {
+                        val uri = android.net.Uri.parse(trustedReachUri(savedMethod, savedValue))
+                        val action = if (savedMethod == "phone") android.content.Intent.ACTION_DIAL
+                        else android.content.Intent.ACTION_SENDTO
+                        context.startActivity(android.content.Intent(action, uri))
+                    }
+                }) {
+                    Text(stringResource(trustedReachLabelRes(savedMethod)), color = Periwinkle)
+                }
             }
         }
 
@@ -137,6 +191,14 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = trustedKeyboard(method)),
             )
+            // Field-level guidance while typing — names the field and the shape
+            // it wants, instead of a whole-form failure after the round-trip.
+            if (value.isNotBlank() && !trustedValueLooksValid(method, value)) {
+                Text(
+                    stringResource(trustedValueErrorRes(method)),
+                    style = MaterialTheme.typography.labelSmall, color = Danger,
+                )
+            }
         }
 
         // The consent gate. Off unless the user turns it on; the backend only
@@ -159,7 +221,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
 
         PrimaryButton(
             text = if (busy) stringResource(R.string.common_one_moment) else stringResource(R.string.trusted_save),
-            enabled = loaded && !busy && trustedContactReady(value),
+            enabled = loaded && !busy && trustedValueLooksValid(method, value),
             modifier = Modifier.fillMaxWidth(),
         ) {
             busy = true; status = null
@@ -168,6 +230,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                     .onSuccess {
                         hasSavedContact = true
                         savedName = name.trim()
+                        savedMethod = method
                         savedValue = value.trim()
                         savedConsent = consent
                         status = savedMsg

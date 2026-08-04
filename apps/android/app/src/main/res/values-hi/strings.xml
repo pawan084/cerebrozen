@@ -75,8 +75,8 @@
     <string name="talk_hint_speaking">बोल रहे हैं…</string>
     <string name="talk_hint_listening_done">सुन रहे हैं… पूरा होने पर टैप करें</string>
     <string name="talk_hint_listening_stop">सुन रहे हैं… रोकने के लिए टैप करें</string>
-    <string name="talk_hint_orb_studio">ऑर्ब टैप करें — स्टूडियो-क्वालिटी आवाज़</string>
-    <string name="talk_hint_orb">लाइव बात करने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_hint_orb_studio">बात करने के लिए ऑर्ब टैप करें</string>
+    <string name="talk_hint_orb">बात करने के लिए ऑर्ब टैप करें</string>
     <string name="talk_empty_title">मन में क्या चल रहा है?</string>
     <string name="talk_empty_subtitle">बोलें या लिखें — छोटी-छोटी चिंताएँ भी कह सकते हैं।</string>
     <string name="talk_starters_header">या यहीं से शुरू करें</string>
@@ -113,17 +113,67 @@
 
     <!-- ── Today ───────────────────────────────────────────────────────── -->
     <string name="today_eyebrow">आज</string>
-    <string name="today_eyebrow_goal">आज · %1$s</string>
+    <string name="today_eyebrow_goal">आपका फ़ोकस · %1$s</string>
+    <string name="today_eyebrow_goal_working">काम जारी · %1$s</string>
+    <string name="today_eyebrow_goal_return">फिर से · %1$s</string>
+    <string name="today_search_hint">लाइब्रेरी</string>
+    <string name="today_profile_cd">अपनी जगह खोलें</string>
+    <string name="today_banner_offline_send">अभी भेजें</string>
+    <string name="talk_start_fresh">नई शुरुआत</string>
+    <string name="talk_saved_view">सहेजा गया — जर्नल में देखें</string>
+    <string name="talk_jump_latest_cd">सबसे नए जवाब पर जाएँ</string>
+    <string name="talk_presence_line">%1$s · %2$s</string>
+    <string name="talk_presence_ready">आपके साथ</string>
+    <string name="talk_presence_listening">सुन रहा है…</string>
+    <string name="talk_presence_thinking">सोच रहा है…</string>
+    <string name="talk_presence_speaking">बोल रहा है…</string>
+    <string name="talk_presence_hearing">आपको सुन रहा है…</string>
+    <string name="talk_memory_on">याद रखता है · प्राइवेसी</string>
+    <string name="talk_memory_off">मेमोरी बंद · बस इसी पल में</string>
+    <string name="talk_starter_mood">पहले मैंने %1$s महसूस किया — वहीं से शुरू करें?</string>
+    <string name="talk_presence_offline">ऑफ़लाइन — टूलकिट फिर भी काम करता है</string>
+    <string name="talk_offline_compose">आप ऑफ़लाइन हैं — बातचीत के लिए कनेक्शन चाहिए। टूलकिट बिना कनेक्शन काम करता है।</string>
+    <string name="talk_show_earlier">पहले के संदेश देखें</string>
+    <string name="talk_fresh_started">नई शुरुआत हुई — आपका इतिहास आपके रिकॉर्ड में सुरक्षित है।</string>
+    <string name="talk_crisis_call">14416 पर कॉल करें</string>
+    <string name="talk_send_disabled_cd">भेजें — पहले कुछ लिखें</string>
+    <string name="talk_typing_cd">आपका साथी जवाब लिख रहा है</string>
+    <string name="talk_mic_composer_cd">बोलकर कहें</string>
+    <string name="talk_widget_opened">%1$s — खोला गया। दोबारा करने के लिए टैप करें।</string>
+    <string name="talk_disclosure_memory_on">मेमोरी चालू है — यह आपकी बातें याद रखता है (प्राइवेसी में बदलें)।</string>
+    <string name="talk_disclosure_memory_off">मेमोरी बंद है — हर बातचीत अपने आप में अलग है।</string>
+    <string name="chip_urgent_support">तुरंत सहायता</string>
+    <string name="chip_breathe">मेरे साथ साँस लें</string>
+    <string name="chip_grounding">ग्राउंडिंग आज़माएँ</string>
+    <string name="chip_write">लिख डालें</string>
+    <string name="chip_checkin">चेक-इन करें</string>
+    <string name="chip_one_good">एक अच्छी बात</string>
+    <string name="chip_intention">एक इरादा चुनें</string>
+    <string name="chip_human">किसी इंसान से बात करें</string>
+    <string name="journal_hero_write">लिखें</string>
+    <string name="journal_recent_empty">आपकी पिछली एंट्री यहाँ दिखेगी — निजी, खोजने लायक़, आपकी।</string>
+    <plurals name="journal_word_count">
+        <item quantity="one">%1$d शब्द</item>
+        <item quantity="other">%1$d शब्द</item>
+    </plurals>
     <string name="today_friend">दोस्त</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>
     <string name="today_banner_sleep">कल रात कैसी रही? 20 सेकंड का चेक-इन।</string>
     <string name="today_banner_sleep_action">दर्ज करें</string>
-    <string name="today_banner_winddown">दिन ढल रहा है।</string>
+    <string name="today_banner_winddown">एक शांत मिक्स के साथ दिन को विदा करें</string>
     <string name="today_banner_winddown_action">शांत मिक्स</string>
     <string name="today_banner_program">दिन %1$d / %2$d · %3$s</string>
     <string name="today_checkin_title">आप सच में कैसे हैं?</string>
-    <string name="today_checkin_subtitle">20 सेकंड का चेक-इन आज की योजना तय करता है।</string>
+    <string name="today_checkin_subtitle">एक टैप काफ़ी है।</string>
+    <string name="today_checkin_say_more">जर्नल में और कहें</string>
+    <string name="today_checkin_undone">हटा दिया — अब आप कैसा महसूस कर रहे हैं?</string>
+    <string name="today_checkin_settled">आज दर्ज · %1$s</string>
+    <string name="today_plan_start">शुरू करें</string>
+    <plurals name="today_plan_left_tonight">
+        <item quantity="one">आज रात %1$d कदम बाक़ी है</item>
+        <item quantity="other">आज रात %1$d कदम बाक़ी हैं</item>
+    </plurals>
     <string name="today_checkin_cta">चेक-इन करें</string>
     <string name="today_checkin_done">चेक-इन हो गया — धीरे से दर्ज कर लिया।</string>
     <string name="today_checkin_logged">%1$s — दर्ज</string>
@@ -135,6 +185,23 @@
     <string name="today_rail_ambient">एंबिएंट</string>
     <string name="today_toolkit_title">टूलकिट</string>
     <string name="today_toolkit_subtitle">अभी के लिए छोटे-छोटे अभ्यास</string>
+    <string name="today_toolkit_recent">पिछला अभ्यास · %1$s</string>
+    <string name="today_presence_window">पिछले 7 दिन</string>
+    <plurals name="today_presence_merged">
+        <item quantity="one">आप आए — इस हफ़्ते %1$d दिन</item>
+        <item quantity="other">आप आए — इस हफ़्ते %1$d दिन</item>
+    </plurals>
+    <plurals name="today_recent_more">
+        <item quantity="one">आज +%1$d और</item>
+        <item quantity="other">आज +%1$d और</item>
+    </plurals>
+    <plurals name="today_insights_building">
+        <item quantity="one">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>
+        <item quantity="other">%1$d चेक-इन — आपका पहला हफ़्ता बन रहा है।</item>
+    </plurals>
+    <string name="today_kind_sleep">नींद की कहानी</string>
+    <string name="today_kind_meditation">ध्यान</string>
+    <string name="today_kind_soundscape">साउंडस्केप</string>
     <string name="today_presence_title">आप आए</string>
     <string name="today_presence_ready">जब भी आप तैयार हों</string>
     <plurals name="today_presence_days">
@@ -158,6 +225,29 @@
     <string name="sleep_wake_label">उठे, लगभग</string>
     <string name="sleep_time_earlier_cd">%1$s को 30 मिनट पहले करें</string>
     <string name="sleep_time_later_cd">%1$s को 30 मिनट बाद करें</string>
+    <string name="sleep_time_pick_cd">%1$s का सटीक समय चुनें</string>
+    <string name="sleep_premium_subtitle_live">इस हफ़्ते औसतन %1$s</string>
+    <string name="sleep_evidence_chip">CBT-I आधारित</string>
+    <string name="sleep_moon_cd">झटपट शांति — साँस लेना, या चलते ऑडियो का प्लेयर</string>
+    <string name="sleep_hero_pause">रोकें</string>
+    <string name="sleep_checkin_title_evening">कल रात</string>
+    <string name="sleep_checkin_settled">दर्ज · %1$s</string>
+    <string name="sleep_checkin_edit">बदलें</string>
+    <string name="sleep_duration_preview">बिस्तर में %1$s</string>
+    <string name="sleep_logged_updated">आज का लॉग अपडेट हुआ।</string>
+    <string name="sleep_save_hint">सहेजने के लिए चुनें कि आप कितना आराम महसूस कर रहे हैं।</string>
+    <string name="sleep_data_title">आपकी नींद</string>
+    <string name="sleep_log_last_night">कल रात दर्ज करें</string>
+    <string name="sleep_diary_edit_hint">बदलने के लिए किसी रात पर टैप करें</string>
+    <string name="sleep_editing_night">%1$s बदल रहे हैं — सहेजने पर वही रात अपडेट होगी</string>
+    <string name="sleep_bed_window">सोने का समय %1$s–%2$s के बीच रहा</string>
+    <string name="sleep_programs_enrolled">दिन %1$d / %2$d · %3$s</string>
+    <string name="sleep_sounds_all">सभी आवाज़ें</string>
+    <string name="sleep_timer_row">स्लीप टाइमर</string>
+    <string name="sleep_timer_off">बंद — सेट करने के लिए टैप करें</string>
+    <string name="sleep_timer_min">%1$d मिनट</string>
+    <string name="sleep_milestone_first">पहली रात दर्ज — तस्वीर यहीं से शुरू होती है।</string>
+    <string name="sleep_milestone_week">एक हफ़्ते की रातें — तस्वीर बनने लगी है।</string>
     <string name="sleep_minus_30">−30 मि</string>
     <string name="sleep_plus_30">+30 मि</string>
     <string name="sleep_programs_nav_title">प्रोग्राम</string>
@@ -174,9 +264,9 @@
     <string name="sleep_rhythm_title">आपकी लय</string>
     <string name="sleep_rhythm_line">आपका औसत %1$s रहा। इस हफ़्ते सोने का समय लगभग %2$s आगे-पीछे रहा।</string>
     <string name="sleep_mixer_nav_title">अपना साउंडस्केप बनाएँ</string>
-    <string name="sleep_mixer_nav_subtitle">बारिश, समुद्र, हवा और एक धीमी गूंज मिलाएँ</string>
+    <string name="sleep_mixer_nav_subtitle">वही आवाज़ बनाएँ जो आपको सुला दे</string>
     <string name="sleep_sounds_header">नींद के लिए ध्वनियाँ</string>
-    <string name="sleep_winddown_header">विंड-डाउन गाइड</string>
+    <string name="sleep_winddown_header">सोने से पहले</string>
     <string name="sleep_meta_guide">गाइड</string>
     <string name="sleep_meta_story">नींद की कहानी</string>
     <string name="sleep_diary_title">डायरी</string>
@@ -539,13 +629,19 @@
     <string name="breath_round_progress">राउंड %1$d / %2$d</string>
     <string name="breath_voice_on">वॉइस संकेत चालू</string>
     <string name="breath_voice_off">वॉइस संकेत बंद</string>
-    <string name="breath_stop">सत्र रोकें</string>
+    <string name="breath_stop">सत्र समाप्त करें</string>
+    <string name="breath_pause">रोकें</string>
+    <string name="breath_resume">जारी रखें</string>
+    <string name="breath_paused">रुका हुआ</string>
     <string name="breath_complete_title">सत्र पूरा हुआ</string>
     <string name="breath_complete_body">%2$s ब्रीदिंग के %1$d राउंड</string>
     <string name="breath_history_title">इतिहास</string>
     <string name="breath_history_clear">साफ़ करें</string>
     <string name="breath_history_empty">पूरे किए गए सत्र यहाँ दिखाई देंगे।</string>
-    <string name="breath_history_rounds">%1$d राउंड</string>
+    <plurals name="breath_history_rounds">
+        <item quantity="one">%1$d राउंड</item>
+        <item quantity="other">%1$d राउंड</item>
+    </plurals>
     <string name="tool_saved_cta">आपके जर्नल में सहेज लिया</string>
     <string name="tool_save_cta">जर्नल में सहेजें</string>
 
@@ -780,6 +876,11 @@
     <string name="trusted_eyebrow">अगर हालात कठिन हों</string>
     <string name="trusted_title">भरोसेमंद संपर्क</string>
     <string name="you_trusted_subtitle">एक व्यक्ति, केवल कठिन समय में</string>
+    <string name="you_trusted_saved">सहेजा गया · %1$s</string>
+    <string name="you_crisisregion_state">अभी · %1$s</string>
+    <string name="you_support_call">कॉल</string>
+    <string name="you_support_call_cd">टेली-मानस 14416 पर कॉल करें</string>
+    <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">एक व्यक्ति जिससे CereBro संपर्क कर सके, अगर बातचीत से लगे कि आप खतरे में हैं। जब तक आप नीचे इसे चालू न करें, कुछ नहीं भेजा जाता — और किसी सामान्य बुरे दिन पर कुछ नहीं भेजा जाता।</string>
     <string name="trusted_name_label">उनका नाम (वैकल्पिक)</string>
     <string name="trusted_method_label">उन तक कैसे पहुँचें</string>
@@ -798,6 +899,11 @@
     <string name="trusted_consent_off">सहेजा गया है, लेकिन संपर्क की अनुमति बंद है</string>
     <string name="trusted_removed">हटा दिया गया।</string>
     <string name="trusted_failed">सहेजा नहीं जा सका — फिर कोशिश करें।</string>
+    <string name="trusted_value_invalid_email">यह ईमेल पता नहीं लगता — name@example.com जैसा लिखें।</string>
+    <string name="trusted_value_invalid_number">यह फ़ोन नंबर नहीं लगता — कम से कम 7 अंक चाहिए।</string>
+    <string name="trusted_reach_email">अभी ईमेल करें</string>
+    <string name="trusted_reach_sms">अभी संदेश भेजें</string>
+    <string name="trusted_reach_phone">अभी कॉल करें</string>
     <string name="crisis_trusted_contact_empty">सेट नहीं है — सेटिंग्स में एक जोड़ें ताकि संकट के समय CereBro उन तक पहुँच सके (आपकी सहमति से)।</string>
     <string name="crisis_open_cd">%1$s खोलें</string>
     <string name="crisis_call_cd">%1$s %2$s पर कॉल करें</string>
@@ -833,7 +939,7 @@
     <string name="you_support_title">सहायता, किसी भी समय</string>
     <string name="you_crisisregion_title">संकट क्षेत्र</string>
     <string name="you_crisisregion_subtitle">कौन-सी हेल्पलाइन दिखाई जाएँ</string>
-    <string name="you_humansupport_subtitle">कोच या थेरेपिस्ट तक पहुँच</string>
+    <string name="you_humansupport_subtitle">असली लोगों की निर्देशिकाएँ, जब आप चाहें</string>
     <string name="toolkit_support_title">क्या अभी सहायता चाहिए?</string>
     <string name="journal_telemanas">भारत में टेली-मानस किसी भी समय उपलब्ध है — 14416 पर कॉल करें, निःशुल्क, दिन हो या रात।</string>
     <string name="journal_support_title">आपको यह अकेले नहीं उठाना है</string>
@@ -951,7 +1057,7 @@
 
     <!-- Goals & habits (2026-07-30). Machine-assisted; in the pending review. -->
     <string name="you_goals_title">लक्ष्य और आदतें</string>
-    <string name="you_goals_subtitle">यह हिस्सा आप तय करते हैं</string>
+    <string name="you_goals_subtitle">आपके लक्ष्य — कभी भी बदलें</string>
     <string name="goals_eyebrow">आपके तय किए हुए</string>
     <string name="goals_title">लक्ष्य और आदतें</string>
     <string name="goals_intro">बाकी CereBro आपको सुझाव देता है। यह हिस्सा आप तय करते हैं।</string>

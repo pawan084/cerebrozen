@@ -56,11 +56,16 @@
     <string name="trusted_eyebrow">If things get hard</string>
     <string name="trusted_title">Trusted contact</string>
     <string name="you_trusted_subtitle">One person, only if things get hard</string>
+    <string name="you_trusted_saved">Saved · %1$s</string>
+    <string name="you_crisisregion_state">Current · %1$s</string>
+    <string name="you_support_call">Call</string>
+    <string name="you_support_call_cd">Call Tele-MANAS 14416</string>
+    <string name="you_version">CereBro %1$s</string>
     <string name="trusted_intro">One person CereBro can reach out to if a conversation suggests you are in danger. Nothing is sent unless you switch it on below, and nothing is sent for an ordinary bad day.</string>
     <string name="trusted_name_label">Their name (optional)</string>
     <string name="trusted_method_label">How to reach them</string>
     <string name="trusted_method_email">Email</string>
-    <string name="trusted_method_sms">Text message</string>
+    <string name="trusted_method_sms">Text</string>
     <string name="trusted_method_phone">Phone</string>
     <string name="trusted_value_label">Email or number</string>
     <string name="trusted_consent_title">Let CereBro contact them</string>
@@ -74,6 +79,11 @@
     <string name="trusted_consent_off">Saved, but contact permission is off</string>
     <string name="trusted_removed">Removed.</string>
     <string name="trusted_failed">Couldn\'t save that — try again.</string>
+    <string name="trusted_value_invalid_email">That doesn\'t look like an email address yet — name@example.com shape.</string>
+    <string name="trusted_value_invalid_number">That doesn\'t look like a phone number yet — at least 7 digits.</string>
+    <string name="trusted_reach_email">Email them now</string>
+    <string name="trusted_reach_sms">Text them now</string>
+    <string name="trusted_reach_phone">Call them now</string>
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
@@ -124,8 +134,14 @@
     <string name="talk_hint_speaking">Speaking…</string>
     <string name="talk_hint_listening_done">Listening… tap when you\'re done</string>
     <string name="talk_hint_listening_stop">Listening… tap to stop</string>
-    <string name="talk_hint_orb_studio">Tap the orb — studio-quality voice</string>
-    <string name="talk_hint_orb">Tap the orb to talk live</string>
+    <string name="talk_hint_orb_studio">Tap the orb to talk it through</string>
+    <string name="talk_hint_orb">Tap the orb to talk it through</string>
+    <!-- Conversation day separators + failed-send recovery + bubble copy. -->
+    <string name="talk_day_today">Today</string>
+    <string name="talk_day_yesterday">Yesterday</string>
+    <string name="talk_retry">Try sending again</string>
+    <string name="talk_copied">Copied</string>
+    <string name="talk_field_followup">Say what\'s on your mind…</string>
     <string name="talk_empty_title">What\'s on your mind?</string>
     <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>
@@ -173,7 +189,49 @@
 
     <!-- ── Today (TodayScreen.kt) ──────────────────────────────────────── -->
     <string name="today_eyebrow">Today</string>
-    <string name="today_eyebrow_goal">Today · %1$s</string>
+    <string name="today_eyebrow_goal">Your focus · %1$s</string>
+    <string name="today_eyebrow_goal_working">Working on · %1$s</string>
+    <string name="today_eyebrow_goal_return">Back to · %1$s</string>
+    <string name="today_search_hint">Library</string>
+    <string name="today_profile_cd">Open your space</string>
+    <string name="today_banner_offline_send">Send now</string>
+    <string name="talk_start_fresh">Start fresh</string>
+    <string name="talk_saved_view">Saved — view in Journal</string>
+    <string name="talk_jump_latest_cd">Jump to the latest reply</string>
+    <string name="talk_presence_line">%1$s · %2$s</string>
+    <string name="talk_presence_ready">here with you</string>
+    <string name="talk_presence_listening">listening…</string>
+    <string name="talk_presence_thinking">thinking…</string>
+    <string name="talk_presence_speaking">speaking…</string>
+    <string name="talk_presence_hearing">hearing you…</string>
+    <string name="talk_memory_on">Remembers · Privacy</string>
+    <string name="talk_memory_off">Memory off · in the moment</string>
+    <string name="talk_starter_mood">Earlier I felt %1$s — can we start there?</string>
+    <string name="talk_presence_offline">offline — Toolkit still works</string>
+    <string name="talk_offline_compose">You\'re offline — a conversation needs a connection. The Toolkit works without one.</string>
+    <string name="talk_show_earlier">Show earlier</string>
+    <string name="talk_fresh_started">Started fresh — your history stays in your record.</string>
+    <string name="talk_crisis_call">Call 14416</string>
+    <string name="talk_send_disabled_cd">Send — type a message first</string>
+    <string name="talk_typing_cd">Your companion is writing a reply</string>
+    <string name="talk_mic_composer_cd">Speak instead</string>
+    <string name="talk_widget_opened">%1$s — opened. Tap to do it again.</string>
+    <string name="talk_disclosure_memory_on">Memory is on — it recalls what you share (change in Privacy).</string>
+    <string name="talk_disclosure_memory_off">Memory is off — each conversation stands alone.</string>
+    <string name="chip_urgent_support">Urgent support</string>
+    <string name="chip_breathe">Breathe with me</string>
+    <string name="chip_grounding">Try grounding</string>
+    <string name="chip_write">Write it down</string>
+    <string name="chip_checkin">Check in</string>
+    <string name="chip_one_good">One good thing</string>
+    <string name="chip_intention">Set an intention</string>
+    <string name="chip_human">Talk to a person</string>
+    <string name="journal_hero_write">Write</string>
+    <string name="journal_recent_empty">Your last entry will appear here — private, searchable, yours.</string>
+    <plurals name="journal_word_count">
+        <item quantity="one">%1$d word</item>
+        <item quantity="other">%1$d words</item>
+    </plurals>
     <string name="today_greeting_format">%1$s, %2$s</string>
     <string name="today_friend">friend</string>
     <string name="today_search_cd">Search the library</string>
@@ -186,11 +244,19 @@
          visible — and it named a destination the button does not open: the
          action is openMixer, not the wind-down guide. Copy, label and action
          now all mean the same thing. -->
-    <string name="today_banner_winddown">The day is winding down.</string>
+    <string name="today_banner_winddown">Wind down with a quieter mix</string>
     <string name="today_banner_winddown_action">Quieter mix</string>
     <string name="today_banner_program">Day %1$d of %2$d · %3$s</string>
     <string name="today_checkin_title">How are you, really?</string>
-    <string name="today_checkin_subtitle">A 20-second check-in shapes today\'s plan.</string>
+    <string name="today_checkin_subtitle">One tap is enough.</string>
+    <string name="today_checkin_say_more">Say more in Journal</string>
+    <string name="today_checkin_undone">Removed — how are you now?</string>
+    <string name="today_checkin_settled">Logged for today · %1$s</string>
+    <string name="today_plan_start">Start</string>
+    <plurals name="today_plan_left_tonight">
+        <item quantity="one">One step still open tonight</item>
+        <item quantity="other">%1$d steps still open tonight</item>
+    </plurals>
     <string name="today_checkin_cta">Check in</string>
     <string name="today_checkin_done">Checked in — noted gently.</string>
     <string name="today_checkin_logged">%1$s — noted</string>
@@ -215,12 +281,29 @@
     <!-- Weekly-insights teaser (iOS/web parity). The subtitle states the real
          last-7-days check-in count when there is one, and promises nothing when
          there isn't. -->
-    <string name="today_insights_title">This week</string>
+    <string name="today_insights_title">Weekly insights</string>
     <string name="today_insights_subtitle">See what changed</string>
     <plurals name="today_insights_count">
-        <item quantity="one">%1$d check-in in the last 7 days — see what changed.</item>
-        <item quantity="other">%1$d check-ins in the last 7 days — see what changed.</item>
+        <item quantity="one">%1$d check-in this week — see what changed.</item>
+        <item quantity="other">%1$d check-ins this week — see what changed.</item>
     </plurals>
+    <plurals name="today_insights_building">
+        <item quantity="one">%1$d check-in — building your first week.</item>
+        <item quantity="other">%1$d check-ins — building your first week.</item>
+    </plurals>
+    <string name="today_toolkit_recent">Last practice · %1$s</string>
+    <string name="today_presence_window">Last 7 days</string>
+    <plurals name="today_presence_merged">
+        <item quantity="one">You showed up — %1$d day this week</item>
+        <item quantity="other">You showed up — %1$d days this week</item>
+    </plurals>
+    <plurals name="today_recent_more">
+        <item quantity="one">+%1$d more today</item>
+        <item quantity="other">+%1$d more today</item>
+    </plurals>
+    <string name="today_kind_sleep">Sleep story</string>
+    <string name="today_kind_meditation">Meditation</string>
+    <string name="today_kind_soundscape">Soundscape</string>
     <string name="today_presence_title">You showed up</string>
     <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">
@@ -229,6 +312,16 @@
     </plurals>
     <string name="today_presence_empty">One small check-in counts as showing up — gentle, no pressure.</string>
     <string name="today_recent_title">Recent check-ins</string>
+    <string name="today_recent_open">Trends</string>
+    <string name="today_week_section">Your week</string>
+    <!-- One line of continuity under the greeting when a check-in exists today. -->
+    <string name="today_earlier_line">Earlier · %1$s</string>
+    <!-- Relative-time labels for recent check-in rows. -->
+    <string name="today_time_just_now">just now</string>
+    <string name="today_time_minutes">%1$dm ago</string>
+    <string name="today_time_hours">%1$dh ago</string>
+    <string name="today_time_yesterday">yesterday</string>
+    <string name="today_time_days">%1$dd ago</string>
 
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
     <string name="sleep_eyebrow">Improve your sleep, night by night</string>
@@ -238,7 +331,7 @@
     <string name="sleep_hero_title">A calmer night</string>
     <string name="sleep_hero_subtitle">A slower evening makes for a softer morning.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
-    <string name="sleep_estimated_duration">About 20 minutes</string>
+    <string name="sleep_estimated_duration">Plays as long as you need — timer optional</string>
     <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
     <string name="sleep_guides_empty">Start your first relaxing session.</string>
     <string name="sleep_play_cd">Play the ambient bed</string>
@@ -248,6 +341,29 @@
     <string name="sleep_wake_label">Woke up around</string>
     <string name="sleep_time_earlier_cd">Set %1$s 30 minutes earlier</string>
     <string name="sleep_time_later_cd">Set %1$s 30 minutes later</string>
+    <string name="sleep_time_pick_cd">Set %1$s to an exact time</string>
+    <string name="sleep_premium_subtitle_live">Averaging %1$s this week</string>
+    <string name="sleep_evidence_chip">CBT-I-informed</string>
+    <string name="sleep_moon_cd">Quick calm — breathing, or the player while something plays</string>
+    <string name="sleep_hero_pause">Pause</string>
+    <string name="sleep_checkin_title_evening">Last night</string>
+    <string name="sleep_checkin_settled">Logged · %1$s</string>
+    <string name="sleep_checkin_edit">Edit</string>
+    <string name="sleep_duration_preview">%1$s in bed</string>
+    <string name="sleep_logged_updated">Updated today\'s log.</string>
+    <string name="sleep_save_hint">Pick how rested you felt to save.</string>
+    <string name="sleep_data_title">Your sleep</string>
+    <string name="sleep_log_last_night">Log last night</string>
+    <string name="sleep_diary_edit_hint">Tap a night to edit it</string>
+    <string name="sleep_editing_night">Editing %1$s — Save updates that night</string>
+    <string name="sleep_bed_window">Bedtimes landed %1$s–%2$s</string>
+    <string name="sleep_programs_enrolled">Day %1$d of %2$d · %3$s</string>
+    <string name="sleep_sounds_all">All sounds</string>
+    <string name="sleep_timer_row">Sleep timer</string>
+    <string name="sleep_timer_off">Off — tap to set</string>
+    <string name="sleep_timer_min">%1$d min</string>
+    <string name="sleep_milestone_first">First night logged — the picture starts here.</string>
+    <string name="sleep_milestone_week">A week of nights — the picture is forming.</string>
     <string name="sleep_minus_30">−30m</string>
     <string name="sleep_plus_30">+30m</string>
     <string name="sleep_programs_nav_title">Programs</string>
@@ -265,9 +381,9 @@
     <string name="sleep_rhythm_title">Your rhythm</string>
     <string name="sleep_rhythm_line">You averaged %1$s. Your bedtime varied by about %2$s this week.</string>
     <string name="sleep_mixer_nav_title">Mix your own soundscape</string>
-    <string name="sleep_mixer_nav_subtitle">Blend rain, ocean, wind &amp; a soft drone</string>
+    <string name="sleep_mixer_nav_subtitle">Build the exact sound that puts you under</string>
     <string name="sleep_sounds_header">Sounds for sleep</string>
-    <string name="sleep_winddown_header">Wind-down guide</string>
+    <string name="sleep_winddown_header">Before bed</string>
     <string name="sleep_meta_guide">Guide</string>
     <string name="sleep_meta_story">Sleep story</string>
     <string name="sleep_bed_title">Bed is for sleep</string>
@@ -351,7 +467,25 @@
     <string name="journal_tuned_tired_title">Put the day down</string>
     <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
-    <string name="journal_new_subtitle">Private writing, safety-aware</string>
+    <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
+    <string name="journal_recent_header">Recent</string>
+    <string name="toolkit_recent_chip">Pick up where you left off · %1$s</string>
+    <string name="ground_done_title">That\'s the practice</string>
+    <string name="ground_done_body">Five senses, one present moment. Come back to it any time a spiral starts.</string>
+    <string name="ground_start_again">Start again</string>
+    <!-- You-tab section group headers + row state values. -->
+    <string name="you_group_personalize">Personalize</string>
+    <string name="you_group_progress">Your progress</string>
+    <string name="you_group_safety">Privacy &amp; safety</string>
+    <string name="you_reminder_state_on">On · a gentle daily check-in</string>
+    <string name="you_reminder_state_off">Off · tap to set one</string>
+    <string name="you_appearance_state">%1$s · switches with your phone or your call</string>
+    <string name="journal_lock_state_on">Lock is on · manage privacy</string>
+    <string name="journal_lock_state_off">Lock is off · manage privacy</string>
+    <plurals name="journal_month_count">
+        <item quantity="one">%1$d entry this month · searchable</item>
+        <item quantity="other">%1$d entries this month · searchable</item>
+    </plurals>
     <string name="journal_history_subtitle">Your past entries, searchable</string>
     <string name="journal_private_mode">Private mode</string>
     <string name="journal_private_subtitle">Lock the journal, manage privacy</string>
@@ -369,7 +503,7 @@
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
     <string name="you_tour_title">Take a quick tour</string>
-    <string name="you_tour_subtitle">Replay the four-stop walkthrough of Home</string>
+    <string name="you_tour_subtitle">Replay the Home walkthrough</string>
     <string name="you_reminder_title">Daily reminder</string>
     <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>
@@ -382,7 +516,7 @@
     <string name="you_premium_subtitle">Unlock the full library</string>
     <string name="you_crisisregion_title">Crisis region</string>
     <string name="you_crisisregion_subtitle">Which helplines to show</string>
-    <string name="you_humansupport_subtitle">Coach or therapist handoff</string>
+    <string name="you_humansupport_subtitle">Directories to real people, when you want one</string>
     <string name="you_legal_header">LEGAL &amp; ACCOUNT</string>
     <string name="you_export_subtitle">Download a full copy</string>
     <string name="you_delete_subtitle">Permanently erase everything</string>
@@ -843,13 +977,19 @@
     <string name="breath_voice_off">Voice cues off</string>
     <string name="breath_mute_voice">Mute voice cues</string>
     <string name="breath_enable_voice">Enable voice cues</string>
-    <string name="breath_stop">Stop session</string>
+    <string name="breath_stop">End session</string>
+    <string name="breath_pause">Pause</string>
+    <string name="breath_resume">Resume</string>
+    <string name="breath_paused">Paused</string>
     <string name="breath_complete_title">Session complete</string>
     <string name="breath_complete_body">%1$d rounds of %2$s breathing</string>
     <string name="breath_history_title">History</string>
     <string name="breath_history_clear">Clear</string>
     <string name="breath_history_empty">Completed sessions will appear here.</string>
-    <string name="breath_history_rounds">%1$d rounds</string>
+    <plurals name="breath_history_rounds">
+        <item quantity="one">%1$d round</item>
+        <item quantity="other">%1$d rounds</item>
+    </plurals>
     <!-- W27 §4: pace choice + guidance toggles (eyes-closed accessibility). -->
     <string name="breathe_pace_gentle">Gentle · 6s</string>
     <string name="breathe_pace_classic">Classic · 4s</string>
@@ -1290,7 +1430,7 @@
 
     <!-- ── Goals & habits (GoalsScreen.kt, 2026-07-30) ─────────────────── -->
     <string name="you_goals_title">Goals &amp; habits</string>
-    <string name="you_goals_subtitle">The part you decide</string>
+    <string name="you_goals_subtitle">Your goals — edit anytime</string>
     <string name="goals_eyebrow">Yours to define</string>
     <string name="goals_title">Goals &amp; habits</string>
     <string name="goals_intro">The rest of CereBro suggests things to you. This is the part you decide.</string>

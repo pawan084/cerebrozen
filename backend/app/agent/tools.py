@@ -13,12 +13,26 @@ from langchain_core.tools import tool
 from langgraph.types import interrupt
 from sqlalchemy import select
 
-from app.agent.context import current_db, current_thread_id, current_user_id, emitted_widgets
+from app.agent.context import current_db, current_risk, current_thread_id, current_user_id, emitted_widgets
 from app.models.journal import JournalEntry
 from app.models.mood import MoodLog
 from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import activities, insights, oracle_audit, safety
+
+
+def write_suppressed(risk: str) -> bool:
+    """Whether write tools must stand down for this turn. During an elevated or
+    crisis turn the agent runs READ-ONLY: proposing "Log your mood?" between a
+    disclosure and its support is the interleaving the reference app's clinical
+    review flagged (finding C1). Pure — pinned in tests."""
+    return risk in {"elevated", "crisis"}
+
+
+_WRITE_SUPPRESSED_REPLY = (
+    "Not now — the user needs support in this moment, not record-keeping. "
+    "Stay with them; do not propose saving or logging anything this turn."
+)
 
 
 async def _audit_read(tool: str, args: dict | None = None) -> None:
@@ -92,6 +106,8 @@ async def get_weekly_insights() -> str:
 @tool
 async def log_mood(mood: str, note: str = "") -> str:
     """Record how the user is feeling right now. Confirms with the user first."""
+    if write_suppressed(current_risk.get()):
+        return _WRITE_SUPPRESSED_REPLY
     await _audit_open("log_mood", {"mood": mood, "note": note})
     decision = interrupt({
         "tool": "log_mood",
@@ -112,6 +128,8 @@ async def log_mood(mood: str, note: str = "") -> str:
 @tool
 async def save_journal(title: str, body: str = "") -> str:
     """Save a short journal entry for the user. Confirms with the user first."""
+    if write_suppressed(current_risk.get()):
+        return _WRITE_SUPPRESSED_REPLY
     await _audit_open("save_journal", {"title": title, "body": body})
     decision = interrupt({
         "tool": "save_journal",
@@ -135,6 +153,8 @@ async def log_sleep(quality: int, bedtime: str = "23:00", wake_time: str = "07:0
     """Record last night's sleep diary for the user (felt quality 1–5, times as
     HH:MM). Use when the user describes how they slept. Confirms with the user
     first. One entry per morning — logging again edits today's entry."""
+    if write_suppressed(current_risk.get()):
+        return _WRITE_SUPPRESSED_REPLY
     _args = {"quality": quality, "bedtime": bedtime, "wake_time": wake_time, "awakenings": awakenings}
     await _audit_open("log_sleep", _args)
     decision = interrupt({

@@ -276,6 +276,12 @@ internal fun ContentRow(
     onTap: (() -> Unit)? = null,
     fav: Boolean? = null,
     onFav: (() -> Unit)? = null,
+    /** Reference rows (no onTap) pass a muted color so their meta stops
+     * dressing like a link — "Guide" in periwinkle read as tappable. */
+    metaColor: Color = Periwinkle,
+    /** A small identifying glyph over the thumb corner — four wind-down
+     * guides with sibling ring art read as one card printed four times. */
+    glyph: ImageVector? = null,
 ) {
     SectionCard(onClick = onTap) {
         Row(
@@ -296,6 +302,16 @@ internal fun ContentRow(
                     )
                 }
                 Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.12f), thumbShape))
+                if (glyph != null) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).padding(3.dp).size(20.dp)
+                            .clip(CircleShape).background(Color(0x66101228)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(glyph, contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(12.dp))
+                    }
+                }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = TextBright,
@@ -303,7 +319,7 @@ internal fun ContentRow(
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta.isNotBlank() && !subtitle.contains(meta, ignoreCase = true)) {
-                    Text(meta, style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = metaColor,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -379,6 +395,8 @@ internal fun ContentList(
      * the four served guides were repeated verbatim in substance a few hundred
      * pixels below the list. */
     fallback: (@Composable () -> Unit)? = null,
+    metaColor: Color = Periwinkle,
+    glyphFor: ((String) -> ImageVector?)? = null,
 ) {
     var items by remember { mutableStateOf<JSONArray?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -431,6 +449,8 @@ internal fun ContentList(
                 onTap = onItemTap?.let { { it(title) } },
                 fav = favs?.contains(title),
                 onFav = onFav?.let { { it(title) } },
+                metaColor = metaColor,
+                glyph = glyphFor?.invoke(title),
             )
         }
     }
@@ -920,8 +940,8 @@ private fun PremiumSoundSegment(
     val shape = RoundedCornerShape(28.dp)
     Row(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Color(0xA61A2340))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -943,7 +963,7 @@ private fun PremiumSegmentItem(label: String, selected: Boolean, modifier: Modif
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else Color(0xFFAEB9D0))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else TextMuted)
     }
 }
 
@@ -988,7 +1008,7 @@ private fun MixerSection() {
         ?: SoundscapeMixer.timerMinutes.takeIf { it > 0 }?.let { stringResource(R.string.common_minutes, it) }
         ?: stringResource(R.string.mixer_open_ended)
 
-    Text(stringResource(R.string.mixer_subtitle), style = MaterialTheme.typography.bodyLarge, color = Color(0xFFB7C2DA))
+    Text(stringResource(R.string.mixer_subtitle), style = MaterialTheme.typography.bodyLarge, color = TextMuted)
     MixerHeroCard(
         playing = playing,
         mixName = mixName,
@@ -1000,7 +1020,7 @@ private fun MixerSection() {
         onValueChange = { SoundscapeMixer.setMasterVolume(context, it) },
     )
 
-    Text(stringResource(R.string.mixer_presets), style = MaterialTheme.typography.titleMedium, color = Color.White)
+    Text(stringResource(R.string.mixer_presets), style = MaterialTheme.typography.titleMedium, color = TextSoft)
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1013,7 +1033,7 @@ private fun MixerSection() {
         }
     }
 
-    Text(stringResource(R.string.mixer_layers), style = MaterialTheme.typography.titleMedium, color = Color.White)
+    Text(stringResource(R.string.mixer_layers), style = MaterialTheme.typography.titleMedium, color = TextSoft)
     SoundscapeMixer.layers.forEachIndexed { index, layer ->
         val volume = SoundscapeMixer.volumes[index]
         MixerLayerCard(
@@ -1031,7 +1051,7 @@ private fun MixerSection() {
     PremiumBellCard()
     PremiumActivitySoundsCard()
     SoundscapeMixer.remainingText()?.let {
-        Text(stringResource(R.string.mixer_fades_note, it), style = MaterialTheme.typography.labelMedium, color = Color(0xFFAEB9D0))
+        Text(stringResource(R.string.mixer_fades_note, it), style = MaterialTheme.typography.labelMedium, color = TextMuted)
     }
 }
 
@@ -1131,11 +1151,11 @@ private fun MasterVolumeCard(value: Float, onValueChange: (Float) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 MixerIconWell(Icons.AutoMirrored.Outlined.VolumeUp, active = true)
                 Column {
-                    Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    Text(stringResource(R.string.mixer_all_layers), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                    Text(stringResource(R.string.mixer_master_volume), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                    Text(stringResource(R.string.mixer_all_layers), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
             }
-            Text("${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Color(0xFF64C9FF))
+            Text("${(value * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Cyan)
         }
         PremiumMixerSlider(value, onValueChange, stringResource(R.string.mixer_master_volume))
     }
@@ -1148,12 +1168,12 @@ private fun PremiumPresetPill(selected: Boolean, label: String, onClick: () -> U
     val pressed by interaction.collectIsPressedAsState()
     Box(
         Modifier.pressScale(pressed, down = 0.94f).clip(shape)
-            .background(if (selected) Brush.linearGradient(listOf(Color(0xFF6B52E5), Color(0xFF9670F4))) else Brush.linearGradient(listOf(Color(0xA61A2340), Color(0xA61A2340))))
-            .border(1.dp, if (selected) Color(0x887A5CFF) else Color.White.copy(alpha = 0.1f), shape)
+            .background(if (selected) Brush.linearGradient(listOf(Color(0xFF6B52E5), Color(0xFF9670F4))) else Brush.linearGradient(listOf(CardFill, CardFill)))
+            .border(1.dp, if (selected) Color(0x887A5CFF) else LineStroke, shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 17.dp, vertical = 12.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else TextPrimary)
     }
 }
 
@@ -1168,11 +1188,11 @@ private fun MixerLayerCard(
     onVolume: (Float) -> Unit,
 ) {
     val active = volume > 0.02f
-    val border by animateColorAsState(if (active) Color(0x667A5CFF) else Color.White.copy(alpha = 0.09f), label = "layerBorder")
+    val border by animateColorAsState(if (active) Periwinkle.copy(alpha = 0.55f) else LineStroke, label = "layerBorder")
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xC91A2340), Color(0xA8262B4A))))
+            .background(CardFill)
             .border(1.dp, border, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1180,15 +1200,15 @@ private fun MixerLayerCard(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(icon, active)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(active, title, onToggle)
         }
         if (playing) MixerWaveform(active = true, bars = 12)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Color(0xFF4ADE80) else Color(0xFF8993AA))
-            Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Color(0xFFB18CFF))
+            Text(if (active) stringResource(R.string.mixer_playing) else stringResource(R.string.common_off), style = MaterialTheme.typography.labelSmall, color = if (active) Cyan else TextMuted)
+            Text("${(volume * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = Periwinkle)
         }
         PremiumMixerSlider(volume, onVolume, title)
     }
@@ -1199,8 +1219,8 @@ private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xC91A2340), Color(0xA8262B4A))))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .background(CardFill)
+            .border(1.dp, LineStroke, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
@@ -1211,11 +1231,11 @@ private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
 private fun MixerIconWell(icon: ImageVector, active: Boolean) {
     Box(
         Modifier.size(52.dp).clip(RoundedCornerShape(19.dp))
-            .background(if (active) Brush.linearGradient(listOf(Color(0x557A5CFF), Color(0x335CCBFF))) else Brush.linearGradient(listOf(Color(0x332D3651), Color(0x332D3651))))
-            .border(1.dp, if (active) Color(0x557A5CFF) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(19.dp)),
+            .background(if (active) Periwinkle.copy(alpha = 0.18f) else LineStroke.copy(alpha = 0.35f))
+            .border(1.dp, if (active) Periwinkle.copy(alpha = 0.45f) else LineStroke, RoundedCornerShape(19.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = if (active) Color(0xFFBFDFFF) else Color(0xFF818BA2), modifier = Modifier.size(25.dp))
+        Icon(icon, contentDescription = null, tint = if (active) Periwinkle else TextMuted, modifier = Modifier.size(25.dp))
     }
 }
 
@@ -1264,7 +1284,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.VolumeUp,
             contentDescription = null,
-            tint = if (value > 0.02f) Color(0xFFB9C8FF) else Color(0xFF77829E),
+            tint = if (value > 0.02f) Periwinkle else TextMuted,
             modifier = Modifier.size(20.dp),
         )
         Slider(
@@ -1333,8 +1353,8 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(CircleShape)
-                            .background(Color(0x4D2A3455))
-                            .border(1.dp, Color.White.copy(alpha = 0.07f), CircleShape),
+                            .background(LineStroke.copy(alpha = 0.55f))
+                            .border(1.dp, LineStroke, CircleShape),
                     )
                     if (fraction > 0f) {
                         Box(
@@ -1360,7 +1380,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
         Text(
             text = "$percentage%",
             style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFFDCE5FF),
+            color = TextSoft,
             textAlign = TextAlign.End,
             modifier = Modifier.size(width = 38.dp, height = 20.dp),
         )
@@ -1370,10 +1390,10 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
 @Composable
 private fun PremiumMixerSwitch(checked: Boolean, label: String, onToggle: () -> Unit) {
     val thumbX by animateDpAsState(if (checked) 24.dp else 3.dp, label = "switchThumb")
-    val track by animateColorAsState(if (checked) Color(0xFF7258EB) else Color(0xFF37415C), label = "switchTrack")
+    val track by animateColorAsState(if (checked) Color(0xFF7258EB) else LineStroke, label = "switchTrack")
     Box(
         Modifier.size(52.dp, 31.dp).clip(CircleShape).background(track)
-            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+            .border(1.dp, if (checked) Periwinkle.copy(alpha = 0.55f) else TextMuted.copy(alpha = 0.35f), CircleShape)
             .clickable(role = androidx.compose.ui.semantics.Role.Switch, onClickLabel = label, onClick = onToggle),
     ) {
         Box(
@@ -1401,14 +1421,14 @@ private fun PremiumSleepTimerCard(context: android.content.Context) {
         ) {
             MixerIconWell(Icons.Outlined.Bedtime, active = current > 0)
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(stringResource(R.string.common_sleep_timer), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                 Text(
                     if (current > 0) stringResource(R.string.common_minutes, current) else stringResource(R.string.common_off),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (current > 0) Color(0xFF64C9FF) else Color(0xFFAEB9D0),
+                    color = if (current > 0) Cyan else TextMuted,
                 )
             }
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFFB18CFF), modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 90f else 0f })
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Periwinkle, modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 90f else 0f })
         }
         if (expanded) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1430,8 +1450,8 @@ private fun PremiumBellCard() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(Icons.Outlined.NotificationsNone, bellOn)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(stringResource(R.string.mixer_bell_description), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(stringResource(R.string.mixer_bell_description), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(bellOn, stringResource(R.string.sounds_timer_bell)) {
                 bellOn = !bellOn
@@ -1451,8 +1471,8 @@ private fun PremiumActivitySoundsCard() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             MixerIconWell(Icons.Outlined.MusicNote, soundsOn)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.sounds_activity), style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(stringResource(R.string.mixer_activity_description), style = MaterialTheme.typography.bodySmall, color = Color(0xFFAEB9D0))
+                Text(stringResource(R.string.sounds_activity), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(stringResource(R.string.mixer_activity_description), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             PremiumMixerSwitch(soundsOn, stringResource(R.string.sounds_activity)) {
                 soundsOn = !soundsOn
@@ -1821,8 +1841,26 @@ private fun ToolkitHeader(label: String) {
     )
 }
 
-/** Headline game tile — W21 generative hero art with floating orbs, tappable to
- * open the game. Chrome only; the copy is passed in. Built on palette tokens. */
+/** The display label for a remembered Toolkit route, or null for routes that
+ * should never appear as "recent" (unknown/retired ones simply don't render —
+ * a stale pref can't crash the hub). Pure + unit-tested. */
+internal fun toolkitRecentLabelRes(route: String): Int? = when (route) {
+    "ground" -> R.string.toolkit_ground_title
+    "zenripples" -> R.string.toolkit_zen_title
+    "games" -> R.string.mg_title
+    "bubblepop" -> R.string.toolkit_bubble_title
+    "breathe/box" -> R.string.toolkit_box_title
+    "breathe/reset" -> R.string.toolkit_reset_title
+    "cbt" -> R.string.toolkit_cbt_title
+    "tipp" -> R.string.toolkit_tipp_title
+    "imagery" -> R.string.toolkit_imagery_title
+    "ritual" -> R.string.toolkit_ritual_title
+    "gratitude" -> R.string.toolkit_gratitude_title
+    "patternglow" -> R.string.toolkit_pattern_title
+    "sounds" -> R.string.toolkit_sounds_title
+    else -> null
+}
+
 @Composable
 fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
@@ -1839,24 +1877,42 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         ),
     ) {
         ToolkitAmbientLayer(if (reduceMotion) 0f else glowY)
+        // Every exercise door records itself so the hub can offer "pick up
+        // where you left off" next visit (support/crisis is deliberately not
+        // a "recent" — it is not a practice).
+        val openTool: (String) -> Unit = remember(onOpen) {
+            { route: String -> runCatching { com.cerebrozen.app.net.Session.prefPut("toolkit_recent", route) }; onOpen(route) }
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             ToolkitHeroHeader(onBack)
+            // Returning users mostly come back for one tool — the chip
+            // shortcuts the scroll hunt.
+            val recentRoute = remember { runCatching { com.cerebrozen.app.net.Session.prefGet("toolkit_recent") }.getOrNull() }
+            val recentLabel = recentRoute?.let { toolkitRecentLabelRes(it) }
+            if (recentRoute != null && recentLabel != null) {
+                PickChip(
+                    selected = false,
+                    label = stringResource(R.string.toolkit_recent_chip, stringResource(recentLabel)),
+                ) { onOpen(recentRoute) }
+            }
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80))
-            Grounding()
-            // Provenance, same as every other tool carries (REDESIGN F9) — the
-            // web Toolkit's grounding card has always had it and Android's
-            // hadn't, which made this the one tool here with no source.
-            WhyThisWorks(stringResource(R.string.ground_why))
+            // The 5-4-3-2-1 practice moved to its own screen (a guided exercise
+            // ran INLINE here, restarting silently mid-scroll every visit).
+            ToolkitExerciseCard(
+                stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_intro),
+                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
+                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Grain, Color(0xFF4ADE80), 0,
+            ) { openTool("ground") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
-            ) { onOpen("zenripples") }
-            FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { onOpen("bubblepop") }
+            ) { openTool("zenripples") }
+            FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
             // the only onOpen("games") lived in the retired legacy Toolkit, so
             // a whole shipped hub (engine, registry, tests) was unreachable
@@ -1865,38 +1921,38 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_ground), Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
-            ) { onOpen("games") }
+            ) { openTool("games") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Color(0xFF64C9FF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.Air, Color(0xFF64C9FF), 3,
-            ) { onOpen("breathe/box") }
+            ) { openTool("breathe/box") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.SelfImprovement, Color(0xFF7A5CFF), 4,
-            ) { onOpen("breathe/reset") }
+            ) { openTool("breathe/reset") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Color(0xFFB18CFF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
                 stringResource(R.string.toolkit_duration_5), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Psychology, Color(0xFFB18CFF), 5,
-            ) { onOpen("cbt") }
+            ) { openTool("cbt") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Spa, Color(0xFFFFD166), 6,
-            ) { onOpen("tipp") }
+            ) { openTool("tipp") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Color(0xFF9D7CFF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_imagery_title), stringResource(R.string.toolkit_imagery_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
-            ) { onOpen("imagery") }
+            ) { openTool("imagery") }
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
             // setup comes before use.
@@ -1904,22 +1960,22 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_ritual_title), stringResource(R.string.toolkit_ritual_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
-            ) { onOpen("ritual") }
+            ) { openTool("ritual") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80), 7,
-            ) { onOpen("gratitude") }
+            ) { openTool("gratitude") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFFB18CFF), 8,
-            ) { onOpen("patternglow") }
+            ) { openTool("patternglow") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
                 stringResource(R.string.toolkit_badge_settle), Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
-            ) { onOpen("sounds") }
+            ) { openTool("sounds") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_support_title), stringResource(R.string.crisis_telemanas_line),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
@@ -2262,71 +2318,74 @@ internal fun groundSteps(): List<Pair<String, String>> = listOf(
     stringResource(R.string.ground_step5_title) to stringResource(R.string.ground_step5_hint),
 )
 
-/** The iOS 5-4-3-2-1 sensory grounding tool as a gentle stepper — inlined at the
- * top of the Toolkit so grounding is zero taps away. */
+/** The 5-4-3-2-1 grounding practice on its own screen. It used to run INLINE in
+ * the Toolkit hub — a guided three-minute exercise sandwiched mid-scroll between
+ * a section header and the next card, restarting silently every visit. A focused
+ * screen gives it what an exercise needs: room, a completion moment, and its
+ * evidence attached rather than floating after it. */
 @Composable
-private fun Grounding() {
+fun GroundingScreen(onBack: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
+    var done by remember { mutableStateOf(false) }
     val steps = groundSteps()
     val last = step == steps.lastIndex
-    val shape = RoundedCornerShape(28.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape)
-            .background(CardFill)
-            .border(1.dp, LineStroke, shape)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    PremiumSubPage(
+        stringResource(R.string.toolkit_badge_ground),
+        stringResource(R.string.toolkit_ground_title),
+        onBack = onBack,
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            ToolkitBadge(stringResource(R.string.toolkit_badge_ground), Color(0xFF4ADE80))
-            Text(
-                "•  ${stringResource(R.string.toolkit_duration_3)}   •  ${stringResource(R.string.toolkit_level_guided)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
-            )
+        if (done) {
+            SectionCard {
+                Text(stringResource(R.string.ground_done_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.ground_done_body), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                PrimaryButton(text = stringResource(R.string.ground_start_again), modifier = Modifier.fillMaxWidth()) {
+                    step = 0; done = false
+                }
+            }
+        } else {
+            SectionCard {
+                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    steps.indices.forEach { index ->
+                        Box(
+                            Modifier.weight(1f).height(5.dp).clip(CircleShape)
+                                .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
+                        )
+                    }
+                }
+                Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
+                Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.height(48.dp).clip(CircleShape)
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF4BAE83), Color(0xFF64C9FF))))
+                            .clickable {
+                                if (last) {
+                                    done = true
+                                    Celebrations.trigger()
+                                } else {
+                                    step += 1
+                                }
+                            }
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (last) stringResource(R.string.common_done) else stringResource(R.string.common_next),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                        )
+                    }
+                    if (step > 0) TextButton(onClick = { step -= 1 }) {
+                        Text(stringResource(R.string.common_back), color = Color(0xFFB8C2D9))
+                    }
+                }
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(Color(0x224ADE80))
-                    .border(1.dp, Color(0x444ADE80), RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Grain, contentDescription = null, tint = Color(0xFF78E6A1), modifier = Modifier.size(25.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.toolkit_ground_title), style = MaterialTheme.typography.titleLarge, color = TextPrimary)
-                Text(stringResource(R.string.toolkit_grounding_intro), style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            steps.indices.forEach { index ->
-                Box(
-                    Modifier.weight(1f).height(5.dp).clip(CircleShape)
-                        .background(if (index <= step) Color(0xFF4ADE80) else LineStroke),
-                )
-            }
-        }
-        Text(stringResource(R.string.ground_counter), style = MaterialTheme.typography.labelSmall, color = Color(0xFF78E6A1))
-        Text(steps[step].first, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-        Text(steps[step].second, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.height(48.dp).clip(CircleShape)
-                    .background(Brush.horizontalGradient(listOf(Color(0xFF4BAE83), Color(0xFF64C9FF))))
-                    .clickable { step = if (last) 0 else step + 1 }
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    if (last) stringResource(R.string.ground_start_over) else stringResource(R.string.common_next),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                )
-            }
-            if (step > 0) TextButton(onClick = { step -= 1 }) {
-                Text(stringResource(R.string.common_back), color = Color(0xFFB8C2D9))
-            }
-        }
+        // The evidence travels WITH the practice (REDESIGN F9) — it used to
+        // float after the inline card as a separate row on the hub.
+        WhyThisWorks(stringResource(R.string.ground_why))
     }
 }
 

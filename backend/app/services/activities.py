@@ -100,6 +100,16 @@ _RULES: list[tuple[WidgetSpec, tuple[str, ...]]] = [
 
 def route(text: str, risk: str) -> tuple[WidgetSpec | None, list[Suggestion]]:
     """Return an optional inline widget + up to 3 quick-reply suggestions."""
+    if risk == "crisis":
+        # Top-grade turns narrow, not widen (the reference app's grade-5
+        # analogue): activity routing yields — "Write it down" between a
+        # disclosure and the resources card is the wrong interleaving — and
+        # the chips reduce to the two that help right now. The client raises
+        # its crisis card off the `crisis` action (cross-stack contract).
+        return None, [
+            Suggestion(label="Urgent support", action="crisis"),
+            Suggestion(label="Breathe with me", action="breathing"),
+        ]
     low = text.lower()
     widget: WidgetSpec | None = None
     for spec, keywords in _RULES:
@@ -108,8 +118,12 @@ def route(text: str, risk: str) -> tuple[WidgetSpec | None, list[Suggestion]]:
             break
 
     suggestions: list[Suggestion] = []
-    if risk in {"elevated", "crisis"}:
+    if risk == "elevated":
+        # The middle tier (crisis early-returns above): urgent support leads,
+        # and a gentle real-person path rides beside it — claims-safe copy,
+        # directories not "handoff".
         suggestions.append(Suggestion(label="Urgent support", action="crisis"))
+        suggestions.append(Suggestion(label="Talk to a person", action="human_support"))
 
     # Offer complementary activities to whatever was (or wasn't) surfaced.
     kind = widget.widget_kind if widget else None

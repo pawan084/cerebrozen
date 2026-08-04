@@ -26,6 +26,7 @@ data class BreathLoopsCoreState(
     val position: BreathingPosition? = null,
     val remainingSeconds: Int = BreathPattern.Box.phases.first().seconds,
     val voiceEnabled: Boolean = true,
+    val paused: Boolean = false,
 )
 
 data class BreathLoopsUiState(
@@ -42,6 +43,7 @@ class BreathLoopsViewModel(
     private val machine = BreathingStateMachine()
     private val core = MutableStateFlow(BreathLoopsCoreState())
     private var phaseDeadlineMillis = 0L
+    private var pausedRemainingMillis = 0L
     private var ticker: Job? = null
 
     val uiState: StateFlow<BreathLoopsUiState> = combine(core, historyStore.history) { state, history ->
@@ -67,6 +69,7 @@ class BreathLoopsViewModel(
             selectedPattern = pattern,
             position = position,
             remainingSeconds = position.phase.seconds,
+            paused = false,
         )
         ticker = viewModelScope.launch {
             while (core.value.mode == BreathScreenMode.Active) {
@@ -80,7 +83,7 @@ class BreathLoopsViewModel(
      * while the app was backgrounded or the process thread was suspended. */
     fun reconcile() {
         var state = core.value
-        if (state.mode != BreathScreenMode.Active) return
+        if (state.mode != BreathScreenMode.Active || state.paused) return
         var position = state.position ?: return
         val now = clock.nowMillis()
         while (now >= phaseDeadlineMillis) {
@@ -100,14 +103,51 @@ class BreathLoopsViewModel(
         core.value = state.copy(position = position, remainingSeconds = remaining)
     }
 
+    /** Pausing freezes the monotonic deadline; resuming restores it against the
+     * current clock, so a session paused for an hour picks up mid-phase exactly
+     * where it stopped — including through backgrounding (reconcile no-ops while
+     * paused). */
+    fun pause() {
+        val state = core.value
+        if (state.mode != BreathScreenMode.Active || state.paused) return
+        pausedRemainingMillis = (phaseDeadlineMillis - clock.nowMillis()).coerceAtLeast(0L)
+        core.value = state.copy(paused = true)
+    }
+
+    fun resume() {
+        val state = core.value
+        if (state.mode != BreathScreenMode.Active || !state.paused) return
+        phaseDeadlineMillis = clock.nowMillis() + pausedRemainingMillis
+        core.value = state.copy(paused = false)
+    }
+
+    fun togglePause() {
+        if (core.value.paused) resume() else pause()
+    }
+
     fun stop() {
         ticker?.cancel()
         ticker = null
-        val pattern = core.value.selectedPattern
-        core.value = core.value.copy(
+        val state = core.value
+        val pattern = state.selectedPattern
+        val fullRounds = if (state.mode == BreathScreenMode.Active) state.position?.roundIndex ?: 0 else 0
+        if (fullRounds >= 1) {
+            viewModelScope.launch {
+                historyStore.save(
+                    BreathingSessionRecord(
+                        completedAtEpochMillis = wallClockMillis(),
+                        pattern = pattern,
+                        durationSeconds = pattern.secondsPerRound * fullRounds,
+                        rounds = fullRounds,
+                    ),
+                )
+            }
+        }
+        core.value = state.copy(
             mode = BreathScreenMode.Picker,
             position = null,
             remainingSeconds = pattern.phases.first().seconds,
+            paused = false,
         )
     }
 
