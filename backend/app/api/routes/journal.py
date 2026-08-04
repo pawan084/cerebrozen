@@ -104,6 +104,9 @@ async def create_entry(
     if cached is not None:
         return cached[1]
 
+    # Register C4 - reserve in the same transaction as the write (see moods).
+    reservation = await idempotency.reserve(db, user.id, key, "POST /journal", body)
+
     entry = JournalEntry(user_id=user.id, **body)
     db.add(entry)
     await db.flush()
@@ -116,12 +119,9 @@ async def create_entry(
         text=f"{entry.title}\n{entry.body}",
         excerpt=entry.body or entry.title,
     )
-    await db.commit()
-    await db.refresh(entry)
     stored = JournalOut.model_validate(entry)
-    await idempotency.record(
-        db, user.id, key, "POST /journal", body, 201, stored.model_dump(mode="json")
-    )
+    idempotency.complete(reservation, 201, stored.model_dump(mode="json"))
+    await db.commit()
     return stored
 
 

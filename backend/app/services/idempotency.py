@@ -12,6 +12,14 @@ Contract, from the client's side:
 * Same key, same body → the stored response comes back; nothing is written twice.
 * Same key, different body → 409. That is a client bug (a key got reused for a
   different write), and guessing which one the user meant is worse than saying so.
+
+Ordering matters, and this is the register's C4 (finding 51). The record used
+to be written *after* the write had already committed, in a separate
+transaction - so two concurrent retries of the same key both found no record,
+both inserted a row, and the loser's IntegrityError was swallowed: the exact
+duplicate this exists to prevent still landed. The key is now RESERVED in the
+same transaction as the write, before it. The unique constraint settles the
+race at insert time, so the loser never writes anything at all.
 """
 from __future__ import annotations
 
@@ -80,39 +88,70 @@ async def replay(
             status_code=status.HTTP_409_CONFLICT,
             detail="Idempotency-Key was already used for a different request",
         )
+    if record.status_code == PENDING:
+        # Reserved but never completed: either the first request is still in
+        # flight, or it died between reserving and committing (in which case
+        # its write rolled back with it - nothing was stored, and the key is
+        # stale until purge). "In flight" is honest either way; inventing a
+        # success body would not be.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A request with this Idempotency-Key is already in flight",
+        )
     return record.status_code, record.response_body
 
 
-async def record(
+# A reserved-but-not-yet-completed record. Never returned to a client: a row
+# still holding it means the first request is mid-flight (or died before
+# completing), which [replay] reports as a retryable conflict.
+PENDING = 0
+
+
+async def reserve(
     db: AsyncSession,
     user_id: uuid.UUID,
     key: str | None,
     endpoint: str,
     payload: object,
-    status_code: int,
-    body: dict,
-) -> None:
-    """Store a completed write's response. Never raises — the write already
-    happened, and failing the request now would tell the client to retry
-    something that succeeded."""
+) -> IdempotencyRecord | None:
+    """Claim [key] for this write *before* it happens, in the caller's own
+    transaction. Returns the row to complete later, or None when unkeyed.
+
+    Raises 409 when a concurrent request already holds the key - the loser of
+    the race stops here, having written nothing. That is the whole point: the
+    uniqueness is the database's, and it is decided before any row exists
+    rather than after both already do.
+    """
     if key is None:
-        return
-    db.add(
-        IdempotencyRecord(
-            user_id=user_id,
-            key=key,
-            endpoint=endpoint,
-            request_hash=fingerprint(payload),
-            status_code=status_code,
-            response_body=body,
-        )
+        return None
+    row = IdempotencyRecord(
+        user_id=user_id,
+        key=key,
+        endpoint=endpoint,
+        request_hash=fingerprint(payload),
+        status_code=PENDING,
+        response_body={},
     )
+    db.add(row)
     try:
-        await db.commit()
+        await db.flush()
     except IntegrityError:
-        # Two devices raced the same key. The other one won and stored an
-        # identical response; nothing to reconcile.
         await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A request with this Idempotency-Key is already in flight",
+        )
+    return row
+
+
+def complete(row: IdempotencyRecord | None, status_code: int, body: dict) -> None:
+    """Stamp the reserved row with the response. Committed by the caller in
+    the SAME transaction as the write it describes, so the record and the row
+    it protects can never disagree."""
+    if row is None:
+        return
+    row.status_code = status_code
+    row.response_body = body
 
 
 async def purge_expired(db: AsyncSession) -> int:

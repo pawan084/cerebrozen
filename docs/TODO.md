@@ -20,6 +20,17 @@
 > ProcessedWebhook replay guard Stripe always had (keyed on
 > notificationUUID). All pinned in `tests/test_subscription_binding.py`;
 > hermetic suite 506 passed / 96%.
+>
+> **Wave 11 — data integrity + DPDP (register C4/C5, findings 51/66/67):**
+> the idempotency key is now RESERVED before the write and completed in the
+> same transaction (was: recorded after the commit in a separate transaction,
+> so concurrent retries both inserted and the loser's IntegrityError was
+> swallowed); mood `note`/`trigger` go through `safety.scan_and_record` like
+> journal and chat (risk written into a check-in produced no event before);
+> `voice_storage` is enforced and reported at `/voice/stt` (`audio_retained`);
+> `model_training` gained `services/training.py` — the single gate any future
+> corpus build must pass (no pipeline exists; the seam does). Pinned in
+> `tests/test_consent_enforced.py`; hermetic suite 512 passed / 96%.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

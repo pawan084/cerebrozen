@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.deps import get_current_user
 from app.core.ratelimit import limiter
 from app.models.user import User
+from app.models.consent import consent_allows
 from app.services import voice
 
 router = APIRouter(prefix="/voice", tags=["voice"])
@@ -24,6 +25,10 @@ _MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB — a generous cap for short clips.
 
 class STTOut(BaseModel):
     transcript: str
+    # Whether the uploaded audio was allowed to be retained (voice_storage
+    # consent). Always False today - nothing persists it - and now the
+    # ENFORCED answer rather than an unread flag (register C5).
+    audio_retained: bool = False
 
 
 class TTSIn(BaseModel):
@@ -53,7 +58,17 @@ async def speech_to_text(
     transcript = await voice.transcribe(data, content_type=audio.content_type or "audio/mpeg")
     if not transcript:
         raise HTTPException(status_code=422, detail="Could not transcribe audio")
-    return STTOut(transcript=transcript)
+    # Register C5 (finding 66): `voice_storage` was collected, exported and
+    # shown in admin while being enforced at zero sites. This endpoint is the
+    # only place raw audio exists server-side, so this is where the category
+    # means something: without consent the bytes are dropped the moment the
+    # transcript exists, and the response says so rather than leaving the
+    # user to assume. (Nothing persists audio today either way - the flag now
+    # documents and ENFORCES that, so a future retention path cannot quietly
+    # inherit permission it was never given.)
+    retained = consent_allows(user, "voice_storage")
+    del data   # explicit: the audio does not outlive this request
+    return STTOut(transcript=transcript, audio_retained=retained)
 
 
 @router.post(

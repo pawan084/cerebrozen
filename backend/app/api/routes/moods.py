@@ -10,7 +10,7 @@ from app.core.deps import get_current_user
 from app.models.mood import MoodLog
 from app.models.user import User
 from app.schemas.content_data import MoodCreate, MoodOut
-from app.services import idempotency, nudges
+from app.services import idempotency, nudges, safety
 
 router = APIRouter(prefix="/moods", tags=["moods"])
 
@@ -56,15 +56,34 @@ async def create_mood(
     if cached is not None:
         return cached[1]
 
+    # Claim the key BEFORE the write and in the same transaction (register
+    # C4): the unique constraint settles concurrent retries at insert time, so
+    # the loser never creates a check-in at all.
+    reservation = await idempotency.reserve(db, user.id, key, "POST /moods", body)
+
     log = MoodLog(user_id=user.id, **body)
     db.add(log)
     await db.flush()
+    # Register C5 (finding 67): note + trigger are 255 chars of free text that
+    # used to reach the database with no scan at all, while journal and chat
+    # both scan - so "trigger: I want to die" produced no event, no resources
+    # and no escalation. Safety never blocks: the check-in is already written,
+    # the scan only ADDS an event and its resources.
+    written = "\n".join(part for part in (log.note, log.trigger) if part)
+    if written.strip():
+        await safety.scan_and_record(
+            db,
+            user_id=user.id,
+            source="mood",
+            source_id=log.id,
+            text=written,
+            excerpt=(log.note or log.trigger or "")[:200],
+        )
     # Proactive: a rough mood may queue a supportive nudge.
     await nudges.schedule_contextual(db, user)
-    await db.commit()
-    await db.refresh(log)
     stored = MoodOut.model_validate(log)
-    await idempotency.record(db, user.id, key, "POST /moods", body, 201, stored.model_dump(mode="json"))
+    idempotency.complete(reservation, 201, stored.model_dump(mode="json"))
+    await db.commit()
     return stored
 
 
