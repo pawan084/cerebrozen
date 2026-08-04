@@ -35,6 +35,9 @@
     <string name="common_open">खोलें</string>
     <string name="common_send">भेजें</string>
     <string name="common_reset">रीसेट</string>
+    <string name="net_unreachable">सर्वर तक नहीं पहुँच सके — अपना कनेक्शन जाँचें।</string>
+    <string name="net_signed_out">साइन आउट हो गए</string>
+    <string name="net_request_failed">अनुरोध विफल (%1$d)</string>
     <string name="common_try_again">फिर से कोशिश करें</string>
     <string name="common_one_moment">एक पल…</string>
     <string name="common_continue">जारी रखें</string>

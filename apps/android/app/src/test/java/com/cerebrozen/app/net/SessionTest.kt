@@ -113,6 +113,26 @@ class SessionTest {
     }
 
     @Test
+    fun the_response_cache_evicts_oldest_beyond_the_cap() = runTest {
+        // B85: the cache accumulated every distinct GET path until sign-out —
+        // unbounded growth in SharedPreferences. Oldest-written goes first.
+        val store = FakeStore("refresh_token" to "r1")
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
+            when {
+                url.endsWith("/auth/refresh") -> 200 to tokens
+                else -> 200 to """{"n":1}"""
+            }
+        }
+        repeat(Session.MAX_CACHE_ENTRIES + 2) { i -> Session.api("/thing/$i") }
+        val cached = store.keys().filter { it.startsWith("cache:") }
+        assertEquals(Session.MAX_CACHE_ENTRIES, cached.size)
+        assertFalse("the first-written entry must be evicted",
+            cached.contains("cache:/thing/0"))
+        assertTrue("the newest entry must survive",
+            cached.contains("cache:/thing/${Session.MAX_CACHE_ENTRIES + 1}"))
+    }
+
+    @Test
     fun servedStale_flips_on_cache_fallback_and_clears_when_back_online() = runTest {
         val store = FakeStore("refresh_token" to "r1")
         var online = true

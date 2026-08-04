@@ -774,11 +774,13 @@ fun GuidedImageryScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     // Countdown and advance are separate effects on purpose — the same shape
     // the web version settled on, so a tick never also has to decide whether
     // the reel is over.
-    LaunchedEffect(started, done, paused) {
+    // B29: keyed on index too — each line gets a fresh ticker, so a delayed
+    // recomposition can never strand the reel with a dead countdown.
+    LaunchedEffect(started, done, paused, index) {
         if (!started || done || paused) return@LaunchedEffect
-        while (true) {
+        while (left > 0) {
             delay(1_000)
-            if (left > 0) left -= 1 else break
+            left -= 1
         }
     }
     LaunchedEffect(left, index, started, done) {

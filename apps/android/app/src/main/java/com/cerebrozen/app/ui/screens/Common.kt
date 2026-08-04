@@ -965,7 +965,15 @@ internal fun AppTextField(
 /** Selectable pill — filled lavender + dark text when chosen, a soft glassy
  * outline otherwise. Replaces the low-contrast Material FilterChip. */
 @Composable
-internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
+internal fun PickChip(
+    selected: Boolean,
+    label: String,
+    // False for ACTION chips (the "pick up where you left off" recents):
+    // announcing "not selected" on a chip with no selection state was a lie
+    // to TalkBack (audit B56).
+    announceSelection: Boolean = true,
+    onClick: () -> Unit,
+) {
     val shape = RoundedCornerShape(Radius.round)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -997,7 +1005,7 @@ internal fun PickChip(selected: Boolean, label: String, onClick: () -> Unit) {
             ) { Haptics.selection(); onClick() }
             // `this.` is load-bearing: a bare `selected` would bind to PickChip's
             // own `selected` parameter (a val), not the semantics property.
-            .semantics { this.selected = isSelected }
+            .then(if (announceSelection) Modifier.semantics { this.selected = isSelected } else Modifier)
             .padding(horizontal = 16.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {

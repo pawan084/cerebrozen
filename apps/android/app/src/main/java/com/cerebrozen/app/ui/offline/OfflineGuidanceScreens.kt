@@ -193,9 +193,15 @@ fun BodyScanScreen(onBack: () -> Unit) {
     val step = OfflineToolContent.bodyScan[index]
     val spoken = if (started && !complete) "${stringResource(step.partRes)}. ${stringResource(step.instructionRes)}" else null
     LocalTtsCue(spoken, voice, paused)
+    // B34: per-step remaining seconds — pause/resume used to replay the
+    // WHOLE step wait (pausing at second 14 of 15 restarted from 15).
+    var stepRemaining by remember(index) { mutableIntStateOf(step.seconds) }
     LaunchedEffect(started, complete, auto, paused, index, resumed) {
         if (started && !complete && auto && !paused && resumed) {
-            delay(step.seconds * 1_000L)
+            while (stepRemaining > 0) {
+                delay(1_000)
+                stepRemaining -= 1
+            }
             if (index == OfflineToolContent.bodyScan.lastIndex) complete = true else index++
         }
     }

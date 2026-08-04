@@ -132,6 +132,20 @@
   Remaining (small): B29 imagery ticker robustness, B31 BubblePop drift perf,
   B34 body-scan pause restarts step wait, B84-B85 Session i18n + cache cap,
   B56 PickChip role, B59 RTL scope.
+- [x] **Wave 9 — the code tail** (register: B29, B31, B34, B56, B84, B85):
+  imagery ticker keyed per line (no stall window); BubblePop drift at 15Hz
+  with an empty-pool skip; body-scan pause keeps the seconds already waited
+  (per-step remaining, was full-step replay); PickChip gained
+  announceSelection=false for the two recents ACTION chips (no more "not
+  selected" lies to TalkBack); Session's user-facing failure strings localize
+  (net_unreachable/net_signed_out/net_request_failed en+hi, English fallback
+  keeps unit-test pins meaningful); the response cache is capped at 48
+  entries with oldest-written eviction (pinned in SessionTest). **The
+  register's Android CODE items are now done** — what remains on Android is:
+  design-call CTAs (H12/H13/H18/H19), duplicate-surface retirements (A10/A11)
+  and onboarding notify sequence (A66/A67) as owner calls, the B59 RTL device
+  pass, the queued owner decisions, and the device-only checks (TalkBack
+  traversal, hand-play the sequence game, Reminders time row).
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

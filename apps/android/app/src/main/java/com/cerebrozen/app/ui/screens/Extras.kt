@@ -1025,6 +1025,7 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
                 PickChip(
                     selected = false,
                     label = stringResource(R.string.sounds_recent_chip, recent),
+                    announceSelection = false,   // B56: an action, not a choice
                 ) { playAs(recent, kindOf(recent)) }
             }
         }
@@ -2036,6 +2037,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 PickChip(
                     selected = false,
                     label = stringResource(R.string.toolkit_recent_chip, stringResource(recentLabel)),
+                    announceSelection = false,   // B56
                 ) { onOpen(recentRoute) }
             }
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80))
@@ -2392,9 +2394,14 @@ fun BubblePopScreen(onBack: () -> Unit) {
     // …and drift them gently upward, popping any that float off the top.
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) return@LaunchedEffect
+        // B31: 15Hz is indistinguishable for a slow drift and skips entirely
+        // while the pool is empty — the 25Hz loop rebuilt and re-filtered the
+        // whole list every 40ms even with nothing to move.
         while (true) {
-            delay(40)
-            bubbles = bubbles.map { it.copy(y = it.y - 0.005f) }.filter { it.y > -0.15f }
+            delay(66)
+            if (bubbles.isNotEmpty()) {
+                bubbles = bubbles.map { it.copy(y = it.y - 0.008f) }.filter { it.y > -0.15f }
+            }
         }
     }
     SubPage(stringResource(R.string.bubblepop_eyebrow), stringResource(R.string.bubblepop_title), onBack) {

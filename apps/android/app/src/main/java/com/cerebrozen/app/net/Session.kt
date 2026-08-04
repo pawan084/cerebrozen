@@ -72,7 +72,15 @@ object Session {
      * (see [Outbox]) and is empty for every other call. */
     internal var http: suspend (String, String, String?, String?, String?, Map<String, String>) -> Pair<Int, String> = ::realHttp
 
+    // For user-facing failure strings (B84). Null in unit tests, where the
+    // English fallbacks below keep the message pins meaningful.
+    private var appContext: Context? = null
+
+    private fun netString(resId: Int, fallback: String, vararg args: Any?): String =
+        runCatching { appContext?.getString(resId, *args) }.getOrNull() ?: fallback
+
     fun init(context: Context) {
+        appContext = context.applicationContext
         storage = buildStore(context)
         signedIn = storage.getString(REFRESH_KEY) != null
     }
@@ -179,7 +187,7 @@ object Session {
                 body?.opt("detail") as? String,
                 validationMsg,
                 body?.opt("error") as? String,
-            ).firstOrNull { it.isNotBlank() } ?: "Request failed ($code)"
+            ).firstOrNull { it.isNotBlank() } ?: netString(com.cerebrozen.app.R.string.net_request_failed, "Request failed ($code)", code)
             throw ApiException(code, detail)
         }
         return text
@@ -420,7 +428,7 @@ object Session {
         if ((code == 401 || code == 403) && refresh()) { val r = attempt(); code = r.first; bytes = r.second }
         if (code !in 200..299) {
             val detail = runCatching { JSONObject(String(bytes)).optString("detail") }
-                .getOrNull().takeUnless { it.isNullOrBlank() } ?: "Request failed ($code)"
+                .getOrNull().takeUnless { it.isNullOrBlank() } ?: netString(com.cerebrozen.app.R.string.net_request_failed, "Request failed ($code)", code)
             throw ApiException(code, detail)
         }
         return bytes
@@ -464,7 +472,7 @@ object Session {
         }
         var code = attempt()
         if ((code == 401 || code == 403) && refresh()) code = attempt()
-        if (code !in 200..299) throw ApiException(code, detail.ifBlank { "Request failed ($code)" })
+        if (code !in 200..299) throw ApiException(code, detail.ifBlank { netString(com.cerebrozen.app.R.string.net_request_failed, "Request failed ($code)", code) })
     }
 
     /** Rotate the token pair. Returns false on failure, but only a real auth
@@ -498,8 +506,13 @@ object Session {
      * "Signed out" when the server was merely unreachable. */
     private suspend fun ensureAccess() {
         if (access != null || refresh()) return
-        if (signedIn) throw ApiException(503, "Couldn't reach the server — check your connection.")
-        throw ApiException(401, "Signed out")
+        if (signedIn) {
+            throw ApiException(
+                503,
+                netString(com.cerebrozen.app.R.string.net_unreachable, "Couldn't reach the server — check your connection."),
+            )
+        }
+        throw ApiException(401, netString(com.cerebrozen.app.R.string.net_signed_out, "Signed out"))
     }
 
     /** Authenticated call with the fresh-launch refresh + one rotation retry.
@@ -552,12 +565,35 @@ object Session {
         !path.startsWith("/users/me/export")
 
     private fun cacheKey(path: String) = "cache:$path"
+
+    /** The response cache keeps at most this many entries — it accumulated
+     * every distinct GET path until sign-out, unbounded (B85). Eviction is
+     * oldest-written-first via a monotonic sequence. */
+    internal const val MAX_CACHE_ENTRIES = 48
+
     private fun cachePut(path: String, body: String) {
-        runCatching { storage.putString(cacheKey(path), body) }
+        runCatching {
+            val seq = (storage.getString("cache_seq")?.toLongOrNull() ?: 0L) + 1
+            storage.putString("cache_seq", seq.toString())
+            storage.putString(cacheKey(path), body)
+            storage.putString("cacheseq:$path", seq.toString())
+            val cached = storage.keys().filter { it.startsWith("cache:") }
+            if (cached.size > MAX_CACHE_ENTRIES) {
+                val victim = cached.minByOrNull {
+                    storage.getString("cacheseq:" + it.removePrefix("cache:"))?.toLongOrNull() ?: 0L
+                }
+                if (victim != null) {
+                    storage.remove(victim)
+                    storage.remove("cacheseq:" + victim.removePrefix("cache:"))
+                }
+            }
+        }
     }
     private fun cacheGet(path: String): String? = storage.getString(cacheKey(path))
     private fun clearCache() {
-        storage.keys().filter { it.startsWith("cache:") }.forEach { storage.remove(it) }
+        storage.keys()
+            .filter { it.startsWith("cache:") || it.startsWith("cacheseq:") || it == "cache_seq" }
+            .forEach { storage.remove(it) }
     }
 
     fun signOut() {
