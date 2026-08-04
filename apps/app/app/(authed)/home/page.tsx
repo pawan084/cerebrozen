@@ -71,6 +71,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [resp, setResp] = useState("");
+  const [checkInError, setCheckInError] = useState<string | null>(null);
   const [streak, setStreak] = useState<Streak | null>(null);
   const [moods, setMoods] = useState<Mood[]>([]);
   const [reflection, setReflection] = useState<string>("");
@@ -92,10 +93,19 @@ export default function Home() {
   async function pick(m: (typeof MOODS)[number]) {
     setPicked(m.name);
     setResp(m.resp);
+    setCheckInError(null);
     try {
       await api("/moods", { method: "POST", body: JSON.stringify({ mood: m.name, note: m.note, symbol: m.symbol, intensity: 3 }) });
       api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
-    } catch {}
+    } catch {
+      // Register D3: the affirming response was shown optimistically and the
+      // POST error swallowed - the user was told "Love that..." while nothing
+      // was saved and the streak never moved. The kindest version of this is
+      // still the true one: take the response back and say what happened.
+      setPicked(null);
+      setResp("");
+      setCheckInError("We couldn't save that check-in. Tap a feeling again when you're ready.");
+    }
   }
 
   const hour = new Date().getHours();
@@ -144,6 +154,7 @@ export default function Home() {
                 ))}
               </div>
               <p className="checkin-note">{resp || "Tap how you're feeling — there's no wrong answer."}</p>
+              {checkInError && <p className="error" role="alert">{checkInError}</p>}
             </section>
 
             {/* Weekly-insights teaser (ref "This week" strip). */}

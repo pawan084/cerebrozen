@@ -9,10 +9,17 @@ type Plan = { id: string; title: string; focus: string; rationale: string; sourc
 export default function PlanPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<Plan>("/plans/active").then(setPlan).catch(() => setError("Couldn't load your plan."));
+    api<Plan>("/plans/active")
+      .then(setPlan)
+      // Register D7: "no plan yet" and "couldn't reach the server" are
+      // different, and the generate button used to live INSIDE `{plan && ...}`
+      // - so a user who had never had a plan could not create one from here.
+      .then(() => setLoaded(true))
+      .catch(() => { setError("Couldn't load your plan."); setLoaded(true); });
   }, []);
 
   function flip(id: string, done: boolean) {
@@ -34,8 +41,12 @@ export default function PlanPage() {
   async function regenerate() {
     if (busy) return;
     setBusy(true);
+    setError("");
     try {
       setPlan(await api<Plan>("/plans/generate", { method: "POST" }));
+    } catch {
+      // Register D6: the rejection was unhandled and unsurfaced.
+      setError("We couldn't build a plan just now — try again in a moment.");
     } finally {
       setBusy(false);
     }
@@ -49,6 +60,19 @@ export default function PlanPage() {
       <p className="eyebrow">Agentic plan{plan ? ` · ${plan.source === "ai" ? "personalized by AI" : "curated"}` : ""}</p>
       <h1>{plan?.title ?? "Daily plan"}</h1>
       {error && <p className="error">{error}</p>}
+
+      {loaded && !plan && (
+        <section className="card cz-in" aria-label="No plan yet">
+          <h2>No plan yet</h2>
+          <p className="sub">
+            A daily plan is a handful of small steps built from your recent check-ins and
+            sleep. You can make today&apos;s now.
+          </p>
+          <button className="btn" onClick={regenerate} disabled={busy}>
+            {busy ? "Building…" : "Make today's plan"}
+          </button>
+        </section>
+      )}
 
       {plan && (
         <>

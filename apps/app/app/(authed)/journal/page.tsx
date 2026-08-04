@@ -40,6 +40,7 @@ export default function Journal() {
   const [tags, setTags] = useState("");
   const [busy, setBusy] = useState(false);
   const [support, setSupport] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [mood, setMood] = useState("");
   // Search over the same server index Android uses (/journal?q= & ?tag=).
   const [query, setQuery] = useState("");
@@ -92,13 +93,18 @@ export default function Journal() {
   const tuned = mood ? TUNED.find((t) => t.match.test(mood)) : undefined;
 
   async function save(e: React.FormEvent) {
-    e.preventDefault(); if (busy || !title.trim()) return; setBusy(true);
+    e.preventDefault(); if (busy || !title.trim()) return; setBusy(true); setSaveError(null);
     try {
       const entry = await api<Entry>("/journal", { method: "POST", body: JSON.stringify({ title, body, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), symbol: "book" }) });
       setSupport(["elevated", "crisis"].includes(entry.risk_level));
       window.localStorage.removeItem(DRAFT_KEY);
       setTitle(""); setBody(""); setTags(""); setOpen(false); await reload();
       api<string[]>("/journal/tags").then(setAllTags).catch(() => {});
+    } catch {
+      // Register D5: the draft survived but nothing said why the entry never
+      // appeared. The words are the point here - they stay, and so does the
+      // reason.
+      setSaveError("We couldn't save that entry. Your writing is still here — try again.");
     } finally { setBusy(false); }
   }
 
@@ -162,6 +168,7 @@ export default function Journal() {
                   <label className="field"><span>What&apos;s on your mind?</span><textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} /></label>
                   <label className="field"><span>Tags (comma-separated)</span><input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Work, Sleep" /></label>
                   <button className="btn" disabled={busy || !title.trim()}>{busy ? "Saving…" : "Save entry"}</button>
+                  {saveError && <p className="error" role="alert">{saveError}</p>}
                 </form>
               )}
             </section>

@@ -23,12 +23,23 @@ type Habit = {
 
 const DAY_LABEL = ["S", "M", "T", "W", "T", "F", "S"];
 
+/** Local calendar date as YYYY-MM-DD.
+ *
+ * Register D14: this used `toISOString()` after a LOCAL `setDate`, which is a
+ * UTC key — so for IST users before ~05:30 the "today" circle and the
+ * `recent_days` comparison both pointed at yesterday. The habit day is the
+ * user's day.
+ */
+function localISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function lastSevenDays(): { iso: string; label: string }[] {
   const out: { iso: string; label: string }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    out.push({ iso: d.toISOString().slice(0, 10), label: DAY_LABEL[d.getDay()] });
+    out.push({ iso: localISO(d), label: DAY_LABEL[d.getDay()] });
   }
   return out;
 }
@@ -40,6 +51,7 @@ export default function Goals() {
   const [habitDraft, setHabitDraft] = useState("");
   const [cueDraft, setCueDraft] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     api<Goal[]>("/goals").then(setGoals).catch(() => setGoals([]));
@@ -49,12 +61,19 @@ export default function Goals() {
   useEffect(load, [load]);
 
   async function run(fn: () => Promise<unknown>, message: string) {
+    // Register D15: "Make this today's plan" had no busy state, so a
+    // double-click POSTed /decompose twice — unlike every other mutating
+    // button here.
+    if (busy) return;
+    setBusy(true);
     try {
       await fn();
       setError("");
       load();
     } catch {
       setError(message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -83,12 +102,13 @@ export default function Goals() {
                 <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
                   <button
                     className="btn"
+                    disabled={busy}
                     onClick={() => run(
                       () => api(`/goals/${g.id}/decompose`, { method: "POST" }),
                       "Couldn't build a plan from that — try again.",
                     )}
                   >
-                    Make this today&apos;s plan
+                    {busy ? "Working…" : "Make this today's plan"}
                   </button>
                   <button
                     onClick={() => run(

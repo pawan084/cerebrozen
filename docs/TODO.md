@@ -46,6 +46,18 @@
 > exit 0**. NOTE: register D1's claim that the GET signs users out was
 > **inaccurate** — only the write path is consent-gated; corrected in
 > `docs/audit/D-web-app.md`.
+>
+> **Wave 13 — web silent failures & dead ends (register D3-D7, D9, D13-D15):**
+> the Home check-in no longer congratulates a save that failed (it takes the
+> affirming response back and says so); Sleep, Journal and Plan saves gained
+> catches (were `try/finally` with no catch → unhandled rejections, console
+> errors, user silence — the journal draft still survives, and now says why);
+> `/plan` is no longer a dead end for a user who has never had a plan (the
+> generate button lived inside `{plan && …}`); the DPDP export can't hang
+> forever on a network failure; Programs matches the active journey by
+> `content_id` not title equality; Goals' week circles use LOCAL day keys (the
+> UTC key shifted "today" for IST users before ~05:30); "Make this today's
+> plan" has a busy guard. e2e suite 25 passed / exit 0.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

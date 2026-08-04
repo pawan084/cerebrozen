@@ -154,7 +154,17 @@ export default function Account() {
 
   async function exportData() {
     setStatus("Preparing your export…");
-    const res = await authedFetch("/users/me/export");
+    // Register D9: an unwrapped authedFetch left the status stuck on
+    // "Preparing your export…" forever on a network failure, plus an
+    // unhandled rejection. A DPDP export that silently never arrives is
+    // worse than one that says it failed.
+    let res: Response;
+    try {
+      res = await authedFetch("/users/me/export");
+    } catch {
+      setStatus("Export failed — check your connection and try again.");
+      return;
+    }
     if (!res.ok) {
       setStatus("Export failed — try again.");
       return;

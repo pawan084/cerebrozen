@@ -64,6 +64,7 @@ export default function Sleep() {
   const [bedtime, setBedtime] = useState("23:00");
   const [wake, setWake] = useState("07:00");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [soundscapes, setSoundscapes] = useState<Content[]>([]);
   const [stories, setStories] = useState<Content[]>([]);
@@ -83,11 +84,15 @@ export default function Sleep() {
   function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!quality || busy) return; setBusy(true);
+    if (!quality || busy) return; setBusy(true); setSaveError(null);
     try {
       await api("/sleep", { method: "POST", body: JSON.stringify({ date: todayISO(), bedtime: `${bedtime}:00`, wake_time: `${wake}:00`, quality, awakenings: 0 }) });
       setSaved(true);
       api<Night[]>("/sleep?limit=7").then(setNights).catch(() => {});
+    } catch {
+      // Register D4: try/finally with no catch made a failed save an
+      // unhandled rejection - a console error and nothing for the user.
+      setSaveError("We couldn't save last night just now. Your entries are still here — try again.");
     } finally { setBusy(false); }
   }
 
@@ -202,6 +207,7 @@ export default function Sleep() {
             <label className="field grow"><span>Woke up around</span><input type="time" value={wake} onChange={(e) => setWake(e.target.value)} /></label>
           </div>
           {saved && <p className="success" role="status">Saved — one entry per morning, edits welcome.</p>}
+          {saveError && <p className="error" role="alert">{saveError}</p>}
           <button className="btn" disabled={!quality || busy}>{busy ? "Saving…" : "Save check-in"}</button>
         </form>
       </div>

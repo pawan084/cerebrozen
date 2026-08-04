@@ -178,7 +178,10 @@ export default function Programs() {
                   )}
                 </div>
                 <h3>{p.title}</h3>
-                {active?.title !== p.title && (
+                {/* Register D13: matched on TITLE, so two catalogue items
+                    sharing a title both lost (or kept) their button. The API
+                    hands back content_id for exactly this. */}
+                {active?.content_id !== p.id && (
                   <button
                     onClick={() => enroll(p.id)}
                     style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--lav)", fontWeight: 700, padding: 0, marginTop: 8 }}
