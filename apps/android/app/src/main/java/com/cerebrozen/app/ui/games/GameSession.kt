@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -276,9 +278,17 @@ private fun RoundTimer(
         onExpire()
     }
     val warning = remaining < 0.34f
+    // B58: color was the ONLY expiry cue. The bar now carries range semantics
+    // (like the mixer sliders) and ticks a soft haptic when time runs short.
+    LaunchedEffect(warning) { if (warning) Haptics.soft() }
+    val timerCd = stringResource(R.string.mg_timer_cd)
     Box(
         Modifier.fillMaxWidth().height(5.dp).clip(CircleShape)
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
+            .semantics {
+                contentDescription = timerCd
+                progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(remaining, 0f..1f)
+            },
     ) {
         Box(
             Modifier.fillMaxWidth(remaining).height(5.dp).clip(CircleShape)
@@ -507,6 +517,10 @@ private fun Grid(
                     val lit = cell in highlighted
                     val visible = !filledOnly || lit
                     val scale by animateFloatAsState(if (lit) 1.06f else 1f, tween(180), label = "cell")
+                    // B51: anonymous clickable Boxes made the memory games
+                    // unusable with TalkBack — every cell now has a name,
+                    // position and role (contrast PatternGlow's labelled pads).
+                    val cellCd = stringResource(R.string.mg_cell_cd, cell + 1)
                     Box(
                         Modifier.size(64.dp).scale(scale).clip(RoundedCornerShape(18.dp))
                             .background(
@@ -519,6 +533,10 @@ private fun Grid(
                             .then(
                                 if (enabled && visible) {
                                     Modifier.clickable { Haptics.soft(); onTap(cell) }
+                                        .semantics {
+                                            role = androidx.compose.ui.semantics.Role.Button
+                                            contentDescription = cellCd
+                                        }
                                 } else {
                                     Modifier
                                 },

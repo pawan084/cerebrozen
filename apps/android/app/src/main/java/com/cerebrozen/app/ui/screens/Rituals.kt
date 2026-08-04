@@ -632,12 +632,14 @@ private fun BlockRow(
             val downCd = stringResource(R.string.builder_move_later_cd, label)
             Row {
                 IconButton(onClick = onMoveUp, enabled = canMoveUp,
-                    modifier = Modifier.size(36.dp).semantics { contentDescription = upCd }) {
+                    // B52: 36dp sat under the 48dp floor this row's own
+                    // comment block champions.
+                    modifier = Modifier.size(48.dp).semantics { contentDescription = upCd }) {
                     Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = null,
                         tint = if (canMoveUp) Periwinkle else LineStroke, modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onMoveDown, enabled = canMoveDown,
-                    modifier = Modifier.size(36.dp).semantics { contentDescription = downCd }) {
+                    modifier = Modifier.size(48.dp).semantics { contentDescription = downCd }) {
                     Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null,
                         tint = if (canMoveDown) Periwinkle else LineStroke, modifier = Modifier.size(20.dp))
                 }

@@ -65,6 +65,23 @@
   toggle race, B6 pattern-delete leaves suggestions, B17-B22 failed-read
   branches on Goals/Patterns/Search/Crisis-contact (partial: crisis + trusted
   contact done in Wave 1), H7-H22 forward-CTA additions.
+- [x] **Wave 5 — Reduce Motion clocks, a11y, races** (register: B5, B6, B8
+  earlier, B23-B27, B46-B52, B55, B57, B58, B70): `restingFloat` helper —
+  the five gate-the-read-not-the-clock infinite transitions (mixer slider ×5
+  instances, mixer hero, Toolkit ambient, featured game card, breathe
+  background) now create NO transition under Reduce Motion; PremiumMixerSwitch
+  meets the 48dp floor with real toggleable state semantics; SleepTimerPill
+  48dp target; ChipWrap/BreathePaceControl selected-state semantics
+  (selectable); BreatheSettingRow row-level toggleable (switch was nameless);
+  memory-game grid cells named per-cell with Role.Button (was TalkBack-
+  invisible); RitualBuilder arrows 36→48dp; PatternGlow pads announce disabled
+  during the watch phase; RoundTimer carries progressBarRangeInfo + a soft
+  haptic when time runs short; plan-step toggle race fixed with a mutation
+  counter (stale response can no longer revert a newer toggle) + selection
+  haptic; pattern "Delete everything" also clears the derived suggestions.
+  Still open: B54/B56 (BubblePop semantics, recents-chip role — PickChip API
+  change), B28 BreatheWhyCard motion rule, B59 RTL scope, token-drift sweep
+  (B60-B68), haptic grammar B69, BreathLoops clear confirm B71.
 
 ## Open — needs the owner's accounts/credentials (no code left to write)
 

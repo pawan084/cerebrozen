@@ -41,6 +41,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,6 +80,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -471,13 +474,11 @@ private fun ImmersiveBreatheFrame(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
-    val ambient = rememberInfiniteTransition(label = "breatheBackground")
-    val drift by ambient.animateFloat(
-        initialValue = -0.05f,
-        targetValue = 0.08f,
-        animationSpec = infiniteRepeatable(tween(7_000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "breatheBackgroundDrift",
-    )
+    // B27: the breathing screens must not burn an animation clock precisely
+    // for users who asked for stillness — no transition exists under RM.
+    val drift = restingFloat(reduceMotion, still = 0f, initial = -0.05f, target = 0.08f,
+        spec = infiniteRepeatable(tween(7_000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breatheBackgroundDrift")
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)),
@@ -487,13 +488,13 @@ private fun ImmersiveBreatheFrame(
             drawCircle(
                 brush = Brush.radialGradient(listOf(Color(0x2E64C9FF), Color.Transparent)),
                 radius = size.minDimension * 0.72f,
-                center = Offset(size.width * 0.5f, size.height * (0.37f + if (reduceMotion) 0f else drift)),
+                center = Offset(size.width * 0.5f, size.height * (0.37f + drift)),
             )
             listOf(0.12f to 0.16f, 0.86f to 0.24f, 0.18f to 0.62f, 0.80f to 0.78f).forEachIndexed { index, point ->
                 drawCircle(
                     color = if (index % 2 == 0) Color(0x3D64C9FF) else Color(0x3DB18CFF),
                     radius = 2.dp.toPx(),
-                    center = Offset(size.width * point.first, size.height * (point.second + if (reduceMotion) 0f else drift * 0.25f)),
+                    center = Offset(size.width * point.first, size.height * (point.second + drift * 0.25f)),
                 )
             }
         }
@@ -563,7 +564,8 @@ private fun BreathePaceControl(pace: Int, onPaceChange: (Int) -> Unit) {
                 val fill by animateColorAsState(if (selected) Color(0xFF7158E8) else Color.Transparent, label = "paceFill")
                 Box(
                     Modifier.weight(1f).height(44.dp).clip(CircleShape).background(fill)
-                        .clickable(role = Role.RadioButton, onClickLabel = label) { onPaceChange(value) },
+                        // B49: selected-state semantics, same fix as ChipWrap.
+                        .selectable(selected = selected, role = Role.RadioButton) { onPaceChange(value) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label.substringBefore(" ·"), style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else TextMuted)
@@ -595,7 +597,15 @@ private fun BreatheGuidanceCard(
 
 @Composable
 private fun BreatheSettingRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    // B50: one row-level toggleable so the switch reaches TalkBack WITH its
+    // label (the unmerged siblings announced a nameless "switch, on") — the
+    // same pattern PlanScreen already uses.
+    Row(
+        Modifier.fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChecked),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Box(
             Modifier.size(40.dp).clip(CircleShape).background(Color(0x227A5CFF))
                 .border(1.dp, Color(0x447A5CFF), CircleShape),
@@ -604,7 +614,11 @@ private fun BreatheSettingRow(icon: androidx.compose.ui.graphics.vector.ImageVec
             Icon(icon, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.size(21.dp))
         }
         Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = TextSoft, modifier = Modifier.weight(1f))
-        AppSwitch(checked = checked, onCheckedChange = onChecked)
+        // Semantics cleared: the row is the one accessible toggle; a second
+        // focusable switch inside it would double-announce.
+        Box(Modifier.clearAndSetSemantics { }) {
+            AppSwitch(checked = checked, onCheckedChange = onChecked)
+        }
     }
 }
 

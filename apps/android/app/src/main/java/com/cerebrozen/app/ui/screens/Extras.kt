@@ -39,6 +39,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1108,6 +1111,9 @@ private fun SleepTimerPill() {
     val cycleCd = stringResource(R.string.sounds_timer_cycle_cd)
     Row(
         Modifier
+            // B47: a ~26dp-tall tappable was well under the 48dp floor the
+            // same file enforces on the favourite button.
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(Radius.round))
             .background(CardFill)
             .border(1.dp, LineStroke, RoundedCornerShape(Radius.round))
@@ -1223,8 +1229,9 @@ private fun MixerHeroCard(
     onToggle: () -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
-    val transition = rememberInfiniteTransition(label = "mixerHero")
-    val glow by transition.animateFloat(0.45f, 0.9f, infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "heroGlow")
+    // B24: the clock idles under Reduce Motion, not just the read.
+    val glow = restingFloat(reduceMotion, still = 0.18f / 0.28f, initial = 0.45f, target = 0.9f,
+        spec = infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "heroGlow")
     val shape = RoundedCornerShape(32.dp)
     // A third of a small screen was hero before any control — scale with the
     // viewport (260dp on tall phones, tighter on 720px-class devices).
@@ -1280,7 +1287,7 @@ private fun MixerHeroCard(
                 Modifier.pressScale(pressed, down = 0.96f)
                     .clip(RoundedCornerShape(26.dp))
                     .background(Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9A70FF))))
-                    .border(1.dp, Color.White.copy(alpha = if (reduceMotion) 0.18f else glow * 0.28f), RoundedCornerShape(26.dp))
+                    .border(1.dp, Color.White.copy(alpha = glow * 0.28f), RoundedCornerShape(26.dp))
                     .clickable(interactionSource = interaction, indication = null, onClick = onToggle)
                     .semantics {
                         role = androidx.compose.ui.semantics.Role.Button
@@ -1470,16 +1477,11 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
         animationSpec = tween(180),
         label = "mixerSliderGlow",
     )
-    val gradientMotion = rememberInfiniteTransition(label = "mixerSliderGradient")
-    val gradientPhase by gradientMotion.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2_800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "mixerSliderGradientPhase",
-    )
+    // B23: five of these render on the Mixer pane, each formerly running an
+    // endless clock for a barely-perceptible gradient lerp even while idle.
+    val gradientPhase = restingFloat(rememberReduceMotion(), still = 0f, initial = 0f, target = 1f,
+        spec = infiniteRepeatable(tween(2_800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "mixerSliderGradientPhase")
     val percentage = (value.coerceIn(0f, 1f) * 100).roundToInt()
     val activeGradient = Brush.horizontalGradient(
         listOf(
@@ -1607,15 +1609,28 @@ private fun PremiumMixerSwitch(checked: Boolean, label: String, onToggle: () -> 
         if (checked) com.cerebrozen.app.ui.theme.BrandPrimary else LineStroke,
         label = "switchTrack",
     )
+    // B46: the visual is 52x31 but the TARGET meets the 48dp floor, and
+    // toggleable() carries the on/off state TalkBack could never hear from a
+    // bare clickable(role = Switch).
     Box(
-        Modifier.size(52.dp, 31.dp).clip(CircleShape).background(track)
-            .border(1.dp, if (checked) Periwinkle.copy(alpha = 0.55f) else TextMuted.copy(alpha = 0.35f), CircleShape)
-            .clickable(role = androidx.compose.ui.semantics.Role.Switch, onClickLabel = label, onClick = onToggle),
+        Modifier.sizeIn(minWidth = 52.dp, minHeight = 48.dp)
+            .toggleable(
+                value = checked,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                onValueChange = { onToggle() },
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.offset(x = thumbX, y = 3.dp).size(25.dp).clip(CircleShape)
-                .background(Color.White),
-        )
+            Modifier.size(52.dp, 31.dp).clip(CircleShape).background(track)
+                .border(1.dp, if (checked) Periwinkle.copy(alpha = 0.55f) else TextMuted.copy(alpha = 0.35f), CircleShape),
+        ) {
+            Box(
+                Modifier.offset(x = thumbX, y = 3.dp).size(25.dp).clip(CircleShape)
+                    .background(Color.White),
+            )
+        }
     }
 }
 
@@ -1967,19 +1982,16 @@ internal fun toolkitRecentLabelRes(route: String): Int? = when (route) {
 @Composable
 fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
-    val ambient = rememberInfiniteTransition(label = "toolkitAmbient")
-    val glowY by ambient.animateFloat(
-        initialValue = -0.08f,
-        targetValue = 0.14f,
-        animationSpec = infiniteRepeatable(tween(7_200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "toolkitGlowY",
-    )
+    // B25: no ambient clock at all when motion is reduced.
+    val glowY = restingFloat(reduceMotion, still = 0f, initial = -0.08f, target = 0.14f,
+        spec = infiniteRepeatable(tween(7_200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "toolkitGlowY")
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.72f), Night.copy(alpha = 0.82f))),
         ),
     ) {
-        ToolkitAmbientLayer(if (reduceMotion) 0f else glowY)
+        ToolkitAmbientLayer(glowY)
         // Every exercise door records itself so the hub can offer "pick up
         // where you left off" next visit (support/crisis is deliberately not
         // a "recent" — it is not a practice).
@@ -2243,19 +2255,13 @@ private fun ToolkitBadge(label: String, accent: Color) {
 @Composable
 private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
     val reduceMotion = rememberReduceMotion()
-    val motion = rememberInfiniteTransition(label = "bubblePreview")
-    val drift by motion.animateFloat(
-        initialValue = -7f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(tween(2_900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bubbleDrift",
-    )
-    val pulse by motion.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(tween(2_100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bubblePulse",
-    )
+    // B26: same gate-the-clock fix as the hero and the hub ambient.
+    val drift = restingFloat(reduceMotion, still = 4f, initial = -7f, target = 8f,
+        spec = infiniteRepeatable(tween(2_900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bubbleDrift")
+    val pulse = restingFloat(reduceMotion, still = 1f, initial = 0.92f, target = 1.08f,
+        spec = infiniteRepeatable(tween(2_100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bubblePulse")
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val shape = RoundedCornerShape(32.dp)
@@ -2282,8 +2288,8 @@ private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit
         }
         // A couple of drifting bubbles as quiet ornamentation.
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = (if (reduceMotion) 4f else drift).dp)
-                .size(76.dp).scale(if (reduceMotion) 1f else pulse).clip(CircleShape)
+            Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = drift.dp)
+                .size(76.dp).scale(pulse).clip(CircleShape)
                 .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Periwinkle))),
         )
         Box(

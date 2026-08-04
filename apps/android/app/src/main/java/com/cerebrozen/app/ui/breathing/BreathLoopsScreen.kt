@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -227,7 +228,10 @@ private fun PatternCard(pattern: BreathPattern, selected: Boolean, onClick: () -
             .background(CardFill)
             .background(if (selected) Periwinkle.copy(alpha = 0.055f) else Color.Transparent)
             .border(1.dp, if (selected) Periwinkle.copy(alpha = 0.72f) else LineStroke, shape)
-            .clickable(onClick = onClick).padding(16.dp),
+            // B57: selected-state semantics — the check icon's "Selected"
+            // cd was the only signal, read out of context after the body.
+            .selectable(selected = selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -235,6 +235,28 @@ internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
  * the branch is unit-testable without a composition. */
 internal fun reduceMotionFromScale(animatorDurationScale: Float): Boolean = animatorDurationScale == 0f
 
+/** An ambient float that truly IDLES under Reduce Motion.
+ *
+ * The recurring bug (audit B23-B27): sites gated the READ
+ * (`if (reduceMotion) still else v`) while the infinite transition kept its
+ * clock running, recomposing the surface forever for users who asked for
+ * stillness. Branching here means no transition is even created when motion
+ * is reduced. */
+@Composable
+internal fun restingFloat(
+    reduceMotion: Boolean,
+    still: Float,
+    initial: Float,
+    target: Float,
+    spec: androidx.compose.animation.core.InfiniteRepeatableSpec<Float>,
+    label: String,
+): Float {
+    if (reduceMotion) return still
+    val transition = rememberInfiniteTransition(label = label)
+    val value by transition.animateFloat(initial, target, spec, label = label)
+    return value
+}
+
 @Composable
 internal fun rememberReduceMotion(): Boolean {
     val context = LocalContext.current

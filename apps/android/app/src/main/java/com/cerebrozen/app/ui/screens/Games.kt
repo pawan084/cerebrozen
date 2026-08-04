@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -191,8 +192,15 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                                     ),
                                 )
                                 .border(1.dp, pads[pad].copy(alpha = if (active) 0.85f else 0.45f), RoundedCornerShape(20.dp))
-                                .clickable { tap(pad) }
-                                .semantics { role = Role.Button; contentDescription = padCd },
+                                .clickable(enabled = !showing) { tap(pad) }
+                                // B55: during the watch phase taps are ignored —
+                                // the pads now SAY they're disabled instead of
+                                // silently swallowing activation.
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = padCd
+                                    if (showing) disabled()
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(

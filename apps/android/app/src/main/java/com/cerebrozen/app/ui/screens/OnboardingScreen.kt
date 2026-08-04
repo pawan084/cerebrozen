@@ -19,6 +19,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -843,10 +844,14 @@ internal fun ChipWrap(options: List<String>, selected: String?, onPick: (String)
                         if (isSelected) PickCardStroke else PickRowStroke.copy(alpha = 0.35f),
                         shape,
                     )
-                    .clickable(
+                    // B48: selectable() so TalkBack hears WHICH chip is
+                    // chosen — Role.RadioButton alone announced state-less
+                    // radio buttons on the language/reminder/scale pickers.
+                    .selectable(
+                        selected = isSelected,
                         role = androidx.compose.ui.semantics.Role.RadioButton,
-                        onClickLabel = opt,
-                    ) { onPick(opt) }
+                        onClick = { onPick(opt) },
+                    )
                     .padding(horizontal = 22.dp),
                 contentAlignment = Alignment.Center,
             ) {

@@ -315,6 +315,10 @@ fun PatternScreen(onBack: () -> Unit) {
                                 confirming = false
                                 learned = emptyList()
                                 remembered = emptyList()
+                                // B6: recommendations derive from the patterns
+                                // just erased — leaving them rendered claimed
+                                // "because <pattern>" about deleted data.
+                                suggestions = emptyList()
                                 status = clearedTemplate.format(it.optInt("chat_messages"), it.optInt("insights"), it.optInt("memories"))
                             }
                             .onFailure { status = it.userMessage(deleteFailed) }

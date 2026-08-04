@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
@@ -60,6 +62,9 @@ internal fun parsePlanSteps(plan: JSONObject): List<PlanStep> {
 fun PlanScreen(onBack: () -> Unit) {
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     var steps by remember { mutableStateOf(listOf<PlanStep>()) }
+    // Monotonic mutation counter: only the latest toggle's response may
+    // adopt() or revert (audit B5).
+    var mutationSeq by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     // Distinct from the initial null-not-error case so a failed load surfaces a
@@ -133,12 +138,24 @@ fun PlanScreen(onBack: () -> Unit) {
                             value = step.done,
                             role = Role.Checkbox,
                             onValueChange = { done ->
-                                // Optimistic; the server response reconciles.
+                                // Optimistic; the server response reconciles —
+                                // but only the LATEST mutation may adopt or
+                                // revert. Two quick toggles used to race: the
+                                // first (stale) payload arrived last, replaced
+                                // the whole list, and visually undid the second
+                                // toggle; the failure branch likewise flipped
+                                // blindly (audit B5). B70: the one place plan
+                                // work completes now ticks like every other row.
+                                Haptics.selection()
                                 steps = steps.map { if (it.id == step.id) it.copy(done = done) else it }
+                                val seq = ++mutationSeq
                                 scope.launch {
-                                    runCatching { adopt(Api.togglePlanStep(step.id, done)) }
+                                    runCatching { Api.togglePlanStep(step.id, done) }
+                                        .onSuccess { if (seq == mutationSeq) adopt(it) }
                                         .onFailure {
-                                            steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
+                                            if (seq == mutationSeq) {
+                                                steps = steps.map { s -> if (s.id == step.id) s.copy(done = !done) else s }
+                                            }
                                         }
                                 }
                             },
