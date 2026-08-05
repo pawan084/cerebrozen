@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.localtime import local_today
 from app.models.sleep import SleepLog
 from app.models.user import User
 
@@ -23,7 +24,9 @@ def _minutes_since_noon(t) -> int:
 
 
 async def weekly_summary(db: AsyncSession, user: User, days: int = 7, today: date | None = None) -> dict:
-    since = (today or date.today()) - timedelta(days=days - 1)
+    # The user's today, not the CONTAINER's (register C60) — `date.today()`
+    # read the server's local zone, which is neither UTC nor the user's.
+    since = (today or local_today(user.timezone)) - timedelta(days=days - 1)
     rows = (
         await db.scalars(
             select(SleepLog)

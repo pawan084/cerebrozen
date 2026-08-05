@@ -192,6 +192,26 @@
 > taken: the reply's crisis suffix depends on the classifier's verdict, so
 > they are not independent as the register claims — annotated in audit C.
 > Pinned in `tests/test_safety_reach.py`.
+>
+> **Wave 21 — "today" is the user's day (register C59-C65):** new
+> `app/core/localtime` (`tz_for`/`local_now`/`local_today`/`local_date`,
+> junk-tz falls back to UTC for legacy rows) and every "what day is it"
+> read goes through it: habit complete/uncomplete and the 7 day-dots use
+> the user's day (a tick at 00:30 IST counted as yesterday); the sleep
+> summary and intervention signals used `date.today()` — the CONTAINER's
+> zone, neither UTC nor the user's; the streak buckets by the user's
+> calendar days in SQL (`timezone(zone, created_at)::date`) so it stops
+> disagreeing with the Android/iOS local-day count for every evening
+> check-in east of UTC; pattern rules use local days end-to-end (the
+> weekday-rhythm rule read UTC weekdays three rules below a bucket that
+> converted); the weekly insight's sleep window matches its mood/journal
+> window (was six nights against seven days); the program day rolls over
+> at the user's midnight, not 05:30 IST; and the sleep↔mood pairing is
+> UNIFIED (register C63): a diary date is the wake morning, so the night
+> and the day it affects share one date — trends' +1 mapping was off by
+> one and could tell the same user "no clear link" while the weekly said
+> "calmer after 7+ hours". Trends' correlation test re-anchored to the
+> corrected pairing. Pinned in `tests/test_local_days.py`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

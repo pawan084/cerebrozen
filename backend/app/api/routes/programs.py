@@ -11,8 +11,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db, utcnow
+from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.localtime import local_date, local_today
 from app.models.content import ContentItem
 from app.models.program import ProgramEnrollment
 from app.models.user import User
@@ -25,8 +26,10 @@ class EnrollIn(BaseModel):
     days: int = Field(default=7, ge=1, le=60)
 
 
-def _view(e: ProgramEnrollment) -> dict:
-    elapsed = (utcnow().date() - e.started_at.date()).days
+def _view(e: ProgramEnrollment, tz: str = "") -> dict:
+    # The user's calendar (register C65): a UTC date difference rolled an IST
+    # user to "day 3" at 05:30 local.
+    elapsed = (local_today(tz) - local_date(e.started_at, tz)).days
     day = min(e.days, elapsed + 1)
     return {
         "content_id": str(e.content_id),
@@ -78,7 +81,7 @@ async def _active(db: AsyncSession, user: User) -> ProgramEnrollment | None:
     )
 
 
-async def _full_view(db: AsyncSession, e: ProgramEnrollment) -> dict:
+async def _full_view(db: AsyncSession, e: ProgramEnrollment, tz: str = "") -> dict:
     """The enrollment WITH its day guides.
 
     Both /active and /enroll return "the program", so both must return the same
@@ -87,7 +90,7 @@ async def _full_view(db: AsyncSession, e: ProgramEnrollment) -> dict:
     guides at all until something else refetched. The journey path simply did not
     appear after enrolling, which an e2e run caught and code review had not.
     """
-    view = _view(e)
+    view = _view(e, tz)
     item = await db.get(ContentItem, e.content_id)
     guide = _today_guide(item, view["day"])
     if guide is not None:
@@ -105,7 +108,7 @@ async def active_program(
     e = await _active(db, user)
     if e is None:
         return {"program": None}
-    return {"program": await _full_view(db, e)}
+    return {"program": await _full_view(db, e, user.timezone)}
 
 
 @router.post("/enroll", status_code=201)
@@ -147,11 +150,11 @@ async def enroll(
         )
         .order_by(ProgramEnrollment.started_at.desc())
     )
-    if prior is not None and (utcnow().date() - prior.started_at.date()).days < prior.days:
+    if prior is not None and (local_today(user.timezone) - local_date(prior.started_at, user.timezone)).days < prior.days:
         prior.active = True
         await db.commit()
         await db.refresh(prior)
-        return {"program": await _full_view(db, prior)}
+        return {"program": await _full_view(db, prior, user.timezone)}
 
     e = ProgramEnrollment(
         user_id=user.id, content_id=item.id, title=item.title, days=payload.days
@@ -159,7 +162,7 @@ async def enroll(
     db.add(e)
     await db.commit()
     await db.refresh(e)
-    return {"program": await _full_view(db, e)}
+    return {"program": await _full_view(db, e, user.timezone)}
 
 
 @router.delete("/active", status_code=200)

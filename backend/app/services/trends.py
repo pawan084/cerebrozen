@@ -27,7 +27,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import utcnow
+from app.core.localtime import local_date, local_today
 from app.models.consent import consent_allows
 from app.models.mood import MoodLog
 from app.models.sleep import SleepLog
@@ -90,7 +90,8 @@ async def compute(
 ) -> dict:
     """Build the trends payload for the last `days` days (inclusive of today)."""
     days = max(7, min(days, 180))
-    end = today or utcnow().date()
+    # The user's today and the user's days throughout (register C62/C63).
+    end = today or local_today(user.timezone)
     start = end - timedelta(days=days - 1)
 
     mood_points: list[dict] = []
@@ -106,7 +107,7 @@ async def compute(
         by_day: dict[date, list[float]] = {}
         labels: dict[date, str] = {}
         for row in rows:
-            day = row.created_at.date()
+            day = local_date(row.created_at, user.timezone)
             by_day.setdefault(day, []).append(ease_score(row.mood, row.intensity))
             labels.setdefault(day, row.mood)
         mood_days = len(by_day)
@@ -143,13 +144,17 @@ async def compute(
     mood_enough = mood_days >= MIN_MOOD_DAYS
     sleep_enough = nights >= MIN_SLEEP_NIGHTS
 
-    # Pair each night with the *following* day's check-ins: the question a user
-    # asks is "does a good night make the next day easier", not the reverse.
+    # Pair each night with the day it ended on. A diary date is the WAKE
+    # morning (the sleep POST's contract: "today" filed in the morning
+    # describes last night), so "does a good night make the next day easier"
+    # means SAME-date pairing — the old +1 mapping compared a night with the
+    # day after the day it affected, and disagreed with the weekly insight's
+    # pairing for the same user (register C63).
     ease_by_day = {p["date"]: p["ease"] for p in mood_points}
     pairs = [
-        (float(sp["duration_min"]), ease_by_day[_next_day(sp["date"])])
+        (float(sp["duration_min"]), ease_by_day[sp["date"]])
         for sp in sleep_points
-        if _next_day(sp["date"]) in ease_by_day
+        if sp["date"] in ease_by_day
     ]
     correlation: dict = {
         "available": False,
@@ -201,5 +206,4 @@ def _as_dt(day: date):
     return datetime.combine(day, time.min, tzinfo=timezone.utc)
 
 
-def _next_day(iso: str) -> str:
-    return (date.fromisoformat(iso) + timedelta(days=1)).isoformat()
+

@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import utcnow
+from app.core.localtime import local_date
 from app.models.consent import consent_allows
 from app.models.journal import JournalEntry
 from app.models.memory import ContextMemory
@@ -72,9 +73,12 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
     # Sleep: real diary aggregates (replaces the old illustrative strings).
     sleep_rows = []
     if use_sleep:
+        # Same 7-day span as the mood/journal windows above (register C64 —
+        # this was (now - 6 days), six nights weighed against seven days of
+        # check-ins in one summary).
         sleep_rows = (
             await db.scalars(
-                select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=6)).date())
+                select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date >= (utcnow() - timedelta(days=7)).date())
             )
         ).all()
     if sleep_rows:
@@ -111,17 +115,23 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
         summary = "No activity logged yet this week. One small check-in is a good first step."
 
     # Sleep × mood: only claim a link when this week's own data supports it
-    # (both buckets populated and a real gap). UTC-date matching is a stated
-    # approximation — mood "today" pairs with the wake-morning diary entry.
+    # (both buckets populated and a real gap). Mood "today" pairs with the
+    # wake-morning diary entry, on the user's own calendar.
     if len(sleep_rows) >= 3 and use_moods:
         mood_rows = (
             await db.scalars(
                 select(MoodLog).where(MoodLog.user_id == user.id, MoodLog.created_at >= since)
             )
         ).all()
+        # A diary date is the WAKE morning (the sleep POST's contract), so the
+        # day that night affects is the same date — and the day a check-in
+        # belongs to is the user's local day, not UTC's (register C62/C63: an
+        # 01:30 IST check-in used to pair with the previous night's night).
         by_date = {r.date: r.duration_min for r in sleep_rows}
-        rested = [m.intensity for m in mood_rows if by_date.get(m.created_at.date(), 0) >= 420]
-        short = [m.intensity for m in mood_rows if 0 < by_date.get(m.created_at.date(), 0) < 420]
+        rested = [m.intensity for m in mood_rows
+                  if by_date.get(local_date(m.created_at, user.timezone), 0) >= 420]
+        short = [m.intensity for m in mood_rows
+                 if 0 < by_date.get(local_date(m.created_at, user.timezone), 0) < 420]
         if len(rested) >= 2 and len(short) >= 2:
             gap = sum(short) / len(short) - sum(rested) / len(rested)
             if gap >= 0.5:
@@ -191,12 +201,13 @@ async def compute_patterns(db: AsyncSession, user: User) -> dict:
                 )
             ).all()
         )
-        journal_days = {d.date() for d in journal_dates}
+        # Local days, matching the mood days they're compared against (C62).
+        journal_days = {local_date(d, user.timezone) for d in journal_dates}
         if len(journal_days) >= 3:
             def day_neg_share(day_filter):
                 days: dict = {}
                 for m in moods:
-                    d = m.created_at.date()
+                    d = local_date(m.created_at, user.timezone)
                     if not day_filter(d):
                         continue
                     tot, bad = days.get(d, (0, 0))
@@ -224,8 +235,10 @@ async def compute_patterns(db: AsyncSession, user: User) -> dict:
         ).all()
         if len(sleep_rows) >= 5:
             by_date = {r.date: r.duration_min for r in sleep_rows}
-            rested = [m.intensity for m in moods if by_date.get(m.created_at.date(), 0) >= 420]
-            short = [m.intensity for m in moods if 0 < by_date.get(m.created_at.date(), 0) < 420]
+            rested = [m.intensity for m in moods
+                      if by_date.get(local_date(m.created_at, user.timezone), 0) >= 420]
+            short = [m.intensity for m in moods
+                     if 0 < by_date.get(local_date(m.created_at, user.timezone), 0) < 420]
             if len(rested) >= 3 and len(short) >= 3:
                 gap = sum(short) / len(short) - sum(rested) / len(rested)
                 if gap >= 0.5:
@@ -236,7 +249,10 @@ async def compute_patterns(db: AsyncSession, user: User) -> dict:
 
     # 4) Weekday rhythm — where the showing-up actually happens.
     if len(moods) >= 10:
-        weekday = sum(1 for m in moods if m.created_at.weekday() < 5)
+        # The user's weekday, not UTC's (register C62 — the hour bucket above
+        # already converts; this rule three rules below didn't).
+        weekday = sum(1 for m in moods
+                      if local_date(m.created_at, user.timezone).weekday() < 5)
         share = weekday / len(moods)
         if share >= 0.8:
             patterns.append({

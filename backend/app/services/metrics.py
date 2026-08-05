@@ -13,6 +13,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import localtime
 from app.core.database import utcnow
 from app.models.chat import ChatMessage
 from app.models.journal import JournalEntry
@@ -45,18 +46,29 @@ async def _activity_days(db: AsyncSession) -> dict[uuid.UUID, set[date]]:
     return days
 
 
-async def user_streak(db: AsyncSession, user_id: uuid.UUID) -> dict:
+async def user_streak(db: AsyncSession, user_id: uuid.UUID, tz: str = "") -> dict:
     """Server mirror of the iOS "mindful days" streak (AppState.currentStreak):
     consecutive active days up to today, forgiving ONE missed day inside the
     run; today itself is optional. Window-capped like the iOS 120-day store.
-    Keep the rules in sync with apps/ios CereBroApp.swift (cross-stack contract)."""
+    Keep the rules in sync with apps/ios CereBroApp.swift (cross-stack contract).
+
+    Days are the USER's local days (register C61): the clients count local
+    days, so UTC bucketing disagreed with them by one for any user whose
+    evening check-in landed after UTC midnight.
+    """
     since = utcnow() - timedelta(days=120)
+    zone = str(localtime.tz_for(tz))
+
+    def day_of(col):
+        # (created_at AT TIME ZONE zone)::date — the user's calendar day.
+        return func.date(func.timezone(zone, col))
+
     selects = [
-        select(func.date(m.created_at)).where(m.user_id == user_id, m.created_at >= since)
+        select(day_of(m.created_at)).where(m.user_id == user_id, m.created_at >= since)
         for m in (MoodLog, JournalEntry, SleepLog)
     ]
     selects.append(
-        select(func.date(ChatMessage.created_at)).where(
+        select(day_of(ChatMessage.created_at)).where(
             ChatMessage.user_id == user_id,
             ChatMessage.created_at >= since,
             ChatMessage.role == "user",
@@ -64,7 +76,7 @@ async def user_streak(db: AsyncSession, user_id: uuid.UUID) -> dict:
     )
     days = {row[0] for row in (await db.execute(union_all(*selects))).all()}
 
-    today = utcnow().date()
+    today = localtime.local_today(tz)
     day = today if today in days else today - timedelta(days=1)
     current, grace_used = 0, False
     while True:

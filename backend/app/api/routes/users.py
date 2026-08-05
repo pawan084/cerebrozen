@@ -77,7 +77,7 @@ async def my_streak(
 ):
     """Server-computed "mindful days" streak (same rules as the iOS local one —
     cross-stack contract; see services/metrics.user_streak)."""
-    return await metrics.user_streak(db, user.id)
+    return await metrics.user_streak(db, user.id, user.timezone)
 
 
 @router.get("/me", response_model=UserOut)

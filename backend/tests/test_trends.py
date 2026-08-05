@@ -157,7 +157,10 @@ async def test_a_real_link_is_reported_with_its_direction(client):
     from datetime import datetime, time, timezone
 
     async with SessionLocal() as db:
-        # Longer nights paired with easier following days.
+        # Longer nights paired with easier days. A diary date is the WAKE
+        # morning, so the night and the day it affects share one date
+        # (register C63 — this used to place the mood a day later, matching
+        # the off-by-one the fix removed).
         for offset in range(1, 11):
             day = date.today() - timedelta(days=offset)
             hours = 5 if offset % 2 else 9
@@ -167,9 +170,7 @@ async def test_a_real_link_is_reported_with_its_direction(client):
                 quality=3, awakenings=0, source="manual", note="",
             ))
             mood = MoodLog(user_id=user.id, mood="Good", intensity=2 if offset % 2 else 5)
-            mood.created_at = datetime.combine(
-                day + timedelta(days=1), time(9, 0), tzinfo=timezone.utc
-            )
+            mood.created_at = datetime.combine(day, time(9, 0), tzinfo=timezone.utc)
             db.add(mood)
         await db.commit()
 

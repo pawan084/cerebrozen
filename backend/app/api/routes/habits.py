@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_user
+from app.core.localtime import local_today
 from app.core.ratelimit import limiter
 from app.models.habit import Goal, Habit, HabitCompletion
 from app.models.user import User
@@ -155,15 +156,17 @@ async def _owned_habit(db: AsyncSession, user: User, habit_id: uuid.UUID) -> Hab
     return row
 
 
-async def _with_completions(db: AsyncSession, habits: list[Habit]) -> list[dict]:
+async def _with_completions(db: AsyncSession, habits: list[Habit], tz: str = "") -> list[dict]:
     """Attach the last 7 days of completions to each habit.
 
     A window, not a streak: the client shows which days happened, and a gap is
-    just a gap.
+    just a gap. Days are the USER's days (register C59): with UTC dates a
+    habit ticked at 00:30 IST counted as yesterday and the seven day-dots
+    shifted for everyone east of UTC.
     """
     if not habits:
         return []
-    today = utcnow().date()
+    today = local_today(tz)
     since = today - timedelta(days=6)
     rows = (
         await db.scalars(
@@ -200,7 +203,7 @@ async def list_habits(
     if not include_archived:
         stmt = stmt.where(Habit.archived.is_(False))
     habits = (await db.scalars(stmt.order_by(Habit.created_at))).all()
-    return await _with_completions(db, list(habits))
+    return await _with_completions(db, list(habits), user.timezone)
 
 
 @router.post("/habits", response_model=HabitOut, status_code=status.HTTP_201_CREATED)
@@ -218,7 +221,7 @@ async def create_habit(
     db.add(habit)
     await db.commit()
     await db.refresh(habit)
-    return (await _with_completions(db, [habit]))[0]
+    return (await _with_completions(db, [habit], user.timezone))[0]
 
 
 @router.patch("/habits/{habit_id}", response_model=HabitOut)
@@ -239,7 +242,7 @@ async def update_habit(
         habit.archived = payload.archived
     await db.commit()
     await db.refresh(habit)
-    return (await _with_completions(db, [habit]))[0]
+    return (await _with_completions(db, [habit], user.timezone))[0]
 
 
 @router.delete("/habits/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -262,7 +265,8 @@ async def complete_habit(
 ):
     """Mark today done. Idempotent — tapping twice is not two days."""
     habit = await _owned_habit(db, user, habit_id)
-    today = utcnow().date()
+    # The user's own today (register C59), not UTC's.
+    today = local_today(user.timezone)
     existing = await db.scalar(
         select(HabitCompletion).where(
             HabitCompletion.habit_id == habit.id, HabitCompletion.day == today
@@ -276,7 +280,7 @@ async def complete_habit(
             # Register C52: an impatient double-tap raced past the existence
             # check and 500'd on `uq_habit_day`. The day is done either way.
             await db.rollback()
-    return (await _with_completions(db, [habit]))[0]
+    return (await _with_completions(db, [habit], user.timezone))[0]
 
 
 @router.delete("/habits/{habit_id}/complete", response_model=HabitOut)
@@ -290,8 +294,8 @@ async def uncomplete_habit(
     await db.execute(
         delete(HabitCompletion).where(
             HabitCompletion.habit_id == habit.id,
-            HabitCompletion.day == utcnow().date(),
+            HabitCompletion.day == local_today(user.timezone),
         )
     )
     await db.commit()
-    return (await _with_completions(db, [habit]))[0]
+    return (await _with_completions(db, [habit], user.timezone))[0]

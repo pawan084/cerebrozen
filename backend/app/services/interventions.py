@@ -41,6 +41,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import utcnow
+from app.core.localtime import local_today
 from app.models.consent import consent_allows
 from app.models.intervention import InterventionRecommendation
 from app.models.mood import MoodLog
@@ -226,7 +227,8 @@ def first_match(signals: Signals) -> tuple[Rule, Offer] | None:
 
 # ── signal gathering (consent-gated) ────────────────────────────────────
 async def gather_signals(db: AsyncSession, user: User, *, today: date | None = None) -> Signals:
-    today = today or date.today()
+    # The user's today, not the container's (register C60).
+    today = today or local_today(user.timezone)
     now = utcnow()
 
     nights_logged = low_nights = spread = None
