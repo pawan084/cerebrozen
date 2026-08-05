@@ -282,12 +282,23 @@ export default function Home() {
               <div className="rail-big"><b>{presentDays}</b><span>{presentDays === 1 ? "day present" : "days present"}</span></div>
               <p className="sub">Gentle and consistent — no streaks to break.</p>
               <div className="rhythm-bars">
-                {(streak?.week ?? Array.from({ length: 7 }, (_, i) => ({ date: `${i}`, active: false }))).map((d, i) => (
-                  <div key={d.date} className="b">
-                    <span className={d.active ? "fill" : "fill off"} />
-                    <em>{days[new Date(d.date).getDay()] ?? days[i]}</em>
-                  </div>
-                ))}
+                {/* Register D20: the placeholder used `date: "0".."6"`, and
+                    `new Date("0")` PARSES in Chromium (year 2000) — so the
+                    empty week printed real but wrong weekday letters instead
+                    of falling through to the positional ones. The placeholder
+                    now carries no date at all, and the letter is only read
+                    from a date that actually parses. */}
+                {(streak?.week ?? Array.from({ length: 7 }, () => ({ date: "", active: false }))).map((d, i) => {
+                  const parsed = d.date ? new Date(d.date) : null;
+                  const letter =
+                    parsed && !Number.isNaN(parsed.getTime()) ? days[parsed.getDay()] : days[i];
+                  return (
+                    <div key={d.date || `slot-${i}`} className="b">
+                      <span className={d.active ? "fill" : "fill off"} />
+                      <em>{letter}</em>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

@@ -61,6 +61,9 @@ export default function Account() {
   const [contact, setContact] = useState<Contact>({
     name: "", method: "email", value: "", relationship: "", notify_consent: false,
   });
+  // Register D19: this stayed true through later edits, so an edited-but-
+  // unsaved form still read "Trusted contact saved." Any change to the form
+  // clears it (see `editContact`).
   const [contactSaved, setContactSaved] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   // Deletion and crisis-region failures are stated, never swallowed (D8/D10).
@@ -140,6 +143,12 @@ export default function Account() {
       setRegion(previous);
       setRegionError("We couldn't save that region — your previous choice is still in effect.");
     }
+  }
+
+  /** Any edit invalidates the "saved" confirmation (D19). */
+  function editContact(patch: Partial<Contact>) {
+    setContact({ ...contact, ...patch });
+    if (contactSaved) setContactSaved(false);
   }
 
   async function saveContact(e: React.FormEvent) {
@@ -458,11 +467,11 @@ export default function Account() {
         <div className="row">
           <label className="field grow">
             <span>Name</span>
-            <input value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
+            <input value={contact.name} onChange={(e) => editContact({ name: e.target.value })} />
           </label>
           <label className="field grow">
             <span>Email</span>
-            <input value={contact.value} onChange={(e) => setContact({ ...contact, value: e.target.value, method: "email" })} />
+            <input value={contact.value} onChange={(e) => editContact({ value: e.target.value, method: "email" })} />
           </label>
         </div>
         <div className="row" style={{ marginBottom: 10 }}>
@@ -470,7 +479,7 @@ export default function Account() {
             id="notify"
             type="checkbox"
             checked={contact.notify_consent}
-            onChange={(e) => setContact({ ...contact, notify_consent: e.target.checked })}
+            onChange={(e) => editContact({ notify_consent: e.target.checked })}
             style={{ width: 18, height: 18 }}
           />
           <label htmlFor="notify" className="sub">I consent to CereBro contacting them in a detected crisis.</label>

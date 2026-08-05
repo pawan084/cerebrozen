@@ -93,7 +93,15 @@ export default function AuthPanel({
       onAuthed("otp");
     });
 
-  const doGoogle = () =>
+  const doGoogle = () => {
+    if (ageBlocked) {
+      setError("Please confirm you're 18 or older to create an account.");
+      return;
+    }
+    return doGoogleAuth();
+  };
+
+  const doGoogleAuth = () =>
     withBusy(async () => {
       const idToken = await googleIdToken();
       await signInGoogle(idToken);
@@ -108,8 +116,15 @@ export default function AuthPanel({
   }, [resendAt]);
   void nowTick;
 
+  /** True when this action would create an account without the 18+ confirm. */
+  const ageBlocked = requireAgeAttest && mode === "signUp" && !ageOk;
+
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
+    if (ageBlocked) {
+      setError("Please confirm you're 18 or older to create an account.");
+      return;
+    }
     await withBusy(async () => {
       if (useCode && !codeSent) {
         await requestOtp(email);
@@ -241,7 +256,10 @@ export default function AuthPanel({
 
         {/* Outside the funnel there was no 18+ moment at all — an account could
             exist without the confirmation every other door requires. */}
-        {requireAgeAttest && mode === "signUp" && !useCode && (
+        {/* Register D23: this was `!useCode`, so a passwordless (OTP) sign-up
+            met no 18+ moment at all — and neither did Google, below. The one
+            gate every account has to pass now renders for every sign-up path. */}
+        {requireAgeAttest && mode === "signUp" && (
           <label className="field check-line">
             <input
               type="checkbox"

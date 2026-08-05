@@ -124,7 +124,15 @@ export default function SafetyPlan() {
         body: JSON.stringify({ [field]: values[field] }),
       });
       setVersion(plan.version);
-      cache(values, plan.version);
+      // Register D18: this cached `values` — every textarea on screen,
+      // including sections the user has typed but NOT saved. The offline copy
+      // then presented unsent words as "the copy saved on this device", on the
+      // one screen where that distinction matters most. Cache what the SERVER
+      // just confirmed instead.
+      cache(
+        Object.fromEntries(SECTIONS.map((sec) => [sec.field, plan[sec.field] ?? ""])) as Record<Field, string>,
+        plan.version,
+      );
       setOffline(false);
       setSaved(field);
       setTimeout(() => setSaved(null), 2500);
@@ -139,17 +147,28 @@ export default function SafetyPlan() {
   // not a cookie — a plain link in a new tab would 401. Fetch it with the
   // authed client and hand the browser a blob instead.
   async function openPrintable() {
+    // Register D17: the tab was opened AFTER an await, which Safari's popup
+    // blocker kills — and the catch then blamed the user ("save a section
+    // first") for a block that had nothing to do with their plan. Open the
+    // tab synchronously inside the click, then point it at the blob.
+    const tab = window.open("", "_blank", "noopener");
     try {
       const res = await authedFetch("/safety-plan/me/printable");
       if (!res.ok) throw new Error("unavailable");
       const url = URL.createObjectURL(
         new Blob([await res.text()], { type: "text/html" }),
       );
-      window.open(url, "_blank", "noopener");
-      // Give the new tab time to load before releasing the object URL.
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        // Blocked anyway (or opened from a context that forbids it) — say so
+        // honestly rather than implying the plan is the problem.
+        setError("Your browser blocked the new tab — allow pop-ups for this site to open the printable copy.");
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      setError("Couldn't open the printable copy — save a section first, or try again.");
+      tab?.close();
+      setError("Couldn't open the printable copy just now — try again in a moment.");
     }
   }
 

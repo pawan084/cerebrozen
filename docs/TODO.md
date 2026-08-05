@@ -59,6 +59,22 @@
 > UTC key shifted "today" for IST users before ~05:30); "Make this today's
 > plan" has a busy guard. e2e suite 25 passed / exit 0.
 >
+> **Wave 15 — the web client stops keeping and claiming what it shouldn't**
+> (register D17-D20, D22-D24; D25 withdrawn as a false finding): signing out —
+> and deleting an account — now clears every personal key from localStorage,
+> not just the refresh token (the cached **safety plan**, the journal draft and
+> the onboarding answers stayed readable by the next user of a shared browser);
+> the 18+ gate renders for **every** sign-up path and is enforced in code, so
+> OTP and Google sign-ups no longer create accounts the `/attest` POST then
+> claims were gated; the safety plan caches what the SERVER confirmed rather
+> than every textarea on screen (unsent words were being presented as "the copy
+> saved on this device"); the printable tab opens synchronously so Safari's
+> popup blocker can't kill it, and a block no longer blames the user's plan;
+> sign-in stops reporting a 500 or a rate-limit as "Invalid email or password";
+> Home's empty week no longer prints real-but-wrong weekday letters (`new
+> Date("0")` parses in Chromium); the trusted-contact "saved" note clears on
+> edit. e2e 25 passed / exit 0.
+>
 > **Wave 14 — operator accountability (register E31-E37):** new
 > `admin_audit_logs` table + `services/admin_audit.py` + read-only
 > `GET /admin/audit` (Alembic `c3f8a1d64b27`), wired into content CRUD, user

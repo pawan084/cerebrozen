@@ -23,9 +23,31 @@ function storeSession(tokens: { access_token: string; refresh_token: string }) {
   window.localStorage.setItem(REFRESH_KEY, tokens.refresh_token);
 }
 
+/** Everything this app keeps in localStorage that belongs to the PERSON
+ * rather than the browser. Register D24: clearSession only dropped the
+ * refresh token, so the cached safety plan, the journal draft and the
+ * onboarding answers (feelings, consent) stayed readable by whoever used the
+ * browser next — and account deletion left them too. Theme preference is
+ * deliberately absent: it belongs to the device, not the account. */
+const PERSONAL_KEYS = [
+  REFRESH_KEY,
+  "cbz-safety-plan",
+  "cerebro_app_journal_draft",
+  "cerebro_app_onboarding_draft",
+  "cerebro_app_ritual",
+  ONBOARDED_KEY,
+];
+
 export function clearSession() {
   accessToken = null;
-  if (typeof window !== "undefined") window.localStorage.removeItem(REFRESH_KEY);
+  if (typeof window === "undefined") return;
+  for (const key of PERSONAL_KEYS) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // A full or blocked store must not stop the rest from clearing.
+    }
+  }
 }
 
 /** Whether a (possibly stale) session exists — the routing guard's signal. */
@@ -171,6 +193,16 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
   return res.json();
 }
 
+/** Register D22: every non-OK response mapped to "Invalid email or
+ * password.", so a 500 or a rate-limit told the user their credentials were
+ * wrong and invited a pointless password reset. Only 400/401 mean that. */
+function signInMessage(status: number, detail?: string): string {
+  if (status === 400 || status === 401) return "Invalid email or password.";
+  if (status === 429) return "Too many attempts just now — wait a minute and try again.";
+  if (status >= 500) return "We couldn't reach the sign-in service. Nothing is wrong with your account — try again shortly.";
+  return detail || "Couldn't sign in just now — try again.";
+}
+
 export async function signIn(email: string, password: string): Promise<void> {
   const body = new URLSearchParams({ username: email, password });
   const res = await fetch(`${API_URL}/auth/login`, {
@@ -178,7 +210,16 @@ export async function signIn(email: string, password: string): Promise<void> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
-  if (!res.ok) throw new Error("Invalid email or password.");
+  if (!res.ok) {
+    let detail: string | undefined;
+    try {
+      const body = await res.json();
+      detail = typeof body?.detail === "string" ? body.detail : undefined;
+    } catch {
+      // Non-JSON error body — the status alone decides the message.
+    }
+    throw new Error(signInMessage(res.status, detail));
+  }
   storeSession(await res.json());
 }
 

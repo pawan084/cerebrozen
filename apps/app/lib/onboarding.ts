@@ -115,7 +115,11 @@ export function clearDraft() {
  * the server. Best-effort per call — a personalization write failing must never
  * block entry into the app (the funnel already delivered its value). */
 export async function applyOnboarding(draft: Draft): Promise<void> {
-  // Age + AI-disclosure attestation (both were gated in the funnel).
+  // Age + AI-disclosure attestation. Register D23: this comment used to read
+  // "both were gated in the funnel", which was only true of the password
+  // sign-up — OTP and Google skipped the 18+ checkbox entirely, and a resumed
+  // session jumps straight to consent, past the disclosure step. AuthPanel now
+  // gates every sign-up path, so the claim this POST makes is true again.
   try {
     await api("/users/me/attest", { method: "POST", body: JSON.stringify({}) });
   } catch {}
