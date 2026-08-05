@@ -82,10 +82,15 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
         t_risk = current_risk.set("none")
         try:
             if persist_user is not None:
+                # Flushed first so the safety event can point at the message
+                # (register C71) — mirrors /chat.
+                user_msg = ChatMessage(user_id=user_id, role="user", text=persist_user)
+                db.add(user_msg)
+                await db.flush()
                 risk = await safety.scan_and_record(
-                    db, user_id=user_id, source="chat", source_id=None, text=persist_user)
+                    db, user_id=user_id, source="chat", source_id=user_msg.id, text=persist_user)
                 current_risk.set(risk)
-                db.add(ChatMessage(user_id=user_id, role="user", text=persist_user, risk_level=risk))
+                user_msg.risk_level = risk
                 await db.commit()
                 # Surface crisis resources for elevated distress too (not only
                 # explicit crisis) so the client raises its CrisisBanner — matches

@@ -120,7 +120,18 @@ async def log_mood(mood: str, note: str = "") -> str:
         return "The user declined to log their mood."
     db = current_db.get()
     uid = current_user_id.get()
-    db.add(MoodLog(user_id=uid, mood=mood[:60], note=note[:255], symbol="sparkles", intensity=3))
+    log = MoodLog(user_id=uid, mood=mood[:60], note=note[:255], symbol="sparkles", intensity=3)
+    db.add(log)
+    await db.flush()
+    # Register C68: this is the one write path where the MODEL chose the note
+    # text, and it skipped the safety pipeline while /moods scans (wave 11).
+    # Safety never blocks — the mood is logged either way; a crisis-worded
+    # note now produces the same event/escalation it would anywhere else.
+    if note.strip():
+        await safety.scan_and_record(
+            db, user_id=uid, source="mood", source_id=log.id,
+            text=note, excerpt=note[:200],
+        )
     await db.commit()
     return f"Logged the user's mood as '{mood}'."
 

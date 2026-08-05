@@ -10,7 +10,7 @@ from app.core.deps import get_current_user
 from app.models.journal import JournalEntry
 from app.models.user import User
 from app.schemas.content_data import JournalCreate, JournalOut
-from app.services import idempotency, safety
+from app.services import crisis, idempotency, safety
 from app.services.textsearch import escape_like
 
 router = APIRouter(prefix="/journal", tags=["journal"])
@@ -118,6 +118,12 @@ async def create_entry(
         excerpt=entry.body or entry.title,
     )
     stored = JournalOut.model_validate(entry)
+    if entry.risk_level in {"elevated", "crisis"}:
+        # Register C70: /chat appends a region-aware suffix and /oracle sends
+        # a crisis frame, but a risky journal POST answered with only the
+        # label — every client hand-mirrored the hotline directory for this
+        # one path. Same directory, same region logic, in the response.
+        stored.resources = crisis.resources_for(user.region)
     idempotency.complete(reservation, 201, stored.model_dump(mode="json"))
     await db.commit()
     return stored

@@ -62,6 +62,10 @@ class JournalOut(BaseModel):
     tags: list[str]
     symbol: str
     risk_level: str
+    # Region-aware hotlines, populated on a POST that scored elevated/crisis
+    # (register C70): /chat and /oracle both answer risk with resources, and
+    # this was the one path where clients had to hand-mirror the directory.
+    resources: dict | None = None
     created_at: datetime
 
 

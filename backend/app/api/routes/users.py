@@ -14,7 +14,11 @@ from app.models.agent_action import AgentAction
 from app.models.consent import Consent, consent_allows
 from app.models.deletion_ledger import DeletionLedger
 from app.models.device_token import DeviceToken
-from app.models.habit import Goal
+from app.models.habit import Goal, Habit, HabitCompletion
+from app.models.intervention import InterventionRecommendation
+from app.models.program import ProgramEnrollment
+from app.models.recommendation import Recommendation
+from app.models.safety import SafetyEvent
 from app.models.insight import Insight
 from app.models.memory import EDITABLE_SOURCES, ContextMemory
 from app.models.recommendation import Recommendation
@@ -37,6 +41,7 @@ from app.schemas.content_data import (
     AgentActionOut,
     GoalOut,
     PatternSuppress,
+    SafetyEventOut,
     SafetyPlanOut,
     SleepLogOut,
 )
@@ -61,7 +66,7 @@ from app.schemas.user import (
     WebPushSubscriptionOut,
 )
 from app.core.config import settings
-from app.services import appstore, metrics
+from app.services import appstore, metrics, safety
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -263,7 +268,82 @@ async def export_my_data(
         "push_subscriptions": await rows(
             WebPushSubscription, WebPushSubscriptionOut, WebPushSubscription.created_at
         ),
+        # Register C75: the export claimed "a complete copy" while omitting
+        # tables the user can see in-app. Rows without a from_attributes
+        # schema are serialised by hand from their own columns.
+        "habits": [
+            {"id": str(h.id), "title": h.title, "cue": h.cue,
+             "target_per_week": h.target_per_week, "archived": h.archived,
+             "created_at": h.created_at.isoformat()}
+            for h in (await db.scalars(
+                select(Habit).where(Habit.user_id == user.id).order_by(Habit.created_at)
+            )).all()
+        ],
+        "habit_completions": [
+            {"habit_id": str(c.habit_id), "day": c.day.isoformat()}
+            for c in (await db.scalars(
+                select(HabitCompletion).where(HabitCompletion.user_id == user.id)
+                .order_by(HabitCompletion.day)
+            )).all()
+        ],
+        "program_enrollments": [
+            {"content_id": str(e.content_id), "title": e.title, "days": e.days,
+             "started_at": e.started_at.isoformat(), "active": e.active}
+            for e in (await db.scalars(
+                select(ProgramEnrollment).where(ProgramEnrollment.user_id == user.id)
+                .order_by(ProgramEnrollment.started_at)
+            )).all()
+        ],
+        "intervention_recommendations": [
+            {"rule_slug": r.rule_slug, "tier": r.tier, "reason": r.reason,
+             "action_kind": r.action_kind, "created_at": r.created_at.isoformat()}
+            for r in (await db.scalars(
+                select(InterventionRecommendation)
+                .where(InterventionRecommendation.user_id == user.id)
+                .order_by(InterventionRecommendation.created_at)
+            )).all()
+        ],
+        "recommendations": [
+            {"practice_slug": r.practice_slug, "reason": r.reason, "status": r.status,
+             "created_at": r.created_at.isoformat()}
+            for r in (await db.scalars(
+                select(Recommendation).where(Recommendation.user_id == user.id)
+                .order_by(Recommendation.created_at)
+            )).all()
+        ],
+        "devices": await rows(DeviceToken, DeviceTokenOut, DeviceToken.created_at),
+        "trusted_contact": (
+            TrustedContactOut.model_validate(tc).model_dump(mode="json")
+            if (tc := await db.scalar(
+                select(TrustedContact).where(TrustedContact.user_id == user.id)
+            )) is not None else None
+        ),
+        "safety_events": await rows(SafetyEvent, SafetyEventOut, SafetyEvent.created_at),
     }
+
+
+async def _purge_oracle_threads(db: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Delete the user's LangGraph checkpoint rows (durable Oracle threads).
+
+    The checkpoint tables exist once the Postgres saver initialised, and they
+    are keyed by thread id, not user id — so neither the account cascade nor
+    any ORM delete reaches them. Since wave 10, every thread id is namespaced
+    ``<user_id>`` or ``<user_id>:<suffix>`` (legacy client ids like
+    ``web-<user_id>`` also embed it), so a substring match covers them all.
+    Shared by the memory wipe and account deletion (register C73).
+    """
+    from sqlalchemy import text as sql_text
+
+    cleared = False
+    for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
+        exists = await db.scalar(sql_text(f"SELECT to_regclass('{table}')"))
+        if exists:
+            await db.execute(
+                sql_text(f"DELETE FROM {table} WHERE thread_id LIKE :tid"),  # noqa: S608 - table name from a fixed tuple
+                {"tid": f"%{user_id}%"},
+            )
+            cleared = True
+    return cleared
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -285,6 +365,11 @@ async def delete_my_account(
         email_hash=hashlib.sha256(user.email.lower().encode()).hexdigest(),
         account_created_at=user.created_at,
     ))
+    # Register C73: the LangGraph checkpoint tables are NOT user-scoped rows,
+    # so the cascade never reached them — a deleted account's conversation
+    # state survived in checkpoints/checkpoint_blobs/checkpoint_writes while
+    # the memory wipe below always purged them. Same purge, same transaction.
+    await _purge_oracle_threads(db, user.id)
     await db.execute(delete(User).where(User.id == user.id))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -312,18 +397,7 @@ async def delete_my_memory(
     acts = await db.execute(
         delete(AgentAction).where(AgentAction.user_id == user.id)
     )
-    # LangGraph checkpoint tables exist once the Postgres saver initialised;
-    # thread ids embed the user id (str(user.id) / "web-<id>" / client prefixes).
-    from sqlalchemy import text as sql_text
-    threads_cleared = False
-    for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
-        exists = await db.scalar(sql_text(f"SELECT to_regclass('{table}')"))
-        if exists:
-            await db.execute(
-                sql_text(f"DELETE FROM {table} WHERE thread_id LIKE :tid"),  # noqa: S608 - table name from a fixed tuple
-                {"tid": f"%{user.id}%"},
-            )
-            threads_cleared = True
+    threads_cleared = await _purge_oracle_threads(db, user.id)
     await db.commit()
     return {
         "chat_messages": chat.rowcount or 0,
@@ -397,6 +471,15 @@ async def create_my_memory(
         source=source, salience=payload.salience,
     )
     db.add(row)
+    await db.flush()
+    # Register C69: 2000 chars of user prose was an unscanned write path while
+    # journal, chat and mood notes all scan. The memory is kept either way —
+    # the scan only ADDS an event and its resources.
+    if row.body:
+        await safety.scan_and_record(
+            db, user_id=user.id, source="memory", source_id=row.id,
+            text=row.body, excerpt=row.body[:200],
+        )
     await db.commit()
     await db.refresh(row)
     return row

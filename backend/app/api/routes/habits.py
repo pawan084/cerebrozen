@@ -36,7 +36,7 @@ from app.schemas.content_data import (
     HabitUpdate,
 )
 from app.schemas.plan import PlanOut
-from app.services import agentic
+from app.services import agentic, safety
 
 router = APIRouter(tags=["goals"])
 
@@ -72,6 +72,16 @@ async def create_goal(
 ):
     goal = Goal(user_id=user.id, title=payload.title.strip(), why=payload.why.strip())
     db.add(goal)
+    await db.flush()
+    # Register C69: `why` is 2000 chars of the user's own words and was an
+    # unscanned write path. The goal is kept either way — the scan only ADDS
+    # an event and its resources.
+    written = "\n".join(part for part in (goal.title, goal.why) if part)
+    if written.strip():
+        await safety.scan_and_record(
+            db, user_id=user.id, source="goal", source_id=goal.id,
+            text=written, excerpt=written[:200],
+        )
     await db.commit()
     await db.refresh(goal)
     return goal

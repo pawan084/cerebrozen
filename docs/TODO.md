@@ -169,6 +169,29 @@
 > try/catch handles Invalid Date for real; waitlist rows key by email; an
 > offline media upload reads as the friendly offline copy, not "TypeError:
 > Failed to fetch". Pinned in `tests/test_admin_bounds.py`; tsc clean.
+>
+> **Wave 20 — the safety pipeline reaches every write, and deletion means
+> deleted (register C68-C71, C73-C75):** the Oracle's `log_mood` note — the
+> one write where the MODEL chose the text — now goes through
+> `scan_and_record` like every hand-written note (source "mood", pointing
+> at its row); `POST /users/me/memory` and `POST /goals` (`why`) were
+> unscanned 2000-char prose paths, now scanned (sources "memory"/"goal" —
+> the write is kept either way, the scan only ADDS); a journal POST that
+> scores elevated/crisis answers with the same region-aware `resources`
+> block /chat and /oracle always carried (JournalOut.resources, additive and
+> ignored by current clients — they CAN now drop their hand-mirrored
+> hotline directory for this path when next touched);
+> chat + oracle safety events point at the message they came from
+> (`source_id` was always None, so the admin queue could name the risk but
+> never the message); `DELETE /users/me` purges the LangGraph checkpoint
+> tables the memory wipe always purged (they're keyed by thread id, so the
+> account cascade never reached them — shared `_purge_oracle_threads`);
+> the export adds habits + completions, program enrollments, intervention
+> + pattern recommendations, devices, trusted contact and safety events
+> ("a complete copy" now is). C72 (concurrent classifier) deliberately NOT
+> taken: the reply's crisis suffix depends on the classifier's verdict, so
+> they are not independent as the register claims — annotated in audit C.
+> Pinned in `tests/test_safety_reach.py`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

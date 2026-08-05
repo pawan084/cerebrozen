@@ -79,12 +79,17 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
-    risk = await safety.scan_and_record(
-        db, user_id=user.id, source="chat", source_id=None, text=payload.text
-    )
-    user_msg = ChatMessage(user_id=user.id, role="user", text=payload.text, risk_level=risk)
+    # The message is flushed first so the safety event can point at it
+    # (register C71: `source_id=None` meant the admin queue could name the
+    # risk but never the message it came from). Safety still never blocks —
+    # the scan only classifies and records.
+    user_msg = ChatMessage(user_id=user.id, role="user", text=payload.text)
     db.add(user_msg)
     await db.flush()
+    risk = await safety.scan_and_record(
+        db, user_id=user.id, source="chat", source_id=user_msg.id, text=payload.text
+    )
+    user_msg.risk_level = risk
 
     # Build short context from recent history — but only if the user consents to
     # AI memory. With memory off we pass just the current turn (no long-term
