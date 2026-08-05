@@ -154,6 +154,13 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.FeaturedEdge
+import com.cerebrozen.app.ui.theme.FeaturedInk
+import com.cerebrozen.app.ui.theme.FeaturedInkSoft
+import com.cerebrozen.app.ui.theme.FeaturedPillEdge
+import com.cerebrozen.app.ui.theme.FeaturedPillFill
+import com.cerebrozen.app.ui.theme.FeaturedPillInk
+import com.cerebrozen.app.ui.theme.FeaturedScrim
 import com.cerebrozen.app.ui.theme.MixerHeroBottom
 import com.cerebrozen.app.ui.theme.MixerHeroEdge
 import com.cerebrozen.app.ui.theme.MixerHeroEyebrow
@@ -2311,20 +2318,24 @@ private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit
             .contentArtBackground(title, kind = "game")
             // Settle the art's bright top so the Cream title/badge keep their
             // contrast (same constant-dark treatment as the hero scrims).
-            .background(ArtScrim.copy(alpha = 0.18f))
-            .background(Brush.verticalGradient(listOf(Color.Transparent, ArtScrim.copy(alpha = 0.50f))))
-            .border(1.dp, Color(0x667A5CFF), shape)
+            // Owner call 2026-08-05: the billboard follows the theme. The
+            // generative art underneath is unchanged; only the scrim over it
+            // flips — Night sinks the art, Dawn lifts it to a pastel wash so
+            // ink text reads on top.
+            .background(FeaturedScrim.copy(alpha = 0.18f))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, FeaturedScrim.copy(alpha = 0.50f))))
+            .border(1.dp, FeaturedEdge, shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
             .semantics { contentDescription = playCd }
             .padding(22.dp),
     ) {
         Box(
             Modifier.clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.22f))
-                .border(1.dp, Color.White.copy(alpha = 0.30f), RoundedCornerShape(50))
+                .background(FeaturedPillFill)
+                .border(1.dp, FeaturedPillEdge, RoundedCornerShape(50))
                 .padding(horizontal = 14.dp, vertical = 6.dp),
         ) {
-            Text(stringResource(R.string.toolkit_featured), style = MaterialTheme.typography.labelSmall, color = Cream)
+            Text(stringResource(R.string.toolkit_featured), style = MaterialTheme.typography.labelSmall, color = FeaturedPillInk)
         }
         // A couple of drifting bubbles as quiet ornamentation.
         Box(
@@ -2341,9 +2352,8 @@ private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit
             Modifier.align(Alignment.BottomStart),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White)
-            // Constant-dark gradient art — overlay text must not follow the theme.
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD5DCF0), modifier = Modifier.fillMaxWidth(0.72f))
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = FeaturedInk)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = FeaturedInkSoft, modifier = Modifier.fillMaxWidth(0.72f))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.height(44.dp).clip(CircleShape)

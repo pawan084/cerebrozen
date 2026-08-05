@@ -212,10 +212,14 @@
   hardcoded hexes that survived Dawn (an "art surface", like the Sleep hero).
   They are now `MixerHero*` / `MixerWave*` / `MixerPlay*` roles in `Color.kt`:
   Night keeps byte-identical paint, Dawn gets a light lavender-to-paper wash
-  with ink text. **The Sleep wind-down hero and the Toolkit's featured
-  Bubble-pop billboard are still constant-dark** — if the intent is "no dark
-  panels in Dawn anywhere", they need the same treatment; that's a second
-  decision, not implied by this one.
+  with ink text. Extended the same day to the **Sleep wind-down hero**
+  (`SleepHero*` roles — dusk-light panel, moon and star field retained) and the
+  **Toolkit's featured Bubble-pop billboard** (`Featured*` roles — the
+  generative art is unchanged; only the scrim over it flips, so Dawn lifts the
+  art to a pastel wash under ink text instead of sinking it). Night is
+  byte-identical on all three. **No constant-dark panels remain**; content
+  thumbnails and hero ART (drawn from each item's title) stay as they are —
+  those are pictures, not surfaces.
 - [x] **Wave 9 — the code tail** (register: B29, B31, B34, B56, B84, B85):
   imagery ticker keyed per line (no stall window); BubblePop drift at 15Hz
   with an empty-pool skip; body-scan pause keeps the seconds already waited

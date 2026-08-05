@@ -190,6 +190,39 @@ val MixerWaveBottom: Color get() = if (AppTheme.isNight) Color(0xFFB18CFF) else 
 val MixerPlayTop: Color get() = if (AppTheme.isNight) Color(0xFF7A5CFF) else Color(0xFF6D5FE8)
 val MixerPlayBottom: Color get() = if (AppTheme.isNight) Color(0xFF9A70FF) else Color(0xFF5B4BC4)
 
+// ── Sleep wind-down hero + the Toolkit's featured billboard ─────────────
+// Owner call 2026-08-05, following the mixer: the last two constant-dark
+// panels follow the theme too. Night keeps its exact paint; Dawn turns each
+// into a light panel with ink text, so no screen has a dark rectangle
+// stranded on cream. As with the mixer these are surface-local roles — only
+// the hero and the billboard read them.
+val SleepHeroTop: Color get() = if (AppTheme.isNight) Color(0xFF30275E) else Color(0xFFE2E2F8)
+val SleepHeroMid: Color get() = if (AppTheme.isNight) Color(0xFF1D315D) else Color(0xFFD8E5F4)
+val SleepHeroBottom: Color get() = if (AppTheme.isNight) Color(0xFF17213E) else Color(0xFFF1EDE5)
+val SleepHeroEdge: Color get() = if (AppTheme.isNight) Color(0x557A5CFF) else Color(0x4D5545AD)
+val SleepHeroInk: Color get() = if (AppTheme.isNight) Color.White else DawnPalette.textPrimary
+val SleepHeroInkSoft: Color get() = if (AppTheme.isNight) Color(0xFFC3CBE0) else DawnPalette.textSoft
+val SleepHeroMeta: Color get() = if (AppTheme.isNight) Color(0xFFD6D9E8) else DawnPalette.textMuted
+val SleepHeroEyebrow: Color get() = if (AppTheme.isNight) Color(0xFF5CCBFF) else DawnPalette.cyan
+val SleepHeroTimer: Color get() = if (AppTheme.isNight) Color(0xFFB18CFF) else DawnPalette.periwinkle
+/** The star field and the shimmer sweep across the panel. */
+val SleepHeroSpark: Color get() = if (AppTheme.isNight) Color.White else Color(0xFF5545AD)
+/** The moon medallion: its radial halo and its glyph. */
+val SleepHeroMoonGlow: Color get() = if (AppTheme.isNight) Color(0x665CCBFF) else Color(0x4D5545AD)
+val SleepHeroMoon: Color get() = if (AppTheme.isNight) Color(0xFFE7DEFF) else Color(0xFF4A3E9E)
+
+/** The featured billboard paints generative art, then a scrim. Night sinks it
+ * with the art scrim; Dawn lifts it with paper, so the same artwork reads as a
+ * pastel wash under ink text instead of a dark tile. */
+val FeaturedScrim: Color get() = if (AppTheme.isNight) Color(0xFF100D2B) else Color(0xFFFBF9F5)
+val FeaturedEdge: Color get() = if (AppTheme.isNight) Color(0x667A5CFF) else Color(0x665545AD)
+val FeaturedInk: Color get() = if (AppTheme.isNight) Color.White else DawnPalette.textPrimary
+val FeaturedInkSoft: Color get() = if (AppTheme.isNight) Color(0xFFD5DCF0) else DawnPalette.textSoft
+/** The "FEATURED EXERCISE" pill riding on the art. */
+val FeaturedPillFill: Color get() = if (AppTheme.isNight) Color(0x38FFFFFF) else Color(0x1A1C1740)
+val FeaturedPillEdge: Color get() = if (AppTheme.isNight) Color(0x4DFFFFFF) else Color(0x381C1740)
+val FeaturedPillInk: Color get() = if (AppTheme.isNight) Cream else DawnPalette.textPrimary
+
 // Component tokens introduced by the Dawn pass (Night values byte-identical to
 // the literals the components used before — see NightPalette).
 /** PrimaryButton label — Ink on the Night white pill, white on the Dawn deep-periwinkle pill. */

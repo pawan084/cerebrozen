@@ -89,6 +89,18 @@ import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.SleepHeroBottom
+import com.cerebrozen.app.ui.theme.SleepHeroEdge
+import com.cerebrozen.app.ui.theme.SleepHeroEyebrow
+import com.cerebrozen.app.ui.theme.SleepHeroInk
+import com.cerebrozen.app.ui.theme.SleepHeroInkSoft
+import com.cerebrozen.app.ui.theme.SleepHeroMeta
+import com.cerebrozen.app.ui.theme.SleepHeroMid
+import com.cerebrozen.app.ui.theme.SleepHeroMoon
+import com.cerebrozen.app.ui.theme.SleepHeroMoonGlow
+import com.cerebrozen.app.ui.theme.SleepHeroSpark
+import com.cerebrozen.app.ui.theme.SleepHeroTimer
+import com.cerebrozen.app.ui.theme.SleepHeroTop
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -988,18 +1000,21 @@ private fun PremiumWindDownHero(
             .height(height)
             .shadow(28.dp, shape, ambientColor = Color(0x447A5CFF), spotColor = Color(0x337A5CFF))
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFF30275E), Color(0xFF1D315D), Color(0xFF17213E))))
-            .border(1.dp, Color(0x557A5CFF), shape),
+            // Owner call 2026-08-05: this hero follows the theme. The paint
+            // comes from the SleepHero* roles in Color.kt — Night keeps the
+            // exact values it shipped with, Dawn gets a light dusk panel.
+            .background(Brush.linearGradient(listOf(SleepHeroTop, SleepHeroMid, SleepHeroBottom)))
+            .border(1.dp, SleepHeroEdge, shape),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             repeat(18) { i ->
                 val x = ((i * 71) % 100) / 100f * size.width
                 val y = ((i * 43) % 70) / 100f * size.height
-                drawCircle(Color.White.copy(alpha = 0.16f + (i % 3) * 0.08f), radius = (1 + i % 2).dp.toPx(), center = Offset(x, y))
+                drawCircle(SleepHeroSpark.copy(alpha = 0.16f + (i % 3) * 0.08f), radius = (1 + i % 2).dp.toPx(), center = Offset(x, y))
             }
             val start = if (reduceMotion) size.width * 0.4f else shimmer * size.width
             drawRect(
-                Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.07f), Color.Transparent), startX = start, endX = start + size.width * 0.55f),
+                Brush.horizontalGradient(listOf(Color.Transparent, SleepHeroSpark.copy(alpha = 0.07f), Color.Transparent), startX = start, endX = start + size.width * 0.55f),
             )
         }
         Box(
@@ -1008,22 +1023,22 @@ private fun PremiumWindDownHero(
                 .padding(top = 22.dp, end = 24.dp)
                 .size(104.dp)
                 .graphicsLayer { translationY = if (reduceMotion || !alive) 0f else moonY.dp.toPx() }
-                .background(Brush.radialGradient(listOf(Color(0x665CCBFF), Color.Transparent))),
+                .background(Brush.radialGradient(listOf(SleepHeroMoonGlow, Color.Transparent))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Color(0xFFE7DEFF), modifier = Modifier.size(58.dp))
+            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = SleepHeroMoon, modifier = Modifier.size(58.dp))
         }
         Column(
             Modifier.fillMaxSize().padding(22.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color(0xFF5CCBFF))
-                Text(title, style = MaterialTheme.typography.headlineSmall, color = Color.White)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFC3CBE0), modifier = Modifier.fillMaxWidth(0.68f))
+                Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = SleepHeroEyebrow)
+                Text(title, style = MaterialTheme.typography.headlineSmall, color = SleepHeroInk)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = SleepHeroInkSoft, modifier = Modifier.fillMaxWidth(0.68f))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = Color(0xFFB18CFF), modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.sleep_estimated_duration), style = MaterialTheme.typography.labelMedium, color = Color(0xFFD6D9E8))
+                    Icon(Icons.Outlined.AccessTime, contentDescription = null, tint = SleepHeroTimer, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.sleep_estimated_duration), style = MaterialTheme.typography.labelMedium, color = SleepHeroMeta)
                 }
             }
             content()
