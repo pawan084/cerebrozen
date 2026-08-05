@@ -34,10 +34,14 @@ class WaitlistOut(BaseModel):
 async def join_waitlist(request: Request, payload: WaitlistJoin, db: AsyncSession = Depends(get_db)):
     email = payload.email.lower()
     existing = await db.scalar(select(WaitlistEntry).where(WaitlistEntry.email == email))
-    if existing:
-        return {"status": "already_joined"}
-    db.add(WaitlistEntry(email=email, source=payload.source))
-    await db.commit()
+    if existing is None:
+        db.add(WaitlistEntry(email=email, source=payload.source))
+        await db.commit()
+    # One answer either way (register C11): a distinct "already_joined" on an
+    # unauthenticated endpoint was a public membership oracle for any email
+    # address — the same leak /auth/otp/request and /auth/password/forgot go
+    # out of their way to avoid. Joining is idempotent; the caller learns only
+    # that the address is on the list now.
     return {"status": "joined"}
 
 

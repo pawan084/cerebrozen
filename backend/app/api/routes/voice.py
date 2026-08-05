@@ -10,13 +10,15 @@ existing /chat pipeline (safety scan, history, persona) unchanged.
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.ratelimit import limiter
 from app.models.user import User
 from app.models.consent import consent_allows
-from app.services import voice
+from app.services import usage, voice
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -50,7 +52,10 @@ async def speech_to_text(
 ):
     if not settings.stt_enabled:
         raise HTTPException(status_code=503, detail="Speech-to-text is not configured")
-    data = await audio.read()
+    # Read at most cap+1 bytes and reject on overflow — never buffer an
+    # arbitrarily large upload just to measure it (register C79; the admin
+    # media upload has always done it this way).
+    data = await audio.read(_MAX_AUDIO_BYTES + 1)
     if not data:
         raise HTTPException(status_code=400, detail="Empty audio upload")
     if len(data) > _MAX_AUDIO_BYTES:
@@ -77,9 +82,18 @@ async def speech_to_text(
     response_class=Response,
 )
 @limiter.limit("60/minute")   # sentence-by-sentence TTS makes several calls per reply
-async def text_to_speech(request: Request, payload: TTSIn, user: User = Depends(get_current_user)):
+async def text_to_speech(
+    request: Request,
+    payload: TTSIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     if not settings.tts_enabled:
         raise HTTPException(status_code=503, detail="Text-to-speech is not configured")
+    # TTS bills the provider per call and voices chat replies, so it draws on
+    # the same free-tier daily quota as the chat that produced the text
+    # (register C77) — an IP limit alone left per-account cost unbounded.
+    await usage.enforce_quota(db, user)
     audio = await voice.synthesize(payload.text)
     if not audio:
         raise HTTPException(status_code=502, detail="Speech synthesis failed")

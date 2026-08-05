@@ -88,6 +88,25 @@
 > is bounded/validated; admin sign-out calls `POST /auth/logout` so a lifted
 > refresh token stops working. Pinned in `tests/test_admin_audit_log.py`
 > (backend 518 passed / 96%; e2e 25 passed / exit 0).
+>
+> **Wave 16 — auth hardening + abuse/cost limits (register C8-C11, C16-C18,
+> C76-C79; C7 accepted-by-design, annotated in the audit):** login burns a
+> dummy bcrypt verify for unknown emails (the early return was a ~100 ms
+> timing oracle) and the lockout message is only shown to a caller holding
+> the CORRECT password — a wrong guess against a locked account reads like
+> any wrong guess; the password-reset link is single-use (token carries the
+> token generation, redemption bumps it — a leaked URL no longer replays for
+> its full hour); `/auth/verify*`, `/auth/password/reset` and `/auth/logout`
+> gained the rate limits every neighbouring route already had; the public
+> waitlist answers "joined" whether or not the address was already on the
+> list (it was a membership oracle for any email; web copy updated);
+> `ChatSend`/`OracleSend` text capped at 4000 and journal body/tags bounded
+> (uncapped bodies fed the LLM prompt and Text columns); `/assessment/topics`,
+> `/plans/generate` and `/goals/{id}/decompose` gained IP rate limits and
+> `/voice/tts` + `/oracle/confirm` now draw on the free-tier daily quota
+> (each was an unmetered provider-billed call); `/voice/stt` reads cap+1
+> bytes instead of buffering the whole upload before measuring it. Pinned in
+> `tests/test_auth_hardening.py` + `tests/test_abuse_guards.py`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

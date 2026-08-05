@@ -79,3 +79,45 @@ async def test_forgot_password_no_enumeration(client):
 async def test_reset_rejects_bad_token(client):
     r = await client.post("/auth/password/reset", json={"token": "not-a-token", "new_password": "whatever12"})
     assert r.status_code == 400
+
+
+async def test_reset_link_is_single_use(client):
+    """Register C9: the reset token binds the current token generation, and
+    redeeming it bumps that generation — a leaked link can't be replayed for
+    the rest of its hour."""
+    _, token = await _signup(client)
+    client.headers["Authorization"] = f"Bearer {token}"
+    me = (await client.get("/users/me")).json()
+    del client.headers["Authorization"]
+
+    reset_token = create_reset_token(me["id"])   # fresh account: version 0
+    r = await client.post("/auth/password/reset",
+                          json={"token": reset_token, "new_password": "newpassword456"})
+    assert r.status_code == 200
+
+    replay = await client.post("/auth/password/reset",
+                               json={"token": reset_token, "new_password": "attacker789"})
+    assert replay.status_code == 400
+
+
+async def test_locked_account_wrong_password_stays_generic(client):
+    """Register C8: the distinct lockout message is only shown to a caller who
+    presented the CORRECT password — a wrong guess against a locked account
+    reads exactly like a wrong guess against any account."""
+    email, _ = await _signup(client)
+    for _ in range(5):
+        assert (await client.post("/auth/login", data={"username": email, "password": "wrong"})).status_code == 401
+    r = await client.post("/auth/login", data={"username": email, "password": "still-wrong"})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Incorrect email or password"
+
+
+async def test_login_unknown_email_answer_matches_wrong_password(client):
+    """The unknown-email and wrong-password answers must be indistinguishable
+    (status and body); the timing half is equalized by the dummy bcrypt verify
+    in the route."""
+    email, _ = await _signup(client)
+    unknown = await client.post("/auth/login", data={"username": "ghost-nobody@absent.app", "password": "x" * 12})
+    wrong = await client.post("/auth/login", data={"username": email, "password": "not-the-password"})
+    assert unknown.status_code == wrong.status_code == 401
+    assert unknown.json()["detail"] == wrong.json()["detail"]

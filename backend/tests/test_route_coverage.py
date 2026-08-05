@@ -74,4 +74,5 @@ async def test_voice_tts_disabled_503(auth_client, monkeypatch):
 async def test_waitlist_join_then_duplicate(client):
     e = f"wl-{uuid.uuid4().hex[:8]}@test.app"
     assert (await client.post("/waitlist", json={"email": e})).json()["status"] == "joined"
-    assert (await client.post("/waitlist", json={"email": e})).json()["status"] == "already_joined"
+    # Same answer for a repeat join — no membership oracle (register C11).
+    assert (await client.post("/waitlist", json={"email": e})).json()["status"] == "joined"

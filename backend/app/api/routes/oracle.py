@@ -43,7 +43,9 @@ router = APIRouter(prefix="/oracle", tags=["oracle"])
 
 
 class OracleSend(BaseModel):
-    text: str = Field(min_length=1)
+    # Same bound as ChatSend (register C17): the text feeds a streaming agent
+    # run, so an uncapped body is uncapped provider cost.
+    text: str = Field(min_length=1, max_length=4000)
     thread_id: str | None = None
 
 
@@ -229,6 +231,10 @@ async def confirm(request: Request, payload: OracleConfirm, user: User = Depends
                   db: AsyncSession = Depends(get_db)):
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
+    # A resume is a full agent turn (LLM + tools), so it draws on the same
+    # free-tier quota as the send that paused it (register C78) — otherwise
+    # every paused confirmation is an unmetered turn on top of the metered one.
+    await usage.enforce_quota(db, user)
     thread_id = scoped_thread_id(user.id, payload.thread_id)
     await _record_decision(db, user, thread_id, payload.approved)
     gen = _run(Command(resume={"approved": payload.approved}), thread_id, user.id,

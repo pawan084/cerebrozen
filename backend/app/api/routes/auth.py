@@ -50,6 +50,11 @@ _LOCKOUT_MINUTES = 15
 _OTP_TTL_MINUTES = 10
 _OTP_MAX_ATTEMPTS = 5
 
+# Burned against unknown emails so a login attempt costs one bcrypt verify
+# whether or not the account exists — without this, the early return for an
+# unknown address is a ~100 ms timing oracle for account existence.
+_DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
+
 
 def _tokens(user: User) -> TokenPair:
     return TokenPair(
@@ -86,22 +91,31 @@ async def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), d
     user = await db.scalar(select(User).where(User.email == form.username.lower()))
     _bad = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     if user is None:
+        # Equalize timing with the real-account path (see _DUMMY_HASH).
+        verify_password(form.password, _DUMMY_HASH)
         raise _bad
 
-    # Account lockout after repeated failures blunts online brute force.
-    if user.locked_until is not None and user.locked_until > utcnow():
+    # Account lockout after repeated failures blunts online brute force. The
+    # lock is only ANNOUNCED to a caller who presented the correct password —
+    # a wrong guess against a locked account gets the same generic 401 as any
+    # wrong guess, so the distinct lockout message can't confirm the account
+    # exists to someone who doesn't hold the credential.
+    locked = user.locked_until is not None and user.locked_until > utcnow()
+
+    if not verify_password(form.password, user.hashed_password):
+        if not locked:
+            user.failed_login_count += 1
+            if user.failed_login_count >= _MAX_FAILED_LOGINS:
+                user.locked_until = utcnow() + timedelta(minutes=_LOCKOUT_MINUTES)
+                user.failed_login_count = 0
+            await db.commit()
+        raise _bad
+
+    if locked:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account temporarily locked after repeated failed logins. Try again shortly.",
         )
-
-    if not verify_password(form.password, user.hashed_password):
-        user.failed_login_count += 1
-        if user.failed_login_count >= _MAX_FAILED_LOGINS:
-            user.locked_until = utcnow() + timedelta(minutes=_LOCKOUT_MINUTES)
-            user.failed_login_count = 0
-        await db.commit()
-        raise _bad
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
@@ -283,7 +297,8 @@ async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = 
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def logout(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Revoke every outstanding access + refresh token for this user by bumping
     the token version (server-side revocation, not just client-side discard)."""
     user.token_version += 1
@@ -292,7 +307,8 @@ async def logout(user: User = Depends(get_current_user), db: AsyncSession = Depe
 
 
 @router.post("/verify/request")
-async def request_verification(user: User = Depends(get_current_user)):
+@limiter.limit("5/minute")   # authenticated, but still an email-send amplifier
+async def request_verification(request: Request, user: User = Depends(get_current_user)):
     """Email the signed-in user a verification link."""
     token = create_verify_token(str(user.id))
     link = f"{settings.app_base_url}/verify?token={token}"
@@ -302,7 +318,8 @@ async def request_verification(user: User = Depends(get_current_user)):
 
 
 @router.post("/verify")
-async def verify_email(payload: TokenBody, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def verify_email(request: Request, payload: TokenBody, db: AsyncSession = Depends(get_db)):
     data = decode_token(payload.token, expected_type=VERIFY)
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
@@ -320,7 +337,7 @@ async def forgot_password(request: Request, payload: ForgotPasswordRequest, db: 
     """Email a reset link. Always returns 200 (no account enumeration)."""
     user = await db.scalar(select(User).where(User.email == payload.email.lower()))
     if user is not None:
-        token = create_reset_token(str(user.id))
+        token = create_reset_token(str(user.id), user.token_version)
         link = f"{settings.app_base_url}/reset?token={token}"
         await email.send_email(user.email, "Reset your CereBro password",
                                f"Reset your password:\n\n{link}\n\nThis link expires in 1 hour. "
@@ -329,12 +346,18 @@ async def forgot_password(request: Request, payload: ForgotPasswordRequest, db: 
 
 
 @router.post("/password/reset")
-async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def reset_password(request: Request, payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     data = decode_token(payload.token, expected_type=RESET)
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
     user = await db.get(User, uuid.UUID(data["sub"]))
     if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    # Single-use: the token was minted against the CURRENT token generation,
+    # and redeeming it bumps that generation below — so a second redemption of
+    # the same link (or one minted before a later reset/logout) is refused.
+    if data.get("ver") != user.token_version:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
     user.hashed_password = hash_password(payload.new_password)
     user.token_version += 1        # invalidate all existing sessions

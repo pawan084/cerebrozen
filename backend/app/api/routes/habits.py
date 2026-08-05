@@ -9,17 +9,21 @@ the planner that already exists.
 Habits are deliberately gentle. Completions are dated rows, not a chain: the
 schema cannot express "your streak broke", and the copy shouldn't either.
 """
-from __future__ import annotations
-
+# NOTE: no `from __future__ import annotations` here — slowapi's limit wrapper
+# re-inspects the endpoint signature, and stringified annotations leave
+# `uuid.UUID` an unresolvable ForwardRef inside its namespace (pydantic
+# "class-not-fully-defined" at request time). Runtime annotations are fine on
+# this Python; keep them evaluated.
 import uuid
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_user
+from app.core.ratelimit import limiter
 from app.models.habit import Goal, Habit, HabitCompletion
 from app.models.user import User
 from app.schemas.content_data import (
@@ -111,7 +115,9 @@ async def delete_goal(
 
 
 @router.post("/goals/{goal_id}/decompose", response_model=PlanOut, status_code=201)
+@limiter.limit("10/minute")   # each call is a ~900-token LLM plan (register C76)
 async def decompose_goal(
+    request: Request,
     goal_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

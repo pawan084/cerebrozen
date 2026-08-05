@@ -2,7 +2,7 @@
 import uuid
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ── Mood ────────────────────────────────────────────────────────────────
@@ -28,9 +28,18 @@ class MoodOut(BaseModel):
 # ── Journal ─────────────────────────────────────────────────────────────
 class JournalCreate(BaseModel):
     title: str = Field(max_length=120)
-    body: str = ""
-    tags: list[str] = Field(default_factory=list)
+    # Generous for real writing (~10k words) while refusing arbitrary blobs
+    # against the unbounded Text column (register C18).
+    body: str = Field(default="", max_length=50_000)
+    tags: list[str] = Field(default_factory=list, max_length=20)
     symbol: str = Field(default="book", max_length=60)
+
+    @field_validator("tags")
+    @classmethod
+    def _bounded_tags(cls, v: list[str]) -> list[str]:
+        if any(len(t) > 60 for t in v):
+            raise ValueError("tags must be 60 characters or fewer")
+        return v
 
 
 class JournalOut(BaseModel):
@@ -46,7 +55,10 @@ class JournalOut(BaseModel):
 
 # ── Chat ────────────────────────────────────────────────────────────────
 class ChatSend(BaseModel):
-    text: str = Field(min_length=1)
+    # Bounded because the text feeds the LLM prompt, the transcript context
+    # and a Text column (register C16). Every client composer caps well below
+    # this (Android at 2000); the server stops trusting them to.
+    text: str = Field(min_length=1, max_length=4000)
 
 
 class ChatOut(BaseModel):

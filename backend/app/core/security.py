@@ -63,8 +63,12 @@ def create_verify_token(subject: str) -> str:
     return _create_token(subject, VERIFY, timedelta(hours=24))
 
 
-def create_reset_token(subject: str) -> str:
-    return _create_token(subject, RESET, timedelta(hours=1))
+def create_reset_token(subject: str, version: int = 0) -> str:
+    """Password-reset link token. Carries the user's current token generation
+    so the link is single-use: redeeming it bumps ``token_version``, which
+    invalidates the token itself along with every session — a leaked reset URL
+    can no longer be replayed for the rest of its hour."""
+    return _create_token(subject, RESET, timedelta(hours=1), version)
 
 
 def create_media_token(item_id: str) -> str:

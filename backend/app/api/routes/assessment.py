@@ -1,7 +1,8 @@
 """Self-reflection assessment: taxonomy + personalized conversation topics."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.core.deps import get_current_user
+from app.core.ratelimit import limiter
 from app.models.user import User
 from app.schemas.assessment import AssessmentStructureOut, TopicsOut, TopicsRequest
 from app.services import assessment
@@ -16,7 +17,9 @@ async def structure():
 
 
 @router.post("/topics", response_model=TopicsOut)
+@limiter.limit("20/minute")   # LLM-backed generation — cost guard (register C76)
 async def topics(
+    request: Request,
     payload: TopicsRequest = TopicsRequest(),
     user: User = Depends(get_current_user),
 ):

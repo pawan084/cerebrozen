@@ -43,7 +43,9 @@ async def test_waitlist_join_and_dedupe(client):
     r1 = await client.post("/waitlist", json={"email": email, "source": "test"})
     assert r1.status_code == 201 and r1.json()["status"] == "joined"
     r2 = await client.post("/waitlist", json={"email": email})
-    assert r2.status_code == 201 and r2.json()["status"] == "already_joined"
+    # Idempotent AND indistinguishable: an unauthenticated caller must not be
+    # able to learn whether an address was already on the list (register C11).
+    assert r2.status_code == 201 and r2.json()["status"] == "joined"
 
 
 # ── Plans ───────────────────────────────────────────────────────────────

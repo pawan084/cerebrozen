@@ -42,12 +42,11 @@ export default function Waitlist() {
         );
         return;
       }
-      const data = await res.json();
-      setMsg(
-        data.status === "already_joined"
-          ? "You're already on the list — we'll be in touch."
-          : "You're in. We'll send a calm note when it's ready."
-      );
+      await res.json();
+      // The server deliberately answers "joined" whether or not the address
+      // was already on the list — a distinct answer would let anyone probe
+      // membership for any email. The copy stays true either way.
+      setMsg("You're in. We'll send a calm note when it's ready.");
       setJoined(true);
       setEmail("");
     } catch {
