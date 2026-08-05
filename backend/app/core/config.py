@@ -24,11 +24,18 @@ class Settings(BaseSettings):
     web_concurrency: int = 1
 
     database_url: str = "postgresql+asyncpg://cerebro:cerebro@localhost:5432/cerebro"
+    database_pool_size: int = Field(default=5, ge=1, le=50)
+    database_max_overflow: int = Field(default=5, ge=0, le=50)
+    database_pool_timeout: int = Field(default=30, ge=1, le=120)
 
     # Comma-separated string (env: CORS_ORIGINS); parsed via `cors_origins` below.
     cors_origins_raw: str = Field(
         default="http://localhost:3000,http://localhost:3001,http://localhost:3002",
         validation_alias="CORS_ORIGINS",
+    )
+    trusted_hosts_raw: str = Field(
+        default="localhost,127.0.0.1,testserver",
+        validation_alias="TRUSTED_HOSTS",
     )
 
     # AI / proactive. Provider is chosen at runtime: OpenAI when its key is set,
@@ -92,7 +99,7 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:support@cerebrozen.in"
 
     # APNs (token-based push). Leave key path empty to log instead of send.
-    apns_key_path: str = ""        # path to the .p8 auth key
+    apns_key_path: str = ""  # path to the .p8 auth key
     apns_key_id: str = ""
     apns_team_id: str = ""
     apns_bundle_id: str = "com.cerebrozen.app"
@@ -101,7 +108,7 @@ class Settings(BaseSettings):
     # FCM (HTTP v1) for Android push. Empty credentials path = log instead of
     # send, same contract as APNs — the Android client still registers its
     # token, so turning delivery on later needs no app release.
-    fcm_credentials_path: str = ""   # path to the service-account .json
+    fcm_credentials_path: str = ""  # path to the service-account .json
     fcm_project_id: str = ""
 
     # Transactional email (verification, password reset). Empty host = log only.
@@ -145,6 +152,12 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins_raw.split(",") if o.strip()]
 
+    @property
+    def trusted_hosts(self) -> list[str]:
+        return [
+            host.strip() for host in self.trusted_hosts_raw.split(",") if host.strip()
+        ]
+
     @model_validator(mode="after")
     def _guard_production(self) -> "Settings":
         """Fail fast on insecure defaults when ENV=production, so a misconfigured
@@ -158,12 +171,17 @@ class Settings(BaseSettings):
             or "CHANGE_ME" in self.secret_key.upper()
         ):
             problems.append("SECRET_KEY must be a strong (>=32 char) random value")
-        if self.admin_password == _DEFAULT_ADMIN_PASSWORD or "CHANGE_ME" in self.admin_password.upper():
+        if (
+            self.admin_password == _DEFAULT_ADMIN_PASSWORD
+            or "CHANGE_ME" in self.admin_password.upper()
+        ):
             problems.append("ADMIN_PASSWORD must be set to a real value")
         if self.seed_demo_data:
             problems.append("SEED_DEMO_DATA must be false in production")
         if "*" in self.cors_origins_raw:
             problems.append("CORS_ORIGINS must list explicit origins (no wildcard)")
+        if not self.trusted_hosts or "*" in self.trusted_hosts:
+            problems.append("TRUSTED_HOSTS must list explicit hosts (no wildcard)")
         if problems:
             raise ValueError("Insecure production config: " + "; ".join(problems))
         return self

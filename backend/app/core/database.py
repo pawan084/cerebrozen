@@ -22,6 +22,9 @@ if os.getenv("TESTING") == "1":
     _engine_kwargs["poolclass"] = NullPool
 else:
     _engine_kwargs["pool_pre_ping"] = True
+    _engine_kwargs["pool_size"] = settings.database_pool_size
+    _engine_kwargs["max_overflow"] = settings.database_max_overflow
+    _engine_kwargs["pool_timeout"] = settings.database_pool_timeout
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -35,7 +38,9 @@ class Base(DeclarativeBase):
     """Shared declarative base with a UUID primary key + timestamps."""
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

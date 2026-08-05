@@ -27,6 +27,7 @@ docker compose up --build
 - API → http://localhost:8000
 - Interactive docs → http://localhost:8000/docs
 - Health → http://localhost:8000/health
+- Readiness (including PostgreSQL) → http://localhost:8000/ready
 
 On boot the API waits for Postgres, creates tables (`init_db`), and seeds an
 admin + demo user + content catalogue.
@@ -72,6 +73,8 @@ app/
 | GET | `/insights/weekly`, `/nudges` | proactive surfaces |
 | GET/POST | `/voice/status` · `/voice/stt` · `/voice/tts` | speech-to-text + text-to-speech |
 | * | `/admin/*` | stats, users, content CRUD, safety queue (admin only) |
+| GET | `/health`, `/ready` | liveness and PostgreSQL-backed readiness |
+| GET | `/api/v1/health`, `/api/v1/ready` | versioned operational aliases |
 
 ## Migrations (Alembic)
 

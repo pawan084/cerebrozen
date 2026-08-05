@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import time
+import uuid
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
@@ -8,6 +10,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -96,7 +100,13 @@ app = FastAPI(
     description="Backend for the CereBro mental-wellness app: auth, user data, and "
     "proactive AI (agentic plans, nudges, insights, safety, voice).",
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
+
+if settings.is_production:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
 
 # Rate limiting (auth endpoints opt in via @limiter.limit).
 app.state.limiter = limiter
@@ -110,6 +120,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next) -> Response:
+    """Attach a safe correlation id and record one structured access event."""
+    supplied = request.headers.get("X-Request-ID", "")
+    request_id = (
+        supplied
+        if 0 < len(supplied) <= 128 and supplied.isascii()
+        else uuid.uuid4().hex
+    )
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:  # noqa: BLE001 - convert unknown failures at the app boundary
+        logger.exception(
+            "request_failed method=%s path=%s request_id=%s",
+            request.method,
+            request.url.path,
+            request_id,
+        )
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "request_id": request_id},
+        )
+    elapsed_ms = (time.perf_counter() - started) * 1000
+    response.headers["X-Request-ID"] = request_id
+    response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.2f}"
+    logger.info(
+        "request_complete method=%s path=%s status=%d duration_ms=%.2f request_id=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+        request_id,
+    )
+    return response
 
 
 @app.middleware("http")
@@ -160,3 +208,26 @@ app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 @app.get("/health", tags=["meta"])
 async def health():
     return {"status": "ok", "version": __version__, "ai_enabled": settings.ai_enabled}
+
+
+@app.get("/ready", tags=["meta"])
+async def ready():
+    """Report readiness only after PostgreSQL accepts a trivial query."""
+    try:
+        async with SessionLocal() as db:
+            await db.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001 - dependency details must not leak publicly
+        return JSONResponse(
+            status_code=503, content={"status": "not_ready", "database": "unavailable"}
+        )
+    return {"status": "ready", "database": "ok"}
+
+
+# Versioned operational aliases for new integrations. Legacy routes remain the
+# canonical client contract and are intentionally untouched.
+app.add_api_route(
+    "/api/v1/health", health, methods=["GET"], tags=["meta"], include_in_schema=False
+)
+app.add_api_route(
+    "/api/v1/ready", ready, methods=["GET"], tags=["meta"], include_in_schema=False
+)

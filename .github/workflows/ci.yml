@@ -39,6 +39,14 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: pip install -r requirements-dev.txt
+      - name: Compile, lint, and formatting checks
+        working-directory: backend
+        run: |
+          python -m compileall -q app tests
+          # The legacy tree predates Ruff. Gate the production boundary changed
+          # here without creating a 155-file formatting-only migration.
+          ruff check app/main.py app/core/config.py app/core/database.py tests/test_auth.py
+          ruff format --check app/main.py app/core/config.py app/core/database.py tests/test_auth.py
       # The suite builds its schema with Base.metadata.create_all (init_db), so it
       # never executes a migration — meaning a broken or forked Alembic history is
       # invisible to pytest and green CI can still ship an API that cannot boot.

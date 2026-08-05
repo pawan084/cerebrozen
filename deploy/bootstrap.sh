@@ -11,7 +11,9 @@
 #   git clone git@github.com:pawan084/cerebrozen.git /opt/cerebrozen
 #   bash /opt/cerebrozen/deploy/bootstrap.sh
 #
-# Optional: bootstrap.sh --harden-ssh   also disables root + password SSH
+# Optional flags (both require explicit operator approval before invocation):
+#   --configure-firewall  opens SSH/80/443 and enables UFW
+#   --harden-ssh          disables root + password SSH
 #           (only after confirming the deploy user has an authorized key).
 set -euo pipefail
 
@@ -19,7 +21,10 @@ DEPLOY_USER="${DEPLOY_USER:-deploy}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$REPO_DIR/backend/.env.production"
 HARDEN_SSH=false
+CONFIGURE_FIREWALL=false
 [[ "${1:-}" == "--harden-ssh" ]] && HARDEN_SSH=true
+[[ "${1:-}" == "--configure-firewall" ]] && CONFIGURE_FIREWALL=true
+[[ "${2:-}" == "--harden-ssh" ]] && HARDEN_SSH=true
 
 log()  { printf "\033[1;35m▶ %s\033[0m\n" "$*"; }
 warn() { printf "\033[1;33m⚠ %s\033[0m\n" "$*"; }
@@ -50,11 +55,15 @@ else
 fi
 
 # ── 3. Firewall ──────────────────────────────────────────────────────────
-log "Configuring ufw (OpenSSH, 80, 443)"
-ufw allow OpenSSH >/dev/null
-ufw allow 80/tcp   >/dev/null
-ufw allow 443/tcp  >/dev/null
-ufw --force enable  >/dev/null
+if $CONFIGURE_FIREWALL; then
+  log "Configuring ufw (OpenSSH, 80, 443)"
+  ufw allow OpenSSH >/dev/null
+  ufw allow 80/tcp >/dev/null
+  ufw allow 443/tcp >/dev/null
+  ufw --force enable >/dev/null
+else
+  warn "Firewall unchanged. Re-run with --configure-firewall only after approval."
+fi
 systemctl enable --now fail2ban >/dev/null 2>&1 || true
 
 # ── 4. Docker + compose plugin ───────────────────────────────────────────
@@ -83,7 +92,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=$ADMIN_PW|" "$ENV_FILE"
   sed -i "s|postgresql+asyncpg://cerebro:[^@]*@db|postgresql+asyncpg://cerebro:$DB_PW@db|" "$ENV_FILE"
   chown "$DEPLOY_USER":"$DEPLOY_USER" "$ENV_FILE"; chmod 600 "$ENV_FILE"
-  warn "Generated ADMIN_PASSWORD for admin@cerebrozen.in: $ADMIN_PW  (save it now)"
+  warn "Generated production credentials in $ENV_FILE (values intentionally not printed)."
   warn "Now add your provider keys (OPENAI/DEEPGRAM/ELEVENLABS, GOOGLE_CLIENT_ID,"
   warn "SMTP_*, TWILIO_*) to $ENV_FILE — blank ones just disable that feature."
   echo
@@ -93,10 +102,16 @@ else
 fi
 
 # ── 7. Deploy the stack ──────────────────────────────────────────────────
-log "Building + starting the production stack (this pulls images + builds)"
+log "Building production images"
 cd "$REPO_DIR"
 sudo -u "$DEPLOY_USER" docker compose -f docker-compose.prod.yml \
-  --env-file backend/.env.production up -d --build
+  --env-file backend/.env.production build
+log "Applying migrations as a controlled one-time step"
+sudo -u "$DEPLOY_USER" docker compose -f docker-compose.prod.yml \
+  --env-file backend/.env.production --profile tools run --rm migrate
+log "Starting production services"
+sudo -u "$DEPLOY_USER" docker compose -f docker-compose.prod.yml \
+  --env-file backend/.env.production up -d --no-build
 
 # ── 8. Optional SSH hardening (opt-in, lockout-safe) ─────────────────────
 if $HARDEN_SSH; then
