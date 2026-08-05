@@ -115,7 +115,24 @@ export default function Home() {
   // user's real days. When there aren't two real check-ins yet the card says so;
   // it never draws an invented shape (the `[3,4,3,4,3,4,4]` fallback that used
   // to stand in here was deleted in WEB_PARITY Wave A).
-  const pts = moods.slice(0, 7).reverse().map((m) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3);
+  // One point per LOCAL day, not per check-in (register D21): five check-ins
+  // today used to draw a week-looking line under a "This week" label. Days
+  // with several check-ins average; days without one simply aren't drawn —
+  // same no-invented-shape rule as always.
+  const score = (m: Mood) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3;
+  const byDay = new Map<string, number[]>();
+  for (const m of moods) {
+    const d = new Date(m.created_at);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key)!.push(score(m));
+  }
+  // moods arrive newest-first, so insertion order is newest day → oldest.
+  const pts = [...byDay.values()]
+    .slice(0, 7)
+    .reverse()
+    .map((scores) => scores.reduce((a, b) => a + b, 0) / scores.length);
   const presentDays = streak?.week?.filter((d) => d.active).length ?? 0;
   // One honest line for the weekly-insights teaser, from the same mood fetch.
   const weekCheckins = moods.filter((m) => Date.now() - new Date(m.created_at).getTime() < 7 * 86400e3).length;
@@ -319,7 +336,7 @@ export default function Home() {
                 </svg>
               ) : (
                 <p className="sub" style={{ marginTop: 12 }}>
-                  Your line starts after two check-ins — tap a face above and it begins.
+                  Your line starts after check-ins on two different days — tap a face above and it begins.
                 </p>
               )}
             </div>

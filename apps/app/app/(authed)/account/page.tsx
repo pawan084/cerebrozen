@@ -54,9 +54,6 @@ export default function Account() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
   const [consent, setConsent] = useState<Consent | null>(null);
-  // Local-only preference (localStorage): analytics never touches the account,
-  // so it is not a server consent flag.
-  const [usageStats, setUsageStats] = useState(true);
   const [region, setRegion] = useState("");
   const [contact, setContact] = useState<Contact>({
     name: "", method: "email", value: "", relationship: "", notify_consent: false,
@@ -75,6 +72,11 @@ export default function Account() {
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
   const [theme, setTheme] = useState<ThemeMode>("system");
+  // ONE state for the two "Anonymous usage stats" switches on this page
+  // (register D11): separate `usageStats`/`statsOn` copies meant flipping one
+  // left the other visibly stale until reload. Local-only preference
+  // (localStorage): analytics never touches the account, so it is not a
+  // server consent flag.
   const [statsOn, setStatsOn] = useState(true);
   // DPDP s.5(3): the consent notice is readable in English or an
   // Eighth-Schedule language, picked right on the notice.
@@ -82,13 +84,13 @@ export default function Account() {
   const notice = CONSENT_NOTICE[noticeLang] ?? CONSENT_NOTICE.en;
 
   useEffect(() => {
-    setUsageStats(analyticsEnabled());
     api("/auth/me").then((u) => {
       setMe(u);
       setRegion(u.region ?? "");
-      // The paywall surface here is the upgrade card (iOS parity: PremiumView
-      // fires the same event; anonymous, consent-gated in lib/analytics).
-      if ((u.subscription_tier ?? "free") === "free") track("paywall_view");
+      // paywall_view fires from <PaywallSeen /> when the upgrade card
+      // actually renders — firing here too double-counted every free visit
+      // (register D12), inflating the exact funnel the card exists to
+      // measure honestly.
     }).catch(() => {});
     api<Consent>("/users/me/consent").then(setConsent).catch(() => {});
     api<Contact | null>("/users/me/trusted-contact").then((c) => c && setContact(c)).catch(() => {});
@@ -398,10 +400,10 @@ export default function Account() {
           <input
             type="checkbox"
             role="switch"
-            checked={usageStats}
+            checked={statsOn}
             onChange={() => {
-              const next = !usageStats;
-              setUsageStats(next);
+              const next = !statsOn;
+              setStatsOn(next);
               setAnalyticsEnabled(next);
             }}
             aria-label="Anonymous usage stats"

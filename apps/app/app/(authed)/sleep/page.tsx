@@ -88,7 +88,11 @@ export default function Sleep() {
     try {
       await api("/sleep", { method: "POST", body: JSON.stringify({ date: todayISO(), bedtime: `${bedtime}:00`, wake_time: `${wake}:00`, quality, awakenings: 0 }) });
       setSaved(true);
-      api<Night[]>("/sleep?limit=7").then(setNights).catch(() => {});
+      // Awaited (register D58): the fire-and-forget refetch could leave the
+      // "Your rhythm" card silently showing pre-save data beside the "Saved"
+      // confirmation. The save already succeeded, so a failed refresh only
+      // means the list catches up on the next visit — never an error banner.
+      await api<Night[]>("/sleep?limit=7").then(setNights).catch(() => {});
     } catch {
       // Register D4: try/finally with no catch made a failed save an
       // unhandled rejection - a console error and nothing for the user.

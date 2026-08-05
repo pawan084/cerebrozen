@@ -128,6 +128,24 @@
 > StripeError not a 500; `/content?q=` and `/admin/users?q=` escape LIKE
 > wildcards via the new shared `services/textsearch.escape_like` (journal's
 > local fix, promoted). Pinned in `tests/test_input_bounds.py`.
+>
+> **Wave 18 — web app correctness tail (register D2, D11-D12, D16, D21,
+> D55-D58):** chat no longer derives a thread id client-side (it defaulted to
+> the shared literal "web" until /auth/me resolved, so an early message could
+> checkpoint under a different key than later ones — the server now receives
+> none and defaults to the caller's user id, the Android contract); an SSE
+> `error` frame mid-stream keeps the same "Try sending again" chip a
+> pre-stream failure always had; chat history is fetched with `?limit=100`
+> and hydration no longer auto-scrolls the page to the composer (only the
+> user's own sends do); Home's "Mood this week" buckets by LOCAL day — five
+> check-ins today no longer draw a week-looking line (days average, absent
+> days aren't drawn, empty-state copy says "two different days"); the two
+> "Anonymous usage stats" switches share one state; `paywall_view` fires
+> once (from the card actually rendering, not also from the page's /auth/me
+> effect); onboarding's terminal funnel event fires before the awaited
+> PATCHes so closing the tab at the last screen can't erase the completion;
+> the sleep post-save refetch is awaited so "Your rhythm" can't sit stale
+> beside "Saved". tsc clean; e2e suite green.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

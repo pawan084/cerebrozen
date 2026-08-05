@@ -81,7 +81,6 @@ export default function Chat() {
   const [streaming, setStreaming] = useState("");
   const [busy, setBusy] = useState(false);
   const [useOracle, setUseOracle] = useState(false);
-  const [threadId, setThreadId] = useState("web");
   const [confirmReq, setConfirmReq] = useState<ConfirmReq | null>(null);
   const [crisis, setCrisis] = useState<CrisisInfo | null>(null);
   // The free daily cap, shown as its own calm card rather than an error bubble.
@@ -91,16 +90,26 @@ export default function Chat() {
   // without this, an error meant retyping from memory on a bad connection.
   const [failedText, setFailedText] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // False until the user actually sends something this visit — history
+  // hydrating must not yank the page to the composer (register D56).
+  const interacted = useRef(false);
 
   useEffect(() => {
-    api("/auth/me").then((me) => setThreadId(`web-${me.id}`)).catch(() => {});
-    api<any[]>("/chat")
+    // No client-derived thread id (register D2): it defaulted to the shared
+    // literal "web" until /auth/me resolved, so an early message could
+    // checkpoint into a differently-keyed thread than later ones. Omitting it
+    // lets the server default to the caller's own user id — the same contract
+    // Android uses — with no window where the key is wrong.
+    // ?limit keeps a long-lived account from refetching its entire history on
+    // every visit (register D55); every other list in the app already passes one.
+    api<any[]>("/chat?limit=100")
       .then((h) => setMessages(h.map((m) => ({ id: m.id, role: m.role, text: m.text }))))
       .catch(() => {});
     oracleAvailable().then(setUseOracle);
   }, []);
 
   useEffect(() => {
+    if (!interacted.current) return;
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
@@ -108,9 +117,10 @@ export default function Chat() {
     setMessages((m) => [...m, msg]);
   }
 
-  async function consume(stream: AsyncGenerator<any>) {
+  async function consume(stream: AsyncGenerator<any>): Promise<boolean> {
     let acc = "";
     let widget: OracleWidget | null = null;
+    let hadError = false;
     for await (const ev of stream) {
       if (ev.type === "token") {
         acc += ev.text;
@@ -123,6 +133,9 @@ export default function Chat() {
       } else if (ev.type === "tool_confirm") {
         setConfirmReq({ thread_id: ev.thread_id, summary: ev.summary, tool: ev.tool, args: ev.args });
       } else if (ev.type === "done" || ev.type === "error") {
+        // Register D16: an SSE `error` frame used to render as if it were a
+        // reply, with no retry path. The caller now learns it happened.
+        if (ev.type === "error") hadError = true;
         const text = ev.type === "done" ? ev.text || acc : acc || ev.detail;
         if (text.trim() || widget) {
           push({ id: uid(), role: "assistant", text: text.trim(), widget });
@@ -133,11 +146,13 @@ export default function Chat() {
     }
     // Stream ended while paused for confirmation — keep the card, drop the bubble.
     setStreaming("");
+    return !hadError;
   }
 
   async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
+    interacted.current = true;
     setBusy(true);
     setInput("");
     setSuggestions([]);
@@ -145,7 +160,10 @@ export default function Chat() {
     push({ id: uid(), role: "user", text: t });
     try {
       if (useOracle) {
-        await consume(oracleStream("/oracle/messages", { text: t, thread_id: threadId }));
+        const ok = await consume(oracleStream("/oracle/messages", { text: t }));
+        // A mid-stream failure keeps the same "Try sending again" chip a
+        // pre-stream failure always had (register D16).
+        if (!ok) setFailedText(t);
       } else {
         const reply = await api<any>("/chat/messages", {
           method: "POST",
@@ -179,6 +197,7 @@ export default function Chat() {
   async function resolveConfirm(approved: boolean) {
     const req = confirmReq;
     if (!req) return;
+    interacted.current = true;
     setConfirmReq(null);
     setBusy(true);
     try {

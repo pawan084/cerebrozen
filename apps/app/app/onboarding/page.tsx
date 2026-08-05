@@ -60,9 +60,13 @@ export default function Onboarding() {
   }, [ready, step]);
 
   async function finish() {
+    // The terminal funnel event fires BEFORE the three profile PATCHes
+    // (register D57): a user closing the tab at the last screen used to lose
+    // both the writes and the event. The event is the record that the funnel
+    // completed; the writes are re-appliable preferences either way.
+    track("onboarding_done");
     await applyOnboarding(draft);
     setOnboarded();
-    track("onboarding_done");
     clearDraft();
     router.replace("/home");
   }
