@@ -207,8 +207,15 @@
   PatternGlow's best-round line was `patternglow_best_suffix` ("  ·  best round
   %1$d"), a string written to be APPENDED but rendered standalone, so `.trim()`
   left a dangling bullet on screen — now `patternglow_best` ("Best round %1$d").
-  NOT changed: the Mixer hero staying night-dark in Dawn is a documented
-  art-surface contract, not a theme bug.
+- [x] **OWNER DECISION 2026-08-05 — the Sound Mixer hero follows the theme.**
+  Its deep-night gradient, edge, specks, ink, waveform and play pill were
+  hardcoded hexes that survived Dawn (an "art surface", like the Sleep hero).
+  They are now `MixerHero*` / `MixerWave*` / `MixerPlay*` roles in `Color.kt`:
+  Night keeps byte-identical paint, Dawn gets a light lavender-to-paper wash
+  with ink text. **The Sleep wind-down hero and the Toolkit's featured
+  Bubble-pop billboard are still constant-dark** — if the intent is "no dark
+  panels in Dawn anywhere", they need the same treatment; that's a second
+  decision, not implied by this one.
 - [x] **Wave 9 — the code tail** (register: B29, B31, B34, B56, B84, B85):
   imagery ticker keyed per line (no stall window); BubblePop drift at 15Hz
   with an empty-pool skip; body-scan pause keeps the seconds already waited

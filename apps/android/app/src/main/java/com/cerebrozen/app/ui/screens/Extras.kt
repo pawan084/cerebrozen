@@ -154,6 +154,19 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.MixerHeroBottom
+import com.cerebrozen.app.ui.theme.MixerHeroEdge
+import com.cerebrozen.app.ui.theme.MixerHeroEyebrow
+import com.cerebrozen.app.ui.theme.MixerHeroInk
+import com.cerebrozen.app.ui.theme.MixerHeroInkSoft
+import com.cerebrozen.app.ui.theme.MixerHeroMid
+import com.cerebrozen.app.ui.theme.MixerHeroSpeck
+import com.cerebrozen.app.ui.theme.MixerHeroTimer
+import com.cerebrozen.app.ui.theme.MixerHeroTop
+import com.cerebrozen.app.ui.theme.MixerPlayBottom
+import com.cerebrozen.app.ui.theme.MixerPlayTop
+import com.cerebrozen.app.ui.theme.MixerWaveBottom
+import com.cerebrozen.app.ui.theme.MixerWaveTop
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
@@ -1255,17 +1268,17 @@ private fun MixerHeroCard(
         .coerceIn(190.dp, 260.dp)
     Box(
         Modifier.fillMaxWidth().height(heroHeight).clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFF30265F), Color(0xFF18375B), Color(0xFF131D35))))
-            .border(1.dp, Color(0x557A5CFF), shape),
+            .background(Brush.linearGradient(listOf(MixerHeroTop, MixerHeroMid, MixerHeroBottom)))
+            .border(1.dp, MixerHeroEdge, shape),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             repeat(16) { i ->
                 val x = ((i * 67) % 100) / 100f * size.width
                 val y = ((i * 41) % 80) / 100f * size.height
-                drawCircle(Color.White.copy(alpha = 0.12f + (i % 3) * 0.07f), (1 + i % 2).dp.toPx(), Offset(x, y))
+                drawCircle(MixerHeroSpeck.copy(alpha = 0.12f + (i % 3) * 0.07f), (1 + i % 2).dp.toPx(), Offset(x, y))
             }
             drawCircle(
-                Brush.radialGradient(listOf(Color(0x557A5CFF), Color.Transparent), Offset(size.width * 0.78f, size.height * 0.32f), size.width * 0.45f),
+                Brush.radialGradient(listOf(MixerHeroEdge, Color.Transparent), Offset(size.width * 0.78f, size.height * 0.32f), size.width * 0.45f),
                 size.width * 0.45f,
                 Offset(size.width * 0.78f, size.height * 0.32f),
             )
@@ -1274,9 +1287,10 @@ private fun MixerHeroCard(
             Modifier.fillMaxSize().padding(22.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Art-surface constants (deep-night hero in both themes, like
-            // HeroCard) — deliberately NOT theme tokens; see the night-contract
-            // note in docs/TODO.md before "fixing" these.
+            // Owner call 2026-08-05: this hero FOLLOWS the theme. It used to
+            // be hardcoded deep-night hexes that survived Dawn; the paint now
+            // comes from the MixerHero* roles in Color.kt, which keep the exact
+            // Night values and add a light Dawn set.
             val heroSummary = stringResource(R.string.mixer_hero_cd, mixName, session)
             Column(
                 verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -1285,12 +1299,12 @@ private fun MixerHeroCard(
                 Text(
                     // The eyebrow tells the truth when stopped.
                     stringResource(if (playing) R.string.mixer_now_mixing else R.string.mixer_paused_eyebrow),
-                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF64C9FF),
+                    style = MaterialTheme.typography.labelSmall, color = MixerHeroEyebrow,
                 )
-                Text(mixName, style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                Text(mixName, style = MaterialTheme.typography.headlineSmall, color = MixerHeroInk)
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Timer, contentDescription = null, tint = Color(0xFFB18CFF), modifier = Modifier.size(16.dp))
-                    Text(session, style = MaterialTheme.typography.labelMedium, color = Color(0xFFC5CEE0))
+                    Icon(Icons.Outlined.Timer, contentDescription = null, tint = MixerHeroTimer, modifier = Modifier.size(16.dp))
+                    Text(session, style = MaterialTheme.typography.labelMedium, color = MixerHeroInkSoft)
                 }
             }
             MixerWaveform(active = playing)
@@ -1302,7 +1316,7 @@ private fun MixerHeroCard(
             Row(
                 Modifier.pressScale(pressed, down = 0.96f)
                     .clip(RoundedCornerShape(26.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9A70FF))))
+                    .background(Brush.linearGradient(listOf(MixerPlayTop, MixerPlayBottom)))
                     .border(1.dp, Color.White.copy(alpha = glow * 0.28f), RoundedCornerShape(26.dp))
                     .clickable(interactionSource = interaction, indication = null, onClick = onToggle)
                     .semantics {
@@ -1340,7 +1354,7 @@ private fun MixerWaveform(active: Boolean, bars: Int = 17) {
                 Box(
                     Modifier.size(3.dp, 6.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Brush.verticalGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF)))),
+                        .background(Brush.verticalGradient(listOf(MixerWaveTop, MixerWaveBottom))),
                 )
             }
         }
@@ -1362,7 +1376,7 @@ private fun MixerWaveform(active: Boolean, bars: Int = 17) {
             Box(
                 Modifier.size(3.dp, wave.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF)))),
+                    .background(Brush.verticalGradient(listOf(MixerWaveTop, MixerWaveBottom))),
             )
         }
     }

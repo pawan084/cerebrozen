@@ -159,6 +159,37 @@ val Danger: Color get() = if (AppTheme.isNight) NightPalette.danger else DawnPal
  * (Night 7.42:1, Dawn 5.69:1). Screens must never reach for [Night] as ink. */
 val OnDanger: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPalette.night
 
+// ── Sound Mixer hero ────────────────────────────────────────────────────
+// The mixer's hero was a set of hardcoded deep-night hexes that survived the
+// Dawn theme (an "art surface", like the sleep hero). Owner call 2026-08-05:
+// it follows the theme. Night keeps exactly the paint it had; Dawn gets a
+// light lavender-to-paper wash with ink text, so the panel reads as the same
+// object in both themes rather than a dark rectangle on cream.
+//
+// These are hero-local roles, not general tokens: only MixerHeroCard and the
+// waveform inside it may read them.
+val MixerHeroTop: Color get() = if (AppTheme.isNight) Color(0xFF30265F) else Color(0xFFE9E2FA)
+val MixerHeroMid: Color get() = if (AppTheme.isNight) Color(0xFF18375B) else Color(0xFFDDE9F5)
+val MixerHeroBottom: Color get() = if (AppTheme.isNight) Color(0xFF131D35) else Color(0xFFF6F1E8)
+/** Panel edge + the radial bloom behind the waveform. */
+val MixerHeroEdge: Color get() = if (AppTheme.isNight) Color(0x557A5CFF) else Color(0x4D5545AD)
+/** Title ink. White on Night; the Dawn ink is the same one every card uses. */
+val MixerHeroInk: Color get() = if (AppTheme.isNight) Color.White else DawnPalette.textPrimary
+/** The session line under the title. */
+val MixerHeroInkSoft: Color get() = if (AppTheme.isNight) Color(0xFFC5CEE0) else DawnPalette.textSoft
+/** Eyebrow ("Now mixing" / "Ready to mix") and the timer glyph. */
+val MixerHeroEyebrow: Color get() = if (AppTheme.isNight) Color(0xFF64C9FF) else DawnPalette.cyan
+val MixerHeroTimer: Color get() = if (AppTheme.isNight) Color(0xFFB18CFF) else DawnPalette.periwinkle
+/** The specks scattered across the panel. */
+val MixerHeroSpeck: Color get() = if (AppTheme.isNight) Color.White else Color(0xFF5545AD)
+/** Waveform bars, top and bottom of the vertical gradient. */
+val MixerWaveTop: Color get() = if (AppTheme.isNight) Color(0xFF64C9FF) else DawnPalette.cyan
+val MixerWaveBottom: Color get() = if (AppTheme.isNight) Color(0xFFB18CFF) else DawnPalette.periwinkle
+/** Play/pause pill — a lavender gradient in both themes, so the one control
+ * on the panel keeps its identity; its label stays white on both. */
+val MixerPlayTop: Color get() = if (AppTheme.isNight) Color(0xFF7A5CFF) else Color(0xFF6D5FE8)
+val MixerPlayBottom: Color get() = if (AppTheme.isNight) Color(0xFF9A70FF) else Color(0xFF5B4BC4)
+
 // Component tokens introduced by the Dawn pass (Night values byte-identical to
 // the literals the components used before — see NightPalette).
 /** PrimaryButton label — Ink on the Night white pill, white on the Dawn deep-periwinkle pill. */
