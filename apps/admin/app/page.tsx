@@ -20,11 +20,12 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 function fmtDate(s: string) {
-  try {
-    return new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return s;
-  }
+  // `new Date("garbage")` never throws — it returns Invalid Date, so the old
+  // try/catch was dead code and malformed input printed "Invalid Date"
+  // instead of the raw value (register E64).
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function AdminPage() {
@@ -156,6 +157,16 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
     try {
       const token = await login(email, password);
       setToken(token);
+      // Register E38: `/auth/login` is the shared user endpoint, so a valid
+      // NON-admin credential used to "sign in" to a shell where every call
+      // 403s and the session ends with a misleading message. Check the role
+      // at the door and say what's actually true.
+      const me = await api<any>("/auth/me");
+      if (!me?.is_admin) {
+        clearToken();
+        setErr("That account signed in, but it isn't an admin account.");
+        return;
+      }
       onAuthed();
     } catch (e: any) {
       // A down backend is not a wrong password — say which one it was.
@@ -164,7 +175,7 @@ function Login({ onAuthed }: { onAuthed: () => void }) {
       } else if (e instanceof ApiError && e.kind !== "unauthorized") {
         setErr("The server had trouble signing you in. Try again shortly.");
       } else {
-        setErr("That email and password don't match an admin account.");
+        setErr("That email and password don't match an account.");
       }
     } finally {
       setBusy(false);
@@ -226,7 +237,9 @@ function useData<T>(loader: () => Promise<T>, deps: any[] = []) {
     return () => { ignore = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
-  return { data, err, reload: () => setTick((t) => t + 1) };
+  // `loading` distinguishes in-flight from empty (register E47): headers used
+  // to assert "0 shown" / "0 signups" while the request was still out.
+  return { data, err, loading: data === null && err === null, reload: () => setTick((t) => t + 1) };
 }
 
 /** The one place a failed load is explained. Plain words, and a way forward. */
@@ -378,7 +391,9 @@ function Meter({ label: text, n, max }: { label: string; n: number; max: number 
 
 function Analytics() {
   const { data, err, reload } = useData<any>(() => api("/admin/metrics/overview"));
-  const { data: onb } = useData<any>(() => api("/admin/metrics/funnel?days=30"));
+  // Register E48: destructuring only `data` swallowed a failed funnel fetch —
+  // the panel silently vanished with no message or retry.
+  const { data: onb, err: onbErr, reload: reloadOnb } = useData<any>(() => api("/admin/metrics/funnel?days=30"));
   const pct = (r: number | null) => (r === null || r === undefined ? "n/a" : `${Math.round(r * 100)}%`);
   const onbMax = Math.max(1, ...(onb?.steps ?? []).map((s: any) => s.installs));
   const funnelSteps = data
@@ -446,6 +461,13 @@ function Analytics() {
               {onb.steps.map((s: any) => (
                 <Meter key={s.step} label={label(ONBOARDING_LABELS, s.step)} n={s.installs} max={onbMax} />
               ))}
+            </div>
+          )}
+          {onbErr && (
+            <div className="panel">
+              <h3 className="serif" style={{ marginBottom: 4 }}>Onboarding funnel (30 days)</h3>
+              <div className="note">The funnel didn&apos;t load — the numbers above are unaffected.</div>
+              <button className="btn btn-ghost btn-sm" onClick={reloadOnb}>Try again</button>
             </div>
           )}
 
@@ -519,37 +541,98 @@ function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
+const USERS_PAGE = 50;
+
 function Users() {
   const [q, setQ] = useState("");
-  const [limit, setLimit] = useState(50);
-  const { data, err, reload } = useData<any[]>(
-    () => api(`/admin/users?q=${encodeURIComponent(q)}&limit=${limit}`),
-    [q, limit]
-  );
+  // Real offset pagination (register E46): "Load more" used to grow `limit`
+  // and refetch the entire result set from row zero — each click
+  // re-transferred everything already on screen.
+  const [data, setData] = useState<any[] | null>(null);
+  const [err, setErr] = useState<ApiError | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [busyMore, setBusyMore] = useState(false);
+  const loading = data === null && err === null;
+
+  function page(offset: number, limit = USERS_PAGE): Promise<any[]> {
+    return api(`/admin/users?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`);
+  }
+  const asApiError = (e: any) =>
+    e instanceof ApiError ? e : new ApiError("request", String(e?.message || e));
+
+  useEffect(() => {
+    let ignore = false;
+    setData(null);
+    setErr(null);
+    page(0)
+      .then((d) => { if (!ignore) { setData(d); setHasMore(d.length >= USERS_PAGE); } })
+      .catch((e) => { if (!ignore) setErr(asApiError(e)); });
+    return () => { ignore = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  async function loadMore() {
+    if (!data || busyMore) return;
+    setBusyMore(true);
+    try {
+      const d = await page(data.length);
+      setData([...data, ...d]);
+      setHasMore(d.length >= USERS_PAGE);
+    } catch (e) {
+      setErr(asApiError(e));
+    } finally {
+      setBusyMore(false);
+    }
+  }
+
+  // Refresh every row currently on screen (after enable/disable/nudge).
+  async function reload() {
+    const count = Math.max(data?.length ?? 0, USERS_PAGE);
+    try {
+      const d = await page(0, count);
+      setData(d);
+      setHasMore(d.length >= count);
+      setErr(null);
+    } catch (e) {
+      setErr(asApiError(e));
+    }
+  }
+
   const [selected, setSelected] = useState<string | null>(null);
   const [nudgeUser, setNudgeUser] = useState<any | null>(null);
   // Revoking access is destructive: it needs a second step and a reason.
   const [disabling, setDisabling] = useState<any | null>(null);
 
+  const [activeErr, setActiveErr] = useState("");
   async function setActive(u: any, active: boolean) {
-    await api(`/admin/users/${u.id}/active?active=${active}`, { method: "PATCH" });
+    setActiveErr("");
+    try {
+      await api(`/admin/users/${u.id}/active?active=${active}`, { method: "PATCH" });
+    } catch {
+      // Register E49: an unhandled rejection left the row untouched with no
+      // explanation.
+      setActiveErr(`Couldn't ${active ? "enable" : "disable"} ${u.email} — nothing changed. Try again.`);
+    }
     reload();
   }
 
   return (
     <>
       <h1 className="page-title serif">Users</h1>
-      <div className="page-sub">{data?.length ?? 0} shown{q ? ` · matching "${q}"` : ""}</div>
+      <div className="page-sub">
+        {loading ? "Loading…" : `${data?.length ?? 0} shown${q ? ` · matching "${q}"` : ""}`}
+      </div>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <div className="search">
           <Icon.search />
           <input
-            placeholder="Search by email or name…"
+            placeholder="Search by email, name, or user id…"
             value={q}
-            onChange={(e) => { setLimit(50); setQ(e.target.value); }}
+            onChange={(e) => setQ(e.target.value)}
           />
         </div>
       </div>
+      {activeErr && <div className="err" role="alert">{activeErr}</div>}
       <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
@@ -585,9 +668,11 @@ function Users() {
         {data && data.length === 0 && !err && (
           <Empty>{q ? `No account matches "${q}".` : "No accounts yet."}</Empty>
         )}
-        {data && data.length >= limit && (
+        {data && hasMore && (
           <div style={{ padding: 12, textAlign: "center" }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setLimit((l) => l + 50)}>Load more</button>
+            <button className="btn btn-ghost btn-sm" disabled={busyMore} onClick={loadMore}>
+              {busyMore ? "Loading…" : "Load more"}
+            </button>
           </div>
         )}
       </div>
@@ -803,6 +888,9 @@ function Media() {
       });
       setMsg(`Cleared ${asset.key} — the app is back on its built-in sound.`);
       reload();
+    } catch (e) {
+      // Register E50: a failed clear was silent — busy flag reset, nothing said.
+      setMsg(actionMessage(e, `Couldn't clear ${asset.key} — it still points at the upload.`));
     } finally {
       setBusyId(null);
     }
@@ -899,7 +987,7 @@ function Media() {
 
 function Content() {
   const uid = useId();
-  const { data, err, reload } = useData<any[]>(() => api("/admin/content"));
+  const { data, err, loading, reload } = useData<any[]>(() => api("/admin/content"));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>(EMPTY_CONTENT);
   const [editId, setEditId] = useState<string | null>(null);
@@ -909,6 +997,9 @@ function Content() {
   // Deleting is permanent, so it takes two deliberate clicks.
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleteMsg, setDeleteMsg] = useState("");
+  // Register E49: save and the publish/premium toggles rejected unhandled —
+  // zero feedback, the form/row frozen in its pre-action state.
+  const [saveMsg, setSaveMsg] = useState("");
 
   function set(k: string, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
   function closeForm() { setForm(EMPTY_CONTENT); setEditId(null); setShowForm(false); }
@@ -938,6 +1029,7 @@ function Content() {
     e.preventDefault();
     if (!form.title.trim()) return;
     setBusy(true);
+    setSaveMsg("");
     try {
       // No guide rows ⇒ explicit null (clears them server-side): NULL, not [],
       // marks a non-program row per the W15 contract.
@@ -950,12 +1042,19 @@ function Content() {
       else await api("/admin/content", { method: "POST", body });
       closeForm();
       reload();
+    } catch (e) {
+      setSaveMsg(actionMessage(e, "That didn't save — your edits are still in the form."));
     } finally {
       setBusy(false);
     }
   }
   async function patch(id: string, body: any) {
-    await api(`/admin/content/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+    setSaveMsg("");
+    try {
+      await api(`/admin/content/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+    } catch (e) {
+      setSaveMsg(actionMessage(e, "That change didn't apply — the item is unchanged."));
+    }
     reload();
   }
   async function remove(id: string) {
@@ -990,7 +1089,7 @@ function Content() {
       <div className="page-head">
         <div>
           <h1 className="page-title serif">Content library</h1>
-          <div className="page-sub flush">{data?.length ?? 0} items</div>
+          <div className="page-sub flush">{loading ? "Loading…" : `${data?.length ?? 0} items`}</div>
         </div>
         <button className="btn btn-primary" onClick={() => (showForm ? closeForm() : setShowForm(true))}>
           {showForm ? "Close" : "+ New item"}
@@ -1102,6 +1201,7 @@ function Content() {
       <Problem err={err} onRetry={reload} />
       {audioMsg && <div className="empty" role="status">{audioMsg}</div>}
       {deleteMsg && <div className="empty" role="status">{deleteMsg}</div>}
+      {saveMsg && <div className="empty" role="alert">{saveMsg}</div>}
       <div className="card">
         <table>
           <thead>
@@ -1239,12 +1339,24 @@ function PromptsTab() {
     }
   }
   async function activate(name: string, version: number) {
-    await api(`/admin/prompts/${name}/versions/${version}/activate`, { method: "POST" });
+    setMsg("");
+    try {
+      await api(`/admin/prompts/${name}/versions/${version}/activate`, { method: "POST" });
+    } catch (e) {
+      // Register E49: an unhandled rejection meant no feedback and no way to
+      // know the live version never changed.
+      setMsg(actionMessage(e, "Activation didn't go through — the live version is unchanged."));
+    }
     reload();
   }
   async function revert(name: string) {
-    await api(`/admin/prompts/${name}/revert`, { method: "POST" });
-    setOpen(null);
+    setMsg("");
+    try {
+      await api(`/admin/prompts/${name}/revert`, { method: "POST" });
+      setOpen(null);
+    } catch (e) {
+      setMsg(actionMessage(e, "The revert didn't go through — the live version is unchanged."));
+    }
     reload();
   }
 
@@ -1374,9 +1486,14 @@ function PromptsTab() {
   );
 }
 
+const NUDGES_PAGE = 500;
+
 function NudgesTab() {
   const uid = useId();
-  const { data, err, reload } = useData<any[]>(() => api("/admin/nudges"));
+  // Explicit limit at the server cap (register E45): the silent default of
+  // 100 made older sends vanish with nothing saying the list was partial —
+  // the footer below owns up when a page is full.
+  const { data, err, reload } = useData<any[]>(() => api(`/admin/nudges?limit=${NUDGES_PAGE}`));
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1462,25 +1579,32 @@ function NudgesTab() {
           </tbody>
         </table>
         {data && data.length === 0 && !err && <Empty>No nudges yet.</Empty>}
+        {data && data.length >= NUDGES_PAGE && (
+          <div className="note" style={{ padding: 12 }}>
+            Showing the latest {NUDGES_PAGE} — older sends exist beyond this page.
+          </div>
+        )}
       </div>
     </>
   );
 }
 
 function fmtWhen(s: string) {
-  try {
-    return new Date(s).toLocaleString(undefined, {
-      month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
-    });
-  } catch {
-    return s;
-  }
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;  // see fmtDate (register E64)
+  return d.toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }
+
+const SAFETY_PAGE = 200;
 
 function Safety() {
   const [showResolved, setShowResolved] = useState(false);
-  const { data, err, reload } = useData<any[]>(
-    () => api(`/admin/safety?resolved=${showResolved}`),
+  // Bounded fetch (register E42): the queue used to pull every event ever
+  // recorded on each tab open; the footer below says when a page is full.
+  const { data, err, loading, reload } = useData<any[]>(
+    () => api(`/admin/safety?resolved=${showResolved}&limit=${SAFETY_PAGE}`),
     [showResolved]
   );
   // Someone's own words are never on screen until a reviewer asks for them,
@@ -1550,7 +1674,22 @@ function Safety() {
               const shownText = revealed[s.id];
               return (
                 <tr key={s.id}>
-                  <td>{s.source}</td>
+                  <td>
+                    {s.source}
+                    {/* Register E53: the flag could never reach its user — the
+                        id was fetched and dropped. It pastes into Users
+                        search, which matches ids. */}
+                    {s.user_id && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ display: "block", marginTop: 4 }}
+                        title={`Copy user id ${s.user_id} — paste it into Users search`}
+                        onClick={() => navigator.clipboard?.writeText(String(s.user_id)).catch(() => {})}
+                      >
+                        Copy user id
+                      </button>
+                    )}
+                  </td>
                   <td><span className={`tag ${s.risk_level === "crisis" ? "crisis" : "elevated"}`}>{s.risk_level}</span></td>
                   <td>{s.reason || "—"}</td>
                   <td className="cell-narrow">
@@ -1577,12 +1716,15 @@ function Safety() {
                       </>
                     )}
                   </td>
-                  <td>{fmtDate(s.created_at)}</td>
+                  {/* fmtWhen, not fmtDate (register E52): triage must tell a
+                      five-minute-old flag from a twenty-hour-old one. */}
+                  <td>{fmtWhen(s.created_at)}</td>
                   <td>
                     {s.resolved ? (
                       <div className="note tight" style={{ marginBottom: 0, textAlign: "right" }}>
-                        {/* Rendered only if the API sends them back — see report. */}
-                        Closed{s.resolved_by ? ` by ${s.resolved_by}` : ""}
+                        {/* The resolver's email when the API can name them
+                            (register E54); the raw id only as a last resort. */}
+                        Closed{s.resolved_by_email ? ` by ${s.resolved_by_email}` : s.resolved_by ? ` by ${s.resolved_by}` : ""}
                         {s.resolved_at ? ` · ${fmtWhen(s.resolved_at)}` : ""}
                         {s.resolution_note ? <div style={{ marginTop: 2 }}>“{s.resolution_note}”</div> : null}
                       </div>
@@ -1610,8 +1752,14 @@ function Safety() {
             )}
           </tbody>
         </table>
+        {loading && <Empty>Loading…</Empty>}
         {data && data.length === 0 && !err && (
           <Empty>{showResolved ? "Nothing has been closed yet." : "Nothing open right now. 🌙"}</Empty>
+        )}
+        {data && data.length >= SAFETY_PAGE && (
+          <div className="note" style={{ padding: 12 }}>
+            Showing the latest {SAFETY_PAGE} — older events exist beyond this page.
+          </div>
         )}
       </div>
     </>
@@ -1689,8 +1837,10 @@ function toCsv(rows: string[][]): string {
   return rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
 }
 
+const WAITLIST_PAGE = 1000;
+
 function WaitlistTab() {
-  const { data, err, reload } = useData<any[]>(() => api("/admin/waitlist"));
+  const { data, err, loading, reload } = useData<any[]>(() => api(`/admin/waitlist?limit=${WAITLIST_PAGE}`));
 
   function exportCsv() {
     const rows = [["email", "source", "joined"], ...(data || []).map((w) => [w.email, w.source, w.created_at ?? ""])];
@@ -1707,10 +1857,14 @@ function WaitlistTab() {
       <div className="page-head">
         <div>
           <h1 className="page-title serif">Waitlist</h1>
-          <div className="page-sub flush">{data?.length ?? 0} signups from the landing page</div>
+          <div className="page-sub flush">
+            {loading ? "Loading…" : `${data?.length ?? 0} signups from the landing page`}
+          </div>
         </div>
         {(data?.length ?? 0) > 0 && (
-          <button className="btn btn-ghost" onClick={exportCsv}>Export CSV</button>
+          <button className="btn btn-ghost" onClick={exportCsv}>
+            Export CSV{data && data.length >= WAITLIST_PAGE ? " (latest page)" : ""}
+          </button>
         )}
       </div>
       <Problem err={err} onRetry={reload} />
@@ -1718,8 +1872,10 @@ function WaitlistTab() {
         <table>
           <thead><tr><th>Email</th><th>Source</th><th>Joined</th></tr></thead>
           <tbody>
-            {(data || []).map((w, i) => (
-              <tr key={i}>
+            {(data || []).map((w) => (
+              // Email is unique server-side — a stable key, unlike the array
+              // index (register E65).
+              <tr key={w.email}>
                 <td className="mono">{w.email}</td>
                 <td><span className="tag muted">{w.source}</span></td>
                 <td>{w.created_at ? fmtDate(w.created_at) : "—"}</td>
@@ -1728,6 +1884,11 @@ function WaitlistTab() {
           </tbody>
         </table>
         {data && data.length === 0 && !err && <Empty>No signups yet.</Empty>}
+        {data && data.length >= WAITLIST_PAGE && (
+          <div className="note" style={{ padding: 12 }}>
+            Showing the latest {WAITLIST_PAGE} — the CSV exports only what&apos;s shown.
+          </div>
+        )}
       </div>
     </>
   );

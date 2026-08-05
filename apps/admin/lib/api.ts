@@ -192,11 +192,19 @@ export async function upload<T = any>(
   const token = getToken();
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  } catch {
+    // Register E66: an offline upload threw a raw "TypeError: Failed to
+    // fetch" which the Media tab surfaced verbatim — every JSON call already
+    // maps this to the friendly offline copy.
+    throw new ApiError("offline", OFFLINE_MSG);
+  }
   if (res.status === 401 || res.status === 403) {
     if (allowRetry && (await tryRefresh())) return upload<T>(path, file, false);
     clearToken();

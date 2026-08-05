@@ -6,6 +6,17 @@ from datetime import timezone as dt_timezone
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+def _require_web_url(v: str) -> str:
+    """Content asset URLs must be renderable, not runnable (register E41):
+    whatever an operator pastes is persisted and served to every client for
+    rendering, so only http(s) and backend-relative paths pass — a
+    `javascript:`/`data:` value is refused at the door."""
+    v = v.strip()
+    if v and not (v.startswith("/") or v.startswith("http://") or v.startswith("https://")):
+        raise ValueError("URLs must be http(s) or a backend-relative path like /media/…")
+    return v
+
+
 # ── Mood ────────────────────────────────────────────────────────────────
 class MoodCreate(BaseModel):
     mood: str = Field(max_length=60)
@@ -118,6 +129,11 @@ class ContentBase(BaseModel):
     premium: bool = False
     published: bool = True
 
+    @field_validator("image_url", "audio_url", "video_url")
+    @classmethod
+    def _web_url_only(cls, v: str) -> str:
+        return _require_web_url(v)
+
 
 class ContentCreate(ContentBase):
     narration_script: str = ""
@@ -135,6 +151,11 @@ class ContentUpdate(BaseModel):
     audio_url: str | None = Field(default=None, max_length=1024)
     video_url: str | None = Field(default=None, max_length=1024)
     narration_script: str | None = None
+
+    @field_validator("image_url", "audio_url", "video_url")
+    @classmethod
+    def _web_url_only(cls, v: str | None) -> str | None:
+        return v if v is None else _require_web_url(v)
     duration_min: int | None = None
     premium: bool | None = None
     published: bool | None = None
@@ -264,6 +285,9 @@ class SafetyEventOut(BaseModel):
     excerpt_chars: int = 0
     resolved: bool
     resolved_by: uuid.UUID | None = None
+    # The resolver as a human-readable identity (register E54) — populated by
+    # the list route; the UUID above stays for exactness.
+    resolved_by_email: str | None = None
     resolved_at: datetime | None = None
     resolution_note: str = ""
     created_at: datetime

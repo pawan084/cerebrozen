@@ -25,7 +25,7 @@ test.describe("Admin dashboard", () => {
 
   test("users tab finds the seeded admin via search", async ({ page }) => {
     await nav(page, "Users").click();
-    await page.getByPlaceholder("Search by email or name…").fill("admin@cerebro.app");
+    await page.getByPlaceholder(/Search by email/).fill("admin@cerebro.app");
     await expect(page.locator("tr", { hasText: "admin@cerebro.app" })).toBeVisible({ timeout: 10_000 });
   });
 
@@ -38,7 +38,7 @@ test.describe("Admin dashboard", () => {
 
   test("user details show counts, never content", async ({ page }) => {
     await nav(page, "Users").click();
-    await page.getByPlaceholder("Search by email or name…").fill("admin@cerebro.app");
+    await page.getByPlaceholder(/Search by email/).fill("admin@cerebro.app");
     await page
       .locator("tr", { hasText: "admin@cerebro.app" })
       .getByRole("button", { name: "Details" })

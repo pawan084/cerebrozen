@@ -146,6 +146,29 @@
 > PATCHes so closing the tab at the last screen can't erase the completion;
 > the sleep post-save refetch is awaited so "Your rhythm" can't sit stale
 > beside "Saved". tsc clean; e2e suite green.
+>
+> **Wave 19 — the operator surface tells the truth at scale (register E38,
+> E41-E50, E52-E54, E59, E64-E66 + backend C33-C35 list bounds):** admin
+> sign-in checks the role at the door (a valid USER credential used to enter
+> a shell where every call 403s and the exit copy blamed the password);
+> every admin list is bounded server-side (users/safety/content/media/
+> waitlist clamp `?limit=`, safety+waitlist+nudges footers own up when a
+> page is full, the waitlist CSV button says "(latest page)"); Users "Load
+> more" pages by offset instead of refetching everything from row zero, and
+> search also matches user ids; the Safety queue shows time-of-day (triage
+> could not tell five minutes from twenty hours), a Copy-user-id action (a
+> flag could never reach its account), and the resolver's EMAIL (the one
+> attribution recorded rendered as a raw UUID); loading states replace the
+> false "0 shown / 0 items / 0 signups" headers; the funnel panel states
+> its failure instead of vanishing; content save and publish/premium
+> toggles, user enable, prompt activate/revert and media clear all catch
+> and say what didn't happen; content asset URLs must be http(s) or
+> backend-relative (a pasted `javascript:` persisted and was served to
+> every client for rendering); the Oracle tab gets its own glyph instead of
+> silently wearing Overview's through the fallback; `fmtDate`'s dead
+> try/catch handles Invalid Date for real; waitlist rows key by email; an
+> offline media upload reads as the friendly offline copy, not "TypeError:
+> Failed to fetch". Pinned in `tests/test_admin_bounds.py`; tsc clean.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

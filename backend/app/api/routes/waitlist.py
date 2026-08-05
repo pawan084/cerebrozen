@@ -52,6 +52,13 @@ async def join_waitlist(request: Request, payload: WaitlistJoin, db: AsyncSessio
 
 
 @router.get("/admin/waitlist", response_model=list[WaitlistOut], dependencies=[Depends(get_current_admin)])
-async def list_waitlist(db: AsyncSession = Depends(get_db)):
-    rows = await db.scalars(select(WaitlistEntry).order_by(WaitlistEntry.created_at.desc()))
+async def list_waitlist(limit: int = 1000, offset: int = 0, db: AsyncSession = Depends(get_db)):
+    # Bounded (register E44); the admin UI states when a page is full so the
+    # CSV export can't silently pass off a truncated list as everything.
+    rows = await db.scalars(
+        select(WaitlistEntry)
+        .order_by(WaitlistEntry.created_at.desc())
+        .limit(max(1, min(limit, 5000)))
+        .offset(max(0, offset))
+    )
     return rows.all()

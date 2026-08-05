@@ -38,6 +38,9 @@ export const Icon: Record<string, () => JSX.Element> = {
   nudges: () => s(<path d="M12 3l1.9 5.4L19 10l-5.1 1.6L12 17l-1.9-5.4L5 10l5.1-1.6z" />),
   prompts: () => s(<><rect x="3" y="4" width="18" height="14" rx="2" /><path d="M7 9l3 3-3 3M12.5 15H17" /></>),
   safety: () => s(<path d="M12 21s7-3.6 7-9V5l-7-2-7 2v7c0 5.4 7 9 7 9z" />),
+  // Register E59: the Oracle tab had no glyph and silently rendered the
+  // Overview one through the fallback — a crystal ball of its own.
+  oracle: () => s(<><circle cx="12" cy="10" r="6" /><path d="M8.5 18.5h7M9.5 21h5" /><path d="M9.6 8.2a3 3 0 012.4-1.2" /></>),
   waitlist: () => s(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 7l8 6 8-6" /></>),
   signout: () => s(<><path d="M14 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4" /><path d="M10 12H3m0 0l3-3m-3 3l3 3" /></>),
   search: () => s(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></>),

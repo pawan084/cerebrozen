@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -94,12 +94,17 @@ async def list_users(
     so support can find one account among many without paging through them all."""
     stmt = select(User).order_by(User.created_at.desc())
     if q and (term := q.strip()):
-        # Escaped like journal search always was (register C88).
+        # Escaped like journal search always was (register C88). Also matches
+        # the user id, so a UUID pasted from the Safety queue finds its
+        # account (register E53).
         like = f"%{escape_like(term)}%"
         stmt = stmt.where(
-            User.email.ilike(like, escape="\\") | User.name.ilike(like, escape="\\")
+            User.email.ilike(like, escape="\\")
+            | User.name.ilike(like, escape="\\")
+            | cast(User.id, String).ilike(like, escape="\\")
         )
-    rows = await db.scalars(stmt.limit(limit).offset(offset))
+    # Clamped (register C33): ?limit=10000000 serialised the whole table.
+    rows = await db.scalars(stmt.limit(max(1, min(limit, 500))).offset(max(0, offset)))
     return rows.all()
 
 
@@ -235,8 +240,11 @@ async def admin_audit_trail(limit: int = 100, db: AsyncSession = Depends(get_db)
 
 # ── Content CRUD ────────────────────────────────────────────────────────
 @router.get("/content", response_model=list[AdminContentOut])
-async def admin_list_content(db: AsyncSession = Depends(get_db)):
-    rows = await db.scalars(select(ContentItem).order_by(ContentItem.created_at.desc()))
+async def admin_list_content(limit: int = 500, db: AsyncSession = Depends(get_db)):
+    # Bounded (register E43): the flat table stops growing without limit.
+    rows = await db.scalars(
+        select(ContentItem).order_by(ContentItem.created_at.desc()).limit(max(1, min(limit, 1000)))
+    )
     return rows.all()
 
 
@@ -415,8 +423,10 @@ _MAX_ASSET_BYTES = 25 * 1024 * 1024
 
 
 @router.get("/media", response_model=list[MediaAssetOut])
-async def admin_list_media(db: AsyncSession = Depends(get_db)):
-    rows = await db.scalars(select(MediaAsset).order_by(MediaAsset.key))
+async def admin_list_media(limit: int = 500, db: AsyncSession = Depends(get_db)):
+    rows = await db.scalars(
+        select(MediaAsset).order_by(MediaAsset.key).limit(max(1, min(limit, 1000)))
+    )
     return rows.all()
 
 
@@ -507,13 +517,26 @@ async def upload_media(
 @router.get("/safety", response_model=list[SafetyEventOut])
 async def list_safety_events(
     resolved: bool | None = None,
+    limit: int = 200,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
+    # Bounded (register E42): the one admin list that grows fastest returned
+    # every event ever recorded on each tab open.
     stmt = select(SafetyEvent).order_by(SafetyEvent.created_at.desc())
     if resolved is not None:
         stmt = stmt.where(SafetyEvent.resolved.is_(resolved))
-    rows = await db.scalars(stmt)
-    return rows.all()
+    rows = (await db.scalars(stmt.limit(max(1, min(limit, 1000))).offset(max(0, offset)))).all()
+    # Register E54: `resolved_by` is an admin UUID the UI printed verbatim —
+    # the one attribution the system records was unreadable to the humans
+    # it's for. Resolve ids to emails in one query and ride them along.
+    resolver_ids = {r.resolved_by for r in rows if r.resolved_by is not None}
+    if resolver_ids:
+        admins = (await db.scalars(select(User).where(User.id.in_(resolver_ids)))).all()
+        emails = {a.id: a.email for a in admins}
+        for r in rows:
+            r.resolved_by_email = emails.get(r.resolved_by)
+    return rows
 
 
 @router.get("/safety/{event_id}/excerpt", response_model=SafetyExcerptOut)
