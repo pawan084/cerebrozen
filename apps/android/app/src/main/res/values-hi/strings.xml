@@ -708,7 +708,7 @@
     <string name="patternglow_watching">देख रहे हैं…</string>
     <string name="patternglow_your_turn">अब आपकी बारी</string>
     <string name="patternglow_progress">%2$d में से %1$d टैप</string>
-    <string name="patternglow_best_suffix">"  ·  सबसे अच्छा राउंड %1$d"</string>
+    <string name="patternglow_best">सबसे अच्छा राउंड %1$d</string>
     <string name="zen_eyebrow">ठहरा पानी</string>
     <string name="zen_title">ज़ेन लहरें</string>
     <string name="zen_intro">पानी पर कहीं भी टैप करें। हर लहर को फैलते देखें और जाने दें।</string>

@@ -214,8 +214,11 @@ fun PatternGlowScreen(onBack: () -> Unit) {
                 }
             }
         }
+        // Was `patternglow_best_suffix` — a string written to be APPENDED to
+        // another line ("  ·  best round N") but rendered standalone, so
+        // .trim() left a dangling bullet and a double space on screen.
         if (best > 0) Text(
-            stringResource(R.string.patternglow_best_suffix, best).trim(),
+            stringResource(R.string.patternglow_best, best),
             style = MaterialTheme.typography.bodySmall, color = TextMuted,
         )
         // H17: the screen had no finish control at all — the round loops by

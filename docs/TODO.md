@@ -195,6 +195,20 @@
   Remaining (small): B29 imagery ticker robustness, B31 BubblePop drift perf,
   B34 body-scan pause restarts step wait, B84-B85 Session i18n + cache cap,
   B56 PickChip role, B59 RTL scope.
+- [x] **Wave 10a — the three render bugs the screen-render pass surfaced**
+  (register B58, B72, plus an unfiled string bug): Toolkit exercise cards render
+  their level beside the duration ("3 min · Guided") — it and a `category` badge
+  were passed by all 15 call sites and rendered by neither; the dead
+  `ToolkitBadge` composable and the four now-unused `toolkit_badge_*` strings
+  are gone (the badge only repeated the section header the card sits under, and
+  `toolkit_badge_ground` stays because GroundingScreen uses it as its eyebrow).
+  The games hub no longer prints `mg_subtitle` twice — it has its own short
+  eyebrow (`mg_eyebrow`, en + hi) with the sentence said once in the body.
+  PatternGlow's best-round line was `patternglow_best_suffix` ("  ·  best round
+  %1$d"), a string written to be APPENDED but rendered standalone, so `.trim()`
+  left a dangling bullet on screen — now `patternglow_best` ("Best round %1$d").
+  NOT changed: the Mixer hero staying night-dark in Dawn is a documented
+  art-surface contract, not a theme bug.
 - [x] **Wave 9 — the code tail** (register: B29, B31, B34, B56, B84, B85):
   imagery ticker keyed per line (no stall window); BubblePop drift at 15Hz
   with an empty-pool skip; body-scan pause keeps the seconds already waited

@@ -682,10 +682,6 @@
     <string name="toolkit_support_description">Reach trusted help when you need it.</string>
     <string name="toolkit_ground_title">5-4-3-2-1 grounding</string>
     <string name="toolkit_badge_ground">GROUND</string>
-    <string name="toolkit_badge_breathe">BREATHE</string>
-    <string name="toolkit_badge_reframe">REFRAME</string>
-    <string name="toolkit_badge_settle">SETTLE</string>
-    <string name="toolkit_badge_support">SUPPORT</string>
     <string name="toolkit_duration_1">1 min</string>
     <string name="toolkit_duration_2">2 min</string>
     <string name="toolkit_duration_3">3 min</string>
@@ -1056,7 +1052,7 @@
     <string name="patternglow_watching">Watching…</string>
     <string name="patternglow_your_turn">Your turn</string>
     <string name="patternglow_progress">%1$d of %2$d taps</string>
-    <string name="patternglow_best_suffix">"  ·  best round %1$d"</string>
+    <string name="patternglow_best">Best round %1$d</string>
     <string name="zen_eyebrow">Still water</string>
     <string name="zen_title">Zen ripples</string>
     <string name="zen_intro">Tap anywhere on the water. Watch each ripple widen and let go.</string>
@@ -1578,7 +1574,7 @@
     <string name="ombct_m6">Responding with care</string><string name="ombct_m6_body">A deliberate response can replace an automatic reaction.</string><string name="ombct_m6_practice">Pause and choose one supportive action you can realistically take.</string>
     <string name="ombct_m7">Caring for capacity</string><string name="ombct_m7_body">Pleasant and mastery activities can support a balanced routine.</string><string name="ombct_m7_practice">Schedule one nourishing and one manageable activity.</string>
     <string name="ombct_m8">Continuing practice</string><string name="ombct_m8_body">A sustainable practice can be brief and flexible.</string><string name="ombct_m8_practice">Choose when, where, and how long your next three practices will be.</string>
-    <string name="mg_title">Mindful Games</string><string name="mg_subtitle">Small games of noticing — offline, unscored, and never a measurement of you</string>
+    <string name="mg_eyebrow">Offline and unscored</string><string name="mg_title">Mindful Games</string><string name="mg_subtitle">Small games of noticing — offline, unscored, and never a measurement of you</string>
     <string name="mg_cat_focus">Noticing</string><string name="mg_cat_memory">Remembering</string><string name="mg_cat_resilience">Reframing</string><string name="mg_cat_flexibility">Switching</string><string name="mg_cat_calm">Settling</string>
     <string name="mg_color_tap">Color Tap</string><string name="mg_color_tap_desc">Tap only the target colour while distractions appear.</string>
     <string name="mg_freeze_switch">Freeze Switch</string><string name="mg_freeze_switch_desc">Switch carefully between move and freeze.</string>

@@ -86,7 +86,11 @@ internal fun gameAccent(category: GameCategory): Color = when (category) {
 
 @Composable
 fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
-    SubPage(stringResource(R.string.mg_subtitle), stringResource(R.string.mg_title), onBack) {
+    // Register B72: `mg_subtitle` was passed as the SubPage EYEBROW — where it
+    // is uppercased, letter-spaced and ellipsised to one line — and then
+    // printed again verbatim as the first body line. The eyebrow now has its
+    // own short label and the sentence is said once.
+    SubPage(stringResource(R.string.mg_eyebrow), stringResource(R.string.mg_title), onBack) {
         Text(stringResource(R.string.mg_subtitle), color = TextMuted)
         GameCategory.entries.forEach { category ->
             Text(stringResource(category.titleRes).uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = gameAccent(category))

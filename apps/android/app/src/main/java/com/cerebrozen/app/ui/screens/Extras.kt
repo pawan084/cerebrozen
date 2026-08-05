@@ -2046,12 +2046,12 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_intro),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Grain, Color(0xFF4ADE80), 0,
+                Icons.Outlined.Grain, Color(0xFF4ADE80), 0,
             ) { openTool("ground") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
+                Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
             ) { openTool("zenripples") }
             FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
@@ -2061,19 +2061,19 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
-                stringResource(R.string.toolkit_badge_ground), Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
+                Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
             ) { openTool("games") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Color(0xFF64C9FF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.Air, Color(0xFF64C9FF), 3,
+                Icons.Outlined.Air, Color(0xFF64C9FF), 3,
             ) { openTool("breathe/box") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                stringResource(R.string.toolkit_badge_breathe), Icons.Outlined.SelfImprovement,
+                Icons.Outlined.SelfImprovement,
                 // B60: this was 0xFF7A5CFF — a NEAR-BrandPrimary purple subtly
                 // disagreeing with the brand purple on the same screen.
                 com.cerebrozen.app.ui.theme.BrandPrimary, 4,
@@ -2083,26 +2083,26 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
                 stringResource(R.string.toolkit_duration_5), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Psychology, Color(0xFFB18CFF), 5,
+                Icons.Outlined.Psychology, Color(0xFFB18CFF), 5,
             ) { openTool("cbt") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_reframe), Icons.Outlined.Spa, Color(0xFFFFD166), 6,
+                Icons.Outlined.Spa, Color(0xFFFFD166), 6,
             ) { openTool("tipp") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Color(0xFF9D7CFF))
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_imagery_title), stringResource(R.string.toolkit_imagery_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
+                Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
             ) { openTool("imagery") }
             // The standalone body scan shipped route-registered but door-less
             // (audit A7) — only the wind-down ritual's embedded step existed.
             ToolkitExerciseCard(
                 stringResource(R.string.obs_title), stringResource(R.string.toolkit_bodyscan_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.Spa, Color(0xFF64C9FF), 7,
+                Icons.Outlined.Spa, Color(0xFF64C9FF), 7,
             ) { openTool("bodyscan") }
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
@@ -2110,22 +2110,22 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_ritual_title), stringResource(R.string.toolkit_ritual_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
+                Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
             ) { openTool("ritual") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80), 7,
+                Icons.Outlined.LocalFlorist, Color(0xFF4ADE80), 7,
             ) { openTool("gratitude") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.AutoAwesome, Color(0xFFB18CFF), 8,
+                Icons.Outlined.AutoAwesome, Color(0xFFB18CFF), 8,
             ) { openTool("patternglow") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                stringResource(R.string.toolkit_badge_settle), Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
+                Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
             ) { openTool("sounds") }
             // Region-aware subtitle: the card names the user's actual crisis
             // line (CrisisDirectory), not a hardcoded India number.
@@ -2136,7 +2136,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 else stringResource(R.string.you_support_line,
                     stringResource(toolkitSupportLine.nameRes), toolkitSupportLine.target),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
-                stringResource(R.string.toolkit_badge_support), Icons.Outlined.HealthAndSafety, Color(0xFFFF6B81), 10, true,
+                Icons.Outlined.HealthAndSafety, Color(0xFFFF6B81), 10, true,
             ) { onOpen("crisis") }
             Spacer(Modifier.height(12.dp))
         }
@@ -2217,8 +2217,12 @@ private fun ToolkitExerciseCard(
     title: String,
     subtitle: String,
     duration: String,
+    /** "Guided" / "Gentle" / "Easy". Register B58: this and a `category` badge
+     * were passed by every call site and rendered by neither, so the metadata
+     * silently vanished. The level now shows beside the duration; the category
+     * badge is gone because it only ever repeated the section header the card
+     * already sits under. */
     difficulty: String,
-    category: String,
     icon: ImageVector,
     accent: Color,
     revealIndex: Int,
@@ -2259,7 +2263,10 @@ private fun ToolkitExerciseCard(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(duration, style = MaterialTheme.typography.labelSmall, color = TextMuted2)
+            Text(
+                if (difficulty.isBlank()) duration else "$duration · $difficulty",
+                style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+            )
         }
         Box(
             Modifier.size(38.dp).clip(CircleShape).background(VeilWell)
@@ -2268,16 +2275,6 @@ private fun ToolkitExerciseCard(
         ) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
         }
-    }
-}
-
-@Composable
-private fun ToolkitBadge(label: String, accent: Color) {
-    Box(
-        Modifier.clip(CircleShape).background(accent.copy(alpha = 0.08f))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.9.sp), color = accent)
     }
 }
 
