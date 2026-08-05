@@ -5,6 +5,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -56,6 +57,16 @@ _OTP_MAX_ATTEMPTS = 5
 _DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
 
 
+def _subject_uuid(data: dict) -> uuid.UUID:
+    """Parse a token's subject, refusing malformed ones as 400 rather than
+    letting `uuid.UUID` raise into a 500 (register C31 — `get_current_user`
+    already guarded this; the link-token paths didn't)."""
+    try:
+        return uuid.UUID(str(data.get("sub", "")))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+
+
 def _tokens(user: User) -> TokenPair:
     return TokenPair(
         access_token=create_access_token(str(user.id), user.token_version),
@@ -76,10 +87,17 @@ async def signup(request: Request, payload: SignupRequest, db: AsyncSession = De
     )
     user.consent = Consent()
     db.add(user)
-    await db.flush()
-    # Proactive: schedule the user's first gentle nudges.
-    await nudges.schedule_default_nudges(db, user)
-    await db.commit()
+    try:
+        await db.flush()
+        # Proactive: schedule the user's first gentle nudges.
+        await nudges.schedule_default_nudges(db, user)
+        await db.commit()
+    except IntegrityError:
+        # Register C52: two concurrent signups for one address both passed the
+        # existence check; the loser's unique violation surfaced as a 500.
+        # The truthful answer is the same 409 the check gives.
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     await db.refresh(user)
     return _tokens(user)
 
@@ -226,7 +244,19 @@ async def otp_request(request: Request, payload: OtpRequestBody, db: AsyncSessio
     row.code_hash = hash_otp(addr, code)
     row.expires_at = utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)
     row.attempts = 0
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Register C52: two concurrent requests for one address both found no
+        # row. Adopt the winner's row — the LAST emailed code is the live one,
+        # matching the "a re-request replaces any earlier code" contract.
+        await db.rollback()
+        row = await db.scalar(select(LoginCode).where(LoginCode.email == addr))
+        if row is not None:
+            row.code_hash = hash_otp(addr, code)
+            row.expires_at = utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)
+            row.attempts = 0
+            await db.commit()
     await email.send_email(addr, "Your CereBro sign-in code",
                            f"Your sign-in code is {code}. It expires in {_OTP_TTL_MINUTES} minutes.\n\n"
                            "If you didn't request it, you can ignore this email.")
@@ -323,7 +353,7 @@ async def verify_email(request: Request, payload: TokenBody, db: AsyncSession = 
     data = decode_token(payload.token, expected_type=VERIFY)
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
-    user = await db.get(User, uuid.UUID(data["sub"]))
+    user = await db.get(User, _subject_uuid(data))
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
     user.email_verified = True
@@ -351,7 +381,7 @@ async def reset_password(request: Request, payload: ResetPasswordRequest, db: As
     data = decode_token(payload.token, expected_type=RESET)
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
-    user = await db.get(User, uuid.UUID(data["sub"]))
+    user = await db.get(User, _subject_uuid(data))
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
     # Single-use: the token was minted against the CURRENT token generation,

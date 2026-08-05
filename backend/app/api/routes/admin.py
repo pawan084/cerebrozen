@@ -43,6 +43,7 @@ from app.schemas.user import UserOut
 from app.models.agent_action import AgentAction
 from app.services import digest, media, metrics, nudges, oracle_audit, voice
 from app.services import prompts as prompt_registry
+from app.services.textsearch import escape_like
 
 logger = logging.getLogger("cerebro.admin")
 
@@ -93,8 +94,11 @@ async def list_users(
     so support can find one account among many without paging through them all."""
     stmt = select(User).order_by(User.created_at.desc())
     if q and (term := q.strip()):
-        like = f"%{term}%"
-        stmt = stmt.where(User.email.ilike(like) | User.name.ilike(like))
+        # Escaped like journal search always was (register C88).
+        like = f"%{escape_like(term)}%"
+        stmt = stmt.where(
+            User.email.ilike(like, escape="\\") | User.name.ilike(like, escape="\\")
+        )
     rows = await db.scalars(stmt.limit(limit).offset(offset))
     return rows.all()
 

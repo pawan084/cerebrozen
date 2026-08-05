@@ -19,6 +19,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, utcnow
@@ -259,7 +260,12 @@ async def complete_habit(
     )
     if existing is None:
         db.add(HabitCompletion(habit_id=habit.id, user_id=user.id, day=today))
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Register C52: an impatient double-tap raced past the existence
+            # check and 500'd on `uq_habit_day`. The day is done either way.
+            await db.rollback()
     return (await _with_completions(db, [habit]))[0]
 
 

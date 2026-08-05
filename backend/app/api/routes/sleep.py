@@ -1,7 +1,8 @@
 import datetime as dt
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -28,7 +29,8 @@ async def list_sleep(
         query = query.where(SleepLog.date >= start)
     if end:
         query = query.where(SleepLog.date <= end)
-    rows = await db.scalars(query.order_by(SleepLog.date.desc()).limit(min(limit, 366)))
+    # max() floors a negative ?limit= (register C32).
+    rows = await db.scalars(query.order_by(SleepLog.date.desc()).limit(max(1, min(limit, 366))))
     return rows.all()
 
 
@@ -50,7 +52,21 @@ async def upsert_sleep(
     else:
         log = SleepLog(user_id=user.id, **payload.model_dump())
         db.add(log)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Register C52: two concurrent saves of the same night both found no
+        # row; the loser used to 500 on `uq_sleep_logs_user_date`. Adopt the
+        # winner's row and apply this save as the edit it semantically is.
+        await db.rollback()
+        log = await db.scalar(
+            select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date == payload.date)
+        )
+        if log is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Try again")
+        for field, value in payload.model_dump().items():
+            setattr(log, field, value)
+        response.status_code = status.HTTP_200_OK
     # Proactive: the diary's own bedtimes anchor tonight's wind-down reminder.
     await nudges.schedule_wind_down(db, user)
     await db.commit()

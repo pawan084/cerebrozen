@@ -1,9 +1,16 @@
 import re
 import uuid
+import zoneinfo
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter, field_validator, model_validator
+
+# The regions the crisis directory actually has entries for (plus "" for
+# automatic). Kept as a literal mirror of `services/crisis._REGIONS` rather
+# than an import so the schema layer stays free of service imports — the test
+# in test_input_bounds.py pins the two lists against each other.
+KNOWN_REGIONS = {"", "US", "CA", "GB", "IE", "AU", "NZ", "IN"}
 
 
 class ConsentSchema(BaseModel):
@@ -54,18 +61,48 @@ class UserOut(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: str | None = None
-    language: str | None = None
-    companion: str | None = None
+    # Bounds mirror the column sizes (register C19) — an over-long value used
+    # to reach Postgres as a DataError and surface as a 500 instead of a 422.
+    name: str | None = Field(default=None, max_length=120)
+    language: str | None = Field(default=None, max_length=120)
+    companion: str | None = Field(default=None, max_length=60)
     goals: list[str] | None = None
     motivations: list[str] | None = None
-    timezone: str | None = None
-    region: str | None = None
+    timezone: str | None = Field(default=None, max_length=60)
+    region: str | None = Field(default=None, max_length=8)
     email_nudges: bool | None = None
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_timezone(cls, v: str | None) -> str | None:
+        # Register C20: every consumer swallows an unknown zone (`except
+        # Exception: tz = UTC`), so a typo silently moved nudges, digests and
+        # pattern hour-buckets to UTC with nothing surfaced. Refuse it here,
+        # where the user can still see the answer.
+        if v is None:
+            return v
+        try:
+            zoneinfo.ZoneInfo(v)
+        except (zoneinfo.ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("Unknown timezone — use an IANA name like 'Asia/Kolkata'.") from exc
+        return v
+
+    @field_validator("region")
+    @classmethod
+    def _known_region(cls, v: str | None) -> str | None:
+        # Register C21: an unknown code silently fell back to the
+        # international default — the one place a wrong value costs a user the
+        # correct hotline. "" stays valid (automatic).
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if v not in KNOWN_REGIONS:
+            raise ValueError("Unknown crisis region code.")
+        return v
 
 
 class PushTokenUpdate(BaseModel):
-    push_token: str
+    push_token: str = Field(min_length=8, max_length=512)
 
 
 class WebPushSubscriptionIn(BaseModel):

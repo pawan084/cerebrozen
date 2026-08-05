@@ -11,17 +11,14 @@ from app.models.journal import JournalEntry
 from app.models.user import User
 from app.schemas.content_data import JournalCreate, JournalOut
 from app.services import idempotency, safety
+from app.services.textsearch import escape_like
 
 router = APIRouter(prefix="/journal", tags=["journal"])
 
 
-def _escape_like(term: str) -> str:
-    """Neutralise LIKE's own wildcards so a search term is only ever text.
-
-    Someone searching for "100%" means the characters, not "match everything",
-    and "_" is a single-character wildcard nobody types on purpose.
-    """
-    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+# Escaping lives in services.textsearch now, shared with /content and
+# /admin/users so the three search boxes cannot drift apart again.
+_escape_like = escape_like
 
 
 @router.get("", response_model=list[JournalOut])
@@ -62,7 +59,8 @@ async def list_entries(
             since = since.replace(tzinfo=dt.timezone.utc)
         query = query.where(JournalEntry.created_at > since)
     rows = await db.scalars(
-        query.order_by(JournalEntry.created_at.desc()).limit(min(limit, 500))
+        # max() floors a negative ?limit= (register C32).
+        query.order_by(JournalEntry.created_at.desc()).limit(max(1, min(limit, 500)))
     )
     return rows.all()
 

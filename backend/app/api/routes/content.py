@@ -8,6 +8,7 @@ from app.models.content import ContentItem
 from app.models.user import User
 from app.schemas.content_data import ContentOut
 from app.services import media
+from app.services.textsearch import escape_like
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -43,7 +44,12 @@ async def list_content(
     if kind:
         stmt = stmt.where(ContentItem.kind == kind)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where(or_(ContentItem.title.ilike(like), ContentItem.subtitle.ilike(like)))
+        # Escaped like journal search always was (register C87): "100%" means
+        # the characters, not "match everything".
+        like = f"%{escape_like(q)}%"
+        stmt = stmt.where(or_(
+            ContentItem.title.ilike(like, escape="\\"),
+            ContentItem.subtitle.ilike(like, escape="\\"),
+        ))
     rows = await db.scalars(stmt.order_by(ContentItem.title))
     return [_serialize(item, user) for item in rows.all()]

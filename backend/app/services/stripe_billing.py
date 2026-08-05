@@ -132,13 +132,21 @@ def verify_webhook(payload: bytes, sig_header: str) -> dict:
     timestamp, signature = parts.get("t"), parts.get("v1")
     if not timestamp or not signature:
         raise StripeError("malformed signature header")
+    # Register C86: a non-numeric `t=` or non-UTF-8 body raised straight out
+    # of this function as a 500 — the caller expects every bad input to be a
+    # StripeError it answers with a 200/"handled": false.
+    try:
+        body = payload.decode()
+        stamp = float(timestamp)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise StripeError("malformed signature header") from exc
     expected = hmac.new(settings.stripe_webhook_secret.encode(),
-                        f"{timestamp}.{payload.decode()}".encode(),
+                        f"{timestamp}.{body}".encode(),
                         hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
         raise StripeError("signature mismatch")
     now = datetime.now(timezone.utc).timestamp()
-    if abs(now - float(timestamp)) > _SIG_TOLERANCE_SECONDS:
+    if abs(now - stamp) > _SIG_TOLERANCE_SECONDS:
         raise StripeError("stale signature")
     try:
         return json.loads(payload)

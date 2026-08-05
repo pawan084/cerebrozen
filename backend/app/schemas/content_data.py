@@ -1,8 +1,9 @@
 """Mood / journal / chat / content / insight / nudge / safety / sleep schemas."""
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ── Mood ────────────────────────────────────────────────────────────────
@@ -102,15 +103,17 @@ class DayGuide(BaseModel):
 
 
 class ContentBase(BaseModel):
+    # Bounds mirror the column sizes (register C24) — an over-long admin paste
+    # used to 500 as a Postgres DataError instead of 422ing.
     title: str = Field(max_length=160)
-    subtitle: str = ""
+    subtitle: str = Field(default="", max_length=255)
     kind: str = Field(max_length=40)
-    symbol: str = "sparkles"
-    image_url: str = ""
+    symbol: str = Field(default="sparkles", max_length=60)
+    image_url: str = Field(default="", max_length=1024)
     # Relative "/media/..." (backend-minted) or absolute URL; empty = no narration.
-    audio_url: str = ""
+    audio_url: str = Field(default="", max_length=1024)
     # Optional looping scene video behind the item; empty = generative artwork.
-    video_url: str = ""
+    video_url: str = Field(default="", max_length=1024)
     duration_min: int = 0
     premium: bool = False
     published: bool = True
@@ -123,13 +126,14 @@ class ContentCreate(ContentBase):
 
 
 class ContentUpdate(BaseModel):
-    title: str | None = None
-    subtitle: str | None = None
-    kind: str | None = None
-    symbol: str | None = None
-    image_url: str | None = None
-    audio_url: str | None = None
-    video_url: str | None = None
+    # Same column-size bounds as ContentBase (register C24).
+    title: str | None = Field(default=None, max_length=160)
+    subtitle: str | None = Field(default=None, max_length=255)
+    kind: str | None = Field(default=None, max_length=40)
+    symbol: str | None = Field(default=None, max_length=60)
+    image_url: str | None = Field(default=None, max_length=1024)
+    audio_url: str | None = Field(default=None, max_length=1024)
+    video_url: str | None = Field(default=None, max_length=1024)
     narration_script: str | None = None
     duration_min: int | None = None
     premium: bool | None = None
@@ -190,6 +194,29 @@ class SleepLogCreate(BaseModel):
     awakenings: int = Field(default=0, ge=0, le=50)
     source: str = Field(default="manual", pattern="^(manual|healthkit)$")
     note: str = Field(default="", max_length=255)
+
+    @field_validator("date")
+    @classmethod
+    def _plausible_night(cls, v: date) -> date:
+        # Register C26: a client-clock bug (or hostile POST) could write a
+        # night in 1970 or 2099, which then anchored weekly summaries, trends
+        # and the wind-down nudge. Tomorrow is allowed for clock skew; two
+        # years of backfill is generous for any real diary.
+        today = datetime.now(dt_timezone.utc).date()
+        if v > today + timedelta(days=1):
+            raise ValueError("That date is in the future.")
+        if v < today - timedelta(days=730):
+            raise ValueError("That date is too far in the past to record.")
+        return v
+
+    @model_validator(mode="after")
+    def _not_a_zero_minute_night(self) -> "SleepLogCreate":
+        # Register C27: bedtime == wake_time yields duration_min == 0, which
+        # was averaged into avg_duration_min and the sleep-mood pairing as if
+        # it were data.
+        if self.bedtime == self.wake_time:
+            raise ValueError("Bedtime and wake time are the same — that isn't a night we can record.")
+        return self
 
 
 class SleepLogOut(BaseModel):

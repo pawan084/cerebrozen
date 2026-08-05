@@ -2,8 +2,9 @@ import hashlib
 import uuid
 from datetime import timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, utcnow
@@ -520,7 +521,10 @@ async def set_push_token(
 
 @router.get("/me/devices", response_model=PushStatusOut)
 async def device_push_status(
-    platform: str = "android",
+    # Closed to the platforms that exist (register C30) — anything else used
+    # to be answered with the APNs flag, so `?platform=windows` reported iOS
+    # delivery status.
+    platform: str = Query("android", pattern="^(ios|android)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -567,7 +571,22 @@ async def register_device(
     row.app_version = payload.app_version
     row.last_seen_at = utcnow()
     row.failed_at = None
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Register C52: two concurrent cold-start registrations of the same
+        # token both found no row; the loser's unique-violation 500'd. Adopt
+        # the row the winner created instead.
+        await db.rollback()
+        row = await db.scalar(select(DeviceToken).where(DeviceToken.token == payload.token))
+        if row is None:  # deleted in the same instant — genuinely gone
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Try again")
+        row.user_id = user.id
+        row.platform = payload.platform
+        row.app_version = payload.app_version
+        row.last_seen_at = utcnow()
+        row.failed_at = None
+        await db.commit()
     await db.refresh(row)
     return row
 
@@ -627,7 +646,21 @@ async def register_web_push(
     sub.user_id = user.id
     sub.p256dh = payload.p256dh
     sub.auth = payload.auth
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Register C52: concurrent subscribes of the same endpoint — adopt
+        # the winner's row rather than 500ing on the unique violation.
+        await db.rollback()
+        sub = await db.scalar(
+            select(WebPushSubscription).where(WebPushSubscription.endpoint == payload.endpoint)
+        )
+        if sub is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Try again")
+        sub.user_id = user.id
+        sub.p256dh = payload.p256dh
+        sub.auth = payload.auth
+        await db.commit()
     await db.refresh(sub)
     return sub
 

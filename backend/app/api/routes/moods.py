@@ -34,7 +34,9 @@ async def list_moods(
         if since.tzinfo is None:
             since = since.replace(tzinfo=dt.timezone.utc)
         query = query.where(MoodLog.created_at > since)
-    rows = await db.scalars(query.order_by(MoodLog.created_at.desc()).limit(min(limit, 500)))
+    # Floored as well as capped (register C32): `?limit=-1` used to reach
+    # Postgres as a negative LIMIT and 500.
+    rows = await db.scalars(query.order_by(MoodLog.created_at.desc()).limit(max(1, min(limit, 500))))
     return rows.all()
 
 

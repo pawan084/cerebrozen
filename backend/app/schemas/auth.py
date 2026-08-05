@@ -1,10 +1,24 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _fits_bcrypt(v: str) -> str:
+    """bcrypt 4.x RAISES above 72 bytes, so an over-long passphrase used to
+    500 on signup/reset (register C28; `verify_password` catches the same
+    error, which is how it stayed invisible). Refuse it as a 422 with words."""
+    if len(v.encode()) > 72:
+        raise ValueError("Passphrases longer than 72 bytes aren't supported — please use a shorter one.")
+    return v
 
 
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(default="", max_length=120)
+
+    @field_validator("password")
+    @classmethod
+    def _password_fits(cls, v: str) -> str:
+        return _fits_bcrypt(v)
 
 
 class LoginRequest(BaseModel):
@@ -43,6 +57,11 @@ class OtpVerifyBody(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def _password_fits(cls, v: str) -> str:
+        return _fits_bcrypt(v)
 
 
 class AppleSignInRequest(BaseModel):

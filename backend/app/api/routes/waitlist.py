@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -36,7 +37,12 @@ async def join_waitlist(request: Request, payload: WaitlistJoin, db: AsyncSessio
     existing = await db.scalar(select(WaitlistEntry).where(WaitlistEntry.email == email))
     if existing is None:
         db.add(WaitlistEntry(email=email, source=payload.source))
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Register C52: a concurrent join of the same address is still
+            # "joined", not a 500.
+            await db.rollback()
     # One answer either way (register C11): a distinct "already_joined" on an
     # unauthenticated endpoint was a public membership oracle for any email
     # address — the same leak /auth/otp/request and /auth/password/forgot go

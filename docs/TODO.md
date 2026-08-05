@@ -107,6 +107,27 @@
 > (each was an unmetered provider-billed call); `/voice/stt` reads cap+1
 > bytes instead of buffering the whole upload before measuring it. Pinned in
 > `tests/test_auth_hardening.py` + `tests/test_abuse_guards.py`.
+>
+> **Wave 17 — 500s become 4xx, races upsert, the database states the
+> invariants (register C19-C22, C24, C26-C28, C30-C32, C52-C53, C86-C88):**
+> profile, push-token and content schemas now mirror their column sizes (an
+> over-long value was a Postgres DataError → 500); timezones are validated
+> against the IANA database (a typo silently moved nudges/digests/patterns
+> to UTC) and regions against the crisis directory (`KNOWN_REGIONS` pinned
+> against `crisis._REGIONS`), lowercase canonicalised; sleep dates must be
+> plausible (±tomorrow…-2y) and a zero-minute night is refused; passphrases
+> over 72 bytes are a 422 instead of bcrypt's ValueError→500; link tokens
+> with garbage subjects are 400; negative `?limit=` is floored on
+> moods/journal/sleep; `?platform=` is a closed set (windows was answered
+> with the APNs flag); the seven check-then-insert races (signup, OTP row,
+> waitlist, sleep night, habit double-tap, device token, web-push endpoint)
+> handle IntegrityError by adopting the winner's row instead of 500ing;
+> `insights` gained `uq_insights_user_period` (Alembic `d7e2c9a4b816`,
+> deduping first) so two dispatcher workers can't double-snapshot a week;
+> Stripe's signature parser treats a non-numeric `t=`/non-UTF-8 body as
+> StripeError not a 500; `/content?q=` and `/admin/users?q=` escape LIKE
+> wildcards via the new shared `services/textsearch.escape_like` (journal's
+> local fix, promoted). Pinned in `tests/test_input_bounds.py`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 

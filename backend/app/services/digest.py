@@ -19,6 +19,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import utcnow
@@ -69,7 +70,16 @@ async def snapshot_week(db: AsyncSession, user: User, *, now: datetime | None = 
         metrics=computed["metrics"],
     )
     db.add(row)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Another worker snapshotted this week between our check and flush
+        # (register C53) — theirs is the snapshot; return it.
+        await db.rollback()
+        existing = await _already_snapshotted(db, user, key)
+        if existing is not None:
+            return existing
+        raise
     return row
 
 
