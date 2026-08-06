@@ -325,6 +325,36 @@ class ScreenLogicTest {
         }
     }
 
+    // ── Onboarding step numbering (the ONB-xx contract, not the enum order) ──
+    @Test
+    fun funnelStepIndex_follows_the_spec_numbering_and_leaves_gaps() {
+        // Deliberately hand-mapped: ONB-06 (post-reset reflection) and ONB-10
+        // (ready) are not built on Android yet. Deriving from OStep.ordinal
+        // would renumber every later step the day either lands, and the
+        // user-visible "N of 10" would then disagree with the spec, the other
+        // clients and the analytics funnel at once.
+        assertEquals(0, funnelStepIndex(OStep.Welcome))   // SPL-01, outside the count
+        assertEquals(1, funnelStepIndex(OStep.Language))  // ONB-01
+        assertEquals(3, funnelStepIndex(OStep.Disclosure))
+        assertEquals(9, funnelStepIndex(OStep.SignUp))
+        // The gap is the point: 6 and 10 belong to screens that do not exist here.
+        val used = OStep.entries.map { funnelStepIndex(it) }
+        assertTrue("ONB-06 is not claimed by any built step", 6 !in used)
+        assertTrue("ONB-10 is not claimed by any built step", 10 !in used)
+        assertTrue("no step numbers past the declared total", used.all { it <= ONBOARDING_STEPS })
+    }
+
+    @Test
+    fun detectedLanguage_says_nothing_rather_than_guessing_english() {
+        // "Detected on this device" under English on a Bengali phone is a small
+        // lie on the first screen the user ever sees.
+        assertEquals("English", detectedLanguageId("en"))
+        assertEquals("Hindi", detectedLanguageId("hi"))
+        assertEquals("Tamil", detectedLanguageId("TA"))   // case-insensitive
+        assertNull(detectedLanguageId("bn"))
+        assertNull(detectedLanguageId(""))
+    }
+
     // ── Failure text a user is actually allowed to see ──
     @Test
     fun aNetworkFailureShowsOurWordsNotTheJvmS() {

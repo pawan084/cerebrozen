@@ -50,6 +50,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -451,14 +452,71 @@ fun Onboarding() {
             }
         }
 
-        OStep.Language -> Funnel(
-            OStep.Language,
-            stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
-            stringResource(R.string.ob_language_sub),
-            stringResource(R.string.common_continue), onBack = { back() }, onPrimary = { next() },
-            progress = 0.38f,
-        ) {
-            ChipWrapOptions(LANGUAGES, language) { language = it }
+        OStep.Language -> {
+            // The device's own language, so "Detected on this device" is a fact
+            // rather than a decoration. The prototype hardcodes English as both
+            // the detected AND the selected row, which is why its screenshot
+            // shows English ticked under a button reading "Continue in Hindi" —
+            // two different answers to one question. Here the tick follows the
+            // real selection and the caption follows the real locale.
+            val deviceLang = remember { detectedLanguageId(java.util.Locale.getDefault().language) }
+            var showAll by rememberSaveable { mutableStateOf(false) }
+            // English and Hindi lead; the rest sit behind "View all languages",
+            // matching ONB-01's shape without pretending the list is only two.
+            val lead = remember { LANGUAGES.filter { it.id == "English" || it.id == "Hindi" } }
+            val rest = remember { LANGUAGES.filterNot { it.id == "English" || it.id == "Hindi" } }
+            Funnel(
+                OStep.Language,
+                stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
+                stringResource(R.string.ob_language_sub),
+                // "Continue in Hindi" — the CTA names what the next screen will
+                // be written in, so the choice is confirmed before it applies.
+                stringResource(
+                    R.string.ob_language_continue_in,
+                    stringResource(languageLabelRes(language) ?: R.string.ob_lang_english),
+                ),
+                onBack = { back() }, onPrimary = { next() },
+                progress = 0.38f,
+                barTitle = stringResource(R.string.ob_language_bar_title),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                    lead.forEach { option ->
+                        LanguageCard(
+                            title = stringResource(option.labelRes),
+                            subtitle = if (option.id == deviceLang) {
+                                stringResource(R.string.ob_lang_detected)
+                            } else {
+                                ""
+                            },
+                            selected = language == option.id,
+                        ) { language = option.id }
+                    }
+                    if (showAll) {
+                        rest.forEach { option ->
+                            LanguageCard(
+                                title = stringResource(option.labelRes),
+                                subtitle = if (option.id == deviceLang) {
+                                    stringResource(R.string.ob_lang_detected)
+                                } else {
+                                    ""
+                                },
+                                selected = language == option.id,
+                            ) { language = option.id }
+                        }
+                    } else {
+                        LanguageCard(
+                            title = stringResource(R.string.ob_lang_view_all),
+                            // Names the languages actually behind the row. A
+                            // generic "and more" hides whether the one you want
+                            // is in there at all.
+                            // map is inline (so stringResource is legal here);
+                            // joinToString's transform is not.
+                            subtitle = rest.map { stringResource(it.labelRes) }.joinToString(" · "),
+                            selected = false,
+                        ) { showAll = true }
+                    }
+                }
+            }
         }
 
         OStep.State -> Funnel(
@@ -818,6 +876,79 @@ private fun Funnel(
                 Spacer(Modifier.height(12.dp))
                 secondary.invoke()
             }
+        }
+    }
+}
+
+/**
+ * Map an ISO-639 device language to one of [LANGUAGES], or null when this app
+ * ships nothing for it.
+ *
+ * Null is the important return. "Detected on this device" printed under English
+ * for a Tamil phone is a small lie that costs trust on the first screen, so a
+ * locale with no match here labels nothing rather than defaulting to English.
+ * Pure, so it is unit-testable without a Configuration.
+ */
+internal fun detectedLanguageId(iso: String): String? = when (iso.lowercase()) {
+    "en" -> "English"
+    "hi" -> "Hindi"
+    "pa" -> "Punjabi"
+    "ta" -> "Tamil"
+    else -> null
+}
+
+/**
+ * ONB-01's option row: a paper card with a title, an optional caption, and
+ * either a tick (selected) or a chevron (everything else).
+ *
+ * Replaces a wrapping row of chips. Chips could not carry the second line the
+ * screen needs — "Detected on this device", or which languages sit behind
+ * "View all" — and a five-chip wrap re-flowed differently in Hindi, so the
+ * tap target for a given language moved between locales.
+ */
+@Composable
+private fun LanguageCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(shape)
+            .background(CardFill)
+            .then(
+                // The selected card wears a plum ring; the others carry no
+                // border at all, so selection is the only thing an outline
+                // means on this screen.
+                if (selected) Modifier.border(2.dp, Periwinkle, shape) else Modifier,
+            )
+            .clickable(role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
+        if (selected) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.common_selected_cd),
+                tint = Periwinkle,
+                modifier = Modifier.size(20.dp),
+            )
+        } else {
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = PickRowChevron,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
