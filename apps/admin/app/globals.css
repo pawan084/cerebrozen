@@ -1,23 +1,133 @@
 /* @cerebro-tokens:start */
 /* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  --night: #0e0c22;
-  --night-top: #1a1440;
-  --card: rgba(255, 255, 255, 0.05);
-  --card-strong: rgba(255, 255, 255, 0.085);
-  --line: rgba(255, 255, 255, 0.12);
-  --text: #f5f4ff;
-  --soft: #dfe0ff;
-  --muted: #b0a9e0;
-  --muted-2: #8f88c0;
-  --lav: #8a7bf0;
-  --lav-2: #a68bff;
-  --cream: #eceefb;
-  --ink: #1c1740;
-  --danger: #e08a9a;
-  --ok: #7ee0a8;
-  --warm: #f0a48c;
-  --cyan: #8fe6ee;
+  color-scheme: light;
+
+  /* Grounds — one elevation ladder of honest soft-solids, no fake translucency. */
+  --surface: #f8f4ee;
+  --surface-raised: #fffcf8;
+  --surface-field: #f3ecf3;
+  --line: #dfd9d3;
+
+  /* Text roles — every one clears 4.5:1 on every ground it may land on. */
+  --text: #211d20;
+  --text-secondary: #514a50;
+  --text-faint: #686267;
+
+  /* Accent (plum) + its wash. */
+  --accent: #5a2b5c;
+  --accent-2: #8a4a78;
+  --accent-soft: #e9ddea;
+  --on-accent: #fffcf8;
+
+  /* Tonal roles, each with the wash it is legible on. */
+  --ok: #49634f;
+  --ok-soft: #e5ede3;
+  --warm: #a45161;
+  --warm-soft: #fae9ea;
+  --danger: #c23a33;
+  --danger-soft: #ffe9e6;
+  --amber: #92611d;
+  --amber-soft: #fff1d8;
+  --info: #315c7a;
+  --info-soft: #e7f0f5;
+
+  /* Filled controls. The primary action is an accent fill, not a pale pill —
+     a near-white pill is invisible on an ivory ground. */
+  --btn-primary-bg: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --btn-primary-ink: var(--on-accent);
+
+  --shadow: 0 12px 30px rgba(90, 43, 92, 0.09);
+  --shadow-lg: 0 24px 70px rgba(53, 25, 57, 0.16);
+  --focus-ring: 0 0 0 3px rgba(90, 43, 92, 0.24);
+
+  /* ---- Legacy aliases — existing call sites only, do not extend ---- */
+  --night: var(--surface);
+  --night-top: var(--surface-raised);
+  --card: var(--surface-raised);
+  --card-strong: var(--surface-field);
+  --soft: var(--text-secondary);
+  --muted: var(--text-faint);
+  --muted-2: var(--text-faint);
+  --lav: var(--accent);
+  --lav-2: var(--accent-2);
+  --cream: var(--surface-raised);
+  --ink: var(--text);
+  --ok-legacy: var(--ok);
+  --cyan: var(--info);
+}
+
+/* Night — the opt-in dark appearance, and the pinned theme for sleep and
+   wind-down surfaces. Values reconciled from landing.html's [data-theme="dark"]
+   and web.html's [data-theme="night"], which agree to within a few points. */
+:root[data-theme="night"] {
+  color-scheme: dark;
+
+  --surface: #171019;
+  --surface-raised: #241927;
+  --surface-field: #302237;
+  --line: #3e3043;
+
+  --text: #faf5fb;
+  --text-secondary: #ded4e0;
+  --text-faint: #b9abb9;
+
+  --accent: #d9acde;
+  --accent-2: #c580b5;
+  --accent-soft: #3a2a3e;
+  --on-accent: #241927;
+
+  --ok: #afd6b2;
+  --ok-soft: #1e2a20;
+  --warm: #f29ab0;
+  --warm-soft: #351e25;
+  --danger: #ff8c82;
+  --danger-soft: #3a211e;
+  --amber: #f0c37f;
+  --amber-soft: #453622;
+  --info: #9cc4dc;
+  --info-soft: #22323c;
+
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+}
+
+/* Follow the OS unless the user has chosen explicitly. Keep this block's values
+   identical to [data-theme="night"] above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dawn"]) {
+    color-scheme: dark;
+
+    --surface: #171019;
+    --surface-raised: #241927;
+    --surface-field: #302237;
+    --line: #3e3043;
+
+    --text: #faf5fb;
+    --text-secondary: #ded4e0;
+    --text-faint: #b9abb9;
+
+    --accent: #d9acde;
+    --accent-2: #c580b5;
+    --accent-soft: #3a2a3e;
+    --on-accent: #241927;
+
+    --ok: #afd6b2;
+    --ok-soft: #1e2a20;
+    --warm: #f29ab0;
+    --warm-soft: #351e25;
+    --danger: #ff8c82;
+    --danger-soft: #3a211e;
+    --amber: #f0c37f;
+    --amber-soft: #453622;
+    --info: #9cc4dc;
+    --info-soft: #22323c;
+
+    --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+    --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+  }
 }
 /* @cerebro-tokens:end */
 
@@ -86,7 +196,7 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 
 .btn { border: 0; cursor: pointer; font-weight: 700; font-size: 13px; padding: 9px 14px; border-radius: 11px; transition: transform .12s; }
 .btn:hover { transform: translateY(-1px); }
-.btn-primary { background: linear-gradient(180deg,#fff,var(--cream)); color: var(--ink); }
+.btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-ink); }
 .btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--line); }
 .btn-sm { padding: 6px 11px; font-size: 12px; }
 .btn svg { vertical-align: -3px; margin-right: 3px; }

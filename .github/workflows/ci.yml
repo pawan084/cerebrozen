@@ -117,6 +117,11 @@ jobs:
             apps/app/package-lock.json
       - name: Design-token drift check
         run: node scripts/sync-tokens.mjs --check
+      # Android and iOS have had a contrast suite for a while; the web side did
+      # not, which is how --muted-2 shipped at 3.9:1 for a month. Gates every
+      # text role in design/tokens.css against the grounds it can land on.
+      - name: Token contrast check
+        run: node scripts/check-contrast.mjs
       # Copy honesty across all four clients (web, app, iOS Swift, Android
       # strings.xml). Review alone let three over-claims ship; see CLAIMS_MAP.md.
       - name: Claims check
