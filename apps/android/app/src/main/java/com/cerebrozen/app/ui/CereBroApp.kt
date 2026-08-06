@@ -69,6 +69,7 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
+import com.cerebrozen.app.ui.screens.ExploreScreen
 import com.cerebrozen.app.ui.screens.GroundingScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
@@ -139,9 +140,26 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 
 // W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
 // instead of stock Material glyphs — one consistent 2dp rounded-line set.
+//
+// W25 — the spec's five tabs (docs/REDESIGN_V2.md §3.1, owner ruling §6.1):
+// **Today · Explore · Talk · Journal · You**. Two changes from the shipped set:
+//
+//  * Home is now **Today**. Only the label and the icon move; the route stays
+//    `home` so every deeplink, saved back-stack entry, nudge target and test
+//    that names it keeps working. The enum constant keeps its name for the same
+//    reason — renaming it would churn ~30 call sites to no user-visible end.
+//  * Sleep **leaves the tab bar** and Explore takes the slot. Sleep is now
+//    reached from Explore, from Today's sleep entry points and from the sleep
+//    quick tools; its route is unchanged, so nothing that pointed at it broke.
+//    The demotion is a recorded owner decision, not a mechanical one — Sleep is
+//    the evidenced flagship, and REDESIGN_V2 §6.1 says so out loud.
+//
+// Urgent support does NOT depend on this set and never did: it hangs off the
+// You tab's Support card and Explore's support door, so it stays two taps from
+// every tab (verified in NavigationChromeTest).
 internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
-    Home("home", R.string.tab_home, R.drawable.ic_tab_home),
-    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
+    Home("home", R.string.tab_today, R.drawable.ic_tab_today),
+    Explore("explore", R.string.tab_explore, R.drawable.ic_tab_explore),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
     Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
@@ -150,7 +168,10 @@ internal enum class Tab(val route: String, @androidx.annotation.StringRes val la
 internal fun shouldShowBottomBar(route: String?): Boolean =
     // talk/live + talk/chat are legacy aliases that render the Talk tab —
     // without them here a stale entry point showed Talk with no tab pill.
-    route in setOf("home", "sleep", "talk", "journal", "you", "talk/live", "talk/chat")
+    // `sleep` is deliberately absent: it is a pushed screen now, and showing
+    // the pill on a route no tab owns leaves five unlit tabs and no way to
+    // tell where you are.
+    route in setOf("home", "explore", "talk", "journal", "you", "talk/live", "talk/chat")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -174,7 +195,7 @@ internal fun routeForDeeplink(raw: String?): String? {
         else -> path
     }
     val allowed = setOf(
-        "home", "sleep", "talk", "journal", "journal/new", "you",
+        "home", "explore", "sleep", "talk", "journal", "journal/new", "you",
         "insights", "trends", "toolkit", "crisis", "safetyplan",
         "sounds", "sounds/mixer", "winddown", "plan", "goals", "programs",
         "breathe/reset", "breathe/box",
@@ -251,7 +272,14 @@ internal fun BottomNavBar(
             Modifier
                 .fillMaxWidth()
                 .height(if (compact) 72.dp else 78.dp)
-                .shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                // The pill's lift comes from the theme's shadow tokens, not a
+                // hardcoded 40% black: on Dawn a black drop under an ivory
+                // capsule reads as a grey smudge (CardShadow is warm-plum).
+                .shadow(
+                    18.dp, RoundedCornerShape(24.dp),
+                    ambientColor = com.cerebrozen.app.ui.theme.CardShadow.navAmbient,
+                    spotColor = com.cerebrozen.app.ui.theme.CardShadow.navSpot,
+                )
                 .clip(RoundedCornerShape(24.dp))
                 .background(
                     Brush.verticalGradient(
@@ -516,7 +544,7 @@ fun CereBroApp() {
     val reduceMotion = com.cerebrozen.app.ui.screens.rememberReduceMotion()
     val auroraAccent by animateColorAsState(
         targetValue = when (current) {
-            Tab.Sleep.route, "sounds", "sounds/mixer" -> com.cerebrozen.app.ui.theme.Accent.sleep
+            "sleep", "sounds", "sounds/mixer", "winddown" -> com.cerebrozen.app.ui.theme.Accent.sleep
             Tab.Talk.route, "talk/live", "talk/chat" -> com.cerebrozen.app.ui.theme.Accent.talk
             else -> com.cerebrozen.app.ui.theme.Accent.home
         },
@@ -536,11 +564,11 @@ fun CereBroApp() {
     val catalogueLoaded = MediaCatalog.loaded
     val sceneUrl = when {
         !catalogueLoaded || reduceMotion -> ""
-        // Sleep tab only. The pushed "sounds"/mixer screens are built on
+        // The Sleep screen only. The pushed "sounds"/mixer screens are built on
         // PremiumFrame, which paints its own opaque plate — a scene behind those
         // would decode and then be covered, burning a video decoder to render
         // nothing. Restrict it to the surface where it actually shows.
-        current == Tab.Sleep.route -> MediaCatalog.urlFor(MediaCatalog.Keys.SCENE_NIGHT_LAKE)
+        current == "sleep" -> MediaCatalog.urlFor(MediaCatalog.Keys.SCENE_NIGHT_LAKE)
         else -> ""
     }
 
@@ -604,7 +632,10 @@ fun CereBroApp() {
             }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
-            composable(Tab.Sleep.route) { SleepScreen(onOpen = open) }
+            composable(Tab.Explore.route) { ExploreScreen(onOpen = open) }
+            // Sleep is a pushed screen since the five-tab pass — it takes an
+            // onBack so it carries a visible back door, not just the gesture.
+            composable("sleep") { SleepScreen(onOpen = open, onBack = back) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
             // The live/chat split belonged to the two-mode Talk screen. Talk is
             // one surface again — voice and typing live together, with the

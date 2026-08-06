@@ -64,7 +64,15 @@ import com.cerebrozen.app.ui.screens.SectionCard
 import com.cerebrozen.app.ui.screens.SubPage
 import com.cerebrozen.app.ui.screens.ToolAmbienceEffect
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
+import com.cerebrozen.app.ui.theme.Amber
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.DangerSoft
 import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.OkSoft
+import com.cerebrozen.app.ui.theme.OnAccent
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.Surface
 import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -342,13 +350,19 @@ private fun RoundBody(
     }
 }
 
-/** The shared colour vocabulary, resolved once. */
+/** The shared colour vocabulary, resolved once.
+ *
+ * These are the five tonal ROLES, not a private game palette: Stroop prints the
+ * colour name IN this colour on the card fill, so each one has to clear 4.5:1 in
+ * both themes — the old bright mid-tones were invisible on Dawn's paper. The
+ * five roles stay mutually distinguishable in either appearance, which is all
+ * the mechanic needs. */
 private fun colorFor(key: String): Color = when (key) {
-    "green" -> Color(0xFF34D399)
-    "cyan" -> Color(0xFF22D3EE)
-    "purple" -> Color(0xFFA78BFA)
-    "amber" -> Color(0xFFF59E0B)
-    else -> Color(0xFFFB7185)   // rose
+    "green" -> Ok
+    "cyan" -> Cyan
+    "purple" -> Periwinkle
+    "amber" -> Amber
+    else -> Warm   // rose
 }
 
 @Composable
@@ -407,9 +421,12 @@ private fun StroopBody(round: Round, onAnswer: (Boolean) -> Unit) {
 @Composable
 private fun GoNoGoBody(round: Round, onAnswer: (Boolean) -> Unit) {
     val prompt = round.prompt as? RoundPrompt.Signal ?: return
-    val cue = if (prompt.go) Color(0xFF34D399) else Color(0xFFF87171)
+    val cue = if (prompt.go) Ok else Danger
+    // The role on its OWN wash — the one pairing the tonal scale gates at
+    // 4.5:1 in both themes (an ad-hoc 24% alpha did not reach it on Dawn).
+    val cueWash = if (prompt.go) OkSoft else DangerSoft
     Box(
-        Modifier.size(168.dp).clip(CircleShape).background(cue.copy(alpha = 0.24f)),
+        Modifier.size(168.dp).clip(CircleShape).background(cueWash),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -741,7 +758,7 @@ private fun GameTapFeedback(accent: Color, result: Boolean?) {
             Column(
                 Modifier.shadow(18.dp, RoundedCornerShape(28.dp), ambientColor = accent.copy(alpha = 0.35f), spotColor = accent.copy(alpha = 0.35f))
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.32f), Color(0xF20A1020))))
+                    .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.32f), Surface)))
                     .border(1.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(28.dp))
                     .padding(horizontal = 28.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -757,7 +774,9 @@ private fun GameTapFeedback(accent: Color, result: Boolean?) {
                     stringResource(
                         if (result == false) R.string.mg_feedback_continue else R.string.mg_feedback_good,
                     ),
-                    color = Color.White, style = MaterialTheme.typography.labelLarge,
+                    // Follows the panel's Surface floor above — a fixed white
+                    // is unreadable once that floor is Dawn's paper.
+                    color = TextPrimary, style = MaterialTheme.typography.labelLarge,
                 )
             }
         }
@@ -793,7 +812,9 @@ private fun GameResultPanel(
         Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.size(132.dp).clip(CircleShape).background(Ok.copy(alpha = 0.14f)))
             Box(Modifier.size(94.dp).clip(CircleShape).background(Ok), contentAlignment = Alignment.Center) {
-                Text("✓", style = MaterialTheme.typography.displayMedium, color = Color(0xFF08251B), fontWeight = FontWeight.Black)
+                // The ink that reads on a tonal FILL: light on Dawn (Ok is a deep
+                // sage there), dark on Night (Ok is a pale sage). 6.45:1 / 10.53:1.
+                Text("✓", style = MaterialTheme.typography.displayMedium, color = OnAccent, fontWeight = FontWeight.Black)
             }
         }
         Text(stringResource(R.string.mg_result_eyebrow).uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)

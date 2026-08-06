@@ -63,12 +63,14 @@ object AuroraTint {
 /** Centralised stroke treatments. Brushes are `get()` properties so they
  * re-resolve when the theme flips. */
 object Stroke {
-    /** Top-lit bevel edge — bright at the top, fading down, like light on glass. */
+    /** Top-lit bevel edge — bright at the top, fading down, like light on glass.
+     * Plum-toned in both arms since the Light Dawn port; the stops straddle the
+     * theme's `--line` so the edge reads as lit, not as a second outline. */
     val bevel: Brush
         get() = if (AppTheme.isNight) {
-            Brush.verticalGradient(listOf(Color(0xFF46536E), Color(0xFF2B364C)))
+            Brush.verticalGradient(listOf(Color(0xFF4C3B52), Color(0xFF2E2033)))
         } else {
-            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFE4E6EF)))
+            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFE7E0E6)))
         }
 
     /** Flat hairline (the --line token). */
@@ -99,35 +101,42 @@ object Stroke {
  */
 object CardShadow {
     val elevation: Dp get() = if (AppTheme.isNight) 8.dp else 16.dp
-    val ambient: Color get() = if (AppTheme.isNight) Color(0x26000000) else Color(0x1C4A3A28)
-    val spot: Color get() = if (AppTheme.isNight) Color(0x30000000) else Color(0x38493826)
+    // Plum-toned on Dawn (an ink-plum rather than pure black), matching
+    // tokens.css `--shadow: rgba(90, 43, 92, …)`.
+    val ambient: Color get() = if (AppTheme.isNight) Color(0x26000000) else Color(0x1C5A2B5C)
+    val spot: Color get() = if (AppTheme.isNight) Color(0x30000000) else Color(0x38351933)
+
+    /** The floating nav pill sits higher than a card and carries a deeper drop.
+     * It used one hardcoded 40% black in both themes; under an ivory capsule
+     * that reads as a grey smudge, so Dawn gets the same depth in plum. */
+    val navAmbient: Color get() = if (AppTheme.isNight) Color(0x66000000) else Color(0x2E5A2B5C)
+    val navSpot: Color get() = if (AppTheme.isNight) Color(0x66000000) else Color(0x38351933)
 }
 
 object Gradients {
     /**
-     * Primary CTA. One deep-lavender pill with a white label in BOTH themes:
-     * brand Lavender #7C6FF0 only reaches 3.90:1 under white text, so the pill
-     * deepens to #6D5FE8 → #5B4BC4 (4.72:1 / 6.46:1). Unifying the CTA across
-     * themes also means the one action that matters looks the same everywhere.
+     * Primary CTA — the **accent fill** (tokens.css
+     * `--btn-primary-bg: linear-gradient(accent, accent-2)`), themed.
+     *
+     * It has to flip: on Dawn the accent is a deep plum carrying near-white ink
+     * (10.61:1 / 6.16:1), on Night it is a pale plum carrying the dark
+     * `--on-accent` (8.77:1 / 5.73:1). A single fixed gradient can only be
+     * legible under one of those two inks. The label is always [OnPrimary].
      */
     val primary: Brush
-        get() = Brush.horizontalGradient(listOf(LavenderPillTop, LavenderPillFloor))
+        get() = Brush.horizontalGradient(listOf(Periwinkle, Accent2))
 
-    /** Card surface — a top-lit pane. Navy on dark, white paper on light. */
+    /** Card surface — a top-lit pane straddling `--surface-raised`. */
     val glass: Brush
         get() = if (AppTheme.isNight) {
-            Brush.verticalGradient(listOf(Color(0xFF26324A), Color(0xFF1B2438)))
+            Brush.verticalGradient(listOf(Color(0xFF2B1E2F), Color(0xFF1F1522)))
         } else {
-            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFFBF7F1)))
+            Brush.verticalGradient(listOf(Color(0xFFFFFEFC), Color(0xFFFBF6F7)))
         }
 
-    /** The page backdrop base. */
+    /** The page backdrop base — `--surface-field` fading into `--surface`. */
     val night: Brush
-        get() = if (AppTheme.isNight) {
-            Brush.verticalGradient(listOf(NightMid, Night))
-        } else {
-            Brush.verticalGradient(listOf(Color(0xFFFBF9F5), Color(0xFFEDE7DC)))
-        }
+        get() = Brush.verticalGradient(listOf(NightMid, Night))
 
     /** The brand sweep — lavender → sky → mint. Decorative only (progress fills,
      * orb rims, chart strokes, celebration art). Never sits under text. */

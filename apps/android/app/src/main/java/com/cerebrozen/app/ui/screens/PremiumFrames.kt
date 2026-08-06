@@ -51,10 +51,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -105,14 +108,14 @@ internal fun PremiumNavRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val accent = if (emphasis) Color(0xFF64C9FF) else Color(0xFFB18CFF)
+    val accent = if (emphasis) Cyan else Periwinkle
     val shape = RoundedCornerShape(26.dp)
     Row(
         Modifier.fillMaxWidth().pressScale(pressed, down = 0.975f)
             .background(CardFill, shape)
             .border(
                 1.dp,
-                Brush.linearGradient(listOf(accent.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Color(0x4464C9FF))),
+                Brush.linearGradient(listOf(accent.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Cyan.copy(alpha = 0.27f))),
                 shape,
             )
             .clickable(
@@ -159,7 +162,7 @@ internal fun PremiumNavRow(
 internal fun PremiumStateCard(
     icon: ImageVector,
     message: String,
-    accent: Color = Color(0xFF64C9FF),
+    accent: Color = Cyan,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -287,7 +290,7 @@ private fun PremiumFrameHeader(
             .background(CardFill, shape)
             .border(
                 1.dp,
-                Brush.linearGradient(listOf(Color(0x887A5CFF), Color.White.copy(alpha = 0.10f), Color(0x6664C9FF))),
+                Brush.linearGradient(listOf(Periwinkle.copy(alpha = 0.53f), Color.White.copy(alpha = 0.10f), Cyan.copy(alpha = 0.4f))),
                 shape,
             )
             .padding(20.dp),
@@ -298,11 +301,11 @@ private fun PremiumFrameHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(48.dp).background(Color(0x227A5CFF), CircleShape)
-                    .border(1.dp, Color(0x447A5CFF), CircleShape),
+                Modifier.size(48.dp).background(AccentSoft, CircleShape)
+                    .border(1.dp, LineStroke, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.size(22.dp))
+                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
             }
             trailing?.let {
                 Box(
@@ -340,18 +343,18 @@ private fun PremiumFrameHeader(
 private fun PremiumFrameAmbience(drift: Float) {
     Canvas(Modifier.fillMaxSize()) {
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x2E7A5CFF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Periwinkle.copy(alpha = 0.18f), Color.Transparent)),
             radius = size.minDimension * 0.7f,
             center = Offset(size.width * 0.82f, size.height * (0.12f + drift)),
         )
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x1F64C9FF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Cyan.copy(alpha = 0.12f), Color.Transparent)),
             radius = size.minDimension * 0.5f,
             center = Offset(size.width * 0.05f, size.height * 0.68f),
         )
         listOf(0.12f to 0.14f, 0.88f to 0.28f, 0.76f to 0.63f, 0.18f to 0.84f).forEachIndexed { index, point ->
             drawCircle(
-                color = if (index % 2 == 0) Color(0x4464C9FF) else Color(0x44B18CFF),
+                color = if (index % 2 == 0) Cyan.copy(alpha = 0.27f) else Periwinkle.copy(alpha = 0.27f),
                 radius = 2.2.dp.toPx(),
                 center = Offset(size.width * point.first, size.height * (point.second + drift * 0.3f)),
             )

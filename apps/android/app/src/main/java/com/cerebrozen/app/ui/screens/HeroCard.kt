@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.cerebrozen.app.ui.theme.ArtScrim
 import com.cerebrozen.app.ui.theme.ArtTextSoft
+import com.cerebrozen.app.ui.theme.CardShadow
 import com.cerebrozen.app.ui.theme.Cream
 import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.PeriwinkleSoft
@@ -65,7 +66,9 @@ internal fun HeroCard(
     val base = Modifier
         .fillMaxWidth()
         .height(height)
-        .shadow(16.dp, shape, clip = false, ambientColor = Color(0x40000000), spotColor = Color(0x59000000))
+        // The card-shadow role, not a fixed black: a pure-black drop under an
+        // ivory page reads as a grey smudge (see CardShadow's note).
+        .shadow(16.dp, shape, clip = false, ambientColor = CardShadow.ambient, spotColor = CardShadow.spot)
         .clip(shape)
         // Top-lit bevel edge, matching the glass cards.
         .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.06f))), shape)

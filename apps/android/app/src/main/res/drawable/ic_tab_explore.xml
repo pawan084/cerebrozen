@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W25 tab icon: a compass — a ring with a needle, in the same thin
+     rounded-line style as the rest of the set (2dp stroke on a 24dp grid).
+     Drawn in white; the Icon composable tints it per selection state.
+     Replaces the moon in the second tab slot when Sleep moved under Explore
+     (docs/REDESIGN_V2.md §6.1). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- The ring. -->
+    <path
+        android:pathData="M12,12 m-8.3,0 a8.3,8.3 0 1,0 16.6,0 a8.3,8.3 0 1,0 -16.6,0"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- The needle. -->
+    <path
+        android:pathData="M15.4,8.6 L13.5,13.5 L8.6,15.4 L10.5,10.5 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

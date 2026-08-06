@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W25 tab icon: a dawn — a horizon line with the sun rising through it and
+     two short rays. Same thin rounded-line style as the rest of the set (2dp
+     stroke on a 24dp grid). Drawn in white; the Icon composable tints it per
+     selection state. Replaces the house when the first tab became "Today"
+     (docs/REDESIGN_V2.md §3.1) — a house labelled Today read as neither. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- The sun, rising: a half-disc sitting on the horizon. -->
+    <path
+        android:pathData="M7.4,15.2 a4.6,4.6 0 0,1 9.2,0"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- The horizon. -->
+    <path
+        android:pathData="M4.2,15.2 L19.8,15.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+    <!-- Two short rays. -->
+    <path
+        android:pathData="M12,4.4 L12,6.4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M5.4,7.6 L6.8,9.0"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M18.6,7.6 L17.2,9.0"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+    <!-- The ground line under the horizon, so the mark reads at 20dp. -->
+    <path
+        android:pathData="M7.0,18.6 L17.0,18.6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+</vector>

@@ -82,33 +82,45 @@ import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.screens.Celebrations
 import com.cerebrozen.app.ui.screens.PrimaryButton
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
+import com.cerebrozen.app.ui.theme.Accent2
+import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.CardShadow
+import com.cerebrozen.app.ui.theme.Cream
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.InfoSoft
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.ChipFill
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ink
+import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.OkSoft
 import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleSoft
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.VeilWell
+import com.cerebrozen.app.ui.theme.Violet
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
-// Deliberate ART-SURFACE constants (like the mixer hero's): the immersive
-// orb keeps its own phase colours in both themes — swapping in the theme's
-// Ok/Cyan/Iris (dark in Dawn) would break the gradient the pacing reads by.
-// Audit B64 reviewed; kept by design.
-private val InhaleTop = Color(0xFF34D399)
-private val InhaleBottom = Color(0xFF10B981)
-private val HoldTop = Color(0xFF22D3EE)
-private val HoldBottom = Color(0xFF06B6D4)
-private val ExhaleTop = Color(0xFFA78BFA)
-private val ExhaleBottom = Color(0xFF8B5CF6)
+// Phase tints. These are read as the orb's GLOW, RING and SHADOW colour on a
+// themed page (never as the orb's own fill, and never as text), so they follow
+// the theme exactly like breatheTint() does on the sibling Breathe screen —
+// the earlier "kept by design" set was the retired emerald/indigo palette,
+// which sat on a ground the app no longer paints. Getters, so a theme flip
+// re-resolves them.
+private val InhaleTop: Color get() = Ok
+private val InhaleBottom: Color get() = OkSoft
+private val HoldTop: Color get() = Cyan
+private val HoldBottom: Color get() = InfoSoft
+private val ExhaleTop: Color get() = Periwinkle
+private val ExhaleBottom: Color get() = AccentSoft
 
 @Composable
 fun BreathLoopsScreen(onBack: () -> Unit) {
@@ -369,7 +381,7 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                         scaleY = scale * 1.18f
                     }.blur(22.dp).background(
                         Brush.radialGradient(
-                            listOf(tint.copy(alpha = glowAlpha), Color(0x337A5CFF), Color.Transparent),
+                            listOf(tint.copy(alpha = glowAlpha), Periwinkle.copy(alpha = 0.2f), Color.Transparent),
                         ), CircleShape,
                     ),
                 )
@@ -389,7 +401,7 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                         style = Stroke(3.dp.toPx()))
                     drawArc(
                         brush = Brush.sweepGradient(
-                            listOf(Color(0xFF64C9FF), Color(0xFFB18CFF), Color(0xFF7A5CFF)),
+                            listOf(Cyan, Periwinkle, Accent2),
                         ), startAngle = -90f,
                         sweepAngle = 360f * ringProgress, useCenter = false,
                         style = Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
@@ -398,10 +410,12 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                 Box(
                     Modifier.size(214.dp).graphicsLayer { scaleX = scale; scaleY = scale }
                         .shadow(22.dp, CircleShape, clip = false,
-                            ambientColor = tint.copy(alpha = 0.55f), spotColor = Color(0x667A5CFF))
+                            ambientColor = tint.copy(alpha = 0.55f), spotColor = Periwinkle.copy(alpha = 0.4f))
                         .clip(CircleShape)
                         .background(Brush.radialGradient(
-                            listOf(Color.White, Color(0xFFDDE8FF), Color(0xFF64C9FF), Color(0xFF7A5CFF), Color(0xFFB18CFF)),
+                            // Constant art: the orb carries [Ink] as its count in
+                            // both themes, so it must stay a light object.
+                            listOf(Color.White, Cream, PeriwinkleSoft, Iris, Violet),
                         )).border(1.dp, Color.White.copy(alpha = 0.48f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {

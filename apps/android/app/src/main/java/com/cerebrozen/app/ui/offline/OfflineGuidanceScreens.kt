@@ -67,9 +67,14 @@ import com.cerebrozen.app.ui.screens.PrimaryButton
 import com.cerebrozen.app.ui.screens.SectionCard
 import com.cerebrozen.app.ui.screens.SubPage
 import com.cerebrozen.app.ui.screens.ToolAmbienceEffect
+import com.cerebrozen.app.ui.theme.ArtCyan
+import com.cerebrozen.app.ui.theme.ArtPeriwinkle
+import com.cerebrozen.app.ui.theme.ArtScrim
+import com.cerebrozen.app.ui.theme.ArtWarm
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.Periwinkle
@@ -146,7 +151,7 @@ fun GuidedImageryScreen(onBack: () -> Unit) {
                                         }),
                                         null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                                     )
-                                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3050B12)))))
+                                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, ArtScrim.copy(alpha = 0.7f)))))
                                     Text(item.glyph, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.BottomStart).padding(12.dp))
                                 }
                                 Text(stringResource(item.titleRes), style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 2)
@@ -352,16 +357,20 @@ private fun ImmersiveJourneyPage(
         "meadow" -> R.drawable.guided_meadow
         else -> R.drawable.guided_forest
     }
+    // The theme-independent ART accents, not the themed roles: this page is a
+    // full-bleed photograph under a dark scrim in BOTH appearances, and the
+    // accent is printed as the progress line on top of it, so a role that goes
+    // deep on Dawn would vanish here.
     val accent = when (journeyId) {
-        "ocean" -> Color(0xFF67E8F9)
-        "mountain" -> Color(0xFFC4B5FD)
-        "meadow" -> Color(0xFFF9A8D4)
-        else -> Color(0xFF6EE7B7)
+        "ocean" -> ArtCyan
+        "mountain" -> ArtPeriwinkle
+        "meadow" -> ArtWarm
+        else -> Iris
     }
     ToolAmbienceEffect(if (journeyId == "ocean") R.raw.ocean else R.raw.wind)
     Box(Modifier.fillMaxSize()) {
         Image(painterResource(imageRes), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x66040B12), Color(0x33040B12), Color(0xD9081118)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(ArtScrim.copy(alpha = 0.4f), ArtScrim.copy(alpha = 0.2f), ArtScrim.copy(alpha = 0.85f)))))
         Column(
             Modifier.fillMaxSize().padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

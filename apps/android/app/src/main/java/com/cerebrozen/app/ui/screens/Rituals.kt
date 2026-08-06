@@ -58,10 +58,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.ArtScrim
+import com.cerebrozen.app.ui.theme.ArtCyan
+import com.cerebrozen.app.ui.theme.ArtPeriwinkle
 import com.cerebrozen.app.ui.theme.Danger
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
@@ -944,18 +948,21 @@ private fun ImageryStage(lines: List<String>, index: Int) {
     val shape = RoundedCornerShape(28.dp)
     Box(
         Modifier.fillMaxWidth().heightIn(min = 248.dp).clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF292451), Color(0xFF100E29))))
+            // Constant-dark art (see the doc above): the stage keeps its dusk in both
+            // themes and carries white lines, so it paints the art ground, not a
+            // themed surface — lifted at the top, sunk at the bottom.
+            .background(Brush.verticalGradient(listOf(PeriwinkleDeep, ArtScrim)))
             .border(1.dp, Periwinkle.copy(alpha = 0.28f), shape),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
-                brush = Brush.radialGradient(listOf(Color(0x405FCEFF), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(ArtCyan.copy(alpha = 0.25f), Color.Transparent)),
                 radius = size.minDimension * 0.72f,
                 center = Offset(size.width * 0.25f, size.height * 0.18f),
             )
             drawCircle(
-                brush = Brush.radialGradient(listOf(Color(0x407A5CFF), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(ArtPeriwinkle.copy(alpha = 0.25f), Color.Transparent)),
                 radius = size.minDimension * 0.62f,
                 center = Offset(size.width * 0.82f, size.height * 0.82f),
             )

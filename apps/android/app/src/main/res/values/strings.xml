@@ -37,11 +37,35 @@
     <string name="common_collapse">Collapse</string>
 
     <!-- ── Bottom tabs ─────────────────────────────────────────────────── -->
-    <string name="tab_home">Home</string>
+    <!-- The spec's five (docs/REDESIGN_V2.md §3.1, owner ruling §6.1):
+         Today · Explore · Talk · Journal · You. `tab_home` is retired in favour
+         of `tab_today`; Sleep left the tab bar and now lives under Explore, so
+         `tab_sleep` is only the Explore row label and the screen title. -->
+    <string name="tab_today">Today</string>
+    <string name="tab_explore">Explore</string>
     <string name="tab_sleep">Sleep</string>
     <string name="tab_talk">Talk</string>
     <string name="tab_journal">Journal</string>
     <string name="tab_you">You</string>
+
+    <!-- ── Explore (ui/screens/ExploreScreen.kt) ───────────────────────── -->
+    <string name="explore_eyebrow">Start where you are</string>
+    <string name="explore_title">Explore</string>
+    <string name="explore_intro">Six ways in. Pick whichever fits the moment — they stay here, and none of them expects anything of you.</string>
+    <string name="explore_sleep_title">Sleep</string>
+    <string name="explore_sleep_subtitle">Wind down, log a night, and see how you have been resting.</string>
+    <string name="explore_calm_title">Calm now</string>
+    <string name="explore_calm_subtitle">A two-minute breathing reset for when things feel fast.</string>
+    <string name="explore_sounds_title">Sounds</string>
+    <string name="explore_sounds_subtitle">Ambient beds and mixes to sit with, or to sleep to.</string>
+    <string name="explore_thought_title">Thought work</string>
+    <string name="explore_thought_subtitle">Look at a thought again, gently, and find a steadier one.</string>
+    <string name="explore_mindful_title">Mindful activities</string>
+    <string name="explore_mindful_subtitle">Grounding, imagery, body scan and other small steadying things.</string>
+    <string name="explore_programmes_title">Programmes</string>
+    <string name="explore_programmes_subtitle">Longer guided journeys you move through at your own pace.</string>
+    <string name="explore_support_title">Urgent support</string>
+    <string name="explore_support_subtitle">Real people, any hour. Always here, never behind a plan.</string>
 
     <!-- ── Crisis screen (Extras.kt) ───────────────────────────────────── -->
     <string name="crisis_eyebrow">You\'re not alone</string>
@@ -265,8 +289,11 @@
     <string name="today_banner_winddown">Wind down with a quieter mix</string>
     <string name="today_banner_winddown_action">Quieter mix</string>
     <string name="today_banner_program">Day %1$d of %2$d · %3$s</string>
-    <string name="today_checkin_title">How are you, really?</string>
-    <string name="today_checkin_subtitle">One tap is enough.</string>
+    <!-- TOD-01: the check-in is the screen's SECOND decision and says out loud
+         what it is not. "does not create a diagnosis or a score" is a
+         disclaimer, not a claim (docs/CLAIMS_MAP.md). -->
+    <string name="today_checkin_title">What is here right now?</string>
+    <string name="today_checkin_subtitle">One tap is enough. This does not create a diagnosis or a score.</string>
     <string name="today_checkin_say_more">Say more in Journal</string>
     <string name="today_checkin_undone">Removed — how are you now?</string>
     <string name="today_checkin_settled">Logged for today · %1$s</string>
@@ -1687,6 +1714,50 @@
          nights logged" — a failed read is not a fact about the user. -->
     <string name="sleep_load_failed">Couldn\'t load your week just now. Your nights are safe — this is only the reading of them.</string>
     <string name="common_retry">Try again</string>
+
+    <!-- ─────────────────────────────────────────────────────────────────────
+         Today (TOD-01) redesign, 2026-08-06.
+
+         Target: ref/mobile.html screen TOD-01, matched to the already-redesigned
+         web screen at apps/app/app/design/today/page.tsx so the two clients say
+         the same things. The thesis: ONE recommendation at full volume, a
+         quieter check-in under it, and everything else folded away — so the
+         first screenful is one decision instead of a dashboard.
+
+         The provenance lines are load-bearing, not decoration. They state what
+         the recommendation read AND what it did not, and they branch on the
+         plan's own `source` field because the two generators read different
+         things: the rule fallback never touches the journal at all, while the
+         AI path is sent recent journal TITLES (backend services/agentic.py
+         `_recent_signals`, journal_memory consent) and never the entry bodies.
+         ───────────────────────────────────────────────────────────────────── -->
+    <string name="today_date_pattern">EEEE · d MMMM</string>
+    <string name="today_lede">Choose one useful next step without browsing the whole product.</string>
+    <string name="today_hero_eyebrow">Your next helpful step</string>
+    <string name="today_hero_chip_offline">Works offline</string>
+    <string name="today_hero_chip_no_score">Nothing to score</string>
+    <string name="today_hero_why_rule">Chosen from your goal, your recent check-ins and your sleep diary. It did not read your journal.</string>
+    <string name="today_hero_why_ai">Shaped from your goal, your recent check-ins, your sleep diary and your journal titles. It did not read the entries themselves.</string>
+    <string name="today_hero_why_fallback">Nothing is planned for today yet, so this is simply the shortest steady option. It did not read your journal.</string>
+    <string name="today_hero_done_title">Everything you planned for today is done.</string>
+    <string name="today_hero_done_why">Blank space from here is simply blank — there is nothing left to keep up.</string>
+    <string name="today_hero_begin">Begin this step</string>
+    <string name="today_hero_open_day">Look at your day</string>
+    <string name="today_hero_alt">Choose something else</string>
+    <string name="today_fold_day">Your day</string>
+    <string name="today_fold_day_none">Nothing planned yet</string>
+    <string name="today_fold_tonight">Tonight</string>
+    <string name="today_fold_tonight_summary">A wind-down whenever you\'re ready</string>
+    <string name="today_fold_tonight_body">Dim the room, slow the breath, and let a quieter mix carry the end of the day.</string>
+    <string name="today_fold_tonight_row_title">Sleep and wind-down</string>
+    <string name="today_fold_tonight_row_subtitle">Tonight\'s plan, sounds and your sleep diary</string>
+    <string name="today_fold_week">This week</string>
+    <string name="today_day_step_done">Done</string>
+    <string name="today_day_step_open">Open</string>
+    <string name="today_day_blank">Flexible, not a streak. Do what helps and skip what does not — blank days are simply blank.</string>
+    <string name="today_day_plan_title">Your daily plan</string>
+    <string name="today_day_plan_subtitle">A flexible guide, not a checklist</string>
+    <string name="today_week_blank">These count the days you were here. Nothing here counts the days you were not.</string>
 
     <string name="journal_searching">Looking through your older entries…</string>
     <plurals name="journal_found_older">

@@ -33,11 +33,13 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBackIos
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.AutoStories
@@ -84,8 +86,17 @@ import androidx.compose.ui.unit.Dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Accent2
+import com.cerebrozen.app.ui.theme.ButtonDisabled
+import com.cerebrozen.app.ui.theme.CardShadow
 import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Ink
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.OnPrimary
+import com.cerebrozen.app.ui.theme.SleepHeroMoon
+import com.cerebrozen.app.ui.theme.SleepHeroMoonGlow
+import com.cerebrozen.app.ui.theme.TextBright
+import com.cerebrozen.app.ui.theme.VeilWell
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
@@ -314,7 +325,7 @@ internal fun sleepSnapshotNights(snap: JSONObject): List<SleepNight> =
  * layer on top — the job is improving sleep night by night, not measuring it. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun SleepScreen(onOpen: (String) -> Unit = {}) {
+fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
     var quality by remember { mutableIntStateOf(0) }
     var bed by remember { mutableIntStateOf(23 * 60) }
     var wake by remember { mutableIntStateOf(7 * 60) }
@@ -428,6 +439,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
         SleepPremiumHeader(
+            onBack = onBack,
             liveLine = summary?.takeIf { it.optBoolean("enough_data") }?.let {
                 stringResource(R.string.sleep_premium_subtitle_live, minutesLabel(it.optInt("avg_duration_min")))
             },
@@ -477,9 +489,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                             scaleX = s
                             scaleY = s
                         }
-                        .shadow(16.dp, RoundedCornerShape(50), ambientColor = Color(0x557A5CFF), spotColor = Color(0x557A5CFF))
+                        .shadow(16.dp, RoundedCornerShape(50), ambientColor = Periwinkle.copy(alpha = 0.33f), spotColor = Periwinkle.copy(alpha = 0.33f))
                         .clip(RoundedCornerShape(50))
-                        .background(Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9C72FF))))
+                        .background(Brush.linearGradient(listOf(Periwinkle, Accent2)))
                         .clickable { Player.toggle(context, calmerNight, "sleep") }
                         .semantics { contentDescription = playCd }
                         .padding(horizontal = 18.dp, vertical = 9.dp),
@@ -492,11 +504,13 @@ fun SleepScreen(onOpen: (String) -> Unit = {}) {
                         Icon(
                             if (heroPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                             contentDescription = null,
-                            tint = Color.White, modifier = Modifier.size(18.dp),
+                            // The accent pill's own ink, so the label survives
+                            // Night's pale plum fill as well as Dawn's deep one.
+                            tint = OnPrimary, modifier = Modifier.size(18.dp),
                         )
                         Text(
                             stringResource(if (heroPlaying) R.string.sleep_hero_pause else R.string.common_play_label),
-                            color = Color.White, fontWeight = FontWeight.SemiBold,
+                            color = OnPrimary, fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleSmall,
                         )
                     }
@@ -918,13 +932,13 @@ private fun SleepBackgroundGlow() {
     Canvas(Modifier.fillMaxSize()) {
         val upper = Offset(size.width * 0.15f, size.height * 0.12f)
         drawCircle(
-            Brush.radialGradient(listOf(Color(0x357A5CFF), Color.Transparent), upper, size.width * 0.78f),
+            Brush.radialGradient(listOf(Periwinkle.copy(alpha = 0.21f), Color.Transparent), upper, size.width * 0.78f),
             radius = size.width * 0.78f,
             center = upper,
         )
         val lower = Offset(size.width, size.height * 0.62f)
         drawCircle(
-            Brush.radialGradient(listOf(Color(0x245CCBFF), Color.Transparent), lower, size.width * 0.8f),
+            Brush.radialGradient(listOf(Cyan.copy(alpha = 0.14f), Color.Transparent), lower, size.width * 0.8f),
             radius = size.width * 0.8f,
             center = lower,
         )
@@ -932,7 +946,15 @@ private fun SleepBackgroundGlow() {
 }
 
 @Composable
-private fun SleepPremiumHeader(liveLine: String? = null, onMoonTap: (() -> Unit)? = null) {
+private fun SleepPremiumHeader(
+    liveLine: String? = null,
+    onMoonTap: (() -> Unit)? = null,
+    /** Sleep stopped being a tab in the five-tab pass, so it needs the same
+     * visible back door every other pushed screen has (SubPage's back well,
+     * same 48dp target and same treatment). Null keeps the old tab-root
+     * header for any caller that still hosts this as a root. */
+    onBack: (() -> Unit)? = null,
+) {
     val reduceMotion = rememberReduceMotion()
     val transition = rememberInfiniteTransition(label = "sleepMoon")
     val floatY by transition.animateFloat(-4f, 5f, infiniteRepeatable(tween(2600), RepeatMode.Reverse), label = "moonFloat")
@@ -941,6 +963,23 @@ private fun SleepPremiumHeader(liveLine: String? = null, onMoonTap: (() -> Unit)
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (onBack != null) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape)
+                    .background(VeilWell)
+                    .border(1.dp, LineStroke, CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBackIos,
+                    contentDescription = stringResource(R.string.common_back),
+                    tint = TextBright,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(stringResource(R.string.sleep_title), style = MaterialTheme.typography.displayLarge, color = TextPrimary)
             // Once there is a week of data the subtitle carries the fact —
@@ -963,7 +1002,7 @@ private fun SleepPremiumHeader(liveLine: String? = null, onMoonTap: (() -> Unit)
                 .size(72.dp)
                 .graphicsLayer { translationY = if (reduceMotion) 0f else floatY.dp.toPx() }
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color(0x557A5CFF), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(SleepHeroMoonGlow, Color.Transparent)))
                 .let { m ->
                     if (onMoonTap != null) {
                         m.clickable(onClick = onMoonTap)
@@ -972,7 +1011,7 @@ private fun SleepPremiumHeader(liveLine: String? = null, onMoonTap: (() -> Unit)
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Color(0xFFD7CCFF), modifier = Modifier.size(34.dp))
+            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = SleepHeroMoon, modifier = Modifier.size(34.dp))
         }
     }
 }
@@ -998,7 +1037,7 @@ private fun PremiumWindDownHero(
             // Respect the caller's height — the old 250dp floor silently grew
             // every hero and ate half a 720px viewport.
             .height(height)
-            .shadow(28.dp, shape, ambientColor = Color(0x447A5CFF), spotColor = Color(0x337A5CFF))
+            .shadow(28.dp, shape, ambientColor = Periwinkle.copy(alpha = 0.27f), spotColor = Periwinkle.copy(alpha = 0.2f))
             .clip(shape)
             // Owner call 2026-08-05: this hero follows the theme. The paint
             // comes from the SleepHero* roles in Color.kt — Night keeps the
@@ -1056,7 +1095,7 @@ private fun SleepGlassCard(
     Column(
         modifier
             .fillMaxWidth()
-            .shadow(18.dp, shape, ambientColor = Color(0x33000000), spotColor = Color(0x33000000))
+            .shadow(18.dp, shape, ambientColor = CardShadow.ambient, spotColor = CardShadow.spot)
             .clip(shape)
             .background(CardFill)
             .border(1.dp, LineStroke, shape)
@@ -1110,14 +1149,14 @@ private fun HealthConnectCard(onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.HealthAndSafety, contentDescription = null, tint = Color(0xFF5CCBFF), modifier = Modifier.size(26.dp))
+        Icon(Icons.Outlined.HealthAndSafety, contentDescription = null, tint = Cyan, modifier = Modifier.size(26.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             // Unclamped: the consent boundary is an owner decision — cutting it
             // mid-sentence ("nothing is saved until…") undermined it.
             Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
         }
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF5CCBFF))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Cyan)
     }
 }
 
@@ -1130,14 +1169,16 @@ private fun SleepGradientButton(text: String, enabled: Boolean = true, onClick: 
         Modifier
             .fillMaxWidth()
             .pressScale(pressed, down = 0.97f)
-            .shadow(if (enabled) 20.dp else 0.dp, shape, ambientColor = Color(0x447A5CFF), spotColor = Color(0x447A5CFF))
+            .shadow(if (enabled) 20.dp else 0.dp, shape, ambientColor = Periwinkle.copy(alpha = 0.27f), spotColor = Periwinkle.copy(alpha = 0.27f))
             .clip(shape)
-            .background(if (enabled) Brush.linearGradient(listOf(Color(0xFF7A5CFF), Color(0xFF9A6DFF))) else Brush.linearGradient(listOf(Color(0x334E5877), Color(0x334E5877))))
+            .background(if (enabled) Brush.linearGradient(listOf(Periwinkle, Accent2)) else Brush.linearGradient(listOf(ButtonDisabled, ButtonDisabled)))
             .clickable(enabled = enabled, interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.titleMedium, color = if (enabled) Color.White else Color(0xFF7D879E))
+        // Exactly PrimaryButton's pairing: the accent ink on the live pill,
+        // [Ink] on the disabled fill, in both themes.
+        Text(text, style = MaterialTheme.typography.titleMedium, color = if (enabled) OnPrimary else Ink)
     }
 }
 
@@ -1160,16 +1201,17 @@ private fun SleepNavCard(icon: ImageVector, title: String, subtitle: String, onC
     ) {
         Box(
             Modifier.size(50.dp).clip(RoundedCornerShape(18.dp))
-                .background(Brush.linearGradient(listOf(Color(0x557A5CFF), Color(0x335CCBFF)))),
+                .background(Brush.linearGradient(listOf(Periwinkle.copy(alpha = 0.33f), Cyan.copy(alpha = 0.2f)))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+            // A wash, not a fill: the glyph is body ink, not on-accent ink.
+            Icon(icon, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFFB18CFF))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Periwinkle)
     }
 }
 
