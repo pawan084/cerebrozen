@@ -1,0 +1,454 @@
+/* @cerebro-tokens:start */
+/* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
+:root {
+  color-scheme: light;
+
+  /* Grounds — one elevation ladder of honest soft-solids, no fake translucency. */
+  --surface: #f8f4ee;
+  --surface-raised: #fffcf8;
+  --surface-field: #f3ecf3;
+  --line: #dfd9d3;
+
+  /* Text roles — every one clears 4.5:1 on every ground it may land on. */
+  --text: #211d20;
+  --text-secondary: #514a50;
+  --text-faint: #686267;
+
+  /* Accent (plum) + its wash. */
+  --accent: #5a2b5c;
+  --accent-2: #8a4a78;
+  --accent-soft: #e9ddea;
+  --on-accent: #fffcf8;
+
+  /* Tonal roles, each with the wash it is legible on. */
+  --ok: #49634f;
+  --ok-soft: #e5ede3;
+  --warm: #a45161;
+  --warm-soft: #fae9ea;
+  --danger: #c23a33;
+  --danger-soft: #ffe9e6;
+  --amber: #92611d;
+  --amber-soft: #fff1d8;
+  --info: #315c7a;
+  --info-soft: #e7f0f5;
+
+  /* Filled controls. The primary action is an accent fill, not a pale pill —
+     a near-white pill is invisible on an ivory ground. */
+  --btn-primary-bg: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --btn-primary-ink: var(--on-accent);
+
+  --shadow: 0 12px 30px rgba(90, 43, 92, 0.09);
+  --shadow-lg: 0 24px 70px rgba(53, 25, 57, 0.16);
+  --focus-ring: 0 0 0 3px rgba(90, 43, 92, 0.24);
+
+  /* ---- Legacy aliases — existing call sites only, do not extend ---- */
+  --night: var(--surface);
+  --night-top: var(--surface-raised);
+  --card: var(--surface-raised);
+  --card-strong: var(--surface-field);
+  --soft: var(--text-secondary);
+  --muted: var(--text-faint);
+  --muted-2: var(--text-faint);
+  --lav: var(--accent);
+  --lav-2: var(--accent-2);
+  --cream: var(--surface-raised);
+  --ink: var(--text);
+  --ok-legacy: var(--ok);
+  --cyan: var(--info);
+}
+
+/* Night — the opt-in dark appearance, and the pinned theme for sleep and
+   wind-down surfaces. Values reconciled from landing.html's [data-theme="dark"]
+   and web.html's [data-theme="night"], which agree to within a few points. */
+:root[data-theme="night"] {
+  color-scheme: dark;
+
+  --surface: #171019;
+  --surface-raised: #241927;
+  --surface-field: #302237;
+  --line: #3e3043;
+
+  --text: #faf5fb;
+  --text-secondary: #ded4e0;
+  --text-faint: #b9abb9;
+
+  --accent: #d9acde;
+  --accent-2: #c580b5;
+  --accent-soft: #3a2a3e;
+  --on-accent: #241927;
+
+  --ok: #afd6b2;
+  --ok-soft: #1e2a20;
+  --warm: #f29ab0;
+  --warm-soft: #351e25;
+  --danger: #ff8c82;
+  --danger-soft: #3a211e;
+  --amber: #f0c37f;
+  --amber-soft: #453622;
+  --info: #9cc4dc;
+  --info-soft: #22323c;
+
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+}
+
+/* Follow the OS unless the user has chosen explicitly. Keep this block's values
+   identical to [data-theme="night"] above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dawn"]) {
+    color-scheme: dark;
+
+    --surface: #171019;
+    --surface-raised: #241927;
+    --surface-field: #302237;
+    --line: #3e3043;
+
+    --text: #faf5fb;
+    --text-secondary: #ded4e0;
+    --text-faint: #b9abb9;
+
+    --accent: #d9acde;
+    --accent-2: #c580b5;
+    --accent-soft: #3a2a3e;
+    --on-accent: #241927;
+
+    --ok: #afd6b2;
+    --ok-soft: #1e2a20;
+    --warm: #f29ab0;
+    --warm-soft: #351e25;
+    --danger: #ff8c82;
+    --danger-soft: #3a211e;
+    --amber: #f0c37f;
+    --amber-soft: #453622;
+    --info: #9cc4dc;
+    --info-soft: #22323c;
+
+    --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+    --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+  }
+}
+/* @cerebro-tokens:end */
+/* ------------------------------------------------------------------ *
+ * CereBro for Organisations — portal shell + primitives.
+ *
+ * Everything below reads the semantic role tokens in the synced block
+ * above. There are no raw colour literals here or in any page file, so
+ * the whole surface re-points when design/tokens.css changes and the
+ * Night appearance comes for free.
+ *
+ * Layout rhythm is the portal's own (not a brand token): a 284px
+ * sidebar, 44px minimum interactive height, one radius ladder.
+ * ------------------------------------------------------------------ */
+:root {
+  --sidebar-w: 284px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 28px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --tap: 44px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+/* Amber reads as "attention" on both the ivory and the night grounds, so
+   the focus ring stays visible when the accent itself is the background. */
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+/* ---------------------------------------------------------------- Shell */
+.app { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
+.sidebar {
+  position: sticky; top: 0; height: 100vh; z-index: 20;
+  background: var(--surface-raised); border-right: 1px solid var(--line);
+  padding: 22px 16px 18px; display: flex; flex-direction: column; overflow: auto;
+}
+.brand { display: flex; align-items: center; gap: var(--sp-3); padding: 2px 8px 20px; text-decoration: none; }
+.orb {
+  width: 44px; height: 44px; border-radius: 50%; position: relative; flex: 0 0 auto;
+  background: radial-gradient(circle at 38% 35%, var(--surface-raised), var(--accent-soft) 52%, var(--accent-2));
+  box-shadow: var(--shadow);
+}
+.orb::after {
+  content: ""; position: absolute; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent); left: 15px; top: 15px;
+}
+.brand strong { font-family: var(--font-serif), Georgia, serif; font-size: 23px; font-weight: 500; }
+.brand small { display: block; color: var(--text-faint); font-size: 11px; margin-top: 2px; }
+.review-pill {
+  margin: 0 8px 12px; padding: 8px 10px; border-radius: var(--r-sm);
+  background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 700;
+}
+.nav-section {
+  margin: 14px 10px 7px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--accent-2); font-weight: 800;
+}
+.nav-btn {
+  width: 100%; min-height: var(--tap); border: 0; background: transparent;
+  border-radius: 14px; padding: 10px 11px; display: flex; align-items: center;
+  gap: 10px; color: var(--text-secondary); font-weight: 600; text-align: left;
+  text-decoration: none; font-size: 13.5px; transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.nav-btn:hover { background: var(--surface-field); color: var(--accent); }
+.nav-btn.active { background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow); }
+.nav-ic {
+  width: 25px; height: 25px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-size: 13px; flex: 0 0 auto;
+}
+.nav-btn.active .nav-ic { background: var(--accent-2); color: var(--on-accent); }
+/* Pinned, permanent — the wall is part of the navigation, not a dismissible
+   banner. It sits below the last group at every viewport size. */
+.privacy-note {
+  margin-top: auto; background: var(--ok-soft); border-radius: var(--r-md);
+  padding: 14px; color: var(--ok); font-size: 11.5px; line-height: 1.5;
+}
+.privacy-note b { display: block; margin-bottom: 4px; }
+
+.main { min-width: 0; }
+.topbar {
+  min-height: 76px; background: var(--surface-raised); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; padding: 10px 28px; position: sticky; top: 0;
+  z-index: 15; gap: 14px;
+}
+.top-title { flex: 1; min-width: 0; }
+.top-title b {
+  font-family: var(--font-serif), Georgia, serif; font-size: 22px; font-weight: 500;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.top-title span { font-size: 11.5px; color: var(--text-secondary); }
+.top-actions { display: flex; align-items: center; gap: 9px; }
+.top-search {
+  width: min(340px, 30vw); min-height: var(--tap); border: 1px solid var(--line);
+  background: var(--surface); border-radius: 14px; padding: 0 14px;
+  display: flex; align-items: center; gap: 8px; color: var(--text-faint);
+}
+.top-search input { min-width: 0; flex: 1; border: 0; background: transparent; outline: 0; color: var(--text); }
+.top-search input::placeholder { color: var(--text-faint); }
+.icon-btn, .avatar {
+  width: var(--tap); height: var(--tap); border: 0; border-radius: 50%;
+  background: var(--accent-soft); display: grid; place-items: center;
+  color: var(--accent); font-weight: 700;
+}
+.avatar { background: var(--accent); color: var(--on-accent); }
+.notification-dot { position: relative; }
+.notification-dot.unread::after {
+  content: ""; position: absolute; right: 5px; top: 5px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--danger); border: 2px solid var(--surface-raised);
+}
+.mobile-menu { display: none; }
+.backdrop { display: none; }
+.content { padding: 30px clamp(18px, 3vw, 40px) 72px; max-width: 1600px; margin: auto; }
+
+/* ----------------------------------------------------------- Typography */
+h1 {
+  font-family: var(--font-serif), Georgia, serif; font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.08; margin: 0 0 10px; font-weight: 500; letter-spacing: -0.6px;
+}
+h2 { font-family: var(--font-serif), Georgia, serif; font-size: 23px; font-weight: 500; margin: 0; }
+h3 { font-size: 15px; margin: 0; }
+.lede { color: var(--text-secondary); font-size: 14px; line-height: 1.58; max-width: 820px; margin: 0 0 var(--sp-6); }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--warm); font-weight: 800; margin-bottom: var(--sp-2); }
+.tiny { font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; }
+.spacer { height: 18px; }
+
+/* --------------------------------------------------------------- Blocks */
+.hero {
+  background: linear-gradient(135deg, var(--warm-soft), var(--accent-soft));
+  border-radius: var(--r-xl); padding: clamp(22px, 3vw, 34px);
+  box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.hero .lede { color: var(--text-secondary); }
+/* --warm falls to 4.3:1 across the hero's warm-soft → accent-soft gradient,
+   just under the 4.5:1 gate the tokens are held to elsewhere. On a tinted
+   ground the eyebrow switches to --accent, which clears 7:1 in both
+   appearances. Same reason on the member-preview phone hero. */
+.hero .eyebrow, .phone-hero .eyebrow { color: var(--accent); }
+.grid { display: grid; gap: 18px; }
+.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-5); box-shadow: var(--shadow); }
+.card.tint { background: var(--accent-soft); box-shadow: none; border-color: transparent; }
+.card.success { background: var(--ok-soft); box-shadow: none; border-color: transparent; }
+.card.warning { background: var(--amber-soft); box-shadow: none; border-color: transparent; }
+.card.danger { background: var(--danger-soft); box-shadow: none; border-color: transparent; }
+.metric strong { font-family: var(--font-serif), Georgia, serif; font-size: 34px; font-weight: 500; color: var(--accent); display: block; }
+.metric small { display: block; color: var(--text-secondary); margin-top: 3px; font-size: 12.5px; }
+.delta { display: inline-block; margin-top: 9px; border-radius: 99px; padding: 5px 9px; background: var(--ok-soft); color: var(--ok); font-size: 11px; font-weight: 700; }
+.delta.warn { background: var(--amber-soft); color: var(--amber); }
+
+.row { display: flex; align-items: center; gap: var(--sp-3); }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.grow { flex: 1; min-width: 0; }
+.badge { display: inline-flex; align-items: center; border-radius: 99px; padding: 6px 9px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; }
+.badge.good { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--amber-soft); color: var(--amber); }
+.badge.danger { background: var(--danger-soft); color: var(--danger); }
+.badge.info { background: var(--info-soft); color: var(--info); }
+/* Same reason as the notice above: a badge whose wash matches its card loses
+   its pill. Only the matching pairs are lifted, so the tonal coding stands. */
+.card.tint .badge, .card.success .badge.good,
+.card.warning .badge.warn, .card.danger .badge.danger { background: var(--surface-raised); }
+
+.btn {
+  min-height: var(--tap); border: 0; border-radius: 999px; padding: 10px 18px;
+  background: var(--btn-primary-bg); color: var(--btn-primary-ink); font-weight: 700;
+  font-size: 13px; box-shadow: var(--shadow); text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform 0.2s var(--ease);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn.secondary { background: var(--surface-raised); color: var(--accent); border: 1px solid var(--line); box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--accent); box-shadow: none; }
+/* Smaller type, same 44px target — a compact button is still a button. */
+.btn.small { min-height: var(--tap); padding: 8px 13px; font-size: 12px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; align-items: center; }
+.filter {
+  min-height: var(--tap); border: 1px solid var(--line); background: var(--surface-raised);
+  border-radius: 99px; padding: 8px 14px; color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center;
+}
+.filter.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+.table-wrap { position: relative; overflow: auto; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; min-width: 820px; }
+caption { text-align: left; padding: var(--sp-4); font-weight: 700; color: var(--accent); }
+th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); background: var(--surface-field); }
+tr:last-child td { border-bottom: 0; }
+.row-link { min-height: var(--tap); border: 0; background: transparent; color: var(--accent); font-weight: 700; padding: 8px 4px; border-radius: 10px; display: inline-flex; align-items: center; text-decoration: none; }
+
+.progress { height: 8px; border-radius: 99px; background: var(--accent-soft); overflow: hidden; }
+.progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--warm)); width: var(--value); }
+.chart { height: 190px; display: flex; gap: 12px; align-items: flex-end; padding-top: 22px; }
+.bar { flex: 1; min-width: 18px; height: var(--h); border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--accent-2), var(--accent)); position: relative; }
+.bar::after {
+  content: attr(data-label); position: absolute; bottom: -22px; left: 50%;
+  transform: translateX(-50%); font-size: 11px; color: var(--text-secondary);
+}
+
+.notice { display: flex; gap: 11px; padding: 15px 16px; border-radius: var(--r-md); background: var(--ok-soft); color: var(--ok); font-size: 12px; line-height: 1.5; }
+.notice.warn { background: var(--amber-soft); color: var(--amber); }
+.notice.danger { background: var(--danger-soft); color: var(--danger); }
+.notice.info { background: var(--info-soft); color: var(--info); }
+/* A notice inside a tinted card would otherwise be the same wash as the card
+   and vanish. Lift it onto the raised ground so it still reads as a block. */
+.card.tint .notice, .card.success .notice,
+.card.warning .notice, .card.danger .notice { background: var(--surface-raised); }
+.list { display: grid; gap: var(--sp-2); }
+.list-item { display: flex; align-items: center; gap: var(--sp-3); padding: 13px 0; border-bottom: 1px solid var(--line); }
+.list-item:last-child { border-bottom: 0; }
+.item-ic { width: 40px; height: 40px; border-radius: 50%; background: var(--warm-soft); display: grid; place-items: center; color: var(--warm); font-weight: 700; flex: 0 0 auto; }
+.item-ic.sage { background: var(--ok-soft); color: var(--ok); }
+.item-ic.info { background: var(--info-soft); color: var(--info); }
+.item-ic.danger { background: var(--danger-soft); color: var(--danger); }
+
+/* -------------------------------------------------------------- Controls */
+.switch { width: 52px; height: var(--tap); border: 0; border-radius: 99px; background: transparent; position: relative; flex: 0 0 auto; }
+.switch::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 28px;
+  border-radius: 99px; background: var(--text-faint); transition: background 0.2s var(--ease);
+}
+.switch::after {
+  content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-raised); left: 3px; top: 11px;
+  transition: left 0.2s var(--ease); box-shadow: var(--shadow);
+}
+.switch.on::before { background: var(--accent); }
+.switch.on::after { left: 27px; }
+.field, .select, .textarea {
+  width: 100%; min-height: var(--tap); border: 1px solid var(--line);
+  background: var(--surface-raised); border-radius: 15px; padding: 11px 13px;
+  outline: none; color: var(--text);
+}
+.textarea { min-height: 110px; resize: vertical; }
+.field:focus, .select:focus, .textarea:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.label { font-size: 11px; color: var(--text-secondary); font-weight: 700; display: block; margin-bottom: 6px; }
+.help { font-size: 11px; color: var(--text-secondary); margin-top: 5px; }
+.check { display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; color: var(--text-secondary); min-height: var(--tap); padding: 11px 0; }
+.check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--accent); }
+
+/* ------------------------------------------------- PRE-01 member preview */
+.preview-shell { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: var(--sp-6); align-items: start; }
+.phone {
+  width: 100%; max-width: 360px; min-height: 640px; border-radius: 38px;
+  background: var(--surface); padding: 18px; box-shadow: var(--shadow-lg);
+  border: 8px solid var(--accent); margin: auto;
+}
+.phone-bar { height: 18px; display: flex; justify-content: space-between; font-size: 9px; color: var(--text-secondary); }
+.phone-hero { background: linear-gradient(135deg, var(--warm-soft), var(--accent-soft)); border-radius: var(--r-lg); padding: 18px; margin-top: 10px; }
+.phone-card { border-radius: 22px; background: var(--surface-raised); padding: 15px; margin-top: 12px; border: 1px solid var(--line); }
+.phone-nav {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 18px;
+  background: var(--surface-raised); padding: 9px 7px; border-radius: 999px;
+  font-size: 9px; text-align: center; color: var(--text-secondary); border: 1px solid var(--line);
+}
+
+/* ------------------------------------------------------------ Responsive */
+@media (max-width: 1180px) {
+  .cols-4, .cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top-search { display: none; }
+  .preview-shell { grid-template-columns: 1fr; }
+}
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; }
+  /* Off-canvas drawer. The privacy wall travels with it and is still the
+     last thing in the panel, so it survives the smallest viewport. */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; width: var(--sidebar-w);
+    height: 100dvh; transform: translateX(-105%); transition: transform 0.25s var(--ease);
+    box-shadow: var(--shadow-lg);
+  }
+  .app.menu .sidebar { transform: none; }
+  .mobile-menu { display: grid; }
+  .backdrop {
+    display: block; position: fixed; inset: 0; z-index: 35; border: 0; width: 100%;
+    background: var(--text); opacity: 0.4;
+  }
+  .topbar { padding: 10px 14px; }
+  .content { padding: 22px 16px 55px; }
+  .cols-4, .cols-3, .cols-2, .form-grid { grid-template-columns: 1fr; }
+  .top-title b { font-size: 19px; }
+  .org-switch { display: none; }
+  .preview-shell { display: block; }
+  .phone { margin-top: 22px; }
+}
+@media (max-width: 520px) {
+  .card { border-radius: 20px; padding: 17px; }
+  .toolbar .btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:hover { transform: none; }
+}
