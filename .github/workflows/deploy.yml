@@ -9,7 +9,7 @@ name: Deploy (prod)
 #   DEPLOY_USER     e.g. deploy
 #   DEPLOY_SSH_KEY  a private key whose public half is in the server's authorized_keys
 # Optional repo variable:
-#   DEPLOY_PATH     path to the checkout on the server (default: ~/cerebrozen)
+#   DEPLOY_PATH     path to the checkout on the server (default: /opt/cerebrozen)
 on:
   workflow_dispatch:
 
@@ -30,16 +30,24 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd ${{ vars.DEPLOY_PATH || '~/cerebrozen' }}
-            git fetch --all --prune
-            git reset --hard origin/main
-            docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --build
-            docker image prune -f
+            cd ${{ vars.DEPLOY_PATH || '/opt/cerebrozen' }}
+            test -z "$(git status --porcelain)" || { echo "Deployment checkout has local changes; refusing to overwrite them."; exit 1; }
+            git fetch origin main
+            git merge --ff-only origin/main
+            stamp=$(date -u +%Y%m%dT%H%M%SZ)
+            install -d -m 700 backups
+            cp --preserve=mode,timestamps backend/.env.production "backups/env.production.${stamp}"
+            docker compose -f docker-compose.prod.yml --env-file backend/.env.production exec -T db \
+              sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "backups/postgres.${stamp}.dump"
+            docker compose -f docker-compose.prod.yml --env-file backend/.env.production build
+            docker compose -f docker-compose.prod.yml --env-file backend/.env.production \
+              --profile tools run --rm migrate
+            docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --no-build
 
       - name: Health check
         run: |
           for i in $(seq 1 10); do
-            if curl -fsS https://api.cerebrozen.in/health | grep -q '"status":"ok"'; then
+            if curl -fsS https://api.cerebrozen.in/ready | grep -q '"status":"ready"'; then
               echo "API healthy ✓"; exit 0
             fi
             echo "waiting for API… ($i/10)"; sleep 6

@@ -25,21 +25,44 @@ services:
   api:
     build: ./backend
     env_file: ./backend/.env.production
+    environment:
+      # Safe here because port 8000 is reachable only on the private Compose
+      # network; Caddy is the sole upstream and supplies Forwarded/X-Forwarded-*.
+      FORWARDED_ALLOW_IPS: "*"
     # gunicorn reads the worker count from WEB_CONCURRENCY (set in .env.production).
     command: >-
-      sh -c "python -m app.prestart &&
       gunicorn app.main:app -k uvicorn.workers.UvicornWorker
-      --bind 0.0.0.0:8000 --access-logfile - --error-logfile -"
+      --bind 0.0.0.0:8000 --access-logfile - --error-logfile -
     depends_on:
       db:
         condition: service_healthy
     # No host port: reached only over the internal network by Caddy (api:8000).
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
     volumes:
       # Generated narration MP3s must survive redeploys (served at /media).
       - media:/app/media
     restart: unless-stopped
+
+  # Controlled one-shot migration/seed step. Run explicitly before replacing
+  # API containers: docker compose -f docker-compose.prod.yml run --rm migrate
+  migrate:
+    build: ./backend
+    env_file: ./backend/.env.production
+    command: python -m app.prestart
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    restart: "no"
+    profiles: ["tools"]
 
   web:
     build:
@@ -52,7 +75,8 @@ services:
     expose:
       - "3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   admin:
@@ -63,7 +87,8 @@ services:
     expose:
       - "3001"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   app:
@@ -74,7 +99,8 @@ services:
     expose:
       - "3002"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   # TLS-terminating reverse proxy. Auto-provisions Let's Encrypt certs for the
