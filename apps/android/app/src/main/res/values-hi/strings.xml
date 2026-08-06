@@ -570,6 +570,8 @@
     <string name="companion_eyebrow">CereBro आपसे कैसे बात करता है</string>
     <string name="companion_title">साथी की शैली</string>
     <string name="companion_intro">वही अपनापन, अलग अंदाज़। कभी भी बदलें — अगले संदेश से बातचीत ढल जाती है।</string>
+    <string name="onboarding_step_counter">%2$d में से %1$d</string>
+    <string name="onboarding_urgent_cd">तुरंत सहायता</string>
     <string name="inbox_eyebrow">CereBro ने आपको क्या भेजा है</string>
     <string name="inbox_title">सूचनाएँ</string>
     <string name="inbox_group_scheduled">निर्धारित</string>

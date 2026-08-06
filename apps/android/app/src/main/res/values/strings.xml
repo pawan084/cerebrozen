@@ -853,6 +853,8 @@
     <string name="companion_eyebrow">How CereBro talks with you</string>
     <string name="companion_title">Companion style</string>
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
+    <string name="onboarding_step_counter">%1$d of %2$d</string>
+    <string name="onboarding_urgent_cd">Urgent support</string>
     <string name="inbox_eyebrow">What CereBro has sent you</string>
     <string name="inbox_title">Notifications</string>
     <string name="inbox_group_scheduled">Scheduled</string>

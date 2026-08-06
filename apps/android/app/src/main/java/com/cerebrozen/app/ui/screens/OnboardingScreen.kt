@@ -48,7 +48,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.cerebrozen.app.ui.theme.CardFill
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Person
@@ -149,6 +154,34 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 internal enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
+
+/** Total funnel steps, as the app bar counts them ("3 of 10"). The prototype's
+ * ONB-xx numbering is the contract; [funnelStepIndex] maps this client's steps
+ * onto it, so a step this app has not built yet leaves a gap in the count
+ * rather than renumbering the ones around it. */
+internal const val ONBOARDING_STEPS = 10
+
+/**
+ * Which of the prototype's ten onboarding steps this one is (1-based).
+ *
+ * Deliberately NOT `OStep.ordinal + 1`. The ref/mobile.html numbering is a
+ * fixed contract shared with iOS and `apps/app` — ONB-01 is the language pick,
+ * ONB-04 is the first check-in — and this client does not yet ship ONB-06
+ * (post-reset reflection) or ONB-10 (the ready screen). Deriving from the enum
+ * would silently renumber every later step the day one of those lands, and the
+ * user-visible "N of 10" would disagree with the spec, the other clients and
+ * the analytics funnel all at once.
+ */
+internal fun funnelStepIndex(step: OStep): Int = when (step) {
+    OStep.Welcome -> 0        // SPL-01: the launch screen, outside the count
+    OStep.Language -> 1       // ONB-01
+    OStep.Disclosure -> 3     // ONB-03
+    OStep.State -> 4          // ONB-04
+    OStep.Reset -> 5          // ONB-05
+    OStep.Consent -> 7        // ONB-07
+    OStep.Notify -> 8         // ONB-08
+    OStep.SignUp -> 9         // ONB-09
+}
 
 /** How far along the funnel a step sits. Keyed off the step itself — never off
  * the eyebrow copy, which is translated (a Hindi device used to fall through to
@@ -686,10 +719,19 @@ private fun Funnel(
     primaryEnabled: Boolean = true,
     titleCentered: Boolean = false,
     compactTitle: Boolean = false,
+    /** The app-bar title, which is NOT the h1. The prototype names the step in
+     * the bar ("Choose language") and asks the question in the heading ("Choose
+     * what feels natural."); collapsing them loses the step's name the moment
+     * the heading is a sentence. Defaults to the eyebrow for steps not yet
+     * given their own bar copy. */
+    barTitle: String = eyebrow,
+    /** Opens crisis support. Null only where the prototype also omits it. */
+    onUrgent: (() -> Unit)? = null,
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val progress = funnelProgress(step)
+    val stepIndex = funnelStepIndex(step)
     Box(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)))
@@ -697,18 +739,39 @@ private fun Funnel(
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    top = 32.dp,
-                    bottom = if (secondary == null) 145.dp else 210.dp,
-                ),
+                .padding(bottom = if (secondary == null) 145.dp else 210.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
+            // ── App bar (ONB-xx chrome) ─────────────────────────────────────
+            // Back · title + "N of 10" · urgent support. The funnel used to open
+            // straight onto its eyebrow with no bar at all: there was no way out
+            // but the system back gesture, nothing said how long this was going
+            // to take, and — the part that matters — crisis support was the one
+            // door onboarding did not have. The prototype puts it on every step
+            // except the two where it would be the only thing on screen.
+            OnboardingAppBar(
+                title = barTitle,
+                stepIndex = stepIndex,
+                onBack = onBack,
+                onUrgent = onUrgent,
+            )
+            // ── Stepper ─────────────────────────────────────────────────────
+            // Ten discrete segments rather than one sliding bar. A continuous
+            // fill answers "how far along am I" with a vague fraction; the
+            // prototype answers it with a countable number of steps, which is
+            // the honest version when the total is fixed and small.
+            OnboardingStepper(stepIndex)
+            Column(
+                Modifier.padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(15.dp),
+            ) {
             Text(
                 eyebrow.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 1.8.sp),
-                color = EyebrowMuted,
+                // Rose, not the quiet grey: in Light Dawn the eyebrow is the one
+                // warm accent above the title, and EyebrowMuted made every
+                // onboarding step open on two greys stacked.
+                color = Warm,
             )
             Text(
                 title,
@@ -730,32 +793,16 @@ private fun Funnel(
             )
             Spacer(Modifier.height(6.dp))
             content()
+            }
         }
 
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp, vertical = 23.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // W10: the fill glides from the previous step's fraction to this one
-            // instead of jumping. Each step is a fresh composition inside
-            // AnimatedContent, so the bar seeds from a small cross-step memory and
-            // then animates to its own fraction. Reduce Motion keeps the honest
-            // instant snap.
-            val reduceMotion = rememberReduceMotion()
-            var barTarget by remember { mutableStateOf(FunnelProgressMemory.last) }
-            LaunchedEffect(progress) {
-                barTarget = progress
-                FunnelProgressMemory.last = progress
-            }
-            val animatedProgress by animateFloatAsState(
-                targetValue = barTarget,
-                animationSpec = if (reduceMotion) snap() else tween(350),
-                label = "funnel-progress",
-            )
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(ProgressTrack)) {
-                Box(Modifier.fillMaxWidth(animatedProgress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Periwinkle))
-            }
-            Spacer(Modifier.height(18.dp))
+            // The sliding progress bar moved to the top as a ten-segment stepper
+            // (OnboardingStepper). Keeping both would have stated the same fact
+            // twice, in two different visual languages, on every step.
             Row(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(29.dp))
                     .background(if (primaryEnabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
@@ -763,14 +810,117 @@ private fun Funnel(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.CheckCircle, null, tint = PrimaryButtonInk, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(11.dp))
+                // No leading tick: the prototype's CTA is the label alone, and a
+                // check mark on "Continue" claimed something was already done.
                 Text(primaryLabel, style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
             }
             if (secondary != null) {
                 Spacer(Modifier.height(12.dp))
                 secondary.invoke()
             }
+        }
+    }
+}
+
+/**
+ * The onboarding app bar: back · step name + "N of 10" · urgent support.
+ *
+ * The urgent-support button is the reason this exists at all. Onboarding is the
+ * one stretch of the app where someone has told us nothing yet, and it was also
+ * the one stretch with no door to crisis resources — a user who arrived in a bad
+ * state had to complete or abandon a ten-step funnel to reach the thing they
+ * needed. It is drawn in the danger tone and sized like every other tap target.
+ */
+@Composable
+private fun OnboardingAppBar(
+    title: String,
+    stepIndex: Int,
+    onBack: (() -> Unit)?,
+    onUrgent: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .background(CardFill)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            val backCd = stringResource(R.string.common_back)
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(ChipFill)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onBack() }
+                    .semantics { contentDescription = backCd },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = null,
+                    tint = Periwinkle,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        } else {
+            Spacer(Modifier.size(44.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // Step 0 is the launch screen, which is outside the count and must
+            // not render "0 of 10".
+            if (stepIndex > 0) Text(
+                stringResource(R.string.onboarding_step_counter, stepIndex, ONBOARDING_STEPS),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                maxLines = 1,
+            )
+        }
+        if (onUrgent != null) {
+            val urgentCd = stringResource(R.string.onboarding_urgent_cd)
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(Danger.copy(alpha = 0.14f))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onUrgent() }
+                    .semantics { contentDescription = urgentCd },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.WarningAmber,
+                    contentDescription = null,
+                    tint = Danger,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Ten segments, the completed ones filled.
+ *
+ * `aria-label`-equivalent lives on the row rather than each segment: a screen
+ * reader announcing ten unlabelled bars is noise, while "step 3 of 10" is the
+ * whole message.
+ */
+@Composable
+private fun OnboardingStepper(stepIndex: Int) {
+    if (stepIndex <= 0) return
+    val label = stringResource(R.string.onboarding_step_counter, stepIndex, ONBOARDING_STEPS)
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        repeat(ONBOARDING_STEPS) { i ->
+            Box(
+                Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp))
+                    .background(if (i < stepIndex) Periwinkle else ProgressTrack),
+            )
         }
     }
 }
