@@ -59,7 +59,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         // Same backend as iOS/web. Debug talks to the dev machine via the
         // emulator's host loopback (cleartext allowed only in the debug
@@ -70,6 +70,26 @@ android {
             "GOOGLE_WEB_CLIENT_ID",
             quoted(googleWebClientId),
         )
+    }
+
+    // Play upload signing. Every value comes from the same secret() chain as the
+    // API keys (-P / local.properties / env) — the keystore and its passwords are
+    // git-ignored and never reach the repo. The config is only CREATED when a
+    // readable keystore is configured, so a checkout without the upload key still
+    // builds green and simply produces the unsigned artifact it produces today
+    // (the "degrades without keys" rule, applied to signing).
+    val releaseKeystore = secret("KEYSTORE_FILE")
+    val hasReleaseKeystore = releaseKeystore.isNotBlank() && file(releaseKeystore).isFile
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = secret("KEYSTORE_PASSWORD")
+                keyAlias = secret("KEY_ALIAS")
+                keyPassword = secret("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -83,6 +103,10 @@ android {
             buildConfigField("String", "API_BASE_URL", quoted(apiBaseUrl))
         }
         release {
+            // Null when no upload keystore is configured — Gradle then leaves the
+            // artifact unsigned rather than failing, which is what every CI run
+            // and every contributor without the key needs.
+            signingConfig = signingConfigs.findByName("release")
             // R8 + resource shrinking. App code is reflection-free (org.json
             // parsing, Intent-only class refs) and every AAR ships consumer
             // keep rules — emulator-smoked on a debug-signed release build.

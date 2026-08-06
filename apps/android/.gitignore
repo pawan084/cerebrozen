@@ -9,7 +9,10 @@ captures/
 .cxx/
 *.apk
 *.aab
+# Upload signing key. Losing it means the app can never be updated on Play;
+# committing it means anyone can ship as us. Both extensions keytool emits.
 *.keystore
+*.jks
 .kotlin/
 # Firebase / Google config — contains API keys, never commit.
 google-services.json
