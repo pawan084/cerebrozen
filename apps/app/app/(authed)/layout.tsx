@@ -7,21 +7,30 @@ import { hasSession, signOut } from "@/lib/api";
 import { currentPath } from "@/lib/nextPath";
 import { BrandMark, Icon } from "@/components/icons";
 
+// Nav restructured to the spec's IA (ref/, ruling recorded in REDESIGN_V2.md §6).
+// The headline change: Sleep is no longer a primary destination — it moved under
+// Explore, which takes its slot. "Home" is "Today" everywhere now.
+//
+// The desktop sidebar is NOT just the five tabs: web.html groups it
+// Workspace / Library / Account, which is what these three arrays are.
 const MENU = [
-  { href: "/home", label: "Home", icon: Icon.home },
+  { href: "/home", label: "Today", icon: Icon.home },
+  { href: "/explore", label: "Explore", icon: Icon.search },
   { href: "/chat", label: "Talk", icon: Icon.talk },
-  { href: "/sleep", label: "Sleep", icon: Icon.sleep },
   { href: "/journal", label: "Journal", icon: Icon.journal },
-  { href: "/insights", label: "Insights", icon: Icon.insights },
+  { href: "/plan", label: "Plan", icon: Icon.plan },
 ];
 const EXPLORE = [
-  { href: "/plan", label: "Plan", icon: Icon.plan },
-  { href: "/goals", label: "Goals & habits", icon: Icon.spark },
-  { href: "/programs", label: "Programs", icon: Icon.spark },
-  { href: "/library", label: "Library", icon: Icon.library },
+  // Sleep leads the library group: demoting it from the tab bar is the ruling,
+  // burying it is not. It is still the heaviest thing in the product.
+  { href: "/sleep", label: "Sleep", icon: Icon.sleep },
+  { href: "/programs", label: "Programmes", icon: Icon.spark },
+  { href: "/library", label: "Catalogue", icon: Icon.library },
   // "Toolkit", not "Games": the hub is Ground/Breathe/Reframe/Settle, and the
   // four mini-games REDESIGN §2.2 removed are exactly what the old name promised.
   { href: "/games", label: "Toolkit", icon: Icon.games },
+  { href: "/insights", label: "Insights", icon: Icon.insights },
+  { href: "/goals", label: "Goals & habits", icon: Icon.spark },
   // A plan is written when things are steady, so it belongs in the calm part of
   // the nav — not filed under crisis, where nobody browses.
   { href: "/safety-plan", label: "Safety plan", icon: Icon.support },
@@ -30,14 +39,16 @@ const EXPLORE = [
   // styled `.support-door` below the nav rather than a row here — two entries
   // both labelled "Support" is what merging the two designs first produced.
 ];
-// The mobile bottom bar keeps the primary spaces (mirrors iOS) plus the Support
-// door — crisis has to stay one tap away on a phone too (design system §1).
+// The mobile bottom bar IS the spec's five tabs, exactly:
+// Today · Explore · Talk · Journal · You.
+// Support left this bar and became a permanent app-bar entry in AppHeader —
+// the spec keeps urgent support outside the tab set, and it had to land there
+// first so crisis never stopped being ≤2 taps on a phone (design system §1).
 const MOBILE = [
-  { href: "/home", label: "Home", icon: Icon.home },
+  { href: "/home", label: "Today", icon: Icon.home },
+  { href: "/explore", label: "Explore", icon: Icon.search },
   { href: "/chat", label: "Talk", icon: Icon.talk },
-  { href: "/sleep", label: "Sleep", icon: Icon.sleep },
   { href: "/journal", label: "Journal", icon: Icon.journal },
-  { href: "/support", label: "Support", icon: Icon.support },
   { href: "/account", label: "You", icon: Icon.account },
 ];
 
@@ -96,9 +107,9 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       <aside className="sidebar" aria-label="Primary">
         <Link href="/home" className="sidebar-brand"><BrandMark size={30} /> <span>CereBro</span></Link>
 
-        <div className="nav-group-label">Menu</div>
+        <div className="nav-group-label">Workspace</div>
         <nav className="nav-group">{MENU.map(NavLink)}</nav>
-        <div className="nav-group-label">Explore</div>
+        <div className="nav-group-label">Library</div>
         <nav className="nav-group">{EXPLORE.map(NavLink)}</nav>
 
         {/* A calm, always-there door — crisis stays ≤2 taps from every screen. */}

@@ -77,7 +77,7 @@ export default function Toolkit() {
           }}
         >
           <p className="eyebrow">Breathe</p>
-          <h2>Box breathing</h2>
+          <h2 id="breathe">Box breathing</h2>
           <p>
             Four slow counts in, hold, out, hold — a simple way to steady a racing nervous
             system. Follow the orb for a few rounds.
@@ -89,19 +89,19 @@ export default function Toolkit() {
           <WhyThisWorks text="Paced breathing is used in clinical distress-tolerance and relaxation protocols. Slowing the breath activates the body's calming response." />
         </section>
 
-        <div className="sec-head"><h2 className="serif-h">Ground</h2></div>
+        <div className="sec-head" id="ground"><h2 className="serif-h">Ground</h2></div>
         <section className="card">
           <SensorySteps />
           <WhyThisWorks text="Sensory grounding redirects attention from spiralling thoughts to the here-and-now — a widely taught anxiety-management skill." />
         </section>
 
-        <div className="sec-head"><h2 className="serif-h">Reframe</h2></div>
+        <div className="sec-head" id="reframe"><h2 className="serif-h">Reframe</h2></div>
         <section className="card">
           <ThoughtSort />
           <WhyThisWorks text="Learning to spot named thinking traps — all-or-nothing, catastrophising, 'should' statements — is the first step of cognitive restructuring, the core skill in CBT (Beck, Cognitive Therapy and the Emotional Disorders)." />
         </section>
 
-        <div className="sec-head"><h2 className="serif-h">Settle</h2></div>
+        <div className="sec-head" id="settle"><h2 className="serif-h">Settle</h2></div>
         <section className="card">
           <h3 style={{ margin: "0 0 4px" }}>A place you can go</h3>
           <p className="sub">
