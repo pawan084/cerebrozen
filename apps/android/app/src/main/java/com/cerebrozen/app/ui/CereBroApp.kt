@@ -92,6 +92,7 @@ import com.cerebrozen.app.ui.screens.CbtReframeScreen
 import com.cerebrozen.app.ui.screens.IntentionScreen
 import com.cerebrozen.app.ui.screens.OneGoodThingScreen
 import com.cerebrozen.app.ui.screens.CompanionStyleScreen
+import com.cerebrozen.app.ui.screens.LanguageScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
@@ -709,6 +710,7 @@ fun CereBroApp() {
             composable("intention") { IntentionScreen(onBack = back) }
             composable("crisis") { CrisisScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
+            composable("language") { LanguageScreen(onBack = back) }
             composable("appearance") { AppearanceScreen(onBack = back) }
             composable("reminders") { RemindersScreen(onBack = back) }
             composable("privacy") { PrivacyScreen(onBack = back) }

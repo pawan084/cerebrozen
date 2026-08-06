@@ -205,7 +205,10 @@ internal val STATE_OPTIONS = listOf(
 /** A pickable chip: a stable [id] the code branches on, plus localizable copy. */
 internal data class PickOption(val id: String, @androidx.annotation.StringRes val labelRes: Int)
 
-private val LANGUAGES = listOf(
+/** The app-language options. `internal` because You → Language re-offers exactly
+ * this list: onboarding asked once and nothing could change the answer afterwards,
+ * and a second hand-kept copy would have drifted from the wire values. */
+internal val LANGUAGES = listOf(
     PickOption("English", R.string.ob_lang_english),
     PickOption("Hindi", R.string.ob_lang_hindi),
     PickOption("Hinglish", R.string.ob_lang_hinglish),

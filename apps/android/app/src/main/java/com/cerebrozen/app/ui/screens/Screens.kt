@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Icon
@@ -208,6 +209,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 companionLabelRes(comp)?.let { stringResource(it) } ?: comp
             }),
             icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
+        // Onboarding asked for a language and nothing could change the answer:
+        // the profile card above SHOWED it ("Calm Guide · Hindi") but opened the
+        // companion picker, so a mistyped first run was permanent.
+        PremiumNavRow(stringResource(R.string.you_language_title),
+            stringResource(R.string.you_language_subtitle, run {
+                val lang = language.ifBlank { "English" }
+                languageLabelRes(lang)?.let { stringResource(it) } ?: lang
+            }),
+            icon = Icons.Outlined.Translate) { onOpen("language") }
         // Rows carry their current value — a settings row that hides its state
         // makes every check a round-trip.
         PremiumNavRow(

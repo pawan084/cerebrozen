@@ -211,6 +211,72 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
     }
 }
 
+/**
+ * You → Language: the language CereBro *writes back in*.
+ *
+ * Onboarding asked this once and nothing could change it afterwards — the You
+ * profile row rendered the saved value ("Calm Guide · Hindi") but opened the
+ * companion picker, so a wrong tap on the first run was permanent.
+ *
+ * What it actually controls is the backend's reply directive
+ * (`services/language.py`): chat replies, the agentic plan, Oracle and starter
+ * topics. It does NOT re-translate the app's own chrome — that follows the
+ * device locale (`values-hi/`) — and it does not translate helpline names or
+ * numbers, which `services/crisis.py` returns verbatim by design. The intro copy
+ * says exactly that rather than implying a full app translation.
+ */
+@Composable
+fun LanguageScreen(onBack: () -> Unit) {
+    // null = not yet known, the same honesty rule the companion and region
+    // pickers follow: a failed read must select nothing rather than render
+    // "English" as a confident answer the screen never actually learned.
+    var current by remember { mutableStateOf<String?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(reloadKey) {
+        loadFailed = false
+        runCatching { Api.me().optString("language") }
+            .onSuccess { current = it }
+            .onFailure { loadFailed = true }
+    }
+    PremiumSubPage(stringResource(R.string.language_eyebrow), stringResource(R.string.language_title), onBack) {
+        Text(stringResource(R.string.language_intro),
+            style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        if (loadFailed) {
+            Text(stringResource(R.string.crisisregion_load_failed),
+                style = MaterialTheme.typography.bodySmall, color = Danger)
+            TextButton(onClick = { reloadKey++ }) {
+                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            }
+        }
+        LANGUAGES.forEach { option ->
+            SelectableRow(
+                stringResource(option.labelRes), "",
+                selected = current == option.id,
+            ) {
+                val prev = current
+                current = option.id
+                scope.launch {
+                    // The wire value stays the English string (cross-stack
+                    // contract with iOS/web); only the label localizes.
+                    runCatching { Api.updateProfile(JSONObject().put("language", option.id)) }
+                        .onFailure { current = prev }   // never show a choice the server refused
+                }
+            }
+        }
+        // The field is free text server-side (services/language.py passes an
+        // unknown value straight to the model), so a profile set from another
+        // client can hold something this list does not offer. Show it as its own
+        // selected row instead of leaving the screen looking unanswered.
+        current?.takeIf { it.isNotBlank() && LANGUAGES.none { opt -> opt.id == it } }?.let { custom ->
+            SelectableRow(custom, stringResource(R.string.language_custom_hint), selected = true) {}
+        }
+        Text(stringResource(R.string.language_crisis_note),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted2)
+    }
+}
+
 /** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
  * The choice persists as `theme_mode` and applies to every app screen. */
 @Composable

@@ -86,6 +86,32 @@ everything below is open.
       already did that work. `ContrastTest.kt` 19 → 22 tests; `ThemeTokensTest.kt` 11 → 13.
       `res/values/colors.xml` now holds the Dawn ground with the plum floor in a new
       `values-night/` (a light-theme device used to flash deep indigo on every cold launch)
+- [x] **YOU-05 Android language picker** (`LanguageScreen` in `ui/screens/Settings.kt`,
+      route `language`, You → Personalise row). Onboarding asked for a language and
+      *nothing could change the answer*: the You profile card rendered the saved value
+      ("Calm Guide · Hindi") but its tap target opened the companion picker, so a wrong
+      tap on the first run was permanent. Follows the `CompanionStyleScreen` null-state
+      rule (a failed read selects nothing rather than showing "English" as an answer the
+      screen never learned), reverts on a refused write, and renders an unknown stored
+      value as its own row because the field is free text server-side
+      (`services/language.py`). Copy is scoped to what the setting actually does — the
+      backend reply directive for chat/plan/Oracle/starters — and says outright that app
+      chrome follows the device locale and that helpline names and numbers are never
+      translated. `LANGUAGES` in `OnboardingScreen.kt` went `private` → `internal` so the
+      two pickers cannot drift. en + hi strings; `:app:testDebugUnitTest` and
+      `:app:lintVitalRelease` green
+- [ ] **Android gaps still open vs `ref/mobile.html`** — verified against the prototype,
+      *not* the whole list the first read suggested. Already built and needing nothing:
+      PVR-04 memory list (it is `PatternScreen.kt`, with inspect/edit/delete), SND-01/03/04
+      (library + favourites + mixer live in `SoundsScreen`). Genuinely missing: **TOD-06**
+      notification inbox, **ACC-05** app diagnostics, **VID-01/02/03** video lessons (owner
+      ruling 2026-08-06: UI shell only, no real playback), **ORG-01…07** sponsored access
+      (needs a backend `org` router + membership model + Alembic revision). Needs a UX call
+      rather than code: **TLK-06** — Talk's "Memory: on" chip opens the consent switch, and
+      the prototype also links the remembered-items list; the header already carries
+      persona + memory + start-fresh, so where the second link goes is a design decision.
+      **TLK-05** (a list of past conversations) is *not* treated as a gap — this product
+      deliberately ships one thread
 - [ ] **Android: `Type.kt` untouched by the port** — the type scale carries no colour, and
       the spec's display-font divergence (Iowan/Georgia/Fraunces) was resolved in favour of
       keeping what ships. Nunito stays; revisit only if the owner picks a display serif

@@ -561,6 +561,8 @@
     <string name="you_support_title">Support, any time</string>
     <string name="you_companion_title">Companion style</string>
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
+    <string name="you_language_title">Language</string>
+    <string name="you_language_subtitle">%1$s · the language replies come back in</string>
     <string name="you_appearance_title">Appearance</string>
     <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
     <string name="you_tour_title">Take a quick tour</string>
@@ -851,6 +853,11 @@
     <string name="companion_eyebrow">How CereBro talks with you</string>
     <string name="companion_title">Companion style</string>
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
+    <string name="language_eyebrow">The language CereBro replies in</string>
+    <string name="language_title">Language</string>
+    <string name="language_intro">Replies, plans and suggested topics come back in the language you pick here. Change it any time — it applies from your next message. The app\'s own buttons and labels follow your phone\'s language setting instead.</string>
+    <string name="language_custom_hint">Set on another device</string>
+    <string name="language_crisis_note">Helpline names and numbers stay exactly as published, in every language.</string>
     <string name="appearance_eyebrow">Night or dawn</string>
     <string name="appearance_title">Appearance</string>
     <string name="appearance_intro">Dawn is a light, warm look that\'s easier to read in daylight. Your choice applies everywhere — pick Night for winding down with the lights off.</string>
