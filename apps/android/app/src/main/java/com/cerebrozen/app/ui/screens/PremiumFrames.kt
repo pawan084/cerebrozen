@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -47,6 +48,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,8 +67,10 @@ import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.VeilWell
 
 private val PremiumBackground: List<Color> get() = listOf(
-    Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.74f), Night.copy(alpha = 0.82f),
+    Night, Night, Night,
 )
+
+private val ReferenceSerif = FontFamily(Font(R.font.newsreader))
 
 /** Opt-in frame for non-protected pushed screens. It owns only presentation:
  * navigation callbacks and screen content stay with the caller. */
@@ -109,30 +114,25 @@ internal fun PremiumNavRow(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val accent = if (emphasis) Cyan else Periwinkle
-    val shape = RoundedCornerShape(26.dp)
+    val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier.fillMaxWidth().pressScale(pressed, down = 0.975f)
             .background(CardFill, shape)
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(accent.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Cyan.copy(alpha = 0.27f))),
-                shape,
-            )
+            .border(1.dp, LineStroke.copy(alpha = .62f), shape)
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
                 onClickLabel = title,
                 onClick = onClick,
             )
-            .padding(16.dp)
-            .heightIn(min = 64.dp),
+            .padding(15.dp)
+            .heightIn(min = 70.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Box(
-                Modifier.size(50.dp).background(accent.copy(alpha = 0.13f), CircleShape)
-                    .border(1.dp, accent.copy(alpha = 0.30f), CircleShape),
+                Modifier.size(44.dp).background(accent.copy(alpha = 0.11f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
@@ -148,12 +148,7 @@ internal fun PremiumNavRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Box(
-            Modifier.size(40.dp).background(accent.copy(alpha = 0.10f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
-        }
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(19.dp))
     }
 }
 
@@ -199,20 +194,11 @@ private fun PremiumFrame(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val reduceMotion = rememberReduceMotion()
-    val motion = rememberInfiniteTransition(label = "premiumFrameAmbient")
-    val drift by motion.animateFloat(
-        initialValue = -0.05f,
-        targetValue = 0.08f,
-        animationSpec = infiniteRepeatable(tween(7_500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "premiumFrameDrift",
-    )
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(PremiumBackground))) {
-        PremiumFrameAmbience(if (reduceMotion) 0f else drift)
         Column(
-            Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 840.dp)
+            Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 840.dp).statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = pageHorizontalPadding(), vertical = 22.dp),
+                .padding(horizontal = pageHorizontalPadding()).padding(top = 12.dp, bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             header()
@@ -259,9 +245,10 @@ private fun PremiumFrameHeader(
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineMedium.copy(
+                        fontFamily = ReferenceSerif,
                         fontSize = 28.sp,
                         lineHeight = 32.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Normal,
                     ),
                     color = TextPrimary,
                     maxLines = 2,
@@ -284,33 +271,21 @@ private fun PremiumFrameHeader(
         return
     }
 
-    val shape = RoundedCornerShape(30.dp)
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 146.dp)
-            .background(CardFill, shape)
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(Periwinkle.copy(alpha = 0.53f), Color.White.copy(alpha = 0.10f), Cyan.copy(alpha = 0.4f))),
-                shape,
-            )
-            .padding(20.dp),
-    ) {
+    Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(48.dp).background(AccentSoft, CircleShape)
-                    .border(1.dp, LineStroke, CircleShape),
+                Modifier.size(44.dp).background(AccentSoft, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
             }
             trailing?.let {
                 Box(
-                    Modifier.size(48.dp).background(VeilWell, CircleShape)
-                        .border(1.dp, LineStroke, CircleShape),
+                    Modifier.size(46.dp).background(AccentSoft, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(it, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(23.dp))
@@ -318,7 +293,7 @@ private fun PremiumFrameHeader(
             }
         }
         Column(
-            Modifier.align(Alignment.BottomStart).padding(top = 62.dp),
+            Modifier.align(Alignment.TopStart).padding(top = 58.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -330,7 +305,9 @@ private fun PremiumFrameHeader(
             )
             Text(
                 title,
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontFamily = ReferenceSerif, fontSize = 39.sp, lineHeight = 39.sp, fontWeight = FontWeight.Normal,
+                ),
                 color = TextPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

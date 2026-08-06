@@ -82,12 +82,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
@@ -720,28 +723,10 @@ internal fun PageHeader(
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
 ) {
-    val headerShape = RoundedCornerShape(Radius.hero)
     Row(
         Modifier
             .fillMaxWidth()
-            .shadow(
-                Elevation.card, headerShape, clip = false,
-                ambientColor = accent.copy(alpha = 0.22f),
-                spotColor = accent.copy(alpha = 0.28f),
-            )
-            .clip(headerShape)
-            .background(Gradients.glass)
-            .background(
-                Brush.linearGradient(
-                    listOf(accent.copy(alpha = 0.14f), Color.Transparent, Cyan.copy(alpha = 0.05f)),
-                ),
-            )
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(accent.copy(alpha = 0.42f), Stroke.hairline, Cyan.copy(alpha = 0.18f))),
-                headerShape,
-            )
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -753,7 +738,10 @@ internal fun PageHeader(
                 // section. The size comes from the type scale (displayLarge) rather
                 // than a per-call-site override.
                 style = MaterialTheme.typography.displayLarge.copy(
-                    shadow = Shadow(accent.copy(alpha = 0.28f), Offset.Zero, 24f),
+                    fontFamily = FontFamily(Font(R.font.newsreader)),
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 40.sp,
+                    lineHeight = 40.sp,
                 ),
                 color = TextPrimary,
                 maxLines = 2,
@@ -771,8 +759,7 @@ internal fun PageHeader(
                     .then(if (tappable) Modifier.pressScale(pressed) else Modifier)
                     .size(if (tappable) 48.dp else 40.dp)
                     .clip(shape)
-                    .background(Veil)
-                    .border(1.dp, LineStroke, shape)
+                    .background(accent.copy(alpha = .10f))
                     .then(
                         if (onTrailingClick != null) {
                             Modifier
@@ -811,6 +798,7 @@ internal fun PageHeader(
 internal fun FocusCard(
     accent: Color = BrandPrimary,
     modifier: Modifier = Modifier,
+    pastel: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(Radius.hero)
@@ -824,6 +812,11 @@ internal fun FocusCard(
             )
             .clip(shape)
             .background(Gradients.glass)
+            .then(
+                if (pastel) Modifier.background(
+                    Brush.linearGradient(listOf(Color(0xFFFFE1D4), Color(0xFFF3DCE8), Color(0xFFE0C9EC))),
+                ) else Modifier,
+            )
             .background(
                 Brush.verticalGradient(
                     0f to Color.Transparent,

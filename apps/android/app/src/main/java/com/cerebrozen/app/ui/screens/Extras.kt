@@ -116,6 +116,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -245,7 +247,11 @@ internal fun SubPage(
                 )
                 Text(
                     title,
-                    style = MaterialTheme.typography.displaySmall.copy(fontSize = 34.sp, lineHeight = 36.sp),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = FontFamily(Font(R.font.newsreader)),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
+                        fontSize = 34.sp, lineHeight = 36.sp,
+                    ),
                     color = TextBright,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

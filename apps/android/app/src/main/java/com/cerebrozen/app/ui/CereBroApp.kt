@@ -71,6 +71,18 @@ import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.ExploreScreen
 import com.cerebrozen.app.ui.screens.GroundingScreen
+import com.cerebrozen.app.ui.screens.GroundingIntroScreen
+import com.cerebrozen.app.ui.screens.CheckInDetailScreen
+import com.cerebrozen.app.ui.screens.WeeklyInsightsScreen
+import com.cerebrozen.app.ui.screens.ReferenceTrendsScreen
+import com.cerebrozen.app.ui.screens.ReferencePatternsScreen
+import com.cerebrozen.app.ui.screens.ReferenceGoalsScreen
+import com.cerebrozen.app.ui.screens.ReferenceGoalDetailScreen
+import com.cerebrozen.app.ui.screens.ReferenceBaselineScreen
+import com.cerebrozen.app.ui.screens.PatternDetailScreen
+import com.cerebrozen.app.ui.screens.ReferenceDailyPlanScreen
+import com.cerebrozen.app.ui.screens.ReferenceSleepInsightsScreen
+import com.cerebrozen.app.ui.screens.ReferenceRemindersScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
@@ -137,6 +149,8 @@ import com.cerebrozen.app.ui.theme.NavSelectedLo
 import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.VeilStrong
 import com.cerebrozen.app.ui.theme.themeModeFromPref
 
@@ -173,7 +187,7 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    route in setOf("home", "explore", "talk", "journal", "you", "talk/live", "talk/chat")
+    route in setOf("home", "explore", "sleep", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -267,29 +281,31 @@ internal fun BottomNavBar(
         Modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
-            .navigationBarsPadding()
-            .padding(horizontal = 13.dp, vertical = 4.dp),
+            // The supplied phone reference places the floating capsule almost
+            // on the lower edge. Scaffold already owns this bottom slot, so an
+            // additional navigationBarsPadding lifted it much too high.
+            .padding(start = 27.dp, end = 27.dp, top = 2.dp, bottom = 3.dp),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(if (compact) 72.dp else 78.dp)
+                .height(68.dp)
                 // The pill's lift comes from the theme's shadow tokens, not a
                 // hardcoded 40% black: on Dawn a black drop under an ivory
                 // capsule reads as a grey smudge (CardShadow is warm-plum).
                 .shadow(
-                    18.dp, RoundedCornerShape(24.dp),
+                    18.dp, RoundedCornerShape(32.dp),
                     ambientColor = com.cerebrozen.app.ui.theme.CardShadow.navAmbient,
                     spotColor = com.cerebrozen.app.ui.theme.CardShadow.navSpot,
                 )
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(32.dp))
                 .background(
                     Brush.verticalGradient(
                         listOf(NavPillTop.copy(alpha = 0.96f), NavPillBottom.copy(alpha = 0.98f)),
                     ),
                 )
-                .border(1.dp, Stroke.navPill, RoundedCornerShape(24.dp))
-                .padding(horizontal = 9.dp, vertical = 7.dp),
+                .border(1.dp, Stroke.navPill, RoundedCornerShape(32.dp))
+                .padding(horizontal = 7.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -318,7 +334,7 @@ private fun BottomTabItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val tint = if (selected) TextPrimary else TextMuted2
+    val tint = if (selected) OnPrimary else TextMuted2
     // W10: the icon settles in with a soft spring on becoming selected (0.9 → 1.0);
     // unselected icons rest a whisper smaller. Reduce Motion holds every icon
     // steady at full size (static, never blank).
@@ -334,9 +350,7 @@ private fun BottomTabItem(
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (selected) {
-                    // NavSelectedHi/Lo = the Periwinkle wash, tuned per theme so the
-                    // selected label keeps AA contrast on both pills (Color.kt).
-                    Brush.radialGradient(listOf(NavSelectedHi, NavSelectedLo))
+                    Brush.radialGradient(listOf(Periwinkle, Periwinkle))
                 } else {
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                 },
@@ -489,7 +503,7 @@ fun CereBroApp() {
     // Signed-out: the whole app is the onboarding/auth flow (live backend session,
     // same account as iOS/web). Session.signedIn is Compose-observable. The funnel's
     // bespoke night art doesn't theme, so it is always Night.
-    if (!Session.signedIn) {
+    if (!Session.signedIn && !Session.guestMode) {
         SyncSystemBarIcons()
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             AuroraBackground()
@@ -513,9 +527,11 @@ fun CereBroApp() {
     //    sound falls back to its synthesized tone or bundled loop either way.
     val appContext = LocalContext.current.applicationContext
     LaunchedEffect(Unit) {
-        runCatching { com.cerebrozen.app.net.Outbox.drain() }
-        com.cerebrozen.app.notify.Push.register(appContext)
-        runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
+        if (Session.signedIn) {
+            runCatching { com.cerebrozen.app.net.Outbox.drain() }
+            com.cerebrozen.app.notify.Push.register(appContext)
+            runCatching { MediaCatalog.load(Api.mediaCatalog(), BuildConfig.API_BASE_URL) }
+        }
         runCatching { Sfx.warm(appContext) }
     }
 
@@ -588,7 +604,13 @@ fun CereBroApp() {
             if (showBottomBar) {
             // The talk/* aliases render the Talk tab, so the pill highlights it.
             BottomNavBar(
-                currentRoute = if (current.startsWith("talk/")) Tab.Talk.route else current,
+                currentRoute = when {
+                    current.startsWith("talk/") -> Tab.Talk.route
+                    current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "patterndetail" || current == "dailyplan" || current == "goals" || current == "goaldetailcalmer" || current == "goaldetailwind" || current == "baseline" -> Tab.Home.route
+                    current == "sleep" || current == "sleepinsights" -> Tab.Explore.route
+                    current == "reminders" -> Tab.You.route
+                    else -> current
+                },
                 compact = compactNav,
             ) { tab ->
                 // One haptic vocabulary app-wide: the custom
@@ -634,6 +656,20 @@ fun CereBroApp() {
             }
             val back: () -> Unit = { navController.popBackStack() }
             composable(Tab.Home.route) { TodayScreen(onOpen = open) }
+            composable("groundingintro") {
+                GroundingIntroScreen(
+                    onBack = back,
+                    onStart = { open("ground") },
+                    onUrgent = { open("crisis") },
+                )
+            }
+            composable("checkin") {
+                CheckInDetailScreen(
+                    onBack = back,
+                    onSaved = { navController.popBackStack() },
+                    onUrgent = { open("crisis") },
+                )
+            }
             composable(Tab.Explore.route) { ExploreScreen(onOpen = open) }
             // Sleep is a pushed screen since the five-tab pass — it takes an
             // onBack so it carries a visible back door, not just the gesture.
@@ -649,7 +685,7 @@ fun CereBroApp() {
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
             composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
-            composable("insights") { InsightsScreen(onBack = back, onOpen = open) }
+            composable("insights") { WeeklyInsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back, onOpen = open) }
             composable("trustedcontact") { TrustedContactScreen(onBack = back) }
             // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
@@ -667,10 +703,21 @@ fun CereBroApp() {
             ) { PlayerScreen(onBack = back, onOpen = open) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
-            composable("patterns") { PatternScreen(onBack = back) }
-            composable("trends") { TrendsScreen(onBack = back) }
+            composable("patterns") { ReferencePatternsScreen(onBack = back, onOpen = open) }
+            composable("patterndetail") { PatternDetailScreen(onBack = back, onOpen = open) }
+            composable("sleepinsights") { ReferenceSleepInsightsScreen(onBack = back, onOpen = open) }
+            composable("dailyplan") { ReferenceDailyPlanScreen(onBack = back, onOpen = open) }
+            composable("trends") {
+                ReferenceTrendsScreen(
+                    onBack = back,
+                    onReviewPatterns = { open("patterns") },
+                    onUrgent = { open("crisis") },
+                )
+            }
             composable("safetyplan") { SafetyPlanScreen(onBack = back) }
-            composable("goals") { GoalsScreen(onBack = back, onOpen = open) }
+            composable("goals") { ReferenceGoalsScreen(onBack = back, onOpen = open) }
+            composable("goaldetailcalmer") { ReferenceGoalDetailScreen("A calmer evening", onBack = back, onOpen = open) }
+            composable("goaldetailwind") { ReferenceGoalDetailScreen("Wind down before 10 PM", onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
@@ -703,7 +750,7 @@ fun CereBroApp() {
             composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeGardenScreen(onBack = back) }
-            composable("baseline") { BaselineScreen(onBack = back, onOpen = open) }
+            composable("baseline") { ReferenceBaselineScreen(onBack = back, onOpen = open) }
             composable("breathing") { BreathingScreen(onBack = back) }
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
@@ -714,7 +761,7 @@ fun CereBroApp() {
             composable("language") { LanguageScreen(onBack = back) }
             composable("notifications") { NotificationInboxScreen(onBack = back, onOpen = open) }
             composable("appearance") { AppearanceScreen(onBack = back) }
-            composable("reminders") { RemindersScreen(onBack = back) }
+            composable("reminders") { ReferenceRemindersScreen(onBack = back, onOpen = open) }
             composable("privacy") { PrivacyScreen(onBack = back) }
             composable("premium") { PremiumScreen(onBack = back) }
             composable("crisisregion") { CrisisRegionScreen(onBack = back) }

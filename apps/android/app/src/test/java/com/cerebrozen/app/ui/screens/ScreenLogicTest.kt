@@ -316,10 +316,12 @@ class ScreenLogicTest {
     fun funnelProgress_climbs_with_the_step_not_the_language() {
         // The bug this replaced: the fraction matched the English eyebrow copy,
         // so on a Hindi device every step after Language fell through to 1f.
-        val fractions = OStep.entries.map { funnelProgress(it) }
-        assertEquals(OStep.entries.size, fractions.size)
+        val canonical = listOf(OStep.Welcome, OStep.Language, OStep.Intro, OStep.Disclosure,
+            OStep.State, OStep.Reset, OStep.Reflection, OStep.Consent, OStep.Notify, OStep.Guest, OStep.Ready)
+        val fractions = canonical.map { funnelProgress(it) }
+        assertEquals(canonical.size, fractions.size)
         assertEquals(0f, funnelProgress(OStep.Welcome), 0.0001f)
-        assertEquals(1f, funnelProgress(OStep.SignUp), 0.0001f)
+        assertEquals(1f, funnelProgress(OStep.Ready), 0.0001f)
         fractions.zipWithNext().forEach { (a, b) ->
             assertTrue("the bar never goes backwards", b > a)
         }
@@ -328,19 +330,16 @@ class ScreenLogicTest {
     // ── Onboarding step numbering (the ONB-xx contract, not the enum order) ──
     @Test
     fun funnelStepIndex_follows_the_spec_numbering_and_leaves_gaps() {
-        // Deliberately hand-mapped: ONB-06 (post-reset reflection) and ONB-10
-        // (ready) are not built on Android yet. Deriving from OStep.ordinal
-        // would renumber every later step the day either lands, and the
-        // user-visible "N of 10" would then disagree with the spec, the other
-        // clients and the analytics funnel at once.
+        // Deliberately hand-mapped to the canonical mobile.html ONB contract.
         assertEquals(0, funnelStepIndex(OStep.Welcome))   // SPL-01, outside the count
         assertEquals(1, funnelStepIndex(OStep.Language))  // ONB-01
+        assertEquals(2, funnelStepIndex(OStep.Intro))
         assertEquals(3, funnelStepIndex(OStep.Disclosure))
+        assertEquals(6, funnelStepIndex(OStep.Reflection))
         assertEquals(9, funnelStepIndex(OStep.SignUp))
-        // The gap is the point: 6 and 10 belong to screens that do not exist here.
+        assertEquals(10, funnelStepIndex(OStep.Ready))
         val used = OStep.entries.map { funnelStepIndex(it) }
-        assertTrue("ONB-06 is not claimed by any built step", 6 !in used)
-        assertTrue("ONB-10 is not claimed by any built step", 10 !in used)
+        assertTrue("all canonical steps are represented", (1..10).all { it in used })
         assertTrue("no step numbers past the declared total", used.all { it <= ONBOARDING_STEPS })
     }
 
@@ -579,8 +578,8 @@ class ScreenLogicTest {
             )
         }
         assertEquals(null, reminderHourFor("none"))
-        assertEquals(9, reminderHourFor("morning"))
-        assertEquals(19, reminderHourFor("evening"))
+        assertEquals(8, reminderHourFor("morning"))
+        assertEquals(21, reminderHourFor("evening"))
     }
 
     // ── AI-disclosure cadence (re-show every 3h, across tab switches) ──
