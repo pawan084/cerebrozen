@@ -100,6 +100,22 @@ everything below is open.
       translated. `LANGUAGES` in `OnboardingScreen.kt` went `private` → `internal` so the
       two pickers cannot drift. en + hi strings; `:app:testDebugUnitTest` and
       `:app:lintVitalRelease` green
+- [x] **TOD-06 Android notification inbox** (`ui/screens/NotificationInbox.kt`, route
+      `notifications`, Today header bell + You → Reminders row). Android had *no record*
+      of what it had sent: a nudge existed only while it sat in the shade, so "did my
+      reminder fire?" was unanswerable once it was swiped away. New
+      `notify/NotificationLog.kt` is written by the only two places that post —
+      `Reminders.show` (local alarm) and `Push.show` (FCM) — immediately **after**
+      `notify()`, so the log records what was delivered, never what was intended. Local
+      only, capped at 30, dismissal matched on the instant rather than a list index (a
+      nudge arriving between render and tap would otherwise dismiss the wrong row).
+      Split into Scheduled / Delivered because "is it on" and "did it fire" are different
+      questions with different evidence. The empty state distinguishes "nothing has
+      arrived" from "server nudges are off in this build" — `Push.available()` is false
+      without a `google-services.json`, so the flat version of that sentence would have
+      been a quiet lie. `NotificationLogTest` (9 tests). **Today's header lost its search
+      pill and initial-letter avatar** to match TOD-01's single trailing bell; both
+      destinations survive (search is Explore's trailing icon, profile is the You tab)
 - [ ] **Android gaps still open vs `ref/mobile.html`** — verified against the prototype,
       *not* the whole list the first read suggested. Already built and needing nothing:
       PVR-04 memory list (it is `PatternScreen.kt`, with inspect/edit/delete), SND-01/03/04

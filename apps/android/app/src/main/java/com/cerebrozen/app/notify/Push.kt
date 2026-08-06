@@ -141,6 +141,16 @@ object Push {
             .build()
         context.getSystemService(NotificationManager::class.java)
             .notify(notifyId(data["kind"]), notification)
+        // Record only after notify() returns: the inbox describes what was
+        // delivered, not what was attempted.
+        val kind = data["kind"].orEmpty().ifBlank { "nudge" }
+        NotificationLog.record(
+            title = title,
+            body = data["body"].orEmpty(),
+            at = java.time.OffsetDateTime.now().toString(),
+            kind = kind,
+            route = NotificationLog.routeFor(kind),
+        )
     }
 
     /** A stable per-kind notification id, so a second wind-down nudge replaces

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
@@ -1072,34 +1073,27 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                // The search pill says what it searches, which a bare magnifier
-                // never did; the avatar makes the person greeted tappable.
-                Row(
-                    Modifier.clip(RoundedCornerShape(50))
-                        .background(CardFill)
-                        .border(1.dp, LineStroke, RoundedCornerShape(50))
-                        .clickable { onOpen("search") }
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.today_search_cd),
-                        tint = TextSoft, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.today_search_hint),
-                        style = MaterialTheme.typography.labelMedium, color = TextMuted, maxLines = 1)
-                }
-                val profileCd = stringResource(R.string.today_profile_cd)
+                // One trailing control, matching TOD-01 in ref/mobile.html: the
+                // bell, opening the notification inbox.
+                //
+                // A search pill and an initial-letter avatar used to sit here
+                // instead. Both destinations survive — search is Explore's own
+                // trailing icon (EXP-02) and the profile is the You tab — so the
+                // header loses two affordances and no reachability, while the
+                // greeting finally gets the width the reference gives it.
+                val notificationsCd = stringResource(R.string.today_notifications_cd)
                 Box(
-                    Modifier.size(38.dp).clip(CircleShape)
+                    Modifier.size(44.dp).clip(CircleShape)
                         .background(Periwinkle.copy(alpha = 0.16f))
-                        .border(1.dp, Periwinkle.copy(alpha = 0.35f), CircleShape)
-                        .clickable { onOpen("you") }
-                        .semantics { contentDescription = profileCd },
+                        .clickable { onOpen("notifications") }
+                        .semantics { contentDescription = notificationsCd },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        userName.trim().firstOrNull()?.uppercase() ?: "·",
-                        style = MaterialTheme.typography.titleSmall, color = Periwinkle,
+                    Icon(
+                        Icons.Outlined.NotificationsNone,
+                        contentDescription = null,
+                        tint = Periwinkle,
+                        modifier = Modifier.size(21.dp),
                     )
                 }
             }

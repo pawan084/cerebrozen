@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Diversity3
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -244,6 +245,14 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 else stringResource(R.string.you_reminder_state_off),
                 icon = Icons.Outlined.NotificationsNone,
             ) { onOpen("reminders") }
+            // The reference pairs the reminder settings with their history
+            // (YOU-04 → TOD-06): "is it on" and "did it fire" are different
+            // questions, and only the second one has evidence behind it.
+            PremiumNavRow(
+                stringResource(R.string.inbox_title),
+                stringResource(R.string.inbox_eyebrow),
+                icon = Icons.Outlined.Inbox,
+            ) { onOpen("notifications") }
         }
         Text(stringResource(R.string.you_group_progress), style = MaterialTheme.typography.labelSmall,
             color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
