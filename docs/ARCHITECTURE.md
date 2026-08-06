@@ -39,11 +39,20 @@ cere/
   apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
                   docs/REDESIGN.md): 5 tabs + ~37 routes, unified breathe engine, Toolkit hub,
                   one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
-                  Night/Dawn theme (theme-aware token getters in ui/theme, AppTheme state,
-                  ContrastTest gate), InfoBanner slot on Home, crisis ≤2 taps (Tele-MANAS-first)
+                  Light-Dawn/Night theme (theme-aware token getters in ui/theme, AppTheme
+                  state, ContrastTest gate; Dawn is the default since the 2026-08 Light Dawn
+                  port), InfoBanner slot on Today, crisis ≤2 taps (Tele-MANAS-first)
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
+  apps/portal/    Next.js 14 organisation portal — DESIGN SURFACE ONLY (port 3003).
+                  10 of the prototype's 36 routes (ref/portal.html), every figure a
+                  local constant in lib/mock.ts: no fetch, no auth, no models. The
+                  B2B2C layer it depicts (organisation, sponsorship, entitlement,
+                  cohort, 7-role RBAC) does not exist in the backend — see
+                  REDESIGN_V2.md §3.3/§5 phase 5. Not in docker-compose, not
+                  deployed, not in scripts/sync-tokens.mjs TARGETS yet (its
+                  @cerebro-tokens block is a byte-identical copy of apps/admin's).
   backend/        FastAPI + Postgres (auth, data, proactive AI, voice, Oracle agent)
   e2e/            Playwright tests (web + admin) in an isolated Docker stack
   deploy/         Caddyfile + bootstrap.sh (one-shot VPS setup)
@@ -237,7 +246,7 @@ comes after the first win. Returning users never re-walk the tutorial — Welcom
 flowchart TD
     L["App launch"] --> S["Splash ~2.2s<br>(skipped under -resetState)"]
     S --> H{"hasOnboarded?"}
-    H -- yes --> MAIN["Main app<br>Home · Sleep · Talk · Journal · You"]
+    H -- yes --> MAIN["Main app<br>Today · Explore · Talk · Journal · You"]
     H -- no --> W["0 · Welcome"]
 
     W -- "Try a 2-minute reset" --> AG["1 · Age gate<br>Continue locked until 18+ tap"]

@@ -41,10 +41,13 @@ const nightVar = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--night").trim());
 
 // The Dawn page ground. Named rather than inlined because it is pinned twice,
-// and because it MOVED: Dawn was a cool near-white (#fafafc) until the
-// 2026-07-31 depth pass found a raised card sitting at 1.09:1 against it. The
-// ground is warm paper now, so a cool-white card separates by temperature.
-const DAWN_BASE = "#f2eee5";
+// and because it MOVED twice: Dawn was a cool near-white (#fafafc) until the
+// 2026-07-31 depth pass found a raised card sitting at 1.09:1 against it, then
+// moved again on 2026-08-06 when ref/ replaced the palette with Light Dawn
+// (docs/REDESIGN_V2.md) and light became the default rather than the alternate.
+const DAWN_BASE = "#f8f4ee";
+// The Night ground, likewise re-toned from indigo to plum in that change.
+const NIGHT_BASE = "#171019";
 
 test.describe("Dawn theme (System + light OS)", () => {
   test.use({ colorScheme: "light" });
@@ -79,10 +82,10 @@ test.describe("Dawn theme (System + light OS)", () => {
     await page.goto(`${APP}/account`, { waitUntil: "networkidle" });
     await page.screenshot({ path: "shots/account-dawn.png", fullPage: true });
     await page.getByRole("button", { name: "Night", exact: true }).click();
-    expect(await nightVar(page)).toBe("#0e0c22");
+    expect(await nightVar(page)).toBe(NIGHT_BASE);
     await page.reload({ waitUntil: "networkidle" });
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("night");
-    expect(await nightVar(page)).toBe("#0e0c22");
+    expect(await nightVar(page)).toBe(NIGHT_BASE);
     await page.screenshot({ path: "shots/account-pinned-night.png", fullPage: true });
 
     // Back to System — Dawn again on this light OS.
@@ -97,7 +100,7 @@ test.describe("Night theme (System + dark OS)", () => {
   test("system-dark keeps the original Night palette", async ({ page }) => {
     test.setTimeout(90_000);
     await signup(page);
-    expect(await nightVar(page)).toBe("#0e0c22");
+    expect(await nightVar(page)).toBe(NIGHT_BASE);
     await page.screenshot({ path: "shots/home-night.png", fullPage: true });
   });
 });

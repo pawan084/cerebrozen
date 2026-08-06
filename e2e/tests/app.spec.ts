@@ -100,7 +100,7 @@ test.describe("Web app (authenticated client)", () => {
     await expect(page.getByText("Gentle patterns")).toBeVisible();
 
     // Programs: renders the real seeded catalogue (not a hardcoded list).
-    await nav(page, "Programs").click();
+    await nav(page, "Programmes").click();
     await expect(page.getByRole("heading", { name: "Guided journeys" })).toBeVisible({ timeout: 10_000 });
     // The featured hero (h2) mirrors the first program's title, so target the
     // grid card's h3 specifically to keep the locator unambiguous.
@@ -164,7 +164,7 @@ test.describe("Web app (authenticated client)", () => {
     // Plan + Library (were built but orphaned) are now reachable from the nav.
     await nav(page, "Plan").click();
     await expect(page.getByText(/Agentic plan/)).toBeVisible({ timeout: 15_000 });
-    await nav(page, "Library").click();
+    await nav(page, "Catalogue").click();
     await expect(page.getByRole("heading", { name: "Library", exact: true })).toBeVisible({ timeout: 10_000 });
     // Rails render the seeded catalogue, and every audio control that renders
     // must carry a real source — no fake/dead players (audio elements only
@@ -208,7 +208,7 @@ test.describe("Web app (authenticated client)", () => {
 
     // Programs: enroll in a journey (ref "PROGRAM · DAY X OF Y") — the active
     // banner appears here and the journey card lands on Home.
-    await nav(page, "Programs").click();
+    await nav(page, "Programmes").click();
     // Sleep Reset specifically, not .first(): it is the one seeded program that
     // ships day_guides, and the journey path only exists where a week does.
     // Enrolling in "Ease work stress" instead renders no path and no guide,
@@ -237,7 +237,7 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Day 1, today" }).click();
     await expect(page.getByText("Day 1 · today")).toBeVisible();
 
-    await nav(page, "Home").click();
+    await nav(page, "Today").click();
     await expect(page.getByText(/Program · day 1 of 7/)).toBeVisible();
 
     // Pattern dashboard with AI MEMORY OFF must not sign the user out.
@@ -280,7 +280,7 @@ test.describe("Web app (authenticated client)", () => {
     // Reload on Home specifically: it fires several authed fetches at once, so a
     // regression in the deduped single-use-refresh handling (lib/api) would race,
     // clear the token, and bounce to /signin here.
-    await nav(page, "Home").click();
+    await nav(page, "Today").click();
     // The client-side navigation must land before the reload, or the reload
     // happens on /patterns and the whole point (reload ON Home) is lost.
     await expect(page).toHaveURL(/\/home$/);
