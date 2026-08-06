@@ -6,8 +6,8 @@ import { appHref } from "@/lib/appUrl";
 // section renders. Kept here too so /privacy, /terms and /support are not dead
 // ends: before this, every page except the landing offered no way into the app.
 const APP_LINKS: [label: string, route: string][] = [
-  ["Home", "/home"],
-  ["Sleep", "/sleep"],
+  ["Today", "/home"],
+  ["Explore", "/explore"],
   ["Talk", "/chat"],
   ["Journal", "/journal"],
   ["You", "/account"],
