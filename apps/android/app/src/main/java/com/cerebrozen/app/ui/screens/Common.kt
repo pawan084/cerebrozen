@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.Accent
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.BrandPrimary
@@ -135,7 +136,7 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSecondary
 import com.cerebrozen.app.ui.theme.TextSoft
 
-private val CardShape = RoundedCornerShape(Radius.card)
+private val CardShape = RoundedCornerShape(23.dp)
 
 // Responsive sizing helpers — pages and cards breathe a little tighter on small
 // phones and a touch more generously on large ones, instead of one fixed inset.
@@ -207,27 +208,17 @@ internal fun Modifier.bleed(horizontal: Dp): Modifier = this.layout { measurable
  */
 internal fun Modifier.quiet(shape: Shape = CardShape): Modifier = this
     .clip(shape)
-    .background(Veil)
-    .border(1.dp, Stroke.hairline, shape)
+    .background(CardFill)
+    .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
 
 internal fun Modifier.glass(shape: Shape = CardShape): Modifier = this
     // CardShadow, not fixed literals: on Dawn the shadow is what carries depth
     // (a near-white card on a warm ground can't separate by value alone), so the
     // elevation and both shadow colours are theme-resolved.
-    .shadow(
-        CardShadow.elevation, shape, clip = false,
-        ambientColor = CardShadow.ambient, spotColor = CardShadow.spot,
-    )
+    .shadow(8.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = .06f))
     .clip(shape)
-    .background(Gradients.glass)
-    // A faint brand-light edge keeps large card stacks from reading as flat
-    // grey rectangles, while remaining subtle enough for dense settings pages.
-    .background(
-        Brush.linearGradient(
-            listOf(Periwinkle.copy(alpha = 0.055f), Color.Transparent, Cyan.copy(alpha = 0.035f)),
-        ),
-    )
-    .border(1.dp, Stroke.bevel, shape)
+    .background(CardFill)
+    .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
 
 /** True when the user has asked the system to minimise animations ("Remove
  * animations" / animator duration scale = 0) — the Android analogue of iOS's
@@ -665,7 +656,16 @@ internal fun Page(
     // arrives as an inset — so this is the half that keeps a composer reachable,
     // while the manifest's adjustResize is the half that stops the OS panning
     // content up behind the status bar. Neither works without the other.
-    Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1)).imePadding()) {
+    PageHeader(
+        eyebrow = eyebrow,
+        title = title,
+        trailing = trailing,
+        accent = accent,
+        eyebrowColor = eyebrowColor,
+        trailingLabel = trailingLabel,
+        onTrailingClick = onTrailingClick,
+    )
     Column(
         Modifier
             .fillMaxWidth()
@@ -674,18 +674,9 @@ internal fun Page(
             .graphicsLayer { translationY = rise.value }
             // Responsive inset (18/22/24dp by width) rather than a fixed 24 —
             // and the three-tier Space rhythm SectionGap is built on.
-            .padding(start = pageHorizontalPadding(), end = pageHorizontalPadding(), top = 6.dp, bottom = 28.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(Space.item),
     ) {
-        PageHeader(
-            eyebrow = eyebrow,
-            title = title,
-            trailing = trailing,
-            accent = accent,
-            eyebrowColor = eyebrowColor,
-            trailingLabel = trailingLabel,
-            onTrailingClick = onTrailingClick,
-        )
         content()
     }
     footer?.let { pinned ->
@@ -726,27 +717,30 @@ internal fun PageHeader(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .height(66.dp)
+            .background(CardFill.copy(alpha = .96f))
+            .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.tight)) {
-            Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = eyebrowColor)
+        BrandMark(size = 36.dp, showGlow = true)
+        Spacer(Modifier.size(11.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 title,
                 // A soft accent glow behind the title — subtle depth, tinted per
                 // section. The size comes from the type scale (displayLarge) rather
                 // than a per-call-site override.
-                style = MaterialTheme.typography.displayLarge.copy(
+                style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = FontFamily(Font(R.font.newsreader)),
                     fontWeight = FontWeight.Normal,
-                    fontSize = 40.sp,
-                    lineHeight = 40.sp,
+                    lineHeight = 24.sp,
                 ),
                 color = TextPrimary,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted, maxLines = 1)
         }
         trailing?.let { icon ->
             val shape = RoundedCornerShape(Radius.round)
@@ -755,11 +749,10 @@ internal fun PageHeader(
             val tappable = onTrailingClick != null
             Box(
                 Modifier
-                    .padding(top = 4.dp)
                     .then(if (tappable) Modifier.pressScale(pressed) else Modifier)
-                    .size(if (tappable) 48.dp else 40.dp)
+                    .size(46.dp)
                     .clip(shape)
-                    .background(accent.copy(alpha = .10f))
+                    .background(accent.copy(alpha = .09f))
                     .then(
                         if (onTrailingClick != null) {
                             Modifier
@@ -889,14 +882,14 @@ internal fun PrimaryButton(
             // Exact onboarding/auth CTA treatment: one calm high-contrast pill,
             // not a separate signed-in gradient vocabulary.
             .background(if (enabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
-            .heightIn(min = 56.dp)
+            .heightIn(min = 49.dp)
             .clickable(
                 enabled = enabled,
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
             ) { Haptics.soft(0.6f); onClick() }
-            .padding(horizontal = 28.dp, vertical = 15.dp),
+            .padding(horizontal = 26.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -940,12 +933,12 @@ internal fun AppTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(Radius.field),
+        shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Periwinkle,
-            unfocusedBorderColor = LineStroke,
-            focusedContainerColor = FieldFill,
-            unfocusedContainerColor = FieldFill,
+            unfocusedBorderColor = Color.Transparent,
+            focusedContainerColor = CardFill,
+            unfocusedContainerColor = CardFill,
             cursorColor = Periwinkle,
             focusedLabelColor = Periwinkle,
             unfocusedLabelColor = TextMuted,

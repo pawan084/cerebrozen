@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,7 +66,7 @@ import com.cerebrozen.app.ui.theme.Warm
 @Composable
 fun ExploreScreen(onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Night).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Night)) {
         ExploreTopBar(serif, onUrgent = { onOpen("crisis") })
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -97,7 +96,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             Spacer(Modifier.height(15.dp))
             ExploreSectionTitle("Start by need", serif)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                NeedCard("○", "Calm now", "Breathing and\ngrounding", Modifier.weight(1f)) { onOpen("breathe/reset") }
+                NeedCard("○", "Calm now", "Breathing and\ngrounding", Modifier.weight(1f)) { onOpen("practice-library") }
                 NeedCard("☾", "Sleep", "Tonight and CBT-I", Modifier.weight(1f)) { onOpen("sleep") }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -125,21 +124,35 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
 
 @Composable
 private fun ExploreTopBar(serif: FontFamily, onUrgent: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().background(CardFill)
-            .border(0.5.dp, LineStroke).padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    Column(
+        Modifier.fillMaxWidth().background(CardFill.copy(alpha = .96f)),
     ) {
-        BrandMark(size = 44.dp, showGlow = true)
-        Column(Modifier.weight(1f)) {
-            Text("Explore", style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif), color = TextPrimary)
-            Text("Tools for different moments", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        Row(
+            Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            BrandMark(size = 36.dp, showGlow = true)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(
+                    "Explore", maxLines = 1, softWrap = false,
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif, lineHeight = 24.sp),
+                    color = TextPrimary,
+                )
+                Text(
+                    "Tools for different moments", maxLines = 1, softWrap = false,
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
+                    color = TextMuted,
+                )
+            }
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
+                    .clickable(onClick = onUrgent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
+            }
         }
-        Box(
-            Modifier.size(46.dp).background(Danger.copy(alpha = .09f), CircleShape).clickable(onClick = onUrgent),
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp)) }
     }
 }
 

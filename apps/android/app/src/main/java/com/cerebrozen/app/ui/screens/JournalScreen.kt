@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -150,6 +151,7 @@ internal data class Entry(
     val date: String,
     val risk: String,
     val tags: List<String> = emptyList(),
+    val id: String = "",
 )
 
 internal fun parseEntries(rows: JSONArray): List<Entry> =
@@ -162,6 +164,7 @@ internal fun parseEntries(rows: JSONArray): List<Entry> =
             e.getString("created_at").take(10),
             e.optString("risk_level", "none"),
             (0 until (tagArray?.length() ?: 0)).mapNotNull { tagArray?.optString(it)?.takeIf(String::isNotBlank) },
+            e.optString("id"),
         )
     }
 
@@ -227,6 +230,8 @@ fun JournalScreen(
     // writing was a 120-character, two-line preview. iOS has had JournalDetailView
     // since the start; this is the missing half of the feature, not a new one.
     var reading by remember { mutableStateOf<Entry?>(null) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<Entry?>(null) }
     // The draft-safe banner — captured at FIRST composition, so it's true only when
     // the fields arrived restored (rotation / process death), never after typing.
     val restoredDraft = remember { title.isNotBlank() || body.isNotBlank() }
@@ -239,8 +244,38 @@ fun JournalScreen(
     val lockOn = Session.prefGet("journal_locked") == "true"
     var unlocked by remember { mutableStateOf(!lockOn) }
     var journalLocked by remember { mutableStateOf(lockOn) }
-    val activity = LocalContext.current as? FragmentActivity
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
     val prompts = journalPrompts()
+
+    pendingDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { if (!busy) pendingDelete = null },
+            title = { Text(stringResource(R.string.journal_delete_title)) },
+            text = { Text(stringResource(R.string.journal_delete_body)) },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        runCatching { Api.deleteJournal(entry.id) }
+                            .onSuccess {
+                                entries = entries.filterNot { it.id == entry.id }
+                                reading = null
+                                pendingDelete = null
+                                mode = JournalMode.History
+                            }
+                            .onFailure { status = it.message ?: context.getString(R.string.common_save_failed) }
+                        busy = false
+                    }
+                }) { Text(stringResource(R.string.common_delete)) }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
 
     LaunchedEffect(Unit) {
         runCatching { entries = parseEntries(Api.journal()) }
@@ -387,10 +422,13 @@ fun JournalScreen(
                             // the support card anyway would be inventing one,
                             // and hiding it forever would be worse — the scan
                             // happens when the entry syncs.
-                            val saved = Api.createJournal(title.trim(), entryBody)
+                            val saved = editingId?.let {
+                                Api.updateJournal(it, title.trim(), entryBody)
+                            } ?: Api.createJournal(title.trim(), entryBody)
                             showSupport = saved?.optString("risk_level", "none")
                                 ?.let { it !in listOf("none", "low") } == true
                             title = ""; body = ""; mood = null
+                            editingId = null
                             draftBannerDismissed = true   // the draft became an entry
                             status = savedStatus
                             // The shared app-root flourish (Celebration is
@@ -439,7 +477,19 @@ fun JournalScreen(
                     PrimaryButton(
                         text = stringResource(R.string.journal_new_title),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { reading = null; mode = JournalMode.Entry }
+                    ) { reading = null; editingId = null; title = ""; body = ""; mode = JournalMode.Entry }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = {
+                            title = e.title
+                            body = e.body
+                            editingId = e.id
+                            reading = null
+                            mode = JournalMode.Entry
+                        }) { Text(stringResource(R.string.common_edit), color = Cyan) }
+                        TextButton(onClick = { pendingDelete = e }) {
+                            Text(stringResource(R.string.common_delete), color = Warm)
+                        }
+                    }
                 }
             }
             return

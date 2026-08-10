@@ -114,6 +114,8 @@ import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Calendar
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
@@ -993,6 +995,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     }
     var railItems by remember { mutableStateOf<JSONArray?>(null) }
     var railLoaded by remember { mutableStateOf(false) }
+    // Compact weekly figures share the full Insights screen's backend payload.
+    // Null means loading/unavailable, never a licence to render sample numbers.
+    var weeklyMetrics by remember { mutableStateOf<JSONArray?>(null) }
+    var weeklyMetricsLoaded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun parseRecent(moods: JSONArray): List<RecentCheckIn> =
@@ -1013,6 +1019,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         val planRequest = async { runCatching { Api.activePlan() } }
         val programRequest = async { runCatching { Api.activeProgram() } }
         val sleepRequest = async { runCatching { Api.sleepLogs() } }
+        val insightsRequest = async { runCatching { Api.insightsWeekly() } }
 
         meRequest.await().onSuccess { me ->
             userName = me.optString("name")
@@ -1040,6 +1047,8 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 LocalDate.now(),
             )
         }
+        insightsRequest.await().onSuccess { weeklyMetrics = it.optJSONArray("metrics") }
+        weeklyMetricsLoaded = true
         }
         // Persist the next cold open's first frame.
         runCatching {
@@ -1721,19 +1730,30 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             else stringResource(R.string.today_presence_ready),
             key = "today-fold-week",
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                listOf("4" to "check-ins", "3" to "practices", "6h 48" to "sleep").forEach { (value, label) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
-                        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            val weekMetrics = weeklyMetrics
+            if (weekMetrics != null && weekMetrics.length() > 0) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    (0 until minOf(3, weekMetrics.length())).forEach { index ->
+                        val metric = weekMetrics.getJSONObject(index)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(metric.optString("value", "—"), style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                            Text(localizedInsightMetricLabel(metric.optString("label")), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
                     }
                 }
+            } else {
+                Text(
+                    stringResource(if (weeklyMetricsLoaded) R.string.insights_metrics_empty else R.string.insights_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextMuted,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
             }
             TextButton(onClick = { onOpen("insights") }) {
-                Text("View weekly insights →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+                Text(stringResource(R.string.today_view_weekly_insights), style = MaterialTheme.typography.labelLarge, color = Periwinkle)
             }
             if (false) {
             Text(
@@ -2027,6 +2047,9 @@ fun CheckInDetailScreen(
     var selected by rememberSaveable { mutableStateOf("Tired") }
     var intensity by rememberSaveable { mutableStateOf("Light") }
     var note by rememberSaveable { mutableStateOf("") }
+    var saving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -2119,7 +2142,31 @@ fun CheckInDetailScreen(
                 maxLines = 5,
                 placeholderText = "A few words are enough…",
             )
-            ReferenceAction("Save and continue", onClick = onSaved)
+            ReferenceAction(if (saving) "Saving…" else "Save and continue", onClick = {
+                if (saving) return@ReferenceAction
+                saving = true
+                saveError = null
+                scope.launch {
+                    runCatching {
+                        val wireMood = if (selected == "Clear") "Good" else selected
+                        val level = when (intensity) {
+                            "Light" -> 2
+                            "Medium" -> 3
+                            else -> 5
+                        }
+                        Api.checkIn(wireMood, note.trim(), "sparkles", level)
+                    }.onSuccess {
+                        Haptics.success()
+                        onSaved()
+                    }.onFailure {
+                        saveError = it.userMessage("Couldn't save your check-in. Please try again.")
+                    }
+                    saving = false
+                }
+            })
+            saveError?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = Danger)
+            }
         }
     }
 }
@@ -2127,6 +2174,18 @@ fun CheckInDetailScreen(
 @Composable
 fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var tab by rememberSaveable { mutableStateOf("Summary") }
+    var metrics by remember { mutableStateOf<JSONArray?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reloadKey) {
+        loading = true
+        loadError = null
+        runCatching { Api.insightsWeekly() }
+            .onSuccess { metrics = it.optJSONArray("metrics") }
+            .onFailure { loadError = it.userMessage("Couldn't load weekly insights. Please try again.") }
+        loading = false
+    }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
@@ -2191,15 +2250,43 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(CardFill).padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                listOf("4" to "check-ins", "3" to "practices", "6h 48" to "sleep").forEach { (value, label) ->
-                    Column(
-                        Modifier.weight(1f).height(66.dp).clip(RoundedCornerShape(17.dp))
-                            .background(Color(0xFFF3ECF3)),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
-                        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                val weekly = metrics
+                when {
+                    loading -> Text(
+                        stringResource(R.string.insights_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                    loadError != null -> Column(Modifier.fillMaxWidth()) {
+                        Text(loadError.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
+                        TextButton(onClick = { reloadKey++ }) {
+                            Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                        }
+                    }
+                    weekly == null || weekly.length() == 0 -> Text(
+                        stringResource(R.string.insights_metrics_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                    else -> (0 until minOf(3, weekly.length())).forEach { index ->
+                        val metric = weekly.getJSONObject(index)
+                        Column(
+                            Modifier.weight(1f).height(66.dp).clip(RoundedCornerShape(17.dp))
+                                .background(Color(0xFFF3ECF3)),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(metric.optString("value", "—"), style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                            Text(
+                                localizedInsightMetricLabel(metric.optString("label")),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextMuted,
+                                maxLines = 2,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
@@ -2214,6 +2301,17 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUrgent: () -> Unit) {
     var window by rememberSaveable { mutableStateOf("Month") }
+    var data by remember { mutableStateOf<Trends?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(window) {
+        loading = true; error = null
+        val days = when (window) { "Week" -> 7; "3 months" -> 90; else -> 30 }
+        runCatching { parseTrends(Api.trends(days)) }
+            .onSuccess { data = it }
+            .onFailure { error = it.userMessage("Couldn't load trends. Please try again.") }
+        loading = false
+    }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
@@ -2263,12 +2361,8 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("MOOD AND SLEEP", style = MaterialTheme.typography.labelSmall, color = Warm)
-                Canvas(Modifier.fillMaxWidth().height(105.dp)) {
-                    val values = when (window) {
-                        "Week" -> listOf(.38f, .50f, .42f, .58f, .69f, .63f, .76f)
-                        "3 months" -> listOf(.25f, .31f, .29f, .40f, .37f, .48f, .45f, .57f, .54f, .65f, .61f, .72f)
-                        else -> listOf(.30f, .46f, .35f, .62f, .53f, .73f, .67f)
-                    }
+                val values = data?.mood?.points?.map { (it.value / 5f).coerceIn(0f, 1f) }.orEmpty()
+                if (values.size >= 2) Canvas(Modifier.fillMaxWidth().height(105.dp)) {
                     val p = Path()
                     values.forEachIndexed { index, value ->
                         val x = size.width * index / (values.size - 1)
@@ -2281,7 +2375,12 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                     }
                 }
                 Text(
-                    "Text summary: mood ratings generally improved while sleep became more consistent. Missing days are not treated as negative.",
+                    when {
+                        loading -> "Loading your data…"
+                        error != null -> error.orEmpty()
+                        data?.isEmpty != false -> "No mood or sleep data in this window yet. Missing days stay blank."
+                        else -> "${data?.mood?.logged ?: 0} mood days · ${data?.sleep?.logged ?: 0} sleep nights. Missing days are not treated as negative."
+                    },
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                 )
             }
@@ -2292,6 +2391,13 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
 
 @Composable
 fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+    var patterns by remember { mutableStateOf<List<Learned>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        runCatching { parsePatterns(Api.patterns()) }
+            .onSuccess { patterns = it }
+            .onFailure { error = it.userMessage("Couldn't load patterns. Please try again.") }
+    }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
@@ -2326,32 +2432,19 @@ fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 "Understand patterns cautiously without diagnosis or causal claims.",
                 style = MaterialTheme.typography.bodyLarge, color = TextSoft,
             )
-            Column(
-                Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
-                    .background(CardFill).padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    "Grounding often appears alongside calmer evening check-ins.",
-                    style = MaterialTheme.typography.titleSmall, color = TextPrimary,
-                )
-                Text("4 examples · early signal · no causal claim", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                TextButton(onClick = { onOpen("patterndetail") }) {
-                    Text("See evidence and limits →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
-                }
-            }
-            Column(
-                Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFF3ECF3)).padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    "Sleep feels steadier when bedtime varies by less than 45 minutes.",
-                    style = MaterialTheme.typography.titleSmall, color = TextPrimary,
-                )
-                Text("6 nights · moderate signal", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                TextButton(onClick = { onOpen("sleepinsights") }) {
-                    Text("Review sleep insight →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+            when {
+                error != null -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
+                patterns == null -> Text("Reading your patterns…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                patterns!!.isEmpty() -> Text("No supported pattern yet. More check-ins may reveal one; nothing is guessed.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                else -> patterns!!.forEachIndexed { index, pattern ->
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
+                            .background(if (index % 2 == 0) CardFill else Color(0xFFF3ECF3)).padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(pattern.statement, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                        Text(pattern.basis, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    }
                 }
             }
         }
@@ -2361,6 +2454,19 @@ fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var window by rememberSaveable { mutableStateOf("Week") }
+    var nights by remember { mutableStateOf<List<SleepNight>?>(null) }
+    var summary by remember { mutableStateOf<JSONObject?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(window) {
+        val days = when (window) { "Month" -> 30; "3 months" -> 90; else -> 7 }
+        error = null
+        coroutineScope {
+            val logs = async { runCatching { parseNights(Api.sleepLogs(days)) } }
+            val stats = async { runCatching { Api.sleepSummary(days) } }
+            logs.await().onSuccess { nights = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }
+            stats.await().onSuccess { summary = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
@@ -2410,7 +2516,14 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    listOf("6h 48" to "average", "42m" to "bedtime range", "3.4/5" to "rest quality").forEach { (value, label) ->
+                    val avg = summary?.optInt("avg_duration_min")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    val spread = summary?.optInt("bedtime_consistency_min")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    val quality = summary?.optDouble("avg_quality")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    listOf(
+                        (avg?.let { "${it / 60}h ${it % 60}m" } ?: "—") to "average",
+                        (spread?.let { "${it}m" } ?: "—") to "bedtime range",
+                        (quality?.let { String.format(Locale.getDefault(), "%.1f/5", it) } ?: "—") to "rest quality",
+                    ).forEach { (value, label) ->
                         Column(
                             Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF3ECF3)),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
@@ -2420,11 +2533,8 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         }
                     }
                 }
-                val heights = when (window) {
-                    "Month" -> listOf(38, 62, 51, 73, 44, 68, 57)
-                    "3 months" -> listOf(48, 55, 63, 58, 70, 66, 72)
-                    else -> listOf(45, 61, 52, 72, 39, 66, 58)
-                }
+                val chartNights = nights.orEmpty().take(7).reversed()
+                val heights = chartNights.map { ((it.duration / 600f) * 88).roundToInt().coerceIn(8, 88) }
                 Row(Modifier.fillMaxWidth().height(100.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
                     heights.forEachIndexed { index, h ->
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
@@ -2432,7 +2542,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                                 Modifier.fillMaxWidth().height(h.dp).clip(RoundedCornerShape(7.dp, 7.dp, 2.dp, 2.dp))
                                     .background(Brush.verticalGradient(listOf(Color(0xFFA56A99), Color(0xFF9AB59C)))),
                             )
-                            Text(listOf("T", "W", "T", "F", "S", "S", "M")[index], style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text(chartNights.getOrNull(index)?.date?.takeLast(2).orEmpty(), style = MaterialTheme.typography.labelSmall, color = TextMuted)
                         }
                     }
                 }
@@ -2443,11 +2553,16 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             ) {
                 Text("WHAT CEREBRO NOTICED", style = MaterialTheme.typography.labelSmall, color = Warm)
                 Text(
-                    "Your sleep times were more consistent on nights when the wind-down began before 9:30 PM. This is an association, not proof of cause.",
+                    when {
+                        error != null -> error.orEmpty()
+                        nights == null -> "Reading your sleep diary…"
+                        nights!!.size < 3 -> "Log at least three nights before CereBro describes a sleep direction."
+                        else -> "${nights!!.size} nights are shown from your diary. Missing nights stay blank; this is a record, not a diagnosis."
+                    },
                     style = MaterialTheme.typography.bodyMedium, color = TextSoft,
                 )
                 TextButton(onClick = { onOpen("reminders") }) {
-                    Text("Add a 9:15 PM wind-down reminder →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+                    Text("Review wind-down reminders →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
                 }
             }
         }
@@ -2625,9 +2740,24 @@ fun PatternDetailScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 
 @Composable
 fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
-    var completed by remember { mutableStateOf(setOf("grounding", "reflection")) }
-    fun toggle(key: String) {
-        completed = if (key in completed) completed - key else completed + key
+    var plan by remember { mutableStateOf<JSONObject?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        runCatching { Api.activePlan() }
+            .onSuccess { plan = it }
+            .onFailure { error = it.userMessage("Couldn't load your plan. Please try again.") }
+    }
+    fun toggle(step: JSONObject) {
+        if (busy) return
+        scope.launch {
+            busy = true
+            runCatching { Api.togglePlanStep(step.optString("id"), !step.optBoolean("done")) }
+                .onSuccess { plan = it }
+                .onFailure { error = it.userMessage("Couldn't update this step.") }
+            busy = false
+        }
     }
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -2666,11 +2796,29 @@ fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 ) { Text("↻", color = Periwinkle, style = MaterialTheme.typography.titleMedium) }
             }
             Text("Do what helps. Skip what does not. The plan adapts tomorrow.", style = MaterialTheme.typography.bodyLarge, color = TextSoft)
-            ReferenceDayRow("♡", "Morning check-in", "About 20 seconds", Ok, done = "morning" in completed, badge = "Optional") { toggle("morning") }
-            ReferenceDayRow("✓", "Three-minute grounding", "Suggested for your current state", Warm, done = "grounding" in completed, badge = "Optional") { toggle("grounding") }
-            ReferenceDayRow("✓", "Evening reflection", "One prompt · around 3 minutes", Warm, done = "reflection" in completed, badge = "Optional") { toggle("reflection") }
-            ReferenceDayRow("☾", "Wind-down", "Scheduled for 9:15 PM", Warm, done = "winddown" in completed, badge = "Optional") { toggle("winddown") }
-            ReferenceAction("Begin next unfinished step") { onOpen("journal/new") }
+            val steps = plan?.optJSONArray("steps")
+            when {
+                error != null -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
+                plan == null -> Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                steps == null || steps.length() == 0 -> Text("Your plan has no steps yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                else -> (0 until steps.length()).forEach { index ->
+                    val step = steps.getJSONObject(index)
+                    ReferenceDayRow(
+                        step.optString("symbol", "○"),
+                        step.optString("title"),
+                        step.optString("detail"),
+                        if (step.optBoolean("done")) Ok else Warm,
+                        done = step.optBoolean("done"),
+                        badge = "Optional",
+                    ) { toggle(step) }
+                }
+            }
+            ReferenceAction(if (busy) "Updating…" else "Begin next unfinished step") {
+                val current = plan?.optJSONArray("steps")
+                val next = (0 until (current?.length() ?: 0)).map { current!!.getJSONObject(it) }
+                    .firstOrNull { !it.optBoolean("done") }
+                if (next != null) toggle(next) else onOpen("journal/new")
+            }
             Box(
                 Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(26.dp))
                     .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(26.dp))
@@ -2683,7 +2831,18 @@ fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun ReferenceGoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var showCreateGoal by remember { mutableStateOf(false) }
-    var goalName by remember { mutableStateOf("A calmer morning") }
+    var goalName by remember { mutableStateOf("") }
+    var goals by remember { mutableStateOf<JSONArray?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(reloadKey) {
+        error = null
+        runCatching { Api.goals() }
+            .onSuccess { goals = it }
+            .onFailure { error = it.userMessage("Couldn't load goals. Please try again.") }
+    }
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -2726,8 +2885,28 @@ fun ReferenceGoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 "Understand patterns cautiously without diagnosis or causal claims.",
                 style = MaterialTheme.typography.bodyLarge, color = TextSoft,
             )
-            ReferenceDayRow("✓", "A calmer evening", "4 days used · active", Ok) { onOpen("goaldetailcalmer") }
-            ReferenceDayRow("Ⅱ", "Wind down before 10 PM", "2 days used · paused", Warm) { onOpen("goaldetailwind") }
+            when {
+                error != null -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
+                goals == null -> Text("Loading your goals…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                goals!!.length() == 0 -> Text("No goals yet. Create one when something feels worth supporting.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                else -> (0 until goals!!.length()).forEach { index ->
+                    val goal = goals!!.getJSONObject(index)
+                    ReferenceDayRow(
+                        if (goal.optString("status") == "achieved") "✓" else "○",
+                        goal.optString("title"),
+                        goal.optString("status", "active"),
+                        if (goal.optString("status") == "active") Ok else Warm,
+                    ) {
+                        if (!busy) scope.launch {
+                            busy = true
+                            runCatching { Api.decomposeGoal(goal.optString("id")) }
+                                .onSuccess { onOpen("plan") }
+                                .onFailure { error = it.userMessage("Couldn't open this goal as a plan.") }
+                            busy = false
+                        }
+                    }
+                }
+            }
             Box(
                 Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(26.dp))
                     .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(26.dp))
@@ -2763,7 +2942,19 @@ fun ReferenceGoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     value = goalName, onValueChange = { goalName = it }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                 )
-                ReferenceAction("Create goal") { showCreateGoal = false }
+                ReferenceAction(if (busy) "Creating…" else "Create goal") {
+                    if (!busy && goalName.isNotBlank()) scope.launch {
+                        busy = true
+                        runCatching { Api.addGoal(goalName.trim()) }
+                            .onSuccess {
+                                goalName = ""
+                                showCreateGoal = false
+                                reloadKey++
+                            }
+                            .onFailure { error = it.userMessage("Couldn't create this goal.") }
+                        busy = false
+                    }
+                }
                 Box(
                     Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(25.dp))
                         .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { showCreateGoal = false },

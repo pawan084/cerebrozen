@@ -129,6 +129,34 @@ async def create_entry(
     return stored
 
 
+@router.put("/{entry_id}", response_model=JournalOut)
+async def update_entry(
+    entry_id: uuid.UUID,
+    payload: JournalCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace an owned journal entry and re-run its safety scan."""
+    entry = await db.get(JournalEntry, entry_id)
+    if entry is None or entry.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    for field, value in payload.model_dump().items():
+        setattr(entry, field, value)
+    entry.risk_level = await safety.scan_and_record(
+        db,
+        user_id=user.id,
+        source="journal",
+        source_id=entry.id,
+        text=f"{entry.title}\n{entry.body}",
+        excerpt=entry.body or entry.title,
+    )
+    stored = JournalOut.model_validate(entry)
+    if entry.risk_level in {"elevated", "crisis"}:
+        stored.resources = crisis.resources_for(user.region)
+    await db.commit()
+    return stored
+
+
 @router.delete("/{entry_id}", status_code=204)
 async def delete_entry(
     entry_id: uuid.UUID,

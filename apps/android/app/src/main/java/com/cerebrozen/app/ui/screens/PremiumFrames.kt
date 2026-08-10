@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.BrandMark
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.Cyan
@@ -194,20 +196,15 @@ private fun PremiumFrame(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(PremiumBackground))) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+        header()
         Column(
-            Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 840.dp).statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = pageHorizontalPadding()).padding(top = 12.dp, bottom = 112.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            header()
-            Column(
-                Modifier.fillMaxWidth().appear(rise = 14f),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content,
-            )
-        }
+            Modifier.fillMaxWidth().weight(1f).widthIn(max = 840.dp)
+                .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
+                .padding(top = 14.dp, bottom = 112.dp).appear(rise = 14f),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            content = content,
+        )
     }
 }
 
@@ -219,99 +216,42 @@ private fun PremiumFrameHeader(
     trailing: ImageVector? = null,
 ) {
     val backLabel = stringResource(R.string.common_back)
-    if (onBack != null) {
-        Column(
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+    Row(
+        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
                 Box(
-                    Modifier.size(40.dp).background(VeilWell, CircleShape)
-                        .border(1.dp, LineStroke, CircleShape)
+                    Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape)
                         .clickable(onClickLabel = backLabel, onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Outlined.ArrowBackIosNew,
                         contentDescription = backLabel,
-                        tint = TextPrimary,
-                        modifier = Modifier.size(17.dp),
+                        tint = Color(0xFF6E376B), modifier = Modifier.size(19.dp),
                     )
                 }
-                Text(
-                    title,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = ReferenceSerif,
-                        fontSize = 28.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.Normal,
-                    ),
-                    color = TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                eyebrow.uppercase(),
-                modifier = Modifier.padding(start = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    letterSpacing = 1.4.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        } else {
+            BrandMark(size = 36.dp, showGlow = true)
         }
-        return
-    }
-
-    Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(44.dp).background(AccentSoft, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(22.dp))
-            }
-            trailing?.let {
-                Box(
-                    Modifier.size(46.dp).background(AccentSoft, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(it, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(23.dp))
-                }
-            }
-        }
-        Column(
-            Modifier.align(Alignment.TopStart).padding(top = 58.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                eyebrow.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
-                color = TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 title,
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = ReferenceSerif, fontSize = 39.sp, lineHeight = 39.sp, fontWeight = FontWeight.Normal,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = ReferenceSerif, lineHeight = 24.sp, fontWeight = FontWeight.Normal,
                 ),
-                color = TextPrimary,
-                maxLines = 2,
+                color = Color(0xFF292323),
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666), maxLines = 1)
+        }
+        trailing?.let {
+            Box(Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(it, contentDescription = null, tint = Color(0xFF6E376B), modifier = Modifier.size(22.dp))
+            }
         }
     }
 }

@@ -70,6 +70,15 @@ import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.screens.AccountDeletionScreen
 import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.ExploreScreen
+import com.cerebrozen.app.ui.screens.PracticeLibraryScreen
+import com.cerebrozen.app.ui.screens.PracticeBreathingScreen
+import com.cerebrozen.app.ui.screens.PracticeTippScreen
+import com.cerebrozen.app.ui.screens.NoticeChangeScreen
+import com.cerebrozen.app.ui.screens.UntangleThoughtScreen
+import com.cerebrozen.app.ui.screens.PracticeBodyScanScreen
+import com.cerebrozen.app.ui.screens.BodyScanContentDetailScreen
+import com.cerebrozen.app.ui.screens.GratitudeReflectionScreen
+import com.cerebrozen.app.ui.screens.UrgentSupportScreen
 import com.cerebrozen.app.ui.screens.GroundingScreen
 import com.cerebrozen.app.ui.screens.GroundingIntroScreen
 import com.cerebrozen.app.ui.screens.CheckInDetailScreen
@@ -146,6 +155,8 @@ import com.cerebrozen.app.ui.theme.NavPillTop
 import com.cerebrozen.app.ui.theme.NavScrim
 import com.cerebrozen.app.ui.theme.NavSelectedHi
 import com.cerebrozen.app.ui.theme.NavSelectedLo
+import com.cerebrozen.app.ui.theme.LavenderPillTop
+import com.cerebrozen.app.ui.theme.LavenderPillFloor
 import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
@@ -187,7 +198,7 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    route in setOf("home", "explore", "sleep", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
+    route in setOf("home", "explore", "practice-library", "notice-change", "cbt", "body-scan-detail", "gratitude", "sleep", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -284,7 +295,7 @@ internal fun BottomNavBar(
             // The supplied phone reference places the floating capsule almost
             // on the lower edge. Scaffold already owns this bottom slot, so an
             // additional navigationBarsPadding lifted it much too high.
-            .padding(start = 27.dp, end = 27.dp, top = 2.dp, bottom = 3.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 3.dp),
     ) {
         Row(
             Modifier
@@ -350,7 +361,7 @@ private fun BottomTabItem(
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (selected) {
-                    Brush.radialGradient(listOf(Periwinkle, Periwinkle))
+                    Brush.linearGradient(listOf(LavenderPillTop, LavenderPillFloor))
                 } else {
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                 },
@@ -607,7 +618,7 @@ fun CereBroApp() {
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
                     current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "patterndetail" || current == "dailyplan" || current == "goals" || current == "goaldetailcalmer" || current == "goaldetailwind" || current == "baseline" -> Tab.Home.route
-                    current == "sleep" || current == "sleepinsights" -> Tab.Explore.route
+                    current == "practice-library" || current == "notice-change" || current == "cbt" || current == "body-scan-detail" || current == "gratitude" || current == "sleep" || current == "sleepinsights" -> Tab.Explore.route
                     current == "reminders" -> Tab.You.route
                     else -> current
                 },
@@ -671,6 +682,10 @@ fun CereBroApp() {
                 )
             }
             composable(Tab.Explore.route) { ExploreScreen(onOpen = open) }
+            composable("practice-library") { PracticeLibraryScreen(onBack = back, onOpen = open) }
+            composable("breathing-intro") {
+                PracticeBreathingScreen(onBack = back, onUrgent = { open("crisis") }, onBegin = { open("breathe/reset") })
+            }
             // Sleep is a pushed screen since the five-tab pass — it takes an
             // onBack so it carries a visible back door, not just the gesture.
             composable("sleep") { SleepScreen(onOpen = open, onBack = back) }
@@ -734,7 +749,8 @@ fun CereBroApp() {
             // The one parameterized breathe engine (box / two-minute reset).
             composable("breathe/box") { BreathLoopsScreen(onBack = back) }
             composable("guidedimagery") { GuidedImageryScreen(onBack = back) }
-            composable("bodyscan") { BodyScanScreen(onBack = back) }
+            composable("bodyscan") { PracticeBodyScanScreen(onBack = back, onUrgent = { open("crisis") }, onTranscript = { open("body-scan-detail") }) }
+            composable("body-scan-detail") { BodyScanContentDetailScreen(onBack = back, onUrgent = { open("crisis") }, onBegin = { open("bodyscan") }) }
             composable("crisisgrounding") { CrisisGroundingScreen(onBack = back) { open("breathe/box") } }
             composable("insightreel") { InsightReelScreen(onBack = back) }
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
@@ -749,14 +765,15 @@ fun CereBroApp() {
             composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
-            composable("gratitude") { GratitudeGardenScreen(onBack = back) }
+            composable("gratitude") { GratitudeReflectionScreen(onBack = back, onUrgent = { open("crisis") }) }
             composable("baseline") { ReferenceBaselineScreen(onBack = back, onOpen = open) }
             composable("breathing") { BreathingScreen(onBack = back) }
-            composable("cbt") { CbtReframeScreen(onBack = back) }
-            composable("tipp") { TippScreen(onBack = back) }
+            composable("cbt") { UntangleThoughtScreen(onBack = back, onUrgent = { open("crisis") }) }
+            composable("tipp") { PracticeTippScreen(onBack = back, onUrgent = { open("crisis") }, onTryStep = { open("notice-change") }) }
+            composable("notice-change") { NoticeChangeScreen(onBack = back, onUrgent = { open("crisis") }) }
             composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
             composable("intention") { IntentionScreen(onBack = back) }
-            composable("crisis") { CrisisScreen(onBack = back, onOpen = open) }
+            composable("crisis") { UrgentSupportScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("language") { LanguageScreen(onBack = back) }
             composable("notifications") { NotificationInboxScreen(onBack = back, onOpen = open) }

@@ -103,3 +103,21 @@ async def test_wildcards_in_a_search_term_are_not_operators(client):
     assert (await client.get("/journal", params={"q": "_"})).json() == [], (
         "the single-character wildcard is text too"
     )
+
+
+async def test_update_entry_is_owner_scoped_and_persists(client):
+    await _signup(client, "journal-owner")
+    entry = await _write(client, "Before", "old body", ["old"])
+    owner_auth = client.headers["Authorization"]
+
+    await _signup(client, "journal-other")
+    payload = {"title": "After", "body": "new body", "tags": ["new"], "symbol": "book"}
+    assert (await client.put(f"/journal/{entry['id']}", json=payload)).status_code == 404
+
+    client.headers["Authorization"] = owner_auth
+    updated = await client.put(f"/journal/{entry['id']}", json=payload)
+    assert updated.status_code == 200
+    assert updated.json()["title"] == "After"
+    assert updated.json()["body"] == "new body"
+    assert updated.json()["tags"] == ["new"]
+    assert (await client.get("/journal")).json()[0]["title"] == "After"

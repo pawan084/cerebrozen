@@ -1790,6 +1790,12 @@
     <string name="today_fold_tonight_row_title">Sleep and wind-down</string>
     <string name="today_fold_tonight_row_subtitle">Tonight\'s plan, sounds and your sleep diary</string>
     <string name="today_fold_week">This week</string>
+    <string name="today_view_weekly_insights">View weekly insights →</string>
+    <string name="insights_metric_sessions">Calm sessions</string>
+    <string name="insights_metric_journal">Journal entries</string>
+    <string name="insights_metric_sleep">Sleep</string>
+    <string name="insights_metric_mood">Mood stability</string>
+    <string name="insights_metric_plan">Plan follow-through</string>
     <string name="today_day_step_done">Done</string>
     <string name="today_day_step_open">Open</string>
     <string name="today_day_blank">Flexible, not a streak. Do what helps and skip what does not — blank days are simply blank.</string>
@@ -1853,4 +1859,10 @@
     <string name="ob_underage_card_sub">CereBro will not create an adult account from this route. No age response is sent to an organisation.</string>
     <string name="ob_underage_urgent">Open urgent human support</string>
     <string name="ob_underage_welcome">Return to welcome</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_delete">Delete</string>
+    <string name="journal_delete_title">Delete this journal entry?</string>
+    <string name="journal_delete_body">This entry will be permanently removed from your account.</string>
+    <string name="sleep_delete_title">Delete this sleep entry?</string>
+    <string name="sleep_delete_body">The sleep record for %1$s will be permanently removed.</string>
 </resources>

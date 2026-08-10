@@ -1194,6 +1194,12 @@
     <string name="today_fold_tonight_row_title">नींद और विश्राम</string>
     <string name="today_fold_tonight_row_subtitle">आज रात की योजना, ध्वनियाँ और आपकी नींद की डायरी</string>
     <string name="today_fold_week">इस सप्ताह</string>
+    <string name="today_view_weekly_insights">साप्ताहिक इनसाइट देखें →</string>
+    <string name="insights_metric_sessions">शांत सत्र</string>
+    <string name="insights_metric_journal">जर्नल एंट्री</string>
+    <string name="insights_metric_sleep">नींद</string>
+    <string name="insights_metric_mood">मूड स्थिरता</string>
+    <string name="insights_metric_plan">योजना की प्रगति</string>
     <string name="today_day_step_done">पूरा</string>
     <string name="today_day_step_open">बाक़ी</string>
     <string name="today_day_blank">यह लचीला है, कोई स्ट्रीक नहीं। जो मदद करे वह करें, बाक़ी छोड़ दें — ख़ाली दिन बस ख़ाली हैं।</string>
@@ -1204,4 +1210,10 @@
     <!-- Free daily cap (2026-07-30). Machine-assisted; in the pending review. -->
     <string name="freelimit_title">आज के फ्री मैसेज ख़त्म</string>
     <string name="freelimit_body">फ्री में हर दिन %1$d मैसेज मिलते हैं; आपकी गिनती %2$s पर रीसेट होगी। तब तक जर्नल, नींद, ब्रीदिंग और आपकी योजना सब उपलब्ध हैं।</string>
+    <string name="common_edit">बदलें</string>
+    <string name="common_delete">हटाएँ</string>
+    <string name="journal_delete_title">यह जर्नल एंट्री हटाएँ?</string>
+    <string name="journal_delete_body">यह एंट्री आपके खाते से हमेशा के लिए हट जाएगी।</string>
+    <string name="sleep_delete_title">यह नींद की एंट्री हटाएँ?</string>
+    <string name="sleep_delete_body">%1$s की नींद की एंट्री हमेशा के लिए हट जाएगी।</string>
 </resources>

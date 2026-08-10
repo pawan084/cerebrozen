@@ -369,6 +369,20 @@ everything below is open.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
 
+- [x] **Android redesigned data surfaces reconnected to production APIs (2026-08-10):**
+  detailed Check-in now persists through `POST /moods` (including intensity and
+  private note); Today's “This week” and the unchanged redesigned Weekly Insights
+  screen removed the illustrative `4 / 3 / 6h 48` values and render
+  `/insights/weekly` metrics. New Journal Entry already used the offline-safe
+  `POST /journal` path and remains server-backed. The redesigned UI/navigation
+  was deliberately preserved; this is data wiring, not a screen replacement.
+  Follow-up in the same pass kept the reference visual layouts but removed
+  user-data fixtures from Trends (`/insights/trends`), Patterns
+  (`/insights/patterns`), Sleep Insights (`/sleep` + `/sleep/summary`), Goals
+  (`/goals`, including create/decompose), and Daily Plan (`/plans/active` +
+  step PATCH). Static instructions and choice taxonomies remain client copy;
+  they are not user measurements and do not belong in an API.
+
 - [x] **Wave 1 — crisis & safety cluster** (register: G crisis-region cluster,
   A16-21, B4/B14/B20/B53, H2/H4/H16): `CrisisDirectory.kt` mirrors backend
   `crisis.py` (US/CA/GB/IE/AU/NZ/IN + 112/findahelpline default; pinned in
@@ -610,8 +624,8 @@ rows honestly dressed (muted meta + per-guide glyphs); pull-to-refresh +
 cached-first snapshot + parallel reload + 640dp max-width.
 
 Deferred from that audit (need decisions or hardware):
-- [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
-- [ ] **PUT /journal/{id} backend route** — entries can be read but not edited on any client (Others audit #35).
+- [x] **DELETE /sleep/{date} backend route** — owner-scoped delete plus Android diary UI, confirmation, API helper and contract tests (2026-08-10); iOS/web UI wiring remains a client task.
+- [x] **PUT /journal/{id} backend route** — owner-scoped replacement re-runs the safety scan; Android History → Entry edit/delete UI, confirmations, API helpers and contract tests added (2026-08-10).
 - [ ] **You page compact density + collapsed header** (Others audit #42/#45) — owner call on the 72dp-row look before reworking PremiumNavRow/PremiumPage.
 - [ ] **Talk conversation search** (Others audit #20) — needs a history surface design.
 - [ ] **Talk voice-engine work** (chat audit 2026-08-04 #29-32/34): compact-orb ripple,

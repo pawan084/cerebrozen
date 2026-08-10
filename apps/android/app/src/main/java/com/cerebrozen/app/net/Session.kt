@@ -653,8 +653,20 @@ object Api {
                 .put("symbol", "book"),
         )
 
-    suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/sleep"))
-    suspend fun sleepSummary(): JSONObject = JSONObject(Session.api("/sleep/summary"))
+    suspend fun updateJournal(id: String, title: String, body: String, tags: List<String> = emptyList()): JSONObject =
+        JSONObject(Session.api("/journal/$id", "PUT", JSONObject()
+            .put("title", title).put("body", body)
+            .put("tags", JSONArray().apply { tags.forEach { put(it) } })
+            .put("symbol", "book")))
+
+    suspend fun deleteJournal(id: String) { Session.api("/journal/$id", "DELETE") }
+
+    suspend fun sleepLogs(limit: Int? = null): JSONArray = JSONArray(
+        Session.api(if (limit == null) "/sleep" else "/sleep?limit=${limit.coerceIn(1, 366)}"),
+    )
+    suspend fun sleepSummary(days: Int? = null): JSONObject = JSONObject(
+        Session.api(if (days == null) "/sleep/summary" else "/sleep/summary?days=${days.coerceIn(2, 90)}"),
+    )
     suspend fun logSleep(date: String, bedtime: String, wakeTime: String, quality: Int): JSONObject =
         JSONObject(
             Session.api(
@@ -663,6 +675,8 @@ object Api {
                     .put("wake_time", wakeTime).put("quality", quality).put("awakenings", 0),
             ),
         )
+
+    suspend fun deleteSleep(date: String) { Session.api("/sleep/$date", "DELETE") }
 
     suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
     suspend fun sendChat(text: String): JSONObject =

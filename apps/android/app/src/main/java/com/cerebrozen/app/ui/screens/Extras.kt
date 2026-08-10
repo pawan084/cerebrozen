@@ -77,6 +77,7 @@ import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Waves
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.WbSunny
@@ -201,6 +202,9 @@ internal fun SubPage(
     /** Callers with switchable panes pass their own state so a pane change can
      * reset to top (the Sounds hub's Library↔Mixer flip kept mid-scroll). */
     scrollState: androidx.compose.foundation.ScrollState? = null,
+    /** Light-Dawn compact chrome used by the redesigned Sleep/Sounds family. */
+    softDawn: Boolean = false,
+    onUrgent: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
@@ -208,18 +212,40 @@ internal fun SubPage(
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
     }
+    if (softDawn) {
+        Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+            DawnSubPageTopBar(title, eyebrow, onBack, onUrgent)
+            Column(
+                Modifier.fillMaxSize().imePadding()
+                    .verticalScroll(scrollState ?: rememberScrollState())
+                    .graphicsLayer { translationY = rise.value }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) { content() }
+        }
+        return
+    }
     // Same fix as Page: inset the scrolling VIEWPORT, not the content, so
     // scrolled text cannot pass behind the status bar. Top padding drops from
     // 22dp to 4dp so every pushed screen's header stays where it was.
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().imePadding()
+        Modifier.fillMaxSize()
+            .background(if (softDawn) Color(0xFFFBF7F1) else Color.Transparent)
+            .then(if (softDawn) Modifier else Modifier.statusBarsPadding())
+            .imePadding()
             .verticalScroll(scrollState ?: rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(start = if (softDawn) 16.dp else 20.dp, end = if (softDawn) 16.dp else 20.dp, top = if (softDawn) 0.dp else 4.dp, bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(if (softDawn) 14.dp else 16.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth()
+                .then(
+                    if (softDawn) Modifier
+                        .shadow(7.dp, RoundedCornerShape(0.dp), ambientColor = Color.Black.copy(alpha = .05f))
+                        .background(CardFill.copy(alpha = .96f)).padding(horizontal = 4.dp, vertical = 10.dp)
+                    else Modifier
+                ),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -240,8 +266,8 @@ internal fun SubPage(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     eyebrow.uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp),
-                    color = EyebrowMuted,
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = if (softDawn) .7.sp else 1.7.sp),
+                    color = if (softDawn) Color(0xFFB13D57) else EyebrowMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -250,15 +276,53 @@ internal fun SubPage(
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontFamily = FontFamily(Font(R.font.newsreader)),
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
-                        fontSize = 34.sp, lineHeight = 36.sp,
+                        fontSize = if (softDawn) 26.sp else 34.sp,
+                        lineHeight = if (softDawn) 29.sp else 36.sp,
                     ),
-                    color = TextBright,
+                    color = if (softDawn) Color(0xFF292323) else TextBright,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
         content()
+    }
+}
+
+@Composable
+private fun DawnSubPageTopBar(
+    title: String,
+    subtitle: String,
+    onBack: () -> Unit,
+    onUrgent: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF3EDF7)).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            Text(
+                title, maxLines = 1,
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader)), lineHeight = 24.sp),
+                color = Color(0xFF292323),
+            )
+            Text(subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666))
+        }
+        if (onUrgent != null) {
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f)).clickable(onClick = onUrgent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
+            }
+        }
     }
 }
 
@@ -648,7 +712,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                row.optString("label"),
+                                localizedInsightMetricLabel(row.optString("label")),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextMuted,
                                 modifier = Modifier.weight(1f),
@@ -684,6 +748,17 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
         )
     }
+}
+
+/** Values and ordering are server-driven; only stable wire labels are localized. */
+@Composable
+internal fun localizedInsightMetricLabel(wire: String): String = when (wire) {
+    "Calm sessions" -> stringResource(R.string.insights_metric_sessions)
+    "Journal entries" -> stringResource(R.string.insights_metric_journal)
+    "Sleep" -> stringResource(R.string.insights_metric_sleep)
+    "Mood stability" -> stringResource(R.string.insights_metric_mood)
+    "Plan follow-through" -> stringResource(R.string.insights_metric_plan)
+    else -> wire
 }
 
 
@@ -1024,6 +1099,8 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         if (section == "mixer") stringResource(R.string.mixer_title) else stringResource(R.string.sounds_title),
         onBack,
         scrollState = paneScroll,
+        softDawn = true,
+        onUrgent = { onOpen("crisis") },
     ) {
         PremiumSoundSegment(
             mixerSelected = section == "mixer",
@@ -1106,11 +1183,11 @@ private fun PremiumSoundSegment(
     onLibrary: () -> Unit,
     onMixer: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(7.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, LineStroke, shape)
+            .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -1447,11 +1524,11 @@ private fun MixerLayerCard(
 ) {
     val active = volume > 0.02f
     val border by animateColorAsState(if (active) Periwinkle.copy(alpha = 0.55f) else LineStroke, label = "layerBorder")
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, border, shape)
+            .border(.5.dp, border, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1484,11 +1561,11 @@ private fun MixerLayerCard(
 
 @Composable
 private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, LineStroke, shape)
+            .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
             // Expanding content (the timer's chips) eases instead of popping.
             .animateContentSize()
             .padding(18.dp),
