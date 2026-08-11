@@ -43,7 +43,15 @@ count misses, never reset, forgiveness by default.
 - **Contrast gate:** text roles ≥4.5:1 against their surface (large display text ≥3:1).
   Check when introducing any token or pairing.
 - Two themes derive from one role scale: **Night** (deep indigo, evolved brand) and
-  **Dawn** (warm cream light, Phase 2). Sleep contexts always Night.
+  **Dawn** (warm cream light, Phase 2). **Appearance is global** — the user's Appearance
+  choice governs every signed-in screen, Sleep and wind-down included (owner decision
+  2026-08-04, `docs/TODO.md` "DECIDED 2026-08-04"; the old Sleep-forces-Night pin and its
+  test were retired on all three clients). Only signed-out, crisis and onboarding surfaces
+  keep a forced appearance. Do not "fix" a Dawn sleep screen — that is the decided behavior.
+- **Text over a gradient is not covered by the contrast gate.** `check-contrast.mjs` and
+  `ContrastTest` compare *token pairs*; a label composited over a `Brush.*Gradient` is
+  checked by nobody. Any text on a gradient must clear 4.5:1 against the **darkest and
+  lightest stop it can land on**, verified by hand.
 - Surfaces are **honest soft-solids** — one elevation ladder of solid fills + bevel
   hairline. No fake translucency: if a blur effect sits behind an opaque fill, delete one.
 
