@@ -47,8 +47,14 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+// Light Dawn is the default appearance, Night the opt-in one — so the browser
+// chrome follows --surface in each. (The old single value was the retired
+// indigo ground and tinted the address bar a colour no longer on the page.)
 export const viewport: Viewport = {
-  themeColor: "#0e0c22",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f4ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#171019" },
+  ],
 };
 
 // Per-request rendering so the CSP script nonce (middleware.ts) lands on every

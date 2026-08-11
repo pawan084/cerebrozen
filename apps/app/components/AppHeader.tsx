@@ -7,7 +7,9 @@
 // handler — web has no search backend and no in-app notifications — so they were
 // focusable dead ends with aria-labels promising features that don't exist. They
 // are gone until they're real; the Support door lives in the nav, always visible.
+import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
+import { Icon } from "@/components/icons";
 
 export function AppHeader({
   eyebrow, title, right,
@@ -27,7 +29,19 @@ export function AppHeader({
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="page-title" tabIndex={-1} ref={h1} style={{ outline: "none" }}>{title}</h1>
       </div>
-      {right && <div className="app-header-tools">{right}</div>}
+      <div className="app-header-tools">
+        {right}
+        {/* Urgent support is global, not a tab (spec: "Urgent support remains
+            globally accessible"; mobile.html puts it in the app bar of every
+            screen but the crisis screens themselves). It lives HERE rather than
+            in the mobile tab bar because the spec's five tabs have no slot for
+            it — and it had to land here before it left that bar, or crisis
+            would have stopped being ≤2 taps on a phone. */}
+        <Link href="/support" className="header-support" aria-label="Urgent support">
+          <Icon.support size={19} aria-hidden="true" />
+          <span>Support</span>
+        </Link>
+      </div>
     </header>
   );
 }

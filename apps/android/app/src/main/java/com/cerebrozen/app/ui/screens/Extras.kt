@@ -77,6 +77,7 @@ import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Waves
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.WbSunny
@@ -116,6 +117,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -139,6 +142,8 @@ import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.audio.Sfx
 import com.cerebrozen.app.audio.SoundscapeMixer
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.Accent2
+import com.cerebrozen.app.ui.theme.Amber
 import com.cerebrozen.app.ui.theme.ArtScrim
 import com.cerebrozen.app.ui.theme.ArtTextSoft
 import com.cerebrozen.app.ui.theme.CardFill
@@ -175,6 +180,7 @@ import com.cerebrozen.app.ui.theme.MixerPlayTop
 import com.cerebrozen.app.ui.theme.MixerWaveBottom
 import com.cerebrozen.app.ui.theme.MixerWaveTop
 import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.Radius
@@ -196,6 +202,9 @@ internal fun SubPage(
     /** Callers with switchable panes pass their own state so a pane change can
      * reset to top (the Sounds hub's Library↔Mixer flip kept mid-scroll). */
     scrollState: androidx.compose.foundation.ScrollState? = null,
+    /** Light-Dawn compact chrome used by the redesigned Sleep/Sounds family. */
+    softDawn: Boolean = false,
+    onUrgent: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
@@ -203,18 +212,40 @@ internal fun SubPage(
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
     }
+    if (softDawn) {
+        Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+            DawnSubPageTopBar(title, eyebrow, onBack, onUrgent)
+            Column(
+                Modifier.fillMaxSize().imePadding()
+                    .verticalScroll(scrollState ?: rememberScrollState())
+                    .graphicsLayer { translationY = rise.value }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) { content() }
+        }
+        return
+    }
     // Same fix as Page: inset the scrolling VIEWPORT, not the content, so
     // scrolled text cannot pass behind the status bar. Top padding drops from
     // 22dp to 4dp so every pushed screen's header stays where it was.
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().imePadding()
+        Modifier.fillMaxSize()
+            .background(if (softDawn) Color(0xFFFBF7F1) else Color.Transparent)
+            .then(if (softDawn) Modifier else Modifier.statusBarsPadding())
+            .imePadding()
             .verticalScroll(scrollState ?: rememberScrollState())
             .graphicsLayer { translationY = rise.value }
-            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(start = if (softDawn) 16.dp else 20.dp, end = if (softDawn) 16.dp else 20.dp, top = if (softDawn) 0.dp else 4.dp, bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(if (softDawn) 14.dp else 16.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth()
+                .then(
+                    if (softDawn) Modifier
+                        .shadow(7.dp, RoundedCornerShape(0.dp), ambientColor = Color.Black.copy(alpha = .05f))
+                        .background(CardFill.copy(alpha = .96f)).padding(horizontal = 4.dp, vertical = 10.dp)
+                    else Modifier
+                ),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -235,21 +266,63 @@ internal fun SubPage(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     eyebrow.uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp),
-                    color = EyebrowMuted,
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = if (softDawn) .7.sp else 1.7.sp),
+                    color = if (softDawn) Color(0xFFB13D57) else EyebrowMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     title,
-                    style = MaterialTheme.typography.displaySmall.copy(fontSize = 34.sp, lineHeight = 36.sp),
-                    color = TextBright,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = FontFamily(Font(R.font.newsreader)),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
+                        fontSize = if (softDawn) 26.sp else 34.sp,
+                        lineHeight = if (softDawn) 29.sp else 36.sp,
+                    ),
+                    color = if (softDawn) Color(0xFF292323) else TextBright,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
         content()
+    }
+}
+
+@Composable
+private fun DawnSubPageTopBar(
+    title: String,
+    subtitle: String,
+    onBack: () -> Unit,
+    onUrgent: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF3EDF7)).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            Text(
+                title, maxLines = 1,
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader)), lineHeight = 24.sp),
+                color = Color(0xFF292323),
+            )
+            Text(subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666))
+        }
+        if (onUrgent != null) {
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f)).clickable(onClick = onUrgent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
+            }
+        }
     }
 }
 
@@ -344,7 +417,9 @@ internal fun ContentRow(
                 if (glyph != null) {
                     Box(
                         Modifier.align(Alignment.BottomEnd).padding(3.dp).size(20.dp)
-                            .clip(CircleShape).background(Color(0x66101228)),
+                            // Always-dark thumbnail art underneath, so this well
+                            // takes the art scrim, not a themed surface.
+                            .clip(CircleShape).background(ArtScrim.copy(alpha = 0.4f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(glyph, contentDescription = null,
@@ -637,7 +712,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                row.optString("label"),
+                                localizedInsightMetricLabel(row.optString("label")),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextMuted,
                                 modifier = Modifier.weight(1f),
@@ -673,6 +748,17 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
         )
     }
+}
+
+/** Values and ordering are server-driven; only stable wire labels are localized. */
+@Composable
+internal fun localizedInsightMetricLabel(wire: String): String = when (wire) {
+    "Calm sessions" -> stringResource(R.string.insights_metric_sessions)
+    "Journal entries" -> stringResource(R.string.insights_metric_journal)
+    "Sleep" -> stringResource(R.string.insights_metric_sleep)
+    "Mood stability" -> stringResource(R.string.insights_metric_mood)
+    "Plan follow-through" -> stringResource(R.string.insights_metric_plan)
+    else -> wire
 }
 
 
@@ -1013,6 +1099,8 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         if (section == "mixer") stringResource(R.string.mixer_title) else stringResource(R.string.sounds_title),
         onBack,
         scrollState = paneScroll,
+        softDawn = true,
+        onUrgent = { onOpen("crisis") },
     ) {
         PremiumSoundSegment(
             mixerSelected = section == "mixer",
@@ -1095,11 +1183,11 @@ private fun PremiumSoundSegment(
     onLibrary: () -> Unit,
     onMixer: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(7.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, LineStroke, shape)
+            .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -1413,12 +1501,14 @@ private fun PremiumPresetPill(selected: Boolean, label: String, onClick: () -> U
     val pressed by interaction.collectIsPressedAsState()
     Box(
         Modifier.pressScale(pressed, down = 0.94f).clip(shape)
-            .background(if (selected) Brush.linearGradient(listOf(Color(0xFF6B52E5), Color(0xFF9670F4))) else Brush.linearGradient(listOf(CardFill, CardFill)))
-            .border(1.dp, if (selected) Color(0x887A5CFF) else LineStroke, shape)
+            .background(if (selected) Brush.linearGradient(listOf(Periwinkle, Accent2)) else Brush.linearGradient(listOf(CardFill, CardFill)))
+            .border(1.dp, if (selected) Periwinkle.copy(alpha = 0.53f) else LineStroke, shape)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 17.dp, vertical = 12.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else TextPrimary)
+        // Selected = an accent pill, so its label is the accent's own ink; a
+        // fixed white would vanish on Night's pale plum fill.
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) OnPrimary else TextPrimary)
     }
 }
 
@@ -1434,11 +1524,11 @@ private fun MixerLayerCard(
 ) {
     val active = volume > 0.02f
     val border by animateColorAsState(if (active) Periwinkle.copy(alpha = 0.55f) else LineStroke, label = "layerBorder")
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, border, shape)
+            .border(.5.dp, border, shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -1471,11 +1561,11 @@ private fun MixerLayerCard(
 
 @Composable
 private fun MixerGlassCard(content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(23.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
             .background(CardFill)
-            .border(1.dp, LineStroke, shape)
+            .border(.5.dp, LineStroke.copy(alpha = .65f), shape)
             // Expanding content (the timer's chips) eases instead of popping.
             .animateContentSize()
             .padding(18.dp),
@@ -1522,9 +1612,9 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
     val percentage = (value.coerceIn(0f, 1f) * 100).roundToInt()
     val activeGradient = Brush.horizontalGradient(
         listOf(
-            lerp(Color(0xFF7A5CFF), Color(0xFF9D7CFF), gradientPhase * 0.35f),
-            lerp(Color(0xFF9D7CFF), Color(0xFF64C9FF), gradientPhase * 0.25f),
-            lerp(Color(0xFF64C9FF), Color(0xFF7A5CFF), gradientPhase * 0.18f),
+            lerp(Periwinkle, Accent2, gradientPhase * 0.35f),
+            lerp(Accent2, Cyan, gradientPhase * 0.25f),
+            lerp(Cyan, Periwinkle, gradientPhase * 0.18f),
         ),
     )
 
@@ -1562,15 +1652,17 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                                 .offset(y = (-38).dp)
                                 .shadow(10.dp, RoundedCornerShape(12.dp), clip = false)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xF02A2448))
-                                .border(1.dp, Color(0x667A5CFF), RoundedCornerShape(12.dp))
+                                .background(CardFill)
+                                .border(1.dp, Periwinkle.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                 .padding(horizontal = 9.dp, vertical = 5.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = "$percentage%",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
+                                // Follows the bubble's Surface fill: white ink
+                                // would disappear on Dawn's paper tooltip.
+                                color = TextPrimary,
                             )
                         }
                     }
@@ -1579,7 +1671,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                             .size(38.dp)
                             .scale(thumbScale)
                             .blur(7.dp)
-                            .background(Color(0xB57A5CFF), CircleShape),
+                            .background(Periwinkle.copy(alpha = 0.71f), CircleShape),
                     )
                     Box(
                         modifier = Modifier
@@ -1588,7 +1680,7 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                             .shadow(9.dp, CircleShape, clip = false)
                             .clip(CircleShape)
                             .background(Color.White)
-                            .border(2.dp, Color(0xFFDFD8FF), CircleShape),
+                            .border(2.dp, LineStroke, CircleShape),
                     )
                 }
             },
@@ -2061,18 +2153,21 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                     announceSelection = false,   // B56
                 ) { onOpen(recentRoute) }
             }
-            ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Color(0xFF4ADE80))
+            // Section/tool accents are the tonal roles, not a private palette:
+            // each one is drawn as an ICON TINT on the card fill, so it has to
+            // clear 4.5:1 in both themes the way Ok/Cyan/Amber/Warm/Accent do.
+            ToolkitSectionHeader(stringResource(R.string.toolkit_header_ground), stringResource(R.string.toolkit_ground_description), Icons.Outlined.LocalFlorist, Ok)
             // The 5-4-3-2-1 practice moved to its own screen (a guided exercise
             // ran INLINE here, restarting silently mid-scroll every visit).
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_intro),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.Grain, Color(0xFF4ADE80), 0,
+                Icons.Outlined.Grain, Ok, 0,
             ) { openTool("ground") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.Waves, Color(0xFF64C9FF), 1,
+                Icons.Outlined.Waves, Cyan, 1,
             ) { openTool("zenripples") }
             FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
@@ -2082,14 +2177,14 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
-                Icons.Outlined.SportsEsports, Color(0xFF4ADE80), 2,
+                Icons.Outlined.SportsEsports, Ok, 2,
             ) { openTool("games") }
 
-            ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Color(0xFF64C9FF))
+            ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Cyan)
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.Air, Color(0xFF64C9FF), 3,
+                Icons.Outlined.Air, Cyan, 3,
             ) { openTool("breathe/box") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
@@ -2100,30 +2195,30 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 com.cerebrozen.app.ui.theme.BrandPrimary, 4,
             ) { openTool("breathe/reset") }
 
-            ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Color(0xFFB18CFF))
+            ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Periwinkle)
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_cbt_title), stringResource(R.string.toolkit_cbt_subtitle),
                 stringResource(R.string.toolkit_duration_5), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.Psychology, Color(0xFFB18CFF), 5,
+                Icons.Outlined.Psychology, Periwinkle, 5,
             ) { openTool("cbt") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_tipp_title), stringResource(R.string.toolkit_tipp_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.Spa, Color(0xFFFFD166), 6,
+                Icons.Outlined.Spa, Amber, 6,
             ) { openTool("tipp") }
 
-            ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Color(0xFF9D7CFF))
+            ToolkitSectionHeader(stringResource(R.string.toolkit_header_settle), stringResource(R.string.toolkit_settle_description), Icons.Outlined.Bedtime, Accent2)
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_imagery_title), stringResource(R.string.toolkit_imagery_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.Bedtime, Color(0xFF9D7CFF), 7,
+                Icons.Outlined.Bedtime, Accent2, 7,
             ) { openTool("imagery") }
             // The standalone body scan shipped route-registered but door-less
             // (audit A7) — only the wind-down ritual's embedded step existed.
             ToolkitExerciseCard(
                 stringResource(R.string.obs_title), stringResource(R.string.toolkit_bodyscan_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.Spa, Color(0xFF64C9FF), 7,
+                Icons.Outlined.Spa, Cyan, 7,
             ) { openTool("bodyscan") }
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
@@ -2131,22 +2226,22 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_ritual_title), stringResource(R.string.toolkit_ritual_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.AutoAwesome, Color(0xFF9D7CFF), 7,
+                Icons.Outlined.AutoAwesome, Accent2, 7,
             ) { openTool("ritual") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.LocalFlorist, Color(0xFF4ADE80), 7,
+                Icons.Outlined.LocalFlorist, Ok, 7,
             ) { openTool("gratitude") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                Icons.Outlined.AutoAwesome, Color(0xFFB18CFF), 8,
+                Icons.Outlined.AutoAwesome, Periwinkle, 8,
             ) { openTool("patternglow") }
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.GraphicEq, Color(0xFF64C9FF), 9,
+                Icons.Outlined.GraphicEq, Cyan, 9,
             ) { openTool("sounds") }
             // Region-aware subtitle: the card names the user's actual crisis
             // line (CrisisDirectory), not a hardcoded India number.
@@ -2157,7 +2252,7 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 else stringResource(R.string.you_support_line,
                     stringResource(toolkitSupportLine.nameRes), toolkitSupportLine.target),
                 stringResource(R.string.toolkit_duration_1), stringResource(R.string.toolkit_level_guided),
-                Icons.Outlined.HealthAndSafety, Color(0xFFFF6B81), 10, true,
+                Icons.Outlined.HealthAndSafety, Warm, 10, true,
             ) { onOpen("crisis") }
             Spacer(Modifier.height(12.dp))
         }
@@ -2168,18 +2263,18 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
 private fun BoxScope.ToolkitAmbientLayer(motion: Float) {
     Canvas(Modifier.matchParentSize()) {
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x337A5CFF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Periwinkle.copy(alpha = 0.2f), Color.Transparent)),
             radius = size.minDimension * 0.62f,
             center = Offset(size.width * 0.78f, size.height * (0.12f + motion)),
         )
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x1F64C9FF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Cyan.copy(alpha = 0.12f), Color.Transparent)),
             radius = size.minDimension * 0.48f,
             center = Offset(size.width * 0.08f, size.height * 0.58f),
         )
         listOf(0.13f to 0.09f, 0.87f to 0.18f, 0.72f to 0.38f, 0.18f to 0.74f).forEachIndexed { index, point ->
             drawCircle(
-                color = if (index % 2 == 0) Color(0x4464C9FF) else Color(0x44B18CFF),
+                color = if (index % 2 == 0) Cyan.copy(alpha = 0.27f) else Periwinkle.copy(alpha = 0.27f),
                 radius = 2.2.dp.toPx(),
                 center = Offset(size.width * point.first, size.height * (point.second + motion * 0.25f)),
             )
@@ -2357,16 +2452,16 @@ private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.height(44.dp).clip(CircleShape)
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF7A5CFF), Color(0xFF64C9FF))))
+                        .background(Brush.horizontalGradient(listOf(Periwinkle, Accent2)))
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        Text(stringResource(R.string.toolkit_begin), style = MaterialTheme.typography.labelMedium, color = Color.White)
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
+                        Text(stringResource(R.string.toolkit_begin), style = MaterialTheme.typography.labelMedium, color = OnPrimary)
                     }
                 }
-                Text(stringResource(R.string.toolkit_duration_2), style = MaterialTheme.typography.labelMedium, color = Color(0xFFD5DCF0))
+                Text(stringResource(R.string.toolkit_duration_2), style = MaterialTheme.typography.labelMedium, color = FeaturedInkSoft)
             }
         }
     }

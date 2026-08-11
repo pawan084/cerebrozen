@@ -315,6 +315,44 @@ class ApiEndpointsTest {
     }
 
     @Test
+    fun editable_diaries_use_scoped_ids_and_dates() = runTest {
+        val log = script(
+            mapOf(
+                "PUT /journal/j1" to """{"id":"j1","title":"After"}""",
+                "DELETE /journal/j1" to "",
+                "DELETE /sleep/2026-08-10" to "",
+            ),
+        )
+
+        val updated = Api.updateJournal("j1", "After", "Changed", listOf("work"))
+        Api.deleteJournal("j1")
+        Api.deleteSleep("2026-08-10")
+
+        assertEquals("After", updated.getString("title"))
+        val body = JSONObject(log.first { it.method == "PUT" }.body!!)
+        assertEquals("Changed", body.getString("body"))
+        assertEquals("work", body.getJSONArray("tags").getString(0))
+        assertTrue(log.any { it.method == "DELETE" && it.path == "/journal/j1" })
+        assertTrue(log.any { it.method == "DELETE" && it.path == "/sleep/2026-08-10" })
+    }
+
+    @Test
+    fun sleep_insight_windows_are_sent_to_the_backend() = runTest {
+        val log = script(
+            mapOf(
+                "GET /sleep?limit=90" to "[]",
+                "GET /sleep/summary?days=90" to """{"nights":0,"enough_data":false}""",
+            ),
+        )
+
+        Api.sleepLogs(90)
+        Api.sleepSummary(90)
+
+        assertTrue(log.any { it.path == "/sleep?limit=90" })
+        assertTrue(log.any { it.path == "/sleep/summary?days=90" })
+    }
+
+    @Test
     fun programs_plans_and_account_helpers_use_the_right_verbs() = runTest {
         val log = script(
             mapOf(

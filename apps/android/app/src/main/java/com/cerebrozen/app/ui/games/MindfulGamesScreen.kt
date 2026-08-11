@@ -70,18 +70,25 @@ import com.cerebrozen.app.ui.screens.SectionCard
 import com.cerebrozen.app.ui.screens.SubPage
 import com.cerebrozen.app.ui.screens.ToolAmbienceEffect
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
+import com.cerebrozen.app.ui.theme.Accent2
+import com.cerebrozen.app.ui.theme.Amber
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.CardFill
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** Per-category accent — the tonal roles, so each stays legible as the category
+ * heading and the "practice" line it is printed in, in both themes. */
 internal fun gameAccent(category: GameCategory): Color = when (category) {
-    GameCategory.Focus -> Color(0xFF22D3EE)
-    GameCategory.Memory -> Color(0xFFA78BFA)
-    GameCategory.Resilience -> Color(0xFF34D399)
-    GameCategory.Flexibility -> Color(0xFFF59E0B)
-    GameCategory.Calm -> Color(0xFF818CF8)
+    GameCategory.Focus -> Cyan
+    GameCategory.Memory -> Periwinkle
+    GameCategory.Resilience -> Ok
+    GameCategory.Flexibility -> Amber
+    GameCategory.Calm -> Accent2
 }
 
 @Composable

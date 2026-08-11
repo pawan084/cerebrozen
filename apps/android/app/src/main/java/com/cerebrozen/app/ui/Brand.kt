@@ -48,6 +48,8 @@ import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
+import com.cerebrozen.app.ui.theme.PeriwinkleSoft
+import com.cerebrozen.app.ui.theme.Teal
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Violet
 import kotlin.math.floor
@@ -56,7 +58,7 @@ import kotlin.math.sin
 
 /**
  * The CereBro C-ring mark, drawn on a Canvas so it scales and animates cleanly:
- * an open lavender→cyan ring, a glowing orb inside, and a soft highlight.
+ * an open plum→sky ring, a glowing orb inside, and a soft highlight.
  * Mirrors the shared brand SVG (apps/web/public/brand/cerebro-mark.svg).
  */
 @Composable
@@ -71,7 +73,9 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean
         if (showGlow) {
             drawCircle(
                 brush = Brush.radialGradient(
-                    listOf(Color(0x338A7BF0), Color(0x00000000)),
+                    // Same fix as the splash glow below: this was the retired
+                    // indigo periwinkle, a colour the palette no longer holds.
+                    listOf(Periwinkle.copy(alpha = 0.2f), Color.Transparent),
                     center = c, radius = s * 0.5f,
                 ),
                 radius = s * 0.5f, center = c,
@@ -80,7 +84,9 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean
         // Open C-ring (gap on the right)
         drawArc(
             brush = Brush.linearGradient(
-                listOf(Color(0xFFCBB6FF), Color(0xFF8FE6EE)),
+                // The mark is a constant brand object, so it reads the
+                // theme-independent art accents rather than themed tokens.
+                listOf(PeriwinkleSoft, Teal),
                 start = Offset(0f, 0f), end = Offset(this.size.width, this.size.height),
             ),
             startAngle = 52f, sweepAngle = 256f, useCenter = false,
@@ -90,7 +96,7 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 96.dp, showGlow: Boolean
         // Orb
         drawCircle(
             brush = Brush.radialGradient(
-                listOf(Color.White, Color(0xFFDFE0FF), Color(0xFF8A7BF0), Color(0xFF5B52C9)),
+                listOf(Color.White, PeriwinkleSoft, Iris, PeriwinkleDeep),
                 center = Offset(c.x - orbR * 0.28f, c.y - orbR * 0.34f), radius = orbR * 1.5f,
             ),
             radius = orbR, center = c,

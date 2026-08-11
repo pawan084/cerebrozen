@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -47,22 +49,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.ui.BrandMark
+import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
+import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.VeilWell
 
 private val PremiumBackground: List<Color> get() = listOf(
-    Night.copy(alpha = 0.90f), NightMid.copy(alpha = 0.74f), Night.copy(alpha = 0.82f),
+    Night, Night, Night,
 )
+
+private val ReferenceSerif = FontFamily(Font(R.font.newsreader))
 
 /** Opt-in frame for non-protected pushed screens. It owns only presentation:
  * navigation callbacks and screen content stay with the caller. */
@@ -105,31 +115,26 @@ internal fun PremiumNavRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val accent = if (emphasis) Color(0xFF64C9FF) else Color(0xFFB18CFF)
-    val shape = RoundedCornerShape(26.dp)
+    val accent = if (emphasis) Cyan else Periwinkle
+    val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier.fillMaxWidth().pressScale(pressed, down = 0.975f)
             .background(CardFill, shape)
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(accent.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Color(0x4464C9FF))),
-                shape,
-            )
+            .border(1.dp, LineStroke.copy(alpha = .62f), shape)
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
                 onClickLabel = title,
                 onClick = onClick,
             )
-            .padding(16.dp)
-            .heightIn(min = 64.dp),
+            .padding(15.dp)
+            .heightIn(min = 70.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Box(
-                Modifier.size(50.dp).background(accent.copy(alpha = 0.13f), CircleShape)
-                    .border(1.dp, accent.copy(alpha = 0.30f), CircleShape),
+                Modifier.size(44.dp).background(accent.copy(alpha = 0.11f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
@@ -145,12 +150,7 @@ internal fun PremiumNavRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Box(
-            Modifier.size(40.dp).background(accent.copy(alpha = 0.10f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
-        }
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(19.dp))
     }
 }
 
@@ -159,7 +159,7 @@ internal fun PremiumNavRow(
 internal fun PremiumStateCard(
     icon: ImageVector,
     message: String,
-    accent: Color = Color(0xFF64C9FF),
+    accent: Color = Cyan,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -196,29 +196,15 @@ private fun PremiumFrame(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val reduceMotion = rememberReduceMotion()
-    val motion = rememberInfiniteTransition(label = "premiumFrameAmbient")
-    val drift by motion.animateFloat(
-        initialValue = -0.05f,
-        targetValue = 0.08f,
-        animationSpec = infiniteRepeatable(tween(7_500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "premiumFrameDrift",
-    )
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(PremiumBackground))) {
-        PremiumFrameAmbience(if (reduceMotion) 0f else drift)
+    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+        header()
         Column(
-            Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 840.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = pageHorizontalPadding(), vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            header()
-            Column(
-                Modifier.fillMaxWidth().appear(rise = 14f),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content,
-            )
-        }
+            Modifier.fillMaxWidth().weight(1f).widthIn(max = 840.dp)
+                .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
+                .padding(top = 14.dp, bottom = 112.dp).appear(rise = 14f),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            content = content,
+        )
     }
 }
 
@@ -230,108 +216,42 @@ private fun PremiumFrameHeader(
     trailing: ImageVector? = null,
 ) {
     val backLabel = stringResource(R.string.common_back)
-    if (onBack != null) {
-        Column(
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+    Row(
+        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
                 Box(
-                    Modifier.size(40.dp).background(VeilWell, CircleShape)
-                        .border(1.dp, LineStroke, CircleShape)
+                    Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape)
                         .clickable(onClickLabel = backLabel, onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Outlined.ArrowBackIosNew,
                         contentDescription = backLabel,
-                        tint = TextPrimary,
-                        modifier = Modifier.size(17.dp),
+                        tint = Color(0xFF6E376B), modifier = Modifier.size(19.dp),
                     )
                 }
-                Text(
-                    title,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 28.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                eyebrow.uppercase(),
-                modifier = Modifier.padding(start = 2.dp),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    letterSpacing = 1.4.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-                color = TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        } else {
+            BrandMark(size = 36.dp, showGlow = true)
         }
-        return
-    }
-
-    val shape = RoundedCornerShape(30.dp)
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 146.dp)
-            .background(CardFill, shape)
-            .border(
-                1.dp,
-                Brush.linearGradient(listOf(Color(0x887A5CFF), Color.White.copy(alpha = 0.10f), Color(0x6664C9FF))),
-                shape,
-            )
-            .padding(20.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(48.dp).background(Color(0x227A5CFF), CircleShape)
-                    .border(1.dp, Color(0x447A5CFF), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.size(22.dp))
-            }
-            trailing?.let {
-                Box(
-                    Modifier.size(48.dp).background(VeilWell, CircleShape)
-                        .border(1.dp, LineStroke, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(it, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(23.dp))
-                }
-            }
-        }
-        Column(
-            Modifier.align(Alignment.BottomStart).padding(top = 62.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                eyebrow.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
-                color = TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 title,
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold),
-                color = TextPrimary,
-                maxLines = 2,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = ReferenceSerif, lineHeight = 24.sp, fontWeight = FontWeight.Normal,
+                ),
+                color = Color(0xFF292323),
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666), maxLines = 1)
+        }
+        trailing?.let {
+            Box(Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(it, contentDescription = null, tint = Color(0xFF6E376B), modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -340,18 +260,18 @@ private fun PremiumFrameHeader(
 private fun PremiumFrameAmbience(drift: Float) {
     Canvas(Modifier.fillMaxSize()) {
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x2E7A5CFF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Periwinkle.copy(alpha = 0.18f), Color.Transparent)),
             radius = size.minDimension * 0.7f,
             center = Offset(size.width * 0.82f, size.height * (0.12f + drift)),
         )
         drawCircle(
-            brush = Brush.radialGradient(listOf(Color(0x1F64C9FF), Color.Transparent)),
+            brush = Brush.radialGradient(listOf(Cyan.copy(alpha = 0.12f), Color.Transparent)),
             radius = size.minDimension * 0.5f,
             center = Offset(size.width * 0.05f, size.height * 0.68f),
         )
         listOf(0.12f to 0.14f, 0.88f to 0.28f, 0.76f to 0.63f, 0.18f to 0.84f).forEachIndexed { index, point ->
             drawCircle(
-                color = if (index % 2 == 0) Color(0x4464C9FF) else Color(0x44B18CFF),
+                color = if (index % 2 == 0) Cyan.copy(alpha = 0.27f) else Periwinkle.copy(alpha = 0.27f),
                 radius = 2.2.dp.toPx(),
                 center = Offset(size.width * point.first, size.height * (point.second + drift * 0.3f)),
             )

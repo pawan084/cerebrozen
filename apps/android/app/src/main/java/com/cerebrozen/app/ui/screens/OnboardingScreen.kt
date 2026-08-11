@@ -48,7 +48,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.cerebrozen.app.ui.theme.CardFill
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Person
@@ -75,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -85,6 +92,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -148,20 +157,60 @@ import com.cerebrozen.app.ui.theme.DotUnselectedFill
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-internal enum class OStep { Welcome, Disclosure, Language, State, Reset, Consent, Notify, SignUp }
+internal enum class OStep {
+    Welcome, Language, Intro, Disclosure, State, Reset, Reflection, Consent, Notify, Guest, SignUp, Ready, Under18
+}
+
+private val OnboardingSerif = FontFamily(Font(R.font.newsreader))
+
+/** Total funnel steps, as the app bar counts them ("3 of 10"). The prototype's
+ * ONB-xx numbering is the contract; [funnelStepIndex] maps this client's steps
+ * onto it, so a step this app has not built yet leaves a gap in the count
+ * rather than renumbering the ones around it. */
+internal const val ONBOARDING_STEPS = 10
+
+/**
+ * Which of the prototype's ten onboarding steps this one is (1-based).
+ *
+ * Deliberately NOT `OStep.ordinal + 1`. The ref/mobile.html numbering is a
+ * fixed contract shared with iOS and `apps/app` — ONB-01 is the language pick,
+ * ONB-04 is the first check-in — and this client does not yet ship ONB-06
+ * (post-reset reflection) or ONB-10 (the ready screen). Deriving from the enum
+ * would silently renumber every later step the day one of those lands, and the
+ * user-visible "N of 10" would disagree with the spec, the other clients and
+ * the analytics funnel all at once.
+ */
+internal fun funnelStepIndex(step: OStep): Int = when (step) {
+    OStep.Welcome -> 0        // SPL-01: the launch screen, outside the count
+    OStep.Language -> 1       // ONB-01
+    OStep.Intro -> 2          // ONB-02
+    OStep.Disclosure -> 3     // ONB-03
+    OStep.State -> 4          // ONB-04
+    OStep.Reset -> 5          // ONB-05
+    OStep.Reflection -> 6     // ONB-06
+    OStep.Consent -> 7        // ONB-07
+    OStep.Notify -> 8         // ONB-08
+    OStep.Guest, OStep.SignUp -> 9 // ONB-09 / account branch
+    OStep.Ready -> 10         // ONB-10
+    OStep.Under18 -> 0        // ONB-11: branch, outside the ten-step count
+}
 
 /** How far along the funnel a step sits. Keyed off the step itself — never off
  * the eyebrow copy, which is translated (a Hindi device used to fall through to
  * 1f and snap the bar to full from the Language step on). Pure + unit-tested. */
 internal fun funnelProgress(step: OStep): Float = when (step) {
     OStep.Welcome -> 0f
-    OStep.Disclosure -> 0.25f
-    OStep.Language -> 0.38f
-    OStep.State -> 0.50f
-    OStep.Reset -> 0.62f
+    OStep.Language -> 0.1f
+    OStep.Intro -> 0.2f
+    OStep.Disclosure -> 0.3f
+    OStep.State -> 0.4f
+    OStep.Reset -> 0.5f
+    OStep.Reflection -> 0.6f
     OStep.Consent -> 0.75f
     OStep.Notify -> 0.88f
-    OStep.SignUp -> 1f
+    OStep.Guest, OStep.SignUp -> 0.9f
+    OStep.Ready -> 1f
+    OStep.Under18 -> 0f
 }
 
 /** One feeling tap is the whole "assessment" — each maps into the shared
@@ -205,7 +254,10 @@ internal val STATE_OPTIONS = listOf(
 /** A pickable chip: a stable [id] the code branches on, plus localizable copy. */
 internal data class PickOption(val id: String, @androidx.annotation.StringRes val labelRes: Int)
 
-private val LANGUAGES = listOf(
+/** The app-language options. `internal` because You → Language re-offers exactly
+ * this list: onboarding asked once and nothing could change the answer afterwards,
+ * and a second hand-kept copy would have drifted from the wire values. */
+internal val LANGUAGES = listOf(
     PickOption("English", R.string.ob_lang_english),
     PickOption("Hindi", R.string.ob_lang_hindi),
     PickOption("Hinglish", R.string.ob_lang_hinglish),
@@ -229,6 +281,7 @@ internal fun languageLabelRes(value: String): Int? =
 internal val NOTIFY = listOf(
     PickOption("morning", R.string.ob_notify_morning),
     PickOption("evening", R.string.ob_notify_evening),
+    PickOption("custom", R.string.ob_notify_custom),
     PickOption("none", R.string.ob_notify_none),
 )
 
@@ -239,8 +292,9 @@ internal val NOTIFY = listOf(
  * `else`, an option was added to the chip group that this mapping had never
  * heard of, and choosing it quietly meant "off". */
 internal fun reminderHourFor(option: String): Int? = when (option) {
-    "morning" -> 9
-    "evening" -> 19
+    "morning" -> 8
+    "evening" -> 21
+    "custom" -> 21
     "none" -> null
     else -> null
 }
@@ -285,6 +339,12 @@ private fun imeVisible(): Boolean = WindowInsets.isImeVisible
 @Composable
 fun Onboarding() {
     var signIn by rememberSaveable { mutableStateOf(false) }
+    var urgentSupport by rememberSaveable { mutableStateOf(false) }
+    if (urgentSupport) {
+        androidx.activity.compose.BackHandler { urgentSupport = false }
+        CrisisScreen(onBack = { urgentSupport = false })
+        return
+    }
     if (signIn) {
         androidx.activity.compose.BackHandler(enabled = !imeVisible()) { signIn = false }
         AuthScreen(onBack = { signIn = false })
@@ -292,9 +352,18 @@ fun Onboarding() {
     }
 
     var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
-    val order = OStep.entries
+    val order = listOf(
+        OStep.Welcome, OStep.Language, OStep.Intro, OStep.Disclosure, OStep.State,
+        OStep.Reset, OStep.Reflection, OStep.Consent, OStep.Notify, OStep.Guest, OStep.Ready,
+    )
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
-    fun back() { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
+    fun back() {
+        when (step) {
+            OStep.Under18 -> step = OStep.Disclosure
+            OStep.SignUp -> step = OStep.Guest
+            else -> { val i = order.indexOf(step); if (i > 0) step = order[i - 1] }
+        }
+    }
 
     // The system back gesture walks the funnel, exactly like the on-screen back.
     // Without this it fell through to the Activity and FINISHED it: found on a
@@ -313,6 +382,7 @@ fun Onboarding() {
     var language by rememberSaveable { mutableStateOf("English") }
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
     var notify by rememberSaveable { mutableStateOf("evening") }
+    var ageConfirmed by rememberSaveable { mutableStateOf(false) }
     // Did they actually breathe, or press "Skip for now"? The Notify step used
     // to congratulate everyone on "your first win" either way — telling a user
     // who skipped that they had achieved something they had just declined.
@@ -323,7 +393,7 @@ fun Onboarding() {
     // namespace slip) — restored 2026-07-25; keep every default false.
     val consent = rememberSaveable(saver = ConsentSaver) {
         mutableStateMapOf(
-            "mood_history" to false, "ai_memory" to false, "journal_memory" to false,
+            "mood_history" to true, "ai_memory" to true, "journal_memory" to false,
             "sleep_history" to false, "voice_storage" to false, "model_training" to false,
         )
     }
@@ -367,62 +437,130 @@ fun Onboarding() {
         when (current) {
         OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
 
+        OStep.Intro -> Funnel(
+            OStep.Intro,
+            stringResource(R.string.ob_intro_eyebrow), stringResource(R.string.ob_intro_title),
+            stringResource(R.string.ob_intro_sub), stringResource(R.string.ob_intro_cta),
+            onBack = { back() }, onPrimary = { next() },
+            barTitle = stringResource(R.string.ob_intro_bar_title),
+            onUrgent = { urgentSupport = true },
+        ) {
+            Text(stringResource(R.string.ob_intro_section),
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = OnboardingSerif), color = TextPrimary)
+            OnboardingFeatureCard("♧", stringResource(R.string.ob_intro_settle), stringResource(R.string.ob_intro_settle_sub))
+            OnboardingFeatureCard("□", stringResource(R.string.ob_intro_talk), stringResource(R.string.ob_intro_talk_sub))
+            OnboardingFeatureCard("▣", stringResource(R.string.ob_intro_write), stringResource(R.string.ob_intro_write_sub))
+        }
+
         OStep.Disclosure -> Funnel(
             OStep.Disclosure,
             stringResource(R.string.ob_disclosure_eyebrow), stringResource(R.string.ob_disclosure_title),
             stringResource(R.string.ob_disclosure_sub),
             stringResource(R.string.ob_disclosure_cta), onBack = { back() }, onPrimary = { next() },
             progress = 0.25f,
+            barTitle = stringResource(R.string.ob_disclosure_eyebrow),
+            primaryEnabled = ageConfirmed,
+            onUrgent = { urgentSupport = true },
+            secondary = {
+                TextButton(onClick = { step = OStep.Under18 }) {
+                    Text(stringResource(R.string.ob_under_18), color = Periwinkle, fontWeight = FontWeight.Bold)
+                }
+            },
         ) {
-            ReferenceCard(borderColor = Warm.copy(alpha = 0.5f), fill = GratitudeCardFill) {
-                Text(stringResource(R.string.common_wellness_footer),
-                    style = MaterialTheme.typography.titleMedium, color = Warm)
-                Text(stringResource(R.string.ob_danger_line),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            ReferenceCard(borderColor = Danger.copy(alpha = .20f), fill = Danger.copy(alpha = .06f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                    Box(Modifier.size(42.dp).clip(CircleShape).background(Danger.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.WarningAmber, null, tint = Danger, modifier = Modifier.size(21.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.ob_immediate_danger), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                        Text(stringResource(R.string.ob_immediate_danger_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
+                }
+                SecondaryOnboardingButton(stringResource(R.string.ob_urgent_support)) { urgentSupport = true }
             }
             // The age gate STATES the requirement. It used to show a tick with
             // "Confirmed: I am 18 or older / Thank you" the instant the step
             // opened — a compliance surface asserting a confirmation the user had
             // not made, and thanking them for it. The confirmation is the CTA.
-            ReferenceCard {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.size(40.dp).clip(CircleShape).background(GratitudeAvatarFill), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Person, null, tint = TextPrimary, modifier = Modifier.size(20.dp))
-                    }
-                    Column {
-                        Text(stringResource(R.string.ob_confirmed_18), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                        Text(stringResource(R.string.ob_thank_you), style = MaterialTheme.typography.bodySmall, color = GratitudeCaption)
-                    }
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.ob_age_confirm), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                    Text(stringResource(R.string.ob_age_confirm_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
+                AppSwitch(checked = ageConfirmed, onCheckedChange = { ageConfirmed = it })
             }
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
             // IntrinsicSize.Min sizes the Row to the taller tile and both fill it,
             // so they stay a matched pair without either one cropping its body.
-            Row(
-                Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                DisclosureTile(
-                    stringResource(R.string.ob_can_help_title), Cyan,
-                    stringResource(R.string.ob_can_help_body),
-                    Modifier.weight(1f).fillMaxHeight(),
-                )
-                DisclosureTile(
-                    stringResource(R.string.ob_cant_do_title), Warm,
-                    stringResource(R.string.ob_cant_do_body),
-                    Modifier.weight(1f).fillMaxHeight(),
-                )
-            }
         }
 
-        OStep.Language -> Funnel(
-            OStep.Language,
-            stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
-            stringResource(R.string.ob_language_sub),
-            stringResource(R.string.common_continue), onBack = { back() }, onPrimary = { next() },
-            progress = 0.38f,
-        ) {
-            ChipWrapOptions(LANGUAGES, language) { language = it }
+        OStep.Language -> {
+            // The device's own language, so "Detected on this device" is a fact
+            // rather than a decoration. The prototype hardcodes English as both
+            // the detected AND the selected row, which is why its screenshot
+            // shows English ticked under a button reading "Continue in Hindi" —
+            // two different answers to one question. Here the tick follows the
+            // real selection and the caption follows the real locale.
+            val deviceLang = remember { detectedLanguageId(java.util.Locale.getDefault().language) }
+            var showAll by rememberSaveable { mutableStateOf(false) }
+            // English and Hindi lead; the rest sit behind "View all languages",
+            // matching ONB-01's shape without pretending the list is only two.
+            val lead = remember { LANGUAGES.filter { it.id == "English" || it.id == "Hindi" } }
+            val rest = remember { LANGUAGES.filterNot { it.id == "English" || it.id == "Hindi" } }
+            Funnel(
+                OStep.Language,
+                stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
+                stringResource(R.string.ob_language_sub),
+                // "Continue in Hindi" — the CTA names what the next screen will
+                // be written in, so the choice is confirmed before it applies.
+                stringResource(
+                    R.string.ob_language_continue_in,
+                    stringResource(languageLabelRes(language) ?: R.string.ob_lang_english),
+                ),
+                onBack = { back() }, onPrimary = { next() },
+                progress = 0.38f,
+                barTitle = stringResource(R.string.ob_language_bar_title),
+                onUrgent = { urgentSupport = true },
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                    lead.forEach { option ->
+                        LanguageCard(
+                            title = stringResource(option.labelRes),
+                            subtitle = if (option.id == deviceLang) {
+                                stringResource(R.string.ob_lang_detected)
+                            } else {
+                                ""
+                            },
+                            selected = language == option.id,
+                        ) { language = option.id }
+                    }
+                    if (showAll) {
+                        rest.forEach { option ->
+                            LanguageCard(
+                                title = stringResource(option.labelRes),
+                                subtitle = if (option.id == deviceLang) {
+                                    stringResource(R.string.ob_lang_detected)
+                                } else {
+                                    ""
+                                },
+                                selected = language == option.id,
+                            ) { language = option.id }
+                        }
+                    } else {
+                        LanguageCard(
+                            title = stringResource(R.string.ob_lang_view_all),
+                            // Names the languages actually behind the row. A
+                            // generic "and more" hides whether the one you want
+                            // is in there at all.
+                            // map is inline (so stringResource is legal here);
+                            // joinToString's transform is not.
+                            subtitle = rest.map { stringResource(it.labelRes) }.joinToString(" · "),
+                            selected = false,
+                        ) { showAll = true }
+                    }
+                }
+            }
         }
 
         OStep.State -> Funnel(
@@ -431,10 +569,22 @@ fun Onboarding() {
             stringResource(R.string.ob_state_sub),
             stringResource(R.string.common_continue), primaryEnabled = state != null, onBack = { back() }, onPrimary = { next() },
             progress = 0.50f,
+            barTitle = stringResource(R.string.ob_state_bar_title),
+            onUrgent = { urgentSupport = true },
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                STATE_OPTIONS.forEach { option ->
-                    StateOptionRow(stringResource(option.labelRes), state?.id == option.id) { state = option }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                STATE_OPTIONS.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        pair.forEach { option ->
+                            StateOptionRow(
+                                label = stringResource(option.labelRes),
+                                subtitle = stateOptionSubtitle(option.id),
+                                selected = state?.id == option.id,
+                                modifier = Modifier.weight(1f),
+                            ) { state = option }
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -443,7 +593,30 @@ fun Onboarding() {
             onDone = { resetDone = true; next() },
             onSkip = { next() },
             onBack = { back() },
+            onUrgent = { urgentSupport = true },
         )
+
+        OStep.Reflection -> Funnel(
+            OStep.Reflection,
+            stringResource(R.string.ob_reflection_eyebrow), stringResource(R.string.ob_reflection_title),
+            stringResource(R.string.ob_reflection_sub), "",
+            onBack = { back() }, onPrimary = {}, primaryEnabled = false,
+            barTitle = stringResource(R.string.ob_reflection_bar_title),
+            onUrgent = { urgentSupport = true },
+        ) {
+            listOf(
+                "↘" to stringResource(R.string.ob_reflection_calmer),
+                "—" to stringResource(R.string.ob_reflection_same),
+                "↗" to stringResource(R.string.ob_reflection_unsettled),
+                "·" to stringResource(R.string.ob_reflection_skip),
+            ).forEachIndexed { index, (icon, label) ->
+                OnboardingFeatureCard(
+                    icon, label,
+                    if (index == 3) stringResource(R.string.ob_reflection_private) else "",
+                    onClick = { next() },
+                )
+            }
+        }
 
         OStep.Consent -> Funnel(
             OStep.Consent,
@@ -454,6 +627,7 @@ fun Onboarding() {
             // nothing is counted before this moment — Analytics.track no-ops).
             onPrimary = { Analytics.unlock(); next() },
             progress = 0.75f,
+            onUrgent = { urgentSupport = true },
         ) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(InfoCardFill)
@@ -464,11 +638,8 @@ fun Onboarding() {
                 // Keys are the consent contract; labels/hints are display copy.
                 val rows = listOf(
                     Triple("mood_history", stringResource(R.string.ob_consent_mood), stringResource(R.string.ob_consent_mood_hint)),
-                    Triple("sleep_history", stringResource(R.string.ob_consent_sleep), stringResource(R.string.ob_consent_sleep_hint)),
-                    Triple("journal_memory", stringResource(R.string.ob_consent_journal), stringResource(R.string.ob_consent_journal_hint)),
                     Triple("ai_memory", stringResource(R.string.ob_consent_ai), stringResource(R.string.ob_consent_ai_hint)),
-                    Triple("voice_storage", stringResource(R.string.ob_consent_voice), stringResource(R.string.ob_consent_voice_hint)),
-                    Triple("model_training", stringResource(R.string.ob_consent_training), stringResource(R.string.ob_consent_training_hint)),
+                    Triple("journal_memory", stringResource(R.string.ob_consent_journal), stringResource(R.string.ob_consent_journal_hint)),
                 )
                 rows.forEachIndexed { index, (key, label, hint) ->
                     // B37: heightIn + wrapping hint — "specific and
@@ -496,8 +667,82 @@ fun Onboarding() {
             stringResource(if (resetDone) R.string.ob_notify_sub else R.string.ob_notify_sub_skipped),
             stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
             progress = 0.88f,
+            onUrgent = { urgentSupport = true },
         ) {
-            ChipWrapOptions(NOTIFY, notify) { notify = it }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                NOTIFY.forEach { option ->
+                    val selected = notify == option.id
+                    OnboardingFeatureCard(
+                        if (option.id == "none") "×" else "♧",
+                        stringResource(option.labelRes),
+                        if (option.id == "evening") stringResource(R.string.ob_notify_recommended) else "",
+                        selected = selected,
+                        trailingCheck = selected,
+                        onClick = { notify = option.id },
+                    )
+                }
+            }
+        }
+
+        OStep.Guest -> Funnel(
+            OStep.Guest,
+            stringResource(R.string.ob_guest_eyebrow), stringResource(R.string.ob_guest_title),
+            stringResource(R.string.ob_guest_sub), stringResource(R.string.ob_guest_continue),
+            onBack = { back() }, onPrimary = { next() },
+            barTitle = stringResource(R.string.ob_guest_bar_title),
+            onUrgent = { urgentSupport = true },
+            secondary = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    SecondaryOnboardingButton(stringResource(R.string.ob_guest_create)) { step = OStep.SignUp }
+                    TextButton(onClick = { signIn = true }) {
+                        Text(stringResource(R.string.ob_guest_sign_in), color = Periwinkle, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+        ) {
+            ReferenceCard(borderColor = Periwinkle.copy(alpha = .24f), fill = CardFill) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE5EDE3)), contentAlignment = Alignment.Center) {
+                        Text("◇", color = Color(0xFF49634F), style = MaterialTheme.typography.titleLarge)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.ob_guest_private), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                        Text(stringResource(R.string.ob_guest_private_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
+                }
+            }
+        }
+
+        OStep.Ready -> Funnel(
+            OStep.Ready,
+            stringResource(R.string.ob_ready_eyebrow), stringResource(R.string.ob_ready_title),
+            stringResource(R.string.ob_ready_sub), stringResource(R.string.ob_ready_cta),
+            onBack = { back() }, onPrimary = {
+                Analytics.unlock()
+                Session.continueAsGuest(context)
+            },
+            barTitle = stringResource(R.string.ob_ready_bar_title),
+            onUrgent = { urgentSupport = true },
+            titleCentered = true,
+        ) {
+            WelcomeOrb(Modifier.align(Alignment.CenterHorizontally), 150.dp)
+        }
+
+        OStep.Under18 -> Funnel(
+            OStep.Under18,
+            stringResource(R.string.ob_underage_eyebrow), stringResource(R.string.ob_underage_title),
+            stringResource(R.string.ob_underage_sub), stringResource(R.string.ob_underage_urgent),
+            onBack = { back() }, onPrimary = { urgentSupport = true },
+            barTitle = stringResource(R.string.ob_underage_bar_title),
+            onUrgent = { urgentSupport = true },
+            secondary = {
+                SecondaryOnboardingButton(stringResource(R.string.ob_underage_welcome)) { step = OStep.Welcome }
+            },
+        ) {
+            ReferenceCard {
+                Text(stringResource(R.string.ob_underage_card), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text(stringResource(R.string.ob_underage_card_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
         }
 
         OStep.SignUp -> AuthScreen(
@@ -629,7 +874,7 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
 }
 
 @Composable
-private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit) {
+private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit, onUrgent: () -> Unit) {
     // Keep the same quiet bed as the full-screen reset. DisposableEffect inside
     // this helper stops it as soon as onboarding advances, skips, or goes back.
     ToolAmbienceEffect(R.raw.ambient_bed)
@@ -642,7 +887,9 @@ private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit
         stringResource(R.string.ob_reset_sub),
         stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
         progress = 0.62f,
-        compactTitle = true,
+        compactTitle = false,
+        barTitle = stringResource(R.string.ob_reset_bar_title),
+        onUrgent = onUrgent,
         secondary = {
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
@@ -683,10 +930,19 @@ private fun Funnel(
     primaryEnabled: Boolean = true,
     titleCentered: Boolean = false,
     compactTitle: Boolean = false,
+    /** The app-bar title, which is NOT the h1. The prototype names the step in
+     * the bar ("Choose language") and asks the question in the heading ("Choose
+     * what feels natural."); collapsing them loses the step's name the moment
+     * the heading is a sentence. Defaults to the eyebrow for steps not yet
+     * given their own bar copy. */
+    barTitle: String = eyebrow,
+    /** Opens crisis support. Null only where the prototype also omits it. */
+    onUrgent: (() -> Unit)? = null,
     secondary: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val progress = funnelProgress(step)
+    val stepIndex = funnelStepIndex(step)
     Box(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(FunnelHeaderTop, FunnelHeaderBottom)))
@@ -694,25 +950,49 @@ private fun Funnel(
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    top = 32.dp,
-                    bottom = if (secondary == null) 145.dp else 210.dp,
-                ),
-            verticalArrangement = Arrangement.spacedBy(15.dp),
+            .padding(bottom = if (secondary == null) 118.dp else 182.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // ── App bar (ONB-xx chrome) ─────────────────────────────────────
+            // Back · title + "N of 10" · urgent support. The funnel used to open
+            // straight onto its eyebrow with no bar at all: there was no way out
+            // but the system back gesture, nothing said how long this was going
+            // to take, and — the part that matters — crisis support was the one
+            // door onboarding did not have. The prototype puts it on every step
+            // except the two where it would be the only thing on screen.
+            OnboardingAppBar(
+                title = barTitle,
+                stepIndex = stepIndex,
+                onBack = onBack,
+                onUrgent = onUrgent,
+            )
+            // ── Stepper ─────────────────────────────────────────────────────
+            // Ten discrete segments rather than one sliding bar. A continuous
+            // fill answers "how far along am I" with a vague fraction; the
+            // prototype answers it with a countable number of steps, which is
+            // the honest version when the total is fixed and small.
+            OnboardingStepper(stepIndex)
+            Column(
+                Modifier.padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
             Text(
                 eyebrow.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp, letterSpacing = 1.8.sp),
-                color = EyebrowMuted,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, letterSpacing = 1.2.sp),
+                // Rose, not the quiet grey: in Light Dawn the eyebrow is the one
+                // warm accent above the title, and EyebrowMuted made every
+                // onboarding step open on two greys stacked.
+                color = Warm,
             )
             Text(
                 title,
                 modifier = if (titleCentered) Modifier.fillMaxWidth() else Modifier,
                 style = MaterialTheme.typography.displaySmall.copy(
-                    fontSize = if (compactTitle) 32.sp else 38.sp,
-                    lineHeight = if (compactTitle) 35.sp else 39.sp,
+                    fontFamily = OnboardingSerif,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = if (compactTitle) 34.sp else 40.sp,
+                    lineHeight = if (compactTitle) 36.sp else 39.sp,
+                    letterSpacing = (-0.4).sp,
                 ),
                 // Themed, not Color.White: the funnel follows the appearance
                 // choice now, and a white title on the Dawn cream was invisible
@@ -725,49 +1005,216 @@ private fun Funnel(
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.5.sp, lineHeight = 24.sp),
                 color = FunnelBodyText,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(2.dp))
             content()
+            }
         }
 
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp, vertical = 23.dp),
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // W10: the fill glides from the previous step's fraction to this one
-            // instead of jumping. Each step is a fresh composition inside
-            // AnimatedContent, so the bar seeds from a small cross-step memory and
-            // then animates to its own fraction. Reduce Motion keeps the honest
-            // instant snap.
-            val reduceMotion = rememberReduceMotion()
-            var barTarget by remember { mutableStateOf(FunnelProgressMemory.last) }
-            LaunchedEffect(progress) {
-                barTarget = progress
-                FunnelProgressMemory.last = progress
-            }
-            val animatedProgress by animateFloatAsState(
-                targetValue = barTarget,
-                animationSpec = if (reduceMotion) snap() else tween(350),
-                label = "funnel-progress",
-            )
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(ProgressTrack)) {
-                Box(Modifier.fillMaxWidth(animatedProgress).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Periwinkle))
-            }
-            Spacer(Modifier.height(18.dp))
-            Row(
-                Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(29.dp))
-                    .background(if (primaryEnabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
-                    .clickable(enabled = primaryEnabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onPrimary),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Outlined.CheckCircle, null, tint = PrimaryButtonInk, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(11.dp))
-                Text(primaryLabel, style = MaterialTheme.typography.titleMedium, color = PrimaryButtonInk)
+            // The sliding progress bar moved to the top as a ten-segment stepper
+            // (OnboardingStepper). Keeping both would have stated the same fact
+            // twice, in two different visual languages, on every step.
+            if (primaryLabel.isNotBlank()) {
+                Row(
+                    Modifier.fillMaxWidth().height(52.dp).shadow(18.dp, RoundedCornerShape(28.dp), ambientColor = Periwinkle.copy(alpha = .22f), spotColor = Periwinkle.copy(alpha = .22f)).clip(RoundedCornerShape(28.dp))
+                        .background(if (primaryEnabled) PrimaryButtonFill else PrimaryButtonDisabledFill)
+                        .clickable(enabled = primaryEnabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onPrimary),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(primaryLabel, style = MaterialTheme.typography.titleSmall, color = PrimaryButtonInk, fontWeight = FontWeight.Bold)
+                }
             }
             if (secondary != null) {
                 Spacer(Modifier.height(12.dp))
                 secondary.invoke()
             }
+        }
+    }
+}
+
+/**
+ * Map an ISO-639 device language to one of [LANGUAGES], or null when this app
+ * ships nothing for it.
+ *
+ * Null is the important return. "Detected on this device" printed under English
+ * for a Tamil phone is a small lie that costs trust on the first screen, so a
+ * locale with no match here labels nothing rather than defaulting to English.
+ * Pure, so it is unit-testable without a Configuration.
+ */
+internal fun detectedLanguageId(iso: String): String? = when (iso.lowercase()) {
+    "en" -> "English"
+    "hi" -> "Hindi"
+    "pa" -> "Punjabi"
+    "ta" -> "Tamil"
+    else -> null
+}
+
+/**
+ * ONB-01's option row: a paper card with a title, an optional caption, and
+ * either a tick (selected) or a chevron (everything else).
+ *
+ * Replaces a wrapping row of chips. Chips could not carry the second line the
+ * screen needs — "Detected on this device", or which languages sit behind
+ * "View all" — and a five-chip wrap re-flowed differently in Hindi, so the
+ * tap target for a given language moved between locales.
+ */
+@Composable
+private fun LanguageCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(shape)
+            .background(CardFill)
+            .then(
+                // The selected card wears a plum ring; the others carry no
+                // border at all, so selection is the only thing an outline
+                // means on this screen.
+                if (selected) Modifier.border(2.dp, Periwinkle, shape) else Modifier,
+            )
+            .clickable(role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
+        if (selected) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.common_selected_cd),
+                tint = Periwinkle,
+                modifier = Modifier.size(20.dp),
+            )
+        } else {
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = PickRowChevron,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The onboarding app bar: back · step name + "N of 10" · urgent support.
+ *
+ * The urgent-support button is the reason this exists at all. Onboarding is the
+ * one stretch of the app where someone has told us nothing yet, and it was also
+ * the one stretch with no door to crisis resources — a user who arrived in a bad
+ * state had to complete or abandon a ten-step funnel to reach the thing they
+ * needed. It is drawn in the danger tone and sized like every other tap target.
+ */
+@Composable
+private fun OnboardingAppBar(
+    title: String,
+    stepIndex: Int,
+    onBack: (() -> Unit)?,
+    onUrgent: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .background(CardFill)
+            .border(width = 0.5.dp, color = ProgressTrack, shape = RoundedCornerShape(0.dp))
+            .padding(horizontal = 30.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            val backCd = stringResource(R.string.common_back)
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF7EFF8))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onBack() }
+                    .semantics { contentDescription = backCd },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = null,
+                    tint = Periwinkle,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        } else {
+            Spacer(Modifier.size(44.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = OnboardingSerif, fontWeight = FontWeight.SemiBold),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // Step 0 is the launch screen, which is outside the count and must
+            // not render "0 of 10".
+            if (stepIndex > 0) Text(
+                stringResource(R.string.onboarding_step_counter, stepIndex, ONBOARDING_STEPS),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                maxLines = 1,
+            )
+        }
+        if (onUrgent != null) {
+            val urgentCd = stringResource(R.string.onboarding_urgent_cd)
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = 0.10f))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { onUrgent() }
+                    .semantics { contentDescription = urgentCd },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.WarningAmber,
+                    contentDescription = null,
+                    tint = Danger,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Ten segments, the completed ones filled.
+ *
+ * `aria-label`-equivalent lives on the row rather than each segment: a screen
+ * reader announcing ten unlabelled bars is noise, while "step 3 of 10" is the
+ * whole message.
+ */
+@Composable
+private fun OnboardingStepper(stepIndex: Int) {
+    if (stepIndex <= 0) return
+    val label = stringResource(R.string.onboarding_step_counter, stepIndex, ONBOARDING_STEPS)
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 32.dp)
+            .semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        repeat(ONBOARDING_STEPS) { i ->
+            Box(
+                Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp))
+                    .background(
+                        when {
+                            i < stepIndex - 1 -> Brush.horizontalGradient(listOf(Periwinkle, Periwinkle))
+                            i == stepIndex - 1 -> Brush.horizontalGradient(listOf(Periwinkle, Cyan))
+                            else -> Brush.horizontalGradient(listOf(ProgressTrack, ProgressTrack))
+                        },
+                    ),
+            )
         }
     }
 }
@@ -787,19 +1234,90 @@ private fun ReferenceCard(
 }
 
 @Composable
-private fun StateOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 55.dp).clip(RoundedCornerShape(16.dp))   // B38: grows at large font
-            .background(if (selected) PickRowSelectedFill else PickRowFill)
-            .border(1.dp, PickRowStroke, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick).padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun StateOptionRow(
+    label: String,
+    subtitle: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier.heightIn(min = 116.dp).clip(RoundedCornerShape(20.dp))
+            .background(if (selected) Periwinkle else Color(0xFFF6EFF8))
+            .clickable(onClick = onClick).padding(15.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
-            color = if (selected) ChipSelectedInk else TextPrimary)
-        Icon(Icons.Outlined.ChevronRight, null, tint = PickRowChevron, modifier = Modifier.size(22.dp))
+        Box(
+            Modifier.size(36.dp).clip(CircleShape)
+                .background(if (selected) Color.White.copy(alpha = .14f) else CardFill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(if (selected) "≈" else "·", color = if (selected) Color.White else Periwinkle,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        Column {
+            Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                color = if (selected) Color.White else TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
+                color = if (selected) Color.White.copy(alpha = .82f) else TextMuted)
+        }
     }
 }
+
+@Composable
+private fun SecondaryOnboardingButton(label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().heightIn(min = 50.dp).clip(RoundedCornerShape(17.dp))
+            .background(CardFill).border(1.dp, ProgressTrack, RoundedCornerShape(17.dp))
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle)
+    }
+}
+
+@Composable
+private fun OnboardingFeatureCard(
+    glyph: String,
+    title: String,
+    subtitle: String,
+    selected: Boolean = false,
+    trailingCheck: Boolean = false,
+    onClick: (() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(21.dp)
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(shape)
+            .background(if (selected) Color(0xFFF1E6F2) else CardFill)
+            .border(if (selected) 2.dp else 1.dp, if (selected) Periwinkle else ProgressTrack, shape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF3ECF3)), contentAlignment = Alignment.Center) {
+            Text(glyph, color = Periwinkle, style = MaterialTheme.typography.titleLarge)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
+        if (trailingCheck) Icon(Icons.Outlined.Check, null, tint = Periwinkle, modifier = Modifier.size(20.dp))
+        else if (onClick != null) Icon(Icons.Outlined.ChevronRight, null, tint = Periwinkle, modifier = Modifier.size(19.dp))
+    }
+}
+
+@Composable
+private fun stateOptionSubtitle(id: String): String = stringResource(
+    when (id) {
+        "stressed" -> R.string.ob_state_sub_clear
+        "night" -> R.string.ob_state_sub_tired
+        "overthinking" -> R.string.ob_state_sub_anxious
+        "doubt" -> R.string.ob_state_sub_low
+        "distant" -> R.string.ob_state_sub_overwhelmed
+        else -> R.string.ob_state_sub_unsure
+    },
+)
 
 /** One side of the two-up disclosure — a glass tile with an accent heading.
  *

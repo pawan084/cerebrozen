@@ -91,8 +91,13 @@ import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.audio.BreathVoice
 import com.cerebrozen.app.ui.Haptics
+import com.cerebrozen.app.ui.theme.Accent2
+import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.Cyan
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Cream
+import com.cerebrozen.app.ui.theme.Iris
+import com.cerebrozen.app.ui.theme.Violet
 import com.cerebrozen.app.ui.theme.FunnelHeaderTop
 import com.cerebrozen.app.ui.theme.FunnelHeaderBottom
 import com.cerebrozen.app.ui.theme.Ink
@@ -293,9 +298,12 @@ fun BreatheEngine(
     val orbSize = if (compact) 164.dp else 214.dp
     val instructionSize = if (compact) 22.sp else 24.sp
     val orbGradient = if (compact) {
-        listOf(Color(0xFFF9FBFF), Color(0xFFDDE8FF), Color(0xFF9EC9FF), Color(0xFF7A5CFF))
+        // Constant art, not themed roles: the orb carries [Ink] as its count in
+        // BOTH themes, so it has to stay a light object. The stops are the
+        // theme-independent plum art constants (white core → deep plum rim).
+        listOf(Cream, PeriwinkleSoft, Iris, Violet)
     } else {
-        listOf(Color.White, Color(0xFFDDE8FF), Color(0xFF64C9FF), Color(0xFF7A5CFF), Color(0xFFB18CFF))
+        listOf(Color.White, Cream, PeriwinkleSoft, Iris, Violet)
     }
 
     Column(
@@ -340,7 +348,7 @@ fun BreatheEngine(
                     }
                     .blur(22.dp)
                     .background(
-                        Brush.radialGradient(listOf(tint.copy(alpha = glowAlpha), Color(0x337A5CFF), Color.Transparent)),
+                        Brush.radialGradient(listOf(tint.copy(alpha = glowAlpha), Periwinkle.copy(alpha = 0.2f), Color.Transparent)),
                         CircleShape,
                     ),
             )
@@ -366,7 +374,7 @@ fun BreatheEngine(
                     style = Stroke(width = 3.dp.toPx()),
                 )
                 drawArc(
-                    brush = Brush.sweepGradient(listOf(Color(0xFF64C9FF), Color(0xFFB18CFF), Color(0xFF7A5CFF))),
+                    brush = Brush.sweepGradient(listOf(Cyan, Periwinkle, Accent2)),
                     startAngle = -90f,
                     sweepAngle = 360f * ringProgress,
                     useCenter = false,
@@ -378,7 +386,7 @@ fun BreatheEngine(
                 Modifier
                     .size(orbSize)
                     .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .shadow(22.dp, CircleShape, clip = false, ambientColor = tint.copy(alpha = 0.55f), spotColor = Color(0x667A5CFF))
+                    .shadow(22.dp, CircleShape, clip = false, ambientColor = tint.copy(alpha = 0.55f), spotColor = Periwinkle.copy(alpha = 0.4f))
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(orbGradient),
@@ -491,13 +499,13 @@ private fun ImmersiveBreatheFrame(
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
-                brush = Brush.radialGradient(listOf(Color(0x2E64C9FF), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(Cyan.copy(alpha = 0.18f), Color.Transparent)),
                 radius = size.minDimension * 0.72f,
                 center = Offset(size.width * 0.5f, size.height * (0.37f + drift)),
             )
             listOf(0.12f to 0.16f, 0.86f to 0.24f, 0.18f to 0.62f, 0.80f to 0.78f).forEachIndexed { index, point ->
                 drawCircle(
-                    color = if (index % 2 == 0) Color(0x3D64C9FF) else Color(0x3DB18CFF),
+                    color = if (index % 2 == 0) Cyan.copy(alpha = 0.24f) else Periwinkle.copy(alpha = 0.24f),
                     radius = 2.dp.toPx(),
                     center = Offset(size.width * point.first, size.height * (point.second + drift * 0.25f)),
                 )
@@ -613,11 +621,11 @@ private fun BreatheSettingRow(icon: androidx.compose.ui.graphics.vector.ImageVec
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(40.dp).clip(CircleShape).background(Color(0x227A5CFF))
-                .border(1.dp, Color(0x447A5CFF), CircleShape),
+            Modifier.size(40.dp).clip(CircleShape).background(AccentSoft)
+                .border(1.dp, LineStroke, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = Color(0xFFBFDFFF), modifier = Modifier.size(21.dp))
+            Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(21.dp))
         }
         Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = TextSoft, modifier = Modifier.weight(1f))
         // Semantics cleared: the row is the one accessible toggle; a second
@@ -657,7 +665,7 @@ private fun BreatheWhyCard(text: String) {
             Icon(
                 Icons.Outlined.ExpandMore,
                 contentDescription = if (expanded) stringResource(R.string.common_collapse) else stringResource(R.string.common_expand),
-                tint = Color(0xFFB18CFF),
+                tint = Periwinkle,
                 modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = rotation },
             )
         }

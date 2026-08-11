@@ -1,105 +1,192 @@
 /* @cerebro-tokens:start */
 /* Synced from design/tokens.css — edit THERE, then run `node scripts/sync-tokens.mjs`. */
 :root {
-  --night: #0e0c22;
-  --night-top: #1a1440;
-  --card: rgba(255, 255, 255, 0.05);
-  --card-strong: rgba(255, 255, 255, 0.085);
-  --line: rgba(255, 255, 255, 0.12);
-  --text: #f5f4ff;
-  --soft: #dfe0ff;
-  --muted: #b0a9e0;
-  --muted-2: #8f88c0;
-  --lav: #8a7bf0;
-  --lav-2: #a68bff;
-  --cream: #eceefb;
-  --ink: #1c1740;
-  --danger: #e08a9a;
-  --ok: #7ee0a8;
-  --warm: #f0a48c;
-  --cyan: #8fe6ee;
+  color-scheme: light;
+
+  /* Grounds — one elevation ladder of honest soft-solids, no fake translucency. */
+  --surface: #f8f4ee;
+  --surface-raised: #fffcf8;
+  --surface-field: #f3ecf3;
+  --line: #dfd9d3;
+
+  /* Text roles — every one clears 4.5:1 on every ground it may land on. */
+  --text: #211d20;
+  --text-secondary: #514a50;
+  --text-faint: #686267;
+
+  /* Accent (plum) + its wash. */
+  --accent: #5a2b5c;
+  --accent-2: #8a4a78;
+  --accent-soft: #e9ddea;
+  --on-accent: #fffcf8;
+
+  /* Tonal roles, each with the wash it is legible on. */
+  --ok: #49634f;
+  --ok-soft: #e5ede3;
+  --warm: #a45161;
+  --warm-soft: #fae9ea;
+  --danger: #c23a33;
+  --danger-soft: #ffe9e6;
+  --amber: #92611d;
+  --amber-soft: #fff1d8;
+  --info: #315c7a;
+  --info-soft: #e7f0f5;
+
+  /* Filled controls. The primary action is an accent fill, not a pale pill —
+     a near-white pill is invisible on an ivory ground. */
+  --btn-primary-bg: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --btn-primary-ink: var(--on-accent);
+
+  --shadow: 0 12px 30px rgba(90, 43, 92, 0.09);
+  --shadow-lg: 0 24px 70px rgba(53, 25, 57, 0.16);
+  --focus-ring: 0 0 0 3px rgba(90, 43, 92, 0.24);
+
+  /* ---- Legacy aliases — existing call sites only, do not extend ---- */
+  --night: var(--surface);
+  --night-top: var(--surface-raised);
+  --card: var(--surface-raised);
+  --card-strong: var(--surface-field);
+  --soft: var(--text-secondary);
+  --muted: var(--text-faint);
+  --muted-2: var(--text-faint);
+  --lav: var(--accent);
+  --lav-2: var(--accent-2);
+  --cream: var(--surface-raised);
+  --ink: var(--text);
+  --ok-legacy: var(--ok);
+  --cyan: var(--info);
+}
+
+/* Night — the opt-in dark appearance, and the pinned theme for sleep and
+   wind-down surfaces. Values reconciled from landing.html's [data-theme="dark"]
+   and web.html's [data-theme="night"], which agree to within a few points. */
+:root[data-theme="night"] {
+  color-scheme: dark;
+
+  --surface: #171019;
+  --surface-raised: #241927;
+  --surface-field: #302237;
+  --line: #3e3043;
+
+  --text: #faf5fb;
+  --text-secondary: #ded4e0;
+  --text-faint: #b9abb9;
+
+  --accent: #d9acde;
+  --accent-2: #c580b5;
+  --accent-soft: #3a2a3e;
+  --on-accent: #241927;
+
+  --ok: #afd6b2;
+  --ok-soft: #1e2a20;
+  --warm: #f29ab0;
+  --warm-soft: #351e25;
+  --danger: #ff8c82;
+  --danger-soft: #3a211e;
+  --amber: #f0c37f;
+  --amber-soft: #453622;
+  --info: #9cc4dc;
+  --info-soft: #22323c;
+
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+}
+
+/* Follow the OS unless the user has chosen explicitly. Keep this block's values
+   identical to [data-theme="night"] above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dawn"]) {
+    color-scheme: dark;
+
+    --surface: #171019;
+    --surface-raised: #241927;
+    --surface-field: #302237;
+    --line: #3e3043;
+
+    --text: #faf5fb;
+    --text-secondary: #ded4e0;
+    --text-faint: #b9abb9;
+
+    --accent: #d9acde;
+    --accent-2: #c580b5;
+    --accent-soft: #3a2a3e;
+    --on-accent: #241927;
+
+    --ok: #afd6b2;
+    --ok-soft: #1e2a20;
+    --warm: #f29ab0;
+    --warm-soft: #351e25;
+    --danger: #ff8c82;
+    --danger-soft: #3a211e;
+    --amber: #f0c37f;
+    --amber-soft: #453622;
+    --info: #9cc4dc;
+    --info-soft: #22323c;
+
+    --shadow: 0 22px 58px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 26px 80px rgba(0, 0, 0, 0.4);
+    --focus-ring: 0 0 0 3px rgba(217, 172, 222, 0.34);
+  }
 }
 /* @cerebro-tokens:end */
 
 /* ============================================================
-   App-local roles + the Dawn (light) theme.
-   The generated block above is the shared Night scale (design/tokens.css →
-   scripts/sync-tokens.mjs — never edit it here). Everything below belongs to
-   this client and layers on top:
-     · panel-*  — gradient heroes are ALWAYS Night in both themes (they carry
-       white text and a glowing orb), so their base can't follow the page.
-     · Dawn maps the same role names to a warm cream scale, so every screen
-       that already reads tokens flips for free. Follows the OS by default;
-       an explicit [data-theme] wins. Keep the two Dawn blocks identical.
+   App-local roles, layered on the shared Light Dawn scale above
+   (design/tokens.css → scripts/sync-tokens.mjs — never edit that block here).
+
+   The old `--dawn-*` set and its two mapping hooks are gone: light is now the
+   default in the shared tokens, so a client-local light theme would only fight
+   it. Night is still reachable — [data-theme="night"] on :root for the whole
+   app, or the `.theme-night` scope below for the few surfaces that are night by
+   design.
+
+     · panel-*  — the gradient heroes stay dark in both themes. That is not a
+       leftover from the night-first build: the reference design deliberately
+       punctuates its light pages with dark inset panels, and these carry white
+       text and a glowing orb. Re-toned from indigo to plum to match.
+     · sidebar/bar — these DO follow the page, and are now light paper.
    ============================================================ */
 :root {
-  --panel-top: #1a1440;
-  --panel-base: #0e0c22;
-  --sidebar-top: #17123a;
-  --bar-bg: rgba(20, 16, 44, 0.86);
-  --danger-line: rgba(224, 138, 154, 0.5);
-  --danger-wash: rgba(224, 138, 154, 0.09);
-
-  /* Dawn values live here so the two theme hooks below only map, never restate. */
-  --dawn-base: #f2eee5;
-  --dawn-top: #fbf8f2;
-  --dawn-sidebar: #ece7dc;
-  --dawn-bar: rgba(251, 248, 242, 0.9);
-  --dawn-card: rgba(28, 23, 64, 0.045);
-  --dawn-card-strong: rgba(28, 23, 64, 0.085);
-  --dawn-line: rgba(28, 23, 64, 0.14);
-  --dawn-text: #201a45;
-  --dawn-soft: #362f63;
-  --dawn-muted: #565083;
-  --dawn-muted-2: #625c8f;
-  --dawn-lav: #5a4fd0;
-  --dawn-lav-2: #7361e4;
-  --dawn-danger: #b0374f;
-  --dawn-ok: #1c7247;
-  --dawn-warm: #a8542f;
-  --dawn-cyan: #17727e;
-  --dawn-danger-line: rgba(176, 55, 79, 0.45);
-  --dawn-danger-wash: rgba(176, 55, 79, 0.07);
+  --panel-top: #2e1f33;
+  --panel-base: #171019;
+  --sidebar-top: #fffcf8;
+  --bar-bg: rgba(255, 252, 248, 0.86);
+  --danger-line: rgba(194, 58, 51, 0.45);
+  --danger-wash: rgba(194, 58, 51, 0.07);
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="night"]) {
-    --night: var(--dawn-base); --night-top: var(--dawn-top);
-    --sidebar-top: var(--dawn-sidebar); --bar-bg: var(--dawn-bar);
-    --card: var(--dawn-card); --card-strong: var(--dawn-card-strong); --line: var(--dawn-line);
-    --text: var(--dawn-text); --soft: var(--dawn-soft);
-    --muted: var(--dawn-muted); --muted-2: var(--dawn-muted-2);
-    --lav: var(--dawn-lav); --lav-2: var(--dawn-lav-2);
-    --danger: var(--dawn-danger); --ok: var(--dawn-ok);
-    --warm: var(--dawn-warm); --cyan: var(--dawn-cyan);
-    --danger-line: var(--dawn-danger-line); --danger-wash: var(--dawn-danger-wash);
-  }
-}
-:root[data-theme="dawn"] {
-  --night: var(--dawn-base); --night-top: var(--dawn-top);
-  --sidebar-top: var(--dawn-sidebar); --bar-bg: var(--dawn-bar);
-  --card: var(--dawn-card); --card-strong: var(--dawn-card-strong); --line: var(--dawn-line);
-  --text: var(--dawn-text); --soft: var(--dawn-soft);
-  --muted: var(--dawn-muted); --muted-2: var(--dawn-muted-2);
-  --lav: var(--dawn-lav); --lav-2: var(--dawn-lav-2);
-  --danger: var(--dawn-danger); --ok: var(--dawn-ok);
-  --warm: var(--dawn-warm); --cyan: var(--dawn-cyan);
-  --danger-line: var(--dawn-danger-line); --danger-wash: var(--dawn-danger-wash);
-}
-
-/* Some surfaces stay Night in every theme: the onboarding funnel (its white
-   pill CTA and glowing orbs are the brand's first impression), the auth card,
-   and anything marked `.theme-night` — the Sleep tab and its wind-down ritual
-   (a bright screen is the wrong thing to hand someone at bedtime), the public
-   /crisis page, and the Journal prompt hero. Redeclaring the roles on the
-   container re-themes everything inside, so the scope is correct even when
-   :root is Dawn. */
+/* Surfaces that are night by design, not by preference: the onboarding funnel
+   and auth card (the brand's first impression is a dark plum story panel — the
+   reference web prototype does the same), plus anything marked `.theme-night`,
+   which today is the public /crisis page and the Journal prompt hero. Sleep is
+   NOT in this list: appearance went global by owner decision 2026-08-04, and
+   theme.spec.ts asserts no .theme-night scope wraps it. Redeclaring the roles
+   on the container re-themes everything inside, so the scope holds even though
+   :root is now Light Dawn. */
 .onb-root, .authwrap, .theme-night {
+  --surface-raised: #241927; --surface-field: #302237; --line: #3e3043;
+  --text: #faf5fb; --text-secondary: #ded4e0; --text-faint: #b9abb9;
+  --accent: #d9acde; --accent-2: #c580b5; --accent-soft: #3a2a3e;
+  --on-accent: #241927;
+  --ok: #afd6b2; --ok-soft: #1e2a20;
+  --warm: #f29ab0; --warm-soft: #351e25;
+  --danger: #ff8c82; --danger-soft: #3a211e;
+  --amber: #f0c37f; --amber-soft: #453622;
+  --info: #9cc4dc; --info-soft: #22323c;
+  --danger-line: rgba(255, 140, 130, 0.5); --danger-wash: rgba(255, 140, 130, 0.09);
+
+  /* Legacy aliases resolve through the roles above, but --card/--card-strong
+     were translucent white in the night build and several scrims still expect
+     that, so keep them explicit here. */
   --card: rgba(255, 255, 255, 0.05); --card-strong: rgba(255, 255, 255, 0.085);
-  --line: rgba(255, 255, 255, 0.12); --text: #f5f4ff; --soft: #dfe0ff;
-  --muted: #b0a9e0; --muted-2: #8f88c0; --lav: #8a7bf0; --lav-2: #a68bff;
-  --danger: #e08a9a; --ok: #7ee0a8; --warm: #f0a48c; --cyan: #8fe6ee;
-  --danger-line: rgba(224, 138, 154, 0.5); --danger-wash: rgba(224, 138, 154, 0.09);
+  --soft: #ded4e0; --muted: #b9abb9; --muted-2: #b9abb9;
+  --lav: #d9acde; --lav-2: #c580b5; --cyan: #9cc4dc;
+  /* --cream/--ink are a PAIR meaning "pale fill, dark label" (the signature
+     white pill on the dark funnel panels). That reading holds in both themes,
+     so it must not invert here. */
+  --cream: #f6f0f6; --ink: #241927;
+
   background: linear-gradient(180deg, var(--panel-top), var(--panel-base));
   color: var(--text);
 }
@@ -109,12 +196,13 @@
    nothing inside them reads --night.
    A `.theme-night` section is different: it wraps ordinary app content whose
    cards, scrims and charts resolve --night/--night-top themselves. Without
-   these two lines the scope re-themed the text roles but left the ground Dawn,
+   these two lines the scope re-themed the text roles but left the ground light,
    so the Sleep tab rendered warm paper under Night ink — the bright-screen-at-
    bedtime regression this scope exists to prevent (theme.spec.ts pins it). */
 .theme-night {
-  --night: #0e0c22;
-  --night-top: #1a1440;
+  --surface: #171019;
+  --night: #171019;
+  --night-top: #241927;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -132,8 +220,8 @@ button { font: inherit; cursor: pointer; }
 .topbar {
   display: flex; align-items: center; gap: 20px;
   padding: 14px 22px; border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; backdrop-filter: blur(14px);
-  background: rgba(14, 12, 34, 0.72); z-index: 10;
+  position: sticky; top: 0; backdrop-filter: blur(14px) saturate(1.1);
+  background: var(--bar-bg); z-index: 10;
 }
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-serif), Georgia, serif; font-size: 19px; }
 .brand .dot {
@@ -523,7 +611,7 @@ select option { color: var(--ink); }
 .premium-dismiss:hover { color: var(--soft); }
 .premium-card strong { font-family: var(--font-serif), Georgia, serif; font-size: 16px; }
 .premium-card p { color: var(--muted); font-size: 12.5px; line-height: 1.45; margin: 6px 0 12px; }
-.premium-btn { display: block; text-align: center; padding: 9px; border-radius: 11px; background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink); font-weight: 700; font-size: 13.5px; text-decoration: none; }
+.premium-btn { display: block; text-align: center; padding: 9px; border-radius: 11px; background: var(--btn-primary-bg); color: var(--btn-primary-ink); font-weight: 700; font-size: 13.5px; text-decoration: none; }
 
 .sidebar-foot { margin-top: 16px; padding-top: 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
 .user-chip { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
@@ -932,4 +1020,336 @@ select option { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .imagery-line { animation: none; }
   .imagery-glow { animation: none; }
+}
+
+/* ============================================================
+   Explore (EXP-01) — the spec's second tab and Sleep's new parent.
+   A six-card grid of practice families: each card is a whole target, so the
+   48px floor is met by the card, not the label inside it.
+   ============================================================ */
+.explore-grid {
+  display: grid; gap: 12px; margin-bottom: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.explore-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-height: 132px; padding: 18px; text-decoration: none; color: var(--text);
+  border: 1px solid var(--line); transition: transform 0.16s var(--cz-settle), border-color 0.16s;
+}
+.explore-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.explore-card strong { font-size: 15px; font-weight: 650; }
+.explore-card .sub { font-size: 12.5px; line-height: 1.45; }
+.explore-icon {
+  display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 4px;
+  border-radius: 12px; background: var(--accent-soft); color: var(--accent); flex: 0 0 auto;
+}
+.explore-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.explore-shortcuts .ui-chip { text-decoration: none; display: inline-flex; align-items: center; gap: 7px; }
+
+/* Reduce Motion is a contract: the lift is decorative, so it goes. */
+@media (prefers-reduced-motion: reduce) {
+  .explore-card { transition: none; }
+  .explore-card:hover { transform: none; }
+}
+
+/* The permanent urgent-support entry in the app bar. Warm rather than red: it is
+   a calm door, not a scare button (design system §1), but it never blends in. */
+.header-support {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--danger-line); background: var(--danger-wash);
+  color: var(--danger); font-size: 13px; font-weight: 650; text-decoration: none;
+}
+.header-support:hover { border-color: var(--danger); }
+@media (max-width: 560px) { .header-support span { display: none; } .header-support { padding: 0 12px; } }
+
+/* ============================================================
+   Design surface (/design) — redesigned screens from ref/, mock data only.
+   Scoped under .design-root so none of it can leak into shipped screens.
+   ============================================================ */
+.design-root { min-height: 100dvh; background: var(--surface); color: var(--text); }
+.design-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  background: var(--surface-raised); position: sticky; top: 0; z-index: 20;
+}
+.design-brand { font-family: var(--font-serif), Georgia, serif; font-size: 17px; text-decoration: none; color: var(--text); }
+.design-brand span { color: var(--text-faint); font-family: inherit; font-size: 13px; }
+.design-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.design-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 11px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  font-size: 12px; text-decoration: none; color: var(--text-secondary);
+}
+.design-chip b { color: var(--accent); font-size: 11px; letter-spacing: 0.03em; }
+.design-note { margin-left: auto; font-size: 11.5px; color: var(--text-faint); }
+
+/* ---- Today (TOD-01) ---- */
+.today-wrap { max-width: 720px; margin: 0 auto; padding: 34px 22px 90px; }
+.today-greeting {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 600;
+  font-size: clamp(38px, 8vw, 54px); line-height: 1.02; letter-spacing: -0.03em;
+  margin: 6px 0 12px;
+}
+.today-lede { max-width: 38ch; margin-bottom: 26px; }
+
+.today-hero {
+  border-radius: 26px; padding: 26px; margin-bottom: 30px;
+  background: linear-gradient(155deg, #fbe3d3 0%, #f0d8de 48%, #e2cfef 100%);
+  color: #3b1c3f;
+}
+.today-hero .eyebrow { color: #8a3f63; }
+.today-hero-title {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 600;
+  font-size: clamp(27px, 5.4vw, 34px); line-height: 1.08; letter-spacing: -0.025em;
+  margin: 4px 0 14px; max-width: 18ch;
+}
+.today-chips { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; padding: 0; margin: 0 0 14px; }
+.today-chips li {
+  font-size: 11.5px; font-weight: 650; padding: 5px 11px; border-radius: 999px;
+  background: rgba(255, 252, 248, 0.66); color: #4a2350;
+}
+.today-why { font-size: 13px; line-height: 1.55; color: #55304f; margin: 0 0 18px; max-width: 44ch; }
+.today-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.today-cta { min-height: 48px; padding: 0 22px; border-radius: 999px; font-size: 15px; }
+.today-hero .text-btn { color: #5a2b5c; font-weight: 650; min-height: 48px; }
+
+.today-checkin { margin-bottom: 26px; }
+.today-checkin .sub { margin: 2px 0 14px; }
+.mood-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.mood-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-height: 74px; padding: 13px 15px; border-radius: 18px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface-raised); color: var(--text);
+  transition: border-color 0.16s, background 0.16s;
+}
+.mood-tile strong { font-size: 14.5px; font-weight: 650; }
+.mood-tile small { font-size: 12px; color: var(--text-faint); }
+.mood-tile.selected { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.mood-tile.selected small { color: var(--accent-soft); }
+
+.today-fold {
+  border-top: 1px solid var(--line); padding: 4px 0;
+}
+.today-fold summary {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  min-height: 52px; padding: 14px 0; cursor: pointer; list-style: none;
+  font-family: var(--font-serif), Georgia, serif; font-size: 19px; font-weight: 600;
+}
+.today-fold summary::-webkit-details-marker { display: none; }
+.today-fold summary::after { content: "+"; margin-left: auto; font-family: var(--font-sans); font-size: 20px; color: var(--text-faint); }
+.today-fold[open] summary::after { content: "−"; }
+.today-fold summary small { font-family: var(--font-sans); font-size: 12.5px; font-weight: 400; color: var(--text-faint); }
+.today-fold > *:not(summary) { margin-bottom: 12px; }
+
+.day-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.day-row {
+  display: grid; grid-template-columns: 88px 1fr auto; align-items: center; gap: 10px;
+  min-height: 48px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.day-row:last-child { border-bottom: 0; }
+.day-when { color: var(--text-faint); font-size: 12px; }
+.day-state { font-size: 11.5px; font-weight: 650; color: var(--text-faint); }
+.day-row.done .day-state { color: var(--ok); }
+
+.week-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.week-cell { padding: 14px; border-radius: 16px; background: var(--surface-field); }
+.week-cell strong { display: block; font-family: var(--font-serif), Georgia, serif; font-size: 24px; font-weight: 600; }
+.week-cell small { display: block; font-size: 12px; color: var(--text-faint); margin-top: 2px; line-height: 1.4; }
+
+@media (prefers-reduced-motion: reduce) { .mood-tile { transition: none; } }
+
+/* Utilities the design surface uses that the shipped app never defined.
+   Scoped to .design-root: these must not start applying to live screens. */
+.design-root .text-btn {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 13.5px; font-weight: 650; color: var(--accent);
+  text-decoration: none;
+}
+.design-root .text-btn:hover { text-decoration: underline; }
+.design-root .tiny { font-size: 11.5px; line-height: 1.5; color: var(--text-faint); margin: 0; }
+/* The primary CTA is an accent fill — .btn-primary is a web/admin class and
+   was never defined in this app, so the button rendered as a UA default. */
+.design-root .today-cta {
+  border: 0; cursor: pointer; font-weight: 700;
+  background: var(--btn-primary-bg); color: var(--btn-primary-ink);
+}
+/* `.sub` was only ever defined as a descendant (.card .sub, .authcard .sub …),
+   so a bare `sub` on the design surface rendered as an unstyled paragraph.
+   Scoped here rather than promoted app-wide: shipped screens rely on the
+   descendant rules and a global would change every one of them. */
+.design-root .sub { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
+.design-root .ds-cta {
+  min-height: 48px; padding: 0 22px; border-radius: 999px; font-size: 15px;
+  border: 0; cursor: pointer; font-weight: 700;
+  background: var(--btn-primary-bg); color: var(--btn-primary-ink);
+}
+.design-root .ds-cta:disabled { opacity: 0.5; cursor: default; }
+.design-root .ds-cta-quiet {
+  min-height: 48px; padding: 0 20px; border-radius: 999px; font-size: 14.5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); background: var(--surface-raised);
+  color: var(--text); font-weight: 650; cursor: pointer; text-decoration: none;
+}
+.design-root .ds-cta-quiet:hover { border-color: var(--accent); }
+
+/* ---- Shared vocabulary for the check-in / explore / sleep / urgent screens ---- */
+.ds-section { margin: 0 0 32px; }
+.ds-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.ds-head .serif-h { margin: 0; }
+.ds-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 20px; padding: 18px; }
+.ds-card + .ds-card { margin-top: 12px; }
+.design-root .ds-card > *:last-child, .design-root .ds-section > *:last-child { margin-bottom: 0; }
+.ds-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.ds-list { display: grid; gap: 10px; }
+.ds-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.ds-note {
+  border: 1px solid var(--line); background: var(--surface-field); color: var(--text-secondary);
+  border-radius: 16px; padding: 14px 16px; font-size: 13px; line-height: 1.6; margin: 0 0 16px;
+}
+.ds-note strong { color: var(--text); }
+.ds-note.warn { border-color: var(--amber); background: var(--amber-soft); color: var(--text); }
+.ds-note.danger { border-color: var(--danger); background: var(--danger-soft); color: var(--text); }
+
+.ds-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; background: var(--surface-field); color: var(--text-secondary);
+}
+.ds-badge.ok { background: var(--ok-soft); color: var(--ok); }
+.ds-badge.warn { background: var(--amber-soft); color: var(--amber); }
+.ds-badge.danger { background: var(--danger-soft); color: var(--danger); }
+
+/* Pressable pill. `.chip` exists app-wide but is 31px tall — below the 48px
+   touch target these screens hold themselves to, so it is not reused. */
+.ds-chip {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface-raised);
+  color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer;
+  transition: background 0.16s, border-color 0.16s;
+}
+.ds-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ds-chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ds-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  min-height: 100px; padding: 15px 16px; border-radius: 18px; text-align: left;
+  border: 1px solid var(--line); background: var(--surface-raised); color: var(--text);
+  font: inherit; cursor: pointer; text-decoration: none;
+  transition: border-color 0.16s, background 0.16s;
+}
+.ds-tile:hover { border-color: var(--accent); }
+.ds-mark-inline { font-size: 17px; color: var(--accent); line-height: 1.1; }
+.ds-tile strong { font-size: 14.5px; font-weight: 650; }
+.ds-tile small { font-size: 12.5px; color: var(--text-faint); line-height: 1.45; }
+/* The second line is the family's one suggestion — it has to read as a
+   different kind of thing from the description above it. */
+.ds-tile small + small { color: var(--accent); font-weight: 600; margin-top: 4px; }
+.design-root .ds-list + .tiny, .design-root .ds-grid + .tiny, .design-root .ds-steps + .tiny { margin-top: 10px; }
+
+.ds-row {
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 14px;
+  width: 100%; text-align: left; min-height: 68px; padding: 12px 16px; border-radius: 18px;
+  border: 1px solid var(--line); background: var(--surface-raised); color: var(--text);
+  font: inherit; cursor: pointer; text-decoration: none;
+  transition: border-color 0.16s, background 0.16s;
+}
+.ds-row:hover { border-color: var(--accent); }
+.ds-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 17px; background: var(--accent-soft); color: var(--accent); }
+.ds-mark.ok { background: var(--ok-soft); color: var(--ok); }
+.ds-mark.warm { background: var(--warm-soft); color: var(--warm); }
+.ds-mark.info { background: var(--info-soft); color: var(--info); }
+.ds-mark.danger { background: var(--danger-soft); color: var(--danger); }
+.ds-row-copy strong { display: block; font-size: 14.5px; font-weight: 650; }
+.ds-row-copy small { display: block; font-size: 12.5px; color: var(--text-faint); margin-top: 3px; line-height: 1.45; }
+.ds-chevron { color: var(--text-faint); font-size: 18px; }
+
+.ds-search { position: relative; margin: 0 0 18px; }
+.ds-search input {
+  min-height: 48px; padding: 0 16px 0 44px; border-radius: 999px;
+  background: var(--surface-raised); border: 1px solid var(--line);
+}
+.ds-search-icon { position: absolute; left: 17px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 15px; pointer-events: none; }
+
+.design-root .ds-textarea { min-height: 96px; border-radius: 14px; resize: vertical; }
+.ds-label { display: block; font-size: 12.5px; font-weight: 650; color: var(--text-secondary); margin: 0 0 6px; }
+
+/* ---- Check-in (TOD-02) ---- */
+.checkin-tile { min-height: 92px; }
+.checkin-tile .ds-mark-inline { color: var(--accent); }
+.mood-tile.selected .ds-mark-inline { color: var(--on-accent); }
+.checkin-next {
+  border: 1px solid var(--accent-soft); background: var(--accent-soft);
+  border-radius: 22px; padding: 20px; margin: 0 0 26px; color: var(--text);
+}
+.checkin-next h2 {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 600;
+  font-size: clamp(22px, 4vw, 27px); line-height: 1.12; letter-spacing: -0.02em; margin: 4px 0 10px;
+}
+.checkin-next .sub { margin: 0 0 14px; max-width: 52ch; }
+.checkin-reads { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 7px; }
+.checkin-reads li { display: grid; grid-template-columns: 18px 1fr; gap: 9px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.checkin-reads li b { color: var(--text); font-weight: 650; }
+.checkin-reads .yes { color: var(--ok); font-weight: 700; }
+.checkin-reads .no { color: var(--text-secondary); font-weight: 700; }
+
+/* ---- Sleep (SLP-01) ---- */
+.sleep-hero {
+  border-radius: 26px; padding: 26px; margin: 0 0 30px;
+  background: var(--btn-primary-bg); color: var(--on-accent);
+}
+.sleep-hero .eyebrow { color: var(--on-accent); }
+.sleep-hero h2 {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 600;
+  font-size: clamp(27px, 5.4vw, 34px); line-height: 1.08; letter-spacing: -0.025em; margin: 4px 0 10px;
+}
+.sleep-hero p { font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; max-width: 44ch; color: var(--on-accent); }
+.sleep-hero .ds-cta { background: var(--surface-raised); color: var(--accent); }
+.sleep-hero .text-btn { color: var(--on-accent); text-decoration: underline; }
+
+.ds-steps { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.ds-step {
+  display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 14px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-raised);
+}
+.ds-step-n { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 13px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px; }
+.ds-step-copy strong { display: block; font-size: 14.5px; font-weight: 650; }
+.ds-step-copy small { display: block; font-size: 12.5px; color: var(--text-faint); margin-top: 3px; }
+.ds-move { display: flex; gap: 6px; }
+.ds-move button {
+  width: 48px; height: 48px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text-secondary); font-size: 15px;
+}
+.ds-move button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.ds-move button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 520px) {
+  .ds-step { grid-template-columns: 40px 1fr; }
+  .ds-move { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+/* ---- Urgent support (SAF-01) ---- */
+.urgent-standing {
+  border: 1px solid var(--danger); background: var(--danger-soft); color: var(--text);
+  border-radius: 20px; padding: 16px 18px; margin: 0 0 22px; font-size: 13.5px; line-height: 1.6;
+}
+.urgent-standing strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.ds-crisis {
+  display: grid; grid-template-columns: 48px 1fr; gap: 15px; align-items: start;
+  width: 100%; text-align: left; min-height: 76px; padding: 16px; border-radius: 20px;
+  border: 1px solid var(--danger); background: var(--danger-soft); color: var(--text);
+  font: inherit; cursor: pointer;
+}
+.ds-crisis.secondary { border-color: var(--line); background: var(--surface-raised); }
+/* The mark's own wash matches the card's, so it would vanish — lift it. */
+.ds-crisis .ds-mark.danger { background: var(--surface-raised); }
+.ds-crisis:hover { border-color: var(--accent); }
+.ds-crisis.secondary:hover { border-color: var(--accent); }
+.ds-crisis-copy strong { display: block; font-size: 15px; font-weight: 700; }
+.ds-crisis-copy small { display: block; font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+.ds-number { font-family: var(--font-serif), Georgia, serif; font-size: 21px; font-weight: 600; letter-spacing: 0.01em; color: var(--text); display: block; margin-top: 4px; }
+.ds-source { font-size: 11.5px; line-height: 1.55; color: var(--text-faint); margin: 6px 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-chip, .ds-tile, .ds-row { transition: none; }
 }

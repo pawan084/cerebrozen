@@ -39,11 +39,20 @@ cere/
   apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
                   docs/REDESIGN.md): 5 tabs + ~37 routes, unified breathe engine, Toolkit hub,
                   one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
-                  Night/Dawn theme (theme-aware token getters in ui/theme, AppTheme state,
-                  ContrastTest gate), InfoBanner slot on Home, crisis ≤2 taps (Tele-MANAS-first)
+                  Light-Dawn/Night theme (theme-aware token getters in ui/theme, AppTheme
+                  state, ContrastTest gate; Dawn is the default since the 2026-08 Light Dawn
+                  port), InfoBanner slot on Today, crisis ≤2 taps (Tele-MANAS-first)
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
+  apps/portal/    Next.js 14 organisation portal — DESIGN SURFACE ONLY (port 3003).
+                  10 of the prototype's 36 routes (ref/portal.html), every figure a
+                  local constant in lib/mock.ts: no fetch, no auth, no models. The
+                  B2B2C layer it depicts (organisation, sponsorship, entitlement,
+                  cohort, 7-role RBAC) does not exist in the backend — see
+                  REDESIGN_V2.md §3.3/§5 phase 5. Not in docker-compose, not
+                  deployed, not in scripts/sync-tokens.mjs TARGETS yet (its
+                  @cerebro-tokens block is a byte-identical copy of apps/admin's).
   backend/        FastAPI + Postgres (auth, data, proactive AI, voice, Oracle agent)
   e2e/            Playwright tests (web + admin) in an isolated Docker stack
   deploy/         Caddyfile + bootstrap.sh (one-shot VPS setup)
@@ -84,11 +93,12 @@ screen says so rather than letting the user assume it follows their account.
 | `/users/me` | profile, attest (18+/AI disclosure; optional client tap-time, honored only when past), subscription/verify (StoreKit2 JWS), trusted-contact CRUD, consent, export, hard DELETE (cascade + minimal Rule 8(3) `deletion_ledger` row: hashed email only, 12-month ops purge), push-token, push-subscriptions (Web Push: status+VAPID key GET / register POST / unregister DELETE), streak (server mirror of the iOS rules) |
 | `/users/me/devices` | native push registration (2026-08-01). `GET ?platform=` reports whether delivery is actually configured for that platform + live install count (so a client never offers a toggle that does nothing); `POST` registers/refreshes a token — called on every cold start because FCM and APNs rotate tokens silently, adopts the row and clears `failed_at`; `DELETE ?token=` on sign-out, owner-scoped. Replaces the single `users.push_token` column, which lost a user's tablet to their phone and had nowhere to put an Android token |
 | `/assessment` | structure (taxonomy), topics (LLM or curated fallback conversation starters) |
-| `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget. `DELETE /moods/{id}` (owner-scoped, 404 otherwise) backs the check-in's Undo: logging is one tap, so a mis-tap is one tap, and a stray mood otherwise sits in the 60-day window `compute_patterns` and the weekly read are computed from. **`POST /moods` and `POST /journal` accept an optional `Idempotency-Key`** (2026-08-01) so the Android offline queue can retry a write that may already have landed: same key + same body replays the stored response, same key + a *different* body is a 409 rather than a silent overwrite. **`GET` on both takes `since=`**, an incremental cursor, so a client that has been offline for a week costs one small request instead of re-downloading its own history. `GET /journal` also takes `q=` (case-insensitive title/body, LIKE wildcards escaped so "100%" is text) and `tag=` (exact JSONB containment); `GET /journal/tags` lists the tags actually used |
+| `/moods` `/journal` `/chat` | CRUD + side effects: mood → contextual nudge; journal/chat → safety scan; chat → quota → LLM reply → activity widget. `DELETE /moods/{id}` (owner-scoped, 404 otherwise) backs the check-in's Undo. Journal entries support owner-scoped `PUT /journal/{id}` and `DELETE /journal/{id}`; edits re-run the safety scan instead of preserving a stale risk result. **`POST /moods` and `POST /journal` accept an optional `Idempotency-Key`** (2026-08-01) so the Android offline queue can retry a write that may already have landed: same key + same body replays the stored response, same key + a *different* body is a 409 rather than a silent overwrite. **`GET` on both takes `since=`**, an incremental cursor, so a client that has been offline for a week costs one small request instead of re-downloading its own history. `GET /journal` also takes `q=` (case-insensitive title/body, LIKE wildcards escaped so "100%" is text) and `tag=` (exact JSONB containment); `GET /journal/tags` lists the tags actually used |
 | `/sleep` | sleep diary: upsert-by-date (one entry/night), range list, weekly summary (avg duration/quality, bedtime consistency, trend — `enough_data`-gated); upsert re-anchors the `wind_down` nudge to the user's average bedtime |
 | `/plans` | active (lazily generated), generate, step patch |
 | `/programs` | multi-day journey enrollment (ref "DAY X OF 7" card): active (day computed from start date — nothing to advance or fail; when the program has per-day `day_guides`, additively carries `today_guide` `{title, body}` for the current day, clamped to the last guide), enroll (one at a time; replaces), leave. **Enroll resumes**: re-enrolling in a program you LEFT reactivates the prior enrollment (keeping its `started_at`) while its window is still running, and starts fresh otherwise — so a stray tap on "Leave this journey" no longer forfeits the week, and a program abandoned months ago does not resume at "day 92" clamped to complete (`tests/test_program_resume.py`) |
 | `/insights/trends` | day-by-day mood + sleep series for the Android Trends screen (2026-08-01). Days with no data are **absent, never zero** — a zero drawn on a chart reads as "I felt terrible", not "I didn't open the app"; `enough_data` gates every summary number; the mood↔sleep correlation is withheld with a machine-readable `reason` until ≥7 overlapping nights (two points always correlate perfectly, which is exactly why two points must not be shown as a finding). Mood is charted as an *ease* score, not raw intensity: "Anxious at 5" and "Good at 5" are opposite ends of one axis (`services/trends.py`) |
+| `DELETE /sleep/{date}` | Deletes one owned sleep-diary night by its wake-up date (the same stable key used by the upsert contract); another user's date and an absent date both return 404 |
 | `/insights` `/nudges` `/content` | weekly aggregation (on demand), patterns (transparent-AI-memory statements derived from the user's own 60-day data, per-source consent-gated, each with its `basis` counts; paired with `DELETE /users/me/memory` = chat + insights + Oracle checkpoint wipe), scheduled nudges, public catalogue |
 | `/oracle` | status, messages (SSE stream), confirm (resume paused write-tool) |
 | `/interventions` | `active` (lazy rule evaluation — returns the one open offer or **null**, never 404), history, accept/dismiss/complete. Every offer carries a plain-language `reason` derived from the user's own logged counts |
@@ -237,7 +247,7 @@ comes after the first win. Returning users never re-walk the tutorial — Welcom
 flowchart TD
     L["App launch"] --> S["Splash ~2.2s<br>(skipped under -resetState)"]
     S --> H{"hasOnboarded?"}
-    H -- yes --> MAIN["Main app<br>Home · Sleep · Talk · Journal · You"]
+    H -- yes --> MAIN["Main app<br>Today · Explore · Talk · Journal · You"]
     H -- no --> W["0 · Welcome"]
 
     W -- "Try a 2-minute reset" --> AG["1 · Age gate<br>Continue locked until 18+ tap"]

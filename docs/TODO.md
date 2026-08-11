@@ -4,6 +4,160 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Open — Light Dawn redesign (`ref/`, started 2026-08-06)
+
+Spec: [REDESIGN_V2.md](REDESIGN_V2.md). Phase 1 (token inversion) is done and verified;
+everything below is open.
+
+- [x] `design/tokens.css` inverted to light-first Light Dawn + Night opt-in; synced to
+      web/admin/app; `scripts/check-contrast.mjs` added and wired into CI (108 pairings pass)
+- [x] Primary CTA moved from white pill to accent fill (a pale pill is invisible on ivory);
+      landing nav + app topbar de-hardcoded from `rgba(14,12,34,…)`
+- [x] **Wave 1 (partial) — five-tab IA on `apps/app`**: Today · Explore · Talk · Journal · You.
+      Sleep demoted under Explore; new `/explore` hub (EXP-01) with the spec's six practice
+      families, each on a distinct real destination; Toolkit gained `#breathe/#ground/
+      #reframe/#settle` anchors so those families land somewhere specific. Urgent support
+      moved OUT of the mobile tab bar and INTO a permanent `AppHeader` entry — that landed
+      first, so crisis never stopped being ≤2 taps. Landing space cards + footer + three
+      e2e specs updated to match. **`/explore` is compile-verified only — not seen running**
+      (it is behind auth and Docker was not up)
+- [x] **Design surface at `/design`** (owner direction 2026-08-06: design first, wire later).
+      Redesigned screens render with mock data, no auth and no backend — the same thing the
+      `ref/` prototypes are — so they can be reviewed without Docker and without tearing the
+      working API wiring out of the live screens. `noindex`. Each screen graduates into its
+      real route once signed off; this surface is scaffolding and should shrink to nothing.
+- [x] **TOD-01 Today redesigned** — one decision at full volume (self-explaining
+      recommendation incl. "it did not use your journal"), a quieter check-in row, and
+      Your day / Tonight / This week folded into `<details>`. Presence-framed throughout:
+      counts days shown up, never days missed. Verified running at `/design/today`
+- [x] **TOD-02 check-in, EXP-01 explore, SLP-01 tonight, SAF-01 urgent support** built on
+      `/design`. SAF-01 verified interactively: India is the only verified region; switching
+      to US/UK flips the badge to "Not verified yet" and warns the numbers are unchecked;
+      "Elsewhere" shows no number at all. This is the honest version of the bug the ref/
+      audit flagged (Indian numbers badged "Verified" for every country)
+- [x] **Organisation portal design surface at `apps/portal`** (port 3003, `npm run dev`).
+      Shell (284px sidebar, five nav groups, sticky topbar, permanent privacy wall) plus 10
+      of the prototype's 36 routes: DASH-01, MEM-01, COH-01, COH-02, PRO-01, CAM-01, ENG-01,
+      PRI-01, ROL-01, PRE-01. Mock data only (`lib/mock.ts`); the five non-negotiable privacy
+      strings are quoted verbatim in `lib/copy.ts`. `tsc --noEmit`, `next build` and
+      `next lint` all clean; every route opened and looked at in a browser except the
+      ≤820px drawer, which could not be given a real narrow viewport (rules verified in the
+      parsed stylesheet instead). Not deployed, not in compose, no backend.
+- [ ] **Add `apps/portal/app/globals.css` to `scripts/sync-tokens.mjs` TARGETS** — the
+      `@cerebro-tokens` block is currently a byte-identical hand copy of `apps/admin`'s and
+      will silently drift on the next token change (owner said they would wire this)
+- [ ] **The 26 unbuilt portal routes** render as disabled nav items. Either build them or
+      cut them from `lib/nav.ts` before this surface is shown to a customer
+- [x] **`apps/portal` scaffolded** (new app, port 3003) — shell + 10 of 36 routes on mock
+      data, no auth, no backend, no organisation model. The 26 unbuilt routes render as
+      disabled nav items so the full IA stays reviewable. Added to `sync-tokens.mjs` TARGETS;
+      the sync gate independently confirms its token block is byte-identical
+- [ ] **`apps/portal` is not in CI.** The `web` job runs tsc + lint for web/admin/app only,
+      and `check-csp-sync.mjs` pins three middlewares — portal has neither a CI step nor a
+      middleware. Add both before it is anything more than a design surface
+- [ ] **Portal responsive/a11y unverified** — the ≤820px sidebar drawer was never seen at a
+      real narrow viewport (only the media queries confirmed present), `prefers-reduced-motion`
+      was not exercised, and no axe run was done
+- [ ] **`.chip` is 31px tall in `apps/app`** (`padding: 7px 14px`, no `min-height`) — below
+      the 48px floor. A pre-existing defect in shipped screens, not just the design surface
+- [ ] **Night cannot be pinned per-subtree from `design/tokens.css`** — it is scoped
+      `:root[data-theme="night"]`. `apps/app` works around this with its own `.theme-night`
+      class. If any client needs a night-pinned subtree, that mechanism has to move into the
+      shared tokens or be duplicated per app
+- [ ] **`.text-btn`, `.tiny`, `.btn-primary`, `.sub` are undefined in `apps/app`** — I used them and
+      they rendered as raw UA buttons (`min-height: 0`, failing the 48px rule). Defined
+      under `.design-root` only. When Today graduates, these need real app-wide definitions
+      or the same bug ships
+- [x] **Wave 1 (Android) — five-tab IA**: Today · Explore · Talk · Journal · You.
+      `enum class Tab` relabelled (route stays `home`, so deeplinks/back-stack/nudges are
+      untouched); Sleep left the tab bar for a pushed `sleep` destination and gained a
+      visible back door; new `ExploreScreen` hub with the spec's six practice families on
+      six real destinations (sleep · breathe/reset · sounds · cbt · toolkit · programs) plus
+      a quiet support door. New `ic_tab_today` (dawn) and `ic_tab_explore` (compass)
+      drawables in the existing 2dp line style. Crisis never depended on the Sleep tab — it
+      hangs off You's Support card, and Explore now carries a second door, so ≤2 taps held
+      throughout (pinned by `NavigationChromeTest`)
+- [x] **Android token port** — `ui/theme/{Color,Theme,Tokens}.kt` on the canonical Light
+      Dawn role scale with Dawn as the default appearance (`AppTheme.systemDark` starts
+      false); Night re-toned indigo → plum. Every canonical role is byte-pinned against
+      `design/tokens.css` in both directions, and every text/tonal role clears 4.5:1 on all
+      three neutral grounds **and** its own `-soft` wash in both themes — **no value needed
+      adjusting**, the web-side darkening of `--text-faint`/`--warm`/`--danger`/`--amber`
+      already did that work. `ContrastTest.kt` 19 → 22 tests; `ThemeTokensTest.kt` 11 → 13.
+      `res/values/colors.xml` now holds the Dawn ground with the plum floor in a new
+      `values-night/` (a light-theme device used to flash deep indigo on every cold launch)
+- [x] **YOU-05 Android language picker** (`LanguageScreen` in `ui/screens/Settings.kt`,
+      route `language`, You → Personalise row). Onboarding asked for a language and
+      *nothing could change the answer*: the You profile card rendered the saved value
+      ("Calm Guide · Hindi") but its tap target opened the companion picker, so a wrong
+      tap on the first run was permanent. Follows the `CompanionStyleScreen` null-state
+      rule (a failed read selects nothing rather than showing "English" as an answer the
+      screen never learned), reverts on a refused write, and renders an unknown stored
+      value as its own row because the field is free text server-side
+      (`services/language.py`). Copy is scoped to what the setting actually does — the
+      backend reply directive for chat/plan/Oracle/starters — and says outright that app
+      chrome follows the device locale and that helpline names and numbers are never
+      translated. `LANGUAGES` in `OnboardingScreen.kt` went `private` → `internal` so the
+      two pickers cannot drift. en + hi strings; `:app:testDebugUnitTest` and
+      `:app:lintVitalRelease` green
+- [x] **TOD-06 Android notification inbox** (`ui/screens/NotificationInbox.kt`, route
+      `notifications`, Today header bell + You → Reminders row). Android had *no record*
+      of what it had sent: a nudge existed only while it sat in the shade, so "did my
+      reminder fire?" was unanswerable once it was swiped away. New
+      `notify/NotificationLog.kt` is written by the only two places that post —
+      `Reminders.show` (local alarm) and `Push.show` (FCM) — immediately **after**
+      `notify()`, so the log records what was delivered, never what was intended. Local
+      only, capped at 30, dismissal matched on the instant rather than a list index (a
+      nudge arriving between render and tap would otherwise dismiss the wrong row).
+      Split into Scheduled / Delivered because "is it on" and "did it fire" are different
+      questions with different evidence. The empty state distinguishes "nothing has
+      arrived" from "server nudges are off in this build" — `Push.available()` is false
+      without a `google-services.json`, so the flat version of that sentence would have
+      been a quiet lie. `NotificationLogTest` (9 tests). **Today's header lost its search
+      pill and initial-letter avatar** to match TOD-01's single trailing bell; both
+      destinations survive (search is Explore's trailing icon, profile is the You tab)
+- [ ] **Android gaps still open vs `ref/mobile.html`** — verified against the prototype,
+      *not* the whole list the first read suggested. Already built and needing nothing:
+      PVR-04 memory list (it is `PatternScreen.kt`, with inspect/edit/delete), SND-01/03/04
+      (library + favourites + mixer live in `SoundsScreen`). Genuinely missing: **TOD-06**
+      notification inbox, **ACC-05** app diagnostics, **VID-01/02/03** video lessons (owner
+      ruling 2026-08-06: UI shell only, no real playback), **ORG-01…07** sponsored access
+      (needs a backend `org` router + membership model + Alembic revision). Needs a UX call
+      rather than code: **TLK-06** — Talk's "Memory: on" chip opens the consent switch, and
+      the prototype also links the remembered-items list; the header already carries
+      persona + memory + start-fresh, so where the second link goes is a design decision.
+      **TLK-05** (a list of past conversations) is *not* treated as a gap — this product
+      deliberately ships one thread
+- [ ] **Android: `Type.kt` untouched by the port** — the type scale carries no colour, and
+      the spec's display-font divergence (Iowan/Georgia/Fraunces) was resolved in favour of
+      keeping what ships. Nunito stays; revisit only if the owner picks a display serif
+- [ ] **Android: not run on a device or emulator** — the port is verified by the JVM/
+      Robolectric suite only (447 tests). The Dawn arm of every screen, the new Explore hub,
+      the re-toned hero panels and the two new tab icons have not been *seen*
+- [ ] **iOS token port** — `DesignSystem/Theme.swift`; note its comment claiming Dawn is
+      "hand-synced with the web app" is already stale and gets more so until this lands
+- [ ] **iOS five-tab IA** — `RootView.swift` `MainTabView` still ships
+      Home · Sleep · Talk · Journal · You
+- [ ] **iOS token port** — `DesignSystem/Theme.swift`; note its comment claiming Dawn is
+      "hand-synced with the web app" is already stale and gets more so until this lands
+- [ ] **Night-era veil sweep** — ~53 `rgba(255,255,255,…)` overlays across the three web
+      apps still assume a dark ground; they read grey or vanish on ivory
+- [ ] **Marketing screenshots are stale** — every baked phone image on the landing page
+      shows the old indigo app, and at least one shows a **"3-day streak"**, an affordance
+      both the spec and the design skill ban. Regenerate after the client redesign.
+      *2026-08-06: the landing home no longer renders any of them* — the v2 rebuild
+      draws its three device mocks in markup from the tokens
+      (`apps/web/components/PhoneMock.tsx`), so the page stopped contradicting itself.
+      `public/brand/banner-hero.jpg` and `public/screens/*.webp` are now unused on the
+      site but still shipped; delete or regenerate them when the client redesign lands
+- [ ] **e2e theme spec** — values updated to the new grounds, but the suite has not been
+      run (needs the docker stack); run `docker-compose.e2e.yml` before trusting it
+- [ ] Owner decisions blocking IA work — see REDESIGN_V2.md §6 (Sleep as a top-level tab,
+      iOS/`apps/app` standing vs an Android-only spec, en-GB spelling, cohort floor)
+- [ ] **B2B2C is unbuilt end to end** — no organisation, sponsorship, entitlement or cohort
+      model; RBAC is one boolean where the portal needs 7 roles; `apps/admin` is an internal
+      staff console, not the org portal, and should stay one
+
 > **2026-08-04 — the 500-point register:** a full placement/sequence/bug audit
 > across all clients + backend produced **679 justified points** in
 > [AUDIT_500.md](AUDIT_500.md) (index + ranked top 20) with the evidence in
@@ -214,6 +368,20 @@
 > corrected pairing. Pinned in `tests/test_local_days.py`.
 
 ## 2026-08-04 Android audit-fix waves (owner: iOS deferred by decision)
+
+- [x] **Android redesigned data surfaces reconnected to production APIs (2026-08-10):**
+  detailed Check-in now persists through `POST /moods` (including intensity and
+  private note); Today's “This week” and the unchanged redesigned Weekly Insights
+  screen removed the illustrative `4 / 3 / 6h 48` values and render
+  `/insights/weekly` metrics. New Journal Entry already used the offline-safe
+  `POST /journal` path and remains server-backed. The redesigned UI/navigation
+  was deliberately preserved; this is data wiring, not a screen replacement.
+  Follow-up in the same pass kept the reference visual layouts but removed
+  user-data fixtures from Trends (`/insights/trends`), Patterns
+  (`/insights/patterns`), Sleep Insights (`/sleep` + `/sleep/summary`), Goals
+  (`/goals`, including create/decompose), and Daily Plan (`/plans/active` +
+  step PATCH). Static instructions and choice taxonomies remain client copy;
+  they are not user measurements and do not belong in an API.
 
 - [x] **Wave 1 — crisis & safety cluster** (register: G crisis-region cluster,
   A16-21, B4/B14/B20/B53, H2/H4/H16): `CrisisDirectory.kt` mirrors backend
@@ -456,8 +624,8 @@ rows honestly dressed (muted meta + per-guide glyphs); pull-to-refresh +
 cached-first snapshot + parallel reload + 640dp max-width.
 
 Deferred from that audit (need decisions or hardware):
-- [ ] **DELETE /sleep/{date} backend route** — Android diary can edit (upsert) but not delete a night; iOS/web same gap.
-- [ ] **PUT /journal/{id} backend route** — entries can be read but not edited on any client (Others audit #35).
+- [x] **DELETE /sleep/{date} backend route** — owner-scoped delete plus Android diary UI, confirmation, API helper and contract tests (2026-08-10); iOS/web UI wiring remains a client task.
+- [x] **PUT /journal/{id} backend route** — owner-scoped replacement re-runs the safety scan; Android History → Entry edit/delete UI, confirmations, API helpers and contract tests added (2026-08-10).
 - [ ] **You page compact density + collapsed header** (Others audit #42/#45) — owner call on the 72dp-row look before reworking PremiumNavRow/PremiumPage.
 - [ ] **Talk conversation search** (Others audit #20) — needs a history surface design.
 - [ ] **Talk voice-engine work** (chat audit 2026-08-04 #29-32/34): compact-orb ripple,
@@ -1651,15 +1819,17 @@ docs/WEB_STYLE.md. New copy rulebook lives there; hold future surfaces to it.
 - [x] **`sync-tokens.mjs --check` false-failed on Windows checkouts** (CRLF vs the LF block
   it builds) — normalizes to LF before comparing now. CI behavior unchanged.
 - [x] Hero banner alt text said "home, journal and sleep"; the render shows home + sleep.
-- [ ] **The hero render contradicts the page it sits on.** `banner-hero.jpg` bakes in a
-  "3-day streak" chip (and "Rest easy, Pawan") while the bento cell beside it promises
-  "Presence, not streaks … nothing ever counts your misses." Needs a re-render from the
-  brand kit with the presence ring instead of a streak chip — asset work, not code.
-- [ ] **Scroll-driven `.reveal` can freeze mid-fade under renderer pressure.** Observed once
-  (Windows Chrome, DevTools-protocol attached): the final "Be first to feel the calm" head
-  held at opacity 0.59 even fully in view; clean loads complete correctly, so likely
-  capture-tooling-induced — but if a real-user report ever mentions dimmed sections, drop
-  `.reveal` from the last fold (waitlist + FAQ) first.
+- [x] **The hero render contradicts the page it sits on.** `banner-hero.jpg` baked in a
+  "3-day streak" chip (and "Rest easy, Pawan") while the cell beside it promised
+  "Presence, not streaks". FIXED 2026-08-06 by dropping the render from the landing
+  entirely: the v2 hero draws a token-built Today mock instead. The asset is still in
+  `public/brand/` and still wrong — re-render or delete it before it is reused.
+- [x] **Scroll-driven `.reveal` can freeze mid-fade under renderer pressure.** Root cause
+  found 2026-08-06: `animation-range: entry 0% cover 22%` finishes 22% of the way through
+  the element *covering the viewport* — fine for a 400px card, a very long way up a
+  1000px-tall v2 band, so the plum CTA box genuinely sat at part opacity for most of its
+  scroll. Range is now `entry 0% entry 85%`, which completes as the block finishes
+  entering, at every section height.
 
 ### From the 2026-08-03 deep review (after pulling the device-push/offline/games drop)
 - [x] **Consent was private-by-default on every client and permissive on the server** — FIXED.
@@ -2633,3 +2803,22 @@ left, each with the reason it was left rather than done.
 
 Verification: backend **177 passed, 95% coverage** (in-container, live Postgres); web +
 admin `tsc --noEmit` clean; iOS `xcodebuild build` succeeded with the new entitlement.
+
+### Open — from the 2026-08-06 Android Today rebuild
+
+- [ ] **The "did not use your journal" line must branch on `plan.source`, on every client.**
+      Only the RULE generator ignores the journal; the AI planner sends recent journal
+      *titles* (never bodies, and only under `journal_memory` consent) —
+      `backend/app/services/agentic.py::_recent_signals`. Android does this correctly via
+      `heroWhyRes(source)`. The web design mock (`apps/app/app/design/today/page.tsx`) has a
+      comment pinning the rule but is NOT wired yet — if it is wired without branching, it
+      ships a false privacy claim. `scripts/check-claims.mjs` does not catch this, because
+      the sentence is only false conditionally.
+- [ ] **`heroKindFor` / `heroWorksOffline` / `heroWhyRes` have no unit tests** — they belong
+      in `ScreenLogicTest.kt`, which was outside the rebuild's scope. ~15 lines.
+- [ ] **No Android screen has been seen rendered.** Theme port, hex sweep and the Today
+      rebuild are all unit-test + static verification only. Hindi chip wrapping in the
+      hero `FlowRow` and the serif line-count at 360dp are specifically unchecked.
+- [ ] **`ArtOk` is a genuinely missing token** — the "forest" guided journey needs a light
+      green that survives on both grounds; `Ok` goes deep on Dawn, so it currently uses
+      `Iris` (a violet) and reads wrong.

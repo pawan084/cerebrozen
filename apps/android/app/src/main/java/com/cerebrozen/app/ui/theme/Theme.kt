@@ -4,27 +4,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 @Composable
 fun CereBroTheme(content: @Composable () -> Unit) {
     // Built per composition (not a top-level val) so the scheme re-resolves the
     // themed tokens when AppTheme flips between Night and Dawn.
     //
-    // `primary` is the BRAND lavender (a fill — Material paints it behind
-    // `onPrimary` white, and under sliders/switches/indicators). Text that needs
-    // to *read* as the accent uses the themed [Periwinkle] token instead, which
+    // `primary` is the BRAND plum (a fill — Material paints it behind
+    // `onPrimary`, and under sliders/switches/indicators). Text that needs to
+    // *read* as the accent uses the themed [Periwinkle] token instead, which
     // carries the contrast-safe variant per theme.
+    //
+    // `onPrimary` is the themed [OnPrimary] role, not a hardcoded white: on
+    // Night the accent is a pale plum and its ink is dark (`--on-accent`), so a
+    // white label there would be all but invisible.
     val scheme = if (AppTheme.isNight) {
         darkColorScheme(
             primary = BrandPrimary,
-            onPrimary = Color.White,
+            onPrimary = Cream,
             primaryContainer = LavenderPillFloor,
-            onPrimaryContainer = Color.White,
+            onPrimaryContainer = Cream,
             secondary = BrandSecondary,
-            onSecondary = Ink,
+            onSecondary = Cream,
             tertiary = BrandAccent,
-            onTertiary = Ink,
+            onTertiary = Cream,
             background = Night,
             onBackground = TextPrimary,
             surface = CardFill,
@@ -32,20 +35,20 @@ fun CereBroTheme(content: @Composable () -> Unit) {
             surfaceVariant = ChipFill,
             onSurfaceVariant = TextMuted,
             error = Danger,
-            onError = Night,
+            onError = OnDanger,
             outline = LineStroke,
             outlineVariant = LineStroke,
         )
     } else {
         lightColorScheme(
             primary = BrandPrimary,
-            onPrimary = Color.White,
+            onPrimary = OnPrimary,
             primaryContainer = LavenderPillFloor,
-            onPrimaryContainer = Color.White,
+            onPrimaryContainer = OnPrimary,
             secondary = BrandSecondary,
-            onSecondary = Ink,
+            onSecondary = Cream,
             tertiary = BrandAccent,
-            onTertiary = Ink,
+            onTertiary = Cream,
             background = Night,
             onBackground = TextPrimary,
             surface = CardFill,
@@ -53,7 +56,7 @@ fun CereBroTheme(content: @Composable () -> Unit) {
             surfaceVariant = ChipFill,
             onSurfaceVariant = TextMuted,
             error = Danger,
-            onError = Night,
+            onError = OnDanger,
             outline = LineStroke,
             outlineVariant = LineStroke,
         )

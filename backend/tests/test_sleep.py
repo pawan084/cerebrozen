@@ -88,6 +88,24 @@ async def test_sleep_requires_auth(client):
     assert (await client.get("/sleep/summary")).status_code == 401
 
 
+async def test_sleep_delete_is_owner_scoped(client):
+    await client.post("/auth/signup", json={"email": "sleep-owner@test.app", "password": "password123", "name": "Owner"})
+    owner_token = (await client.post("/auth/login", json={"email": "sleep-owner@test.app", "password": "password123"})).json()["access_token"]
+    client.headers["Authorization"] = f"Bearer {owner_token}"
+    payload = {"date": _iso(0), "bedtime": "23:00:00", "wake_time": "07:00:00"}
+    assert (await client.post("/sleep", json=payload)).status_code == 201
+
+    await client.post("/auth/signup", json={"email": "sleep-other@test.app", "password": "password123", "name": "Other"})
+    other_token = (await client.post("/auth/login", json={"email": "sleep-other@test.app", "password": "password123"})).json()["access_token"]
+    client.headers["Authorization"] = f"Bearer {other_token}"
+    assert (await client.delete(f"/sleep/{payload['date']}")).status_code == 404
+
+    client.headers["Authorization"] = f"Bearer {owner_token}"
+    assert (await client.delete(f"/sleep/{payload['date']}")).status_code == 204
+    assert (await client.delete(f"/sleep/{payload['date']}")).status_code == 404
+    assert (await client.get("/sleep")).json() == []
+
+
 async def test_sleep_metric_in_weekly_insights(auth_client):
     r = await auth_client.get("/insights/weekly")
     by_label = {m["label"]: m for m in r.json()["metrics"]}

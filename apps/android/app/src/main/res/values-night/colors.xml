@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark-mode window/splash background. MUST equal NightPalette.night
+         in ui/theme/Color.kt (the plum night ground). Gated by ThemeTokensTest
+         under the `night` qualifier. -->
+    <color name="night">#FF171019</color>
+</resources>

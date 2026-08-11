@@ -81,3 +81,19 @@ async def sleep_summary(
     db: AsyncSession = Depends(get_db),
 ):
     return await sleep_service.weekly_summary(db, user, days=max(2, min(days, 90)))
+
+
+@router.delete("/{night}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sleep(
+    night: dt.date,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete the caller's diary entry identified by its wake-up date."""
+    log = await db.scalar(
+        select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.date == night)
+    )
+    if log is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sleep entry not found")
+    await db.delete(log)
+    await db.commit()

@@ -29,6 +29,7 @@ import java.net.URLEncoder
 object Session {
     private const val PREFS = "cerebro"
     private const val REFRESH_KEY = "refresh_token"
+    private const val GUEST_KEY = "guest_mode"
     private const val LOG_TAG = "CereBroApi"
     // Keys whose values are masked in DEBUG response logs (never log secrets).
     private val SENSITIVE_KEYS = setOf(
@@ -42,6 +43,11 @@ object Session {
 
     /** Compose-observable auth state; gates the whole UI in CereBroApp. */
     var signedIn by mutableStateOf(false)
+        private set
+
+    /** Local-first access selected at ONB-09. Guest mode never fabricates an
+     * auth token; it only opens the offline-capable product shell. */
+    var guestMode by mutableStateOf(false)
         private set
 
     /** Compose-observable offline signal: true while GET reads are being served
@@ -83,6 +89,13 @@ object Session {
         appContext = context.applicationContext
         storage = buildStore(context)
         signedIn = storage.getString(REFRESH_KEY) != null
+        guestMode = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(GUEST_KEY, false)
+    }
+
+    fun continueAsGuest(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(GUEST_KEY, true).apply()
+        guestMode = true
     }
 
     /** Encrypted-at-rest prefs for the refresh token + response cache, with a
@@ -306,6 +319,8 @@ object Session {
     private fun store(tokens: JSONObject) {
         access = tokens.getString("access_token")
         storage.putString(REFRESH_KEY, tokens.getString("refresh_token"))
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putBoolean(GUEST_KEY, false)?.apply()
+        guestMode = false
         signedIn = true
     }
 
@@ -638,8 +653,20 @@ object Api {
                 .put("symbol", "book"),
         )
 
-    suspend fun sleepLogs(): JSONArray = JSONArray(Session.api("/sleep"))
-    suspend fun sleepSummary(): JSONObject = JSONObject(Session.api("/sleep/summary"))
+    suspend fun updateJournal(id: String, title: String, body: String, tags: List<String> = emptyList()): JSONObject =
+        JSONObject(Session.api("/journal/$id", "PUT", JSONObject()
+            .put("title", title).put("body", body)
+            .put("tags", JSONArray().apply { tags.forEach { put(it) } })
+            .put("symbol", "book")))
+
+    suspend fun deleteJournal(id: String) { Session.api("/journal/$id", "DELETE") }
+
+    suspend fun sleepLogs(limit: Int? = null): JSONArray = JSONArray(
+        Session.api(if (limit == null) "/sleep" else "/sleep?limit=${limit.coerceIn(1, 366)}"),
+    )
+    suspend fun sleepSummary(days: Int? = null): JSONObject = JSONObject(
+        Session.api(if (days == null) "/sleep/summary" else "/sleep/summary?days=${days.coerceIn(2, 90)}"),
+    )
     suspend fun logSleep(date: String, bedtime: String, wakeTime: String, quality: Int): JSONObject =
         JSONObject(
             Session.api(
@@ -648,6 +675,8 @@ object Api {
                     .put("wake_time", wakeTime).put("quality", quality).put("awakenings", 0),
             ),
         )
+
+    suspend fun deleteSleep(date: String) { Session.api("/sleep/$date", "DELETE") }
 
     suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
     suspend fun sendChat(text: String): JSONObject =

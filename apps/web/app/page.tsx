@@ -2,53 +2,160 @@ import { headers } from "next/headers";
 import Waitlist from "@/components/Waitlist";
 import AppStoreBadge from "@/components/AppStoreBadge";
 import { BrandMark } from "@/components/BrandMark";
-import { PresenceGlyph, SupportGlyph } from "@/components/Glyphs";
 import { appHref } from "@/lib/appUrl";
 import { SiteFooter } from "@/components/SiteFooter";
+import { PhoneMock } from "@/components/PhoneMock";
+import Faq, { type FaqEntry } from "@/components/Faq";
 
 const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#spaces", label: "The app" },
+  { href: "#experience", label: "The app" },
+  { href: "#how", label: "How it works" },
+  { href: "#trust", label: "Safety & privacy" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
 ];
 
-// The waitlist is now the *secondary* door — the browser app is real and open,
-// so the page stopped pretending the only way in is to wait.
+// The waitlist is the *secondary* door — the browser app is real and open, so
+// the page stopped pretending the only way in is to wait.
 const CTA = "Join the waitlist";
 const APP_CTA = "Open the app";
+
+// Three principles, on the hairline band directly under the hero.
+const PRINCIPLES = [
+  {
+    title: "Action before browsing",
+    body: "Open the app and get one relevant suggestion — not a catalogue to search.",
+  },
+  {
+    title: "Wellness, not diagnosis",
+    body: "Clear boundaries, and a route to a human when the app isn't the right help.",
+  },
+  {
+    title: "Privacy you can understand",
+    body: "Inspect, edit, switch off or delete what CereBro remembers about you.",
+  },
+];
+
+const OUTCOMES = [
+  {
+    title: "Calm now",
+    body: "Check in, then start a one-to-five-minute grounding, breathing or thought exercise. Stop whenever you like.",
+    link: "See the calming flow",
+    href: "#experience",
+  },
+  {
+    title: "Sleep better tonight",
+    body: "One wind-down plan, layered soundscapes you mix yourself, and a sleep-safe timer that fades out on its own.",
+    link: "See the sleep story",
+    href: "#sleep",
+  },
+  {
+    title: "Understand your patterns",
+    body: "Journal privately, then read insights drawn from your own check-ins — while you control what is remembered.",
+    link: "See the privacy boundary",
+    href: "#trust",
+  },
+];
 
 const SPACES = [
   // `route` is the matching screen in the web app. A signed-out visitor is sent
   // to sign-in and returned here afterwards (`?next=`), so the click keeps its
   // intent instead of dumping everyone on the home screen.
-  { tab: "Home", route: "/home", body: "One clear next step, tuned to the time of day and the goals you set." },
-  { tab: "Sleep", route: "/sleep", body: "Mixable soundscapes and a sleep-safe fade-out timer for a quiet mind." },
+  { tab: "Today", route: "/home", body: "One clear next step, tuned to the time of day and the goals you set." },
+  // Explore took Sleep's slot in the tab set (ref/ ruling, REDESIGN_V2.md §6);
+  // sleep is still the first thing behind this door, so the copy leads with it.
+  { tab: "Explore", route: "/explore", body: "Find a tool by what would help — sleep, sounds, grounding or thought work." },
   { tab: "Talk", route: "/chat", body: "A voice and text AI companion that listens, reflects, and acts." },
   { tab: "Journal", route: "/journal", body: "Private reflection with gentle prompts — lock it behind Face ID if you like." },
   { tab: "You", route: "/account", body: "Insights from your real check-ins, privacy controls, and real support." },
 ];
 
-const PROACTIVE = [
-  "Agentic daily plan that adapts to your mood + journal",
-  "Gentle nudges — never noisy, always easy to mute",
-  "Timed check-ins when patterns shift",
-  "Crisis-aware support that surfaces real help",
+const STEPS = [
+  { title: "Check in", body: "Pick the closest feeling and how strong it is. About twenty seconds." },
+  { title: "Get one suggestion", body: "One short recommendation, with the reason written in plain language." },
+  { title: "Try, switch or stop", body: "Start it, choose something else, or leave. Nothing is lost either way." },
+  { title: "Reflect when it helps", body: "Optionally note what worked, and read patterns once there is enough to read." },
 ];
 
-const SAFETY = [
-  { title: "Consent-first memory", body: "You decide what CereBro remembers. Turn it off and it forgets. Export or delete everything, anytime." },
-  { title: "Honest about what it is", body: "A supportive AI companion — not a therapist, diagnosis, or crisis service. It says so, clearly and often." },
-  { title: "Crisis-aware by design", body: "Region-correct crisis lines are always a tap away, and you can nominate a trusted contact to notify." },
-  { title: "No ads, ever", body: "Your calm isn't the product. No third-party trackers, no ad SDKs, no selling your data." },
+const SLEEP_POINTS = [
+  { title: "Tonight first", body: "One wind-down to follow, not a library to search." },
+  { title: "Built to end", body: "Timers, fade-out and clear stopping points. No autoplay feed." },
+  { title: "Yours alone", body: "The sleep diary is private, and nothing in it is ranked or scored." },
+];
+
+// Both panels say only what the product already does. The crisis ordering is
+// fixed by the safety rules: Tele-MANAS 14416 leads in India, then 112.
+const TRUST_PANELS = [
+  {
+    title: "Safety-aware by design",
+    intro: "Crisis resources are reachable without signing in, and they never sit behind the paywall.",
+    items: [
+      "Region-aware crisis lines — Tele-MANAS 14416 first in India, then 112 for emergencies",
+      "An optional trusted contact that you nominate, and can remove at any time",
+      "Safety scanning only ever adds help — it never blocks or rejects what you wrote",
+      "Only India's numbers are marked verified; elsewhere the app says so plainly",
+    ],
+    cta: "Read the crisis support page",
+    href: "/support",
+  },
+  {
+    title: "Memory you can inspect",
+    intro: "Privacy is a screen inside the product, not a paragraph in the footer.",
+    items: [
+      "Consent-first memory — turn it off and CereBro forgets",
+      "Export or permanently delete everything from inside the app",
+      "No ads, no ad SDKs, no third-party analytics",
+      "Usage counts are anonymous and optional",
+    ],
+    cta: "Read the privacy policy",
+    href: "/privacy",
+  },
+];
+
+const COMPARE_TYPICAL = [
+  "A large catalogue to browse",
+  "Generic recommendations",
+  "Personalisation you cannot see",
+  "Safety information filed away in a separate tab",
+  "Streaks and feeds that punish a missed day",
+];
+
+const COMPARE_CEREBRO = [
+  "One suggestion for the moment you are actually in",
+  "The reason shown, and alternatives offered",
+  "Memory you can read, edit and switch off",
+  "Crisis resources built into the experience",
+  "Presence, not streaks — a missed day dims, it never resets",
 ];
 
 const PLANS = [
-  { tier: "Free", amount: "₹0", note: "Forever", featured: false, items: ["Daily check-ins", "Breathing & grounding", "Basic journal", "Weekly insights"] },
-  { tier: "Premium", amount: "₹499", note: "/month", featured: true, items: ["Everything in Free", "Full sleep library + mixing", "Richer voice sessions", "Agentic plans"] },
-  // Human support is not built yet (docs/PRD.md marks it concept-only), so every
-  // line that depends on it has to carry the same "rolling out" qualifier.
-  { tier: "Premium + Human", amount: "₹1,499", note: "/month", featured: false, items: ["Everything in Premium", "Priority human handoff (rolling out)", "Human sessions (rolling out)"] },
+  {
+    tier: "Free",
+    blurb: "For checking in and getting through the ordinary hard evenings.",
+    amount: "₹0",
+    note: "Forever",
+    featured: false,
+    items: [
+      "Daily check-ins",
+      "Breathing and grounding tools",
+      "A private journal",
+      "Weekly insights from your own check-ins",
+      "Crisis resources and a trusted contact",
+    ],
+  },
+  {
+    tier: "Premium",
+    blurb: "For deeper sleep support, longer sessions and plans that adapt.",
+    amount: "₹499",
+    note: "/month",
+    featured: true,
+    items: [
+      "Everything in Free",
+      "The full sleep library and layered mixing",
+      "Richer voice sessions",
+      "Daily plans that adapt to your check-ins",
+      "Export and delete, exactly as on Free",
+    ],
+  },
 ];
 
 // Shipped commitments, not marketing numbers. Each one maps to a feature marked
@@ -60,13 +167,13 @@ const RECEIPTS = [
   "Region-aware crisis lines built in, Tele-MANAS 14416 first in India",
 ];
 
-const FAQ = [
+const FAQ: FaqEntry[] = [
   { q: "Is CereBro a therapist?", a: "No. CereBro is wellness support — it can listen, reflect, and guide gentle exercises, but it never diagnoses, prescribes, or replaces professional care or emergency help." },
   { q: "Is my data private?", a: "Yes. Memory is consent-first and off-limits unless you allow it. There are no ads or third-party trackers, and you can export or permanently delete everything from inside the app." },
   { q: "When does it launch?", a: "The browser version is open now — create an account at app.cerebrozen.in and use it today, free. The iOS app has no public date yet, and we'd rather say that than invent one; the waitlist hears first." },
-  { q: "Does it work offline?", a: "In the mobile apps, core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The browser version needs to be online, and the AI companion always does." },
+  { q: "Does it work without a connection?", a: "In the mobile apps, core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The browser version needs to be online, and the AI companion always does." },
   { q: "What platforms is it on?", a: "Any modern browser today, at app.cerebrozen.in. iOS is next, with Android to follow — join the waitlist and we'll send a calm note the moment it's ready." },
-  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a basic journal, and weekly insights. Premium adds the full sleep library and richer voice sessions." },
+  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a private journal, and weekly insights. Premium adds the full sleep library and richer voice sessions. Crisis resources stay free on both." },
 ];
 
 // Search engines read the FAQ from the same array the page renders, so the two
@@ -138,15 +245,11 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
       />
 
-      {/* Hoisted to <head> by Next: the hero image is the LCP element and would
-          otherwise only be discovered after HTML+CSS parse. */}
-      <link rel="preload" as="image" href="/brand/banner-hero.jpg" fetchPriority="high" />
-
       <a className="skip-link" href="#main">Skip to content</a>
 
       <nav className="nav">
         <div className="container nav-inner">
-          <div className="brand"><BrandMark size={26} /> CereBro</div>
+          <div className="brand"><BrandMark size={28} /> CereBro</div>
           <div className="nav-links nav-links--full">
             {NAV_LINKS.map((l) => (
               <a href={l.href} key={l.href}>{l.label}</a>
@@ -171,241 +274,348 @@ export default async function Home() {
       </nav>
 
       <main id="main">
-        {/* Hero — copy + phone mockup */}
+        {/* ── 1. Hero ─────────────────────────────────────────────────────── */}
         <header className="hero">
           <div className="container hero-grid">
             <div className="hero-copy">
-              <div className="eyebrow">Daily mental fitness</div>
-              <h1>Your quiet space<br />for a calmer mind</h1>
-              <p className="lead">
-                Better sleep, calmer focus, and a companion that gently adapts to how you
-                actually feel — not another feed to keep up with.
+              <p className="status-pill">
+                <span className="status-dot" aria-hidden="true" />
+                Open now in your browser · iOS next · India-first
+              </p>
+              <h1>
+                A calmer mind,<br />
+                <span>one clear next step.</span>
+              </h1>
+              <p className="lede">
+                CereBro turns a short, private check-in into one thing worth doing
+                next — breathing, grounding, sleep support, a journal, and a
+                companion that knows when to point you at a person instead.
               </p>
               <div className="hero-cta">
                 <a className="btn btn-primary" href={appHref("/")}>Open CereBro in your browser</a>
-                <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
-                <AppStoreBadge />
+                <a className="btn btn-ghost" href="#how">See how the loop works</a>
               </div>
-              <div className="trustbar">
-                {["Private by design", "No ads, ever", "Crisis-aware", "Works in your browser"].map((t) => (
-                  <span className="trust" key={t}>
-                    <span className="trust-glyph" aria-hidden="true">✦</span>
-                    {t}
-                  </span>
-                ))}
+              <p className="availability">
+                Free to start · No card needed · Works in any modern browser
+              </p>
+              <div className="trust-row" aria-label="Core assurances">
+                <span>
+                  <b className="check" aria-hidden="true">✓</b>
+                  Crisis resources are never behind the paywall
+                </span>
+                <span>
+                  <b className="check" aria-hidden="true">✓</b>
+                  Consent-first memory you can inspect
+                </span>
+                <span>
+                  <b className="check" aria-hidden="true">✓</b>
+                  No ads and no third-party trackers
+                </span>
               </div>
             </div>
-            <div className="hero-device">
-              <div className="orb-glow" />
-              <div className="hero-banner phone-float">
-                <img
-                  src="/brand/banner-hero.jpg"
-                  alt="CereBro on three iPhones — the home check-in and sleep screens"
-                  width={970}
-                  height={1080}
-                  fetchPriority="high"
-                />
+            <div className="hero-visual">
+              <div className="halo" aria-hidden="true" />
+              <PhoneMock kind="today" />
+              <div className="note-card a" aria-hidden="true">
+                <strong>One next step</strong>
+                <small>Not a wall of content.</small>
+              </div>
+              <div className="note-card b" aria-hidden="true">
+                <strong>Private by design</strong>
+                <small>See what is remembered, and why.</small>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Features — bento grid */}
-        <section className="section" id="features">
-          <div className="container">
-            <div className="section-head reveal">
-              <h2>Everything to steady the day</h2>
-              <p>Small, science-informed tools — designed to feel calm, never clinical.</p>
-            </div>
-            <div className="bento reveal">
-              <div className="bento-cell b-lg accent">
-                <div className="icon" aria-hidden="true">🎙️</div>
-                <h3>A companion that listens</h3>
-                <p>Talk or text with a warm guide that reflects, runs real exercises, and always points to a next step — never a diagnosis.</p>
+        {/* ── 2. Principles band ──────────────────────────────────────────── */}
+        <section className="principles" aria-label="How CereBro is built">
+          <div className="container principle-grid">
+            {PRINCIPLES.map((p) => (
+              <div className="principle" key={p.title}>
+                <strong>{p.title}</strong>
+                <p>{p.body}</p>
               </div>
-              <div className="bento-cell b-wide">
-                <div className="icon" aria-hidden="true">🌙</div>
-                <h3>Layered sleep</h3>
-                <p>Blend rain, ocean, wind and a soft drone — each at its own level. A sleep-safe timer fades you out on its own.</p>
-              </div>
-              <div className="bento-cell">
-                <div className="icon" aria-hidden="true">📖</div>
-                <h3>A private journal</h3>
-                <p>Guided prompts, emotion tags, and an optional Face ID lock.</p>
-              </div>
-              <div className="bento-cell">
-                <div className="icon" aria-hidden="true">🫧</div>
-                <h3>Calm in two minutes</h3>
-                <p>Breathing, 5-4-3-2-1 grounding, and SOS resets.</p>
-              </div>
-              <div className="bento-cell b-wide">
-                <div className="icon" aria-hidden="true"><PresenceGlyph size={26} /></div>
-                <h3>Presence, not streaks</h3>
-                <p>The ring fills with the days you showed up. Miss one and it simply dims — it never resets, and nothing ever counts your misses.</p>
-              </div>
-              <div className="bento-cell b-wide">
-                <div className="icon" aria-hidden="true"><SupportGlyph size={26} /></div>
-                <h3>Help when it matters</h3>
-                <p>Locale-aware crisis lines one tap away, plus an optional trusted contact you choose to notify.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
 
-        {/* See it in action — device showcase */}
-        <section className="section" id="showcase">
+        {/* ── 3. Outcomes ─────────────────────────────────────────────────── */}
+        <section className="section" id="outcomes">
           <div className="container">
-            <div className="section-head reveal">
-              <h2>Calm you can see</h2>
-              <p>Designed to feel like a quiet room, not a dashboard.</p>
+            <div className="shead reveal">
+              <div>
+                <p className="kicker">Three outcomes</p>
+                <h2>Built around the moment you are actually in.</h2>
+              </div>
+              <p>
+                Most wellness apps ask you to browse. CereBro starts from how you
+                feel right now, and narrows the choice down to one.
+              </p>
             </div>
-            <div className="showcase reveal">
-              <figure className="shot">
-                <div className="phone"><img src="/screens/sleep-player.webp" alt="CereBro sleep player" loading="lazy" width={640} height={1391} /></div>
-                <figcaption>Layered soundscapes with a sleep-safe timer</figcaption>
-              </figure>
-              <figure className="shot shot-raise">
-                <div className="phone"><img src="/screens/journal-entry.webp" alt="CereBro journal" loading="lazy" width={640} height={1391} /></div>
-                <figcaption>A private journal with gentle daily prompts</figcaption>
-              </figure>
-            </div>
-          </div>
-        </section>
-
-        {/* The five spaces */}
-        <section className="section" id="spaces">
-          <div className="container">
-            <div className="section-head reveal">
-              <h2>Five calm spaces, one home</h2>
-              <p>A tab for each part of a steady day — nothing louder than it needs to be.</p>
-            </div>
-            <div className="spaces reveal">
-              {SPACES.map((s, i) => (
-                <div className="space" key={s.tab}>
-                  <span className="space-n" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
-                  <div>
-                    <h3>{s.tab}</h3>
-                    <p>{s.body}</p>
-                    <a className="space-open" href={appHref(s.route)}>
-                      Open {s.tab}
-                      <span aria-hidden="true">→</span>
-                    </a>
-                  </div>
-                </div>
+            <div className="outcome-grid reveal">
+              {OUTCOMES.map((o, i) => (
+                <article className="outcome" key={o.title}>
+                  <span className="orb-art" aria-hidden="true" />
+                  <div className="outcome-num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</div>
+                  <h3>{o.title}</h3>
+                  <p>{o.body}</p>
+                  <a className="outcome-link" href={o.href}>
+                    {o.link}<span aria-hidden="true">→</span>
+                  </a>
+                </article>
               ))}
             </div>
-            <p className="spaces-note">
-              Each space opens in the browser app. New here?{" "}
-              <a href={appHref("/signup")}>Create a free account</a> — it takes a minute.
-            </p>
           </div>
         </section>
 
-        {/* Proactive band */}
-        <section className="section" id="proactive">
+        {/* ── 4. The app — first dark panel ───────────────────────────────── */}
+        <section className="section" id="experience">
           <div className="container">
-            <div className="band reveal">
-              <div className="grid grid-2" style={{ alignItems: "center", gap: 36 }}>
+            <div className="tour-wrap on-dark reveal">
+              <div className="shead">
                 <div>
-                  <div className="eyebrow">The app becomes agentic</div>
-                  <h2>It reaches out, gently — before you have to ask</h2>
-                  <p style={{ color: "var(--muted)", marginTop: 14 }}>
-                    CereBro learns from your check-ins and quietly shapes a plan around
-                    them. A rough evening might bring a 2-minute reset; a steady week
-                    earns a deeper wind-down.
+                  <p className="kicker">Inside the app</p>
+                  <h2>Five calm spaces, one home.</h2>
+                </div>
+                <p>
+                  A tab for each part of a steady day. Every one of them opens in
+                  the browser app, and nothing is louder than it needs to be.
+                </p>
+              </div>
+              <div className="tour-grid">
+                <div className="tour-media">
+                  <PhoneMock kind="today" />
+                </div>
+                <div>
+                  <div className="spaces">
+                    {SPACES.map((s, i) => (
+                      <div className="space" key={s.tab}>
+                        <span className="space-n" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                        <div>
+                          <h3>{s.tab}</h3>
+                          <p>{s.body}</p>
+                          <a className="space-open" href={appHref(s.route)}>
+                            Open {s.tab}
+                            <span aria-hidden="true">→</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="spaces-note">
+                    New here? <a href={appHref("/signup")}>Create a free account</a> — it takes a minute.
                   </p>
                 </div>
-                <div>
-                  {PROACTIVE.map((p) => (
-                    <span className="pill" key={p}>
-                      <span aria-hidden="true">✦</span>
-                      {p}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Safety */}
-        <section className="section" id="safety">
+        {/* ── 5. How the loop works ───────────────────────────────────────── */}
+        <section className="section" id="how">
           <div className="container">
-            <div className="section-head reveal">
-              <h2>Care you can trust</h2>
-              <p>Built privacy-first, honest about its limits, and always pointing to real help.</p>
+            <div className="shead reveal">
+              <div>
+                <p className="kicker">How it works</p>
+                <h2>From a hard moment to one manageable action.</h2>
+              </div>
+              <p>
+                You stay free to switch, skip or stop. CereBro adapts without
+                streak pressure — a missed day dims, it never resets.
+              </p>
             </div>
-            <div className="grid grid-2 reveal">
-              {SAFETY.map((s) => (
-                <div className="card safety-card" key={s.title}>
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
-                </div>
+            <div className="steps reveal">
+              {STEPS.map((s, i) => (
+                <article className="step" key={s.title}>
+                  <div className="step-num" aria-hidden="true">{i + 1}</div>
+                  <div>
+                    <h3>{s.title}</h3>
+                    <p>{s.body}</p>
+                  </div>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Pricing */}
+        {/* ── 6. Sleep story band ─────────────────────────────────────────── */}
+        {/* The pull-quote is a quote, not a heading — so the band carries its own
+            label rather than leaving a section with no accessible name. */}
+        <section className="section story-band" id="sleep" aria-label="Sleep and sound">
+          <div className="container story-grid">
+            <div className="story-phones" aria-hidden="true">
+              <PhoneMock kind="sleep" />
+              <PhoneMock kind="journal" />
+            </div>
+            <div className="story-copy">
+              <p className="kicker">Sleep and sound</p>
+              <p className="quote">
+                A quieter evening — without turning bedtime into one more thing to
+                be good at.
+              </p>
+              <p className="lede">
+                A simple wind-down plan, layered soundscapes you mix yourself, and
+                a private sleep diary that nothing scores.
+              </p>
+              <div className="story-points">
+                {SLEEP_POINTS.map((p) => (
+                  <div className="story-point" key={p.title}>
+                    <b>{p.title}</b>
+                    <span>{p.body}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 7. Trust — second dark panel ────────────────────────────────── */}
+        <section className="section trust-section on-dark" id="trust">
+          <div className="container">
+            <div className="shead reveal">
+              <div>
+                <p className="kicker">Safety and privacy</p>
+                <h2>Trust should be visible in the interface.</h2>
+              </div>
+              <p>
+                CereBro is wellness support — not an emergency service, a
+                therapist, or a diagnosis. When the app is not the right help, it
+                says so and points you to people who are.
+              </p>
+            </div>
+            <div className="trust-grid reveal">
+              {TRUST_PANELS.map((panel) => (
+                <article className="trust-panel" key={panel.title}>
+                  <h3>{panel.title}</h3>
+                  <p>{panel.intro}</p>
+                  <ul className="trust-list">
+                    {panel.items.map((item) => (
+                      <li key={item}>
+                        <span className="trust-icon" aria-hidden="true">✓</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="trust-action">
+                    <a className="btn btn-ghost btn-sm" href={panel.href}>{panel.cta}</a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── 8. Typical vs CereBro ───────────────────────────────────────── */}
+        <section className="section" id="compare">
+          <div className="container">
+            <div className="shead reveal">
+              <div>
+                <p className="kicker">Why CereBro</p>
+                <h2>More guidance than a library. More boundaries than a general chatbot.</h2>
+              </div>
+              <p>
+                The difference is not the number of features. It is how the product
+                decides, how it explains itself, and where it stops.
+              </p>
+            </div>
+            <div className="compare reveal">
+              <article className="compare-card">
+                <h3>A typical wellness app</h3>
+                <ul className="compare-list">
+                  {COMPARE_TYPICAL.map((i) => (<li key={i}>{i}</li>))}
+                </ul>
+              </article>
+              <article className="compare-card is-cerebro">
+                <h3>CereBro</h3>
+                <ul className="compare-list">
+                  {COMPARE_CEREBRO.map((i) => (<li key={i}>{i}</li>))}
+                </ul>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 9. Pricing ──────────────────────────────────────────────────── */}
         <section className="section" id="pricing">
           <div className="container">
-            <div className="section-head reveal">
-              <h2>Start free. Upgrade when it helps.</h2>
-              <p>No ads, ever. Your calm isn&apos;t the product.</p>
+            <div className="shead reveal">
+              <div>
+                <p className="kicker">Access</p>
+                <h2>Start free. Upgrade only if it helps.</h2>
+              </div>
+              <p>
+                No ads, ever. The safety tools stay free on every plan — including
+                after a subscription ends.
+              </p>
             </div>
-            <div className="grid grid-3 reveal">
+            <div className="pricing-grid reveal">
               {PLANS.map((p) => (
-                <div className={`card price-card ${p.featured ? "featured" : ""}`} key={p.tier}>
-                  {p.featured && <span className="badge">Most popular</span>}
-                  <div className="tier">{p.tier}</div>
+                <article className={`price ${p.featured ? "featured" : ""}`} key={p.tier}>
+                  {p.featured && <span className="price-tag">Most popular</span>}
+                  <h3>{p.tier}</h3>
+                  <p>{p.blurb}</p>
                   <div className="amount">
-                    {p.amount} <span style={{ fontSize: 15, color: "var(--muted)" }}>{p.note}</span>
+                    {p.amount} <span>{p.note}</span>
                   </div>
                   <ul>
                     {p.items.map((i) => (<li key={i}>{i}</li>))}
                   </ul>
-                </div>
+                  <a className="btn btn-primary" href={appHref(p.featured ? "/account" : "/signup")}>
+                    {p.featured ? "See Premium in the app" : "Start free"}
+                  </a>
+                </article>
               ))}
             </div>
-            <p className="price-note reveal">Launch pricing · India, shown in ₹. Cancel anytime.</p>
+            <p className="price-note reveal">
+              Launch pricing for India, shown in ₹. Cancel at any time from inside
+              the app — the <a href="/refunds">refunds page</a> spells out how.
+            </p>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section className="section" id="faq">
-          <div className="container" style={{ maxWidth: 760 }}>
-            <div className="section-head reveal"><h2>Questions, answered</h2></div>
-            <div className="faq reveal">
-              {FAQ.map((f) => (
-                // Shared name → the browser keeps one answer open at a time.
-                <details className="faq-item" name="faq" key={f.q}>
-                  <summary>{f.q}</summary>
-                  <p>{f.a}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA / waitlist */}
-        <section className="section waitlist" id="waitlist">
+        {/* ── 10. FAQ ─────────────────────────────────────────────────────── */}
+        <section className="section-sm" id="faq">
           <div className="container">
-            <div className="section-head reveal" style={{ marginBottom: 8 }}>
-              <h2>Be first to feel the calm</h2>
-              <p>Join the waitlist for early access on iOS.</p>
+            <div className="faq reveal">
+              <p className="kicker">Frequently asked</p>
+              <h2>Questions worth answering clearly.</h2>
+              <Faq items={FAQ} />
             </div>
-            <Waitlist />
+          </div>
+        </section>
+
+        {/* ── 11. Final CTA ───────────────────────────────────────────────── */}
+        <section className="final" id="waitlist">
+          <div className="container">
+            <div className="final-box reveal">
+              <h2>One useful next step is enough for now.</h2>
+              <p>
+                The browser app is open today. Join the waitlist and we will send
+                one calm note when iOS is ready — nothing else.
+              </p>
+              <Waitlist />
+              <p className="final-note">
+                One email, no drip campaign. Unsubscribe from the same note.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 28 }}>
+              <AppStoreBadge />
+            </div>
+
             <ul className="receipts">
               {RECEIPTS.map((r) => (
                 <li className="receipt" key={r}><Check />{r}</li>
               ))}
             </ul>
-            <p className="receipts-note">
+            <p className="receipts-note" style={{ textAlign: "center" }}>
               Things we&apos;ve already built, not things we&apos;re promising —{" "}
               <a href="/privacy">read the privacy policy</a> for the detail.
             </p>
             <p className="disclaimer">
-              CereBro is wellness support, not emergency care. If you are in immediate
+              CereBro is wellness support, not emergency care. In India, Tele-MANAS
+              is on 14416 and emergency services on 112. If you are in immediate
               danger, contact your local emergency services right away.
             </p>
           </div>

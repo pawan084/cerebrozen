@@ -12,6 +12,10 @@ const TARGETS = [
   "apps/web/app/globals.css",
   "apps/admin/app/globals.css",
   "apps/app/app/globals.css",
+  // The organisation portal (apps/portal) is a design surface with no backing
+  // model yet, but its token block still has to track design/tokens.css — an
+  // unsynced copy is exactly how the palette drifted between clients before.
+  "apps/portal/app/globals.css",
 ];
 const START = "/* @cerebro-tokens:start */";
 const END = "/* @cerebro-tokens:end */";

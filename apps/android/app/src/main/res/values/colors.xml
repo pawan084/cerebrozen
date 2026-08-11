@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The window background and the platform (Android 12+) splash background.
-         MUST equal NightPalette.night in ui/theme/Color.kt — that is the floor of
-         the app's own backdrop gradient, so this is the colour the launcher icon
-         sits on before Compose draws a single pixel. Gated by ThemeTokensTest.
+    <!-- The window background and, on Android 12+, the platform splash the
+         launcher icon sits on. It MUST equal the page ground Compose paints one
+         frame later, or every cold launch steps from one colour to another.
 
-         It had drifted: this said #080B22 (the iOS value) while the Android
-         palette moved to #100D2B in the 2026-07 reference-gradient pass, so every
-         cold launch stepped from one dark indigo to a different one. Android is
-         the source of truth for Android colours — see the note in Color.kt. -->
-    <color name="night">#FF100D2B</color>
+         Light Dawn is the default appearance (docs/REDESIGN_V2.md §2), so this
+         file holds DawnPalette.night and values-night/ holds NightPalette.night.
+         Before the Light Dawn port there was only the dark value, which meant a
+         light-theme device flashed deep indigo on every launch.
+
+         Gated by ThemeTokensTest (both qualifiers). -->
+    <color name="night">#FFF7F3EC</color>
 </resources>

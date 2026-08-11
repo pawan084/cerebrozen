@@ -8,18 +8,23 @@ import androidx.compose.runtime.setValue
 enum class ThemeMode { System, Night, Dawn }
 
 /**
- * The Dusk & Dawn theme switch (REDESIGN.md §4.1). Screens never read this
- * directly — they keep importing the top-level tokens in Color.kt/Tokens.kt,
- * whose getters resolve against [isNight] on every composition. Because the
- * three inputs are snapshot state, any composable that reads a token
- * recomposes automatically when the theme flips.
+ * The appearance switch. Screens never read this directly — they keep importing
+ * the top-level tokens in Color.kt/Tokens.kt, whose getters resolve against
+ * [isNight] on every composition. Because the three inputs are snapshot state,
+ * any composable that reads a token recomposes automatically when the theme
+ * flips.
+ *
+ * Light Dawn is the default appearance (docs/REDESIGN_V2.md §2: a "Light Dawn
+ * visual system" with an "optional dark appearance later"), which is why
+ * [systemDark] starts false — before the OS signal arrives, the app is light.
  */
 object AppTheme {
     /** User preference; initialised from `Session.prefGet("theme_mode")` in CereBroApp. */
     var mode by mutableStateOf(ThemeMode.System)
 
-    /** Fed by `isSystemInDarkTheme()` at the top of CereBroApp. */
-    var systemDark by mutableStateOf(true)
+    /** Fed by `isSystemInDarkTheme()` at the top of CereBroApp. Defaults to
+     * false: Light Dawn is the base appearance, Night is the opt-in. */
+    var systemDark by mutableStateOf(false)
 
     /** Internal preview/test override. Production screens respect the global
      * appearance choice and keep this false. */

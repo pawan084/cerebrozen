@@ -94,6 +94,15 @@ object Reminders {
             .setContentIntent(open)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(NOTIF_ID, notification)
+        // The daily alarm is the one nudge that works with no account and no
+        // Firebase, so it is the one the inbox can always show honestly.
+        NotificationLog.record(
+            title = context.getString(com.cerebrozen.app.R.string.reminder_title),
+            body = context.getString(com.cerebrozen.app.R.string.reminder_body),
+            at = java.time.OffsetDateTime.now().toString(),
+            kind = "checkin",
+            route = NotificationLog.routeFor("checkin"),
+        )
     }
 }
 

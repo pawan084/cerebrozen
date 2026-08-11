@@ -21,7 +21,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Dusk & Dawn theme plumbing beyond the ContrastTest ratio gate: the
+ * Theme plumbing beyond the ContrastTest ratio gate: the
  * mode/forceNight/systemDark resolution matrix, the pref-string round trip,
  * the per-theme getter tokens (Accent/Stroke/Gradients must RE-resolve when
  * the theme flips — a load-time capture is the documented bug), the brand
@@ -36,28 +36,56 @@ class ThemeTokensTest {
     @After
     fun restore() {
         AppTheme.mode = ThemeMode.System
-        AppTheme.systemDark = true
+        // Light Dawn is the base appearance — restore the real default, not the
+        // pre-port night-first one.
+        AppTheme.systemDark = false
         AppTheme.forceNight = false
         AppTheme.hour = 12
     }
 
     @Test
-    fun theWindowBackgroundResourceMatchesTheNightFloor() {
+    fun lightDawnIsTheDefaultAppearance() {
+        // docs/REDESIGN_V2.md §2: a "Light Dawn visual system" with an "optional
+        // dark appearance later". The app was built night-first; the port makes
+        // light the base, so an untouched install with no OS signal yet is Dawn.
+        assertEquals(ThemeMode.System, AppTheme.mode)
+        assertFalse("systemDark starts false — the base appearance is light", AppTheme.systemDark)
+        assertFalse("so a fresh AppTheme resolves to Dawn", AppTheme.isNight)
+        assertEquals(DawnPalette.night, Night)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "notnight")
+    fun theWindowBackgroundResourceMatchesTheDefaultGround() {
         // res/values/colors.xml paints the window and, on Android 12+, the
-        // platform splash the launcher icon sits on. NightPalette.night is what
-        // Compose paints one frame later. When these disagree, every cold launch
-        // steps from one dark indigo to a different one — which is exactly what
-        // shipped: the resource still held the iOS #080B22 while the Android
-        // palette had moved to #100D2B.
-        val resource = androidx.test.core.app.ApplicationProvider
-            .getApplicationContext<android.content.Context>()
-            .getColor(com.cerebrozen.app.R.color.night)
+        // platform splash the launcher icon sits on; Compose paints its own
+        // ground one frame later. When these disagree, every cold launch steps
+        // from one colour to another — which is exactly what shipped once
+        // before (the resource held the iOS value while the palette had moved).
+        //
+        // Light Dawn is the default appearance, so the UNQUALIFIED resource is
+        // the Dawn ground. Before the port there was only the dark value, so a
+        // light-theme device flashed deep indigo on every launch.
         assertEquals(
-            "@color/night must equal NightPalette.night",
-            NightPalette.night,
-            Color(resource),
+            "@color/night must equal DawnPalette.night",
+            DawnPalette.night,
+            Color(windowBackground()),
         )
     }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "night")
+    fun theWindowBackgroundResourceMatchesTheNightFloor() {
+        assertEquals(
+            "values-night/@color/night must equal NightPalette.night",
+            NightPalette.night,
+            Color(windowBackground()),
+        )
+    }
+
+    private fun windowBackground(): Int = androidx.test.core.app.ApplicationProvider
+        .getApplicationContext<android.content.Context>()
+        .getColor(com.cerebrozen.app.R.color.night)
 
     @Test
     fun appearanceChoiceIsConsistentAtEveryHour() {
@@ -125,8 +153,7 @@ class ThemeTokensTest {
         val dawn = snapshot()
         // The themed accents must actually change (a load-time `val` would freeze
         // whichever theme initialized first — the documented failure mode).
-        // Cyan/Warm/LineStroke are palette-split tokens; Violet (sleep) is not.
-        assertNotEquals("talk accent (Cyan) must re-resolve", night[2], dawn[2])
+        assertNotEquals("talk accent (Info) must re-resolve", night[2], dawn[2])
         assertNotEquals("crisis accent (Warm) must re-resolve", night[5], dawn[5])
         assertNotEquals("hairline must re-resolve", night[8], dawn[8])
         assertEquals("section accents stay in one family per theme", dawn[0], dawn[3])
@@ -247,9 +274,13 @@ class ThemeTokensTest {
             // The aurora tints are brand marks — fully opaque in both themes.
             listOf(AuroraTint.home, AuroraTint.sleep, AuroraTint.talk, AuroraTint.default)
                 .forEach { assertEquals(1f, it.alpha) }
-            // The CTA pill is one deep-lavender gradient in BOTH themes — the
-            // one action that matters looks the same everywhere.
+            // The CTA pill is the accent fill, so unlike the aurora it MUST
+            // flip: Dawn's deep plum carries near-white ink, Night's pale plum
+            // carries dark `--on-accent` ink. One fixed gradient can only be
+            // legible under one of the two (ratios pinned in ContrastTest).
             assertNotNull(Gradients.primary)
+            assertEquals(if (night) NightPalette.onPrimary else DawnPalette.onPrimary, OnPrimary)
+            assertEquals(if (night) NightPalette.periwinkle else DawnPalette.periwinkle, PrimaryButtonFill)
         }
     }
 }
