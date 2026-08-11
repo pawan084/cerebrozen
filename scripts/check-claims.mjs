@@ -33,6 +33,11 @@ const SURFACES = [
   { dir: "apps/admin/app", ext: /\.(tsx?)$/ },
   { dir: "apps/ios/CereBro", ext: /\.swift$/ },
   { dir: "apps/android/app/src/main/res", ext: /strings\.xml$/ },
+  // Kotlin carries copy the same way Swift does. Scanning only strings.xml
+  // meant a screen that hardcoded its text — as the practice-library screens
+  // did, including the clinical hedges and a crisis disclaimer — was invisible
+  // to this gate on the client that leads the roadmap.
+  { dir: "apps/android/app/src/main/java", ext: /\.kt$/ },
 ];
 
 // 1. Medical / efficacy claims this product cannot make. It is explicitly not
