@@ -1865,4 +1865,10 @@
     <string name="journal_delete_body">This entry will be permanently removed from your account.</string>
     <string name="sleep_delete_title">Delete this sleep entry?</string>
     <string name="sleep_delete_body">The sleep record for %1$s will be permanently removed.</string>
+    <!-- Gratitude reflection. The reflection is stored as a journal entry, which
+         is why the queued copy promises a sync rather than a local-only save. -->
+    <string name="practice_gratitude_save">Save privately</string>
+    <string name="practice_gratitude_entry_title">Gratitude reflection</string>
+    <string name="practice_gratitude_queued">Saved on this phone — it syncs when you\'re back online.</string>
+    <string name="practice_gratitude_skip">Skip today</string>
 </resources>

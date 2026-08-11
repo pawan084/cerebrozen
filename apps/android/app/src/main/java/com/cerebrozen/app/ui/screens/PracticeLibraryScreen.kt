@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,8 +59,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
+import kotlinx.coroutines.launch
 
 
 /** The first level under Explore's Calm now card: broad practice families,
@@ -332,7 +335,13 @@ fun PracticeBodyScanScreen(onBack: () -> Unit, onUrgent: () -> Unit, onTranscrip
                 style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
                 color = Color(0xFF292323),
             )
-            Text("12 minutes · Audio and text · Available offline", modifier = Modifier.padding(top = 13.dp, bottom = 16.dp), style = MaterialTheme.typography.bodyMedium, color = Color(0xFF655C5C))
+            // This screen is a static layout: no timer runs, no audio plays and
+            // nothing is cached, so "12 minutes · Audio and text · Available
+            // offline" described a feature that isn't here. The body scan that
+            // DOES work offline is ui/offline/BodyScanScreen, which this route
+            // displaced — see docs/TODO.md. Restore the strapline when the
+            // mechanism behind it is restored.
+            Spacer(Modifier.height(13.dp))
             Column(
                 Modifier.fillMaxWidth().height(296.dp).shadow(8.dp, RoundedCornerShape(25.dp), ambientColor = Color.Black.copy(alpha = .06f))
                     .clip(RoundedCornerShape(25.dp)).background(Color(0xFFFFFDFC)),
@@ -406,7 +415,9 @@ fun BodyScanContentDetailScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegi
 fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
     var reflection by remember { mutableStateOf("") }
-    var saved by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
         PracticeHeader("Gratitude", "Positive reflection", serif, onBack, onUrgent)
         Column(
@@ -433,7 +444,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             )
             OutlinedTextField(
                 value = reflection,
-                onValueChange = { reflection = it; saved = false },
+                onValueChange = { reflection = it; status = null },
                 placeholder = { Text("One thing that made today slightly easier...", color = Color(0xFF817980)) },
                 modifier = Modifier.fillMaxWidth().height(78.dp),
                 shape = RoundedCornerShape(18.dp),
@@ -444,19 +455,52 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
                     focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
                 ),
             )
+            // The reflection is a real journal entry, not a local flag: this
+            // button used to set `saved = true` and relabel itself "Saved
+            // privately" while the text was never written anywhere, so the
+            // promise was false and the writing was lost on navigation.
+            val entryTitle = stringResource(R.string.practice_gratitude_entry_title)
+            val savedStatus = stringResource(R.string.journal_saved)
+            val queuedStatus = stringResource(R.string.practice_gratitude_queued)
+            val saveFailed = stringResource(R.string.common_save_failed)
+            val enabled = !busy && reflection.isNotBlank()
             Box(
                 Modifier.fillMaxWidth().padding(top = 17.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(if (reflection.isBlank()) Color(0xFFB89AB2) else Color(0xFF854078))
-                    .clickable(enabled = reflection.isNotBlank()) { saved = true },
+                    .background(if (enabled) Color(0xFF854078) else Color(0xFFB89AB2))
+                    .clickable(enabled = enabled) {
+                        busy = true; status = null
+                        scope.launch {
+                            try {
+                                // Null = queued by the outbox with no connection.
+                                // Saying "saved" flatly would re-tell the old lie
+                                // in a quieter way, so the two outcomes read
+                                // differently.
+                                val entry = Api.createJournal(entryTitle, reflection.trim())
+                                status = if (entry != null) savedStatus else queuedStatus
+                                reflection = ""
+                            } catch (e: Exception) {
+                                status = e.message ?: saveFailed
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    if (saved) "Saved privately" else "Save privately",
+                    if (busy) stringResource(R.string.common_one_moment)
+                    else stringResource(R.string.practice_gratitude_save),
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White,
                 )
             }
+            status?.let {
+                Text(
+                    it, modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium, color = Color(0xFF655C5C),
+                )
+            }
             Text(
-                "Skip today",
+                stringResource(R.string.practice_gratitude_skip),
                 modifier = Modifier.padding(start = 7.dp, top = 20.dp).clickable(onClick = onBack),
                 style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF5F255D),
             )
