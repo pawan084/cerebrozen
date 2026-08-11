@@ -40,6 +40,7 @@ import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.ArtTextSoft
 import com.cerebrozen.app.ui.theme.TextSoft
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -115,9 +116,14 @@ fun PlanScreen(onBack: () -> Unit) {
                         )
                     },
             ) {
+                // ArtTextSoft, not TextSoft: this slot paints INSIDE the hero's
+                // generative art, which blends toward ArtScrim and so is dark in
+                // both themes. The page-level ink token measured 1.67:1 against
+                // it — unreadable — because the contrast gate compares token
+                // pairs and never sees text composited over a gradient.
                 Text(
                     stringResource(R.string.plan_steps_summary, steps.count { it.done }, steps.size),
-                    style = MaterialTheme.typography.labelSmall, color = TextSoft,
+                    style = MaterialTheme.typography.labelSmall, color = ArtTextSoft,
                 )
             }
 
