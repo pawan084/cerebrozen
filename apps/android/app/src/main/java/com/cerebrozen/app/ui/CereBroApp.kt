@@ -198,7 +198,7 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    route in setOf("home", "explore", "practice-library", "notice-change", "cbt", "body-scan-detail", "gratitude", "sleep", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
+    route in setOf("home", "explore", "practice-library", "notice-change", "cbt", "body-scan-detail", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
