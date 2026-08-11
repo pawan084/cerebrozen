@@ -56,6 +56,7 @@ export function SiteFooter() {
             <Link href="/security">Security</Link>
             <Link href="/refunds">Refunds</Link>
             <Link href="/subprocessors">Subprocessors</Link>
+            <Link href="/delete-account">Delete your account</Link>
             <Link href="/support">Crisis support</Link>
           </nav>
         </div>

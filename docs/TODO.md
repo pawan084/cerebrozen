@@ -543,8 +543,53 @@ everything below is open.
   pass, the queued owner decisions, and the device-only checks (TalkBack
   traversal, hand-play the sequence game, Reminders time row).
 
+## 2026-08-05 Play Store readiness pass
+
+Prompted by "kya kya missing hai" for a Play submission. Everything code-side
+that blocked an upload is now closed; see [ANDROID_RELEASE.md](ANDROID_RELEASE.md)
+and `apps/android/playstore/`.
+
+- [x] **`signingConfigs.release` in `app/build.gradle.kts`** — fed from the same
+  `secret()` chain as the API keys, and only *created* when a readable keystore
+  is configured, so a keyless checkout still builds green and emits the unsigned
+  artifact (the "degrades without keys" rule applied to signing).
+- [x] **`versionName` 0.1.0 → 1.0.0** (`versionCode` stays 1 for a first upload).
+- [x] **`*.jks` added to `apps/android/.gitignore`** — only `*.keystore` was
+  listed, so the file `keytool` actually emits by default was committable.
+- [x] **`/delete-account` web page** (`apps/web/app/delete-account/page.tsx`) —
+  Play requires account deletion reachable *without* installing the app. Linked
+  from SiteFooter + sitemap. **Needs a web deploy before the URL is usable.**
+- [x] **512×512 Play icon** (`apps/android/playstore/play-icon-512.png`) — 32-bit
+  RGBA, rendered from the same vector layers as the launcher icon so store and
+  launcher art cannot drift.
+- [x] **Store listing copy drafted** (`apps/android/playstore/LISTING_COPY.md`),
+  verified against `check-claims.mjs`'s banned-phrase list, with the deliberately
+  omitted claim classes written down.
+- [x] **ANDROID_RELEASE.md corrected** — its "2.5 MB release APK" was stale (the
+  real figure is 16.6 MB after media3/Health Connect/Firebase/Coil landed), its
+  permission list omitted `health.READ_SLEEP`/WAKE_LOCK/VIBRATE, and it never
+  mentioned the Health Connect declaration form.
+- [ ] **Feature graphic 1024×500 + phone screenshots** — the only store assets
+  still missing.
+- [ ] **Android Play Billing client** — not built at all (iOS/web billing is
+  done). First Play release therefore ships as a free app; do not write pricing
+  copy until the release that ships billing.
+- Verified after the changes: `:app:assembleRelease` **BUILD SUCCESSFUL**
+  (R8 + lintVital green), web `tsc --noEmit` clean, claims gate clean over 113
+  user-facing files.
+
 ## Open — needs the owner's accounts/credentials (no code left to write)
 
+- [ ] **Play upload keystore** — the Gradle config is in place; create the key
+  (`keytool -genkey -v -keystore cerebro-upload.jks -keyalg RSA -keysize 2048
+  -validity 10000 -alias cerebro`) and set `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`/
+  `KEY_ALIAS`/`KEY_PASSWORD` in `local.properties`. Back it up twice — losing it
+  means the app can never be updated on Play.
+- [ ] **Play Console** — developer account ($25), Health Connect data-type
+  declaration form (required by `health.READ_SLEEP`), Data safety form, content
+  rating. Confirm in Console whether the 12-testers × 14-days closed-testing rule
+  applies (personal accounts only) and whether the target API level minimum has
+  moved past 35.
 - [ ] **Rotate any previously shared provider keys** (OpenAI/Deepgram/ElevenLabs) and the
   Phase-0 items in RELEASE_PLAN.md (shared VPS/root passwords, shared SECRET_KEY).
 - [ ] **Apple Developer portal:** enable the Sign in with Apple capability for
