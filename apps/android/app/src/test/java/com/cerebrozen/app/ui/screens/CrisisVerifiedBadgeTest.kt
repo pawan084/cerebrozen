@@ -21,8 +21,15 @@ import org.junit.Test
  */
 class CrisisVerifiedBadgeTest {
 
-    /** Every region `Settings` lets a user pick, plus the international fallback. */
-    private val offeredRegions = listOf("IN", "US", "GB", "CA", "AU", "NZ", "IE", "")
+    /**
+     * Every region `CrisisRegionScreen` actually offers, plus the two codes
+     * `regionLabelRes` knows but the picker does not expose (`IE`, and "" for
+     * device-detected). Checked against the picker on device: it ends at
+     * "Europe" (`EU`), not Ireland — an earlier version of this list guessed
+     * `IE` from the label map and would have left `EU`, a real selectable
+     * region, untested.
+     */
+    private val offeredRegions = listOf("IN", "US", "GB", "CA", "AU", "NZ", "EU", "IE", "")
 
     @Test
     fun `india is verified`() {

@@ -10,7 +10,9 @@
   clinical review this whole file is still waiting on.
 
   Still deliberately omitted (English serves via resource fallback):
-    - TIPP / DBT skill (tipp_*, toolkit_tipp_*)
+    - TIPP / DBT skill (tipp_*, toolkit_tipp_*) — EXCEPT tipp_urge_note and
+      tipp_urge_action, which name self-harm and open the crisis door, so they
+      fall under the crisis-copy rule above
     - CBT reframe tool (cbt_*, toolkit_cbt_*, toolkit_header_reframe)
     - "Why this works" provenance texts (common_why_this_works, *_why, programs_evidence)
     - Sleep CBT-I education cards (sleep_bed_*, sleep_waketime_*, sleep_cbti_why)
@@ -995,6 +997,11 @@
     <string name="crisis_trusted_contact_empty">सेट नहीं है — सेटिंग्स में एक जोड़ें ताकि संकट के समय CereBro उन तक पहुँच सके (आपकी सहमति से)।</string>
     <string name="crisis_open_cd">%1$s खोलें</string>
     <string name="crisis_call_cd">%1$s %2$s पर कॉल करें</string>
+    <!-- tipp_* is otherwise untranslated (see the header), but these two name
+         self-harm and open the crisis door, so they follow the crisis-copy rule
+         above rather than the TIPP one. -->
+    <string name="tipp_urge_note">अगर ख़ुद को नुकसान पहुँचाने का ख़याल आ रहा है, तो कृपया किसी से बात भी करें। असली लोग हर समय मौजूद हैं।</string>
+    <string name="tipp_urge_action">तत्काल सहायता खोलें</string>
     <string name="urgent_subtitle">इंसानी मदद पहले</string>
     <string name="urgent_danger_title">अगर तुरंत ख़तरा है, तो अभी %1$s पर कॉल करें।</string>
     <string name="urgent_danger_body">CereBro आपातकालीन सेवा नहीं है और आपकी सुरक्षा की निगरानी नहीं कर सकता।</string>
@@ -1007,7 +1014,8 @@
     <string name="urgent_line_detail_in">%1$s · 20 भाषाओं में मुफ़्त 24/7 मानसिक-स्वास्थ्य सहायता</string>
     <string name="urgent_line_detail_other">%1$s · सत्यापित मानसिक-स्वास्थ्य सहायता</string>
     <string name="urgent_trusted_title">मेरे भरोसेमंद व्यक्ति से संपर्क करें</string>
-    <string name="urgent_trusted_detail">वह व्यक्ति जिसे आपने चुना; CereBro उनसे अपने आप कभी संपर्क नहीं करता</string>
+    <string name="urgent_trusted_detail">वह व्यक्ति जिसे आपने चुना; अपने आप संपर्क तभी होगा जब आपने यह चालू किया हो</string>
+    <string name="crisis_trusted_detail">वह व्यक्ति जिसे आपने चुना; अपने आप संपर्क तभी होगा जब आपने यह चालू किया हो</string>
     <string name="urgent_cannot_call_title">मैं कॉल नहीं कर सकता/सकती</string>
     <string name="urgent_cannot_call_detail">संदेश, आमने-सामने और ग्राउंडिंग के विकल्प देखें</string>
     <string name="urgent_cached_title">सहेजी गई सहायता जानकारी</string>

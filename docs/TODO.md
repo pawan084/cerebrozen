@@ -247,14 +247,52 @@ everything below is open.
       full of raw hex like `#F3ECF3`, which **is** `--surface-field` exactly, written by
       hand because the token did not carry it. `DawnPalette` is now tokens.css byte for
       byte and `ContrastTest` pins the canonical values
-- [ ] **The Android screen review stopped at 38 of ~62 screens** (2026-08-12). Every bug
-      below came out of the first 38, at a fairly steady rate, so the remaining 24 should be
-      assumed to hold more rather than to be clean. Not yet walked: the game screens and most
-      of the practice/settings children. Two method notes for whoever resumes, both learned
+- [x] **Screen review wave: the practice and crisis children** (2026-08-12, 38 → 46 of ~64).
+      Eight new screens walked on device; five defects, two of them safety-rule breaches.
+      All five verified fixed on hardware, not just in the diff.
+      **TIPP had no crisis door.** It is entered at "a 9 or 10 when thinking feels
+      impossible", is the one screen in the app that names self-harm — and its only
+      tappable elements were Back, Previous, Next and an expander. The note raised the risk
+      and then gave *directions*: "Urgent support lives in the You tab". Someone at a 9 or 10
+      was asked to back out, find a tab and find a row, from memory. The note is now the
+      pathway (`onUrgent`, the convention four other screens already use), and the copy is
+      translated to Hindi under the file's own crisis-copy rule — the rest of `tipp_*` stays
+      English by design, but this pair names self-harm.
+      **The crisis screen denied a real third-party disclosure.** "Someone you selected;
+      CereBro never contacts them automatically" — but `escalation.on_crisis` emails or texts
+      the trusted contact on a crisis-level event whenever `notify_consent` is on, and the
+      trusted-contact screen says so plainly two taps away. The two screens contradicted each
+      other and the backend settled it. It defaults off, so the sentence was true right up
+      until a user enabled the feature, which is exactly when being wrong about it matters.
+      The dead `urgent_trusted_detail` copy carried the same claim and was corrected too,
+      rather than left in resources for someone to reuse
+- [x] **Two more claims that `check-claims.mjs` structurally could not catch** (2026-08-12).
+      Both were wrong *in their own words*, and the gate matches literal banned phrases.
+      Explore's "Favourites and downloads · Saved and offline" promised the one capability
+      the banned-phrase list exists for — no client implements downloads — while opening
+      neither favourites nor downloads: it routed to `sounds`, the same destination as the
+      "Sound · Audio and mixer" card two rows above. Deleted rather than reworded; a second
+      row to one destination is not worth honest copy. And the grounding intro stated "Voice
+      guidance on · Soft chime between steps" as a fact about the practice one tap away —
+      `GroundingScreen` has no TextToSpeech, no chime and no sound of any kind. Stating it as
+      *on* also implied a setting to turn off, and there isn't one.
+      *Lesson for the gate*: a phrase list catches recidivism, not invention. Both of these
+      needed a screen walk to find, which is the argument for finishing the remaining ~18
+- [ ] **The Android screen review stopped at 46 of ~64 screens** (2026-08-12). Every bug
+      below came out of the first 46, at a fairly steady rate, so the remaining ~18 should be
+      assumed to hold more rather than to be clean. Not yet walked: `cbti`, `mbct`, `imagery`,
+      `guidedimagery`, `ritual`, `breathing-intro`, `onegoodthing`, `intention`, `insightreel`,
+      `search`, `delete`, `privacypolicy`, `talk/live`, `humansupport`, `zenripples`,
+      `patternglow`, `mindfulgame/{gameId}`. Three method notes for whoever resumes, all learned
       the hard way — a frozen emulator framebuffer yields *plausible* screenshots of the last
       good frame (hash two captures ~10s apart to catch it), and distinct file hashes do not
       mean distinct screens: seven "successful" deeplink captures were all Today, because the
-      routes were not in `EXTERNAL_ROUTES`. Open one and look before trusting a batch
+      routes were not in `EXTERNAL_ROUTES`. Open one and look before trusting a batch. Third:
+      only 20 of the 59 routes are in `EXTERNAL_ROUTES`, so **almost everything left must be
+      reached by tapping, not by deeplink** — a `cerebro://` to anything else silently lands
+      on Today. The harness that works is `uiautomator dump` → tap by text/content-desc, and
+      printing the screen's own text next to every capture so a wrong screen is obvious
+      immediately rather than three screenshots later
 - [ ] **HC-06: practice content is still hardcoded** — the library ships as Kotlin literals
       rather than coming from `Api.content()`. Blocked on the backend, which only knows
       `sleep` and `soundscape`; extending `/content` is the actual task

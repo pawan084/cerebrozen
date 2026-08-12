@@ -825,7 +825,7 @@ fun CereBroApp() {
             // its place across rotation. `notice-change` is gone with the TIPP
             // mock that was its only entrance.
             composable("cbt") { CbtReframeScreen(onBack = back) }
-            composable("tipp") { TippScreen(onBack = back) }
+            composable("tipp") { TippScreen(onBack = back, onUrgent = { open("crisis") }) }
             composable("crisis") { UrgentSupportScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("language") { LanguageScreen(onBack = back) }

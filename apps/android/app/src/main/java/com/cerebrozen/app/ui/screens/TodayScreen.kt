@@ -2015,10 +2015,19 @@ fun GroundingIntroScreen(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CardFill)
                         .padding(horizontal = 15.dp),
                 ) {
+                    // These are read as facts about the practice one tap away, so
+                    // they have to be true of it. "Voice guidance on · Soft chime
+                    // between steps" was true of neither: GroundingScreen has no
+                    // TextToSpeech, no chime and no sound of any kind — it is a
+                    // silent, text-paced exercise. Stating it as ON also implied a
+                    // setting the user could find and change, and there isn't one.
+                    // Replaced with what the practice actually offers rather than
+                    // deleted, because the row's job is to set expectations before
+                    // someone commits three minutes.
                     val facts = listOf(
                         Triple(Icons.Outlined.AccessTime, "About 3 minutes", "End early whenever you need."),
-                        Triple(Icons.Outlined.Headphones, "Voice guidance on", "Soft chime between steps."),
-                        Triple(Icons.Outlined.Visibility, "Minimal motion", "Screen-reader instructions available."),
+                        Triple(Icons.Outlined.Headphones, "Reads at your pace", "You move each step on yourself."),
+                        Triple(Icons.Outlined.Visibility, "Minimal motion", "Plain text, works with a screen reader."),
                     )
                     facts.forEachIndexed { index, fact ->
                         Row(
