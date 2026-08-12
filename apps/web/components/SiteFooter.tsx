@@ -51,13 +51,21 @@ export function SiteFooter() {
 
           <nav className="footer-col" aria-label="Trust and support">
             <strong>Trust</strong>
+            <Link href="/safety">Safety centre</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/accessibility">Accessibility</Link>
             <Link href="/security">Security</Link>
             <Link href="/refunds">Refunds</Link>
             <Link href="/subprocessors">Subprocessors</Link>
             <Link href="/delete-account">Delete your account</Link>
             <Link href="/support">Crisis support</Link>
+          </nav>
+
+          <nav className="footer-col" aria-label="For organizations">
+            <strong>Organizations</strong>
+            <Link href="/organizations">Sponsored access</Link>
+            <Link href="/organizations#boundary">The privacy boundary</Link>
           </nav>
         </div>
 

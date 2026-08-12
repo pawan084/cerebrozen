@@ -41,9 +41,44 @@ test.describe("Trust pages", () => {
       ["Security", "/security"],
       ["Refunds", "/refunds"],
       ["Subprocessors", "/subprocessors"],
+      ["Safety centre", "/safety"],
+      ["Accessibility", "/accessibility"],
+      ["Sponsored access", "/organizations"],
     ] as const) {
       await expect(page.getByRole("link", { name, exact: true })).toHaveAttribute("href", path);
     }
+  });
+});
+
+// The three pages ref/landing.html carries that this site did not: safety,
+// accessibility and the B2B2C boundary. Each states something the product is
+// held to, and each states what is NOT true yet — CI walks both halves, because
+// the honest half is the half that quietly rots first.
+test.describe("Pages from the ref/ prototype", () => {
+  test("safety centre leads with human help and names the limits", async ({ page }) => {
+    await page.goto(`${WEB}/safety`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /human help comes first/i })).toBeVisible();
+    // The emergency pathway must be on the page, not a click away.
+    await expect(page.getByText(/112/).first()).toBeVisible();
+    await expect(page.getByText(/14416/).first()).toBeVisible();
+    // …and the honesty about what is not in place.
+    await expect(page.getByRole("heading", { name: /what is not in place yet/i })).toBeVisible();
+  });
+
+  test("accessibility page claims no conformance it has not earned", async ({ page }) => {
+    await page.goto(`${WEB}/accessibility`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /a calm interface must also be usable/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /not yet validated/i })).toBeVisible();
+    await expect(page.getByText(/do not claim conformance/i)).toBeVisible();
+  });
+
+  test("organizations page states the boundary and that it is not yet buyable", async ({ page }) => {
+    await page.goto(`${WEB}/organizations`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /fund wellness access/i })).toBeVisible();
+    await expect(page.getByText(/not yet available/i)).toBeVisible();
+    // The never-shared list is the page's reason to exist.
+    await expect(page.getByRole("heading", { name: /must never receive/i })).toBeVisible();
+    await expect(page.getByText(/journal entries and personal notes/i)).toBeVisible();
   });
 });
 
