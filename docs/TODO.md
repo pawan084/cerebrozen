@@ -99,18 +99,36 @@ everything below is open.
       `next lint` all clean; every route opened and looked at in a browser except the
       ≤820px drawer, which could not be given a real narrow viewport (rules verified in the
       parsed stylesheet instead). Not deployed, not in compose, no backend.
-- [ ] **Add `apps/portal/app/globals.css` to `scripts/sync-tokens.mjs` TARGETS** — the
-      `@cerebro-tokens` block is currently a byte-identical hand copy of `apps/admin`'s and
-      will silently drift on the next token change (owner said they would wire this)
+- [x] **`apps/portal/app/globals.css` is in `scripts/sync-tokens.mjs` TARGETS** — already
+      done when checked on 2026-08-12; the gate covers all four `globals.css` copies
 - [ ] **The 26 unbuilt portal routes** render as disabled nav items. Either build them or
-      cut them from `lib/nav.ts` before this surface is shown to a customer
+      cut them from `lib/nav.ts` before this surface is shown to a customer. Now that the 10
+      that exist are built, served and walked by CI (2026-08-12), the rest can go in one at a
+      time against a harness that notices when they break. **`AUTH-01`/`AUTH-02` first** —
+      they are what stands between the portal and a public subdomain, and the Caddy block
+      stays commented out until they exist
 - [x] **`apps/portal` scaffolded** (new app, port 3003) — shell + 10 of 36 routes on mock
       data, no auth, no backend, no organisation model. The 26 unbuilt routes render as
       disabled nav items so the full IA stays reviewable. Added to `sync-tokens.mjs` TARGETS;
       the sync gate independently confirms its token block is byte-identical
-- [ ] **`apps/portal` is not in CI.** The `web` job runs tsc + lint for web/admin/app only,
-      and `check-csp-sync.mjs` pins three middlewares — portal has neither a CI step nor a
-      middleware. Add both before it is anything more than a design surface
+- [x] **The organisation portal is wired into the stack** (2026-08-12). It had 10 of
+      `ref/portal.html`'s 36 screens and no way to run: no Dockerfile, no compose service, no
+      CI step, nothing in the Caddyfile, no e2e. Now it has a Dockerfile on :3003, a
+      `docker compose` service, its own typecheck+lint step in CI, and it joins the e2e stack
+      with `portal.spec.ts` walking all ten routes plus the sidebar's own links.
+      **It also had no CSP.** The other three Next apps each carry a hand-copied
+      `middleware.ts`; the portal never got one because nothing served it. Wiring it in
+      without one would have deployed the least-protected surface in the product on the host
+      that shows an employer their organisation's data. It now carries the same nonce policy
+      (tighter than admin's — no third-party `img-src`, since nothing here renders a remote
+      image), `check-csp-sync.mjs` gates four files instead of three, and the header was read
+      off a running server rather than assumed.
+      **The Caddy block is deliberately commented out.** `AUTH-01`/`AUTH-02` are among the 26
+      unbuilt screens, so there is no sign-in in front of it; publishing an unauthenticated
+      console on a real subdomain would be the actual mistake. It runs locally and in CI
+      until those exist
+- [x] **`apps/portal` is in CI** (2026-08-12) — its own tsc + lint step, and
+      `check-csp-sync.mjs` now pins four middlewares because the portal finally has one
 - [ ] **Portal responsive/a11y unverified** — the ≤820px sidebar drawer was never seen at a
       real narrow viewport (only the media queries confirmed present), `prefers-reduced-motion`
       was not exercised, and no axe run was done
@@ -334,10 +352,16 @@ everything below is open.
       that every AI surface disclaims medical care, and that none of this copy uses a banned
       medical verb except as a denial — "never diagnoses or prescribes" has to stay legal
       while "treats depression" does not
-- [ ] **Audit the rest of `CLAIMS_MAP`'s test citations the same way.** One row named a file
-      that never existed; the others have never been checked mechanically. A script that
-      resolves every `Test`/`tests/` reference in that table to a real symbol would turn the
-      file's own rule into something enforced rather than promised
+- [x] **Every `CLAIMS_MAP` citation now resolves, and CI keeps it that way** (2026-08-12).
+      The audit found **six** broken references, not one: `DisclosureCopyTest` and
+      `ConsentDefaultsTest` had never been written, and four backend files had been renamed
+      without the doc following — `test_usage.py` → `test_usage_limit.py`, `test_consent.py`
+      → `test_consent_enforced.py`, `test_safety.py` → `test_safety_reach.py`,
+      `test_insights.py` → `test_insights_no_guesses.py`. Renames are the quieter failure:
+      the claim stayed true and only its evidence went missing, so nothing ever complained.
+      `scripts/check-claims-tests.mjs` resolves every `tests/…`, `::test_…` and `` `FooTest` ``
+      in the table to a real file, function or class, and runs in CI beside `check-claims`.
+      Verified by breaking a citation on purpose and watching it fail
 - [x] **`guidedimagery` has a door** (2026-08-12). It is the seventh family in the Practice
       library — "Picture somewhere calm · Four places to settle into" — which is where a user
       already goes to choose a practice by need. Two things fell out of placing it there.

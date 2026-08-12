@@ -123,6 +123,7 @@ jobs:
             apps/web/package-lock.json
             apps/admin/package-lock.json
             apps/app/package-lock.json
+            apps/portal/package-lock.json
       - name: Design-token drift check
         run: node scripts/sync-tokens.mjs --check
       # Android and iOS have had a contrast suite for a while; the web side did
@@ -134,6 +135,12 @@ jobs:
       # strings.xml). Review alone let three over-claims ship; see CLAIMS_MAP.md.
       - name: Claims check
         run: node scripts/check-claims.mjs
+      # ...and that every test CLAIMS_MAP names is real. Six citations were
+      # fiction on 2026-08-12 — two tests nobody had written, four files renamed
+      # without the doc following. A claims map that cites a guarantee nobody
+      # wrote reads like evidence, which is worse than an empty cell.
+      - name: Claims-map citations resolve
+        run: node scripts/check-claims-tests.mjs
       # Every quoted price against Products.storekit — what a user is really
       # charged. The Android paywall drifted 25% under every other surface and
       # nothing could notice, because prices are hand-written in four places.
@@ -158,6 +165,14 @@ jobs:
           npx next lint
       - name: Typecheck + lint app
         working-directory: apps/app
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx next lint
+      # The portal built cleanly for weeks while nothing ran it. It is a
+      # deployed surface now, so it fails the build like its three siblings.
+      - name: Typecheck + lint portal
+        working-directory: apps/portal
         run: |
           npm ci
           npx tsc --noEmit

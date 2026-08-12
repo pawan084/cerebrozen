@@ -94,6 +94,36 @@ async def test_plan_signals_respect_itemized_consent(client):
         assert moods == [] and journals == [] and sleep_rows == []
 
 
+async def test_the_companion_is_given_the_feeling_never_the_note(client):
+    """The check-in note never reaches the plan generator.
+
+    apps/app /checkin tells the user "the companion is given your feeling —
+    never these words", which is a claim about a specific column: MoodLog.note.
+    `_recent_signals` selects MoodLog.mood, so the claim holds today, and this
+    pins it — widening that select to the whole row would be a natural-looking
+    refactor that silently breaks a privacy promise on the screen that collects
+    the note.
+    """
+    email = await _signup(client)
+    r = await client.patch("/users/me/consent", json={
+        "mood_history": True, "journal_memory": True, "sleep_history": True})
+    assert r.status_code == 200
+
+    secret = "the exact words I would not want read back"
+    assert (await client.post("/moods", json={
+        "mood": "Overwhelmed", "note": secret, "symbol": "wind", "intensity": 4})).status_code == 201
+
+    async with SessionLocal() as db:
+        user = await _load_user(email, db)
+        moods, journals, sleep_rows = await agentic._recent_signals(db, user)
+
+    # The feeling is there — this is consented personalization, not silence.
+    assert "Overwhelmed" in moods
+    # The words are not, anywhere in what the generator is handed.
+    handed_over = " ".join(moods) + " " + " ".join(journals) + " " + str(sleep_rows)
+    assert secret not in handed_over
+
+
 async def test_weekly_insights_respect_itemized_consent(client):
     email = await _signup(client)
     await _seed_all_categories(client)

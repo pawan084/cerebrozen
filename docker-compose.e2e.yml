@@ -55,6 +55,14 @@ services:
     depends_on:
       - api
 
+  portal:
+    build:
+      context: ./apps/portal
+      args:
+        NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      - api
+
   e2e:
     build: ./e2e
     environment:
@@ -62,7 +70,9 @@ services:
       WEB_URL: http://web:3000
       ADMIN_URL: http://admin:3001
       APP_URL: http://app:3002
+      PORTAL_URL: http://portal:3003
     depends_on:
       - web
       - admin
       - app
+      - portal

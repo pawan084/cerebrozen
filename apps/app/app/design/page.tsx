@@ -23,14 +23,21 @@ import Link from "next/link";
 //   wind-down (the mock states it "does not persist anywhere" — a reorder that
 //   forgets on reload is a fake save) and the "10:30 pm" target bedtime (no
 //   such field exists in backend/app/models/sleep.py, so it would be invented).
-const DONE: [href: string, id: string, title: string, note: string][] = [
-  [
-    "/design/checkin",
-    "TOD-02",
-    "Check in",
-    "Six states, optional intensity and note; ends on what happens next, never a score.",
-  ],
-];
+//   TOD-02 Check in → /checkin (2026-08-12). The mock's first state was
+//   "Clear"; the wire vocabulary is Good · Anxious · Low · Tired · Overwhelmed ·
+//   Not sure, and "Clear" is the same drift that was removed from Android's
+//   check-in the same week. Its flat "Does not use your journal" did NOT
+//   graduate: that is only true while journal_memory consent is off, so the
+//   sentence would have been right for most people and wrong for exactly those
+//   who had changed it — the list now reads /users/me/consent. Nor did "Save
+//   and see the step", which promised a per-feeling destination that does not
+//   exist. Light/Medium/Strong map to 2/3/4 rather than 1/3/5: intensity feeds
+//   the stability average in services/insights.py, and a three-way choice
+//   should not be recorded at the extremes of a five-point scale.
+// Empty on purpose: every screen that landed here has graduated. The surface
+// stays so the next redesign has somewhere to put a screen before it is wired,
+// and so the notes above keep their home.
+const DONE: [href: string, id: string, title: string, note: string][] = [];
 
 export default function DesignIndex() {
   return (
@@ -41,16 +48,26 @@ export default function DesignIndex() {
         Redesigned against ref/, rendered with mock data and no backend. These are for review
         — the shipped screens are unchanged until each one is signed off.
       </p>
-      <ul className="day-list">
-        {DONE.map(([href, id, title, note]) => (
-          <li key={href} className="day-row">
-            <span className="day-when">{id}</span>
-            <span className="day-what">
-              <Link href={href}>{title}</Link> — <span className="sub">{note}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {DONE.length === 0 ? (
+        <section className="ds-card">
+          <p className="sub">
+            Nothing is waiting here. Every screen that came through this surface has graduated
+            into its real route — the comments in this file record what each one dropped on the
+            way, and why.
+          </p>
+        </section>
+      ) : (
+        <ul className="day-list">
+          {DONE.map(([href, id, title, note]) => (
+            <li key={href} className="day-row">
+              <span className="day-when">{id}</span>
+              <span className="day-what">
+                <Link href={href}>{title}</Link> — <span className="sub">{note}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

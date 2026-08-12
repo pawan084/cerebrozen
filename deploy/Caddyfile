@@ -55,6 +55,18 @@ app.cerebrozen.in {
 	reverse_proxy app:3002
 }
 
+# Organisation portal (ref/portal.html). Commented out, not omitted: the app
+# builds and runs, but only 10 of the reference's 36 screens exist and there is
+# no auth in front of it yet (AUTH-01/AUTH-02 are among the unbuilt). Publishing
+# an unauthenticated console on a real subdomain would be the mistake, so this
+# block waits for the sign-in screens. Until then `docker compose up` serves it
+# on :3003 for local work, and CI builds and e2e-walks it.
+# portal.cerebrozen.in {
+# 	import security_headers
+# 	encode gzip zstd
+# 	reverse_proxy portal:3003
+# }
+
 # API (FastAPI)
 api.cerebrozen.in {
 	import security_headers

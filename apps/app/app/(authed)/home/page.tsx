@@ -275,6 +275,15 @@ export default function Home() {
                 </p>
               )}
               {checkInError && <p className="error" role="alert">{checkInError}</p>}
+              {/* The door to TOD-02 (/checkin), which graduated 2026-08-12. This
+                  row saves one tap and one feeling; that screen adds intensity, a
+                  private note, and an itemised account of which signals are
+                  switched on. Without this link it would have been a finished
+                  screen with no entrance — the exact defect being cleaned up on
+                  Android the same week. */}
+              <Link href="/checkin" className="text-btn checkin-more">
+                Add intensity or a note
+              </Link>
             </section>
 
             {/* Weekly-insights teaser (ref "This week" strip). */}

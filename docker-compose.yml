@@ -66,5 +66,18 @@ services:
     depends_on:
       - api
 
+  # The organisation portal (ref/portal.html). It existed as source for a while
+  # without being reachable: no image, no service, no CI step, so `docker
+  # compose up` never gave you one and nothing would have told you if it broke.
+  portal:
+    build:
+      context: ./apps/portal
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+
 volumes:
   pgdata:

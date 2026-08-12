@@ -29,6 +29,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Required by the nonce CSP in middleware.ts: Next only stamps the forwarded
+// nonce onto its inline scripts while rendering dynamically, and statically
+// prerendered HTML cannot carry a fresh one. These pages were prerendered as
+// static because they render fixed reference layout; nothing depended on that,
+// and an administration portal has no cache story worth keeping it for.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB" className={`${serif.variable} ${sans.variable}`}>

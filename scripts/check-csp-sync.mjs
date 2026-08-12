@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The three Next apps each carry a hand-copied middleware.ts CSP (per-app
+// The four Next apps each carry a hand-copied middleware.ts CSP (per-app
 // Docker build contexts — see any of the three files' header comment). They
 // are allowed to differ where their needs differ (apps/app adds media-src for
 // narration audio), but the security floor must hold in all of them. This
@@ -12,6 +12,7 @@ const FILES = [
   "apps/web/middleware.ts",
   "apps/admin/middleware.ts",
   "apps/app/middleware.ts",
+  "apps/portal/middleware.ts",
 ];
 
 // Each entry: [human name, regex the middleware source must match].
