@@ -101,57 +101,73 @@ internal object NightPalette {
  * light theme, so depth is carried by shadow (see [CardShadow]) and by the
  * hairline, never by the fill. */
 internal object DawnPalette {
-    // Kept byte-for-byte with the Light Dawn phone in mobile.html.  These
-    // roles are deliberately named after the existing Android API so every
-    // screen (including games and audio) inherits the reference in one pass.
-    val night = Color(0xFFF7F3EC)       // --bg
-    val nightMid = Color(0xFFEEE8DD)    // --bg2
-    val nightPurple = Color(0xFFEDE7DC) // --surface-soft
-    val textPrimary = Color(0xFF1C1740) // --ink
-    val textSoft = Color(0xFF3D3762)    // --ink2
-    // Slightly deepened from #6D6788 so small Android labels retain WCAG AA on
-    // the reference's darker #EEE8DD field surface.
-    val textMuted = Color(0xFF67617F)
-    val textMuted2 = Color(0xFF67617F)
-    val cardFill = Color(0xFFFFFDFA)    // --surface-solid
-    val lineStroke = Color(0xFFD9D0C2)  // --line
-    val eyebrowMuted = Color(0xFF0C737F) // reference eyebrow / --teal
-    val buttonDisabled = Color(0xFFD9D0C2)
-    val fieldFill = Color(0xFFEDE7DC)
-    val chipFill = Color(0xFFEDE7DC)
-    val navPillTop = Color(0xFFFFFDFA)
-    val navPillBottom = Color(0xFFFFFDFA)
-    val navScrim = Color(0xFFF7F3EC)
-    // Accessibility-corrected equivalents of --primary / --primary2. The HTML
-    // values miss 4.5:1 for small white/button and accent text on Android.
-    val periwinkle = Color(0xFF5545B0)
-    val accent2 = Color(0xFF6556C5)
-    val accentSoft = Color(0xFFE9E5FA)
-    val onAccent = Color(0xFFFFFFFF)    // --on-primary
-    val cyan = Color(0xFF0C737F)        // --teal
-    val infoSoft = Color(0xFFD7F1EF)    // --teal-soft
-    val warm = Color(0xFF9E4A2C)        // --warm
-    val warmSoft = Color(0xFFF7E3D7)    // --warm-soft
-    val ok = Color(0xFF287052)          // --success
-    val okSoft = Color(0xFFDCEFE6)      // --success-soft
-    val danger = Color(0xFFA03E59)      // --danger
-    val dangerSoft = Color(0xFFF7DFE6)  // --danger-soft
-    val amber = Color(0xFF9E4A2C)
-    val amberSoft = Color(0xFFF7E3D7)
+    // CANONICAL — every value below is `design/tokens.css :root`, byte for byte.
+    //
+    // This used to be taken "byte-for-byte with the Light Dawn phone in
+    // mobile.html", a DIFFERENT source from tokens.css, and the two disagree on
+    // every neutral: mobile.html's ink is indigo (#1C1740), the canonical text
+    // role is a warm near-black (#211D20). The result was an Android Dawn that
+    // matched no other client, with nothing to catch it — sync-tokens.mjs gates
+    // the four globals.css files and cannot read Kotlin, and ContrastTest pinned
+    // these very values while calling itself "the mirror of tokens.css :root".
+    //
+    // Screen authors noticed even if the tooling did not: the light-dawn screens
+    // are full of raw hex like #F3ECF3 (== --surface-field exactly) and #292323
+    // (≈ --text), written by hand because the tokens did not carry them.
+    //
+    // REDESIGN_V2 §6: "follow ref/ strictly … where the spec and this repo
+    // disagree, the spec wins", and §2 adopts --text/--text-secondary/--accent/
+    // --accent-2/--ok/--info exactly as specified. tokens.css is that spec.
+    val night = Color(0xFFF8F4EE)       // --surface
+    val nightMid = Color(0xFFF3ECF3)    // --surface-field
+    val nightPurple = Color(0xFFF3ECF3) // --surface-field
+    val textPrimary = Color(0xFF211D20) // --text
+    val textSoft = Color(0xFF514A50)    // --text-secondary
+    val textMuted = Color(0xFF686267)   // --text-faint
+    val textMuted2 = Color(0xFF686267)  // --text-faint
+    val cardFill = Color(0xFFFFFCF8)    // --surface-raised
+    val lineStroke = Color(0xFFDFD9D3)  // --line
+    val eyebrowMuted = Color(0xFF315C7A) // --info (the eyebrow role on light)
+    val buttonDisabled = Color(0xFFDFD9D3) // --line
+    val fieldFill = Color(0xFFF3ECF3)   // --surface-field
+    val chipFill = Color(0xFFF3ECF3)    // --surface-field
+    val navPillTop = Color(0xFFFFFCF8)  // --surface-raised
+    val navPillBottom = Color(0xFFFFFCF8)
+    val navScrim = Color(0xFFF8F4EE)    // --surface
+    // The plum accent, not the old indigo. tokens.css darkened --warm/--danger/
+    // --amber/--text-faint specifically so every role clears 4.5:1 on all three
+    // grounds — the check-contrast.mjs gate proves it for these exact values,
+    // and ContrastTest re-proves it here.
+    val periwinkle = Color(0xFF5A2B5C)  // --accent
+    val accent2 = Color(0xFF8A4A78)     // --accent-2
+    val accentSoft = Color(0xFFE9DDEA)  // --accent-soft
+    val onAccent = Color(0xFFFFFCF8)    // --on-accent
+    val cyan = Color(0xFF315C7A)        // --info
+    val infoSoft = Color(0xFFE7F0F5)    // --info-soft
+    val warm = Color(0xFFA45161)        // --warm
+    val warmSoft = Color(0xFFFAE9EA)    // --warm-soft
+    val ok = Color(0xFF49634F)          // --ok
+    val okSoft = Color(0xFFE5EDE3)      // --ok-soft
+    val danger = Color(0xFFC23A33)      // --danger
+    val dangerSoft = Color(0xFFFFE9E6)  // --danger-soft
+    val amber = Color(0xFF92611D)       // --amber
+    val amberSoft = Color(0xFFFFF1D8)   // --amber-soft
     // Component roles.
-    val onPrimary = Color(0xFFFFFFFF)
-    val chipSelectedFill = Color(0xFF5545B0)
-    val chipSelectedInk = Color(0xFFFFFFFF)
-    val switchThumbOn = Color(0xFFFFFFFF)
-    val textBright = Color(0xFF1C1740)
-    val navSelectedHi = Color(0x337567DF)
-    val navSelectedLo = Color(0x147567DF)
-    // Veils flip to soft ink so wells/tracks stay visible on ivory.
-    val veil = Color(0x0F1C1740)
-    val veilSoft = Color(0x0D1C1740)
-    val veilWell = Color(0x141C1740)
-    val veilStrong = Color(0x1A1C1740)
-    val veilLine = Color(0x1F1C1740)
+    val onPrimary = Color(0xFFFFFCF8)   // --on-accent
+    val chipSelectedFill = Color(0xFF5A2B5C) // --accent
+    val chipSelectedInk = Color(0xFFFFFCF8)  // --on-accent
+    val switchThumbOn = Color(0xFFFFFCF8)   // --on-accent
+    val textBright = Color(0xFF211D20)      // == textPrimary (--text)
+    // Nav selection wash, tinted from the accent rather than the retired indigo.
+    val navSelectedHi = Color(0x335A2B5C)
+    val navSelectedLo = Color(0x145A2B5C)
+    // Veils are the ink at low alpha, so wells/tracks stay visible on ivory —
+    // they follow --text, which is why these carry the canonical warm value.
+    val veil = Color(0x0F211D20)
+    val veilSoft = Color(0x0D211D20)
+    val veilWell = Color(0x14211D20)
+    val veilStrong = Color(0x1A211D20)
+    val veilLine = Color(0x1F211D20)
 }
 
 // ── Themed tokens (resolve per theme on every read) ─────────────────────────
@@ -300,8 +316,8 @@ val Teal = Color(0xFF9CC4DC)            // = --info (night); lotus / breathe acc
 // tiles) and every Ink consumer is dark ink on light/white art (breathe-orb
 // count, celebration check, funnel pills) — grounds that do not change with the
 // theme. Both re-toned onto the canonical neutrals.
-val Cream = Color(0xFFFFFDFA)       // mobile.html --surface-solid
-val Ink = Color(0xFF1C1740)         // mobile.html --ink
+val Cream = Color(0xFFFFFCF8)       // --surface-raised
+val Ink = Color(0xFF211D20)         // --text
 
 // Constants for text/scrims over always-dark art (photo heroes, gradient game
 // tiles): these panels keep their night art in both themes, so their overlay

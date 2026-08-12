@@ -37,12 +37,24 @@ enum Dummy {
         .init(title: "Evening unwind", subtitle: "Soundscape · 30 min", symbol: "waveform", imageURL: Img.ocean)
     ]
 
-    // Mood
+    // Mood — the check-in vocabulary (TOD-02, six states).
+    //
+    // CROSS-STACK CONTRACT: `name` is sent to the server verbatim and READ
+    // there (backend/app/services/moods.py), so these strings are wire values,
+    // not display text to be reworded freely. Android
+    // ui/screens/TodayScreen.kt MOODS and web app/(authed)/home/page.tsx carry
+    // the same six.
+    //
+    // "Not sure" is load-bearing rather than filler: it is the answer for
+    // someone who cannot name a feeling, and the server treats it as neither
+    // distress nor contentment instead of guessing.
     static let moods: [MoodOption] = [
         .init(name: "Good", note: "Clear", symbol: "sparkles"),
         .init(name: "Anxious", note: "Loud thoughts", symbol: "exclamationmark.triangle"),
         .init(name: "Low", note: "Heavy", symbol: "moon"),
-        .init(name: "Tired", note: "Need rest", symbol: "drop")
+        .init(name: "Tired", note: "Need rest", symbol: "drop"),
+        .init(name: "Overwhelmed", note: "Too much at once", symbol: "exclamationmark.triangle"),
+        .init(name: "Not sure", note: "Closest fit right now", symbol: "minus")
     ]
 
     // Chat

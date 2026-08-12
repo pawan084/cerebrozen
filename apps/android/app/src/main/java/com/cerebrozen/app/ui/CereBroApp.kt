@@ -618,7 +618,10 @@ fun CereBroApp() {
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
                     current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "patterndetail" || current == "dailyplan" || current == "goals" || current == "goaldetailcalmer" || current == "goaldetailwind" || current == "baseline" -> Tab.Home.route
-                    current == "practice-library" || current == "notice-change" || current == "cbt" || current == "body-scan-detail" || current == "gratitude" || current == "sleep" || current == "sleepinsights" -> Tab.Explore.route
+                    // `sleep` is gone from this list: it left shouldShowBottomBar
+                    // when it became a pushed screen, so this branch could never
+                    // be reached — the bar is not drawn on that route at all.
+                    current == "practice-library" || current == "notice-change" || current == "cbt" || current == "body-scan-detail" || current == "gratitude" || current == "sleepinsights" -> Tab.Explore.route
                     current == "reminders" -> Tab.You.route
                     else -> current
                 },

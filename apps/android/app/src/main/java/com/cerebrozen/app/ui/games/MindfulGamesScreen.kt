@@ -123,8 +123,14 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                             Text(name, style = MaterialTheme.typography.titleMedium, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.weight(1f))
+                            // Two lines, not one. This is the "what this
+                            // practises" line — the only thing on the card that
+                            // says why the game is here — and at maxLines = 1 it
+                            // clipped mid-word on every card in the grid ("Find
+                            // one thing amon…", "Hold back the easy a…"), which
+                            // is worse than omitting it.
                             Text(stringResource(game.practiceRes), style = MaterialTheme.typography.labelSmall, color = accent,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     }

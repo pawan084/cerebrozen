@@ -229,35 +229,45 @@ class ContrastTest {
 
     @Test
     fun dawnPalette_pinsTheCanonicalLightValues() = dawn {
-        // The mirror of tokens.css `:root` — Light Dawn, the default appearance.
+        // design/tokens.css `:root`, byte for byte — Light Dawn, the default
+        // appearance.
+        //
+        // This block previously called itself "the mirror of tokens.css :root"
+        // while pinning values taken from ref/mobile.html instead: indigo ink
+        // (#1C1740) against the canonical warm #211D20, and an indigo accent
+        // against the plum #5A2B5C. Nothing else could catch it —
+        // sync-tokens.mjs gates the four globals.css files and cannot read
+        // Kotlin — so this test WAS the gate, and it was locking the drift in.
+        // If a value here disagrees with design/tokens.css, tokens.css wins
+        // (REDESIGN_V2 §6: where the spec and this repo disagree, the spec does).
         val expected = mapOf(
-            "Night" to (Night to Color(0xFFF7F3EC)),
-            "NightMid" to (NightMid to Color(0xFFEEE8DD)),
-            "NightPurple" to (NightPurple to Color(0xFFEDE7DC)),
-            "CardFill" to (CardFill to Color(0xFFFFFDFA)),
-            "FieldFill" to (FieldFill to Color(0xFFEDE7DC)),
-            "ChipFill" to (ChipFill to Color(0xFFEDE7DC)),
-            "LineStroke" to (LineStroke to Color(0xFFD9D0C2)),
-            "TextPrimary" to (TextPrimary to Color(0xFF1C1740)),
-            "TextSoft" to (TextSoft to Color(0xFF3D3762)),
-            "TextMuted" to (TextMuted to Color(0xFF67617F)),
-            "TextMuted2" to (TextMuted2 to Color(0xFF67617F)),
-            "EyebrowMuted" to (EyebrowMuted to Color(0xFF0C737F)),
-            "Periwinkle" to (Periwinkle to Color(0xFF5545B0)),
-            "Accent2" to (Accent2 to Color(0xFF6556C5)),
-            "AccentSoft" to (AccentSoft to Color(0xFFE9E5FA)),
-            "OnAccent" to (OnAccent to Color(0xFFFFFFFF)),
-            "Ok" to (Ok to Color(0xFF287052)),
-            "OkSoft" to (OkSoft to Color(0xFFDCEFE6)),
-            "Warm" to (Warm to Color(0xFF9E4A2C)),
-            "WarmSoft" to (WarmSoft to Color(0xFFF7E3D7)),
-            "Danger" to (Danger to Color(0xFFA03E59)),
-            "DangerSoft" to (DangerSoft to Color(0xFFF7DFE6)),
-            "Amber" to (Amber to Color(0xFF9E4A2C)),
-            "AmberSoft" to (AmberSoft to Color(0xFFF7E3D7)),
-            "Cyan" to (Cyan to Color(0xFF0C737F)),
-            "Info" to (Info to Color(0xFF0C737F)),
-            "InfoSoft" to (InfoSoft to Color(0xFFD7F1EF)),
+            "Night" to (Night to Color(0xFFF8F4EE)),          // --surface
+            "NightMid" to (NightMid to Color(0xFFF3ECF3)),    // --surface-field
+            "NightPurple" to (NightPurple to Color(0xFFF3ECF3)),
+            "CardFill" to (CardFill to Color(0xFFFFFCF8)),    // --surface-raised
+            "FieldFill" to (FieldFill to Color(0xFFF3ECF3)),
+            "ChipFill" to (ChipFill to Color(0xFFF3ECF3)),
+            "LineStroke" to (LineStroke to Color(0xFFDFD9D3)), // --line
+            "TextPrimary" to (TextPrimary to Color(0xFF211D20)), // --text
+            "TextSoft" to (TextSoft to Color(0xFF514A50)),    // --text-secondary
+            "TextMuted" to (TextMuted to Color(0xFF686267)),  // --text-faint
+            "TextMuted2" to (TextMuted2 to Color(0xFF686267)),
+            "EyebrowMuted" to (EyebrowMuted to Color(0xFF315C7A)), // --info
+            "Periwinkle" to (Periwinkle to Color(0xFF5A2B5C)), // --accent
+            "Accent2" to (Accent2 to Color(0xFF8A4A78)),      // --accent-2
+            "AccentSoft" to (AccentSoft to Color(0xFFE9DDEA)), // --accent-soft
+            "OnAccent" to (OnAccent to Color(0xFFFFFCF8)),    // --on-accent
+            "Ok" to (Ok to Color(0xFF49634F)),                // --ok
+            "OkSoft" to (OkSoft to Color(0xFFE5EDE3)),
+            "Warm" to (Warm to Color(0xFFA45161)),            // --warm
+            "WarmSoft" to (WarmSoft to Color(0xFFFAE9EA)),
+            "Danger" to (Danger to Color(0xFFC23A33)),        // --danger
+            "DangerSoft" to (DangerSoft to Color(0xFFFFE9E6)),
+            "Amber" to (Amber to Color(0xFF92611D)),          // --amber
+            "AmberSoft" to (AmberSoft to Color(0xFFFFF1D8)),
+            "Cyan" to (Cyan to Color(0xFF315C7A)),            // --info
+            "Info" to (Info to Color(0xFF315C7A)),
+            "InfoSoft" to (InfoSoft to Color(0xFFE7F0F5)),
         )
         expected.forEach { (name, pair) ->
             assertEquals("$name drifted from tokens.css (Dawn)", pair.second.toArgb(), pair.first.toArgb())

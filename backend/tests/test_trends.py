@@ -14,7 +14,7 @@ from app.core.database import SessionLocal
 from app.models.mood import MoodLog
 from app.models.sleep import SleepLog
 from app.models.user import User
-from app.services import insights, trends
+from app.services import insights, moods, trends
 
 
 async def _signup(client, prefix="trend"):
@@ -37,8 +37,41 @@ async def _user(email) -> User:
 
 def test_the_neg_mood_taxonomy_matches_the_pattern_dashboard():
     """Two surfaces calling the same feeling "difficult" differently would be a
-    contradiction the user can see."""
-    assert trends.NEG_MOODS == insights._NEG_MOODS
+    contradiction the user can see.
+
+    This used to compare trends and insights only — and those were the two
+    copies that had NOT drifted. The copies in agentic.py and nudges.py were
+    invisible to it and had both dropped "overwhelmed", so the strongest signal
+    a user can send produced a steady-baseline plan and no supportive nudge.
+    All four now read one set, and the test checks the behaviour, not just the
+    two literals it happened to know about.
+    """
+    assert trends.NEG_MOODS == insights._NEG_MOODS == moods.DIFFICULT
+
+
+def test_every_client_mood_that_means_distress_is_treated_as_distress():
+    """The check-in vocabulary the clients offer, against the server's reading.
+
+    Android/iOS/web each hand-duplicate this list (CLAUDE.md cross-stack rule),
+    so a label one of them can send that the server shrugs at is a silent
+    product failure rather than a crash.
+    """
+    for label in ("Anxious", "Low", "Tired", "Overwhelmed"):
+        assert moods.is_difficult(label), f"{label} must read as a hard feeling"
+        # Case is not guaranteed: the label arrives as the client typed it.
+        assert moods.is_difficult(label.lower())
+        assert moods.is_difficult(label.upper())
+
+    # "Not sure" is the answer for someone who cannot name a feeling. It must
+    # be neither distress nor contentment — scoring it either way would invent
+    # a reading the user explicitly declined to give.
+    assert not moods.is_difficult("Not sure")
+    assert not moods.is_difficult("Good")
+    assert not moods.is_difficult(None)
+    assert not moods.is_difficult("")
+
+    # An unknown label from a future client is neutral, never guessed at.
+    assert not moods.is_difficult("bewildered")
 
 
 def test_ease_score_inverts_difficult_moods():

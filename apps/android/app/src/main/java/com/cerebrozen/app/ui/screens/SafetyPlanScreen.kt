@@ -179,7 +179,12 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
         }
 
         if (loading) {
-            Text(stringResource(R.string.patterns_loading),
+            // NOT patterns_loading ("Looking at your data…"). This screen's own
+            // promise is that CereBro doesn't read the plan back, score it or
+            // share it — and while it loaded it said something was looking at
+            // it. Nothing is inspected here: it is a plain fetch of the user's
+            // own record, so the copy says what is actually happening.
+            Text(stringResource(R.string.safetyplan_loading),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         } else {
             SAFETY_PLAN_FIELDS.forEach { field ->

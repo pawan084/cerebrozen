@@ -116,6 +116,7 @@ import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.cerebrozen.app.ui.theme.FieldFill
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
@@ -140,12 +141,47 @@ private data class MoodOption(
  * session, not once per tab visit. */
 private var homeIntroPlayed = false
 
+/**
+ * The check-in vocabulary (TOD-02, six states).
+ *
+ * CROSS-STACK CONTRACT — the `name` strings are sent to the server verbatim and
+ * READ there (`backend/app/services/moods.py`), so they are not free text and
+ * are never translated: the localized label is [labelRes], the wire value is
+ * [name]. iOS `Models/DummyData.swift` and web `app/(authed)/home/page.tsx`
+ * carry the same six.
+ *
+ * "Overwhelmed" and "Not sure" are the two the spec adds. "Not sure" is
+ * load-bearing rather than filler — it is the answer that keeps someone who
+ * cannot name a feeling from being pushed into naming one wrongly — and the
+ * server treats it as neither distress nor contentment.
+ */
 private val MOODS = listOf(
     MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note) { Ok },
     MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note) { Warm },
     MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note) { Periwinkle },
     MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note) { Cyan },
+    MoodOption("Overwhelmed", "Too much at once", "exclamationmark.triangle", 5, R.string.mood_overwhelmed, R.string.mood_overwhelmed_note) { Warm },
+    MoodOption("Not sure", "Closest fit right now", "minus", 3, R.string.mood_unsure, R.string.mood_unsure_note) { Periwinkle },
 )
+
+/**
+ * One glyph per check-in state, keyed on the WIRE value.
+ *
+ * Every state is named rather than left to a fallback: an `else` branch put the
+ * same moon on Tired, Overwhelmed and Not sure — half the grid wearing one
+ * icon, which is no icon at all. Keyed on [MoodOption.name] and not on
+ * `symbol`, because `symbol` is what the SERVER is told and never reaches the
+ * glyph.
+ */
+internal fun moodGlyph(name: String): String = when (name) {
+    "Good" -> "◌"
+    "Anxious" -> "⌁"
+    "Low" -> "↓"
+    "Tired" -> "☾"
+    "Overwhelmed" -> "⁘"
+    "Not sure" -> "…"
+    else -> "☾"
+}
 
 /** Which greeting the hour calls for. Returns the resource, not the copy, so
  * the decision stays a pure unit-testable function AND localizes. */
@@ -693,8 +729,8 @@ private fun ContentRail(
 private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false, onPick: () -> Unit) {
     val tint = mood.tint()
     val shape = RoundedCornerShape(18.dp)
-    val selectedFill = Color(0xFF61285F)
-    val idleFill = Color(0xFFF3ECF3)
+    val selectedFill = Periwinkle
+    val idleFill = FieldFill
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Column(
@@ -737,12 +773,7 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                when (mood.name) {
-                    "Good" -> "◌"
-                    "Anxious" -> "⌁"
-                    "Low" -> "↓"
-                    else -> "☾"
-                },
+                moodGlyph(mood.name),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (marked) Color.White else tint,
             )
@@ -1985,7 +2016,7 @@ fun GroundingIntroScreen(
                         label, style = MaterialTheme.typography.labelMedium,
                         color = if (i == 0) Color.White else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (i == 0) Color(0xFF67285F) else Periwinkle.copy(alpha = .06f))
+                            .background(if (i == 0) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .padding(horizontal = 15.dp, vertical = 13.dp),
                     )
                 }
@@ -2036,14 +2067,13 @@ fun CheckInDetailScreen(
     onSaved: () -> Unit,
     onUrgent: () -> Unit,
 ) {
-    val moods = listOf(
-        Triple("Clear", "☀", "Steady"),
-        Triple("Anxious", "≈", "Loud thoughts"),
-        Triple("Low", "↓", "Heavy"),
-        Triple("Tired", "☾", "Need rest"),
-        Triple("Overwhelmed", "!", "A lot at once"),
-        Triple("Not sure", "…", "Hard to name"),
-    )
+    // The SAME list Today's row uses. This screen used to hold a third,
+    // hardcoded copy whose first state was "Clear" where Today said "Good" —
+    // so the same feeling reached the server as two different words depending
+    // on which screen you tapped, and this screen's labels were plain English
+    // that no translation could reach. MOODS carries the wire value and the
+    // localized label together.
+    val moods = MOODS
     var selected by rememberSaveable { mutableStateOf("Tired") }
     var intensity by rememberSaveable { mutableStateOf("Light") }
     var note by rememberSaveable { mutableStateOf("") }
@@ -2094,11 +2124,11 @@ fun CheckInDetailScreen(
             moods.chunked(2).forEach { pair ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { mood ->
-                        val active = selected == mood.first
+                        val active = selected == mood.name
                         Column(
                             Modifier.weight(1f).height(94.dp).clip(RoundedCornerShape(20.dp))
-                                .background(if (active) Color(0xFF61285F) else Color(0xFFF3ECF3))
-                                .clickable { selected = mood.first }
+                                .background(if (active) Periwinkle else FieldFill)
+                                .clickable { selected = mood.name }
                                 .padding(15.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -2106,9 +2136,9 @@ fun CheckInDetailScreen(
                                 Modifier.size(36.dp).clip(CircleShape)
                                     .background(if (active) Color.White.copy(alpha = .17f) else CardFill),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(mood.second, color = if (active) Color.White else Periwinkle) }
+                            ) { Text(moodGlyph(mood.name), color = if (active) Color.White else Periwinkle) }
                             Text(
-                                mood.first, style = MaterialTheme.typography.titleSmall,
+                                stringResource(mood.labelRes), style = MaterialTheme.typography.titleSmall,
                                 color = if (active) Color.White else TextPrimary,
                             )
                         }
@@ -2128,7 +2158,7 @@ fun CheckInDetailScreen(
                         value, style = MaterialTheme.typography.labelMedium,
                         color = if (active) Color.White else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else Periwinkle.copy(alpha = .06f))
+                            .background(if (active) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .clickable { intensity = value }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2148,7 +2178,11 @@ fun CheckInDetailScreen(
                 saveError = null
                 scope.launch {
                     runCatching {
-                        val wireMood = if (selected == "Clear") "Good" else selected
+                        // No shim any more: `selected` comes from MOODS, so it
+                        // IS the wire value. This used to read
+                        // `if (selected == "Clear") "Good"` because the screen
+                        // displayed a word it did not send.
+                        val wireMood = selected
                         val level = when (intensity) {
                             "Light" -> 2
                             "Medium" -> 3
@@ -2233,7 +2267,7 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable {
                                 tab = label
                                 when (label) {
@@ -2274,7 +2308,7 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         val metric = weekly.getJSONObject(index)
                         Column(
                             Modifier.weight(1f).height(66.dp).clip(RoundedCornerShape(17.dp))
-                                .background(Color(0xFFF3ECF3)),
+                                .background(FieldFill),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
@@ -2350,7 +2384,7 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                         label, style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2369,9 +2403,9 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                         val y = size.height * (1f - value)
                         if (index == 0) p.moveTo(x, y) else p.lineTo(x, y)
                     }
-                    drawPath(p, Color(0xFF67285F), style = Stroke(width = 5f))
+                    drawPath(p, Periwinkle, style = Stroke(width = 5f))
                     values.forEachIndexed { index, value ->
-                        drawCircle(Color(0xFF67285F), 5f, androidx.compose.ui.geometry.Offset(size.width * index / (values.size - 1), size.height * (1f - value)))
+                        drawCircle(Periwinkle, 5f, androidx.compose.ui.geometry.Offset(size.width * index / (values.size - 1), size.height * (1f - value)))
                     }
                 }
                 Text(
@@ -2439,7 +2473,7 @@ fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 else -> patterns!!.forEachIndexed { index, pattern ->
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
-                            .background(if (index % 2 == 0) CardFill else Color(0xFFF3ECF3)).padding(18.dp),
+                            .background(if (index % 2 == 0) CardFill else FieldFill).padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(pattern.statement, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
@@ -2505,7 +2539,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         label, style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2525,7 +2559,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         (quality?.let { String.format(Locale.getDefault(), "%.1f/5", it) } ?: "—") to "rest quality",
                     ).forEach { (value, label) ->
                         Column(
-                            Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF3ECF3)),
+                            Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(FieldFill),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                         ) {
                             Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
@@ -2548,7 +2582,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 }
             }
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color(0xFFF3ECF3)).padding(18.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(FieldFill).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Text("WHAT CEREBRO NOTICED", style = MaterialTheme.typography.labelSmall, color = Warm)
@@ -2704,7 +2738,7 @@ fun PatternDetailScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             )
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFF3ECF3)).padding(horizontal = 18.dp, vertical = 15.dp),
+                    .background(FieldFill).padding(horizontal = 18.dp, vertical = 15.dp),
             ) {
                 listOf(
                     "Examples" to "4 evenings",
@@ -2881,8 +2915,13 @@ fun ReferenceGoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         .clickable { showCreateGoal = true }, contentAlignment = Alignment.Center,
                 ) { Text("+", style = MaterialTheme.typography.titleMedium, color = Periwinkle) }
             }
+            // Goals are not patterns. This used to read "Understand patterns
+            // cautiously without diagnosis or causal claims." — the
+            // Trends/Patterns disclaimer, pasted onto a screen that makes no
+            // claim about either. A caveat repeated where it does not apply is
+            // how it becomes wallpaper on the screens where it does.
             Text(
-                "Understand patterns cautiously without diagnosis or causal claims.",
+                "Something to move towards, at whatever pace it takes.",
                 style = MaterialTheme.typography.bodyLarge, color = TextSoft,
             )
             when {
@@ -2996,7 +3035,12 @@ fun ReferenceGoalDetailScreen(title: String, onBack: () -> Unit, onOpen: (String
                 if (title == "A calmer evening") "A calmer\nevening" else "Wind down\nbefore 10 PM",
                 style = MaterialTheme.typography.displayMedium.copy(fontFamily = serif), color = TextPrimary,
             )
-            Text("Understand patterns cautiously without diagnosis or causal claims.", style = MaterialTheme.typography.bodyLarge, color = TextSoft)
+            // Same paste as the Goals list had — a goal detail makes no claim
+            // about patterns or diagnosis, so it said something it does not do.
+            Text(
+                "Small steps count. Skipping a day does not undo them.",
+                style = MaterialTheme.typography.bodyLarge, color = TextSoft,
+            )
             Column(
                 Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(26.dp)).background(CardFill).padding(18.dp),
                 verticalArrangement = Arrangement.Bottom,

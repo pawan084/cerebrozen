@@ -60,6 +60,9 @@ import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.AccentSoft
+import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.Ok
 
 /** Explore hub matched to the canonical mobile.html composition. Existing
  * destinations remain present; this only changes their visual hierarchy. */
@@ -83,7 +86,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                     ), color = TextPrimary,
                 )
                 Box(
-                    Modifier.size(48.dp).background(Color(0xFFF3ECF3), CircleShape)
+                    Modifier.size(48.dp).background(FieldFill, CircleShape)
                         .clickable { onOpen("search") },
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Outlined.Search, "Search", tint = Periwinkle, modifier = Modifier.size(23.dp)) }
@@ -107,7 +110,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             ExploreSectionTitle("Keep exploring", serif)
             ExploreListCard(Icons.Outlined.Spa, "Mindful activities", "Unscored sensory experiences", Warm) { onOpen("toolkit") }
             ExploreListCard(Icons.Outlined.CalendarMonth, "Programmes", "Guided journeys with progress", Warm) { onOpen("programs") }
-            ExploreListCard(Icons.Outlined.FavoriteBorder, "Favourites and downloads", "Saved and offline", Color(0xFF49634F)) { onOpen("sounds") }
+            ExploreListCard(Icons.Outlined.FavoriteBorder, "Favourites and downloads", "Saved and offline", Ok) { onOpen("sounds") }
             ExploreAccordion("Watch and learn") { onOpen("insightreel") }
 
             // Existing safety feature retained as an extra card below the
@@ -161,14 +164,14 @@ private fun ExploreHero(onClick: () -> Unit) {
     val shape = RoundedCornerShape(29.dp)
     Box(
         Modifier.fillMaxWidth().height(160.dp).background(
-            Brush.linearGradient(listOf(Color(0xFFFFE2D6), Color(0xFFF0D8EF), Color(0xFFE1CDEA))), shape,
+            Brush.linearGradient(listOf(Color(0xFFFFE2D6), AccentSoft, Color(0xFFE1CDEA))), shape,
         ).clip(shape).clickable(onClick = onClick),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(Color(0x25FFFFFF), radius = 105.dp.toPx(), center = Offset(size.width * .90f, size.height * .95f))
             drawCircle(Color(0x305A2B5C), radius = 88.dp.toPx(), center = Offset(size.width * .90f, size.height * .95f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
             drawCircle(
-                Brush.radialGradient(listOf(Color.White, Color(0xFFF0E6F8), Color(0xFFD5B8E1))),
+                Brush.radialGradient(listOf(Color.White, FieldFill, Color(0xFFD5B8E1))),
                 radius = 34.dp.toPx(), center = Offset(58.dp.toPx(), 60.dp.toPx()),
             )
         }
@@ -184,7 +187,7 @@ private fun ExploreSectionTitle(title: String, serif: FontFamily) = Text(
 @Composable
 private fun NeedCard(glyph: String, title: String, subtitle: String, modifier: Modifier, onClick: () -> Unit) {
     Column(
-        modifier.heightIn(min = 136.dp).background(Color(0xFFF4EDF6), RoundedCornerShape(22.dp))
+        modifier.heightIn(min = 136.dp).background(FieldFill, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick).padding(15.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -220,7 +223,7 @@ private fun ExploreListCard(icon: ImageVector, title: String, subtitle: String, 
 @Composable
 private fun ExploreAccordion(title: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().height(60.dp).background(Color(0xFFF4EDF6), RoundedCornerShape(22.dp))
+        Modifier.fillMaxWidth().height(60.dp).background(FieldFill, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

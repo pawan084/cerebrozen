@@ -222,7 +222,10 @@ internal fun TrendsScreen(onBack: () -> Unit) {
         // B91: switching windows used to render the OLD window's chart
         // unmarked under the newly selected chip until the fetch landed.
         if (loading && trends != null) {
-            Text(stringResource(R.string.search_loading),
+            // Not search_loading ("Searching the library…") — nothing is being
+            // searched. This fires when the Week/Month/3-months chip changes,
+            // so it says that.
+            Text(stringResource(R.string.trends_window_loading),
                 style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         when {

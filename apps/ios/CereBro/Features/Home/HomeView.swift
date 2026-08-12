@@ -315,10 +315,14 @@ struct MoodCheckinView: View {
             return "Pick how you feel and I'll suggest a gentle next step."
         }
         switch mood.name {
-        case "Anxious": return "Let's slow the body first — try a two-minute breath."
-        case "Low":     return "Be kind to yourself. A short reflection can lighten it."
-        case "Tired":   return "Rest is valid. A wind-down soundscape could ease you."
-        default:        return "Lovely. Let's keep the momentum with a small check-in."
+        case "Anxious":     return "Let's slow the body first — try a two-minute breath."
+        case "Low":         return "Be kind to yourself. A short reflection can lighten it."
+        case "Tired":       return "Rest is valid. A wind-down soundscape could ease you."
+        case "Overwhelmed": return "One thing at a time. A grounding minute can make room."
+        // Not naming a feeling is a valid answer, so the reply must not push
+        // for one — it offers a way in without asking again.
+        case "Not sure":    return "That's allowed. A short grounding minute can help it settle."
+        default:            return "Lovely. Let's keep the momentum with a small check-in."
         }
     }
 

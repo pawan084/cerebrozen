@@ -907,6 +907,13 @@
     <string name="mood_anxious">बेचैन</string>
     <string name="mood_low">उदास</string>
     <string name="mood_tired">थका हुआ</string>
+    <!-- REVIEW FIRST: "अभिभूत" is the formal register but is ambiguous — it also
+         reads as "overcome" in a positive sense (अभिभूत होना can be gratitude or
+         awe). A mood label that a distressed user could read as the opposite
+         feeling is worth a reviewer's attention before this ships; a plainer
+         alternative is "बहुत ज़्यादा लग रहा है". "पता नहीं" is unambiguous. -->
+    <string name="mood_overwhelmed">अभिभूत</string>
+    <string name="mood_unsure">पता नहीं</string>
     <string name="mood_okay">ठीक-ठाक</string>
     <string name="companion_calm_guide">शांत मार्गदर्शक</string>
     <string name="companion_calm_guide_detail">स्थिर और सुकून भरा — पहले आपको थाम लेता है, कभी जल्दी नहीं करता</string>
@@ -1050,6 +1057,8 @@
     <string name="mood_anxious_note">तेज़ चलते विचार</string>
     <string name="mood_low_note">भारी</string>
     <string name="mood_tired_note">आराम चाहिए</string>
+    <string name="mood_overwhelmed_note">एक साथ बहुत कुछ</string>
+    <string name="mood_unsure_note">अभी सबसे नज़दीकी</string>
 
     <string name="today_milestone">🎉 %1$d दिन आते रहे — बहुत ख़ूब</string>
 

@@ -10,5 +10,5 @@
          light-theme device flashed deep indigo on every launch.
 
          Gated by ThemeTokensTest (both qualifiers). -->
-    <color name="night">#FFF7F3EC</color>
+    <color name="night">#FFF8F4EE</color>
 </resources>
