@@ -49,7 +49,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Vibration
@@ -511,50 +510,21 @@ private fun ImmersiveBreatheFrame(
                 )
             }
         }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            BreatheCompactHeader(title, detail, intro, onBack)
+        Column(Modifier.fillMaxSize()) {
+            CereBroTopBar(title = title, subtitle = detail, onBack = onBack)
             Column(
-                Modifier.fillMaxWidth().appear(rise = 12f),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .appear(rise = 12f),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
-                content = content,
-            )
-        }
-    }
-}
-
-@Composable
-private fun BreatheCompactHeader(title: String, detail: String, intro: String, onBack: () -> Unit) {
-    val backLabel = stringResource(R.string.common_back)
-    Column(
-        Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(CardFill)
-                    .border(1.dp, LineStroke, CircleShape)
-                    .clickable(onClickLabel = backLabel, onClick = onBack),
-                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = backLabel, tint = TextPrimary, modifier = Modifier.size(17.dp))
+                Text(
+                    intro,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                    color = TextMuted,
+                )
+                content()
             }
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold),
-                color = TextPrimary,
-            )
-        }
-        Column(Modifier.padding(start = 2.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(detail, style = MaterialTheme.typography.labelMedium, color = Cyan)
-            Text(intro, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp), color = TextMuted, maxLines = 2)
         }
     }
 }
