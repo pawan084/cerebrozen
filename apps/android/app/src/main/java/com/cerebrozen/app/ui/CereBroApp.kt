@@ -80,9 +80,8 @@ import com.cerebrozen.app.ui.screens.CheckInDetailScreen
 import com.cerebrozen.app.ui.screens.WeeklyInsightsScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
-import com.cerebrozen.app.ui.screens.BreathePreset
-import com.cerebrozen.app.ui.screens.BreatheScreen
 import com.cerebrozen.app.ui.breathing.BreathLoopsScreen
+import com.cerebrozen.app.ui.breathing.BreathPattern
 import com.cerebrozen.app.ui.offline.BodyScanScreen
 import com.cerebrozen.app.ui.offline.CbtIOfflineScreen
 import com.cerebrozen.app.ui.offline.CrisisGroundingScreen
@@ -763,7 +762,14 @@ fun CereBroApp() {
             composable("insightreel") { InsightReelScreen(onBack = back) }
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
             composable("mbct") { MbctOfflineScreen(onBack = back) }
-            composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
+            // Both breathing routes are the same screen now. It already carried
+            // a Reset pattern — 4 in, 6 out, twelve rounds, which is the two
+            // minutes the four surfaces pointing here promise — so `breathe/reset`
+            // opens straight into it rather than showing a chooser in front of a
+            // button that has already named what it gives you.
+            composable("breathe/reset") {
+                BreathLoopsScreen(onBack = back, startPattern = BreathPattern.Reset)
+            }
             // The two guided routines (web parity): the Sleep tab's wind-down
             // and the Toolkit's Settle visualization.
             composable("winddown") { WindDownRitualScreen(onBack = back) }

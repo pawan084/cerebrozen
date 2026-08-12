@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,8 +123,19 @@ private val HoldBottom: Color get() = InfoSoft
 private val ExhaleTop: Color get() = Periwinkle
 private val ExhaleBottom: Color get() = AccentSoft
 
+/**
+ * The breathing surface — a pattern picker, the paced session, and its summary.
+ *
+ * [startPattern] skips the picker and begins that pattern immediately. The
+ * entry points that use it have already named what they are giving you —
+ * Explore's hero, "Begin 2-minute breathing", the Toolkit's reset row and the
+ * `cerebro://breathe` nudge all promise a two-minute reset — so putting a
+ * chooser in front of them would make four surfaces stop meaning what they say.
+ * When a session started that way ends, the screen leaves rather than dropping
+ * the user on a picker they never asked for.
+ */
 @Composable
-fun BreathLoopsScreen(onBack: () -> Unit) {
+fun BreathLoopsScreen(onBack: () -> Unit, startPattern: BreathPattern? = null) {
     val context = LocalContext.current
     val model: BreathLoopsViewModel = viewModel(
         factory = BreathLoopsViewModel.factory(context.applicationContext as Application),
@@ -131,6 +143,30 @@ fun BreathLoopsScreen(onBack: () -> Unit) {
     val state by model.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     var resumeSignal by remember { mutableIntStateOf(0) }
+
+    // Kick the named pattern off once. Keyed on startPattern rather than Unit so
+    // a config change does not restart a session that is already running — the
+    // ViewModel outlives the composition and still holds it.
+    var launched by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(startPattern) {
+        if (startPattern != null && !launched) {
+            launched = true
+            model.start(startPattern)
+        }
+    }
+    // stop() and done() both return the machine to Picker. That is the right
+    // destination when the user chose the pattern here, and the wrong one when
+    // they arrived mid-promise — so for a direct launch, the end of the session
+    // is the end of the screen. Gated on having actually SEEN Active, because
+    // the frame between launching and the state arriving is still Picker.
+    var wasActive by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.core.mode) {
+        if (state.core.mode == BreathScreenMode.Active) {
+            wasActive = true
+        } else if (wasActive && startPattern != null && state.core.mode == BreathScreenMode.Picker) {
+            onBack()
+        }
+    }
 
     var ttsReady by remember { mutableStateOf(false) }
     val ttsHolder = remember { arrayOfNulls<TextToSpeech>(1) }
