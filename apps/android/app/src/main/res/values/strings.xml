@@ -1284,6 +1284,8 @@
     <string name="mood_anxious">Anxious</string>
     <string name="mood_low">Low</string>
     <string name="mood_tired">Tired</string>
+    <string name="mood_overwhelmed">Overwhelmed</string>
+    <string name="mood_unsure">Not sure</string>
     <string name="mood_okay">Okay</string>
     <string name="companion_calm_guide">Calm Guide</string>
     <string name="companion_calm_guide_detail">Steady and soothing — grounds you first, never rushes</string>
@@ -1443,6 +1445,8 @@
     <string name="mood_anxious_note">Loud thoughts</string>
     <string name="mood_low_note">Heavy</string>
     <string name="mood_tired_note">Need rest</string>
+    <string name="mood_overwhelmed_note">Too much at once</string>
+    <string name="mood_unsure_note">Closest fit right now</string>
 
     <!-- ── Home copy that used to live in pure functions ─────────────────── -->
     <string name="today_milestone">🎉 %1$d days of showing up — beautifully done</string>

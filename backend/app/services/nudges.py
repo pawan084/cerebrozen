@@ -19,6 +19,7 @@ from app.models.nudge import Nudge
 from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import email, notifications, webpush
+from app.services.moods import is_difficult
 
 
 def _next_at(hour: int, minute: int = 0) -> datetime:
@@ -66,7 +67,10 @@ async def schedule_contextual(db: AsyncSession, user: User) -> Nudge | None:
     last = await db.scalar(
         select(MoodLog).where(MoodLog.user_id == user.id).order_by(MoodLog.created_at.desc()).limit(1)
     )
-    if last is None or last.mood.lower() not in {"anxious", "low", "tired"}:
+    # One taxonomy (services/moods.py). The literal here used to omit
+    # "overwhelmed", so the check-in most likely to want a supportive nudge was
+    # the one that never scheduled it.
+    if last is None or not is_difficult(last.mood):
         return None
     nudge = Nudge(
         user_id=user.id,

@@ -9,13 +9,28 @@ import { InterventionCard } from "@/components/InterventionCard";
 import { Icon } from "@/components/icons";
 import { heroKindFor, heroWhy, heroWorksOffline } from "@/lib/todayHero";
 
-// 5-emoji check-in matching the ref; each maps into the shared mood taxonomy.
+// The check-in vocabulary (TOD-02, six states).
+//
+// CROSS-STACK CONTRACT: `name` goes to the server verbatim and is READ there
+// (backend/app/services/moods.py). Android ui/screens/TodayScreen.kt MOODS and
+// iOS Models/DummyData.swift carry the same six.
+//
+// This list used to be Great/Good/Okay/Low/Anxious — it had drifted from the
+// other two clients, which offered Good/Anxious/Low/Tired. Web therefore had no
+// way to say "Tired", so a web check-in could never schedule the wind-down
+// nudge that keys on it (services/nudges.py). "Great" and "Okay" are gone:
+// three shades of fine is a rating scale, which is the thing a check-in must
+// not become.
+//
+// "Not sure" is load-bearing — the answer for someone who cannot name a
+// feeling — and the server scores it as neither distress nor contentment.
 const MOODS = [
-  { emoji: "😊", name: "Great", note: "Bright", symbol: "sparkles", resp: "Love that — let's protect the good energy today." },
-  { emoji: "🙂", name: "Good", note: "Steady", symbol: "sun.max", resp: "Steady is a lovely place to be." },
-  { emoji: "😐", name: "Okay", note: "Neutral", symbol: "minus", resp: "Okay is allowed. A small reset can lift it." },
+  { emoji: "🙂", name: "Good", note: "Clear", symbol: "sparkles", resp: "Steady is a lovely place to be." },
+  { emoji: "😰", name: "Anxious", note: "Loud thoughts", symbol: "exclamationmark.triangle", resp: "Loud thoughts are real. Want a 2-minute reset?" },
   { emoji: "😔", name: "Low", note: "Heavy", symbol: "moon", resp: "Thanks for being honest — let's go gently." },
-  { emoji: "😰", name: "Anxious", note: "Loud", symbol: "exclamationmark.triangle", resp: "Loud thoughts are real. Want a 2-minute reset?" },
+  { emoji: "😪", name: "Tired", note: "Need rest", symbol: "drop", resp: "Rest is valid. A wind-down could ease you." },
+  { emoji: "😵", name: "Overwhelmed", note: "Too much at once", symbol: "exclamationmark.triangle", resp: "One thing at a time. A grounding minute can make room." },
+  { emoji: "🤔", name: "Not sure", note: "Closest fit right now", symbol: "minus", resp: "That's allowed — you don't have to name it." },
 ];
 
 type Streak = { current: number; best: number; week: { date: string; active: boolean }[] };
@@ -122,7 +137,12 @@ export default function Home() {
   // today used to draw a week-looking line under a "This week" label. Days
   // with several check-ins average; days without one simply aren't drawn —
   // same no-invented-shape rule as always.
-  const score = (m: Mood) => ({ Great: 5, Good: 4, Okay: 3, Low: 2, Anxious: 1 } as any)[m.mood] ?? 3;
+  // Mirrors the server's ease_score (services/trends.py): a difficult feeling
+  // sits low on the axis, a settled one high, and an unknown label — including
+  // "Not sure", which is a declined answer rather than a middling one — is
+  // neutral instead of guessed at.
+  const score = (m: Mood) =>
+    ({ Good: 5, Tired: 3, Anxious: 2, Low: 2, Overwhelmed: 1 } as Record<string, number>)[m.mood] ?? 3;
   const byDay = new Map<string, number[]>();
   for (const m of moods) {
     const d = new Date(m.created_at);

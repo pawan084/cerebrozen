@@ -16,6 +16,7 @@ from app.models.plan import Plan, PlanStep
 from app.models.sleep import SleepLog
 from app.models.user import User
 from app.services import ai, language, prompts
+from app.services.moods import is_difficult
 
 # Curated step library used by the deterministic fallback.
 _STEP_LIBRARY = {
@@ -127,7 +128,10 @@ def _fallback_plan(
     # The step library is keyed by the onboarding goal vocabulary; a free-text
     # goal falls back to the default steps but keeps its own title and focus.
     steps = list(_STEP_LIBRARY.get(goal, _STEP_LIBRARY[_DEFAULT_GOAL]))
-    stressed = any(m.lower() in {"anxious", "low", "tired"} for m in moods)
+    # One taxonomy (services/moods.py). This literal used to omit
+    # "overwhelmed", so the strongest signal a user can send produced the
+    # steady-baseline plan instead of the calmer-reset one.
+    stressed = any(is_difficult(m) for m in moods)
     rationale = (
         "Because recent check-ins show some strain, today leans on a calmer reset first."
         if stressed

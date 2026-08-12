@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.localtime import local_date, local_today
 from app.models.consent import consent_allows
 from app.models.mood import MoodLog
+from app.services.moods import DIFFICULT
 from app.models.sleep import SleepLog
 from app.models.user import User
 
@@ -39,10 +40,12 @@ MIN_SLEEP_NIGHTS = 3
 # Correlation needs enough paired nights to be worth a sentence.
 MIN_CORRELATION_PAIRS = 7
 
-# Same taxonomy the pattern dashboard uses (app.services.insights._NEG_MOODS),
-# duplicated deliberately: this module must not import from that one just to
-# borrow a set, and the two lists are asserted equal in the tests.
-NEG_MOODS = {"anxious", "low", "tired", "stressed", "sad", "heavy", "overwhelmed"}
+# The taxonomy now lives in one place (app.services.moods). It used to be
+# duplicated here and in insights._NEG_MOODS "deliberately", with a test
+# asserting the two stayed equal — but two more copies had grown in agentic.py
+# and nudges.py that the test never saw, and both had drifted. Importing the
+# set is what the equality test was really trying to buy.
+NEG_MOODS = DIFFICULT
 
 
 def ease_score(mood: str, intensity: int) -> float:

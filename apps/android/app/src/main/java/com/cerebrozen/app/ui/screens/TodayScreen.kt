@@ -140,11 +140,27 @@ private data class MoodOption(
  * session, not once per tab visit. */
 private var homeIntroPlayed = false
 
+/**
+ * The check-in vocabulary (TOD-02, six states).
+ *
+ * CROSS-STACK CONTRACT — the `name` strings are sent to the server verbatim and
+ * READ there (`backend/app/services/moods.py`), so they are not free text and
+ * are never translated: the localized label is [labelRes], the wire value is
+ * [name]. iOS `Models/DummyData.swift` and web `app/(authed)/home/page.tsx`
+ * carry the same six.
+ *
+ * "Overwhelmed" and "Not sure" are the two the spec adds. "Not sure" is
+ * load-bearing rather than filler — it is the answer that keeps someone who
+ * cannot name a feeling from being pushed into naming one wrongly — and the
+ * server treats it as neither distress nor contentment.
+ */
 private val MOODS = listOf(
     MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note) { Ok },
     MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note) { Warm },
     MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note) { Periwinkle },
     MoodOption("Tired", "Need rest", "drop", 3, R.string.mood_tired, R.string.mood_tired_note) { Cyan },
+    MoodOption("Overwhelmed", "Too much at once", "exclamationmark.triangle", 5, R.string.mood_overwhelmed, R.string.mood_overwhelmed_note) { Warm },
+    MoodOption("Not sure", "Closest fit right now", "minus", 3, R.string.mood_unsure, R.string.mood_unsure_note) { Periwinkle },
 )
 
 /** Which greeting the hour calls for. Returns the resource, not the copy, so

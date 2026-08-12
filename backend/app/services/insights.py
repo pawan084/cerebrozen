@@ -14,6 +14,7 @@ from app.models.memory import ContextMemory
 from app.models.mood import MoodLog
 from app.models.plan import Plan, PlanStep
 from app.models.sleep import SleepLog
+from app.services.moods import DIFFICULT
 from app.models.user import User
 
 
@@ -149,7 +150,9 @@ async def compute_weekly(db: AsyncSession, user: User) -> dict:
 # `basis`). No LLM, no guesses — this is the "everything CereBro has learned
 # about you" surface, so it must be embarrassingly honest.
 
-_NEG_MOODS = {"anxious", "low", "tired", "stressed", "sad", "heavy", "overwhelmed"}
+# One taxonomy, imported rather than restated — see app/services/moods.py for
+# why (two other copies had drifted and silently dropped "overwhelmed").
+_NEG_MOODS = DIFFICULT
 
 
 def _local_hour(dt, tzname: str) -> int:
