@@ -86,7 +86,6 @@ import com.cerebrozen.app.ui.screens.ReferenceBaselineScreen
 import com.cerebrozen.app.ui.screens.PatternDetailScreen
 import com.cerebrozen.app.ui.screens.ReferenceDailyPlanScreen
 import com.cerebrozen.app.ui.screens.ReferenceSleepInsightsScreen
-import com.cerebrozen.app.ui.screens.ReferenceRemindersScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
 import com.cerebrozen.app.ui.screens.BreathePreset
@@ -809,7 +808,15 @@ fun CereBroApp() {
             composable("language") { LanguageScreen(onBack = back) }
             composable("notifications") { NotificationInboxScreen(onBack = back, onOpen = open) }
             composable("appearance") { AppearanceScreen(onBack = back) }
-            composable("reminders") { ReferenceRemindersScreen(onBack = back, onOpen = open) }
+            // The REAL reminders screen, imported since the redesign and never
+            // routed while a mock held the door. ReferenceRemindersScreen's
+            // "Save reminder schedule" had an empty body — five toggles of
+            // local `remember` state, four hardcoded times, and a button that
+            // did nothing — so turning reminders on wrote no prefs, scheduled
+            // no alarm, and asked for no notification permission. The inbox
+            // reads reminder_on/reminder_hour, so it kept saying "no reminder
+            // scheduled" while the switch sat on, and nothing ever fired.
+            composable("reminders") { RemindersScreen(onBack = back) }
             composable("privacy") { PrivacyScreen(onBack = back) }
             composable("premium") { PremiumScreen(onBack = back) }
             composable("crisisregion") { CrisisRegionScreen(onBack = back) }
