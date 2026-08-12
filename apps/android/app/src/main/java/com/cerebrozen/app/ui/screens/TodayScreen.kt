@@ -2495,7 +2495,23 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         val days = when (window) { "Month" -> 30; "3 months" -> 90; else -> 7 }
         error = null
         coroutineScope {
-            val logs = async { runCatching { parseNights(Api.sleepLogs(days)) } }
+            // Api.sleepLogs takes a ROW LIMIT, not a day count — it builds
+            // "/sleep?limit=N" — while Api.sleepSummary(days) is day-based. So
+            // passing `days` to both made the chart and the stat tiles describe
+            // different windows: seven nights logged across two months rendered
+            // under "Week". The rows are still capped (a week cannot hold more
+            // than `days` nights) but the window is now decided by the date.
+            val cutoff = java.time.LocalDate.now().minusDays(days.toLong() - 1)
+            val logs = async {
+                runCatching {
+                    parseNights(Api.sleepLogs(days)).filter { night ->
+                        // A row with an unparseable date is kept rather than
+                        // silently dropped from the user's own history.
+                        runCatching { !java.time.LocalDate.parse(night.date).isBefore(cutoff) }
+                            .getOrDefault(true)
+                    }
+                }
+            }
             val stats = async { runCatching { Api.sleepSummary(days) } }
             logs.await().onSuccess { nights = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }
             stats.await().onSuccess { summary = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }

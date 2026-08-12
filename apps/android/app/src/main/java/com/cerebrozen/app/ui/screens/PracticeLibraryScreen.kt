@@ -66,6 +66,7 @@ import kotlinx.coroutines.launch
 import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.WarmSoft
 import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.audio.Chime
 
 
 /** The first level under Explore's Calm now card: broad practice families,
@@ -144,9 +145,18 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: () -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    var chime by remember { mutableStateOf(true) }
-    var haptics by remember { mutableStateOf(true) }
-    var keepAwake by remember { mutableStateOf(true) }
+    // These were three `remember` booleans that wrote nowhere: flipping them
+    // changed this screen and nothing else, and the session that follows read
+    // its own settings — so the prep screen and the breath it prepares
+    // disagreed. Chime and haptics are real, persisted settings
+    // (audio/Chime.kt), and are now read from and written to there, which is
+    // also what Breathe.kt's in-session toggle uses.
+    //
+    // "Keep screen awake" is gone rather than wired: nothing applies
+    // FLAG_KEEP_SCREEN_ON for this session, so the switch could only have
+    // promised something no code delivers.
+    var chime by remember { mutableStateOf(Chime.breatheChimeEnabled) }
+    var haptics by remember { mutableStateOf(Chime.breatheHapticsEnabled) }
     Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
         Row(
             Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
@@ -182,9 +192,12 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(Color(0xFFF5EDF7)).padding(horizontal = 18.dp),
             ) {
-                BreathingSetting("Soft chime", "A quiet cue at each transition.", chime) { chime = it }
-                BreathingSetting("Haptics", "Gentle vibration at phase changes.", haptics) { haptics = it }
-                BreathingSetting("Keep screen awake", "Prevents dimming during this session.", keepAwake, showDivider = false) { keepAwake = it }
+                BreathingSetting("Soft chime", "A quiet cue at each transition.", chime) {
+                    chime = it; Chime.breatheChimeEnabled = it
+                }
+                BreathingSetting("Haptics", "Gentle vibration at phase changes.", haptics, showDivider = false) {
+                    haptics = it; Chime.breatheHapticsEnabled = it
+                }
             }
             Box(
                 Modifier.fillMaxWidth().padding(top = 11.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
