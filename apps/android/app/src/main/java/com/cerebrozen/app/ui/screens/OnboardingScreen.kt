@@ -230,6 +230,9 @@ internal fun onboardingMoodNote(mood: String): String = when (mood) {
     "Anxious" -> "Loud thoughts"
     "Low" -> "Heavy"
     "Tired" -> "Need rest"
+    "Not sure" -> "Closest fit right now"
+    // Retained for rows written before the taxonomy converged on six states:
+    // old check-ins still hold "Okay" and must still render a note.
     "Okay" -> "Neutral"
     else -> ""
 }
@@ -248,7 +251,13 @@ internal val STATE_OPTIONS = listOf(
     StateOption("overthinking", R.string.ob_state_opt_overthinking, "Focus", "Stop overthinking", "Anxious"),
     StateOption("doubt", R.string.ob_state_opt_doubt, "Confidence", "Build confidence", "Low"),
     StateOption("distant", R.string.ob_state_opt_distant, "Connection", "Feel less alone", "Low"),
-    StateOption("consistency", R.string.ob_state_opt_consistent, "Discipline", "Strengthen willpower", "Okay"),
+    // "Okay" was outside the six-state taxonomy every check-in screen offers
+    // (TodayScreen.MOODS / backend services/moods.py), so this seeded a first
+    // mood no picker could show back. "Not sure" is the honest in-taxonomy
+    // value: this option names a GOAL, not a feeling, so the app genuinely does
+    // not know how the person feels — and the server scores unknown as neither
+    // distress nor contentment, which is the same neutral "Okay" got.
+    StateOption("consistency", R.string.ob_state_opt_consistent, "Discipline", "Strengthen willpower", "Not sure"),
 )
 
 /** A pickable chip: a stable [id] the code branches on, plus localizable copy. */

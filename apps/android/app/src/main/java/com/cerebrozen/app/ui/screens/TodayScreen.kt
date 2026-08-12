@@ -163,6 +163,25 @@ private val MOODS = listOf(
     MoodOption("Not sure", "Closest fit right now", "minus", 3, R.string.mood_unsure, R.string.mood_unsure_note) { Periwinkle },
 )
 
+/**
+ * One glyph per check-in state, keyed on the WIRE value.
+ *
+ * Every state is named rather than left to a fallback: an `else` branch put the
+ * same moon on Tired, Overwhelmed and Not sure — half the grid wearing one
+ * icon, which is no icon at all. Keyed on [MoodOption.name] and not on
+ * `symbol`, because `symbol` is what the SERVER is told and never reaches the
+ * glyph.
+ */
+internal fun moodGlyph(name: String): String = when (name) {
+    "Good" -> "◌"
+    "Anxious" -> "⌁"
+    "Low" -> "↓"
+    "Tired" -> "☾"
+    "Overwhelmed" -> "⁘"
+    "Not sure" -> "…"
+    else -> "☾"
+}
+
 /** Which greeting the hour calls for. Returns the resource, not the copy, so
  * the decision stays a pure unit-testable function AND localizes. */
 @androidx.annotation.StringRes
@@ -753,12 +772,7 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                when (mood.name) {
-                    "Good" -> "◌"
-                    "Anxious" -> "⌁"
-                    "Low" -> "↓"
-                    else -> "☾"
-                },
+                moodGlyph(mood.name),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (marked) Color.White else tint,
             )
@@ -2052,14 +2066,13 @@ fun CheckInDetailScreen(
     onSaved: () -> Unit,
     onUrgent: () -> Unit,
 ) {
-    val moods = listOf(
-        Triple("Clear", "☀", "Steady"),
-        Triple("Anxious", "≈", "Loud thoughts"),
-        Triple("Low", "↓", "Heavy"),
-        Triple("Tired", "☾", "Need rest"),
-        Triple("Overwhelmed", "!", "A lot at once"),
-        Triple("Not sure", "…", "Hard to name"),
-    )
+    // The SAME list Today's row uses. This screen used to hold a third,
+    // hardcoded copy whose first state was "Clear" where Today said "Good" —
+    // so the same feeling reached the server as two different words depending
+    // on which screen you tapped, and this screen's labels were plain English
+    // that no translation could reach. MOODS carries the wire value and the
+    // localized label together.
+    val moods = MOODS
     var selected by rememberSaveable { mutableStateOf("Tired") }
     var intensity by rememberSaveable { mutableStateOf("Light") }
     var note by rememberSaveable { mutableStateOf("") }
@@ -2110,11 +2123,11 @@ fun CheckInDetailScreen(
             moods.chunked(2).forEach { pair ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { mood ->
-                        val active = selected == mood.first
+                        val active = selected == mood.name
                         Column(
                             Modifier.weight(1f).height(94.dp).clip(RoundedCornerShape(20.dp))
                                 .background(if (active) Color(0xFF61285F) else Color(0xFFF3ECF3))
-                                .clickable { selected = mood.first }
+                                .clickable { selected = mood.name }
                                 .padding(15.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -2122,9 +2135,9 @@ fun CheckInDetailScreen(
                                 Modifier.size(36.dp).clip(CircleShape)
                                     .background(if (active) Color.White.copy(alpha = .17f) else CardFill),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(mood.second, color = if (active) Color.White else Periwinkle) }
+                            ) { Text(moodGlyph(mood.name), color = if (active) Color.White else Periwinkle) }
                             Text(
-                                mood.first, style = MaterialTheme.typography.titleSmall,
+                                stringResource(mood.labelRes), style = MaterialTheme.typography.titleSmall,
                                 color = if (active) Color.White else TextPrimary,
                             )
                         }
@@ -2164,7 +2177,11 @@ fun CheckInDetailScreen(
                 saveError = null
                 scope.launch {
                     runCatching {
-                        val wireMood = if (selected == "Clear") "Good" else selected
+                        // No shim any more: `selected` comes from MOODS, so it
+                        // IS the wire value. This used to read
+                        // `if (selected == "Clear") "Good"` because the screen
+                        // displayed a word it did not send.
+                        val wireMood = selected
                         val level = when (intensity) {
                             "Light" -> 2
                             "Medium" -> 3
