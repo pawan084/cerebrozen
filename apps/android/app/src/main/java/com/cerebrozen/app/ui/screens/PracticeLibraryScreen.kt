@@ -316,6 +316,24 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     }
 }
 
+/**
+ * The regions whose crisis numbers someone here has actually checked against a
+ * named official source.
+ *
+ * India's are checked against the MoHFW Tele-MANAS listing and the ERSS 112
+ * listing — the same two sources the web `/safety` page cites. No other region
+ * has been through that, so no other region gets to say "Verified".
+ *
+ * Deliberately a set and not `region == "IN"` inline in the composable: a badge
+ * is a claim, and adding a region to it should be an edit someone makes on
+ * purpose, next to this comment, with a source in hand.
+ */
+val VERIFIED_CRISIS_REGIONS = setOf("IN")
+
+/** Whether the crisis screen may show the "Verified" badge for [region]. */
+fun crisisRegionIsVerified(region: String): Boolean =
+    region.trim().uppercase() in VERIFIED_CRISIS_REGIONS
+
 @Composable
 fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
@@ -352,7 +370,7 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             // is the region whose numbers we have actually checked against a
             // named source; everywhere else says so plainly rather than
             // borrowing India's badge.
-            val verifiedRegion = region == "IN"
+            val verifiedRegion = crisisRegionIsVerified(region)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.crisis_region_language, stringResource(regionLabelRes(region)).uppercase()), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Color(0xFFB13D57))
                 Box(
