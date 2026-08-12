@@ -33,13 +33,20 @@ import { api } from "@/lib/api";
 // is not what a check-in triggers). The honest version names the one thing a
 // check-in genuinely changes — the signals Today's next step is computed from.
 
+// `note` is the value that gets STORED when the user writes nothing, so it is
+// the same six strings the other three clients send (apps/app /home, Android
+// TodayScreen.MOODS, iOS DummyData.moods). `blurb` is display-only: this screen
+// has more room than a six-tile row, and the mock's longer phrasings read better
+// here — but shipping them as `note` would have meant the same check-in stored
+// different words depending on which screen made it, and history would disagree
+// with itself for no reason a user could see.
 const MOODS = [
-  { emoji: "🙂", name: "Good", note: "Steady", symbol: "sparkles" },
-  { emoji: "😰", name: "Anxious", note: "Thoughts feel loud", symbol: "exclamationmark.triangle" },
-  { emoji: "😔", name: "Low", note: "Everything feels heavy", symbol: "moon" },
-  { emoji: "😪", name: "Tired", note: "I need rest", symbol: "drop" },
-  { emoji: "😵", name: "Overwhelmed", note: "Too much at once", symbol: "exclamationmark.triangle" },
-  { emoji: "🤔", name: "Not sure", note: "Closest fit right now", symbol: "minus" },
+  { emoji: "🙂", name: "Good", note: "Clear", blurb: "Steady", symbol: "sparkles" },
+  { emoji: "😰", name: "Anxious", note: "Loud thoughts", blurb: "Thoughts feel loud", symbol: "exclamationmark.triangle" },
+  { emoji: "😔", name: "Low", note: "Heavy", blurb: "Everything feels heavy", symbol: "moon" },
+  { emoji: "😪", name: "Tired", note: "Need rest", blurb: "I need rest", symbol: "drop" },
+  { emoji: "😵", name: "Overwhelmed", note: "Too much at once", blurb: "Too much at once", symbol: "exclamationmark.triangle" },
+  { emoji: "🤔", name: "Not sure", note: "Closest fit right now", blurb: "Closest fit right now", symbol: "minus" },
 ] as const;
 
 // The API stores intensity on a 1–5 scale (schemas MoodCreate, ge=1 le=5) and
@@ -136,7 +143,7 @@ export default function CheckinPage() {
                 {m.emoji}
               </span>
               <strong>{m.name}</strong>
-              <small>{m.note}</small>
+              <small>{m.blurb}</small>
             </button>
           ))}
         </div>
