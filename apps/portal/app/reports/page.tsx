@@ -1,5 +1,6 @@
 import { REPORT_HISTORY, REPORT_TEMPLATES } from "@/lib/mock";
 import { Badge, Notice, PageIntro, PrivacyWall, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** REP-01 — Reports centre. */
 export default function ReportsPage() {
@@ -10,6 +11,8 @@ export default function ReportsPage() {
         title="Generate privacy-safe executive exports."
         lede="Every export is built from the same aggregates shown in this portal, with the same thresholds and suppression applied — an export cannot reveal more than the screen it came from."
       />
+
+      <SampleData />
 
       <PrivacyWall />
 

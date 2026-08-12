@@ -1,5 +1,6 @@
 import { AUDIT_ENTRIES } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** AUD-01 — Audit log. */
 export default function AuditPage() {
@@ -10,6 +11,8 @@ export default function AuditPage() {
         title="Trace every administrative action."
         lede="Who did what, and when. The log records administration — eligibility, programmes, reports, settings — because those are the only actions this portal can take."
       />
+
+      <SampleData />
 
       <div className="toolbar">
         <span className="filter active">All actions</span>

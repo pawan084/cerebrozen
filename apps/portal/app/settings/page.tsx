@@ -1,5 +1,6 @@
 import { ORG_PROFILE } from "@/lib/mock";
 import { Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** ORG-01 — Organisation settings. */
 export default function SettingsPage() {
@@ -10,6 +11,8 @@ export default function SettingsPage() {
         title="Profile, branding, regions and contacts."
         lede="Administrative details for this organisation. None of these settings change what an administrator can see about a member — that boundary is not configurable."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

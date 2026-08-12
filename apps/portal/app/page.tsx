@@ -1,148 +1,85 @@
+"use client";
+
 import Link from "next/link";
-import {
-  DATA_FRESHNESS,
-  GOVERNANCE_ALERTS,
-  KPIS,
-  LAUNCH_STEPS,
-  PROGRAMME_FUNNEL,
-  WEEKLY_ACTIVE,
-} from "@/lib/mock";
-import { Badge, BarChart, Metric, PrivacyWall, Progress, Spacer } from "@/components/ui";
+import { LiveScreen, RequireSession } from "@/components/data";
+import { getSummary } from "@/lib/api";
+import { Metric, PageIntro, PrivacyWall, Spacer } from "@/components/ui";
 
-/** DASH-01 — Organisation dashboard. */
+/**
+ * DASH-01 — Organisation dashboard. LIVE (2026-08-12).
+ *
+ * Reads GET /org/summary. Every figure is a count over org_memberships; there
+ * is no per-member row behind any of them, which is why the fourth tile can say
+ * so plainly rather than the page implying it.
+ */
 export default function DashboardPage() {
-  const done = LAUNCH_STEPS.filter((s) => s.done).length;
-  const pct = Math.round((done / LAUNCH_STEPS.length) * 100);
-  const remaining = LAUNCH_STEPS.filter((s) => !s.done).map((s) => s.label);
-  const peak = WEEKLY_ACTIVE[WEEKLY_ACTIVE.length - 1];
-
   return (
-    <>
-      <section className="hero">
-        <div className="eyebrow">Organisation overview</div>
-        <h1>Support people without watching them.</h1>
-        <p className="lede">
-          CereBro gives eligible members private emotional-regulation, sleep and
-          reflection support while your organisation sees only safe aggregate
-          programme performance.
-        </p>
-        <div className="toolbar" style={{ marginBottom: 0 }}>
-          <Link className="btn" href="/members">Invite eligible members</Link>
-          <Link className="btn secondary" href="/programmes">Launch a programme</Link>
-          <Link className="btn secondary" href="/privacy">Review privacy model</Link>
-        </div>
-      </section>
+    <RequireSession>
+      <LiveScreen load={getSummary} what="your organisation">
+        {(s) => (
+          <>
+            <PageIntro
+              eyebrow="Organisation overview"
+              title="Support people without watching them."
+              lede={`${s.organisation} · ${s.region}. CereBro gives eligible members private emotional-regulation, sleep and reflection support while your organisation sees only safe aggregate programme performance.`}
+            />
 
-      <Spacer />
-      <PrivacyWall />
-      <Spacer />
+            <PrivacyWall />
 
-      <div className="grid cols-4">
-        {KPIS.map((k) => (
-          <Metric key={k.label} value={k.value} label={k.label} delta={k.delta} />
-        ))}
-      </div>
-
-      <Spacer />
-
-      <div className="grid cols-2">
-        <div className="card">
-          <div className="between">
-            <div>
-              <div className="eyebrow">Participation trend</div>
-              <h2>Weekly active members</h2>
+            <div className="grid cols-4">
+              <Metric value={String(s.eligible)} label="Eligible members" />
+              <Metric
+                value={String(s.activated)}
+                label="Activated"
+                delta={s.eligible ? `${Math.round((s.activated / s.eligible) * 100)}% activation` : undefined}
+              />
+              <Metric value={String(s.seats_licensed)} label="Licensed seats" />
+              <Metric
+                value={String(s.reporting_threshold)}
+                label="Reporting threshold"
+                delta={s.small_cell_suppression ? "Small cells suppressed" : "Suppression off"}
+                warn={!s.small_cell_suppression}
+              />
             </div>
-            <Badge tone="good">Threshold met</Badge>
-          </div>
-          <BarChart
-            bars={WEEKLY_ACTIVE}
-            label={`Weekly active members over ${WEEKLY_ACTIVE.length} weeks, rising to a peak of ${peak.members} in week ${WEEKLY_ACTIVE.length}`}
-          />
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <Link className="btn secondary" href="/engagement">Open engagement</Link>
-          </div>
-        </div>
 
-        <div className="card">
-          <div className="eyebrow">Programme health</div>
-          <h2>Calm Workdays · 12 weeks</h2>
-          <p className="tiny" style={{ marginTop: 6 }}>
-            Calm Workdays programme funnel only — organisation-wide totals appear
-            in the tiles above.
-          </p>
-          <div className="list" style={{ marginTop: 10 }}>
-            {PROGRAMME_FUNNEL.map((f) => (
-              <div className="list-item" key={f.step}>
-                <div aria-hidden="true" className={f.good ? "item-ic sage" : "item-ic"}>
-                  {f.step}
+            <Spacer />
+
+            <div className="grid cols-2">
+              <div className="card">
+                <h2>Membership</h2>
+                <div className="list" style={{ marginTop: 10 }}>
+                  <div className="list-item">
+                    <div className="grow"><b>Invited</b></div>
+                    <span>{s.invited}</span>
+                  </div>
+                  <div className="list-item">
+                    <div className="grow"><b>Activated</b></div>
+                    <span>{s.activated}</span>
+                  </div>
+                  <div className="list-item">
+                    <div className="grow"><b>Ended</b></div>
+                    <span>{s.ended}</span>
+                  </div>
                 </div>
-                <div className="grow">
-                  <b>{f.label}</b>
-                  <div className="tiny">{f.detail}</div>
-                </div>
-                <Badge tone={f.good ? "good" : ""}>{f.pct}</Badge>
-              </div>
-            ))}
-          </div>
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <Link className="btn secondary" href="/programmes">Open programme library</Link>
-          </div>
-        </div>
-      </div>
-
-      <Spacer />
-
-      <div className="grid cols-3">
-        <div className="card">
-          <div className="between">
-            <h2>Launch readiness</h2>
-            <Badge tone={done === LAUNCH_STEPS.length ? "good" : "warn"}>
-              {done} of {LAUNCH_STEPS.length}
-            </Badge>
-          </div>
-          <p className="tiny" style={{ margin: "10px 0" }}>
-            {remaining.length
-              ? `${remaining.join(", ")} remain${remaining.length === 1 ? "s" : ""} incomplete.`
-              : "All launch requirements are complete."}
-          </p>
-          <Progress value={pct} label={`${pct}% of launch requirements complete`} />
-        </div>
-
-        <div className="card">
-          <div className="between">
-            <h2>Data freshness</h2>
-            <Badge tone="good">Current</Badge>
-          </div>
-          <div className="list" style={{ marginTop: 10 }}>
-            {DATA_FRESHNESS.map((d) => (
-              <div className="list-item" key={d.label}>
-                <div className="grow">
-                  <b>{d.label}</b>
-                  <div className="tiny">{d.detail}</div>
-                </div>
-                <Badge tone="good">{d.status}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="between">
-            <h2>Governance alerts</h2>
-            <Badge tone="danger">{GOVERNANCE_ALERTS.length} open</Badge>
-          </div>
-          <div className="list" style={{ marginTop: 10 }}>
-            {GOVERNANCE_ALERTS.map((a) => (
-              <div className="list-item" key={a.label}>
-                <div className="grow">
-                  <b>{a.label}</b>
-                  <div className="tiny">{a.detail}</div>
+                <div className="toolbar">
+                  <Link className="btn secondary" href="/members">Members &amp; seats</Link>
+                  <Link className="btn secondary" href="/cohorts">Cohorts</Link>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
+
+              <div className="card tint">
+                <h2>What this dashboard cannot show</h2>
+                <p className="tiny">
+                  Individual reporting is{" "}
+                  <b>{s.individual_reporting_available ? "available" : "not available"}</b> — and
+                  it is not a setting that has been switched off. There is no per-member
+                  activity record for this organisation to read, so there is nothing to enable.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </LiveScreen>
+    </RequireSession>
   );
 }

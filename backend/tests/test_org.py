@@ -494,3 +494,93 @@ async def test_a_membership_that_has_not_started_grants_nothing(client):
 
     async with SessionLocal() as db:
         assert await org_service.is_sponsored(db, member_id) is False
+
+# ---------------------------------------------------------------- provisioning
+
+
+async def _platform_admin(client, prefix: str) -> str:
+    email, _ = await _signup(client, prefix)
+    async with SessionLocal() as db:
+        user = await db.scalar(select(User).where(User.email == email))
+        user.is_admin = True
+        await db.commit()
+    # Re-authorise so the token carries the promoted account.
+    r = await client.post("/auth/login", data={"username": email, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    return email
+
+
+async def test_platform_admin_provisions_an_organisation(client):
+    """The only way an organisation comes into existence.
+
+    Before this endpoint the first row had to be written by hand in psql, which
+    is not an onboarding path and left nothing able to set up the state a test
+    or a demo needs.
+    """
+    owner_email, _ = await _signup(client, "newowner")
+    await _platform_admin(client, "staff2")
+
+    r = await client.post(
+        "/admin/organizations",
+        json={"name": "Provisioned Ltd", "admin_email": owner_email, "seats_licensed": 50},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["name"] == "Provisioned Ltd"
+    assert r.json()["seats_licensed"] == 50
+
+    # The named account is now that organisation's Benefits owner, and can read
+    # its own organisation — end to end, without touching the database.
+    r = await client.post("/auth/login", data={"username": owner_email, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    me = await client.get("/org")
+    assert me.status_code == 200
+    assert me.json()["name"] == "Provisioned Ltd"
+
+
+async def test_an_org_admin_cannot_provision_another_organisation(client):
+    """Provisioning is CereBro staff work, not a self-service escalation.
+
+    Otherwise a benefits owner could create an organisation, add anyone to it,
+    and start reading aggregates about a population they were never given.
+    """
+    owner_email, _ = await _signup(client, "owner20")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Contained Co", admin_email=owner_email)
+
+    r = await client.post(
+        "/admin/organizations", json={"name": "Sneaky Ltd", "admin_email": owner_email}
+    )
+    assert r.status_code == 403
+
+
+async def test_provisioning_does_not_create_the_admin_account(client):
+    """Same rule as POST /org/members: nobody gets an account they did not ask for."""
+    await _platform_admin(client, "staff3")
+    stranger = f"nobody-{uuid.uuid4().hex[:8]}@test.app"
+
+    r = await client.post("/admin/organizations", json={"name": "Ghost Ltd", "admin_email": stranger})
+    assert r.status_code == 404
+    async with SessionLocal() as db:
+        assert await db.scalar(select(User).where(User.email == stranger)) is None
+        assert await db.scalar(select(Organization).where(Organization.name == "Ghost Ltd")) is None
+
+
+async def test_organisation_names_are_unique(client):
+    owner_email, _ = await _signup(client, "newowner2")
+    await _platform_admin(client, "staff4")
+
+    first = await client.post("/admin/organizations", json={"name": "Twice Ltd", "admin_email": owner_email})
+    assert first.status_code == 201
+    again = await client.post("/admin/organizations", json={"name": "Twice Ltd", "admin_email": owner_email})
+    assert again.status_code == 409
+
+
+async def test_provisioning_rejects_unknown_fields(client):
+    """extra="forbid", for the same reason MembershipCreate has it."""
+    owner_email, _ = await _signup(client, "newowner3")
+    await _platform_admin(client, "staff5")
+    r = await client.post(
+        "/admin/organizations",
+        json={"name": "Strict Ltd", "admin_email": owner_email, "manager_dashboards": True},
+    )
+    assert r.status_code == 422

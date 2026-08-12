@@ -1,22 +1,49 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Notice } from "@/components/ui";
+import { signIn } from "@/lib/api";
 
 /**
  * AUTH-01 — Administrator sign in.
  *
- * Renders the intended sign-in surface and authenticates NOBODY. There is no
- * session, no cookie, no redirect and no "demo workspace" button, because this
- * portal has no backend auth: a control that appeared to sign someone in would
- * imply a gate that does not exist, and a fake gate is worse than an obvious
- * absence. The prototype carried the same warning; this keeps it and removes
- * the simulated actions rather than porting them.
+ * This screen shipped deliberately inert on 2026-08-12: it rendered the access
+ * flow and authenticated nobody, because there was no backend behind it and a
+ * control that appears to sign someone in implies a gate that does not exist.
+ * The backend now exists (`/org`, models/organization.py), so the form is real.
  *
- * The Caddy block for portal.cerebrozen.in stays commented out until this
- * screen is wired to a real identity provider (deploy/Caddyfile).
+ * What is still NOT here, and should not be added until it is genuinely built:
+ * the prototype's "Continue with SSO" and "Open demo workspace" buttons. There
+ * is no identity provider and no demo tenant, so both would be the same lie in
+ * a new place. Password sign-in is the one path that works.
+ *
+ * Being signed in is not the same as having access: the backend answers 403 to
+ * any account that administers no organisation, and the portal explains that
+ * rather than pretending the credentials were wrong.
  */
-export const metadata = { title: "Administrator sign in · CereBro for Organisations" };
-
 export default function SignInPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn(email.trim(), password);
+      router.replace("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't sign in just now — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="eyebrow">Administrator access</div>
@@ -26,29 +53,49 @@ export default function SignInPage() {
         administrators.
       </p>
 
-      <Notice tone="danger" icon="!">
-        <b>This screen does not sign anyone in.</b>
-        <br />
-        It is the layout for administrator access; no identity provider, session or
-        authorisation check exists behind it yet. Nothing on this page grants access to
-        anything, and the portal is not published on a public host until it does.
-      </Notice>
-
       <div className="grid cols-2">
         <div className="card">
           <h2>Sign in</h2>
           <p className="tiny">Use your organisation administrator account.</p>
-          <label style={{ display: "block", marginTop: 20 }}>
-            <span className="label">Work email</span>
-            <input className="field" type="email" placeholder="you@organisation.com" disabled />
-          </label>
-          <div className="toolbar">
-            <span className="btn secondary" aria-disabled="true">Continue with SSO</span>
-            <span className="btn secondary" aria-disabled="true">Email verification code</span>
-          </div>
+          <form onSubmit={submit}>
+            <label style={{ display: "block", marginTop: 20 }}>
+              <span className="label">Work email</span>
+              <input
+                className="field"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@organisation.com"
+              />
+            </label>
+            <label style={{ display: "block", marginTop: 12 }}>
+              <span className="label">Password</span>
+              <input
+                className="field"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+            {error ? (
+              <div className="notice danger" role="alert" style={{ marginTop: 14 }}>
+                <span aria-hidden="true">!</span>
+                <div>{error}</div>
+              </div>
+            ) : null}
+            <div className="toolbar">
+              <button type="submit" className="btn" disabled={busy}>
+                {busy ? "Signing in…" : "Sign in"}
+              </button>
+            </div>
+          </form>
           <p className="tiny" style={{ marginTop: 12 }}>
-            Both controls are inert. Production requires a real identity provider and
-            backend session management.
+            SSO and multi-factor sign-in are not built yet. When they are, they will replace
+            this form rather than sit beside it.
           </p>
         </div>
 
@@ -56,11 +103,17 @@ export default function SignInPage() {
           <h2>What an administrator can reach</h2>
           <p className="tiny">
             Every administrator action is role-restricted and recorded. No role, however
-            senior, reaches a member’s chat, journal, mood history, sleep data or safety plan.
+            senior, reaches a member&rsquo;s chat, journal, mood history, sleep data or safety
+            plan &mdash; that boundary is enforced by the absence of any read path, not by a
+            permission you could be granted.
           </p>
           <div className="toolbar">
-            <Link className="btn secondary" href="/roles">Roles &amp; permissions</Link>
-            <Link className="btn secondary" href="/privacy">Privacy centre</Link>
+            <Link className="btn secondary" href="/roles">
+              Roles &amp; permissions
+            </Link>
+            <Link className="btn secondary" href="/privacy">
+              Privacy centre
+            </Link>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CAMPAIGN_PROHIBITED } from "@/lib/copy";
 import { Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** CAM-02 — Campaign builder. */
 export default function CampaignBuilderPage() {
@@ -11,6 +12,8 @@ export default function CampaignBuilderPage() {
         title="Audience, content, preview and schedule."
         lede="Campaigns invite and educate. They never pressure, and they never imply that participation is observed."
       />
+
+      <SampleData />
 
       <div className="grid cols-2">
         <div className="card">

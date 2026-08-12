@@ -1,5 +1,6 @@
 import { SECURITY_CONTROLS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** SEC-01 — Security & compliance. */
 export default function SecurityPage() {
@@ -10,6 +11,8 @@ export default function SecurityPage() {
         title="Controls, documents and review status."
         lede="What is in place, when it was last checked, and when it is next due. Nothing here is a certification claim the product has not earned."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

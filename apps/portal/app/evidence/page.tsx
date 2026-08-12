@@ -1,5 +1,6 @@
 import { EVIDENCE_ITEMS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** EVI-01 — Evidence library. */
 export default function EvidencePage() {
@@ -10,6 +11,8 @@ export default function EvidencePage() {
         title="Clinical review and content governance."
         lede="What each part of the product claims, what it is based on, and when it was last reviewed. Organisations can read this; they cannot change it."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

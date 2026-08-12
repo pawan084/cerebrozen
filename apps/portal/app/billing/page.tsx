@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BILLING_METRICS } from "@/lib/mock";
 import { Metric, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** BIL-01 — Billing & contract. */
 export default function BillingPage() {
@@ -11,6 +12,8 @@ export default function BillingPage() {
         title="Seats, invoices and renewal."
         lede="Sponsorship is billed on licensed seats, not on how much anyone used the product — usage-based pricing would create a reason to watch individuals."
       />
+
+      <SampleData />
 
       <div className="grid cols-4">
         {BILLING_METRICS.map((m) => (

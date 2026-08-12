@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SAFETY_CHECKS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** SAF-01 — Safety operations. */
 export default function SafetyPage() {
@@ -11,6 +12,8 @@ export default function SafetyPage() {
         title="Resource verification and escalation testing."
         lede="This page is about whether the safety machinery works — helplines reachable, routing tested, evaluations current. It is not, and cannot be, a view of members in distress."
       />
+
+      <SampleData />
 
       <Notice tone="danger" icon="!">
         <b>No member appears on this page, ever.</b>

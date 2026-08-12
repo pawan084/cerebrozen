@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RUNBOOK_STEPS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** SAF-02 — Safety runbook. */
 export default function RunbookPage() {
@@ -11,6 +12,8 @@ export default function RunbookPage() {
         title="Operational ownership without employer surveillance."
         lede="What happens when a crisis signal is detected, and who is responsible at each step. Read the fourth row carefully: the organisation’s role is none."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="steps">

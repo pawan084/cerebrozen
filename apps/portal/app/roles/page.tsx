@@ -1,6 +1,7 @@
 import { ADMINS, ROLES, ROLE_CAPABILITIES } from "@/lib/mock";
 import { ROLE_BOUNDARY } from "@/lib/copy";
 import { Badge, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** ROL-01 — Roles & permissions. */
 export default function RolesPage() {
@@ -11,6 +12,8 @@ export default function RolesPage() {
         title="Roles and least privilege."
         lede="Separate contract, programme, reporting and technical responsibilities. No role can access individual wellness content."
       />
+
+      <SampleData />
 
       <div className="toolbar">
         <button className="btn" type="button">Invite administrator</button>

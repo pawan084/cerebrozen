@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DATA_FLOWS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** PRI-02 — Data map & retention. */
 export default function DataMapPage() {
@@ -11,6 +12,8 @@ export default function DataMapPage() {
         title="What moves, where it lives and how long it stays."
         lede="Four flows, and one of them is the important one: personal wellbeing content does not appear in this table as something that travels, because it does not."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

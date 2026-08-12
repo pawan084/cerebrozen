@@ -142,11 +142,34 @@ everything below is open.
       service and routes import no wellbeing model at all — if someone adds
       `from app.models.mood import MoodLog`, the join is one line away and the suite fails
       first. Being a CereBro platform admin grants nothing here; they are different jobs
-- [ ] **The portal and the organisation model are not joined yet** — the screens still render
-      `lib/mock.ts` constants and the API they now have goes unused. That is the next piece of
-      work, and it is where the honest-failure-state discipline has to be applied: each form
-      needs the optimistic-then-reconciled treatment the consent toggles got, and each
-      suppressed figure needs to render as "too small to report" rather than as a blank
+- [x] **Four portal screens read the real backend** (2026-08-12). Dashboard, Members,
+      Cohorts and Programmes call `/org` through `apps/portal/lib/api.ts` — the same token
+      model as `apps/app` (access in memory, refresh in localStorage) but a **separate storage
+      key**, because an administrator is very likely a member too and sharing a key would mean
+      signing out of the portal signed you out of your own wellbeing account in the next tab.
+      `/signin` is now a real form. It shipped deliberately inert this morning because there
+      was no backend; there is one now. What did **not** become real: "Continue with SSO" and
+      "Open demo workspace", because there is still no identity provider and no demo tenant,
+      and both would be the same lie in a new place.
+      **The suppressed path is the one that was actually verified.** `portal-live.spec.ts`
+      provisions its own organisation, adds a two-member cohort, signs in through the UI and
+      asserts the cohort reads "Too small to report" and specifically *not* "0 activated" —
+      a blank or a zero would tell an employer that nobody in a small team engaged, which is
+      the inference the whole threshold exists to prevent
+- [x] **`POST /admin/organizations`** (2026-08-12) — platform-admin provisioning. There was no
+      way to create an organisation through the API at all: the first row had to be written by
+      hand in psql, which is not an onboarding path and left nothing able to set up the state a
+      test needs. Deliberately on `/admin`, not `/org`: an org admin cannot create another
+      organisation or promote themselves into one, and a test asserts that
+- [ ] **32 portal screens still render `lib/mock.ts`** and every one of them now says so, in a
+      warning notice above the fold rather than a footnote. That banner is load-bearing: four
+      screens are live and the rest look identical, so an administrator who cannot tell which
+      is which would read invented figures as their own. Wire the rest as their endpoints
+      appear, and delete the banner per screen as it becomes true
+- [ ] **The portal's forms still do nothing** — invite, cohort builder, pathway and campaign
+      builders hold `defaultValue` and submit nowhere, even on the four screens whose *reads*
+      are live. Each needs the optimistic-then-reconciled treatment the consent toggles got:
+      never claim a save that did not land
 - [ ] **Sponsorship does not yet grant premium anywhere in the product** —
       `organizations.is_sponsored()` computes entitlement correctly and nothing calls it. The
       subscription checks still read `user.subscription_tier` alone, so a sponsored member

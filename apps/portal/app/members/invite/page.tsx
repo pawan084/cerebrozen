@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** MEM-02 — Invite & eligibility import. */
 export default function InvitePage() {
@@ -10,6 +11,8 @@ export default function InvitePage() {
         title="Invite members without importing wellness data."
         lede="CereBro accepts eligibility identifiers, access dates and programme assignment only. Personal wellbeing content never enters the organisation portal."
       />
+
+      <SampleData />
 
       <div className="grid cols-2">
         <div className="card">

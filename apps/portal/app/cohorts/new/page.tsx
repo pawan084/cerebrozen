@@ -12,6 +12,7 @@ import {
   THRESHOLD_OPTIONS,
 } from "@/lib/mock";
 import { Badge, Notice } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /**
  * COH-02 — Cohort builder.
@@ -45,6 +46,8 @@ export default function CohortBuilderPage() {
         The builder warns when a group or filter combination could increase
         re-identification risk.
       </p>
+
+      <SampleData />
 
       <div className="grid cols-2">
         <div className="card">

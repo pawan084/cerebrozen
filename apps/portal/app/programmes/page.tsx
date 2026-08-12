@@ -1,57 +1,68 @@
-import Link from "next/link";
-import { PROGRAMMES, PROGRAMME_FILTERS } from "@/lib/mock";
-import { Badge, Notice, PageIntro, Progress } from "@/components/ui";
+"use client";
 
-/** PRO-01 — Programme library. */
+import Link from "next/link";
+import { LiveScreen, RequireSession } from "@/components/data";
+import { getProgrammes } from "@/lib/api";
+import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+
+/**
+ * PRO-01 — Programme library. LIVE (2026-08-12).
+ *
+ * Reads GET /org/programmes: what this organisation funds, for which cohort,
+ * between which dates. Sponsorship makes a programme available and enrols
+ * nobody, so there is no completion figure here to report — the absence is the
+ * design, not a gap in the API.
+ */
 export default function ProgrammesPage() {
   return (
-    <>
-      <PageIntro
-        eyebrow="Programme curation"
-        title="Choose what members receive."
-        lede="Sponsor evidence-informed pathways while preserving voluntary participation and personal control."
-      />
+    <RequireSession>
+      <LiveScreen load={getProgrammes} what="sponsored programmes">
+        {(programmes) => (
+          <>
+            <PageIntro
+              eyebrow="Sponsored programmes"
+              title="What your organisation funds."
+              lede="Sponsorship makes a programme available to a cohort. Taking it up stays the member's decision, and no completion is reported back to you."
+            />
 
-      <div className="toolbar">
-        {PROGRAMME_FILTERS.map((f) => (
-          <span key={f} className={f === "All" ? "filter active" : "filter"}>
-            {f}
-          </span>
-        ))}
-      </div>
-
-      <div className="grid cols-3">
-        {PROGRAMMES.map((p) => (
-          <div key={p.name} className={p.tag === "Active" ? "card tint" : "card"}>
-            <div className="between">
-              <Badge tone={p.tag === "Active" ? "good" : ""}>{p.tag}</Badge>
-              <span className="tiny">{p.type}</span>
-            </div>
-            <h2 style={{ marginTop: 12 }}>{p.name}</h2>
-            <p className="tiny" style={{ margin: "8px 0 14px" }}>{p.desc}</p>
-            {typeof p.progress === "number" ? (
-              <>
-                <Progress value={p.progress} label={`${p.name} is ${p.progress}% through its schedule`} />
-                <p className="tiny" style={{ margin: "8px 0 14px" }}>{p.status}</p>
-                <Link className="btn" href="/engagement">Manage programme</Link>
-              </>
+            {programmes.length === 0 ? (
+              <Notice tone="info" icon="i">
+                Nothing sponsored yet. Members still have the whole free product; sponsorship
+                adds the funded programme and premium entitlement on top.
+              </Notice>
             ) : (
-              <>
-                <p className="tiny" style={{ marginBottom: 14 }}>{p.status}</p>
-                <button className="btn secondary" type="button">Sponsor programme</button>
-              </>
+              <div className="card">
+                <div className="list">
+                  {programmes.map((p) => (
+                    <div className="list-item" key={p.id}>
+                      <div className="grow">
+                        <b>{p.programme_slug}</b>
+                        <div className="tiny">
+                          {p.starts_on ?? "open start"} → {p.ends_on ?? "open end"}
+                          {p.group_id ? " · one cohort" : " · all eligible members"}
+                        </div>
+                      </div>
+                      <Badge tone={p.is_active ? "good" : ""}>{p.is_active ? "Active" : "Paused"}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-        ))}
-      </div>
 
-      <div className="spacer" />
+            <Spacer />
 
-      <Notice icon="⛨">
-        Sponsoring a programme makes it available. It does not enrol anyone.
-        Members choose whether to start, and choosing not to start is never
-        reported back to the organisation.
-      </Notice>
-    </>
+            <Notice tone="info" icon="i">
+              There is no per-member progress on this page because none is collected. A
+              programme funnel would require recording who started and who stopped, which is
+              the record this product does not keep.
+            </Notice>
+
+            <div className="toolbar">
+              <Link className="btn secondary" href="/programmes/pathway">Pathway builder</Link>
+            </div>
+          </>
+        )}
+      </LiveScreen>
+    </RequireSession>
   );
 }

@@ -50,13 +50,15 @@ cere/
                   docker-compose, in CI (tsc + lint), in the e2e stack
                   (portal.spec.ts walks all 36), in sync-tokens TARGETS, and
                   carrying the same nonce CSP as the other three Next apps.
-                  STILL RENDERS FIXED SAMPLE DATA: every figure is a constant in
-                  lib/mock.ts — nothing fetches and nothing persists, so the
-                  screens are reviewable, not functional. The B2B2C layer they
-                  depict now EXISTS in the backend (`/org`, models/organization.py,
-                  2026-08-12) but the two are not yet joined. AUTH-01/AUTH-02
-                  render the access flow and authenticate nobody, which is why
-                  deploy/Caddyfile keeps portal.cerebrozen.in commented out.
+                  FOUR screens are live against /org (dashboard, members,
+                  cohorts, programmes) via lib/api.ts — same token model as
+                  apps/app, separate storage key. Sign-in is real. The other 32
+                  still render lib/mock.ts and each carries a warning notice
+                  saying so, because a live and a sample screen otherwise look
+                  identical. Forms remain inert everywhere. deploy/Caddyfile
+                  still keeps portal.cerebrozen.in commented out: there is no
+                  SSO/MFA, so password auth alone is not enough to publish an
+                  administration console on.
   backend/        FastAPI + Postgres (auth, data, proactive AI, voice, Oracle agent)
   e2e/            Playwright tests (web + admin) in an isolated Docker stack
   deploy/         Caddyfile + bootstrap.sh (one-shot VPS setup)

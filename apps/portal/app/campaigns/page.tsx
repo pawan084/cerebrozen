@@ -1,6 +1,7 @@
 import { CAMPAIGNS } from "@/lib/mock";
 import { CAMPAIGN_PROHIBITED } from "@/lib/copy";
 import { Badge, PageIntro } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** CAM-01 — Campaigns. */
 export default function CampaignsPage() {
@@ -11,6 +12,8 @@ export default function CampaignsPage() {
         title="Campaigns that invite, never pressure."
         lede="Use benefit communications and reminders without revealing who has or has not used CereBro."
       />
+
+      <SampleData />
 
       {/* Non-negotiable. The one place an administrator is most likely to reach
           for a coercive tactic is the one place the ban must be unmissable. */}

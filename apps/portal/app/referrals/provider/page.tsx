@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PROVIDER_DETAIL } from "@/lib/mock";
 import { Badge, Metric, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** REF-02 — Provider detail. */
 export default function ProviderDetailPage() {
@@ -12,6 +13,8 @@ export default function ProviderDetailPage() {
         title={`${p.name}.`}
         lede="Verification, regions and member handoff. A provider appears to members only while its verification is current or explicitly flagged."
       />
+
+      <SampleData />
 
       <div className="grid cols-4">
         {p.metrics.map((m) => (

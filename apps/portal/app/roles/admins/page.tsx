@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ADMINS } from "@/lib/mock";
 import { ROLE_BOUNDARY } from "@/lib/copy";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** ROL-02 — Administrator access. */
 export default function AdminAccessPage() {
@@ -12,6 +13,8 @@ export default function AdminAccessPage() {
         title="Invite, edit and review access."
         lede="Who holds an administrator account, which role they hold, and when they were last attested."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

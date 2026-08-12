@@ -1,5 +1,6 @@
 import { NOTIFICATIONS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** NOT-01 — Notifications. */
 export default function NotificationsPage() {
@@ -10,6 +11,8 @@ export default function NotificationsPage() {
         title="Notifications."
         lede="Governance, safety, privacy and integration alerts only. The portal never generates notifications about individual member distress or wellness activity."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

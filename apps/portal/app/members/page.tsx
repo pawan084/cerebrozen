@@ -1,83 +1,69 @@
-import Link from "next/link";
-import { ELIGIBILITY_GROUPS, SEAT_METRICS } from "@/lib/mock";
-import { Badge, Metric, PageIntro, PrivacyWall } from "@/components/ui";
+"use client";
 
-/** MEM-01 — Members & seats. */
+import Link from "next/link";
+import { LiveScreen, RequireSession } from "@/components/data";
+import { getMembers } from "@/lib/api";
+import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+
+/**
+ * MEM-01 — Members & seats. LIVE (2026-08-12).
+ *
+ * Reads GET /org/members, which returns sponsorship rows and no identity: no
+ * user id, no email, no name. Seats are managed by the organisation's own
+ * external_ref, so this table cannot become a roster mapping payroll to CereBro
+ * accounts.
+ */
 export default function MembersPage() {
   return (
-    <>
-      <PageIntro
-        eyebrow="Access management"
-        title="Members and sponsored seats."
-        lede="Manage eligibility and invitations without exposing who uses individual wellbeing features."
-      />
+    <RequireSession>
+      <LiveScreen load={getMembers} what="seats">
+        {(members) => (
+          <>
+            <PageIntro
+              eyebrow="Eligibility"
+              title="Seats, not a roster."
+              lede="Who is sponsored, between which dates. This table carries no name, no email and no account identifier — nothing here can be joined back to a person's use of CereBro."
+            />
 
-      <PrivacyWall />
+            {members.length === 0 ? (
+              <Notice tone="info" icon="i">
+                No seats yet. <Link href="/members/invite">Invite an eligible member</Link> to
+                create the first one.
+              </Notice>
+            ) : (
+              <div className="card">
+                <div className="list">
+                  {members.map((m) => (
+                    <div className="list-item" key={m.id}>
+                      <div className="grow">
+                        <b>{m.external_ref || "(no reference)"}</b>
+                        <div className="tiny">
+                          {m.access_start ?? "open start"} → {m.access_end ?? "open end"}
+                        </div>
+                      </div>
+                      <Badge tone={m.status === "active" ? "good" : m.status === "ended" ? "" : "info"}>
+                        {m.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-      <div className="toolbar">
-        <Link className="btn" href="/cohorts/new">Invite or import members</Link>
-        <button className="btn secondary" type="button">Export eligibility list</button>
-        <Link className="btn secondary" href="/roles">Manage administrators</Link>
-      </div>
+            <Spacer />
 
-      <div className="grid cols-4">
-        {SEAT_METRICS.map((m) => (
-          <Metric key={m.label} value={m.value} label={m.label} delta={m.delta} />
-        ))}
-      </div>
+            <Notice tone="info" icon="⛨">
+              Ending a seat removes the organisation-funded entitlement on the chosen date. The
+              person keeps their account, their history and their safety tools, whether or not
+              anyone is paying.
+            </Notice>
 
-      <div className="toolbar">
-        {["All", "Active", "Pilot", "Ending soon"].map((f) => (
-          <span key={f} className={f === "All" ? "filter active" : "filter"}>
-            {f}
-          </span>
-        ))}
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <caption>Eligibility groups</caption>
-          <thead>
-            <tr>
-              <th scope="col">Group</th>
-              <th scope="col">Eligible</th>
-              <th scope="col">Invited</th>
-              <th scope="col">Activated</th>
-              <th scope="col">Access</th>
-              <th scope="col">Programme</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ELIGIBILITY_GROUPS.map((g) => (
-              <tr key={g.name}>
-                <th scope="row" style={{ fontSize: "12.5px", textTransform: "none", letterSpacing: 0, background: "transparent" }}>
-                  {g.name}
-                </th>
-                <td>{g.eligible}</td>
-                <td>{g.invited}</td>
-                <td>{g.activated}</td>
-                <td><Badge tone={g.badge}>{g.access}</Badge></td>
-                <td>{g.programme}</td>
-                <td>
-                  <Link className="row-link" href="/cohorts">Open</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="spacer" />
-
-      <div className="card tint">
-        <b>Counts, not people.</b>
-        <p className="tiny" style={{ marginTop: 4 }}>
-          A group row shows how many members are eligible, invited and activated.
-          It never lists who they are, and it never reports what any of them did
-          inside the app.
-        </p>
-      </div>
-    </>
+            <div className="toolbar">
+              <Link className="btn secondary" href="/members/invite">Invite &amp; import</Link>
+            </div>
+          </>
+        )}
+      </LiveScreen>
+    </RequireSession>
   );
 }

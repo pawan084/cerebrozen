@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { INTEGRATIONS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** INT-01 — Integrations. */
 export default function IntegrationsPage() {
@@ -11,6 +12,8 @@ export default function IntegrationsPage() {
         title="SSO, HRIS, benefits and provider connections."
         lede="Integrations move eligibility and identity. None of them can carry wellbeing content in either direction."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

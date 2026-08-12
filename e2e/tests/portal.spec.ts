@@ -13,15 +13,18 @@ const PORTAL = process.env.PORTAL_URL || "http://portal:3003";
 // Every route is walked rather than a sample, because the portal is still a
 // design surface over fixed data — the failure this guards is a route that 500s
 // or renders blank after a refactor, and that can happen to any of the 36.
+//
+// Four routes are GUARDED since the portal was connected to /org: signed out,
+// they redirect to sign-in. They are listed separately rather than left in the
+// walk, because a redirect made the walk pass on the SIGN-IN page's heading —
+// green for a route that never rendered.
+const GUARDED = ["/", "/members", "/cohorts", "/programmes"];
+
 const ROUTES = [
-  "/",
   "/setup",
-  "/members",
   "/members/invite",
   "/members/group",
-  "/cohorts",
   "/cohorts/new",
-  "/programmes",
   "/programmes/detail",
   "/programmes/pathway",
   "/campaigns",
@@ -53,11 +56,21 @@ const ROUTES = [
 ];
 
 test.describe("Organisation portal", () => {
-  test("all 36 reference routes render", async ({ page }) => {
+  test("every unguarded reference route renders", async ({ page }) => {
     for (const path of ROUTES) {
       const response = await page.goto(`${PORTAL}${path}`, { waitUntil: "domcontentloaded" });
       expect(response?.status(), `${path} did not return 200`).toBe(200);
       await expect(page.locator("h1"), `${path} has no heading`).toBeVisible();
+      expect(page.url(), `${path} redirected — is it guarded now?`).toContain(path);
+    }
+  });
+
+  test("the wired routes are guarded when signed out", async ({ page }) => {
+    // These four read the real /org API. Signed out they must go to sign-in,
+    // not render an empty shell that looks like an organisation with no data.
+    for (const path of GUARDED) {
+      await page.goto(`${PORTAL}${path}`, { waitUntil: "networkidle" });
+      expect(page.url(), `${path} did not redirect a signed-out visitor`).toContain("/signin");
     }
   });
 
@@ -65,7 +78,7 @@ test.describe("Organisation portal", () => {
     // These pages were generated, and the generator first emitted \\uXXXX into
     // JSX *text*, where backslash-u is not an escape — so "anyone\\u2019s safety"
     // rendered verbatim on 21 pages. Cheap to check, and invisible in a diff.
-    for (const path of ROUTES) {
+    for (const path of [...ROUTES, "/signin"]) {
       await page.goto(`${PORTAL}${path}`, { waitUntil: "domcontentloaded" });
       const body = (await page.locator("body").innerText()) ?? "";
       expect(body, `${path} renders a literal \\uXXXX escape`).not.toMatch(/\\u[0-9a-f]{4}/i);
@@ -86,21 +99,25 @@ test.describe("Organisation portal", () => {
     }
   });
 
-  test("the sign-in screen authenticates nobody", async ({ page }) => {
-    // AUTH-01/AUTH-02 render the intended access flow and deliberately do not
-    // implement it: no identity provider, no session, no cookie. A control that
-    // appeared to sign someone in would imply a gate that does not exist, and a
-    // fake gate is worse than an obvious absence. deploy/Caddyfile keeps the
-    // portal off a public host until this is real.
+  test("the sign-in screen is a real form, and claims nothing it lacks", async ({ page }) => {
+    // This screen shipped deliberately INERT on 2026-08-12 — it rendered the
+    // access flow and authenticated nobody, because there was no backend behind
+    // it. The backend now exists (/org), so the form is real and this test
+    // asserts the new truth rather than the old one.
+    //
+    // What is still absent stays absent: there is no identity provider and no
+    // demo tenant, so "Continue with SSO" and "Open demo workspace" were not
+    // ported. Both would be the same lie in a new place.
     const response = await page.goto(`${PORTAL}/signin`, { waitUntil: "domcontentloaded" });
     expect(response?.headers()["set-cookie"], "sign-in set a cookie").toBeUndefined();
-    await expect(page.getByText(/does not sign anyone in/i)).toBeVisible();
-    // No working submit anywhere, and the credential field itself is inert.
-    // Scoped to the email input rather than "every input on the page": the
-    // Shell's topbar carries an enabled search box on every route, so a blanket
-    // assertion would fail for a reason that has nothing to do with auth.
-    expect(await page.locator("button[type='submit']").count()).toBe(0);
-    await expect(page.locator("input[type='email']")).toBeDisabled();
+
+    await expect(page.locator("input[type=email]")).toBeEnabled();
+    await expect(page.locator("input[type=password]")).toBeEnabled();
+    await expect(page.locator("button[type=submit]")).toBeVisible();
+
+    const body = await page.locator("body").innerText();
+    expect(body, "SSO is not built — offering it would be a dead control").not.toMatch(/Continue with SSO/i);
+    expect(body, "there is no demo tenant to open").not.toMatch(/demo workspace/i);
   });
 
   test("safety operations never names a member", async ({ page }) => {

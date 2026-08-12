@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PATHWAY_MODULES } from "@/lib/mock";
 import { Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** PRO-03 — Pathway builder. */
 export default function PathwayBuilderPage() {
@@ -11,6 +12,8 @@ export default function PathwayBuilderPage() {
         title="Build from approved CereBro modules."
         lede="A pathway sequences modules that already exist in the product. Organisations choose ordering and duration — not clinical content, which is governed centrally."
       />
+
+      <SampleData />
 
       <Notice tone="warn" icon="!">
         Modules cannot be authored here. Anything that would change what a member is told is

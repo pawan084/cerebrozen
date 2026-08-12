@@ -1,5 +1,6 @@
 import { ENGAGEMENT_METRICS, ENGAGEMENT_WEEKS, FEATURE_FAMILIES } from "@/lib/mock";
 import { BarChart, Metric, Notice, PageIntro, PrivacyWall, Progress, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** ENG-01 — Engagement analytics. */
 export default function EngagementPage() {
@@ -10,6 +11,8 @@ export default function EngagementPage() {
         title="Engagement without identity tracking."
         lede="Understand whether the benefit is being discovered and used while keeping personal wellness behaviour private."
       />
+
+      <SampleData />
 
       <PrivacyWall />
 

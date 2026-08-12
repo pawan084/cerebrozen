@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db, utcnow
 from app.core.deps import get_current_admin
+from app.models.organization import ROLE_BENEFITS_OWNER, Organization, OrgAdmin
+from app.schemas.organization import OrgOut, OrgProvision
 from app.core.ratelimit import limiter
 from app.services import admin_audit
 from app.models.admin_audit import AdminAuditLog
@@ -843,3 +845,51 @@ async def revert_prompt(
         row.active = False
     await db.commit()
     return {"name": name, "source": "code_default", "template": prompt_registry.default_for(name)}
+
+
+# ---------------------------------------------------------------- organisations
+
+
+@router.post("/organizations", response_model=OrgOut, status_code=status.HTTP_201_CREATED)
+async def provision_organization(
+    body: OrgProvision,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> Organization:
+    """Create an organisation and attach its first Benefits owner.
+
+    The only way an organisation comes into existence. Before this, the first
+    row had to be written by hand in psql, which is not an onboarding path and
+    left nothing able to set up the state a test needs.
+
+    Audited like every other administrative action: the row records who
+    provisioned which organisation, never anything about its members.
+    """
+    owner = await db.scalar(select(User).where(User.email == str(body.admin_email).lower()))
+    if owner is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No CereBro account for that address — the administrator signs up first",
+        )
+    if await db.scalar(select(Organization).where(Organization.name == body.name)):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An organisation with that name exists")
+
+    org = Organization(
+        name=body.name,
+        legal_entity=body.legal_entity,
+        region=body.region,
+        seats_licensed=body.seats_licensed,
+        contract_start=body.contract_start,
+        contract_end=body.contract_end,
+    )
+    db.add(org)
+    await db.flush()
+    db.add(OrgAdmin(org_id=org.id, user_id=owner.id, role=ROLE_BENEFITS_OWNER))
+    await admin_audit.record(
+        db, admin, "organization.provision",
+        target_type="organization", target_id=org.id,
+        detail={"name": org.name, "region": org.region},
+    )
+    await db.commit()
+    await db.refresh(org)
+    return org

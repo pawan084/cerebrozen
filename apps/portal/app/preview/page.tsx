@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ORG_MAY_RECEIVE } from "@/lib/mock";
 import { NEVER_AVAILABLE } from "@/lib/copy";
 import { PageIntro } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** PRE-01 — Member experience preview. */
 export default function PreviewPage() {
@@ -12,6 +13,8 @@ export default function PreviewPage() {
         title="Preview the privacy boundary before launch."
         lede="This view shows how sponsored access appears inside the CereBro member app. Organisation administrators cannot enter the member’s private wellbeing areas."
       />
+
+      <SampleData />
 
       <div className="preview-shell">
         {/* A static rendering of the member's first screen. Nothing here is

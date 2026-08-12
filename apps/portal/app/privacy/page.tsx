@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ALWAYS_PRIVATE, DEFAULT_THRESHOLD, RETENTION_OPTIONS, THRESHOLD_OPTIONS } from "@/lib/mock";
 import { Notice, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /**
  * PRI-01 — Privacy centre.
@@ -27,6 +28,8 @@ export default function PrivacyPage() {
         Define what the organisation can access, what is prohibited, and when
         aggregate results are suppressed.
       </p>
+
+      <SampleData />
 
       <div className="grid cols-2">
         <div className="card success">

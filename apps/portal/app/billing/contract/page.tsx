@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { INVOICES } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** BIL-02 — Contract & invoices. */
 export default function ContractPage() {
@@ -11,6 +12,8 @@ export default function ContractPage() {
         title="Contract and invoices."
         lede="Commercial documents and change requests. Seat changes take effect at the next renewal unless an amendment is agreed."
       />
+
+      <SampleData />
 
       <div className="card">
         <h2>Invoices</h2>

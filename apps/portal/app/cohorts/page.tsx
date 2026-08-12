@@ -1,51 +1,67 @@
-import Link from "next/link";
-import { COHORTS, DEFAULT_THRESHOLD } from "@/lib/mock";
-import { Badge, PageIntro, Progress } from "@/components/ui";
+"use client";
 
-/** COH-01 — Cohorts. */
+import Link from "next/link";
+import { LiveScreen, RequireSession } from "@/components/data";
+import { getGroupTotals } from "@/lib/api";
+import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+
+/**
+ * COH-01 — Cohorts. LIVE (2026-08-12).
+ *
+ * Reads GET /org/groups/totals, which applies the organisation's reporting
+ * threshold server-side. A suppressed group arrives with null counts and
+ * `suppressed: true` rather than being omitted, and this screen renders that
+ * difference explicitly — "too small to report" must not look like "nobody
+ * activated", which is exactly what a blank cell would imply.
+ */
 export default function CohortsPage() {
   return (
-    <>
-      <PageIntro
-        eyebrow="Group configuration"
-        title="Cohorts without individual surveillance."
-        lede="Use eligibility groups to assign programmes and compare aggregate participation. Reporting is suppressed below the threshold."
-      />
-
-      <div className="toolbar">
-        <Link className="btn" href="/cohorts/new">Create cohort</Link>
-        <Link className="btn secondary" href="/privacy">Review privacy threshold</Link>
-      </div>
-
-      <div className="grid cols-3">
-        {COHORTS.map((c) => (
-          <div key={c.name} className={c.suppressed ? "card warning" : "card"}>
-            <div className="between">
-              <h2>{c.name}</h2>
-              <Badge tone={c.badge}>{c.size}</Badge>
-            </div>
-            <p className="tiny" style={{ margin: "10px 0 14px" }}>{c.note}</p>
-            <Progress
-              value={c.activated}
-              label={`${c.activated}% of eligible members activated`}
+    <RequireSession>
+      <LiveScreen load={getGroupTotals} what="cohorts">
+        {(totals) => (
+          <>
+            <PageIntro
+              eyebrow="Privacy-safe groups"
+              title="Cohorts, with the small ones withheld."
+              lede="Group totals for reporting. A cohort below your threshold reports no participation figure at all — not a rounded one, and not a range."
             />
-            <p className="tiny" style={{ margin: "8px 0 14px" }}>{c.activated}% activated</p>
-            <Link className="btn secondary" href="/cohorts/new">Edit cohort</Link>
-          </div>
-        ))}
-      </div>
 
-      <div className="spacer" />
+            {totals.length === 0 ? (
+              <Notice tone="info" icon="i">
+                No cohorts yet. Create one from the{" "}
+                <Link href="/cohorts/new">cohort builder</Link>.
+              </Notice>
+            ) : (
+              <div className="card">
+                <div className="list">
+                  {totals.map((t) => (
+                    <div className="list-item" key={t.group_id ?? t.name}>
+                      <div className="grow">
+                        <b>{t.name}</b>
+                        <div className="tiny">
+                          {t.eligible} eligible · threshold {t.threshold}
+                        </div>
+                      </div>
+                      {t.suppressed ? (
+                        <Badge tone="warn">Too small to report</Badge>
+                      ) : (
+                        <Badge tone="good">{t.activated} activated</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-      <div className="notice">
-        <span aria-hidden="true">⛨</span>
-        <div>
-          A cohort is a reporting unit, not a roster. Below {DEFAULT_THRESHOLD}{" "}
-          active members a cohort stops reporting separately and folds into the
-          wider population — the suppressed row above is that rule working, not a
-          fault to fix.
-        </div>
-      </div>
-    </>
+            <Spacer />
+
+            <Notice tone="info" icon="⛨">
+              Suppression is applied before the numbers leave the server, so a withheld figure
+              is not present in the response and cannot be recovered from this page.
+            </Notice>
+          </>
+        )}
+      </LiveScreen>
+    </RequireSession>
   );
 }

@@ -143,3 +143,26 @@ class OrgSummaryOut(BaseModel):
     small_cell_suppression: bool
     #: Always false. Present so a client reads the boundary rather than infers it.
     individual_reporting_available: bool
+
+
+class OrgProvision(BaseModel):
+    """Platform-admin onboarding of a new customer.
+
+    Deliberately on `/admin`, not `/org`: creating an organisation and naming
+    its first administrator is CereBro staff work. An organisation cannot
+    create itself, and — the point of the split — an org admin cannot create
+    another organisation or promote themselves into one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=160)
+    #: The account that becomes the first Benefits owner. Must already exist:
+    #: provisioning does not create user accounts, for the same reason
+    #: `POST /org/members` does not.
+    admin_email: EmailStr
+    legal_entity: str = Field(default="", max_length=200)
+    region: str = Field(default="IN", max_length=8)
+    seats_licensed: int = Field(default=0, ge=0, le=1_000_000)
+    contract_start: date | None = None
+    contract_end: date | None = None

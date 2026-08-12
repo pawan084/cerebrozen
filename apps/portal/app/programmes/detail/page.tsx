@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PROGRAMME_DETAIL, PROGRAMME_FUNNEL } from "@/lib/mock";
 import { Badge, Metric, Notice, PageIntro, PrivacyWall, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** PRO-02 — Programme detail. */
 export default function ProgrammeDetailPage() {
@@ -12,6 +13,8 @@ export default function ProgrammeDetailPage() {
         title={`${p.name}.`}
         lede={`${p.window}. Configuration and aggregate health for one programme — organisation-wide totals live on the dashboard.`}
       />
+
+      <SampleData />
 
       <PrivacyWall />
 

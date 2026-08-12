@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GROUP_DETAIL } from "@/lib/mock";
 import { Badge, Metric, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** MEM-03 — Eligibility group detail. */
 export default function GroupDetailPage() {
@@ -12,6 +13,8 @@ export default function GroupDetailPage() {
         title={`${g.name}.`}
         lede="This page shows eligibility and aggregate access status. It does not reveal who used practices, Talk, Journal, Sleep or safety features."
       />
+
+      <SampleData />
 
       <div className="grid cols-4">
         {g.metrics.map((m) => (

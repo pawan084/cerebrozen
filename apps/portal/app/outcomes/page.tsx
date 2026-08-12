@@ -1,5 +1,6 @@
 import { OUTCOME_MEASURES } from "@/lib/mock";
 import { Badge, Notice, PageIntro, PrivacyWall, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** OUT-01 — Outcome reporting. */
 export default function OutcomesPage() {
@@ -10,6 +11,8 @@ export default function OutcomesPage() {
         title="Aggregate, consented and non-diagnostic."
         lede="Voluntary pre/post survey summaries. These describe a group of people who chose to answer — they are not clinical measurement, and they cannot be attributed to anyone."
       />
+
+      <SampleData />
 
       <PrivacyWall />
 

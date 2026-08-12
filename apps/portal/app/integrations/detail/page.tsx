@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { INTEGRATION_DETAIL } from "@/lib/mock";
 import { Badge, Metric, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** INT-02 — Integration detail. */
 export default function IntegrationDetailPage() {
@@ -12,6 +13,8 @@ export default function IntegrationDetailPage() {
         title={`${d.name}.`}
         lede="Configuration, logs and the data boundary — including the fields this connection will refuse."
       />
+
+      <SampleData />
 
       <div className="grid cols-4">
         {d.metrics.map((m) => (

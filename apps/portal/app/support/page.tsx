@@ -1,5 +1,6 @@
 import { SUPPORT_CHANNELS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** SUP-01 — Support & status. */
 export default function SupportPage() {
@@ -10,6 +11,8 @@ export default function SupportPage() {
         title="Help, incidents and implementation support."
         lede="Administrative support for the organisation. Members get help inside the app, from people who are not your colleagues."
       />
+
+      <SampleData />
 
       <div className="card">
         <div className="list">

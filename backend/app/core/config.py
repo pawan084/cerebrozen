@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # Comma-separated string (env: CORS_ORIGINS); parsed via `cors_origins` below.
     cors_origins_raw: str = Field(
-        default="http://localhost:3000,http://localhost:3001,http://localhost:3002",
+        default="http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003",
         validation_alias="CORS_ORIGINS",
     )
     trusted_hosts_raw: str = Field(

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PROVIDERS } from "@/lib/mock";
 import { Badge, Notice, PageIntro, Spacer } from "@/components/ui";
+import { SampleData } from "@/components/data";
 
 /** REF-01 — Referral network. */
 export default function ReferralsPage() {
@@ -11,6 +12,8 @@ export default function ReferralsPage() {
         title="Consent-based access to human support."
         lede="Providers a member can choose to reach. Every handoff is member-initiated, and the organisation is never told that one happened."
       />
+
+      <SampleData />
 
       <Notice tone="info" icon="⛨">
         <b>Referral is a member decision, not an administrative one.</b>
