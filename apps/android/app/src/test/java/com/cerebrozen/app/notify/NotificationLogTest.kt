@@ -2,6 +2,7 @@ package com.cerebrozen.app.notify
 
 import com.cerebrozen.app.net.Session
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -93,7 +94,34 @@ class NotificationLogTest {
         // one when routeFor resolved to something.
         assertNull(NotificationLog.routeFor("unknown-kind"))
         assertEquals("sleep", NotificationLog.routeFor("winddown"))
-        assertEquals("today", NotificationLog.routeFor("checkin"))
+        // "home", not "today". This assertion used to say "today" and so PINNED
+        // a crash: navigate("today") matches no destination and throws.
+        assertEquals("home", NotificationLog.routeFor("checkin"))
+    }
+
+    @Test
+    fun `every route a nudge can open is a real destination`() {
+        // The bug this replaces was a single wrong string, so asserting one
+        // string would only pin the next one. The Today tab deliberately kept
+        // the route `home` through the five-tab rename (Tab.Home in
+        // CereBroApp.kt) — a nudge pointing at the LABEL rather than the route
+        // is exactly how "today" got here.
+        //
+        // Hand-duplicated against the nav graph; navigation-compose cannot be
+        // built in a JVM unit test, so this is the closest pin available.
+        val graphRoutes = setOf(
+            "home", "explore", "talk", "journal", "you",
+            "sleep", "toolkit", "insights", "trends", "plan", "goals",
+            "programs", "crisis", "safetyplan", "winddown", "notifications",
+        )
+        for (kind in listOf("checkin", "winddown", "sleep", "journal", "practice")) {
+            val route = NotificationLog.routeFor(kind)
+            assertNotNull("$kind should resolve somewhere", route)
+            assertTrue(
+                "routeFor(\"$kind\") = \"$route\" is not a route in the nav graph",
+                route in graphRoutes,
+            )
+        }
     }
 
     @Test

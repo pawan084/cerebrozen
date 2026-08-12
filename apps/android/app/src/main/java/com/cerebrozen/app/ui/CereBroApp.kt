@@ -653,7 +653,20 @@ fun CereBroApp() {
             // (audit A26). Non-tab routes push normally.
             val tabRoutes = Tab.entries.map { it.route }.toSet()
             val open: (String) -> Unit = { route ->
-                if (route in tabRoutes) {
+                // Routes reach here from DYNAMIC sources now — a logged
+                // notification (NotificationLog.routeFor), a chat widget
+                // (widgetRoute), a plan step, and the toolkit_recent pref — so
+                // a stale or renamed one is a data problem, not a programming
+                // error. navigate() throws IllegalArgumentException on an
+                // unknown destination, which took the whole app down: a
+                // check-in nudge pointed at "today" (the Today tab's route is
+                // "home") and tapping Open crashed it.
+                //
+                // A door that does nothing is bad; a door that kills the app is
+                // worse, and on a screen someone opened from a nudge.
+                if (navController.graph.findNode(route) == null) {
+                    android.util.Log.w("CereBroApp", "ignoring unknown route: $route")
+                } else if (route in tabRoutes) {
                     navController.navigate(route) {
                         popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                         launchSingleTop = true
