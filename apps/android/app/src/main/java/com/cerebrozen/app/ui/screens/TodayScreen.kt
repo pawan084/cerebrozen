@@ -2777,12 +2777,21 @@ fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // `loaded`, not `plan != null`, decides whether the fetch is still running.
+    // Api.activePlan() is runCatching{}.getOrNull() (Session.kt:853) — it NEVER
+    // throws — so the old `.onFailure` branch could not fire, and "no plan yet"
+    // was indistinguishable from "still loading". The screen sat on
+    // "Loading your plan…" forever, with no empty state and no retry.
+    // PlanScreen.kt:72 already carries a comment about avoiding exactly this;
+    // the Reference copy reintroduced it.
+    var loaded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        runCatching { Api.activePlan() }
-            .onSuccess { plan = it }
-            .onFailure { error = it.userMessage("Couldn't load your plan. Please try again.") }
+    suspend fun load() {
+        error = null
+        plan = Api.activePlan()
+        loaded = true
     }
+    LaunchedEffect(Unit) { load() }
     fun toggle(step: JSONObject) {
         if (busy) return
         scope.launch {
@@ -2833,7 +2842,24 @@ fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             val steps = plan?.optJSONArray("steps")
             when {
                 error != null -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
-                plan == null -> Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                !loaded -> Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // Loaded and still nothing: either there is no plan yet or the
+                // fetch failed silently. Both are the same to the user — say so
+                // and offer the way out, rather than spinning.
+                plan == null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "No plan yet. One is built from your check-ins, or you can ask for it now.",
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                    Text(
+                        "Try again",
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(99.dp))
+                            .clickable(enabled = !busy) { scope.launch { loaded = false; load() } }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.titleSmall, color = Periwinkle,
+                    )
+                }
                 steps == null || steps.length() == 0 -> Text("Your plan has no steps yet.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 else -> (0 until steps.length()).forEach { index ->
                     val step = steps.getJSONObject(index)

@@ -756,9 +756,19 @@ fun CereBroApp() {
                     onBackToGames = { navController.popBackStack("games", false) },
                 )
             }
-            composable("tools") { ToolkitScreen(onOpen = open, onBack = back) }
+            // `tools` was a second route onto ToolkitScreen with nothing
+            // pointing at it — a genuine duplicate of `toolkit` (12 call sites),
+            // so it is gone rather than kept as a synonym nobody types.
             // The one parameterized breathe engine (box / two-minute reset).
             composable("breathe/box") { BreathLoopsScreen(onBack = back) }
+            // NOT a duplicate of `imagery`, despite the audit pairing them:
+            // this is ui.offline.GuidedImageryScreen — four journeys (forest,
+            // ocean, mountain, meadow) from OfflineToolContent with a TTS cue —
+            // while `imagery` is ui.screens' single timed sequence in
+            // Rituals.kt. Nothing navigates here, so a working feature is
+            // sitting unreachable; which one should own the door is an IA
+            // decision, not a cleanup, so the route stays until that is made.
+            // See docs/TODO.md.
             composable("guidedimagery") { GuidedImageryScreen(onBack = back) }
             // The REAL body scan, not the static mock that used to sit here.
             // BodyScanScreen walks the eight parts in OfflineToolContent and
