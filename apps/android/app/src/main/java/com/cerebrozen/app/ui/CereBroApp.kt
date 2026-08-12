@@ -72,11 +72,6 @@ import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.ExploreScreen
 import com.cerebrozen.app.ui.screens.PracticeLibraryScreen
 import com.cerebrozen.app.ui.screens.PracticeBreathingScreen
-import com.cerebrozen.app.ui.screens.PracticeTippScreen
-import com.cerebrozen.app.ui.screens.NoticeChangeScreen
-import com.cerebrozen.app.ui.screens.UntangleThoughtScreen
-import com.cerebrozen.app.ui.screens.PracticeBodyScanScreen
-import com.cerebrozen.app.ui.screens.BodyScanContentDetailScreen
 import com.cerebrozen.app.ui.screens.GratitudeReflectionScreen
 import com.cerebrozen.app.ui.screens.UrgentSupportScreen
 import com.cerebrozen.app.ui.screens.GroundingScreen
@@ -752,8 +747,13 @@ fun CereBroApp() {
             // The one parameterized breathe engine (box / two-minute reset).
             composable("breathe/box") { BreathLoopsScreen(onBack = back) }
             composable("guidedimagery") { GuidedImageryScreen(onBack = back) }
-            composable("bodyscan") { PracticeBodyScanScreen(onBack = back, onUrgent = { open("crisis") }, onTranscript = { open("body-scan-detail") }) }
-            composable("body-scan-detail") { BodyScanContentDetailScreen(onBack = back, onUrgent = { open("crisis") }, onBegin = { open("bodyscan") }) }
+            // The REAL body scan, not the static mock that used to sit here.
+            // BodyScanScreen walks the eight parts in OfflineToolContent and
+            // works with no network; PracticeBodyScanScreen drew a "2:41"
+            // that never counted and a progress arc hardcoded to 180°, so the
+            // screen looked like a running session and was a picture of one.
+            // `body-scan-detail` went with it: the mock was its only entrance.
+            composable("bodyscan") { BodyScanScreen(onBack = back) }
             composable("crisisgrounding") { CrisisGroundingScreen(onBack = back) { open("breathe/box") } }
             composable("insightreel") { InsightReelScreen(onBack = back) }
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
@@ -771,9 +771,14 @@ fun CereBroApp() {
             composable("gratitude") { GratitudeReflectionScreen(onBack = back, onUrgent = { open("crisis") }) }
             composable("baseline") { ReferenceBaselineScreen(onBack = back, onOpen = open) }
             composable("breathing") { BreathingScreen(onBack = back) }
-            composable("cbt") { UntangleThoughtScreen(onBack = back, onUrgent = { open("crisis") }) }
-            composable("tipp") { PracticeTippScreen(onBack = back, onUrgent = { open("crisis") }, onTryStep = { open("notice-change") }) }
-            composable("notice-change") { NoticeChangeScreen(onBack = back, onUrgent = { open("crisis") }) }
+            // Both real tools, both previously shadowed by a mock on their own
+            // route while sitting imported-but-unrouted a few lines above.
+            // CbtReframeScreen writes a real journal entry through
+            // JournalingTool; TippScreen is a four-step walkthrough that keeps
+            // its place across rotation. `notice-change` is gone with the TIPP
+            // mock that was its only entrance.
+            composable("cbt") { CbtReframeScreen(onBack = back) }
+            composable("tipp") { TippScreen(onBack = back) }
             composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
             composable("intention") { IntentionScreen(onBack = back) }
             composable("crisis") { UrgentSupportScreen(onBack = back, onOpen = open) }
