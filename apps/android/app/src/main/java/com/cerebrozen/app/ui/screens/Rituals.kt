@@ -651,7 +651,7 @@ private fun BlockRow(
             }
         }
         Box(Modifier.clearAndSetSemantics { }) {
-            AppSwitch(checked = selected, onCheckedChange = { onToggle() })
+            AppSwitch(checked = selected, onCheckedChange = { onToggle() }, label = label)
         }
     }
 }

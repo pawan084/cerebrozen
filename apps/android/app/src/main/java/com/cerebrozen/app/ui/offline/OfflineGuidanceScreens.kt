@@ -217,7 +217,7 @@ fun BodyScanScreen(onBack: () -> Unit) {
                 SectionCard { Text(stringResource(item.partRes), color = TextPrimary); Text(stringResource(item.instructionRes), color = TextMuted) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.offline_auto), color = TextSoft); AppSwitch(auto, { auto = it })
+                Text(stringResource(R.string.offline_auto), color = TextSoft); AppSwitch(auto, { auto = it }, label = stringResource(R.string.offline_auto))
             }
             PrimaryButton(stringResource(R.string.offline_begin), modifier = Modifier.fillMaxWidth()) { started = true }
         }
@@ -332,7 +332,7 @@ fun InsightReelScreen(onBack: () -> Unit) {
             TextButton(onClick = { index = (index + 1) % OfflineToolContent.insights.size }) { Text(stringResource(R.string.common_next)) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.offline_auto), color = TextSoft); AppSwitch(auto, { auto = it }) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.offline_auto), color = TextSoft); AppSwitch(auto, { auto = it }, label = stringResource(R.string.offline_auto)) }
             TextButton(onClick = { paused = !paused }) { Text(stringResource(if (paused) R.string.offline_resume else R.string.offline_pause)) }
         }
     }

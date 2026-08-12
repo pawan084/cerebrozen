@@ -276,7 +276,7 @@ fun ZenRipplesScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.zen_ripple_count, rippleCount), style = MaterialTheme.typography.titleMedium, color = Cyan)
                     Text(stringResource(R.string.zen_water_sound), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                AppSwitch(waterSoundEnabled, { waterSoundEnabled = it })
+                AppSwitch(waterSoundEnabled, { waterSoundEnabled = it }, label = stringResource(R.string.zen_water_sound))
                 if (rippleCount > 0) TextButton(onClick = { ripples = emptyList(); rippleCount = 0 }) {
                     Text(stringResource(R.string.common_reset), color = Periwinkle)
                 }

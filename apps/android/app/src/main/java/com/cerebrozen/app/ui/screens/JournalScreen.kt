@@ -577,7 +577,7 @@ fun JournalScreen(
                         // flow reads. Gated behind the device credential in BOTH
                         // directions — same as the Settings path — so an already-open
                         // session can't silently disable the lock without authenticating.
-                        AppSwitch(checked = journalLocked, onCheckedChange = { v ->
+                        AppSwitch(label = stringResource(R.string.journal_private_mode), checked = journalLocked, onCheckedChange = { v ->
                             requestScreenLock(activity) { ok ->
                                 if (ok) {
                                     journalLocked = v

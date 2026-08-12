@@ -445,7 +445,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                                 Text(cat.label, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
                                 Text(cat.hint, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             }
-                            AppSwitch(checked = consent[key] == true, onCheckedChange = { v ->
+                            AppSwitch(label = cat.label, checked = consent[key] == true, onCheckedChange = { v ->
                                 // Optimistic, but reconciled: if the server write
                                 // fails we revert the switch and say so, so the UI
                                 // never claims a consent state the backend rejected
@@ -478,7 +478,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.privacy_stats_hint),
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                AppSwitch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v })
+                AppSwitch(checked = statsOn, onCheckedChange = { v -> statsOn = v; Analytics.enabled = v }, label = stringResource(R.string.privacy_stats_title))
             }
             var lockOn by remember { mutableStateOf(Session.prefGet("journal_locked") == "true") }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -495,7 +495,11 @@ fun PrivacyScreen(onBack: () -> Unit) {
                 }
                 // Gate the change behind a screen-lock confirmation both ways —
                 // only persist once the user actually authenticates.
-                AppSwitch(checked = lockOn, onCheckedChange = { v ->
+                AppSwitch(
+                    // Same conditional the visible label uses, so the announced
+                    // name matches what is on screen in both states.
+                    label = if (lockOn) stringResource(R.string.privacy_unlock_journal) else stringResource(R.string.privacy_lock_journal),
+                    checked = lockOn, onCheckedChange = { v ->
                     requestScreenLock(activity) { ok ->
                         if (ok) {
                             lockOn = v
@@ -617,7 +621,7 @@ fun RemindersScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.reminders_toggle_hint),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
-                AppSwitch(checked = on, onCheckedChange = {
+                AppSwitch(label = stringResource(R.string.reminders_toggle_title), checked = on, onCheckedChange = {
                     if (it) enable() else { com.cerebrozen.app.notify.Reminders.cancel(context); persist(false) }
                 })
             }

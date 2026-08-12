@@ -1845,7 +1845,7 @@ private fun TimerBellRow() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(stringResource(R.string.sounds_timer_bell), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-        AppSwitch(checked = bellOn, onCheckedChange = { bellOn = it; Chime.timerBellEnabled = it })
+        AppSwitch(checked = bellOn, onCheckedChange = { bellOn = it; Chime.timerBellEnabled = it }, label = stringResource(R.string.sounds_timer_bell))
     }
 }
 

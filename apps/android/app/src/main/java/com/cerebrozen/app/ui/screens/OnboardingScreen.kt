@@ -500,7 +500,7 @@ fun Onboarding() {
                     Text(stringResource(R.string.ob_age_confirm), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
                     Text(stringResource(R.string.ob_age_confirm_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                AppSwitch(checked = ageConfirmed, onCheckedChange = { ageConfirmed = it })
+                AppSwitch(checked = ageConfirmed, onCheckedChange = { ageConfirmed = it }, label = stringResource(R.string.ob_age_confirm))
             }
             // Two-up "can help / can't do" tiles (fork look), on our glass tokens.
             // IntrinsicSize.Min sizes the Row to the taller tile and both fill it,
@@ -666,7 +666,7 @@ fun Onboarding() {
                             Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                             Text(hint, style = MaterialTheme.typography.bodySmall, color = InfoCardHint)
                         }
-                        AppSwitch(checked = consent[key] == true, onCheckedChange = { consent[key] = it })
+                        AppSwitch(checked = consent[key] == true, onCheckedChange = { consent[key] = it }, label = label)
                     }
                     if (index < rows.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(InfoCardDivider))
                 }

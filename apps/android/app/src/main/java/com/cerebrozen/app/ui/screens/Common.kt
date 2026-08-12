@@ -1089,11 +1089,31 @@ internal fun PickChip(
     }
 }
 
-/** Brand-tinted switch — lavender when on, glassy grey when off — so toggles match
- * the design system instead of the unconfigured Material default colours. */
+/**
+ * Brand-tinted switch — lavender when on, glassy grey when off — so toggles match
+ * the design system instead of the unconfigured Material default colours.
+ *
+ * [label] is the switch's accessible name and is **not** optional in practice.
+ * Every one of these renders as a bare node with no text of its own: the visible
+ * label is always a sibling `Text`, so without this a screen reader announces
+ * "switch, on" and nothing about what it governs. That was true of all fourteen
+ * call sites, including the seven DPDP consent toggles and the age gate — the
+ * places where "specific and informed" is a legal standard and not just a nicety.
+ * A switch with no accessible name also fails WCAG 4.1.2 outright.
+ *
+ * Passing the same string that is displayed beside it is correct and expected;
+ * `mergeDescendants` on the row would be the other fix, but it makes the whole
+ * row a tap target, which changes behaviour rather than just naming it.
+ */
 @Composable
-internal fun AppSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
+internal fun AppSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    enabled: Boolean = true,
+) {
     Switch(
+        modifier = Modifier.semantics { contentDescription = label },
         checked = checked,
         onCheckedChange = onCheckedChange,
         enabled = enabled,

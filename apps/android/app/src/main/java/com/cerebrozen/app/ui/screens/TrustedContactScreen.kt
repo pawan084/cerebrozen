@@ -212,7 +212,7 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.trusted_consent_hint),
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
-                AppSwitch(checked = consent, onCheckedChange = { consent = it })
+                AppSwitch(checked = consent, onCheckedChange = { consent = it }, label = stringResource(R.string.trusted_consent_title))
             }
         }
 

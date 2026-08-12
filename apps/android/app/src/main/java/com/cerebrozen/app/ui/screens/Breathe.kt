@@ -631,7 +631,7 @@ private fun BreatheSettingRow(icon: androidx.compose.ui.graphics.vector.ImageVec
         // Semantics cleared: the row is the one accessible toggle; a second
         // focusable switch inside it would double-announce.
         Box(Modifier.clearAndSetSemantics { }) {
-            AppSwitch(checked = checked, onCheckedChange = onChecked)
+            AppSwitch(checked = checked, onCheckedChange = onChecked, label = label)
         }
     }
 }
