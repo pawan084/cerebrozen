@@ -63,6 +63,11 @@ test.describe("Web app (authenticated client)", () => {
     await page.getByRole("button", { name: "Anxious" }).click();
     await expect(page.getByText(/Loud thoughts are real/)).toBeVisible();
 
+    // TOD-01: the hero names the next step at full volume, and the full day is
+    // folded behind "Your day" — so open it before asserting the rows.
+    await expect(page.getByText("Your next helpful step")).toBeVisible();
+    await page.getByText("Your day", { exact: true }).click();
+
     // Today's plan renders the served agentic plan (auto-generated on first
     // /plans/active — titles vary when a live LLM writes it, so assert shape:
     // at least two real step rows; the error fallback renders exactly one).
@@ -295,11 +300,42 @@ test.describe("Web app (authenticated client)", () => {
   test("crisis page is public and Tele-MANAS-first", async ({ page }) => {
     await page.goto(`${APP}/crisis`, { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: "Urgent support" })).toBeVisible();
-    const lines = page.getByRole("link", { name: /Tele-MANAS|Emergency|KIRAN/ });
-    await expect(lines).toHaveCount(3);
+    // The three India lines lead, and Tele-MANAS is first of them.
     await expect(page.getByRole("link", { name: /Tele-MANAS/ })).toHaveAttribute("href", "tel:14416");
+    await expect(page.getByRole("link", { name: /KIRAN/ })).toBeVisible();
+    // SAF-01: "Find a helpline" moved into the outside-India section — behind a
+    // native <details> — so it is no longer the India-scoped /in path, and the
+    // section has to be opened before the link is in the a11y tree.
+    await page.getByText("Outside India", { exact: true }).click();
     await expect(page.getByRole("link", { name: /Find a helpline/ })).toHaveAttribute(
-      "href", "https://findahelpline.com/in");
+      "href", "https://findahelpline.com");
+  });
+
+  // SAF-01's whole point: a badge means a named source AND a check date. The
+  // ref/ audit found the opposite bug — Indian numbers badged "Verified" for
+  // every country — so the unverified regions must SAY they are unverified.
+  test("crisis page badges only what it has actually checked", async ({ page }) => {
+    await page.goto(`${APP}/crisis`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/India · verified/i)).toBeVisible();
+    await expect(page.getByText(/checked 5 August 2026/i).first()).toBeVisible();
+    // Other regions are in the markup behind a native <details>; open it.
+    await page.getByText("Outside India", { exact: true }).click();
+    await expect(page.getByText(/United States · not verified yet/i)).toBeVisible();
+    await expect(page.getByText(/we have not verified these/i)).toBeVisible();
+  });
+
+  // The page must survive with no JavaScript at all — an emergency number that
+  // depends on a bundle loading is not an emergency number. The design mock
+  // used a useState region selector; this is why it did not graduate as-is.
+  test("crisis page renders every number without JavaScript", async ({ browser }) => {
+    const ctx = await browser.newContext({ javaScriptEnabled: false });
+    const page = await ctx.newPage();
+    await page.goto(`${APP}/crisis`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: /Tele-MANAS/ })).toHaveAttribute("href", "tel:14416");
+    // <details> is native, so the other regions still open with no script.
+    await page.getByText("Outside India", { exact: true }).click();
+    await expect(page.getByText(/United States · not verified yet/i)).toBeVisible();
+    await ctx.close();
   });
 
   // The landing deep-links into app screens ("Open Sleep →"), which only works

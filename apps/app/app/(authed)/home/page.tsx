@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { GuidedTour } from "@/components/GuidedTour";
 import { InterventionCard } from "@/components/InterventionCard";
 import { Icon } from "@/components/icons";
+import { heroKindFor, heroWhy, heroWorksOffline } from "@/lib/todayHero";
 
 // 5-emoji check-in matching the ref; each maps into the shared mood taxonomy.
 const MOODS = [
@@ -21,7 +22,9 @@ type Streak = { current: number; best: number; week: { date: string; active: boo
 type Mood = { id: string; mood: string; created_at: string };
 type Entry = { id: string; body: string; created_at: string };
 type Step = { id: string; title: string; detail: string; symbol: string; order: number; done: boolean };
-type Plan = { id: string; title: string; steps: Step[] };
+// `source` ("ai" | "rule") drives the hero's provenance sentence — see
+// lib/todayHero.ts. /plans/active has always sent it; Home simply never read it.
+type Plan = { id: string; title: string; focus?: string; source?: string; steps: Step[] };
 // `today_guide` is additive — absent for programs with no day guides, and for
 // servers older than the migration that added them. Omit-tolerant like Android.
 type Program = {
@@ -134,6 +137,18 @@ export default function Home() {
     .reverse()
     .map((scores) => scores.reduce((a, b) => a + b, 0) / scores.length);
   const presentDays = streak?.week?.filter((d) => d.active).length ?? 0;
+
+  // TOD-01: the hero is ONE decision at full volume. `planLoaded` is false only
+  // while the first fetch is in flight — a failed fetch counts as loaded, so a
+  // dead network shows the honest fallback rather than a spinner forever.
+  const planLoaded = plan !== null || planFailed;
+  const nextStep = (plan?.steps ?? []).slice().sort((a, b) => a.order - b.order).find((s) => !s.done);
+  const heroKind = heroKindFor(planLoaded, (plan?.steps?.length ?? 0) > 0, !!nextStep);
+  const heroHref = nextStep ? stepHref(nextStep.symbol) : "/games";
+  // Presence framing in the fold summary: it counts what happened, never what
+  // was missed. "3 still open" is a statement of availability, not a debt.
+  const stepsDone = (plan?.steps ?? []).filter((s) => s.done).length;
+  const stepsOpen = (plan?.steps ?? []).length - stepsDone;
   // One honest line for the weekly-insights teaser, from the same mood fetch.
   const weekCheckins = moods.filter((m) => Date.now() - new Date(m.created_at).getTime() < 7 * 86400e3).length;
 
@@ -142,15 +157,68 @@ export default function Home() {
       <AppHeader eyebrow="Welcome back" title={`${greeting}${name ? `, ${name}` : ""}`} />
       <GuidedTour />
       <div className="page-body">
-        {/* Quick links (ref mock 4-tile grid) */}
-        <nav className="quick-grid cz-in" aria-label="Quick links">
-          {QUICK.map((q) => (
-            <Link key={q.label} href={q.href} className="quick-tile" style={{ background: q.bg }}>
-              <q.icon size={22} />
-              <span>{q.label}</span>
-            </Link>
-          ))}
-        </nav>
+        {/* TOD-01 — one decision at full volume, above everything else.
+            The dashboard below it stays for now; the fold-down is the second
+            half of this graduation. */}
+        <section className="today-hero cz-in" aria-labelledby="next-step">
+          <p className="eyebrow">Your next helpful step</p>
+          {heroKind === "loading" ? (
+            <h2 id="next-step" className="today-hero-title">Finding your next step…</h2>
+          ) : heroKind === "plan-done" ? (
+            <>
+              <h2 id="next-step" className="today-hero-title">
+                That is today&rsquo;s plan done.
+              </h2>
+              <p className="today-why">
+                Nothing else is required of you today. Anything more is because you want to.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 id="next-step" className="today-hero-title">
+                {nextStep?.title ?? "Make a little room around loud thoughts."}
+              </h2>
+              <ul className="today-chips" aria-label="What this involves">
+                <li>3 minutes</li>
+                {heroWorksOffline(heroHref) && <li>Works offline</li>}
+                <li>Nothing to score</li>
+              </ul>
+              {/* The provenance sentence follows the plan's REAL generator —
+                  never hardcoded. See lib/todayHero.ts for why. */}
+              <p className="today-why">
+                {heroKind === "fallback"
+                  ? "A steady practice to start with. This one is not personalised yet — it will be once you have checked in a few times."
+                  : heroWhy(plan?.source)}
+              </p>
+            </>
+          )}
+          {heroKind !== "loading" && (
+            <div className="today-actions">
+              <Link href={heroKind === "plan-done" ? "/plan" : heroHref} className="btn btn-primary today-cta">
+                {heroKind === "plan-done" ? "Look at the plan" : "Begin"}
+              </Link>
+              <Link href="/explore" className="text-btn">Choose something else</Link>
+            </div>
+          )}
+        </section>
+
+        {/* TOD-01: the quick-links grid used to sit here at full volume, four
+            tiles competing with the one decision above them. Folded rather than
+            deleted — the destinations are still wanted, just not shouted. */}
+        <details className="today-fold">
+          <summary>
+            <span>Somewhere else</span>
+            <small>Games, insights, programs, sounds</small>
+          </summary>
+          <nav className="quick-grid cz-in" aria-label="Quick links">
+            {QUICK.map((q) => (
+              <Link key={q.label} href={q.href} className="quick-tile" style={{ background: q.bg }}>
+                <q.icon size={22} />
+                <span>{q.label}</span>
+              </Link>
+            ))}
+          </nav>
+        </details>
 
         <div className="dash-grid">
           <div>
@@ -231,11 +299,18 @@ export default function Home() {
               </Link>
             )}
 
-            {/* Today's plan — the served agentic plan, same one /plan toggles. */}
-            <div className="sec-head">
-              <h2 className="serif-h">Today&apos;s plan</h2>
-              <span className="sec-date">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
-            </div>
+            {/* Today's plan — the served agentic plan, same one /plan toggles.
+                TOD-01 folds it: the hero already names the next step, so the
+                full list is for when you deliberately want the whole day. */}
+            <details className="today-fold">
+              <summary>
+                <span>Your day</span>
+                <small>
+                  {planLoaded && (plan?.steps?.length ?? 0) > 0
+                    ? `${stepsDone} done, ${stepsOpen} still open`
+                    : new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+                </small>
+              </summary>
             <div className="plan-list cz-in cz-d3">
               {(plan?.steps ?? [])
                 .slice()
@@ -270,17 +345,27 @@ export default function Home() {
                 Open full plan →
               </Link>
             )}
+            <p className="tiny">
+              Flexible, not a streak. Do what helps and skip what does not — blank slots are
+              simply blank.
+            </p>
+            </details>
 
             {/* Jump back in */}
-            <div className="sec-head"><h2 className="serif-h">Jump back in</h2></div>
-            <div className="jump-grid cz-in cz-d4">
-              {JUMP.map((j) => (
-                <Link key={j.label} href={j.href} className="jump-card" style={{ background: j.bg }}>
-                  <j.icon size={22} />
-                  <span>{j.label}</span>
-                </Link>
-              ))}
-            </div>
+            <details className="today-fold">
+              <summary>
+                <span>Jump back in</span>
+                <small>Talk, breathe, sleep, journal</small>
+              </summary>
+              <div className="jump-grid cz-in cz-d4">
+                {JUMP.map((j) => (
+                  <Link key={j.label} href={j.href} className="jump-card" style={{ background: j.bg }}>
+                    <j.icon size={22} />
+                    <span>{j.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </details>
           </div>
 
           {/* Right rail */}

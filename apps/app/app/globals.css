@@ -1027,6 +1027,17 @@ select option { color: var(--ink); }
    A six-card grid of practice families: each card is a whole target, so the
    48px floor is met by the card, not the label inside it.
    ============================================================ */
+/* EXP-01 search. The base `input` rule lands ~42px tall; the 48px target floor
+   applies to a control people tap on a phone, so it is set explicitly here
+   rather than inherited. (docs/TODO.md still tracks `.chip` at 31px — same
+   class of defect, different control.) */
+.explore-search {
+  min-height: 48px;
+  border-radius: 999px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
 .explore-grid {
   display: grid; gap: 12px; margin-bottom: 8px;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1180,6 +1191,31 @@ select option { color: var(--ink); }
    Scoped here rather than promoted app-wide: shipped screens rely on the
    descendant rules and a global would change every one of them. */
 .design-root .sub { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
+
+/* ── Graduated from the design surface (TOD-01) ──────────────────────────
+   `.text-btn` and the primary CTA fill existed ONLY under `.design-root`.
+   docs/TODO.md flagged that graduating Today without promoting them would ship
+   raw UA buttons at `min-height: 0` — failing the 48px target rule on the most
+   used screen in the product. These are the same declarations, unscoped, so the
+   design surface and the real route render identically.
+   `.sub` is deliberately NOT promoted: shipped screens rely on its descendant
+   rules and a global would restyle every one of them. */
+.text-btn {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 13.5px; font-weight: 650; color: var(--accent);
+  text-decoration: none;
+}
+.text-btn:hover { text-decoration: underline; }
+.tiny { font-size: 11.5px; line-height: 1.5; color: var(--text-faint); margin: 0; }
+.btn-primary,
+.today-cta {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; cursor: pointer; font-weight: 700;
+  background: var(--btn-primary-bg); color: var(--btn-primary-ink);
+  text-decoration: none;
+}
+.btn-primary:disabled, .today-cta:disabled { opacity: 0.5; cursor: default; }
 .design-root .ds-cta {
   min-height: 48px; padding: 0 22px; border-radius: 999px; font-size: 15px;
   border: 0; cursor: pointer; font-weight: 700;

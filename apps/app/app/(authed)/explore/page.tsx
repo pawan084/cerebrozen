@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Icon } from "@/components/icons";
 
@@ -62,16 +63,40 @@ const SHORTCUTS = [
 ];
 
 export default function ExplorePage() {
+  // EXP-01 graduation: search is present but SECONDARY — it is for the person
+  // who already knows the name of the thing, not the default way in. So it sits
+  // under the lede and the six needs stay the primary surface.
+  //
+  // It filters what is already on this page rather than querying the catalogue:
+  // a box that silently searched a different corpus than the cards beneath it
+  // would be a worse lie than no box.
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const families = useMemo(
+    () => (q ? FAMILIES.filter((f) => `${f.label} ${f.blurb}`.toLowerCase().includes(q)) : FAMILIES),
+    [q],
+  );
+
   return (
     <>
       <AppHeader eyebrow="Explore" title="Explore by need" />
       <div className="page-body">
-        <p className="sub" style={{ maxWidth: "46ch", marginBottom: 22 }}>
+        <p className="sub" style={{ maxWidth: "46ch", marginBottom: 14 }}>
           Find a tool by what would help right now, without browsing a whole catalogue.
         </p>
 
+        <input
+          type="search"
+          className="explore-search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search a need or a name…"
+          aria-label="Search practices, sounds and programmes"
+          style={{ marginBottom: 22 }}
+        />
+
         <nav className="explore-grid" aria-label="Practice families">
-          {FAMILIES.map(({ href, label, blurb, icon: I }, i) => (
+          {families.map(({ href, label, blurb, icon: I }, i) => (
             <Link
               key={href}
               href={href}
@@ -85,6 +110,13 @@ export default function ExplorePage() {
             </Link>
           ))}
         </nav>
+
+        {q && families.length === 0 && (
+          <p className="sub">
+            Nothing here matches &ldquo;{query}&rdquo;. The full catalogue searches everything
+            — <Link href="/library" className="link">open it</Link>.
+          </p>
+        )}
 
         <div className="sec-head">
           <h2 className="serif-h">Everything else</h2>

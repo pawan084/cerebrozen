@@ -16,12 +16,12 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+// TOD-01 is gone from this list because it GRADUATED (2026-08-12) — the hero,
+// its provenance sentence and the folds now render on the real /home from
+// /plans/active. This surface is scaffolding and is meant to shrink to nothing.
 const SCREENS: [href: string, id: string, label: string][] = [
-  ["/design/today", "TOD-01", "Today"],
   ["/design/checkin", "TOD-02", "Check in"],
-  ["/design/explore", "EXP-01", "Explore"],
   ["/design/sleep", "SLP-01", "Tonight"],
-  ["/design/urgent", "SAF-01", "Urgent support"],
 ];
 
 export default function DesignLayout({ children }: { children: React.ReactNode }) {
