@@ -40,9 +40,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -713,24 +715,73 @@ internal fun PageHeader(
     eyebrowColor: Color = EyebrowMuted,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+) = CereBroTopBar(
+    title = title,
+    subtitle = eyebrow,
+    accent = accent,
+    trailing = trailing,
+    trailingLabel = trailingLabel,
+    onTrailingClick = onTrailingClick,
+)
+
+/**
+ * The one top bar in this app.
+ *
+ * There were nine of these. Today, Explore, Sleep, the Premium frames, the
+ * practice family and every `Reference*` screen each hand-rolled a 66dp (or
+ * 76dp) row with the same three slots and slightly different numbers — alpha
+ * .94/.96/.97, padding 16/20dp, back icons tinted from raw hex. They drifted,
+ * because nothing held them together, and the ones written last had lost the
+ * accessibility the first one had: no `Role.Button`, no content description on
+ * the back arrow, no press feedback.
+ *
+ * Three slots, and only these three:
+ *  - **leading** — [onBack] draws the back door; without it you get the
+ *    brand mark, which is how a tab root announces itself.
+ *  - **middle** — serif [title] over a quiet [subtitle]. Both single-line: this
+ *    bar is a landmark, not a place to explain things.
+ *  - **trailing** — an optional screen action ([trailing]), then [onUrgent].
+ *
+ * [onUrgent] is last on purpose. The crisis door must be reachable in ≤2 taps
+ * from anywhere (design rule §1), so it sits in the same pixels on every
+ * screen that has one — a door you have to look for is not a door.
+ */
+@Composable
+internal fun CereBroTopBar(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    /** Null on a tab root — the brand mark takes the slot instead. */
+    onBack: (() -> Unit)? = null,
+    onUrgent: (() -> Unit)? = null,
+    trailing: ImageVector? = null,
+    trailingLabel: String? = null,
+    onTrailingClick: (() -> Unit)? = null,
+    accent: Color = Accent.default,
 ) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(66.dp)
             .background(CardFill.copy(alpha = .96f))
             .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BrandMark(size = 36.dp, showGlow = true)
-        Spacer(Modifier.size(11.dp))
+        if (onBack != null) {
+            TopBarAction(
+                icon = Icons.Outlined.ArrowBackIosNew,
+                label = stringResource(R.string.common_back),
+                well = FieldFill,
+                tint = Periwinkle,
+                onClick = onBack,
+            )
+        } else {
+            BrandMark(size = 36.dp, showGlow = true)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 title,
-                // A soft accent glow behind the title — subtle depth, tinted per
-                // section. The size comes from the type scale (displayLarge) rather
-                // than a per-call-site override.
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = FontFamily(Font(R.font.newsreader)),
                     fontWeight = FontWeight.Normal,
@@ -740,37 +791,71 @@ internal fun PageHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted, maxLines = 1)
-        }
-        trailing?.let { icon ->
-            val shape = RoundedCornerShape(Radius.round)
-            val interaction = remember { MutableInteractionSource() }
-            val pressed by interaction.collectIsPressedAsState()
-            val tappable = onTrailingClick != null
-            Box(
-                Modifier
-                    .then(if (tappable) Modifier.pressScale(pressed) else Modifier)
-                    .size(46.dp)
-                    .clip(shape)
-                    .background(accent.copy(alpha = .09f))
-                    .then(
-                        if (onTrailingClick != null) {
-                            Modifier
-                                .clickable(
-                                    interactionSource = interaction,
-                                    indication = null,
-                                    role = Role.Button,
-                                ) { Haptics.soft(0.4f); onTrailingClick() }
-                                .semantics { trailingLabel?.let { contentDescription = it } }
-                        } else {
-                            Modifier
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = TextSoft, modifier = Modifier.size(20.dp))
+            if (subtitle.isNotBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
+                    color = TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
+        trailing?.let { icon ->
+            TopBarAction(
+                icon = icon,
+                label = trailingLabel,
+                well = accent.copy(alpha = .09f),
+                tint = TextSoft,
+                onClick = onTrailingClick,
+            )
+        }
+        onUrgent?.let {
+            TopBarAction(
+                icon = Icons.Outlined.WarningAmber,
+                label = stringResource(R.string.common_urgent_support),
+                well = Danger.copy(alpha = .09f),
+                tint = Danger,
+                onClick = it,
+            )
+        }
+    }
+}
+
+/** One 46dp circular well in [CereBroTopBar]. Untappable when [onClick] is null
+ * (PageHeader's decorative trailing icon), and then it carries no button role. */
+@Composable
+private fun TopBarAction(
+    icon: ImageVector,
+    label: String?,
+    well: Color,
+    tint: Color,
+    onClick: (() -> Unit)?,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        Modifier
+            .then(if (onClick != null) Modifier.pressScale(pressed) else Modifier)
+            .size(46.dp)
+            .clip(RoundedCornerShape(Radius.round))
+            .background(well)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            role = Role.Button,
+                        ) { Haptics.soft(0.4f); onClick() }
+                        .semantics { label?.let { contentDescription = it } }
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(21.dp))
     }
 }
 

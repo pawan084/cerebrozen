@@ -93,7 +93,26 @@ class NotificationLogTest {
         // one when routeFor resolved to something.
         assertNull(NotificationLog.routeFor("unknown-kind"))
         assertEquals("sleep", NotificationLog.routeFor("winddown"))
-        assertEquals("today", NotificationLog.routeFor("checkin"))
+        // Compared against Tab.Home.route, not the literal: this line used to read
+        // "today", which is not a destination the graph has ever registered, so the
+        // assertion pinned a crash rather than catching one. Tying it to the enum
+        // means renaming the tab route fails here first.
+        assertEquals(com.cerebrozen.app.ui.Tab.Home.route, NotificationLog.routeFor("checkin"))
+    }
+
+    @Test
+    fun `every route a nudge can carry is one the app accepts from outside`() {
+        // The inbox hands entry.route straight to navigate(), so anything this
+        // map emits has to be a real destination. EXTERNAL_ROUTES is the set the
+        // deeplink resolver already vets against — one list, checked twice,
+        // rather than a second one here that would drift away from it.
+        val kinds = listOf("checkin", "winddown", "sleep", "journal", "practice", "nudge", "")
+        kinds.mapNotNull { NotificationLog.routeFor(it) }.forEach { route ->
+            assertTrue(
+                "nudge route '$route' is not a destination the app accepts",
+                route in com.cerebrozen.app.ui.EXTERNAL_ROUTES,
+            )
+        }
     }
 
     @Test

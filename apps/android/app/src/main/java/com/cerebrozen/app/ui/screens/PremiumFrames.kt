@@ -82,10 +82,13 @@ internal fun PremiumSubPage(
     eyebrow: String,
     title: String,
     onBack: () -> Unit,
+    /** The crisis door. Optional only because a handful of screens ARE the
+     * crisis surface; everything else should pass it (design rule §1). */
+    onUrgent: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PremiumFrame(
-        header = { PremiumFrameHeader(eyebrow, title, onBack = onBack) },
+        header = { PremiumFrameHeader(eyebrow, title, onBack = onBack, onUrgent = onUrgent) },
         content = content,
     )
 }
@@ -96,10 +99,11 @@ internal fun PremiumPage(
     eyebrow: String,
     title: String,
     trailing: ImageVector? = null,
+    onUrgent: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PremiumFrame(
-        header = { PremiumFrameHeader(eyebrow, title, trailing = trailing) },
+        header = { PremiumFrameHeader(eyebrow, title, trailing = trailing, onUrgent = onUrgent) },
         content = content,
     )
 }
@@ -209,53 +213,22 @@ private fun PremiumFrame(
     }
 }
 
+/** Delegates to [CereBroTopBar] — this used to be its own 66dp row with the back
+ * arrow tinted from a raw hex and no button role on the tap target. */
 @Composable
 private fun PremiumFrameHeader(
     eyebrow: String,
     title: String,
     onBack: (() -> Unit)? = null,
     trailing: ImageVector? = null,
-) {
-    val backLabel = stringResource(R.string.common_back)
-    Row(
-        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onBack != null) {
-                Box(
-                    Modifier.size(46.dp).background(FieldFill, CircleShape)
-                        .clickable(onClickLabel = backLabel, onClick = onBack),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Outlined.ArrowBackIosNew,
-                        contentDescription = backLabel,
-                        tint = Color(0xFF6E376B), modifier = Modifier.size(19.dp),
-                    )
-                }
-        } else {
-            BrandMark(size = 36.dp, showGlow = true)
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = ReferenceSerif, lineHeight = 24.sp, fontWeight = FontWeight.Normal,
-                ),
-                color = TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted, maxLines = 1)
-        }
-        trailing?.let {
-            Box(Modifier.size(46.dp).background(FieldFill, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(it, contentDescription = null, tint = Color(0xFF6E376B), modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
+    onUrgent: (() -> Unit)? = null,
+) = CereBroTopBar(
+    title = title,
+    subtitle = eyebrow,
+    onBack = onBack,
+    onUrgent = onUrgent,
+    trailing = trailing,
+)
 
 @Composable
 private fun PremiumFrameAmbience(drift: Float) {

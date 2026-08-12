@@ -4,6 +4,12 @@
 
     <!-- ── Shared / common ─────────────────────────────────────────────── -->
     <string name="common_back">Back</string>
+    <!-- Screen-reader label for the crisis door in the top bar. One string, so the
+         door announces itself identically on every screen that carries it. -->
+    <string name="common_urgent_support">Urgent support</string>
+    <!-- Top-bar subtitles. The tab titles reuse tab_today / tab_explore. -->
+    <string name="topbar_today_subtitle">Your next helpful step</string>
+    <string name="topbar_explore_subtitle">Tools for different moments</string>
     <string name="common_dismiss">Dismiss</string>
     <string name="common_next">Next</string>
     <string name="common_cancel">Cancel</string>

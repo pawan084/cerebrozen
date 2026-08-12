@@ -290,42 +290,14 @@ internal fun SubPage(
     }
 }
 
+/** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
 private fun DawnSubPageTopBar(
     title: String,
     subtitle: String,
     onBack: () -> Unit,
     onUrgent: (() -> Unit)?,
-) {
-    Row(
-        Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(
-                title, maxLines = 1,
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader)), lineHeight = 24.sp),
-                color = TextPrimary,
-            )
-            Text(subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted)
-        }
-        if (onUrgent != null) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f)).clickable(onClick = onUrgent),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
+) = CereBroTopBar(title = title, subtitle = subtitle, onBack = onBack, onUrgent = onUrgent)
 
 /** Teammate-look gradient hero: a soft panel with a glassy pill eyebrow and
  * overlaid title/subtitle. Pass [artKind] to paint the W21 generative art for

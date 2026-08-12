@@ -125,7 +125,11 @@ object NotificationLog {
      * were two hand-maintained lists in the web client and drifted within a week.
      */
     fun routeFor(kind: String): String? = when (kind) {
-        "checkin" -> "today"
+        // "home", not "today": the Home TAB is registered as `home`
+        // (CereBroApp Tab.Home) and there has never been a `today` destination,
+        // so every check-in nudge logged a route that navigate() could only
+        // throw on. The screen is called Today; the route is not.
+        "checkin" -> "home"
         "winddown", "sleep" -> "sleep"
         "journal" -> "journal"
         "practice" -> "toolkit"

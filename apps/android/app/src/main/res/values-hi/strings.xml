@@ -28,6 +28,9 @@
 
     <!-- ── Shared / common ─────────────────────────────────────────────── -->
     <string name="common_back">वापस</string>
+    <string name="common_urgent_support">तुरंत सहायता</string>
+    <string name="topbar_today_subtitle">आपका अगला मददगार क़दम</string>
+    <string name="topbar_explore_subtitle">अलग-अलग पलों के लिए साधन</string>
     <string name="common_dismiss">हटाएँ</string>
     <string name="common_next">आगे</string>
     <string name="common_cancel">रद्द करें</string>

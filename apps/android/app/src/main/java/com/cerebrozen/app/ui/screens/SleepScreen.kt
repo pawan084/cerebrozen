@@ -1057,39 +1057,16 @@ private fun SleepPremiumHeader(
     }
 }
 
+/** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
 private fun SleepFixedTopBar(modifier: Modifier = Modifier, onBack: (() -> Unit)?, onUrgent: () -> Unit) {
-    Row(
-        modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onBack != null) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBackIos, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
-            }
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(
-                stringResource(R.string.sleep_title), maxLines = 1,
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                color = TextPrimary,
-            )
-            Text(
-                stringResource(R.string.sleep_premium_subtitle), maxLines = 1,
-                style = MaterialTheme.typography.bodySmall, color = TextMuted,
-            )
-        }
-        Box(
-            Modifier.size(46.dp).clip(CircleShape).background(com.cerebrozen.app.ui.theme.Danger.copy(alpha = .09f)).clickable(onClick = onUrgent),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = com.cerebrozen.app.ui.theme.Danger, modifier = Modifier.size(22.dp))
-        }
-    }
+    CereBroTopBar(
+        title = stringResource(R.string.sleep_title),
+        subtitle = stringResource(R.string.sleep_premium_subtitle),
+        modifier = modifier,
+        onBack = onBack,
+        onUrgent = onUrgent,
+    )
 }
 
 @Composable
