@@ -189,3 +189,64 @@ export function SignInLink() {
     </Link>
   );
 }
+
+/**
+ * Save state for the portal's forms.
+ *
+ * The rule the consent toggles established, applied here: a control may show a
+ * new value optimistically, but the moment the write fails it must go back and
+ * say so. A portal that claims a saved threshold it did not save is worse than
+ * one that cannot save at all — the administrator walks away believing a
+ * privacy control is in force.
+ */
+export type SaveState = { status: "idle" | "saving" | "saved"; error: string | null };
+
+export function useSave() {
+  const [state, setState] = useState<SaveState>({ status: "idle", error: null });
+
+  async function save<T>(run: () => Promise<T>, onDone?: (result: T) => void) {
+    setState({ status: "saving", error: null });
+    try {
+      const result = await run();
+      onDone?.(result);
+      setState({ status: "saved", error: null });
+      return result;
+    } catch (e) {
+      const message =
+        e instanceof NotAnOrgAdminError
+          ? "Your role can read reports but not change this."
+          : e instanceof Error
+            ? e.message
+            : "That didn't save.";
+      setState({ status: "idle", error: message });
+      return null;
+    }
+  }
+
+  return { ...state, save, reset: () => setState({ status: "idle", error: null }) };
+}
+
+/** Renders the outcome of a save. Silent while idle — no permanent banner. */
+export function SaveStatus({ state, savedLabel = "Saved." }: { state: SaveState; savedLabel?: string }) {
+  if (state.error) {
+    return (
+      <div className="notice danger" role="alert">
+        <span aria-hidden="true">!</span>
+        <div>
+          <b>Not saved.</b>
+          <br />
+          {state.error} Nothing was changed.
+        </div>
+      </div>
+    );
+  }
+  if (state.status === "saved") {
+    return (
+      <div className="notice" role="status">
+        <span aria-hidden="true">✓</span>
+        <div>{savedLabel}</div>
+      </div>
+    );
+  }
+  return null;
+}

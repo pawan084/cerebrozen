@@ -161,15 +161,31 @@ everything below is open.
       hand in psql, which is not an onboarding path and left nothing able to set up the state a
       test needs. Deliberately on `/admin`, not `/org`: an org admin cannot create another
       organisation or promote themselves into one, and a test asserts that
-- [ ] **32 portal screens still render `lib/mock.ts`** and every one of them now says so, in a
-      warning notice above the fold rather than a footnote. That banner is load-bearing: four
-      screens are live and the rest look identical, so an administrator who cannot tell which
-      is which would read invented figures as their own. Wire the rest as their endpoints
-      appear, and delete the banner per screen as it becomes true
-- [ ] **The portal's forms still do nothing** — invite, cohort builder, pathway and campaign
-      builders hold `defaultValue` and submit nowhere, even on the four screens whose *reads*
-      are live. Each needs the optimistic-then-reconciled treatment the consent toggles got:
-      never claim a save that did not land
+- [x] **The portal's four backed forms write for real** (2026-08-12): privacy centre and
+      settings (`PATCH /org`), invite (`POST /org/members`), cohort builder
+      (`POST /org/groups`). Eight screens are live now, not four. Saves follow the rule the
+      consent toggles set — a failed write says "Not saved… nothing was changed" and the
+      control returns to the stored value, and every screen re-renders from the RESPONSE
+      rather than from what was clicked. That last part matters most on the threshold, where
+      the server deliberately disagrees: asking for 5 stores 20, and an e2e test asserts the
+      portal then shows 20.
+      Two things from the prototype did not graduate. The cohort builder's live size estimate
+      multiplied a made-up base by an assumed activation rate as you typed — a number an
+      administrator reads as a headcount should come from counting people, so the real size
+      appears on the cohorts screen instead, suppressed when it is too small. And the CSV file
+      input is **gone rather than left inert**: a file picker that silently does nothing is
+      worse than an honest absence, so the card says the importer is not built and states the
+      rule it will have to keep
+- [ ] **26 portal screens still render `lib/mock.ts`** and every one says so in a warning
+      notice above the fold. That banner is load-bearing while the portal is part live: the
+      wired and unwired screens look identical, so an administrator who cannot tell them apart
+      would read invented figures as their own. Delete the banner per screen as it becomes
+      true. Campaigns and the pathway builder need an API before their forms can do anything
+- [ ] **No SSO, so the portal stays off a public host** — `deploy/Caddyfile` keeps
+      `portal.cerebrozen.in` commented out. Password auth alone is not enough for an
+      administration console, and the OIDC plumbing cannot be *verified* without a real
+      identity provider configured. Shipping unverifiable auth here would be the one mistake
+      this whole surface has been built to avoid
 - [ ] **Sponsorship does not yet grant premium anywhere in the product** —
       `organizations.is_sponsored()` computes entitlement correctly and nothing calls it. The
       subscription checks still read `user.subscription_tier` alone, so a sponsored member

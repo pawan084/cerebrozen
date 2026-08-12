@@ -1,36 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { ALWAYS_PRIVATE, DEFAULT_THRESHOLD, RETENTION_OPTIONS, THRESHOLD_OPTIONS } from "@/lib/mock";
+import Link from "next/link";
+import { ALWAYS_PRIVATE } from "@/lib/mock";
+import { LiveScreen, RequireSession, SaveStatus, useSave } from "@/components/data";
+import { getOrg, patchOrg, type Org } from "@/lib/api";
 import { Notice, Spacer } from "@/components/ui";
-import { SampleData } from "@/components/data";
+
+const THRESHOLD_CHOICES = [20, 30, 50];
+const RETENTION_CHOICES = [12, 24, 36];
 
 /**
- * PRI-01 — Privacy centre.
+ * PRI-01 — Privacy centre. LIVE (2026-08-12).
  *
- * The three controls the organisation actually gets: how small a group may be
- * before it stops reporting, whether unsafe dimension combinations are
- * suppressed, and whether line managers get dashboards at all. Manager
- * dashboards ship off and the page argues for keeping them off rather than
- * presenting the switch as neutral.
+ * The three controls an organisation actually gets, now reading and writing the
+ * real settings. The fourth control the prototype had — manager dashboards —
+ * is absent rather than disabled: there is no such column, and a switch would
+ * imply the capability exists behind it.
+ *
+ * The threshold is the one setting where the server disagrees with the user on
+ * purpose. Asking for anything below 20 is CLAMPED, not rejected, and the value
+ * that comes back is the value that was stored — so this screen re-renders from
+ * the response rather than from what was clicked.
  */
-export default function PrivacyPage() {
-  const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD);
-  const [suppression, setSuppression] = useState(true);
-  const [managerDashboards, setManagerDashboards] = useState(false);
-  const [retention, setRetention] = useState(RETENTION_OPTIONS[0]);
+function PrivacyControls({ initial }: { initial: Org }) {
+  const [org, setOrg] = useState(initial);
+  const { save, ...state } = useSave();
+
+  const update = (patch: Parameters<typeof patchOrg>[0]) =>
+    save(() => patchOrg(patch), (fresh) => setOrg(fresh));
 
   return (
     <>
-      <div className="eyebrow">Data governance</div>
-      <h1>Privacy guardrails by design.</h1>
-      <p className="lede">
-        Define what the organisation can access, what is prohibited, and when
-        aggregate results are suppressed.
-      </p>
-
-      <SampleData />
-
       <div className="grid cols-2">
         <div className="card success">
           <h2>Always private</h2>
@@ -46,122 +47,104 @@ export default function PrivacyPage() {
             ))}
           </div>
           <p className="tiny" style={{ marginTop: 12 }}>
-            These four rows are not settings. There is no configuration on this
-            page, or any other, that turns them off.
+            These four rows are not settings. There is no configuration on this page, or any
+            other, that turns them off — and no column in the database they could be stored in.
           </p>
         </div>
 
         <div className="card">
           <h2>Reporting controls</h2>
-          <div className="list" style={{ marginTop: 10 }}>
-            <div className="list-item">
-              <div className="grow">
-                <b>Minimum cohort threshold</b>
-                <div className="tiny">
-                  Suppress below the selected number of active members
-                </div>
-              </div>
-              <label>
-                <span className="sr-only">Minimum cohort threshold</span>
-                <select
-                  className="select"
-                  style={{ width: 110 }}
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                >
-                  {THRESHOLD_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-            </div>
-
-            <div className="list-item">
-              <div className="grow">
-                <b>Small-cell suppression</b>
-                <div className="tiny">Hide unsafe dimensions and combinations</div>
-              </div>
-              <button
-                type="button"
-                className={suppression ? "switch on" : "switch"}
-                aria-pressed={suppression}
-                aria-label="Small-cell suppression"
-                onClick={() => setSuppression(!suppression)}
-              />
-            </div>
-
-            <div className="list-item">
-              <div className="grow">
-                <b>Manager dashboards</b>
-                <div className="tiny">Keep disabled; central benefits admins only</div>
-              </div>
-              <button
-                type="button"
-                className={managerDashboards ? "switch on" : "switch"}
-                aria-pressed={managerDashboards}
-                aria-label="Manager dashboards"
-                onClick={() => setManagerDashboards(!managerDashboards)}
-              />
-            </div>
-
-            <div className="list-item">
-              <div className="grow">
-                <b>Aggregate retention</b>
-                <div className="tiny">How long completed reports remain</div>
-              </div>
-              <label>
-                <span className="sr-only">Aggregate retention</span>
-                <select
-                  className="select"
-                  style={{ width: 140 }}
-                  value={retention}
-                  onChange={(e) => setRetention(e.target.value)}
-                >
-                  {RETENTION_OPTIONS.map((r) => <option key={r}>{r}</option>)}
-                </select>
-              </label>
-            </div>
-          </div>
 
           <div style={{ marginTop: 14 }}>
-            {!suppression ? (
-              <Notice tone="danger" icon="!">
-                With small-cell suppression off, a filtered report can narrow to a
-                handful of people and effectively name them. Turn it back on.
-              </Notice>
-            ) : null}
-            {managerDashboards ? (
-              <div style={{ marginTop: 10 }}>
-                <Notice tone="danger" icon="!">
-                  Manager dashboards put participation figures in front of the
-                  person who writes the performance review. CereBro recommends
-                  leaving this off; reporting stays with central benefits
-                  administrators.
-                </Notice>
-              </div>
-            ) : null}
+            <span className="label">Minimum cohort threshold</span>
+            <p className="tiny">
+              No participation figure is reported for a group smaller than this. 20 is the
+              floor — a smaller number is raised to it rather than refused.
+            </p>
+            <div className="toolbar">
+              {THRESHOLD_CHOICES.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={org.reporting_threshold === n ? "filter active" : "filter"}
+                  aria-pressed={org.reporting_threshold === n}
+                  disabled={state.status === "saving"}
+                  onClick={() => update({ reporting_threshold: n })}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <button className="btn" type="button" disabled>Save guardrails</button>
+          <Spacer />
+
+          <div className="list-item">
+            <div className="grow">
+              <b>Small-cell suppression</b>
+              <div className="tiny">Hide dimension combinations that would isolate individuals.</div>
+            </div>
+            <button
+              type="button"
+              className={org.small_cell_suppression ? "filter active" : "filter"}
+              aria-pressed={org.small_cell_suppression}
+              disabled={state.status === "saving"}
+              onClick={() => update({ small_cell_suppression: !org.small_cell_suppression })}
+            >
+              {org.small_cell_suppression ? "On" : "Off"}
+            </button>
           </div>
-          <p className="help">
-            Saving is disabled — this is a design review surface with no backend.
-          </p>
+
+          <Spacer />
+
+          <div>
+            <span className="label">How long completed reports remain</span>
+            <div className="toolbar">
+              {RETENTION_CHOICES.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={org.retention_months === m ? "filter active" : "filter"}
+                  aria-pressed={org.retention_months === m}
+                  disabled={state.status === "saving"}
+                  onClick={() => update({ retention_months: m })}
+                >
+                  {m} months
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       <Spacer />
+      <SaveStatus state={state} savedLabel="Reporting controls updated." />
 
-      {/* The summary carries the tone of the configuration it describes — a
-          green panel over a weakened setting would be its own small lie. */}
-      <div className={suppression && !managerDashboards ? "notice" : "notice warn"}>
-        <span aria-hidden="true">⛨</span>
-        <div>
-          The current settings suppress any cohort below <b>{threshold}</b> active
-          members, {suppression ? "hide" : "do not hide"} small-cell combinations,
-          {managerDashboards ? " expose manager dashboards" : " keep manager dashboards off"},
-          and keep aggregate reports for {retention}.
-        </div>
+      <Notice tone="info" icon="⛨">
+        Suppression is applied on the server before any number is sent, so tightening the
+        threshold takes effect on the next read — there is no cached figure on this device that
+        could outlive the change.
+      </Notice>
+
+      <div className="toolbar">
+        <Link className="btn secondary" href="/privacy/data-map">Data map &amp; retention</Link>
       </div>
     </>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <RequireSession>
+      <div className="eyebrow">Data governance</div>
+      <h1>Privacy guardrails by design.</h1>
+      <p className="lede">
+        Define what the organisation can access, what is prohibited, and when aggregate results
+        are suppressed.
+      </p>
+      <LiveScreen load={getOrg} what="your privacy settings">
+        {(org) => <PrivacyControls initial={org} />}
+      </LiveScreen>
+    </RequireSession>
   );
 }

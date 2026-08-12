@@ -230,3 +230,40 @@ export const getGroups = () => api<Group[]>("/org/groups");
 export const getGroupTotals = () => api<GroupTotals[]>("/org/groups/totals");
 export const getMembers = () => api<Membership[]>("/org/members");
 export const getProgrammes = () => api<Sponsorship[]>("/org/programmes");
+
+/* --------------------------------------------------------------- writes */
+
+export type OrgSettingsPatch = Partial<{
+  legal_entity: string;
+  primary_contact_email: string;
+  privacy_contact_email: string;
+  /** Values below the floor are raised to it server-side, not rejected. */
+  reporting_threshold: number;
+  small_cell_suppression: boolean;
+  retention_months: number;
+}>;
+
+export const patchOrg = (body: OrgSettingsPatch) =>
+  api<Org>("/org", { method: "PATCH", body: JSON.stringify(body) });
+
+export const createGroup = (body: { name: string; rule?: string; source?: string; region?: string }) =>
+  api<Group>("/org/groups", { method: "POST", body: JSON.stringify(body) });
+
+/** The API forbids unknown fields, so this object is the whole contract. */
+export const addMember = (body: {
+  email: string;
+  group_id?: string | null;
+  external_ref?: string;
+  access_start?: string | null;
+  access_end?: string | null;
+}) => api<Membership>("/org/members", { method: "POST", body: JSON.stringify(body) });
+
+export const endMembership = (id: string) =>
+  api<Membership>(`/org/members/${id}`, { method: "DELETE" });
+
+export const sponsorProgramme = (body: {
+  programme_slug: string;
+  group_id?: string | null;
+  starts_on?: string | null;
+  ends_on?: string | null;
+}) => api<Sponsorship>("/org/programmes", { method: "POST", body: JSON.stringify(body) });

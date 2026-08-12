@@ -1,161 +1,115 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import {
-  ACTIVATION_RATE,
-  COHORT_BASE_ELIGIBLE,
-  COHORT_REGIONS,
-  COHORT_RULES,
-  COHORT_SOURCES,
-  DEFAULT_THRESHOLD,
-  THRESHOLD_OPTIONS,
-} from "@/lib/mock";
-import { Badge, Notice } from "@/components/ui";
-import { SampleData } from "@/components/data";
+import Link from "next/link";
+import { RequireSession, SaveStatus, useSave } from "@/components/data";
+import { createGroup } from "@/lib/api";
+import { Notice, PageIntro, Spacer } from "@/components/ui";
+
+const SOURCES = [
+  { value: "manual", label: "Added by hand" },
+  { value: "csv", label: "CSV import" },
+  { value: "hris", label: "HRIS sync" },
+  { value: "api", label: "Eligibility API" },
+];
 
 /**
- * COH-02 — Cohort builder.
+ * COH-02 — Cohort builder. LIVE (2026-08-12).
  *
- * The threshold control and the privacy preview are one thing, not two: every
- * change to the rules or the minimum recomputes whether this cohort would
- * report at all. An administrator should discover a group is too small to
- * report *here*, while they can still widen it — not after launch when the
- * dashboard mysteriously shows nothing.
- *
- * The arithmetic is deliberately simple and local. It models the shape of the
- * rule, not a real population.
+ * The prototype previewed an estimated cohort size as you typed. That did not
+ * graduate: the estimate came from a made-up base and an assumed activation
+ * rate, and a number an administrator can read as a headcount should come from
+ * counting people, not from multiplying two constants. The real size appears on
+ * the cohorts screen once the group exists — suppressed if it is too small.
  */
-export default function CohortBuilderPage() {
-  const [name, setName] = useState("New programme cohort");
-  const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD);
-  const [rules, setRules] = useState<boolean[]>(COHORT_RULES.map((r) => r.defaultOn));
+function CohortForm() {
+  const [name, setName] = useState("");
+  const [rule, setRule] = useState("");
+  const [source, setSource] = useState("manual");
+  const [region, setRegion] = useState("IN");
+  const [created, setCreated] = useState<string | null>(null);
+  const { save, ...state } = useSave();
 
-  const eligible = Math.max(
-    0,
-    COHORT_BASE_ELIGIBLE + rules.reduce((sum, on, i) => (on ? sum + COHORT_RULES[i].adds : sum), 0),
-  );
-  const reporters = Math.round(eligible * ACTIVATION_RATE);
-  const safe = reporters >= threshold;
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const group = await save(() =>
+      createGroup({ name: name.trim(), rule: rule.trim(), source, region }),
+    );
+    if (group) {
+      setCreated(group.name);
+      setName("");
+      setRule("");
+    }
+  }
 
   return (
     <>
-      <div className="eyebrow">Privacy-safe group</div>
-      <h1>Create or edit a cohort.</h1>
-      <p className="lede">
-        The builder warns when a group or filter combination could increase
-        re-identification risk.
-      </p>
-
-      <SampleData />
-
-      <div className="grid cols-2">
-        <div className="card">
-          <div className="form-grid">
-            <label>
-              <span className="label">Cohort name</span>
-              <input
-                className="field"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
-            <label>
-              <span className="label">Eligibility source</span>
-              <select className="select" defaultValue={COHORT_SOURCES[0]}>
-                {COHORT_SOURCES.map((s) => <option key={s}>{s}</option>)}
-              </select>
-            </label>
-            <label>
-              <span className="label">Region</span>
-              <select className="select" defaultValue={COHORT_REGIONS[0]}>
-                {COHORT_REGIONS.map((r) => <option key={r}>{r}</option>)}
-              </select>
-            </label>
-            <label>
-              <span className="label">Minimum reporting threshold</span>
-              <select
-                className="select"
-                value={threshold}
-                onChange={(e) => setThreshold(Number(e.target.value))}
-              >
-                {THRESHOLD_OPTIONS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <span className="help">
-                Below this many active members the cohort stops reporting
-                separately. {DEFAULT_THRESHOLD} is the default.
-              </span>
-            </label>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <span className="label">Eligibility rules</span>
-            {COHORT_RULES.map((rule, i) => (
-              <label className="check" key={rule.label}>
-                <input
-                  type="checkbox"
-                  checked={rules[i]}
-                  onChange={() =>
-                    setRules(rules.map((v, j) => (i === j ? !v : v)))
-                  }
-                />
-                {rule.label}
-              </label>
-            ))}
-          </div>
-
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <button className="btn" type="button" disabled>Save cohort</button>
-            <Link className="btn secondary" href="/cohorts">Cancel</Link>
-          </div>
-          <p className="help">
-            Saving is disabled — this is a design review surface with no backend.
-          </p>
+      <form className="card" onSubmit={submit}>
+        <h2>Create a cohort</h2>
+        <div className="form-grid" style={{ marginTop: 16 }}>
+          <label>
+            <span className="label">Cohort name</span>
+            <input
+              className="field"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="All India employees"
+            />
+          </label>
+          <label>
+            <span className="label">Eligibility rule</span>
+            <input
+              className="field"
+              value={rule}
+              onChange={(e) => setRule(e.target.value)}
+              placeholder="Active employees in India"
+            />
+          </label>
+          <label>
+            <span className="label">Source</span>
+            <select className="select" value={source} onChange={(e) => setSource(e.target.value)}>
+              {SOURCES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="label">Region</span>
+            <input className="field" value={region} onChange={(e) => setRegion(e.target.value)} />
+          </label>
         </div>
-
-        {/* Live preview: recomputes on every rule and threshold change. */}
-        <div className={safe ? "card success" : "card warning"}>
-          <h2>Privacy preview</h2>
-          <div className="list" style={{ marginTop: 10 }}>
-            <div className="list-item">
-              <div className="grow">
-                <b>Estimated eligible members</b>
-                <div className="tiny">Based on current Workday attributes</div>
-              </div>
-              <b aria-live="polite">{eligible}</b>
-            </div>
-            <div className="list-item">
-              <div className="grow">
-                <b>Estimated active reporters</b>
-                <div className="tiny">Using the current activation rate</div>
-              </div>
-              <b aria-live="polite">{reporters}</b>
-            </div>
-            <div className="list-item">
-              <div className="grow">
-                <b>Reporting status</b>
-                <div className="tiny">
-                  {safe
-                    ? `${reporters} active reporters is above the minimum of ${threshold}.`
-                    : `${reporters} active reporters is below the minimum of ${threshold}. This cohort will report only as part of a wider population.`}
-                </div>
-              </div>
-              <Badge tone={safe ? "good" : "warn"}>
-                {safe ? "Safe" : "Suppressed"}
-              </Badge>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <Notice icon="⛨" tone={safe ? "" : "warn"}>
-              Department + manager + location combinations are blocked when they
-              create a micro-cohort.
-            </Notice>
-          </div>
+        <div className="toolbar">
+          <button type="submit" className="btn" disabled={state.status === "saving"}>
+            {state.status === "saving" ? "Creating…" : "Create cohort"}
+          </button>
+          <Link className="btn secondary" href="/cohorts">Back to cohorts</Link>
         </div>
-      </div>
+      </form>
+
+      <Spacer />
+      <SaveStatus state={state} savedLabel={created ? `“${created}” created.` : "Cohort created."} />
+
+      <Notice tone="info" icon="⛨">
+        A cohort is an eligibility rule, not a segment of behaviour. It cannot be defined by
+        what members did — there is no such field to define it with — and its participation
+        figure is withheld entirely while it stays below your reporting threshold.
+      </Notice>
     </>
+  );
+}
+
+export default function CohortBuilderPage() {
+  return (
+    <RequireSession>
+      <PageIntro
+        eyebrow="Cohort builder"
+        title="Create a reporting-safe eligibility group."
+        lede="Name the group and the rule that decides who is in it. Size is counted later, from the seats you add — it is not estimated here."
+      />
+      <CohortForm />
+    </RequireSession>
   );
 }

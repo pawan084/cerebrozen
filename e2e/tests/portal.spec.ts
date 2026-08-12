@@ -18,13 +18,21 @@ const PORTAL = process.env.PORTAL_URL || "http://portal:3003";
 // they redirect to sign-in. They are listed separately rather than left in the
 // walk, because a redirect made the walk pass on the SIGN-IN page's heading —
 // green for a route that never rendered.
-const GUARDED = ["/", "/members", "/cohorts", "/programmes"];
+const GUARDED = [
+  "/",
+  "/members",
+  "/cohorts",
+  "/programmes",
+  // Wired to /org as forms on 2026-08-12, so these guard too.
+  "/privacy",
+  "/settings",
+  "/members/invite",
+  "/cohorts/new",
+];
 
 const ROUTES = [
   "/setup",
-  "/members/invite",
   "/members/group",
-  "/cohorts/new",
   "/programmes/detail",
   "/programmes/pathway",
   "/campaigns",
@@ -35,7 +43,6 @@ const ROUTES = [
   "/engagement",
   "/outcomes",
   "/reports",
-  "/privacy",
   "/privacy/data-map",
   "/safety",
   "/safety/runbook",
@@ -48,7 +55,6 @@ const ROUTES = [
   "/audit",
   "/billing",
   "/billing/contract",
-  "/settings",
   "/support",
   "/notifications",
   "/signin",
