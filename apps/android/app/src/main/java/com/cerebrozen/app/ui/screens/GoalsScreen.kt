@@ -155,7 +155,9 @@ fun GoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             return@SubPage
         }
         if (loading) {
-            Text(stringResource(R.string.patterns_loading),
+            // Goals are not patterns: patterns_loading says "Looking at your
+            // data…", which describes an analysis this screen does not run.
+            Text(stringResource(R.string.goals_loading),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             return@SubPage
         }

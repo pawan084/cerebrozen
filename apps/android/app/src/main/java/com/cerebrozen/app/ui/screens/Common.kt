@@ -656,7 +656,7 @@ internal fun Page(
     // arrives as an inset — so this is the half that keeps a composer reachable,
     // while the manifest's adjustResize is the half that stops the OS panning
     // content up behind the status bar. Neither works without the other.
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1)).imePadding()) {
+    Column(Modifier.fillMaxSize().background(Night).imePadding()) {
     PageHeader(
         eyebrow = eyebrow,
         title = title,
@@ -807,7 +807,7 @@ internal fun FocusCard(
             .background(Gradients.glass)
             .then(
                 if (pastel) Modifier.background(
-                    Brush.linearGradient(listOf(Color(0xFFFFE1D4), Color(0xFFF3DCE8), Color(0xFFE0C9EC))),
+                    Brush.linearGradient(listOf(Color(0xFFFFE1D4), AccentSoft, Color(0xFFE0C9EC))),
                 ) else Modifier,
             )
             .background(

@@ -156,6 +156,8 @@ import com.cerebrozen.app.ui.theme.PickCardStroke
 import com.cerebrozen.app.ui.theme.DotUnselectedFill
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.Ok
 
 internal enum class OStep {
     Welcome, Language, Intro, Disclosure, State, Reset, Reflection, Consent, Notify, Guest, SignUp, Ready, Under18
@@ -712,7 +714,7 @@ fun Onboarding() {
             ReferenceCard(borderColor = Periwinkle.copy(alpha = .24f), fill = CardFill) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                     Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE5EDE3)), contentAlignment = Alignment.Center) {
-                        Text("◇", color = Color(0xFF49634F), style = MaterialTheme.typography.titleLarge)
+                        Text("◇", color = Ok, style = MaterialTheme.typography.titleLarge)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.ob_guest_private), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
@@ -1304,7 +1306,7 @@ private fun OnboardingFeatureCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF3ECF3)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(FieldFill), contentAlignment = Alignment.Center) {
             Text(glyph, color = Periwinkle, style = MaterialTheme.typography.titleLarge)
         }
         Column(Modifier.weight(1f)) {

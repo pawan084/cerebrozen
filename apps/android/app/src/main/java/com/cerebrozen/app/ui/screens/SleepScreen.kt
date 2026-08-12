@@ -132,6 +132,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.cerebrozen.app.ui.theme.FieldFill
 
 /** Pure h/m split; the localized "7h 30m" copy resolves via [minutesLabel]. */
 internal fun hoursMinutes(total: Int): Pair<Int, Int> = total / 60 to total % 60
@@ -1020,13 +1021,13 @@ private fun SleepPremiumHeader(
             Text(
                 stringResource(R.string.sleep_title),
                 style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader)), fontWeight = FontWeight.Normal),
-                color = Color(0xFF292323),
+                color = TextPrimary,
             )
             // Once there is a week of data the subtitle carries the fact —
             // the cheapest place to prove the product works.
             Text(
                 liveLine ?: stringResource(R.string.sleep_premium_subtitle),
-                style = MaterialTheme.typography.bodySmall, color = Color(0xFF6F6666),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted,
             )
             // The credential that both softens and strengthens the claim above.
             Text(
@@ -1065,7 +1066,7 @@ private fun SleepFixedTopBar(modifier: Modifier = Modifier, onBack: (() -> Unit)
     ) {
         if (onBack != null) {
             Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF3EDF7)).clickable(onClick = onBack),
+                Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBackIos, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
@@ -1075,11 +1076,11 @@ private fun SleepFixedTopBar(modifier: Modifier = Modifier, onBack: (() -> Unit)
             Text(
                 stringResource(R.string.sleep_title), maxLines = 1,
                 style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                color = Color(0xFF292323),
+                color = TextPrimary,
             )
             Text(
                 stringResource(R.string.sleep_premium_subtitle), maxLines = 1,
-                style = MaterialTheme.typography.bodySmall, color = Color(0xFF6F6666),
+                style = MaterialTheme.typography.bodySmall, color = TextMuted,
             )
         }
         Box(

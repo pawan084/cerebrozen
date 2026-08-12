@@ -192,6 +192,7 @@ import com.cerebrozen.app.ui.theme.Warm
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import org.json.JSONArray
+import com.cerebrozen.app.ui.theme.FieldFill
 
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
@@ -213,7 +214,7 @@ internal fun SubPage(
         if (reduceMotion) rise.snapTo(0f) else rise.animateTo(0f, tween(440, easing = FastOutSlowInEasing))
     }
     if (softDawn) {
-        Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+        Column(Modifier.fillMaxSize().background(Night)) {
             DawnSubPageTopBar(title, eyebrow, onBack, onUrgent)
             Column(
                 Modifier.fillMaxSize().imePadding()
@@ -230,7 +231,7 @@ internal fun SubPage(
     // 22dp to 4dp so every pushed screen's header stays where it was.
     Column(
         Modifier.fillMaxSize()
-            .background(if (softDawn) Color(0xFFFBF7F1) else Color.Transparent)
+            .background(if (softDawn) Night else Color.Transparent)
             .then(if (softDawn) Modifier else Modifier.statusBarsPadding())
             .imePadding()
             .verticalScroll(scrollState ?: rememberScrollState())
@@ -279,7 +280,7 @@ internal fun SubPage(
                         fontSize = if (softDawn) 26.sp else 34.sp,
                         lineHeight = if (softDawn) 29.sp else 36.sp,
                     ),
-                    color = if (softDawn) Color(0xFF292323) else TextBright,
+                    color = if (softDawn) TextPrimary else TextBright,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -302,7 +303,7 @@ private fun DawnSubPageTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF3EDF7)).clickable(onClick = onBack),
+            Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = Color(0xFF6E376B), modifier = Modifier.size(20.dp))
@@ -311,9 +312,9 @@ private fun DawnSubPageTopBar(
             Text(
                 title, maxLines = 1,
                 style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader)), lineHeight = 24.sp),
-                color = Color(0xFF292323),
+                color = TextPrimary,
             )
-            Text(subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666))
+            Text(subtitle, maxLines = 1, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted)
         }
         if (onUrgent != null) {
             Box(

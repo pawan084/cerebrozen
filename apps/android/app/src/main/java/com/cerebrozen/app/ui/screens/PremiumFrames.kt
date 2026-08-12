@@ -67,6 +67,7 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.VeilWell
+import com.cerebrozen.app.ui.theme.FieldFill
 
 private val PremiumBackground: List<Color> get() = listOf(
     Night, Night, Night,
@@ -196,7 +197,7 @@ private fun PremiumFrame(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
+    Column(Modifier.fillMaxSize().background(Night)) {
         header()
         Column(
             Modifier.fillMaxWidth().weight(1f).widthIn(max = 840.dp)
@@ -223,7 +224,7 @@ private fun PremiumFrameHeader(
     ) {
         if (onBack != null) {
                 Box(
-                    Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape)
+                    Modifier.size(46.dp).background(FieldFill, CircleShape)
                         .clickable(onClickLabel = backLabel, onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -242,14 +243,14 @@ private fun PremiumFrameHeader(
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = ReferenceSerif, lineHeight = 24.sp, fontWeight = FontWeight.Normal,
                 ),
-                color = Color(0xFF292323),
+                color = TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = Color(0xFF6F6666), maxLines = 1)
+            Text(eyebrow, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted, maxLines = 1)
         }
         trailing?.let {
-            Box(Modifier.size(46.dp).background(Color(0xFFF3EDF7), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(46.dp).background(FieldFill, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(it, contentDescription = null, tint = Color(0xFF6E376B), modifier = Modifier.size(22.dp))
             }
         }

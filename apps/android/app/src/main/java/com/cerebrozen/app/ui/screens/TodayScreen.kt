@@ -116,6 +116,7 @@ import java.time.LocalTime
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.cerebrozen.app.ui.theme.FieldFill
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
@@ -728,8 +729,8 @@ private fun ContentRail(
 private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false, onPick: () -> Unit) {
     val tint = mood.tint()
     val shape = RoundedCornerShape(18.dp)
-    val selectedFill = Color(0xFF61285F)
-    val idleFill = Color(0xFFF3ECF3)
+    val selectedFill = Periwinkle
+    val idleFill = FieldFill
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Column(
@@ -2015,7 +2016,7 @@ fun GroundingIntroScreen(
                         label, style = MaterialTheme.typography.labelMedium,
                         color = if (i == 0) Color.White else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (i == 0) Color(0xFF67285F) else Periwinkle.copy(alpha = .06f))
+                            .background(if (i == 0) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .padding(horizontal = 15.dp, vertical = 13.dp),
                     )
                 }
@@ -2126,7 +2127,7 @@ fun CheckInDetailScreen(
                         val active = selected == mood.name
                         Column(
                             Modifier.weight(1f).height(94.dp).clip(RoundedCornerShape(20.dp))
-                                .background(if (active) Color(0xFF61285F) else Color(0xFFF3ECF3))
+                                .background(if (active) Periwinkle else FieldFill)
                                 .clickable { selected = mood.name }
                                 .padding(15.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
@@ -2157,7 +2158,7 @@ fun CheckInDetailScreen(
                         value, style = MaterialTheme.typography.labelMedium,
                         color = if (active) Color.White else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else Periwinkle.copy(alpha = .06f))
+                            .background(if (active) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .clickable { intensity = value }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2266,7 +2267,7 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable {
                                 tab = label
                                 when (label) {
@@ -2307,7 +2308,7 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         val metric = weekly.getJSONObject(index)
                         Column(
                             Modifier.weight(1f).height(66.dp).clip(RoundedCornerShape(17.dp))
-                                .background(Color(0xFFF3ECF3)),
+                                .background(FieldFill),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
@@ -2383,7 +2384,7 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                         label, style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2402,9 +2403,9 @@ fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUr
                         val y = size.height * (1f - value)
                         if (index == 0) p.moveTo(x, y) else p.lineTo(x, y)
                     }
-                    drawPath(p, Color(0xFF67285F), style = Stroke(width = 5f))
+                    drawPath(p, Periwinkle, style = Stroke(width = 5f))
                     values.forEachIndexed { index, value ->
-                        drawCircle(Color(0xFF67285F), 5f, androidx.compose.ui.geometry.Offset(size.width * index / (values.size - 1), size.height * (1f - value)))
+                        drawCircle(Periwinkle, 5f, androidx.compose.ui.geometry.Offset(size.width * index / (values.size - 1), size.height * (1f - value)))
                     }
                 }
                 Text(
@@ -2472,7 +2473,7 @@ fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 else -> patterns!!.forEachIndexed { index, pattern ->
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
-                            .background(if (index % 2 == 0) CardFill else Color(0xFFF3ECF3)).padding(18.dp),
+                            .background(if (index % 2 == 0) CardFill else FieldFill).padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(pattern.statement, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
@@ -2538,7 +2539,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         label, style = MaterialTheme.typography.titleSmall,
                         color = if (active) Color.White else TextMuted,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Color(0xFF67285F) else CardFill)
+                            .background(if (active) Periwinkle else CardFill)
                             .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
                     )
                 }
@@ -2558,7 +2559,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         (quality?.let { String.format(Locale.getDefault(), "%.1f/5", it) } ?: "—") to "rest quality",
                     ).forEach { (value, label) ->
                         Column(
-                            Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF3ECF3)),
+                            Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(FieldFill),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                         ) {
                             Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
@@ -2581,7 +2582,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 }
             }
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color(0xFFF3ECF3)).padding(18.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(FieldFill).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Text("WHAT CEREBRO NOTICED", style = MaterialTheme.typography.labelSmall, color = Warm)
@@ -2737,7 +2738,7 @@ fun PatternDetailScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             )
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFF3ECF3)).padding(horizontal = 18.dp, vertical = 15.dp),
+                    .background(FieldFill).padding(horizontal = 18.dp, vertical = 15.dp),
             ) {
                 listOf(
                     "Examples" to "4 evenings",
