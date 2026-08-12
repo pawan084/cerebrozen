@@ -305,11 +305,53 @@ everything below is open.
       same absolute and was corrected with it
       *Clean on this pass*: Human support (names its coach directory as roadmap rather than
       implying it exists), delete account, crisis region, gratitude, CBT reframe
-- [ ] **The Android screen review stopped at 51 of ~64 screens** (2026-08-12). Every bug
-      below came out of the first 51, at a fairly steady rate, so the remaining ~13 should be
-      assumed to hold more rather than to be clean. Not yet walked: `cbti`, `mbct`, `imagery`,
-      `guidedimagery`, `ritual`, `breathing-intro`, `onegoodthing`, `intention`, `insightreel`,
-      `talk/live`, `patternglow`, `mindfulgame/{gameId}`. Three method notes for whoever resumes, all learned
+- [x] **Screen review wave: games, programmes and the practice intros** (2026-08-12,
+      51 → 62 of ~64). Walked: the 12 mindful games + a played-through round, pattern glow,
+      still point, zen sand, imagery, ritual builder, insight reel, CBT-I and MBCT overviews,
+      breathing prep. **Most of this wave was clean** — and two screens are quietly the best
+      in the app: the imagery intro warns that going looking for a calm place can turn up the
+      opposite and offers 5-4-3-2-1 instead, and the ritual builder says "CereBro won't nag
+      you about this. The cue is the reminder." Both CBT-I and MBCT overviews carry the
+      clinician disclaimer. Rule Switch ends on "0 of 6" without a hint of failure framing.
+      One defect: **the breathing-prep screen used a raw Material `Switch`** with its own
+      hardcoded track and thumb colours — outside the design system *and* outside the
+      accessibility fix from the previous wave, so a screen reader met "Soft chime" and
+      "Haptics" as nameless toggles. It also rendered four English literals past the
+      `breathprep_*` strings that already existed in strings.xml **and in Hindi**. Now
+      `AppSwitch` + `stringResource`, verified announcing on device.
+      *This one slipped past my own test*: `SwitchLabelTest` only looked at `AppSwitch` call
+      sites, so the one screen that avoided the component avoided the check. It now also
+      fails on a raw `Switch(` anywhere outside `Common.kt`, and the detection was verified
+      against the original defective line rather than assumed
+- [ ] **Two screens are registered but unreachable, and two more are aliases** (2026-08-12,
+      found by checking all 58 static routes for a navigation reference rather than by eye).
+      `guidedimagery` has **zero** references anywhere outside its own `composable(...)` —
+      four journeys and a TTS engine no user can open. `talk/live` and `talk/chat` both
+      render `TalkScreen(onOpen = open)`, the exact same call as the Talk tab, and nothing
+      navigates to either: three route names, one screen. They also inflate the route list
+      and the bottom-bar/accent maps, which is part of why "~64 screens" overstates the real
+      surface. Decide per route: give `guidedimagery` a door or delete it; drop the two talk
+      aliases. `intention` and `onegoodthing` are reachable *only* if the model emits an
+      `intention_set` / `one_good_thing` activity widget — deliberate, but worth knowing they
+      have no static entry point
+- [ ] **Mindful game "practice" tags are keyed by the faculty names they deliberately
+      avoid** — the values are correct activity descriptions ("Hold a sequence in mind"), but
+      the resource keys are `mg_working_memory`, `mg_selective_attention`,
+      `mg_inhibitory_control`. The KDoc on that field records that this exact claim class
+      came back "through a third door" once already. Low risk today because
+      `check-claims.mjs` bans the vocabulary in *values*, but a key that names a faculty
+      invites someone to "fix" the value to match it. Rename the keys
+- [ ] **Judgment call for the owner: "0 of 6 mindful responses"** on a game's completion
+      card. The surrounding copy does the forgiveness work ("Beautifully done", "Progress
+      comes from returning, not perfection"), but naming correct answers *mindful* responses
+      implies the other six were unmindful. Presence framing would count rounds shown up for,
+      not answers matched
+- [ ] **The Android screen review stopped at 62 of ~64 screens** (2026-08-12). Every bug
+      below came out of the 62 walked. Still unseen, and all four for structural reasons
+      rather than time: `guidedimagery` and `talk/live` have no door (see the orphan entry
+      above — reaching them means adding one or deleting them), and `intention` /
+      `onegoodthing` only open when the model emits their activity widget, so they need a
+      seeded chat rather than a tap. Three method notes for whoever resumes, all learned
       the hard way — a frozen emulator framebuffer yields *plausible* screenshots of the last
       good frame (hash two captures ~10s apart to catch it), and distinct file hashes do not
       mean distinct screens: seven "successful" deeplink captures were all Today, because the

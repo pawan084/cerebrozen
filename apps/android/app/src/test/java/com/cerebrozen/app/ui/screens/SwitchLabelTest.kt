@@ -76,6 +76,32 @@ class SwitchLabelTest {
     }
 
     @Test
+    fun `no screen reaches past AppSwitch to a raw Material Switch`() {
+        // The blind spot this test originally had. `BreathingSetting` in the
+        // breathing-prep screen used a raw Material `Switch` with its own
+        // hardcoded track and thumb colours, so it was outside the design system
+        // AND outside the label fix — a screen reader met it as a nameless
+        // "switch, on" — while every assertion above passed, because they only
+        // ever looked at AppSwitch call sites. Common.kt is the one legitimate
+        // place a raw Switch may appear: it is what AppSwitch wraps.
+        val offenders = uiRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" && it.name != "Common.kt" }
+            .filter { f ->
+                f.readText().lines().any { l ->
+                    Regex("""(^|[^A-Za-z])Switch\s*\(""").containsMatchIn(l) &&
+                        "AppSwitch" !in l && "MixerSwitch" !in l && !l.trimStart().startsWith("//")
+                }
+            }
+            .map { it.name }
+            .toList()
+        assertTrue(
+            "raw Material Switch outside the design system — use AppSwitch so it is " +
+                "themed and named: $offenders",
+            offenders.isEmpty(),
+        )
+    }
+
+    @Test
     fun `no switch is labelled with a bare literal`() {
         // A hardcoded English string here would be announced untranslated to a
         // Hindi user and would sidestep the strings.xml externalisation the rest

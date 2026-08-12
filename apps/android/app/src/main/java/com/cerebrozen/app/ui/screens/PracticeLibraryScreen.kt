@@ -201,10 +201,21 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(FieldFill).padding(horizontal = 18.dp),
             ) {
-                BreathingSetting("Soft chime", "A quiet cue at each transition.", chime) {
+                // These four strings already existed in strings.xml (breathprep_*)
+                // and Hindi — the screen was rendering English literals past them.
+                BreathingSetting(
+                    stringResource(R.string.breathprep_chime_title),
+                    stringResource(R.string.breathprep_chime_sub),
+                    chime,
+                ) {
                     chime = it; Chime.breatheChimeEnabled = it
                 }
-                BreathingSetting("Haptics", "Gentle vibration at phase changes.", haptics, showDivider = false) {
+                BreathingSetting(
+                    stringResource(R.string.breathprep_haptics_title),
+                    stringResource(R.string.breathprep_haptics_sub),
+                    haptics,
+                    showDivider = false,
+                ) {
                     haptics = it; Chime.breatheHapticsEnabled = it
                 }
             }
@@ -514,12 +525,15 @@ private fun BreathingSetting(
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A637E))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        Switch(
-            checked = checked, onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF71306C)),
-        )
+        // Was a raw Material Switch with its own hardcoded track and thumb
+        // colours, which put it outside the design system AND outside the
+        // accessibility fix that gave every AppSwitch a name — a screen reader
+        // reached these two as an unlabelled "switch, on". Being the only bare
+        // Switch left in the app, it also slipped past SwitchLabelTest, which
+        // only knew to look at AppSwitch call sites.
+        AppSwitch(checked = checked, onCheckedChange = onCheckedChange, label = title)
     }
 }
 
