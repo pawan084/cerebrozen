@@ -43,7 +43,13 @@ export const metadata: Metadata = {
     description,
     images: ["/brand/banner-social.jpg"],
   },
-  icons: { apple: "/apple-touch-icon.png" },
+  // `icon` is declared explicitly, not left to the app/icon.png file
+  // convention: setting `icons` at all overrides that convention, so with only
+  // `apple` here the favicon was served but never linked. (It used to be a
+  // generated app/icon.tsx route, which was dropped — see that file's removal:
+  // Next 14's bundled @vercel/og calls fileURLToPath on a Windows path and
+  // throws "Invalid URL", breaking `next build` on Windows.)
+  icons: { icon: "/icon.png", apple: "/apple-touch-icon.png" },
   robots: { index: true, follow: true },
 };
 
