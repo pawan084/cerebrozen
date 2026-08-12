@@ -51,7 +51,13 @@ everything below is open.
       class as a Save button that only sets a boolean) and the "10:30 pm, wind-down from
       9:45 pm" line (**no target-bedtime field exists** in `backend/app/models/sleep.py`, so
       the number would be invented)
-- [ ] **TOD-02 is BLOCKED on a cross-stack change, not on design.** Its six states add
+- [x] **TOD-02 is unblocked and shipped** (2026-08-12). The cross-stack change this was
+      waiting on landed first — `backend/app/services/moods.py` is now the single definition
+      of the six states and of "difficult", `agentic.py` and `nudges.py` read it instead of
+      each carrying a narrower copy, and all four clients converged. The screen then
+      graduated to `/checkin`, linked from Today's check-in hero. Original blocking note
+      below, kept because it is the reason the order mattered:
+      **TOD-02 was BLOCKED on a cross-stack change, not on design.** Its six states add
       "Overwhelmed" and "Not sure" to the shipped five, and mood strings are **interpreted
       server-side**: `agentic.py:130` and `nudges.py:69` both test
       `{"anxious","low","tired"}`, so an "Overwhelmed" check-in would be read as *not
@@ -62,8 +68,10 @@ everything below is open.
       on a **consequence** ("shapes your next step and your weekly trends. Nothing here is
       scored") rather than a saved value. It deliberately says nothing about the journal,
       because whether the journal is read depends on the generator — see `lib/todayHero.ts`
-- [ ] **`app/design/` is down to one screen** (`checkin`) and should reach zero when TOD-02's
-      taxonomy change lands. The surface is scaffolding and is meant to disappear
+- [x] **`app/design/` has reached zero** (2026-08-12) — `checkin` was the last one and it
+      graduated to `/checkin`. The index page now renders an empty state rather than an empty
+      list, and the surface itself stays: the per-screen notes recording what each graduation
+      *dropped*, and why, are the useful residue
 
 - [x] `design/tokens.css` inverted to light-first Light Dawn + Night opt-in; synced to
       web/admin/app; `scripts/check-contrast.mjs` added and wired into CI (108 pairings pass)
