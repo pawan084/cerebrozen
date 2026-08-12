@@ -80,9 +80,7 @@ import com.cerebrozen.app.ui.screens.CheckInDetailScreen
 import com.cerebrozen.app.ui.screens.WeeklyInsightsScreen
 import com.cerebrozen.app.ui.screens.ReferenceTrendsScreen
 import com.cerebrozen.app.ui.screens.ReferencePatternsScreen
-import com.cerebrozen.app.ui.screens.ReferenceGoalsScreen
 import com.cerebrozen.app.ui.screens.ReferenceGoalDetailScreen
-import com.cerebrozen.app.ui.screens.ReferenceBaselineScreen
 import com.cerebrozen.app.ui.screens.PatternDetailScreen
 import com.cerebrozen.app.ui.screens.ReferenceDailyPlanScreen
 import com.cerebrozen.app.ui.screens.ReferenceSleepInsightsScreen
@@ -740,7 +738,15 @@ fun CereBroApp() {
                 )
             }
             composable("safetyplan") { SafetyPlanScreen(onBack = back) }
-            composable("goals") { ReferenceGoalsScreen(onBack = back, onOpen = open) }
+            // The real goals screen, imported since the redesign and never
+            // routed. The mock called Api.goals() with the default
+            // includeResolved = false and had no Done / Let it go buttons at
+            // all — so a goal could be created and never resolved, and any
+            // goal resolved earlier had already vanished. Session.kt:768 spells
+            // out that this exact bug was found and fixed once; the Reference
+            // copy brought it back. GoalsScreen asks for resolved goals, can
+            // change a goal's status both ways, and carries habits.
+            composable("goals") { GoalsScreen(onBack = back) }
             composable("goaldetailcalmer") { ReferenceGoalDetailScreen("A calmer evening", onBack = back, onOpen = open) }
             composable("goaldetailwind") { ReferenceGoalDetailScreen("Wind down before 10 PM", onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
@@ -791,7 +797,14 @@ fun CereBroApp() {
             composable("ground") { GroundingScreen(onBack = back) }
             composable("zenripples") { ZenRipplesScreen(onBack = back) }
             composable("gratitude") { GratitudeReflectionScreen(onBack = back, onUrgent = { open("crisis") }) }
-            composable("baseline") { ReferenceBaselineScreen(onBack = back, onOpen = open) }
+            // The mock wrote four 1-10 sliders into a SharedPreferences file
+            // called "personal_baseline" that nothing in the app reads. The
+            // baseline card on Insights reads BaselineStore, which only the
+            // real BaselineScreen writes — so saving your starting point could
+            // never make the card appear. Scales differed too: 1-10 across four
+            // dimensions in the mock, 1-5 across stress and sleep everywhere
+            // else. Routed to the screen whose numbers are actually read.
+            composable("baseline") { BaselineScreen(onBack = back) }
             composable("breathing") { BreathingScreen(onBack = back) }
             // Both real tools, both previously shadowed by a mock on their own
             // route while sitting imported-but-unrouted a few lines above.
