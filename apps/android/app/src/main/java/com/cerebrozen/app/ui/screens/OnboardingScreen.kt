@@ -158,6 +158,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.OkSoft
 
 internal enum class OStep {
     Welcome, Language, Intro, Disclosure, State, Reset, Reflection, Consent, Notify, Guest, SignUp, Ready, Under18
@@ -713,7 +714,7 @@ fun Onboarding() {
         ) {
             ReferenceCard(borderColor = Periwinkle.copy(alpha = .24f), fill = CardFill) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE5EDE3)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(OkSoft), contentAlignment = Alignment.Center) {
                         Text("◇", color = Ok, style = MaterialTheme.typography.titleLarge)
                     }
                     Column(Modifier.weight(1f)) {
@@ -1147,7 +1148,7 @@ private fun OnboardingAppBar(
         if (onBack != null) {
             val backCd = stringResource(R.string.common_back)
             Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF7EFF8))
+                Modifier.size(46.dp).clip(CircleShape).background(FieldFill)
                     .clickable(role = androidx.compose.ui.semantics.Role.Button) { onBack() }
                     .semantics { contentDescription = backCd },
                 contentAlignment = Alignment.Center,
@@ -1254,7 +1255,7 @@ private fun StateOptionRow(
 ) {
     Column(
         modifier.heightIn(min = 116.dp).clip(RoundedCornerShape(20.dp))
-            .background(if (selected) Periwinkle else Color(0xFFF6EFF8))
+            .background(if (selected) Periwinkle else FieldFill)
             .clickable(onClick = onClick).padding(15.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -1299,7 +1300,7 @@ private fun OnboardingFeatureCard(
     val shape = RoundedCornerShape(21.dp)
     Row(
         Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(shape)
-            .background(if (selected) Color(0xFFF1E6F2) else CardFill)
+            .background(if (selected) FieldFill else CardFill)
             .border(if (selected) 2.dp else 1.dp, if (selected) Periwinkle else ProgressTrack, shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(15.dp),

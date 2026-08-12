@@ -53,7 +53,11 @@ fun NotificationInboxScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
     }
     val reminderOn = prefs.getBoolean("reminder_on", false)
-    val reminderHour = prefs.getInt("reminder_hour", 20)
+    // Reminders.storedHour, not a second read with its own default. This line
+    // was `getInt("reminder_hour", 20)` while Reminders.DEFAULT_HOUR is 9, so
+    // before the user picked an hour the scheduler armed 9am and this screen
+    // promised 8pm — the one screen whose job is saying when a nudge will fire.
+    val reminderHour = com.cerebrozen.app.notify.Reminders.storedHour(context)
     val pushConfigured = remember(context) { Push.available(context) }
 
     PremiumSubPage(

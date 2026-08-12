@@ -200,10 +200,126 @@ everything below is open.
       door last and in the same pixels everywhere. Every tap target regained `Role.Button`,
       a content description and press feedback. The crisis screen's copy moved to
       strings.xml with Hindi (all 16 `crisis_*` Hindi strings already existed and went
-      unused), as did the practice/breathing/gratitude family. Raw hex outside the token
-      file 209 → 19. 464 unit tests, `:app:lintDebug` and `check-claims.mjs` green.
-      *Still open*: ~65 literals in `TodayScreen.kt` and ~17 in `ExploreScreen.kt` are
-      still English-only; `Api.pushStatus()` is uncalled and Settings has no push toggle
+      unused), as did the practice/breathing/gratitude family.
+      **Counts corrected after the reconciliation below** (this entry was written on the
+      branch, before the two remediations were merged): raw hex outside the token file is
+      **209 → 42**, not 19; the English-only literals are **11 in `TodayScreen.kt` and 2 in
+      `ExploreScreen.kt`**, not ~65 and ~17; the suite is **470** tests. `:app:lintDebug`
+      and `check-claims.mjs` green.
+      *Still open*: those 13 literals, the 42 art/gradient hex values that have no canonical
+      role, and `Api.pushStatus()` is uncalled with no push toggle in Settings
+- [x] **The audit was remediated TWICE, in parallel, and reconciled** (2026-08-12, merge
+      `c30b9971`). Two branches fixed `ANDROID_AUDIT.txt` without knowing about each other
+      and agreed on most of it — BUG-01 got a byte-identical fix on both sides. Where they
+      differed, each route was decided on merits rather than by taking a side:
+      **from the branch** — `patterns`→`PatternScreen` and `trends`→`TrendsScreen` (two more
+      real screens that were imported and never routed), `dailyplan`→`PlanScreen` rather
+      than deletion so a stale link lands somewhere real, the `NotificationLogTest` that
+      asserts `Tab.Home.route` and validates against `EXTERNAL_ROUTES` instead of a
+      hand-copied route list, and the `practicelib_*` en+hi externalisation;
+      **kept from main** — `sleepinsights` (wired week/month/3-month charts with no twin,
+      now linked from the Sleep rhythm line) and `guidedimagery` (four journeys + TTS, still
+      an IA decision), the nav guard that checks `graph.findNode` and logs rather than
+      wrapping `navigate` in `runCatching`, and the canonical palette / mood taxonomy /
+      Verified badge / chime wiring / crisis strings that the branch predated.
+      **Process note:** this is the second parallel-work collision in the repo's history.
+      Agree who owns `apps/android` before the next pass.
+- [x] **Mood taxonomy unified across backend, Android, iOS and web** (2026-08-12). An
+      "Overwhelmed" check-in read as *not* struggling: `agentic.py` and `nudges.py` each
+      carried their own copy of the difficult-mood set and both omitted it, so the strongest
+      signal a user can send produced the steady-baseline plan and scheduled no supportive
+      nudge. `backend/app/services/moods.py` is now the single definition (`DIFFICULT`,
+      `is_difficult()`); `insights`, `trends`, `agentic` and `nudges` all read it. Clients
+      converged on the spec's six — Good · Anxious · Low · Tired · Overwhelmed · Not sure.
+      Web had drifted furthest (Great/Good/Okay/Low/Anxious, **no Tired at all**, so a web
+      check-in could never fire the wind-down nudge that keys on that word). Android alone
+      held three more copies: `CheckInDetailScreen` said "Clear" where Today said "Good",
+      and onboarding seeded "Okay", a state no picker offers. Unknown labels stay neutral,
+      which is what makes "Not sure" safe to offer. Contract row added to ARCHITECTURE.md
+- [x] **Android's Dawn palette was never the canonical one** (2026-08-12). It was taken
+      "byte-for-byte with the Light Dawn phone in `ref/mobile.html`" — a different source
+      from `design/tokens.css` — and the two disagree on every neutral: canonical `--text`
+      is a warm `#211D20`, Android shipped indigo `#1C1740`; the accent was indigo, not the
+      plum `#5A2B5C`. **Nothing could catch it**: `sync-tokens.mjs` gates the four
+      `globals.css` files and cannot read Kotlin, and `ContrastTest` pinned Android's own
+      drifted values under a comment calling itself "the mirror of tokens.css `:root`". The
+      screen authors noticed even though the tooling did not — the light-dawn screens were
+      full of raw hex like `#F3ECF3`, which **is** `--surface-field` exactly, written by
+      hand because the token did not carry it. `DawnPalette` is now tokens.css byte for
+      byte and `ContrastTest` pins the canonical values
+- [x] **Screen review wave: the practice and crisis children** (2026-08-12, 38 → 46 of ~64).
+      Eight new screens walked on device; five defects, two of them safety-rule breaches.
+      All five verified fixed on hardware, not just in the diff.
+      **TIPP had no crisis door.** It is entered at "a 9 or 10 when thinking feels
+      impossible", is the one screen in the app that names self-harm — and its only
+      tappable elements were Back, Previous, Next and an expander. The note raised the risk
+      and then gave *directions*: "Urgent support lives in the You tab". Someone at a 9 or 10
+      was asked to back out, find a tab and find a row, from memory. The note is now the
+      pathway (`onUrgent`, the convention four other screens already use), and the copy is
+      translated to Hindi under the file's own crisis-copy rule — the rest of `tipp_*` stays
+      English by design, but this pair names self-harm.
+      **The crisis screen denied a real third-party disclosure.** "Someone you selected;
+      CereBro never contacts them automatically" — but `escalation.on_crisis` emails or texts
+      the trusted contact on a crisis-level event whenever `notify_consent` is on, and the
+      trusted-contact screen says so plainly two taps away. The two screens contradicted each
+      other and the backend settled it. It defaults off, so the sentence was true right up
+      until a user enabled the feature, which is exactly when being wrong about it matters.
+      The dead `urgent_trusted_detail` copy carried the same claim and was corrected too,
+      rather than left in resources for someone to reuse
+- [x] **Two more claims that `check-claims.mjs` structurally could not catch** (2026-08-12).
+      Both were wrong *in their own words*, and the gate matches literal banned phrases.
+      Explore's "Favourites and downloads · Saved and offline" promised the one capability
+      the banned-phrase list exists for — no client implements downloads — while opening
+      neither favourites nor downloads: it routed to `sounds`, the same destination as the
+      "Sound · Audio and mixer" card two rows above. Deleted rather than reworded; a second
+      row to one destination is not worth honest copy. And the grounding intro stated "Voice
+      guidance on · Soft chime between steps" as a fact about the practice one tap away —
+      `GroundingScreen` has no TextToSpeech, no chime and no sound of any kind. Stating it as
+      *on* also implied a setting to turn off, and there isn't one.
+      *Lesson for the gate*: a phrase list catches recidivism, not invention. Both of these
+      needed a screen walk to find, which is the argument for finishing the remaining ~18
+- [ ] **The Android screen review stopped at 46 of ~64 screens** (2026-08-12). Every bug
+      below came out of the first 46, at a fairly steady rate, so the remaining ~18 should be
+      assumed to hold more rather than to be clean. Not yet walked: `cbti`, `mbct`, `imagery`,
+      `guidedimagery`, `ritual`, `breathing-intro`, `onegoodthing`, `intention`, `insightreel`,
+      `search`, `delete`, `privacypolicy`, `talk/live`, `humansupport`, `zenripples`,
+      `patternglow`, `mindfulgame/{gameId}`. Three method notes for whoever resumes, all learned
+      the hard way — a frozen emulator framebuffer yields *plausible* screenshots of the last
+      good frame (hash two captures ~10s apart to catch it), and distinct file hashes do not
+      mean distinct screens: seven "successful" deeplink captures were all Today, because the
+      routes were not in `EXTERNAL_ROUTES`. Open one and look before trusting a batch. Third:
+      only 20 of the 59 routes are in `EXTERNAL_ROUTES`, so **almost everything left must be
+      reached by tapping, not by deeplink** — a `cerebro://` to anything else silently lands
+      on Today. The harness that works is `uiautomator dump` → tap by text/content-desc, and
+      printing the screen's own text next to every capture so a wrong screen is obvious
+      immediately rather than three screenshots later
+- [ ] **HC-06: practice content is still hardcoded** — the library ships as Kotlin literals
+      rather than coming from `Api.content()`. Blocked on the backend, which only knows
+      `sleep` and `soundscape`; extending `/content` is the actual task
+- [ ] **`InsightsScreen` is orphaned** — the reader with the baseline card is not routed
+      anywhere; `WeeklyInsightsScreen` is what users reach. Port the card across and delete
+      the orphan, rather than leaving two insight readers to drift apart
+- [ ] **The iOS half of the mood-taxonomy change is unverified** — edited without a macOS
+      machine to build on, so it is reviewed-but-not-compiled. Confirm on the next Mac pass
+- [ ] **`sync-tokens.mjs` still cannot gate Android** — it compares CSS text, and Android's
+      palette is Kotlin. `ContrastTest` is the only thing standing between that palette and
+      another silent drift, and it was itself wrong until today. Worth a real check that
+      parses `Color.kt` against `design/tokens.css`
+- [x] **Crisis: a Verified badge only where the numbers were verified** (2026-08-12). The
+      badge rendered unconditionally, so every region wore it — a US user saw green
+      "Verified" against 911 and 988, numbers nobody here has checked. This is the exact bug
+      the `ref/` audit found on the prototypes. The claim was made three times on one screen
+      (badge, strapline, and the line carrying the number someone would dial); all three are
+      now conditional. India keeps it — checked against the MoHFW Tele-MANAS listing and the
+      ERSS 112 listing, the sources the web `/safety` page cites. Everywhere else says
+      "Not verified yet" and gives the reason
+- [x] **Guest mode stopped telling guests the network broke** (2026-08-12). `guestMode`
+      gated the auth screen and nothing else, so every server-backed screen rendered its own
+      failure copy — "Couldn't load patterns. Please try again." — about a request that was
+      never going to succeed. Fixed at one seam: `ensureAccess` throws guest-specific copy,
+      and since every screen already surfaces `ApiException.message` through
+      `Throwable.userMessage`, they all changed at once. **Unverified on device** — it needs
+      a signed-out session
 - [ ] **Android gaps still open vs `ref/mobile.html`** — verified against the prototype,
       *not* the whole list the first read suggested. Already built and needing nothing:
       PVR-04 memory list (it is `PatternScreen.kt`, with inspect/edit/delete), SND-01/03/04

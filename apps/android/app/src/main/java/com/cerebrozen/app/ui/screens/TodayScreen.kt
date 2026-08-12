@@ -117,6 +117,7 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
 import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.AccentSoft
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
@@ -769,7 +770,7 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false
     ) {
         Box(
             Modifier.size(36.dp).clip(CircleShape)
-                .background(if (marked) Color.White.copy(alpha = .16f) else Color(0xFFFFFDFA)),
+                .background(if (marked) Color.White.copy(alpha = .16f) else CardFill),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -2014,10 +2015,19 @@ fun GroundingIntroScreen(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CardFill)
                         .padding(horizontal = 15.dp),
                 ) {
+                    // These are read as facts about the practice one tap away, so
+                    // they have to be true of it. "Voice guidance on · Soft chime
+                    // between steps" was true of neither: GroundingScreen has no
+                    // TextToSpeech, no chime and no sound of any kind — it is a
+                    // silent, text-paced exercise. Stating it as ON also implied a
+                    // setting the user could find and change, and there isn't one.
+                    // Replaced with what the practice actually offers rather than
+                    // deleted, because the row's job is to set expectations before
+                    // someone commits three minutes.
                     val facts = listOf(
                         Triple(Icons.Outlined.AccessTime, "About 3 minutes", "End early whenever you need."),
-                        Triple(Icons.Outlined.Headphones, "Voice guidance on", "Soft chime between steps."),
-                        Triple(Icons.Outlined.Visibility, "Minimal motion", "Screen-reader instructions available."),
+                        Triple(Icons.Outlined.Headphones, "Reads at your pace", "You move each step on yourself."),
+                        Triple(Icons.Outlined.Visibility, "Minimal motion", "Plain text, works with a screen reader."),
                     )
                     facts.forEachIndexed { index, fact ->
                         Row(
@@ -2281,6 +2291,145 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         }
     }
 }
+
+// ReferenceSleepInsightsScreen is the one Reference screen kept: patterns
+// and trends now route to the real PatternScreen/TrendsScreen, but this
+// has no real twin — it is the week/month/3-month view, and it is linked
+// from the Sleep rhythm line. Its sibling mocks are gone.
+@Composable
+fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+    var window by rememberSaveable { mutableStateOf("Week") }
+    var nights by remember { mutableStateOf<List<SleepNight>?>(null) }
+    var summary by remember { mutableStateOf<JSONObject?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(window) {
+        val days = when (window) { "Month" -> 30; "3 months" -> 90; else -> 7 }
+        error = null
+        coroutineScope {
+            // Api.sleepLogs takes a ROW LIMIT, not a day count — it builds
+            // "/sleep?limit=N" — while Api.sleepSummary(days) is day-based. So
+            // passing `days` to both made the chart and the stat tiles describe
+            // different windows: seven nights logged across two months rendered
+            // under "Week". The rows are still capped (a week cannot hold more
+            // than `days` nights) but the window is now decided by the date.
+            val cutoff = java.time.LocalDate.now().minusDays(days.toLong() - 1)
+            val logs = async {
+                runCatching {
+                    parseNights(Api.sleepLogs(days)).filter { night ->
+                        // A row with an unparseable date is kept rather than
+                        // silently dropped from the user's own history.
+                        runCatching { !java.time.LocalDate.parse(night.date).isBefore(cutoff) }
+                            .getOrDefault(true)
+                    }
+                }
+            }
+            val stats = async { runCatching { Api.sleepSummary(days) } }
+            logs.await().onSuccess { nights = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }
+            stats.await().onSuccess { summary = it }.onFailure { error = it.userMessage("Couldn't load sleep insights.") }
+        }
+    }
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
+                    .clickable { onBack() }, contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
+            Column(Modifier.weight(1f)) {
+                Text("Sleep insights", style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))), color = TextPrimary)
+                Text("Trends without diagnosis", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
+                    .clickable { onOpen("crisis") }, contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 26.dp, vertical = 14.dp).padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("SLEEP INSIGHTS", style = MaterialTheme.typography.labelSmall, color = Warm)
+            Text(
+                "Look for\ndirection,\nnot perfection.",
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
+                color = TextPrimary,
+            )
+            Text("Support tonight’s sleep without diagnosis or guaranteed outcomes.", style = MaterialTheme.typography.bodyLarge, color = TextSoft)
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Week", "Month", "3 months").forEach { label ->
+                    val active = window == label
+                    Text(
+                        label, style = MaterialTheme.typography.titleSmall,
+                        color = if (active) Color.White else TextMuted,
+                        modifier = Modifier.clip(RoundedCornerShape(99.dp))
+                            .background(if (active) Periwinkle else CardFill)
+                            .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
+                    )
+                }
+            }
+            Column(
+                Modifier.fillMaxWidth().height(218.dp).clip(RoundedCornerShape(25.dp))
+                    .background(CardFill).padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    val avg = summary?.optInt("avg_duration_min")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    val spread = summary?.optInt("bedtime_consistency_min")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    val quality = summary?.optDouble("avg_quality")?.takeIf { summary?.optBoolean("enough_data") == true }
+                    listOf(
+                        (avg?.let { "${it / 60}h ${it % 60}m" } ?: "—") to "average",
+                        (spread?.let { "${it}m" } ?: "—") to "bedtime range",
+                        (quality?.let { String.format(Locale.getDefault(), "%.1f/5", it) } ?: "—") to "rest quality",
+                    ).forEach { (value, label) ->
+                        Column(
+                            Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(16.dp)).background(FieldFill),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                }
+                val chartNights = nights.orEmpty().take(7).reversed()
+                val heights = chartNights.map { ((it.duration / 600f) * 88).roundToInt().coerceIn(8, 88) }
+                Row(Modifier.fillMaxWidth().height(100.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                    heights.forEachIndexed { index, h ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                            Box(
+                                Modifier.fillMaxWidth().height(h.dp).clip(RoundedCornerShape(7.dp, 7.dp, 2.dp, 2.dp))
+                                    .background(Brush.verticalGradient(listOf(Color(0xFFA56A99), Color(0xFF9AB59C)))),
+                            )
+                            Text(chartNights.getOrNull(index)?.date?.takeLast(2).orEmpty(), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                }
+            }
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(FieldFill).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                Text("WHAT CEREBRO NOTICED", style = MaterialTheme.typography.labelSmall, color = Warm)
+                Text(
+                    when {
+                        error != null -> error.orEmpty()
+                        nights == null -> "Reading your sleep diary…"
+                        nights!!.size < 3 -> "Log at least three nights before CereBro describes a sleep direction."
+                        else -> "${nights!!.size} nights are shown from your diary. Missing nights stay blank; this is a record, not a diagnosis."
+                    },
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft,
+                )
+                TextButton(onClick = { onOpen("reminders") }) {
+                    Text("Review wind-down reminders →", style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+                }
+            }
+        }
+    }
+}
+
 
 /** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable

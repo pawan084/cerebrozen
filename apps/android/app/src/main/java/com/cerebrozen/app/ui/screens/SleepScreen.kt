@@ -443,7 +443,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFFCF8), Color(0xFFF6F0EA)))),
+            .background(Brush.verticalGradient(listOf(CardFill, Night))),
     ) {
         SleepBackgroundGlow()
         // Pull-to-refresh, same themed indicator as Home — the tab is just as
@@ -766,6 +766,19 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                     Text(
                         stringResource(if (isVariedRhythm(spread)) R.string.sleep_rhythm_vary else R.string.sleep_rhythm_steady),
                         style = MaterialTheme.typography.bodyMedium, color = PeriwinkleSoft,
+                    )
+                    // The longer view. `sleepinsights` had no door anywhere in
+                    // the app — a wired screen with week/month/3-month charts
+                    // that nothing could reach — and this rhythm line, drawn
+                    // from the same nights, is where someone asks "and over
+                    // longer?". Linked rather than deleted for that reason.
+                    Text(
+                        stringResource(R.string.sleep_insights_link),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(99.dp))
+                            .clickable { onOpen("sleepinsights") }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.titleSmall, color = Periwinkle,
                     )
                 }
 

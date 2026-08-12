@@ -527,6 +527,22 @@ object Session {
                 netString(com.cerebrozen.app.R.string.net_unreachable, "Couldn't reach the server — check your connection."),
             )
         }
+        // A guest never signed in, so this 401 is not a failure — it is the
+        // shell working as documented (guestMode "only opens the
+        // offline-capable product shell"). Said here rather than in each
+        // screen: every server-backed screen renders its own network-failure
+        // copy from ApiException.message via Throwable.userMessage, so a guest
+        // was told "Couldn't load patterns. Please try again." about a request
+        // that was never going to succeed and never should have.
+        if (guestMode) {
+            throw ApiException(
+                401,
+                netString(
+                    com.cerebrozen.app.R.string.net_guest_mode,
+                    "Sign in to keep this. You're looking around as a guest, so nothing is saved yet.",
+                ),
+            )
+        }
         throw ApiException(401, netString(com.cerebrozen.app.R.string.net_signed_out, "Signed out"))
     }
 

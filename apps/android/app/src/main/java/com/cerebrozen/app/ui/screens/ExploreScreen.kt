@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.MusicNote
@@ -62,7 +61,6 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.FieldFill
-import com.cerebrozen.app.ui.theme.Ok
 
 /** Explore hub matched to the canonical mobile.html composition. Existing
  * destinations remain present; this only changes their visual hierarchy. */
@@ -113,7 +111,14 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             ExploreSectionTitle("Keep exploring", serif)
             ExploreListCard(Icons.Outlined.Spa, "Mindful activities", "Unscored sensory experiences", Warm) { onOpen("toolkit") }
             ExploreListCard(Icons.Outlined.CalendarMonth, "Programmes", "Guided journeys with progress", Warm) { onOpen("programs") }
-            ExploreListCard(Icons.Outlined.FavoriteBorder, "Favourites and downloads", "Saved and offline", Ok) { onOpen("sounds") }
+            // Was "Favourites and downloads · Saved and offline" — three problems in
+            // one row. No client implements downloads (the documented reason
+            // "available offline"/"download for offline" are banned phrases), there
+            // is no favourites screen to open, and it routed to "sounds", the same
+            // destination as the "Sound · Audio and mixer" card two rows above. The
+            // claims gate missed it because it matches literal phrases and this was
+            // the same promise in different words. Deleted rather than reworded: a
+            // second row to one destination is not worth honest copy.
             ExploreAccordion("Watch and learn") { onOpen("insightreel") }
 
             // Existing safety feature retained as an extra card below the

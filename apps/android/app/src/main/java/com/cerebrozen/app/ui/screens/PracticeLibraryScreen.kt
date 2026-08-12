@@ -59,25 +59,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
-import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.net.Api
-import com.cerebrozen.app.ui.theme.ButtonDisabled
 import com.cerebrozen.app.ui.theme.CardFill
-import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.LineStroke
+import kotlinx.coroutines.launch
+import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.WarmSoft
+import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.audio.Chime
+import com.cerebrozen.app.ui.theme.Accent2
 import com.cerebrozen.app.ui.theme.DangerSoft
 import com.cerebrozen.app.ui.theme.FieldFill
-import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.OkSoft
-import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.Periwinkle
-import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
-import com.cerebrozen.app.ui.theme.Warm
-import com.cerebrozen.app.ui.theme.WarmSoft
-import kotlinx.coroutines.launch
 
 
 /** The first level under Explore's Calm now card: broad practice families,
@@ -85,14 +83,39 @@ import kotlinx.coroutines.launch
 @Composable
 fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Night)) {
-        CereBroTopBar(
-            title = stringResource(R.string.practicelib_title),
-            // Was "Five clear families" over six rows.
-            subtitle = stringResource(R.string.practicelib_subtitle),
-            onBack = onBack,
-            onUrgent = { onOpen("crisis") },
-        )
+    Column(
+        Modifier.fillMaxSize().background(
+            Brush.verticalGradient(listOf(CardFill, Night)),
+        ),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
+                .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            CircleAction(FieldFill, onBack) {
+                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(
+                    stringResource(R.string.practicelib_title), maxLines = 1,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontFamily = serif, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
+                    ),
+                    color = TextPrimary,
+                )
+                Text(
+                    stringResource(R.string.practicelib_subtitle), maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
+                    color = TextMuted,
+                )
+            }
+            CircleAction(DangerSoft, { onOpen("crisis") }) {
+                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+            }
+        }
+
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 20.dp),
@@ -100,7 +123,7 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Text(
                 stringResource(R.string.practicelib_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Warm,
+                color = Color(0xFFB13D57),
             )
             Text(
                 stringResource(R.string.practicelib_hero),
@@ -117,12 +140,12 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 color = TextMuted,
             )
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Ok) { onOpen("breathing-intro") }
-                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Warm) { onOpen("groundingintro") }
-                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Warm) { onOpen("tipp") }
-                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Warm) { onOpen("cbt") }
-                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Ok) { onOpen("bodyscan") }
-                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Warm) { onOpen("gratitude") }
+                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Color(0xFF4B775E)) { onOpen("breathing-intro") }
+                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
+                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
+                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
+                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
+                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Color(0xFFC75270)) { onOpen("gratitude") }
             }
         }
     }
@@ -131,64 +154,70 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: () -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    // Read from — and written back to — the settings the breathing session
-    // actually consults. These were three `remember` booleans that the session
-    // never saw, so the screen let you turn the chime off and then rang it.
-    // "Keep screen awake" is gone rather than fixed: it had no setting behind it
-    // either, and the loop screen holds the screen on unconditionally, so an
-    // off position was never going to be honoured.
+    // These were three `remember` booleans that wrote nowhere: flipping them
+    // changed this screen and nothing else, and the session that follows read
+    // its own settings — so the prep screen and the breath it prepares
+    // disagreed. Chime and haptics are real, persisted settings
+    // (audio/Chime.kt), and are now read from and written to there, which is
+    // also what Breathe.kt's in-session toggle uses.
+    //
+    // "Keep screen awake" is gone rather than wired: nothing applies
+    // FLAG_KEEP_SCREEN_ON for this session, so the switch could only have
+    // promised something no code delivers.
     var chime by remember { mutableStateOf(Chime.breatheChimeEnabled) }
     var haptics by remember { mutableStateOf(Chime.breatheHapticsEnabled) }
     Column(Modifier.fillMaxSize().background(Night)) {
-        CereBroTopBar(
-            title = stringResource(R.string.breathing_title),
-            subtitle = stringResource(R.string.breathprep_subtitle),
-            onBack = onBack,
-            onUrgent = onUrgent,
-        )
+        Row(
+            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
+                .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            CircleAction(FieldFill, onBack) {
+                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Breathing", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
+                Text("Prepare session", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+            CircleAction(DangerSoft, onUrgent) {
+                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+            }
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
         ) {
+            Text("BREATHING", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
             Text(
-                stringResource(R.string.breathprep_eyebrow),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Warm,
-            )
-            Text(
-                stringResource(R.string.breathprep_hero), modifier = Modifier.padding(top = 7.dp),
+                "In for four,\nout for six.", modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
                 color = TextPrimary,
             )
             Text(
-                stringResource(R.string.breathprep_intro),
+                "A longer exhale may help settle physical activation. Stop if you feel dizzy or uncomfortable.",
                 modifier = Modifier.padding(top = 13.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
             )
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(FieldFill).padding(horizontal = 18.dp),
             ) {
-                BreathingSetting(
-                    stringResource(R.string.breathprep_chime_title),
-                    stringResource(R.string.breathprep_chime_sub),
-                    chime,
-                ) { chime = it; Chime.breatheChimeEnabled = it }
-                BreathingSetting(
-                    stringResource(R.string.breathprep_haptics_title),
-                    stringResource(R.string.breathprep_haptics_sub),
-                    haptics, showDivider = false,
-                ) { haptics = it; Chime.breatheHapticsEnabled = it }
+                BreathingSetting("Soft chime", "A quiet cue at each transition.", chime) {
+                    chime = it; Chime.breatheChimeEnabled = it
+                }
+                BreathingSetting("Haptics", "Gentle vibration at phase changes.", haptics, showDivider = false) {
+                    haptics = it; Chime.breatheHapticsEnabled = it
+                }
             }
             Box(
                 Modifier.fillMaxWidth().padding(top = 11.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(Periwinkle).clickable(onClick = onBegin),
+                    .background(Accent2).clickable(onClick = onBegin),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.breathprep_begin), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = OnPrimary)
+                Text("Begin 2-minute breathing", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
 }
-
 
 @Composable
 fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
@@ -198,21 +227,17 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().background(Night)) {
-        PracticeHeader(
-            stringResource(R.string.practice_gratitude_title),
-            stringResource(R.string.practice_gratitude_subtitle),
-            onBack, onUrgent,
-        )
+        PracticeHeader("Gratitude", "Positive reflection", serif, onBack, onUrgent)
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 15.dp),
         ) {
             Text(
-                stringResource(R.string.practice_gratitude_eyebrow),
+                "GRATITUDE REFLECTION",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Warm,
+                color = Color(0xFFB13D57),
             )
             Text(
-                stringResource(R.string.practice_gratitude_hero),
+                "Notice one\nthing—not\neverything.",
                 modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp,
@@ -220,7 +245,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
                 color = TextPrimary,
             )
             Text(
-                stringResource(R.string.practice_gratitude_intro),
+                "This is not about forcing positivity. A small neutral or supportive detail is enough.",
                 modifier = Modifier.padding(top = 13.dp, bottom = 17.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp),
                 color = TextMuted,
@@ -228,7 +253,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             OutlinedTextField(
                 value = reflection,
                 onValueChange = { reflection = it; status = null },
-                placeholder = { Text(stringResource(R.string.practice_gratitude_placeholder), color = TextMuted) },
+                placeholder = { Text("One thing that made today slightly easier...", color = Color(0xFF817980)) },
                 modifier = Modifier.fillMaxWidth().height(78.dp),
                 shape = RoundedCornerShape(18.dp),
                 minLines = 2,
@@ -249,7 +274,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             val enabled = !busy && reflection.isNotBlank()
             Box(
                 Modifier.fillMaxWidth().padding(top = 17.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(if (enabled) Periwinkle else ButtonDisabled)
+                    .background(if (enabled) Accent2 else Color(0xFFB89AB2))
                     .clickable(enabled = enabled) {
                         busy = true; status = null
                         scope.launch {
@@ -291,6 +316,24 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     }
 }
 
+/**
+ * The regions whose crisis numbers someone here has actually checked against a
+ * named official source.
+ *
+ * India's are checked against the MoHFW Tele-MANAS listing and the ERSS 112
+ * listing — the same two sources the web `/safety` page cites. No other region
+ * has been through that, so no other region gets to say "Verified".
+ *
+ * Deliberately a set and not `region == "IN"` inline in the composable: a badge
+ * is a claim, and adding a region to it should be an edit someone makes on
+ * purpose, next to this comment, with a source in hand.
+ */
+val VERIFIED_CRISIS_REGIONS = setOf("IN")
+
+/** Whether the crisis screen may show the "Verified" badge for [region]. */
+fun crisisRegionIsVerified(region: String): Boolean =
+    region.trim().uppercase() in VERIFIED_CRISIS_REGIONS
+
 @Composable
 fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
@@ -300,87 +343,84 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val mental = primaryCrisisLine(region)
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().background(Night)) {
-        CereBroTopBar(
-            title = stringResource(R.string.crisis_title),
-            subtitle = stringResource(R.string.urgent_subtitle),
-            onBack = onBack,
-        )
+        Row(
+            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFFA52F50), modifier = Modifier.size(23.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.crisis_screen_title), style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif), color = TextPrimary)
+                Text(stringResource(R.string.crisis_screen_subtitle), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(DangerSoft).padding(18.dp)) {
-                Text(
-                    stringResource(R.string.urgent_danger_title, emergency.target),
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary,
-                )
-                Text(
-                    stringResource(R.string.urgent_danger_body),
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = TextSoft,
-                )
+                Text(stringResource(R.string.crisis_immediate_danger, emergency.target), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(stringResource(R.string.crisis_not_emergency), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = Color(0xFF542D34))
             }
             Spacer(Modifier.height(6.dp))
+            // A badge is a CLAIM. This one used to render unconditionally, so
+            // every region wore "Verified" — the exact bug the ref/ audit
+            // found (Indian numbers badged Verified for every country). India
+            // is the region whose numbers we have actually checked against a
+            // named source; everywhere else says so plainly rather than
+            // borrowing India's badge.
+            val verifiedRegion = crisisRegionIsVerified(region)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Region only. This used to read "INDIA · ENGLISH" with the
-                // language hardcoded, which was wrong for anyone who had picked
-                // Hindi and told them nothing about the numbers either way.
-                Text(
-                    stringResource(regionLabelRes(region)).uppercase(),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Warm,
-                )
-                Box(Modifier.clip(CircleShape).background(OkSoft).padding(horizontal = 13.dp, vertical = 7.dp)) {
-                    Text(stringResource(R.string.urgent_verified), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Ok)
+                Text(stringResource(R.string.crisis_region_language, stringResource(regionLabelRes(region)).uppercase()), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Color(0xFFB13D57))
+                Box(
+                    Modifier.clip(CircleShape)
+                        .background(if (verifiedRegion) OkSoft else WarmSoft)
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        stringResource(if (verifiedRegion) R.string.crisis_verified else R.string.crisis_not_verified),
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                        color = if (verifiedRegion) Ok else Warm,
+                    )
                 }
             }
+            if (!verifiedRegion) {
+                Text(
+                    stringResource(R.string.crisis_unverified_note),
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = TextMuted,
+                )
+            }
+            Text(stringResource(R.string.crisis_headline), style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp), color = TextPrimary)
+            // "Reach VERIFIED human support" was a third copy of the same
+            // unearned claim — true in India, not everywhere the screen renders.
             Text(
-                stringResource(R.string.urgent_hero),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
-                color = TextPrimary,
-            )
-            Text(
-                stringResource(R.string.urgent_intro),
+                stringResource(if (verifiedRegion) R.string.crisis_reach_verified else R.string.crisis_reach_plain),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
             )
+            UrgentAction(stringResource(R.string.crisis_call_emergency), stringResource(R.string.crisis_emergency_detail, emergency.target), Icons.Outlined.Call, primary = true) { openSupportTarget(context, emergency.target) }
+            // Outside India this said "· verified mental-health support" — the
+            // same unearned claim as the badge, on the line carrying the number
+            // someone would actually dial.
             UrgentAction(
-                stringResource(R.string.urgent_emergency_title),
-                stringResource(R.string.urgent_emergency_detail, emergency.target),
-                Icons.Outlined.Call, primary = true,
-            ) { openSupportTarget(context, emergency.target) }
-            UrgentAction(
-                stringResource(R.string.urgent_call_line, stringResource(mental.nameRes)),
+                stringResource(R.string.crisis_call_line, stringResource(mental.nameRes)),
                 stringResource(
-                    if (region == "IN") R.string.urgent_line_detail_in else R.string.urgent_line_detail_other,
+                    if (verifiedRegion) R.string.crisis_mental_india else R.string.crisis_mental_other,
                     mental.target,
                 ),
                 Icons.Outlined.FavoriteBorder,
             ) { openSupportTarget(context, mental.target) }
-            UrgentAction(
-                stringResource(R.string.urgent_trusted_title),
-                stringResource(R.string.urgent_trusted_detail),
-                Icons.Outlined.FavoriteBorder,
-            ) { onOpen("trustedcontact") }
-            UrgentAction(
-                stringResource(R.string.urgent_cannot_call_title),
-                stringResource(R.string.urgent_cannot_call_detail),
-                Icons.Outlined.Spa, sage = true,
-            ) { onOpen("crisisgrounding") }
+            UrgentAction(stringResource(R.string.crisis_trusted_title), stringResource(R.string.crisis_trusted_detail), Icons.Outlined.FavoriteBorder) { onOpen("trustedcontact") }
+            UrgentAction(stringResource(R.string.crisis_cannot_call), stringResource(R.string.crisis_cannot_call_detail), Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
-            Text(stringResource(R.string.urgent_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)
-            Text(
-                stringResource(R.string.urgent_cached_body),
-                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = TextMuted,
-            )
-            Text(
-                stringResource(R.string.crisis_region_change),
-                modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") },
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle,
-            )
+            Text(stringResource(R.string.crisis_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)
+            Text(stringResource(R.string.crisis_sources), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = Color(0xFF776E6E))
+            Text(stringResource(R.string.crisis_change_region), modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768))
             Box(
                 Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(CardFill)
                     .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { onOpen("safetyplan") },
                 contentAlignment = Alignment.Center,
-            ) { Text(stringResource(R.string.urgent_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle) }
+            ) { Text(stringResource(R.string.crisis_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768)) }
             Spacer(Modifier.height(6.dp))
         }
     }
@@ -392,13 +432,13 @@ private fun UrgentAction(title: String, detail: String, icon: ImageVector, prima
     Row(
         Modifier.fillMaxWidth().heightIn(min = if (primary) 86.dp else 94.dp)
             .shadow(7.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
-            .background(if (primary) Danger else CardFill)
+            .background(if (primary) Color(0xFFD93B36) else CardFill)
             .then(if (primary) Modifier else Modifier.border(.5.dp, LineStroke.copy(alpha = .7f), shape))
             .clickable(onClick = onClick).padding(horizontal = 17.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(43.dp).clip(CircleShape).background(if (primary) DangerSoft else if (sage) OkSoft else DangerSoft), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = if (primary) Danger else if (sage) Ok else Danger, modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = if (primary) Color(0xFFE34B4B) else if (sage) Color(0xFF4B775E) else Color(0xFFD45369), modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = if (primary) Color.White else TextPrimary)
@@ -408,12 +448,57 @@ private fun UrgentAction(title: String, detail: String, icon: ImageVector, prima
 }
 
 @Composable
+private fun DetailRow(label: String, value: String, divider: Boolean = true) {
+    Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+    }
+}
+
+@Composable
+private fun NoticeChoice(symbol: String, title: String, subtitle: String? = null) {
+    Row(
+        Modifier.fillMaxWidth().height(if (subtitle == null) 72.dp else 82.dp)
+            .shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color.Black.copy(alpha = .06f))
+            .clip(RoundedCornerShape(22.dp)).background(CardFill).padding(horizontal = 27.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(21.dp),
+    ) {
+        Text(symbol, style = MaterialTheme.typography.titleMedium, color = Color(0xFF6C2768))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = TextMuted) }
+        }
+        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
+    }
+}
+
+@Composable
 private fun PracticeHeader(
     title: String,
     subtitle: String,
+    serif: FontFamily,
     onBack: () -> Unit,
     onUrgent: () -> Unit,
-) = CereBroTopBar(title = title, subtitle = subtitle, onBack = onBack, onUrgent = onUrgent)
+) {
+    Row(
+        Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
+            .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 17.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        CircleAction(FieldFill, onBack) {
+            Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, maxLines = 1, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
+        CircleAction(DangerSoft, onUrgent) {
+            Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+        }
+    }
+}
 
 @Composable
 private fun BreathingSetting(
@@ -429,13 +514,21 @@ private fun BreathingSetting(
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A637E))
         }
         Switch(
             checked = checked, onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Periwinkle),
+            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF71306C)),
         )
     }
+}
+
+@Composable
+private fun CircleAction(fill: Color, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        Modifier.size(47.dp).clip(CircleShape).background(fill).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { content() }
 }
 
 @Composable
@@ -460,8 +553,8 @@ private fun PracticeFamilyRow(
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF776E6E), maxLines = 1)
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = Periwinkle)
+        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
     }
 }

@@ -3,6 +3,7 @@ package com.cerebrozen.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -242,7 +243,7 @@ fun IntentionScreen(onBack: () -> Unit) {
 
 /** DBT TIPP — a guided walkthrough, no data collected. */
 @Composable
-fun TippScreen(onBack: () -> Unit) {
+fun TippScreen(onBack: () -> Unit, onUrgent: () -> Unit = {}) {
     val steps = listOf(
         Triple(stringResource(R.string.tipp_step1_title), stringResource(R.string.tipp_step1_how), stringResource(R.string.tipp_step1_why)),
         Triple(stringResource(R.string.tipp_step2_title), stringResource(R.string.tipp_step2_how), stringResource(R.string.tipp_step2_why)),
@@ -316,14 +317,32 @@ fun TippScreen(onBack: () -> Unit) {
                 TippPreviousButton(enabled = true, modifier = Modifier.fillMaxWidth()) { idx-- }
             }
         }
-        Box(
+        // This is the one screen in the app that names self-harm, and it is
+        // reached at "a 9 or 10 when thinking feels impossible". It used to raise
+        // that and then hand the user *directions* — "Urgent support lives in the
+        // You tab" — with no crisis affordance anywhere on the screen: back out,
+        // find the tab, find the row, from memory, in the worst moment. The house
+        // rule is that a risk signal always pairs with a pathway, so the note is
+        // now the pathway itself.
+        Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
                 .background(Periwinkle.copy(alpha = 0.07f))
                 .border(1.dp, Periwinkle.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
+                .clickable(
+                    onClickLabel = stringResource(R.string.tipp_urge_action),
+                    role = Role.Button,
+                    onClick = onUrgent,
+                )
                 .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Text(stringResource(R.string.tipp_urge_note),
                 style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text(
+                stringResource(R.string.tipp_urge_action),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold, color = Periwinkle,
+            )
         }
         WhyThisWorks(stringResource(R.string.tipp_why))
     }
