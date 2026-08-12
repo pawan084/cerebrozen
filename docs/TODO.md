@@ -345,10 +345,13 @@ everything below is open.
       render `TalkScreen(onOpen = open)`, the exact same call as the Talk tab, and nothing
       navigates to either: three route names, one screen. They also inflate the route list
       and the bottom-bar/accent maps, which is part of why "~64 screens" overstates the real
-      surface. Decide per route: give `guidedimagery` a door or delete it; drop the two talk
-      aliases. `intention` and `onegoodthing` are reachable *only* if the model emits an
-      `intention_set` / `one_good_thing` activity widget — deliberate, but worth knowing they
-      have no static entry point
+      surface. **Now that all four have actually been opened** (see the entry above), the
+      recommendation is no longer symmetrical: `guidedimagery` is finished product — four
+      journeys, five steps each, voice cues and pause — so it wants a door, not a delete.
+      The two talk aliases are pure duplication and can go. `intention` and `onegoodthing`
+      are likewise complete and reachable *only* if the model emits an `intention_set` /
+      `one_good_thing` widget; that may be deliberate, but three finished screens sitting
+      behind a model's discretion is worth an owner decision rather than an assumption
 - [ ] **Mindful game "practice" tags are keyed by the faculty names they deliberately
       avoid** — the values are correct activity descriptions ("Hold a sequence in mind"), but
       the resource keys are `mg_working_memory`, `mg_selective_attention`,
@@ -361,12 +364,35 @@ everything below is open.
       comes from returning, not perfection"), but naming correct answers *mindful* responses
       implies the other six were unmindful. Presence framing would count rounds shown up for,
       not answers matched
-- [ ] **The Android screen review stopped at 62 of ~64 screens** (2026-08-12). Every bug
-      below came out of the 62 walked. Still unseen, and all four for structural reasons
-      rather than time: `guidedimagery` and `talk/live` have no door (see the orphan entry
-      above — reaching them means adding one or deleting them), and `intention` /
-      `onegoodthing` only open when the model emits their activity widget, so they need a
-      seeded chat rather than a tap. Three method notes for whoever resumes, all learned
+- [x] **Screen review complete: every screen in the app has now been opened and looked at**
+      (2026-08-12). The last four had no door, so they were reached by temporarily adding
+      them to `EXTERNAL_ROUTES`, building, capturing, and reverting — the patch never reached
+      a commit (verified: tree byte-identical to HEAD afterwards). Worth doing rather than
+      reading the code, because it answered the question the code could not: are these
+      half-built things safe to delete, or finished work that lost its entrance?
+      **They are finished.** `guidedimagery` renders four journeys (forest, ocean, mountain,
+      meadow), each a five-step sequence with voice cues, pause and exit. `onegoodthing`
+      ("Anything counts — a kind word, a finished task, a decent cup of tea") and `intention`
+      ("Not a to-do list — one thing that would make tomorrow feel steadier") are both
+      complete, well-written and save to the journal. None of this is scaffolding.
+      That changes the recommendation in the orphan entry below: this is built product with
+      no entrance, not dead code to sweep. `talk/live` is the exception — confirmed on device
+      to render text identical to the Talk tab, so it really is just a third name
+- [ ] **The active breathing session is the one screen still unseen** (2026-08-12). Not for
+      lack of trying: the emulator process died **three times out of three** at exactly the
+      same step — tapping "Start Box Breathing" to enter the animated session. Reproducible,
+      so not a flake. The emulator log ends mid-line with no error and no guest-side fatal,
+      and an app crash would leave the emulator running and show in logcat, so the likely
+      cause is the host SwiftShader software renderer failing on the breathing animation
+      rather than anything in the app. **Not provable either way from here** — it needs a
+      physical device or a hardware-GPU AVD. Worth actually checking rather than assuming
+      environment, because a renderer that heavy would also matter on low-end phones, which
+      is a large part of the India-first audience. This is also the screen Abhimanyu's
+      `a6ae5e3b` moved the voice toggle into, so that change is likewise unverified on device
+- [x] **The Android screen review is finished — every screen opened and looked at**
+      (2026-08-12), across roughly a dozen waves. The only surface still unseen is the
+      *active* breathing session, for the environment reason in its own entry above. Four
+      method notes, all learned
       the hard way — a frozen emulator framebuffer yields *plausible* screenshots of the last
       good frame (hash two captures ~10s apart to catch it), and distinct file hashes do not
       mean distinct screens: seven "successful" deeplink captures were all Today, because the
@@ -375,7 +401,11 @@ everything below is open.
       reached by tapping, not by deeplink** — a `cerebro://` to anything else silently lands
       on Today. The harness that works is `uiautomator dump` → tap by text/content-desc, and
       printing the screen's own text next to every capture so a wrong screen is obvious
-      immediately rather than three screenshots later
+      immediately rather than three screenshots later. Fourth: a route with no door can still
+      be reviewed — add it to `EXTERNAL_ROUTES` temporarily, build, capture, revert, and check
+      `git status` is clean before committing. `am start` needs `-a android.intent.action.VIEW`
+      for the URI to be read; `-n` alone brings the app forward without consuming the deeplink,
+      which looks exactly like a route that does not exist
 - [ ] **HC-06: practice content is still hardcoded** — the library ships as Kotlin literals
       rather than coming from `Api.content()`. Blocked on the backend, which only knows
       `sleep` and `soundscape`; extending `/content` is the actual task
