@@ -443,7 +443,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFFCF8), Color(0xFFF6F0EA)))),
+            .background(Brush.verticalGradient(listOf(CardFill, Night))),
     ) {
         SleepBackgroundGlow()
         // Pull-to-refresh, same themed indicator as Home — the tab is just as

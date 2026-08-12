@@ -117,6 +117,7 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
 import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.AccentSoft
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
@@ -769,7 +770,7 @@ private fun MoodTile(mood: MoodOption, enabled: Boolean, marked: Boolean = false
     ) {
         Box(
             Modifier.size(36.dp).clip(CircleShape)
-                .background(if (marked) Color.White.copy(alpha = .16f) else Color(0xFFFFFDFA)),
+                .background(if (marked) Color.White.copy(alpha = .16f) else CardFill),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -2632,7 +2633,7 @@ private fun BaselineSliderRow(label: String, value: Float, onValueChange: (Float
             modifier = Modifier.weight(1f),
             colors = androidx.compose.material3.SliderDefaults.colors(
                 thumbColor = Color(0xFF6B2865), activeTrackColor = Color(0xFF6B2865),
-                inactiveTrackColor = Color(0xFFE7E3E4), activeTickColor = Color.Transparent,
+                inactiveTrackColor = AccentSoft, activeTickColor = Color.Transparent,
                 inactiveTickColor = Color.Transparent,
             ),
         )
