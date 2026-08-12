@@ -338,6 +338,36 @@ everything below is open.
       that never existed; the others have never been checked mechanically. A script that
       resolves every `Test`/`tests/` reference in that table to a real symbol would turn the
       file's own rule into something enforced rather than promised
+- [x] **`guidedimagery` has a door** (2026-08-12). It is the seventh family in the Practice
+      library — "Picture somewhere calm · Four places to settle into" — which is where a user
+      already goes to choose a practice by need. Two things fell out of placing it there.
+      The sleep family's subtitle read **"Body scan and imagery"** and opened only the body
+      scan, so it had been advertising the missing screen all along; it now reads "A slow
+      body scan". And the library called itself "Six clear families" in three places, so the
+      count moved to seven in English and Hindi rather than leaving copy that contradicts the
+      list beneath it.
+      **A test now enforces the general rule** (`RouteReachabilityTest`): every route
+      registered in the NavHost must have something that navigates to it. It counts only real
+      navigation — `onOpen`/`open`/`openTool`/`navigate` and the widget map — because naming
+      a route in an accent `when` or the bottom-bar set is *styling*, and that is exactly
+      what made `talk/live` look connected when it was not
+- [ ] **A fourth dead alias: `dailyplan`** — found by the new test, not by eye, and my own
+      earlier orphan scan had missed it because that scan counted any nav-ish mention.
+      `composable("dailyplan")` and `composable("plan")` both render
+      `PlanScreen(onBack = back)`. The merge note said it was kept "so a stale link lands
+      somewhere real" — **that reason does not hold**: `dailyplan` is not in
+      `EXTERNAL_ROUTES`, so no external link can reach it either. It is a third name for one
+      screen, like the two talk aliases. All four are listed in `RouteReachabilityTest`'s
+      `knownUnreachable` with their reasons, which is a holding position, not a fix
+- [ ] **Two imagery implementations are now both reachable** — the design rules cap this at
+      one per behaviour ("never two pop games / four breathing screens"). The toolkit's
+      "Build somewhere calm, one sense at a time" opens `imagery` (Rituals.kt): a single
+      eight-line script, and notably the one that warns "if it stops feeling calm, stop" and
+      offers 5-4-3-2-1 instead. The new Practice-library door opens `guidedimagery`: four
+      landscapes, five steps each, with voice cues. They are genuinely different exercises,
+      but they are the same *behaviour*, and giving the second one a door made the overlap
+      live rather than theoretical. Owner call: merge them, or keep both and say in the copy
+      how they differ. Note the safety-out belongs on whichever survives
 - [ ] **Two screens are registered but unreachable, and two more are aliases** (2026-08-12,
       found by checking all 58 static routes for a navigation reference rather than by eye).
       `guidedimagery` has **zero** references anywhere outside its own `composable(...)` —

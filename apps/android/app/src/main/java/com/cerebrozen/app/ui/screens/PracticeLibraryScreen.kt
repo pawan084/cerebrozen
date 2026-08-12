@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Spa
@@ -33,8 +34,6 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -145,6 +144,14 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
                 PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
                 PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
+                // The door `guidedimagery` never had. Four finished journeys —
+                // forest, ocean, mountain, meadow, five steps each with voice
+                // cues — were registered in the graph with nothing anywhere in
+                // the app navigating to them. The sleep row above used to
+                // advertise "Body scan and imagery" and open only the body
+                // scan; imagery is its own family now, and that subtitle no
+                // longer promises what it does not open.
+                PracticeFamilyRow(Icons.Outlined.Landscape, stringResource(R.string.practicelib_imagery_title), stringResource(R.string.practicelib_imagery_sub), OkSoft, Color(0xFF4B775E)) { onOpen("guidedimagery") }
                 PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Color(0xFFC75270)) { onOpen("gratitude") }
             }
         }

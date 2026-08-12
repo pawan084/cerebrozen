@@ -1028,8 +1028,8 @@
     <string name="weeklyinsights_title">अंतर्दृष्टि</string>
     <string name="weeklyinsights_subtitle">सारांश, रुझान और योजना</string>
     <string name="practicelib_title">अभ्यास पुस्तकालय</string>
-    <string name="practicelib_subtitle">छह स्पष्ट श्रेणियाँ</string>
-    <string name="practicelib_eyebrow">छह अभ्यास श्रेणियाँ</string>
+    <string name="practicelib_subtitle">सात स्पष्ट श्रेणियाँ</string>
+    <string name="practicelib_eyebrow">सात अभ्यास श्रेणियाँ</string>
     <string name="practicelib_hero">जो चाहिए\nउसके हिसाब\nसे चुनें।</string>
     <string name="practicelib_intro">हर श्रेणी छोटी है, ऑफ़लाइन चलती है, और जब आप रुकें तब रुक जाती है।</string>
     <string name="practicelib_breathe_title">साँस लें</string>
@@ -1041,7 +1041,9 @@
     <string name="practicelib_thoughts_title">विचारों पर काम करें</string>
     <string name="practicelib_thoughts_sub">निर्देशित पुनर्विचार</string>
     <string name="practicelib_sleep_title">नींद की तैयारी</string>
-    <string name="practicelib_sleep_sub">बॉडी स्कैन और कल्पना</string>
+    <string name="practicelib_sleep_sub">एक धीमा बॉडी स्कैन</string>
+    <string name="practicelib_imagery_title">कोई शांत जगह कल्पना में लाएँ</string>
+    <string name="practicelib_imagery_sub">बसने के लिए चार जगहें</string>
     <string name="practicelib_gratitude_title">सकारात्मक चिंतन</string>
     <string name="practicelib_gratitude_sub">बिना दबाव के कृतज्ञता</string>
     <string name="breathprep_subtitle">सत्र की तैयारी</string>

@@ -165,8 +165,8 @@
     <string name="weeklyinsights_title">Insights</string>
     <string name="weeklyinsights_subtitle">Summary, trends and plan</string>
     <string name="practicelib_title">Practice library</string>
-    <string name="practicelib_subtitle">Six clear families</string>
-    <string name="practicelib_eyebrow">SIX PRACTICE FAMILIES</string>
+    <string name="practicelib_subtitle">Seven clear families</string>
+    <string name="practicelib_eyebrow">SEVEN PRACTICE FAMILIES</string>
     <string name="practicelib_hero">Choose\nby what\nyou need.</string>
     <string name="practicelib_intro">Every family is short, offline-friendly and stops whenever you do.</string>
     <string name="practicelib_breathe_title">Breathe</string>
@@ -178,7 +178,11 @@
     <string name="practicelib_thoughts_title">Work with thoughts</string>
     <string name="practicelib_thoughts_sub">Guided reframing</string>
     <string name="practicelib_sleep_title">Prepare for sleep</string>
-    <string name="practicelib_sleep_sub">Body scan and imagery</string>
+    <string name="practicelib_sleep_sub">A slow body scan</string>
+    <!-- The seventh family: the door ui.offline.GuidedImageryScreen never had.
+         Four finished journeys sat behind no entrance at all. -->
+    <string name="practicelib_imagery_title">Picture somewhere calm</string>
+    <string name="practicelib_imagery_sub">Four places to settle into</string>
     <string name="practicelib_gratitude_title">Positive reflection</string>
     <string name="practicelib_gratitude_sub">Gratitude without pressure</string>
     <!-- Breathing prep. Both switches write the settings the session reads. -->
