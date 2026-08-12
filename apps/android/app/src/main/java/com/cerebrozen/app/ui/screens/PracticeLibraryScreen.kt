@@ -63,6 +63,9 @@ import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
 import kotlinx.coroutines.launch
+import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.WarmSoft
+import com.cerebrozen.app.ui.theme.TextMuted
 
 
 /** The first level under Explore's Calm now card: broad practice families,
@@ -538,16 +541,51 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 Text("CereBro is not an emergency service and cannot monitor your safety.", style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = Color(0xFF542D34))
             }
             Spacer(Modifier.height(6.dp))
+            // A badge is a CLAIM. This one used to render unconditionally, so
+            // every region wore "Verified" — the exact bug the ref/ audit
+            // found (Indian numbers badged Verified for every country). India
+            // is the region whose numbers we have actually checked against a
+            // named source; everywhere else says so plainly rather than
+            // borrowing India's badge.
+            val verifiedRegion = region == "IN"
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("${stringResource(regionLabelRes(region)).uppercase()} · ENGLISH", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Color(0xFFB13D57))
-                Box(Modifier.clip(CircleShape).background(Color(0xFFE7F1E8)).padding(horizontal = 13.dp, vertical = 7.dp)) {
-                    Text("Verified", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF3D684D))
+                Box(
+                    Modifier.clip(CircleShape)
+                        .background(if (verifiedRegion) Color(0xFFE7F1E8) else WarmSoft)
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        stringResource(if (verifiedRegion) R.string.crisis_verified else R.string.crisis_not_verified),
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                        color = if (verifiedRegion) Color(0xFF3D684D) else Warm,
+                    )
                 }
             }
+            if (!verifiedRegion) {
+                Text(
+                    stringResource(R.string.crisis_unverified_note),
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = TextMuted,
+                )
+            }
             Text("Human help\ncomes first.", style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp), color = Color(0xFF292323))
-            Text("Reach verified human support quickly with offline fallbacks.", style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C))
+            // "Reach VERIFIED human support" was a third copy of the same
+            // unearned claim — true in India, not everywhere the screen renders.
+            Text(
+                if (verifiedRegion) "Reach verified human support quickly with offline fallbacks."
+                else "Reach human support quickly, with offline fallbacks.",
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C),
+            )
             UrgentAction("Call emergency services", "${emergency.target} · police, fire, health and other emergencies", Icons.Outlined.Call, primary = true) { openSupportTarget(context, emergency.target) }
-            UrgentAction("Call ${stringResource(mental.nameRes)}", mental.target + if (region == "IN") " · free 24/7 mental-health support in 20 languages" else " · verified mental-health support", Icons.Outlined.FavoriteBorder) { openSupportTarget(context, mental.target) }
+            // Outside India this said "· verified mental-health support" — the
+            // same unearned claim as the badge, on the line carrying the number
+            // someone would actually dial.
+            UrgentAction(
+                "Call ${stringResource(mental.nameRes)}",
+                mental.target + if (verifiedRegion) " · free 24/7 mental-health support in 20 languages"
+                else " · " + stringResource(R.string.crisis_mental_generic),
+                Icons.Outlined.FavoriteBorder,
+            ) { openSupportTarget(context, mental.target) }
             UrgentAction("Contact my trusted person", "Someone you selected; CereBro never contacts them automatically", Icons.Outlined.FavoriteBorder) { onOpen("trustedcontact") }
             UrgentAction("I cannot call", "See text, in-person and grounding alternatives", Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
