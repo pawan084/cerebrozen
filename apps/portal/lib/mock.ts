@@ -273,3 +273,244 @@ export const ORG_MAY_RECEIVE = [
   { what: "Aggregate programme participation", detail: "Only above the privacy threshold" },
   { what: "Anonymous survey summaries", detail: "Optional and non-diagnostic" },
 ];
+
+/* ================================================================
+   The 26 remaining routes, built out 2026-08-12. Same rule as
+   everything above: fixed sample data, no backing model. Nothing
+   here is fetched, and no value belongs to a real organisation.
+   ================================================================ */
+
+/* -------------------------------------------------------------- SET-01 */
+
+/** Launch requirements, each pointing at the route that completes it. */
+export const SETUP_REQUIREMENTS = [
+  { key: "profile", label: "Organisation profile", detail: "Legal entity, programme owner and support contacts", href: "/settings", done: true },
+  { key: "privacy", label: "Privacy and reporting model", detail: "Threshold, suppression and data-processing terms", href: "/privacy", done: true },
+  { key: "sso", label: "Administrator SSO and MFA", detail: "Secure administrator access", href: "/integrations", done: true },
+  { key: "eligibility", label: "Eligibility connection", detail: "CSV, HRIS or API", href: "/members/invite", done: false },
+  { key: "programme", label: "Sponsored programme", detail: "Choose cohort, dates and benefits", href: "/programmes", done: false },
+  { key: "launch", label: "Member launch communication", detail: "Privacy-safe invitation and support route", href: "/campaigns/new", done: false },
+];
+
+/* -------------------------------------------------------------- MEM-03 */
+
+export const GROUP_DETAIL = {
+  name: "All India employees",
+  metrics: [
+    { value: "920", label: "Eligible" },
+    { value: "882", label: "Invited" },
+    { value: "541", label: "Activated" },
+    { value: "31 Mar 2027", label: "Access ends" },
+  ],
+  rules: [
+    { name: "Employment region", detail: "India", badge: "Required", tone: "" as const },
+    { name: "Worker status", detail: "Active employees only", badge: "Required", tone: "" as const },
+    { name: "Access lifecycle", detail: "Nightly Workday sync", badge: "Automated", tone: "good" as const },
+  ],
+  benefits: [
+    { icon: "✦", name: "Calm Workdays", detail: "12-week programme", badge: "Active", tone: "good" as const },
+    { icon: "∞", name: "CereBro Premium", detail: "During sponsorship term", badge: "Included", tone: "good" as const },
+    { icon: "↗", name: "EAP referral", detail: "Member-controlled handoff", badge: "Optional", tone: "" as const },
+  ],
+};
+
+/* -------------------------------------------------------------- PRO-02 */
+
+export const PROGRAMME_DETAIL = {
+  name: "Calm Workdays",
+  window: "1 Apr 2026 – 31 Mar 2027 · India",
+  metrics: [
+    { value: "1,126", label: "Invited", delta: "91% of eligible" },
+    { value: "512", label: "Activated", delta: "45% of invited" },
+    { value: "348", label: "Week 4 retained", delta: "68% of activated" },
+    { value: "4.5/5", label: "Anonymous rating", delta: "204 responses" },
+  ],
+  modules: [
+    { name: "Two-minute reset", detail: "Breathing · 12 sessions", badge: "Core" },
+    { name: "Wind-down ritual", detail: "Sleep · CBT-I informed", badge: "Core" },
+    { name: "Thought reframing", detail: "CBT-structured reflection", badge: "Core" },
+    { name: "Weekly reflection", detail: "Journalling prompt", badge: "Optional" },
+  ],
+};
+
+/* -------------------------------------------------------------- PRO-03 */
+
+export const PATHWAY_MODULES = [
+  { name: "Grounding practices", detail: "5-4-3-2-1, body scan, TIPP", weeks: "Weeks 1–2" },
+  { name: "Breathing and regulation", detail: "Box breathing, two-minute reset", weeks: "Weeks 2–4" },
+  { name: "Sleep foundations", detail: "Wind-down, bedtime anchor, CBT-I education", weeks: "Weeks 4–8" },
+  { name: "Thought work", detail: "Reframing, thought sorting", weeks: "Weeks 6–10" },
+  { name: "Reflection", detail: "Gratitude, one good thing, intention", weeks: "Weeks 8–12" },
+];
+
+/* -------------------------------------------------------------- REF-01 */
+
+export const PROVIDERS = [
+  { name: "Tele-MANAS", region: "India · national", detail: "Government mental-health helpline · 24/7 · 20 languages", badge: "Verified", tone: "good" as const },
+  { name: "iCall", region: "India · national", detail: "Counsellor helpline · Mon–Sat, 10:00–20:00 IST", badge: "Verified", tone: "good" as const },
+  { name: "Acme EAP", region: "India · employees", detail: "Employer-funded counselling · member-initiated only", badge: "Contracted", tone: "" as const },
+  { name: "Regional clinic network", region: "India · 4 cities", detail: "In-person referral · awaiting re-verification", badge: "Review due", tone: "warn" as const },
+];
+
+/* -------------------------------------------------------------- REF-02 */
+
+export const PROVIDER_DETAIL = {
+  name: "Tele-MANAS",
+  metrics: [
+    { value: "24/7", label: "Hours" },
+    { value: "20", label: "Languages" },
+    { value: "National", label: "Coverage" },
+    { value: "Verified", label: "Status" },
+  ],
+  verification: [
+    { name: "Source", detail: "MoHFW Tele-MANAS listing", badge: "Named source", tone: "good" as const },
+    { name: "Last checked", detail: "12 Aug 2026", badge: "Current", tone: "good" as const },
+    { name: "Re-verification", detail: "Every 90 days", badge: "Scheduled", tone: "" as const },
+  ],
+};
+
+/* -------------------------------------------------------------- OUT-01 */
+
+export const OUTCOME_MEASURES = [
+  { name: "Perceived stress", detail: "Voluntary pre/post survey", change: "−12%", n: "n=204", tone: "good" as const },
+  { name: "Sleep satisfaction", detail: "Voluntary pre/post survey", change: "+9%", n: "n=188", tone: "good" as const },
+  { name: "Workday focus", detail: "Voluntary pre/post survey", change: "+4%", n: "n=141", tone: "" as const },
+  { name: "Caregiver cohort", detail: "Below reporting threshold", change: "Suppressed", n: "n<20", tone: "warn" as const },
+];
+
+/* -------------------------------------------------------------- REP-01 */
+
+export const REPORT_TEMPLATES = [
+  { name: "Executive summary", detail: "Participation, satisfaction and programme health", period: "Quarterly" },
+  { name: "Programme performance", detail: "Funnel and retention for one programme", period: "Monthly" },
+  { name: "Privacy assurance", detail: "Thresholds applied, cohorts suppressed, exports made", period: "Quarterly" },
+  { name: "Renewal pack", detail: "Commercial and participation summary for contract review", period: "Annual" },
+];
+
+export const REPORT_HISTORY = [
+  { name: "Q1 executive summary", date: "12 Jul 2026", by: "Ananya Kapoor", badge: "Delivered", tone: "good" as const },
+  { name: "Privacy assurance Q1", date: "12 Jul 2026", by: "Meera Shah", badge: "Delivered", tone: "good" as const },
+  { name: "Caregiver pilot", date: "02 Jul 2026", by: "Ravi Menon", badge: "Suppressed", tone: "warn" as const },
+];
+
+/* -------------------------------------------------------------- PRI-02 */
+
+export const DATA_FLOWS = [
+  { name: "Eligibility identifiers", from: "Workday", to: "CereBro membership", retention: "Contract term + 30 days", tone: "" as const },
+  { name: "Administrator identity", from: "Okta SSO", to: "Portal session", retention: "Session only", tone: "" as const },
+  { name: "Aggregate participation", from: "CereBro platform", to: "Portal reporting", retention: "24 months", tone: "" as const },
+  { name: "Personal wellbeing content", from: "Member device", to: "Never leaves the member account", retention: "Member-controlled", tone: "good" as const },
+];
+
+/* -------------------------------------------------------------- SAF-01 */
+
+export const SAFETY_CHECKS = [
+  { name: "Crisis resource verification", detail: "India lines checked against named government sources", badge: "Current", tone: "good" as const },
+  { name: "Escalation routing test", detail: "Last run 05 Aug 2026", badge: "Passed", tone: "good" as const },
+  { name: "AI safety evaluation", detail: "Due in 18 days", badge: "Due", tone: "warn" as const },
+  { name: "Operational incidents", detail: "None open", badge: "Clear", tone: "good" as const },
+];
+
+/* -------------------------------------------------------------- SAF-02 */
+
+export const RUNBOOK_STEPS = [
+  { name: "Detection", detail: "The platform detects a crisis signal inside a member’s own session.", owner: "CereBro" },
+  { name: "In-product response", detail: "Region-correct helplines and the member’s safety plan are surfaced immediately.", owner: "CereBro" },
+  { name: "Trusted contact", detail: "Reached only if the member switched that on themselves.", owner: "Member" },
+  { name: "Employer role", detail: "None. The organisation is never told that a member was flagged.", owner: "Nobody" },
+  { name: "Operational failure", detail: "A broken helpline or provider outage is recorded here — without member identity.", owner: "Organisation" },
+];
+
+/* -------------------------------------------------------------- EVI-01 */
+
+export const EVIDENCE_ITEMS = [
+  { name: "CBT-I informed sleep module", detail: "Reviewed against published CBT-I components", badge: "Reviewed", tone: "good" as const },
+  { name: "Grounding and breathing practices", detail: "Framed as regulation support, not treatment", badge: "Reviewed", tone: "good" as const },
+  { name: "Mindful activities", detail: "Labelled comfort content, with no cognitive-training claim", badge: "Reviewed", tone: "good" as const },
+  { name: "Outcome survey wording", detail: "Non-diagnostic phrasing review", badge: "In review", tone: "warn" as const },
+];
+
+/* -------------------------------------------------------------- SEC-01 */
+
+export const SECURITY_CONTROLS = [
+  { name: "Encryption in transit and at rest", detail: "TLS 1.3 · AES-256", badge: "Active", tone: "good" as const },
+  { name: "Administrator MFA", detail: "Required for every portal role", badge: "Enforced", tone: "good" as const },
+  { name: "Least-privilege roles", detail: "No role reaches wellbeing content", badge: "Active", tone: "good" as const },
+  { name: "Penetration test", detail: "Annual · last completed Feb 2026", badge: "Current", tone: "good" as const },
+  { name: "Sub-processor review", detail: "Annual · next due Oct 2026", badge: "Scheduled", tone: "" as const },
+];
+
+/* -------------------------------------------------------------- INT-01 */
+
+export const INTEGRATIONS = [
+  { name: "Okta SSO", detail: "SAML 2.0 · administrator access", badge: "Connected", tone: "good" as const },
+  { name: "Workday HRIS", detail: "Nightly eligibility sync", badge: "Connected", tone: "good" as const },
+  { name: "Eligibility API", detail: "Create, suspend and end sponsored membership", badge: "Available", tone: "" as const },
+  { name: "Benefits platform", detail: "Not connected", badge: "Not connected", tone: "" as const },
+];
+
+/* -------------------------------------------------------------- INT-02 */
+
+export const INTEGRATION_DETAIL = {
+  name: "Workday HRIS",
+  metrics: [
+    { value: "Nightly", label: "Sync frequency" },
+    { value: "04:10 IST", label: "Last run" },
+    { value: "1,240", label: "Records received" },
+    { value: "0", label: "Rejected" },
+  ],
+  fields: [
+    { name: "External eligibility ID", accepted: true },
+    { name: "Work email or SSO identifier", accepted: true },
+    { name: "Access start and end date", accepted: true },
+    { name: "Eligibility group", accepted: true },
+    { name: "Any health, mood, journal or sleep field", accepted: false },
+  ],
+  log: [
+    { at: "12 Aug · 04:10", detail: "1,240 records · 0 rejected", badge: "Success", tone: "good" as const },
+    { at: "11 Aug · 04:10", detail: "1,238 records · 0 rejected", badge: "Success", tone: "good" as const },
+    { at: "10 Aug · 04:10", detail: "1,238 records · 2 rejected (missing end date)", badge: "Partial", tone: "warn" as const },
+  ],
+};
+
+/* -------------------------------------------------------------- AUD-01 */
+
+export const AUDIT_ENTRIES = [
+  { at: "12 Aug 2026 · 09:14", who: "Ananya Kapoor", action: "Opened privacy centre", target: "Privacy centre", tone: "" as const },
+  { at: "12 Aug 2026 · 08:52", who: "Ravi Menon", action: "Sponsored programme", target: "Calm Workdays", tone: "" as const },
+  { at: "11 Aug 2026 · 17:31", who: "Meera Shah", action: "Generated report", target: "Q1 executive summary", tone: "" as const },
+  { at: "11 Aug 2026 · 11:02", who: "Ananya Kapoor", action: "Changed reporting threshold", target: "20 members", tone: "warn" as const },
+  { at: "10 Aug 2026 · 09:44", who: "System", action: "Suppressed cohort in report", target: "Caregiver benefit", tone: "warn" as const },
+];
+
+/* -------------------------------------------------------------- BIL-01 */
+
+export const BILLING_METRICS = [
+  { value: "1,240", label: "Licensed seats" },
+  { value: "684", label: "Activated seats", delta: "55% of licensed" },
+  { value: "31 Mar 2027", label: "Renewal date" },
+  { value: "Annual", label: "Billing cycle" },
+];
+
+export const INVOICES = [
+  { ref: "INV-2026-014", date: "01 Apr 2026", amount: "₹18,60,000", badge: "Paid", tone: "good" as const },
+  { ref: "INV-2025-031", date: "01 Apr 2025", amount: "₹15,20,000", badge: "Paid", tone: "good" as const },
+];
+
+/* -------------------------------------------------------------- ORG-01 */
+
+export const ORG_PROFILE = [
+  { label: "Legal entity", value: "Acme Health Services Private Limited" },
+  { label: "Primary region", value: "India" },
+  { label: "Programme owner", value: "Ananya Kapoor · Benefits owner" },
+  { label: "Privacy contact", value: "privacy@acme.in" },
+  { label: "Support contact", value: "benefits@acme.in" },
+];
+
+/* -------------------------------------------------------------- SUP-01 */
+
+export const SUPPORT_CHANNELS = [
+  { name: "Implementation support", detail: "Launch, eligibility and integration help", badge: "Mon–Fri", tone: "" as const },
+  { name: "Privacy and governance", detail: "Data-processing terms, DPDP questions, audits", badge: "Mon–Fri", tone: "" as const },
+  { name: "Platform status", detail: "No incidents in the last 90 days", badge: "Operational", tone: "good" as const },
+];

@@ -109,16 +109,36 @@ everything below is open.
       parsed stylesheet instead). Not deployed, not in compose, no backend.
 - [x] **`apps/portal/app/globals.css` is in `scripts/sync-tokens.mjs` TARGETS** — already
       done when checked on 2026-08-12; the gate covers all four `globals.css` copies
-- [ ] **The 26 unbuilt portal routes** render as disabled nav items. Either build them or
-      cut them from `lib/nav.ts` before this surface is shown to a customer. Now that the 10
-      that exist are built, served and walked by CI (2026-08-12), the rest can go in one at a
-      time against a harness that notices when they break. **`AUTH-01`/`AUTH-02` first** —
-      they are what stands between the portal and a public subdomain, and the Caddy block
-      stays commented out until they exist
+- [x] **All 36 portal routes are built** (2026-08-12). The 26 that were disabled nav items
+      now exist, typecheck, lint clean, build, and each returns 200 with a heading — walked on
+      a running server, not inferred from the build output. `lib/nav.ts` has an `href` on
+      every sidebar entry; the ten detail routes (MEM-03, PRO-02, PRO-03, CAM-02, REF-02,
+      PRI-02, SAF-02, INT-02, ROL-02, BIL-02) stay out of the sidebar and are reached from
+      their parents, as in the prototype. `portal.spec.ts` walks all 36.
+      **AUTH-01/AUTH-02 render the access flow and authenticate nobody** — no identity
+      provider, no session, no cookie, the email field disabled and no submit button anywhere.
+      A control that appeared to sign someone in would imply a gate that does not exist, and a
+      fake gate is worse than an obvious absence. The prototype's "Open demo workspace" button
+      was not ported for the same reason. An e2e test asserts no cookie is set.
+      *Generator bug worth remembering*: the pages were written by a script that emitted
+      `\uXXXX` into JSX **text**, where backslash-u is not an escape — 21 pages rendered
+      "anyone\u2019s safety" verbatim. Invisible in a diff and in `tsc`; caught by reading the
+      served HTML. `portal.spec.ts` now asserts no page renders a literal escape
+- [ ] **The portal is still a front end with no backend** — 36 screens over fixed sample data
+      in `lib/mock.ts`. Nothing fetches, nothing persists, and no organisation, sponsorship,
+      entitlement or cohort model exists server-side (see the B2B2C entry). Building the
+      screens has made the shape reviewable and the copy auditable; it has not made the portal
+      functional, and it should not be shown to a customer as though it were
+- [ ] **Portal forms are inert by design, and that will need revisiting** — selects, date
+      fields and text areas across the invite, cohort, pathway and campaign builders hold
+      `defaultValue` and do nothing. That is honest for a design surface, but once a backend
+      exists each one needs the same treatment the consent toggles got: optimistic state that
+      reverts and says so when the write fails, never a UI that claims a save it did not make
 - [x] **`apps/portal` scaffolded** (new app, port 3003) — shell + 10 of 36 routes on mock
       data, no auth, no backend, no organisation model. The 26 unbuilt routes render as
       disabled nav items so the full IA stays reviewable. Added to `sync-tokens.mjs` TARGETS;
-      the sync gate independently confirms its token block is byte-identical
+      the sync gate independently confirms its token block is byte-identical.
+      *Superseded 2026-08-12*: all 36 routes are built and nothing is disabled any more
 - [x] **The organisation portal is wired into the stack** (2026-08-12). It had 10 of
       `ref/portal.html`'s 36 screens and no way to run: no Dockerfile, no compose service, no
       CI step, nothing in the Caddyfile, no e2e. Now it has a Dockerfile on :3003, a
