@@ -2873,11 +2873,31 @@ fun ReferenceDailyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     ) { toggle(step) }
                 }
             }
-            ReferenceAction(if (busy) "Updating…" else "Begin next unfinished step") {
+            // Begin OPENS the step. It used to call toggle(next), which is
+            // Api.togglePlanStep(id, done = true) — the button said Begin and
+            // did Finish, ticking off work nobody had done and quietly
+            // inflating the plan's progress. Completion stays where it belongs:
+            // the row's own tap, which the user chooses deliberately.
+            //
+            // The label follows the state too. With everything done this button
+            // opened the journal composer while still reading "Begin next
+            // unfinished step" — the same lie in a smaller way.
+            val nextStep = run {
                 val current = plan?.optJSONArray("steps")
-                val next = (0 until (current?.length() ?: 0)).map { current!!.getJSONObject(it) }
+                (0 until (current?.length() ?: 0)).map { current!!.getJSONObject(it) }
                     .firstOrNull { !it.optBoolean("done") }
-                if (next != null) toggle(next) else onOpen("journal/new")
+            }
+            ReferenceAction(
+                if (nextStep != null) "Begin next unfinished step" else "Write something instead",
+            ) {
+                if (nextStep != null) {
+                    // planStepRoute is the shared symbol → surface contract
+                    // (same one the Oracle widgets and web Home use). An
+                    // unmapped symbol still lands somewhere useful.
+                    onOpen(planStepRoute(nextStep.optString("symbol")) ?: "toolkit")
+                } else {
+                    onOpen("journal/new")
+                }
             }
             Box(
                 Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(26.dp))

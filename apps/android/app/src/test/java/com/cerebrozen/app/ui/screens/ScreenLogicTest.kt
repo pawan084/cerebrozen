@@ -948,4 +948,30 @@ class ScreenLogicTest {
         assertNull(toolkitRecentLabelRes("crisis"))
         assertNull(toolkitRecentLabelRes("retired_tool"))
     }
+
+    @Test
+    fun `every plan-step symbol opens a surface that can run it`() {
+        // BUG-03: the daily plan's "Begin next unfinished step" used to call
+        // togglePlanStep(done = true) — it said Begin and did Finish, ticking
+        // off work nobody had done. It now OPENS the step through
+        // planStepRoute, so that mapping is load-bearing and pinned here.
+        //
+        // Same symbol vocabulary as the Oracle widgets and the web Home
+        // mapping (a hand-duplicated cross-stack contract).
+        assertEquals("toolkit", planStepRoute("wind.snow"))
+        assertEquals("toolkit", planStepRoute("wind"))
+        assertEquals("sounds", planStepRoute("moon"))
+        assertEquals("sounds", planStepRoute("bell"))
+        assertEquals("journal", planStepRoute("book"))
+        assertEquals("journal", planStepRoute("brain"))
+        assertEquals("talk", planStepRoute("mic"))
+        assertEquals("talk", planStepRoute("person.2"))
+        assertEquals("talk", planStepRoute("heart"))
+
+        // An unknown symbol resolves to nothing here; the caller falls back to
+        // the toolkit rather than opening a route that does not exist — the
+        // crash BUG-01 was about.
+        assertNull(planStepRoute("sparkles"))
+        assertNull(planStepRoute(""))
+    }
 }
