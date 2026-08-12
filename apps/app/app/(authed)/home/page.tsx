@@ -239,6 +239,21 @@ export default function Home() {
                 ))}
               </div>
               <p className="checkin-note">{resp || "Tap how you're feeling — there's no wrong answer."}</p>
+              {/* TOD-02's thesis: a check-in must end on a CONSEQUENCE, not a
+                  saved value. No score, no rating, no level, no trend arrow —
+                  just what this does next. Both claims are real: moods feed the
+                  plan generator (services/agentic.py) and the weekly trends
+                  (services/insights.py).
+
+                  It deliberately says nothing about the journal. Whether the
+                  journal is read depends on which generator runs — see
+                  lib/todayHero.ts — so a flat claim here would be false half
+                  the time. */}
+              {picked && !checkInError && (
+                <p className="tiny">
+                  This shapes your next step and your weekly trends. Nothing here is scored.
+                </p>
+              )}
               {checkInError && <p className="error" role="alert">{checkInError}</p>}
             </section>
 

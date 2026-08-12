@@ -21,7 +21,6 @@ export const metadata = {
 // /plans/active. This surface is scaffolding and is meant to shrink to nothing.
 const SCREENS: [href: string, id: string, label: string][] = [
   ["/design/checkin", "TOD-02", "Check in"],
-  ["/design/sleep", "SLP-01", "Tonight"],
 ];
 
 export default function DesignLayout({ children }: { children: React.ReactNode }) {

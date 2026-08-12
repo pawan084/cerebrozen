@@ -116,8 +116,33 @@ export default function Sleep() {
           <p>A slower evening makes for a softer morning.</p>
         </section>
 
+        {/* SLP-01: Sleep lost its tab (REDESIGN_V2 §6.1), so it is now reached
+            deliberately — which means the first screenful is tonight and
+            nothing else. The ritual is the one action for tonight, so it comes
+            straight after the hero; the diary, the sounds and last night's
+            check-in all fold below.
+
+            What did NOT graduate from /design/sleep: the reorderable wind-down
+            (the mock says outright it "does not persist anywhere" — shipping a
+            reorder that forgets on reload is the same fake-save class of bug as
+            a Save button that only sets a boolean), and the "10:30 pm,
+            wind-down from 9:45 pm" line (there is no target-bedtime field in
+            backend/app/models/sleep.py, so that number would be invented). */}
+        <Link href="/sleep/ritual" className="card" style={{ display: "block", marginTop: 14 }}>
+          <h3 style={{ margin: "0 0 6px" }}>Tonight&apos;s wind-down ritual →</h3>
+          <p className="sub">
+            Four quiet steps, about ten minutes: empty your head, name what went right,
+            let the body go, then settle the breath.
+          </p>
+        </Link>
+
         {/* Consistency insight (CBT-I Phase 1) — client-side only, ≥3 real
             nights; the same noon-anchored math Android unit-tests. */}
+        <details className="today-fold">
+          <summary>
+            <span>Your rhythm</span>
+            <small>Nights so far, and what steadies them</small>
+          </summary>
         {(() => {
           const avg = avgSleepMinutes(nights);
           const spread = bedtimeSpreadMinutes(nights);
@@ -151,17 +176,13 @@ export default function Sleep() {
           </section>
         </div>
         <WhyThisWorks text="From CBT-I (cognitive behavioural therapy for insomnia) — the best-evidenced approach in sleep apps (Lancet Digital Health, 2025)." />
+        </details>
 
-        {/* The guided version of the two cards above — a routine rather than
-            advice to remember at 1am. */}
-        <Link href="/sleep/ritual" className="card" style={{ display: "block", marginTop: 14 }}>
-          <h3 style={{ margin: "0 0 6px" }}>Tonight&apos;s wind-down ritual →</h3>
-          <p className="sub">
-            Four quiet steps, about ten minutes: empty your head, name what went right,
-            let the body go, then settle the breath.
-          </p>
-        </Link>
-
+        <details className="today-fold">
+          <summary>
+            <span>Sounds for tonight</span>
+            <small>Soundscapes and sleep stories</small>
+          </summary>
         <div className="sec-head"><h2 className="serif-h">Soundscapes</h2></div>
         <div className="media-grid cz-in cz-d1">
           {soundscapes.map((s, i) => (
@@ -196,7 +217,15 @@ export default function Sleep() {
           above carry the evidence. Stories with narration play right here; the full
           soundscape mixer arrives with the mobile apps.
         </p>
+        </details>
 
+        {/* Last night is a MORNING task. It stays one tap away rather than
+            competing with tonight for the first screenful. */}
+        <details className="today-fold">
+          <summary>
+            <span>Last night</span>
+            <small>Log how you slept</small>
+          </summary>
         <div className="sec-head"><h2 className="serif-h">Morning check-in</h2></div>
         <form className="card-dark cz-in cz-d3" style={{ padding: 22 }} onSubmit={save} aria-label="Morning check-in">
           <p className="sub" style={{ color: "var(--muted)", marginBottom: 12 }}>How rested do you feel?</p>
@@ -214,6 +243,7 @@ export default function Sleep() {
           {saveError && <p className="error" role="alert">{saveError}</p>}
           <button className="btn" disabled={!quality || busy}>{busy ? "Saving…" : "Save check-in"}</button>
         </form>
+        </details>
       </div>
       </div>
     </>

@@ -84,8 +84,15 @@ test.describe("Web app (authenticated client)", () => {
 
     // Sleep: the morning check-in still writes server-side, and the CBT-I
     // stimulus-control education cards render (improvement framing, W12).
+    //
+    // SLP-01 reordered this screen: tonight leads, and the diary, the sounds
+    // and last night's check-in fold below it — so the folds are opened here.
+    // The wind-down ritual is the one thing that stays at full volume.
     await nav(page, "Sleep").click();
+    await expect(page.getByRole("heading", { name: /Tonight's wind-down ritual/ })).toBeVisible();
+    await page.getByText("Your rhythm", { exact: true }).click();
     await expect(page.getByRole("heading", { name: "Bed is for sleep" })).toBeVisible();
+    await page.getByText("Last night", { exact: true }).click();
     await page.getByRole("radio", { name: "Good" }).click();
     await page.getByRole("button", { name: "Save check-in" }).click();
     await expect(page.getByText(/Saved — one entry per morning/)).toBeVisible();

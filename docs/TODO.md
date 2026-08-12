@@ -28,10 +28,42 @@ everything below is open.
       real `/home` from `/plans/active` — the provenance sentence branches on `plan.source`
       (never hardcoded: the rule generator does not read the journal, the AI planner reads
       journal *titles* under consent, so a flat claim is false half the time), and "Works
-      offline" only shows when the target route genuinely is. The quick-links grid is folded.
-      **Still open:** fold Your day / Tonight / This week, then delete `app/design/today`.
-      Note `apps/app` has **no unit-test runner**, so `lib/todayHero.ts` is e2e-covered only —
-      unlike its Android twin, which `ScreenLogicTest` pins
+      offline" only shows when the target route genuinely is. The dashboard folds behind
+      Your day / Jump back in / Somewhere else. Note `apps/app` has **no unit-test runner**,
+      so `lib/todayHero.ts` is e2e-covered only — unlike its Android twin, which
+      `ScreenLogicTest` pins
+- [x] **SAF-01 → `/crisis`** (2026-08-12). The mock's `useState` region selector did NOT
+      graduate: `/crisis` is a server component on purpose ("renders even when the API is
+      down"), and a client selector would make *which emergency number you see* depend on a
+      JS bundle. Every region is in the markup behind a native `<details>`, and an e2e test
+      loads the page with `javaScriptEnabled: false` to keep it that way. A "Verified" badge
+      now requires a named source **and** a check date — India has both; US/UK say plainly
+      they are unverified (the inverse of the bug the ref/ audit found)
+- [x] **EXP-01 → `/explore`** (2026-08-12). The six needs shipped in Wave 1; the secondary
+      search graduated and filters the cards **on this page** rather than the catalogue — a
+      box searching a different corpus than the cards beneath it is worse than no box.
+      `.explore-search` is pinned to 48px (the base `input` rule lands ~42px).
+      **"Recently used" did NOT graduate:** there is no recents store on web
+- [x] **SLP-01 → `/sleep`** (2026-08-12). What graduated is the ORDER — tonight leads (the
+      wind-down ritual), and the rhythm, the sounds and last night's check-in fold below.
+      **Two features deliberately did not:** the reorderable wind-down (the mock states it
+      "does not persist anywhere" — a reorder that forgets on reload is the same fake-save
+      class as a Save button that only sets a boolean) and the "10:30 pm, wind-down from
+      9:45 pm" line (**no target-bedtime field exists** in `backend/app/models/sleep.py`, so
+      the number would be invented)
+- [ ] **TOD-02 is BLOCKED on a cross-stack change, not on design.** Its six states add
+      "Overwhelmed" and "Not sure" to the shipped five, and mood strings are **interpreted
+      server-side**: `agentic.py:130` and `nudges.py:69` both test
+      `{"anxious","low","tired"}`, so an "Overwhelmed" check-in would be read as *not
+      stressed* — suppressing the stress-aware plan and the wind-down nudge for the user who
+      most needs them. `insights.py:152` already knows "overwhelmed"; nothing knows "not
+      sure". Adding the states needs backend + Android + iOS in one commit (CLAUDE.md
+      cross-stack rule). What DID graduate web-side is TOD-02's thesis: the check-in now ends
+      on a **consequence** ("shapes your next step and your weekly trends. Nothing here is
+      scored") rather than a saved value. It deliberately says nothing about the journal,
+      because whether the journal is read depends on the generator — see `lib/todayHero.ts`
+- [ ] **`app/design/` is down to one screen** (`checkin`) and should reach zero when TOD-02's
+      taxonomy change lands. The surface is scaffolding and is meant to disappear
 
 - [x] `design/tokens.css` inverted to light-first Light Dawn + Night opt-in; synced to
       web/admin/app; `scripts/check-contrast.mjs` added and wired into CI (108 pairings pass)

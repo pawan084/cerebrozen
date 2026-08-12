@@ -17,18 +17,18 @@ import Link from "next/link";
 //   a different corpus than the cards beneath it would be worse than no box.
 //   "Recently used" did NOT graduate: there is no recents store on web, and
 //   inventing one silently is not a memory aid, it is a fabrication.
+//   SLP-01 Tonight → /sleep (2026-08-12). What graduated is the ORDER: tonight
+//   leads (the wind-down ritual), and the rhythm, the sounds and last night's
+//   check-in fold below it. Two of the mock's features did not: the reorderable
+//   wind-down (the mock states it "does not persist anywhere" — a reorder that
+//   forgets on reload is a fake save) and the "10:30 pm" target bedtime (no
+//   such field exists in backend/app/models/sleep.py, so it would be invented).
 const DONE: [href: string, id: string, title: string, note: string][] = [
   [
     "/design/checkin",
     "TOD-02",
     "Check in",
     "Six states, optional intensity and note; ends on what happens next, never a score.",
-  ],
-  [
-    "/design/sleep",
-    "SLP-01",
-    "Tonight",
-    "Target bedtime, a reorderable four-step wind-down, quick tools and an association-only insight.",
   ],
 ];
 
