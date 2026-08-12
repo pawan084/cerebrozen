@@ -9,6 +9,30 @@
 Spec: [REDESIGN_V2.md](REDESIGN_V2.md). Phase 1 (token inversion) is done and verified;
 everything below is open.
 
+- [x] **Wave 2 (landing) — the three pages `ref/landing.html` carries and this site did not**
+      (2026-08-12): `/organizations`, `/safety`, `/accessibility`. Footer gained an
+      Organizations column, `sitemap.ts` gained all three, and `trust-pages.spec.ts` gained a
+      test per page. The prototype is written in the future tense ("in the intended mobile
+      product", "the design target includes") because it is a design reference; transposing
+      that to a live site in the present tense would have over-claimed on the three pages
+      where it matters most. So each page keeps `ref/`'s structure and splits into what is
+      true today vs what is not: Safety names the mechanisms (the public `/crisis` route
+      outside the session guard, Tele-MANAS-first, safety plan never read back) and then
+      lists what production safety still needs; Accessibility says outright **"we do not
+      claim conformance today"**; Organizations leads with **"Status: in design, not yet
+      available"** because there is no organisation, sponsorship, entitlement or cohort model
+      in the backend (§3.3) — its never-shared / reportable boundary is reproduced in full
+- [ ] **Wave 3 (member web) — Today is PARTLY graduated** (2026-08-12). `lib/todayHero.ts`
+      hand-mirrors the Android contract (`heroKindFor` TodayScreen.kt:778,
+      `OFFLINE_HERO_ROUTES` :791, `heroWhyRes` :808) and the TOD-01 hero now renders on the
+      real `/home` from `/plans/active` — the provenance sentence branches on `plan.source`
+      (never hardcoded: the rule generator does not read the journal, the AI planner reads
+      journal *titles* under consent, so a flat claim is false half the time), and "Works
+      offline" only shows when the target route genuinely is. The quick-links grid is folded.
+      **Still open:** fold Your day / Tonight / This week, then delete `app/design/today`.
+      Note `apps/app` has **no unit-test runner**, so `lib/todayHero.ts` is e2e-covered only —
+      unlike its Android twin, which `ScreenLogicTest` pins
+
 - [x] `design/tokens.css` inverted to light-first Light Dawn + Night opt-in; synced to
       web/admin/app; `scripts/check-contrast.mjs` added and wired into CI (108 pairings pass)
 - [x] Primary CTA moved from white pill to accent fill (a pale pill is invisible on ivory);
@@ -64,10 +88,12 @@ everything below is open.
       `:root[data-theme="night"]`. `apps/app` works around this with its own `.theme-night`
       class. If any client needs a night-pinned subtree, that mechanism has to move into the
       shared tokens or be duplicated per app
-- [ ] **`.text-btn`, `.tiny`, `.btn-primary`, `.sub` are undefined in `apps/app`** — I used them and
-      they rendered as raw UA buttons (`min-height: 0`, failing the 48px rule). Defined
-      under `.design-root` only. When Today graduates, these need real app-wide definitions
-      or the same bug ships
+- [x] **`.text-btn`, `.tiny`, `.btn-primary` promoted app-wide** (2026-08-12) — they were
+      defined under `.design-root` only, so a graduated screen would have rendered raw UA
+      buttons at `min-height: 0`, failing the 48px rule. Same declarations, unscoped, so the
+      design surface and the real route render identically. **`.sub` deliberately NOT
+      promoted**: shipped screens rely on its descendant rules (`.card .sub`, `.authcard .sub`)
+      and a global would restyle every one of them
 - [x] **Wave 1 (Android) — five-tab IA**: Today · Explore · Talk · Journal · You.
       `enum class Tab` relabelled (route stays `home`, so deeplinks/back-stack/nudges are
       untouched); Sleep left the tab bar for a pushed `sleep` destination and gained a
