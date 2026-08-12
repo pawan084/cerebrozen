@@ -4,6 +4,12 @@
 
     <!-- ── Shared / common ─────────────────────────────────────────────── -->
     <string name="common_back">Back</string>
+    <!-- Screen-reader label for the crisis door in the top bar. One string, so the
+         door announces itself identically on every screen that carries it. -->
+    <string name="common_urgent_support">Urgent support</string>
+    <!-- Top-bar subtitles. The tab titles reuse tab_today / tab_explore. -->
+    <string name="topbar_today_subtitle">Your next helpful step</string>
+    <string name="topbar_explore_subtitle">Tools for different moments</string>
     <string name="common_dismiss">Dismiss</string>
     <string name="common_next">Next</string>
     <string name="common_cancel">Cancel</string>
@@ -130,6 +136,61 @@
     <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
+    <!-- Urgent support screen. Every line here was a Kotlin literal until now, so
+         the one screen a person opens at the worst moment was English-only even
+         after they had chosen Hindi. Tele-MANAS leads (design rule §9). -->
+    <string name="urgent_subtitle">Human help comes first</string>
+    <string name="urgent_danger_title">If there is immediate danger, call %1$s now.</string>
+    <string name="urgent_danger_body">CereBro is not an emergency service and cannot monitor your safety.</string>
+    <string name="urgent_verified">Verified</string>
+    <string name="urgent_hero">Human help\ncomes first.</string>
+    <string name="urgent_intro">Reach verified human support quickly with offline fallbacks.</string>
+    <string name="urgent_emergency_title">Call emergency services</string>
+    <string name="urgent_emergency_detail">%1$s · police, fire, health and other emergencies</string>
+    <string name="urgent_call_line">Call %1$s</string>
+    <string name="urgent_line_detail_in">%1$s · free 24/7 mental-health support in 20 languages</string>
+    <string name="urgent_line_detail_other">%1$s · verified mental-health support</string>
+    <string name="urgent_trusted_title">Contact my trusted person</string>
+    <string name="urgent_trusted_detail">Someone you selected; CereBro never contacts them automatically</string>
+    <string name="urgent_cannot_call_title">I cannot call</string>
+    <string name="urgent_cannot_call_detail">See text, in-person and grounding alternatives</string>
+    <string name="urgent_cached_title">Cached support details</string>
+    <string name="urgent_cached_body">Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.</string>
+    <string name="urgent_open_safety_plan">Open my safety plan</string>
+    <!-- Practice library. The subtitle said "Five clear families" over six rows. -->
+    <string name="groundingintro_title">5-4-3-2-1 grounding</string>
+    <string name="groundingintro_subtitle">Practice introduction</string>
+    <string name="checkindetail_title">Check in</string>
+    <string name="checkindetail_subtitle">Takes about 20 seconds</string>
+    <string name="weeklyinsights_title">Insights</string>
+    <string name="weeklyinsights_subtitle">Summary, trends and plan</string>
+    <string name="practicelib_title">Practice library</string>
+    <string name="practicelib_subtitle">Six clear families</string>
+    <string name="practicelib_eyebrow">SIX PRACTICE FAMILIES</string>
+    <string name="practicelib_hero">Choose\nby what\nyou need.</string>
+    <string name="practicelib_intro">Every family is short, offline-friendly and stops whenever you do.</string>
+    <string name="practicelib_breathe_title">Breathe</string>
+    <string name="practicelib_breathe_sub">Slow and regulate</string>
+    <string name="practicelib_ground_title">Ground</string>
+    <string name="practicelib_ground_sub">Return attention to your surroundings</string>
+    <string name="practicelib_reset_title">Reset your body</string>
+    <string name="practicelib_reset_sub">TIPP and sensory skills</string>
+    <string name="practicelib_thoughts_title">Work with thoughts</string>
+    <string name="practicelib_thoughts_sub">Guided reframing</string>
+    <string name="practicelib_sleep_title">Prepare for sleep</string>
+    <string name="practicelib_sleep_sub">Body scan and imagery</string>
+    <string name="practicelib_gratitude_title">Positive reflection</string>
+    <string name="practicelib_gratitude_sub">Gratitude without pressure</string>
+    <!-- Breathing prep. Both switches write the settings the session reads. -->
+    <string name="breathprep_subtitle">Prepare session</string>
+    <string name="breathprep_eyebrow">BREATHING</string>
+    <string name="breathprep_hero">In for four,\nout for six.</string>
+    <string name="breathprep_intro">A longer exhale may help settle physical activation. Stop if you feel dizzy or uncomfortable.</string>
+    <string name="breathprep_chime_title">Soft chime</string>
+    <string name="breathprep_chime_sub">A quiet cue at each transition.</string>
+    <string name="breathprep_haptics_title">Haptics</string>
+    <string name="breathprep_haptics_sub">Gentle vibration at phase changes.</string>
+    <string name="breathprep_begin">Begin 2-minute breathing</string>
 
     <!-- ── Human support (Settings.kt) ─────────────────────────────────── -->
     <string name="humansupport_eyebrow">Beyond the app</string>
@@ -1871,6 +1932,14 @@
     <string name="sleep_delete_body">The sleep record for %1$s will be permanently removed.</string>
     <!-- Gratitude reflection. The reflection is stored as a journal entry, which
          is why the queued copy promises a sync rather than a local-only save. -->
+    <string name="practice_gratitude_title">Gratitude</string>
+    <string name="practice_gratitude_subtitle">Positive reflection</string>
+    <string name="practice_gratitude_eyebrow">GRATITUDE REFLECTION</string>
+    <string name="practice_gratitude_hero">Notice one
+thing—not
+everything.</string>
+    <string name="practice_gratitude_intro">This is not about forcing positivity. A small neutral or supportive detail is enough.</string>
+    <string name="practice_gratitude_placeholder">One thing that made today slightly easier…</string>
     <string name="practice_gratitude_save">Save privately</string>
     <string name="practice_gratitude_entry_title">Gratitude reflection</string>
     <string name="practice_gratitude_queued">Saved on this phone — it syncs when you\'re back online.</string>

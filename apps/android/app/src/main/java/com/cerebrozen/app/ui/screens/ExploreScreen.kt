@@ -70,7 +70,7 @@ import com.cerebrozen.app.ui.theme.Ok
 fun ExploreScreen(onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
     Column(Modifier.fillMaxSize().background(Night)) {
-        ExploreTopBar(serif, onUrgent = { onOpen("crisis") })
+        ExploreTopBar(onUrgent = { onOpen("crisis") })
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 22.dp).padding(top = 14.dp, bottom = 112.dp),
@@ -125,39 +125,13 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
     }
 }
 
+/** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
-private fun ExploreTopBar(serif: FontFamily, onUrgent: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().background(CardFill.copy(alpha = .96f)),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
-        ) {
-            BrandMark(size = 36.dp, showGlow = true)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    "Explore", maxLines = 1, softWrap = false,
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif, lineHeight = 24.sp),
-                    color = TextPrimary,
-                )
-                Text(
-                    "Tools for different moments", maxLines = 1, softWrap = false,
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
-                    color = TextMuted,
-                )
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable(onClick = onUrgent),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
+private fun ExploreTopBar(onUrgent: () -> Unit) = CereBroTopBar(
+    title = stringResource(R.string.tab_explore),
+    subtitle = stringResource(R.string.topbar_explore_subtitle),
+    onUrgent = onUrgent,
+)
 
 @Composable
 private fun ExploreHero(onClick: () -> Unit) {

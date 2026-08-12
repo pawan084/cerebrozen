@@ -125,12 +125,10 @@ object NotificationLog {
      * were two hand-maintained lists in the web client and drifted within a week.
      */
     fun routeFor(kind: String): String? = when (kind) {
-        // "home", not "today". The Today TAB kept the route `home` through the
-        // five-tab rename precisely so deeplinks and nudges would not break —
-        // this map missed that, so tapping Open on a check-in nudge called
-        // navigate("today"), which matches no destination and throws
-        // IllegalArgumentException. Every value here must be a real route in
-        // CereBroApp's graph.
+        // "home", not "today": the Home TAB is registered as `home`
+        // (CereBroApp Tab.Home) and there has never been a `today` destination,
+        // so every check-in nudge logged a route that navigate() could only
+        // throw on. The screen is called Today; the route is not.
         "checkin" -> "home"
         "winddown", "sleep" -> "sleep"
         "journal" -> "journal"

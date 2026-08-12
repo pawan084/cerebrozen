@@ -99,14 +99,14 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 Text(
-                    "Practice library", maxLines = 1,
+                    stringResource(R.string.practicelib_title), maxLines = 1,
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontFamily = serif, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
                     ),
                     color = TextPrimary,
                 )
                 Text(
-                    "Five clear families", maxLines = 1,
+                    stringResource(R.string.practicelib_subtitle), maxLines = 1,
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
                     color = TextMuted,
                 )
@@ -121,12 +121,12 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 20.dp),
         ) {
             Text(
-                "FIVE PRACTICE FAMILIES",
+                stringResource(R.string.practicelib_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
                 color = Color(0xFFB13D57),
             )
             Text(
-                "Choose\nby what\nyou need.",
+                stringResource(R.string.practicelib_hero),
                 modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 43.sp, lineHeight = 39.sp,
@@ -134,18 +134,18 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 color = TextPrimary,
             )
             Text(
-                "Every family is short, offline-friendly and stops\nwhenever you do.",
+                stringResource(R.string.practicelib_intro),
                 modifier = Modifier.padding(top = 14.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 23.sp),
                 color = TextMuted,
             )
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                PracticeFamilyRow(Icons.Outlined.Spa, "Breathe", "Slow and regulate", OkSoft, Color(0xFF4B775E)) { onOpen("breathing-intro") }
-                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, "Ground", "Return attention to your surroundings", WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
-                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, "Reset your body", "TIPP and sensory skills", WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
-                PracticeFamilyRow(Icons.Outlined.Psychology, "Work with thoughts", "Guided reframing", WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
-                PracticeFamilyRow(Icons.Outlined.Bedtime, "Prepare for sleep", "Body scan and imagery", OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
-                PracticeFamilyRow(Icons.Outlined.AutoAwesome, "Positive reflection", "Gratitude without pressure", WarmSoft, Color(0xFFC75270)) { onOpen("gratitude") }
+                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Color(0xFF4B775E)) { onOpen("breathing-intro") }
+                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
+                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
+                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
+                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
+                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Color(0xFFC75270)) { onOpen("gratitude") }
             }
         }
     }

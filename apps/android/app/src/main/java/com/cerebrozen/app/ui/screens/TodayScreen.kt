@@ -688,7 +688,7 @@ private fun ContentRail(
             Column(
                 Modifier.width(150.dp)
                     .glass(RoundedCornerShape(16.dp))
-                    .clickable { playItem(title) }
+                    .clickable { playItem(title)  }
                     .padding(0.dp),
             ) {
                 Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {
@@ -1638,12 +1638,12 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             },
             key = "today-fold-day",
         ) {
-            ReferenceDayRow("✓", "Morning check-in", "Completed at 9:12 AM", Warm, done = true) { onOpen("checkin") }
-            ReferenceDayRow("◒", "Three-minute grounding", "Suggested for right now", Ok) { onOpen("groundingintro") }
-            ReferenceDayRow("▣", "Evening reflection", "Around 3 minutes", Warm) { onOpen("journal/new") }
-            ReferenceDayRow("☾", "Wind-down", "9:15 PM · 20 minutes", Warm) { onOpen("sleep") }
-            ReferenceDayRow("✦", "Toolkit", "Mindful games and calming tools", Periwinkle) { onOpen("toolkit") }
-            if (false) {
+            // These five rows were, until now, a hardcoded picture of somebody
+            // else's day — "Morning check-in · Completed at 9:12 AM" on every
+            // launch, for every user, including one who had never checked in —
+            // and the real plan below them was switched off behind `if (false)`.
+            // The summary line above this list has been reading the true
+            // step counts the whole time, so Home was contradicting itself.
             plan?.let { p ->
                 // The plan, as a list rather than a photo hero. The hero slot at
                 // the top of the screen belongs to ONE step now, so the whole
@@ -1741,7 +1741,6 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 onOpen = onOpen,
             )
             toolkitRow()
-            }
         }
 
         // ── Fold 2: Tonight ──────────────────────────────────────────────
@@ -1787,7 +1786,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             TextButton(onClick = { onOpen("insights") }) {
                 Text(stringResource(R.string.today_view_weekly_insights), style = MaterialTheme.typography.labelLarge, color = Periwinkle)
             }
-            if (false) {
+            // Also switched off behind `if (false)`: the presence week ring, the
+            // milestone line, the recent check-ins and the two sentences that say
+            // blank days are not failures. Presence framing is the one thing this
+            // screen is required to get right (design rule §2), and it was dark.
             Text(
                 stringResource(R.string.today_presence_window).uppercase(),
                 style = MaterialTheme.typography.labelSmall, color = TextMuted,
@@ -1875,7 +1877,6 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 }
             }
             insightsRow()
-            }
         }
     }
 
@@ -1957,29 +1958,12 @@ fun GroundingIntroScreen(
     onUrgent: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "5-4-3-2-1 grounding",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Practice introduction", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onUrgent() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.groundingintro_title),
+            subtitle = stringResource(R.string.groundingintro_subtitle),
+            onBack = onBack,
+            onUrgent = { onUrgent() },
+        )
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -2083,29 +2067,12 @@ fun CheckInDetailScreen(
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Check in",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Takes about 20 seconds", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onUrgent() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.checkindetail_title),
+            subtitle = stringResource(R.string.checkindetail_subtitle),
+            onBack = onBack,
+            onUrgent = { onUrgent() },
+        )
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -2222,29 +2189,12 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         loading = false
     }
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Insights",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Summary, trends and plan", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onOpen("crisis") }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.weeklyinsights_title),
+            subtitle = stringResource(R.string.weeklyinsights_subtitle),
+            onBack = onBack,
+            onUrgent = { onOpen("crisis") },
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 14.dp).padding(bottom = 20.dp),
@@ -2333,159 +2283,10 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     }
 }
 
-@Composable
-fun ReferenceTrendsScreen(onBack: () -> Unit, onReviewPatterns: () -> Unit, onUrgent: () -> Unit) {
-    var window by rememberSaveable { mutableStateOf("Month") }
-    var data by remember { mutableStateOf<Trends?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(window) {
-        loading = true; error = null
-        val days = when (window) { "Week" -> 7; "3 months" -> 90; else -> 30 }
-        runCatching { parseTrends(Api.trends(days)) }
-            .onSuccess { data = it }
-            .onFailure { error = it.userMessage("Couldn't load trends. Please try again.") }
-        loading = false
-    }
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text("Trends", style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))), color = TextPrimary)
-                Text("Week, month and 3 months", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onUrgent() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 36.dp, vertical = 14.dp).padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("TRENDS", style = MaterialTheme.typography.labelSmall, color = Warm)
-            Text(
-                "Direction\nover time.",
-                style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                color = TextPrimary,
-            )
-            Text("Understand patterns cautiously without diagnosis or causal claims.", style = MaterialTheme.typography.bodyLarge, color = TextSoft)
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("Week", "Month", "3 months").forEach { label ->
-                    val active = window == label
-                    Text(
-                        label, style = MaterialTheme.typography.titleSmall,
-                        color = if (active) Color.White else TextMuted,
-                        modifier = Modifier.clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Periwinkle else CardFill)
-                            .clickable { window = label }.padding(horizontal = 15.dp, vertical = 12.dp),
-                    )
-                }
-            }
-            Column(
-                Modifier.fillMaxWidth().height(235.dp).clip(RoundedCornerShape(26.dp))
-                    .background(CardFill).padding(18.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("MOOD AND SLEEP", style = MaterialTheme.typography.labelSmall, color = Warm)
-                val values = data?.mood?.points?.map { (it.value / 5f).coerceIn(0f, 1f) }.orEmpty()
-                if (values.size >= 2) Canvas(Modifier.fillMaxWidth().height(105.dp)) {
-                    val p = Path()
-                    values.forEachIndexed { index, value ->
-                        val x = size.width * index / (values.size - 1)
-                        val y = size.height * (1f - value)
-                        if (index == 0) p.moveTo(x, y) else p.lineTo(x, y)
-                    }
-                    drawPath(p, Periwinkle, style = Stroke(width = 5f))
-                    values.forEachIndexed { index, value ->
-                        drawCircle(Periwinkle, 5f, androidx.compose.ui.geometry.Offset(size.width * index / (values.size - 1), size.height * (1f - value)))
-                    }
-                }
-                Text(
-                    when {
-                        loading -> "Loading your data…"
-                        error != null -> error.orEmpty()
-                        data?.isEmpty != false -> "No mood or sleep data in this window yet. Missing days stay blank."
-                        else -> "${data?.mood?.logged ?: 0} mood days · ${data?.sleep?.logged ?: 0} sleep nights. Missing days are not treated as negative."
-                    },
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
-                )
-            }
-            ReferenceAction("Review patterns", onClick = onReviewPatterns)
-        }
-    }
-}
-
-@Composable
-fun ReferencePatternsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
-    var patterns by remember { mutableStateOf<List<Learned>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        runCatching { parsePatterns(Api.patterns()) }
-            .onSuccess { patterns = it }
-            .onFailure { error = it.userMessage("Couldn't load patterns. Please try again.") }
-    }
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f)).padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text("Patterns", style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))), color = TextPrimary)
-                Text("Observations, not diagnoses", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onOpen("crisis") }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 14.dp).padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("OBSERVATIONS, NOT DIAGNOSES", style = MaterialTheme.typography.labelSmall, color = Warm)
-            Text(
-                "Patterns\nCereBro\nnoticed.",
-                style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                color = TextPrimary,
-            )
-            Text(
-                "Understand patterns cautiously without diagnosis or causal claims.",
-                style = MaterialTheme.typography.bodyLarge, color = TextSoft,
-            )
-            when {
-                error != null -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = Danger)
-                patterns == null -> Text("Reading your patterns…", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                patterns!!.isEmpty() -> Text("No supported pattern yet. More check-ins may reveal one; nothing is guessed.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                else -> patterns!!.forEachIndexed { index, pattern ->
-                    Column(
-                        Modifier.fillMaxWidth().heightIn(min = 142.dp).clip(RoundedCornerShape(24.dp))
-                            .background(if (index % 2 == 0) CardFill else FieldFill).padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(pattern.statement, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                        Text(pattern.basis, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                    }
-                }
-            }
-        }
-    }
-}
-
+// ReferenceSleepInsightsScreen is the one Reference screen kept: patterns
+// and trends now route to the real PatternScreen/TrendsScreen, but this
+// has no real twin — it is the week/month/3-month view, and it is linked
+// from the Sleep rhythm line. Its sibling mocks are gone.
 @Composable
 fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     var window by rememberSaveable { mutableStateOf("Week") }
@@ -2620,56 +2421,12 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     }
 }
 
-@Composable
-private fun BaselineSliderRow(label: String, value: Float, onValueChange: (Float) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(54.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(label, modifier = Modifier.width(92.dp), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-        androidx.compose.material3.Slider(
-            value = value, onValueChange = onValueChange, valueRange = 1f..10f, steps = 8,
-            modifier = Modifier.weight(1f),
-            colors = androidx.compose.material3.SliderDefaults.colors(
-                thumbColor = Color(0xFF6B2865), activeTrackColor = Color(0xFF6B2865),
-                inactiveTrackColor = AccentSoft, activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent,
-            ),
-        )
-        Text("${value.toInt()}/10", modifier = Modifier.width(42.dp), style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    }
-}
 
+/** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
-private fun TodayTopBar(modifier: Modifier = Modifier, onUrgent: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    Column(
-        modifier.fillMaxWidth().background(CardFill.copy(alpha = .96f)),
-    ) {
-    Row(
-        Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-    ) {
-        BrandMark(size = 36.dp, showGlow = true)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text(
-                "Today", maxLines = 1, softWrap = false,
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif, lineHeight = 24.sp), color = TextPrimary,
-            )
-            Text(
-                "Your next helpful step", maxLines = 1, softWrap = false,
-                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp), color = TextMuted,
-            )
-        }
-        Box(
-            Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                .clickable(onClick = onUrgent),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger, modifier = Modifier.size(22.dp))
-        }
-    }
-    }
-}
+private fun TodayTopBar(modifier: Modifier = Modifier, onUrgent: () -> Unit) = CereBroTopBar(
+    title = stringResource(R.string.tab_today),
+    subtitle = stringResource(R.string.topbar_today_subtitle),
+    modifier = modifier,
+    onUrgent = onUrgent,
+)

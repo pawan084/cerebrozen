@@ -143,8 +143,7 @@ internal fun parseWidget(o: JSONObject?): ChatWidget? {
 
 /** Where an inline activity lands on Android — every cross-stack widget kind
  * still has a native surface after the Toolkit consolidation: breathing keeps
- * its journaling practice, grounding lives inline in the Toolkit, and the
- * one-field tools became Journal quick-entry chips. */
+ * its journaling practice, and grounding lives inline in the Toolkit. */
 internal fun widgetRoute(kind: String): String? = when (kind) {
     "breathing" -> "breathing"
     // Straight to the exercise since it has its own screen (2026-08-03) —
@@ -153,7 +152,11 @@ internal fun widgetRoute(kind: String): String? = when (kind) {
     "mood_check" -> "home"
     "mini_journal", "journal" -> "journal"
     "sleep_checkin" -> "sleep"
-    "one_good_thing", "intention_set" -> "journal"
+    // Both of these have their own prompt-led screen with its "why this works"
+    // footer, and both were being sent to the bare Journal composer instead —
+    // which made the two screens unreachable from anywhere in the app.
+    "one_good_thing" -> "onegoodthing"
+    "intention_set" -> "intention"
     "dbt_skill" -> "tipp"
     else -> null
 }

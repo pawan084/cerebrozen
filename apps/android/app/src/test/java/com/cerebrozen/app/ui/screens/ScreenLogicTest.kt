@@ -279,9 +279,12 @@ class ScreenLogicTest {
         assertEquals("home", widgetRoute("mood_check"))
         assertEquals("journal", widgetRoute("mini_journal"))
         assertEquals("sleep", widgetRoute("sleep_checkin"))
-        // The one-field tools became Journal quick-entry chips.
-        assertEquals("journal", widgetRoute("one_good_thing"))
-        assertEquals("journal", widgetRoute("intention_set"))
+        // Each one-field tool goes to its own prompt-led screen. Both used to be
+        // sent to the bare Journal composer, which left `onegoodthing` and
+        // `intention` registered in the graph with nothing anywhere able to open
+        // them — and dropped each tool's prompt and its "why this works" footer.
+        assertEquals("onegoodthing", widgetRoute("one_good_thing"))
+        assertEquals("intention", widgetRoute("intention_set"))
         assertEquals("tipp", widgetRoute("dbt_skill"))
         assertEquals(null, widgetRoute("something_future"))   // unknown stays honest
     }

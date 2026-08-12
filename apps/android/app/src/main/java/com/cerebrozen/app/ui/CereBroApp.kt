@@ -78,14 +78,11 @@ import com.cerebrozen.app.ui.screens.GroundingScreen
 import com.cerebrozen.app.ui.screens.GroundingIntroScreen
 import com.cerebrozen.app.ui.screens.CheckInDetailScreen
 import com.cerebrozen.app.ui.screens.WeeklyInsightsScreen
-import com.cerebrozen.app.ui.screens.ReferenceTrendsScreen
-import com.cerebrozen.app.ui.screens.ReferencePatternsScreen
 import com.cerebrozen.app.ui.screens.ReferenceSleepInsightsScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
-import com.cerebrozen.app.ui.screens.BreathePreset
-import com.cerebrozen.app.ui.screens.BreatheScreen
 import com.cerebrozen.app.ui.breathing.BreathLoopsScreen
+import com.cerebrozen.app.ui.breathing.BreathPattern
 import com.cerebrozen.app.ui.offline.BodyScanScreen
 import com.cerebrozen.app.ui.offline.CbtIOfflineScreen
 import com.cerebrozen.app.ui.offline.CrisisGroundingScreen
@@ -107,10 +104,8 @@ import com.cerebrozen.app.ui.screens.NotificationInboxScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
 import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
-import com.cerebrozen.app.ui.screens.GratitudeGardenScreen
 import com.cerebrozen.app.ui.screens.GuidedImageryScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
-import com.cerebrozen.app.ui.screens.InsightsScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.Onboarding
 import com.cerebrozen.app.ui.screens.PatternGlowScreen
@@ -142,14 +137,11 @@ import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.NavPillBottom
 import com.cerebrozen.app.ui.theme.NavPillTop
 import com.cerebrozen.app.ui.theme.NavScrim
-import com.cerebrozen.app.ui.theme.NavSelectedHi
-import com.cerebrozen.app.ui.theme.NavSelectedLo
 import com.cerebrozen.app.ui.theme.LavenderPillTop
 import com.cerebrozen.app.ui.theme.LavenderPillFloor
 import com.cerebrozen.app.ui.theme.Stroke
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextPrimary
-import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.OnPrimary
 import com.cerebrozen.app.ui.theme.VeilStrong
 import com.cerebrozen.app.ui.theme.themeModeFromPref
@@ -187,13 +179,7 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    // NAV-02: this set had grown entries for routes that no longer exist —
-    // notice-change, body-scan-detail, patterndetail, dailyplan and the two
-    // goaldetail* routes were all listed here while nothing could reach them,
-    // and `cbt` now renders a screen with its own frame. A stale name here is
-    // invisible: it never matches, so it never shows a bar, and it survives
-    // every refactor. Keep this list to routes that exist.
-    route in setOf("home", "explore", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline", "reminders")
+    route in setOf("home", "explore", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "dailyplan", "goals", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -216,14 +202,28 @@ internal fun routeForDeeplink(raw: String?): String? {
         "chat", "oracle" -> "talk"
         else -> path
     }
-    val allowed = setOf(
-        "home", "explore", "sleep", "talk", "journal", "journal/new", "you",
-        "insights", "trends", "toolkit", "crisis", "safetyplan",
-        "sounds", "sounds/mixer", "winddown", "plan", "goals", "programs",
-        "breathe/reset", "breathe/box",
-    )
-    return resolved.takeIf { it in allowed }
+    return resolved.takeIf { it in EXTERNAL_ROUTES }
 }
+
+/**
+ * Every route something OUTSIDE the app may ask for by name.
+ *
+ * Two callers, deliberately the same set: [routeForDeeplink] (a notification's
+ * `cerebro://` URI) and [NotificationLog.routeFor] (the destination the inbox's
+ * "Open" button hands to `navigate()`). Both take a string chosen elsewhere —
+ * by the server, or by a nudge kind — and turn it into navigation, so both are
+ * bound by the same rule: it must be a destination that exists.
+ *
+ * Keeping one set rather than two is the point. `routeFor` had its own private
+ * mapping and emitted "today", a route the graph has never defined, which meant
+ * every check-in nudge in the inbox led to a crash.
+ */
+internal val EXTERNAL_ROUTES = setOf(
+    "home", "explore", "sleep", "talk", "journal", "journal/new", "you",
+    "insights", "trends", "toolkit", "crisis", "safetyplan",
+    "sounds", "sounds/mixer", "winddown", "plan", "goals", "programs",
+    "breathe/reset", "breathe/box",
+)
 
 /** The pending notification route, offered by MainActivity (launch intent or
  * onNewIntent) and consumed by the signed-in NavHost once it exists. */
@@ -612,13 +612,9 @@ fun CereBroApp() {
             BottomNavBar(
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
-                    // NAV-02: patterndetail, dailyplan and the two goaldetail*
-                    // routes are gone; their names lingered here for routes the
-                    // graph no longer defines.
-                    current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "goals" || current == "baseline" -> Tab.Home.route
-                    // `sleep` is gone from this list: it left shouldShowBottomBar
-                    // when it became a pushed screen, so this branch could never
-                    // be reached — the bar is not drawn on that route at all.
+                    current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "dailyplan" || current == "goals" || current == "baseline" -> Tab.Home.route
+                    // `sleep` left shouldShowBottomBar when it became a pushed
+                    // screen, so a branch for it here could never be reached.
                     current == "practice-library" || current == "gratitude" || current == "sleepinsights" -> Tab.Explore.route
                     current == "reminders" -> Tab.You.route
                     else -> current
@@ -732,30 +728,20 @@ fun CereBroApp() {
             ) { PlayerScreen(onBack = back, onOpen = open) }
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
-            composable("patterns") { ReferencePatternsScreen(onBack = back, onOpen = open) }
+            // patterns and trends open the REAL screens. Both were imported
+            // and never routed while a Reference mock held the door — the same
+            // shape as the practice screens, found on the parallel branch.
+            composable("patterns") { PatternScreen(onBack = back) }
+            composable("trends") { TrendsScreen(onBack = back) }
+            // `dailyplan` points at PlanScreen rather than being deleted: any
+            // stale link still lands on the real plan instead of nowhere.
+            composable("dailyplan") { PlanScreen(onBack = back) }
+            // sleepinsights KEPT and linked from the Sleep rhythm line. It is
+            // wired week/month/3-month charts with no twin, so deleting it
+            // would drop a feature rather than a duplicate.
             composable("sleepinsights") { ReferenceSleepInsightsScreen(onBack = back, onOpen = open) }
-            composable("trends") {
-                ReferenceTrendsScreen(
-                    onBack = back,
-                    onReviewPatterns = { open("patterns") },
-                    onUrgent = { open("crisis") },
-                )
-            }
             composable("safetyplan") { SafetyPlanScreen(onBack = back) }
-            // The real goals screen, imported since the redesign and never
-            // routed. The mock called Api.goals() with the default
-            // includeResolved = false and had no Done / Let it go buttons at
-            // all — so a goal could be created and never resolved, and any
-            // goal resolved earlier had already vanished. Session.kt:768 spells
-            // out that this exact bug was found and fixed once; the Reference
-            // copy brought it back. GoalsScreen asks for resolved goals, can
-            // change a goal's status both ways, and carries habits.
-            // NAV-01/NAV-05: goaldetailcalmer and goaldetailwind are gone.
-            // Nothing navigated to either, and both passed a literal goal title
-            // ("A calmer evening", "Wind down before 10 PM") into the same mock
-            // detail screen — a per-goal screen that could only ever show two
-            // goals, neither of them yours. GoalsScreen owns goal detail now.
-            composable("goals") { GoalsScreen(onBack = back) }
+            composable("goals") { GoalsScreen(onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
@@ -793,7 +779,14 @@ fun CereBroApp() {
             composable("insightreel") { InsightReelScreen(onBack = back) }
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
             composable("mbct") { MbctOfflineScreen(onBack = back) }
-            composable("breathe/reset") { BreatheScreen(BreathePreset.Reset, onBack = back) }
+            // Both breathing routes are the same screen now. It already carried
+            // a Reset pattern — 4 in, 6 out, twelve rounds, which is the two
+            // minutes the four surfaces pointing here promise — so `breathe/reset`
+            // opens straight into it rather than showing a chooser in front of a
+            // button that has already named what it gives you.
+            composable("breathe/reset") {
+                BreathLoopsScreen(onBack = back, startPattern = BreathPattern.Reset)
+            }
             // The two guided routines (web parity): the Sleep tab's wind-down
             // and the Toolkit's Settle visualization.
             composable("winddown") { WindDownRitualScreen(onBack = back) }
