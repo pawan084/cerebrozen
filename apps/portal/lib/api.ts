@@ -267,3 +267,91 @@ export const sponsorProgramme = (body: {
   starts_on?: string | null;
   ends_on?: string | null;
 }) => api<Sponsorship>("/org/programmes", { method: "POST", body: JSON.stringify(body) });
+
+export type OrgAdminRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  attested_on: string | null;
+};
+
+export const getAdmins = () => api<OrgAdminRow[]>("/org/admins");
+
+export type LaunchStep = {
+  key: string;
+  label: string;
+  detail: string;
+  href: string;
+  done: boolean;
+};
+export type LaunchState = { steps: LaunchStep[]; threshold: number; region: string };
+
+/**
+ * The launch checklist, DERIVED rather than stored.
+ *
+ * Six booleans in a table can say "eligibility connected" while the
+ * organisation has no seats. Asking the question directly each time means a
+ * step cannot be ticked by editing a row, and the checklist cannot drift from
+ * what is actually configured.
+ *
+ * One read of each thing it describes, in parallel.
+ */
+export async function getLaunchState(): Promise<LaunchState> {
+  const [org, groups, members, programmes] = await Promise.all([
+    getOrg(),
+    getGroups(),
+    getMembers(),
+    getProgrammes(),
+  ]);
+  return {
+    threshold: org.reporting_threshold,
+    region: org.region,
+    steps: [
+      {
+        key: "profile",
+        label: "Organisation profile",
+        detail: "Legal entity and the contacts a member or regulator would use",
+        href: "/settings",
+        done: Boolean(org.legal_entity && org.primary_contact_email && org.privacy_contact_email),
+      },
+      {
+        key: "privacy",
+        label: "Privacy and reporting model",
+        detail: "Threshold and small-cell suppression",
+        href: "/privacy",
+        // Suppression on is the default and the safe state; this step is about
+        // having looked at it, which we can only evidence by it being on.
+        done: org.small_cell_suppression,
+      },
+      {
+        key: "cohorts",
+        label: "Eligibility groups",
+        detail: "At least one reporting-safe group",
+        href: "/cohorts/new",
+        done: groups.length > 0,
+      },
+      {
+        key: "eligibility",
+        label: "Eligible members",
+        detail: "Seats added by invitation, import or API",
+        href: "/members/invite",
+        done: members.length > 0,
+      },
+      {
+        key: "programme",
+        label: "Sponsored programme",
+        detail: "At least one funded programme",
+        href: "/programmes",
+        done: programmes.length > 0,
+      },
+      {
+        key: "seats",
+        label: "Licensed seats",
+        detail: "Contracted seat count on record",
+        href: "/billing",
+        done: org.seats_licensed > 0,
+      },
+    ],
+  };
+}

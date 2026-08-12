@@ -28,11 +28,13 @@ const GUARDED = [
   "/settings",
   "/members/invite",
   "/cohorts/new",
+  // Wired 2026-08-13.
+  "/setup",
+  "/members/group",
+  "/roles/admins",
 ];
 
 const ROUTES = [
-  "/setup",
-  "/members/group",
   "/programmes/detail",
   "/programmes/pathway",
   "/campaigns",
@@ -51,7 +53,6 @@ const ROUTES = [
   "/integrations",
   "/integrations/detail",
   "/roles",
-  "/roles/admins",
   "/audit",
   "/billing",
   "/billing/contract",

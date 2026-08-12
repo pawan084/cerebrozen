@@ -213,4 +213,50 @@ test.describe("Portal ↔ backend", () => {
       { timeout: 20_000 },
     );
   });
+
+  test("the launch checklist ticks itself when the thing it describes exists", async ({
+    page,
+    request,
+  }) => {
+    // Derived, not stored. Six booleans in a table can say "eligibility
+    // connected" while the organisation has no seats; this asks the question
+    // each time, so nobody can tick a box by editing a row.
+    const suffix = unique();
+    const ownerEmail = `portal-setup-${suffix}@test.app`;
+    await signUp(request, ownerEmail);
+    const staffToken = await login(request, STAFF_EMAIL, STAFF_PASSWORD);
+    await request.post(`${API}/admin/organizations`, {
+      headers: { Authorization: `Bearer ${staffToken}` },
+      data: { name: `Setup Co ${suffix}`, admin_email: ownerEmail },
+    });
+
+    await page.goto(`${PORTAL}/signin`, { waitUntil: "networkidle" });
+    await page.locator("input[type=email]").fill(ownerEmail);
+    await page.locator("input[type=password]").fill(PASSWORD);
+    await page.locator("button[type=submit]").click();
+    await page.waitForURL((u) => !u.pathname.includes("/signin"), { timeout: 20_000 });
+
+    // A brand-new organisation has no groups, so that step is outstanding.
+    // Counting completed steps rather than parsing prose: the phrase appears
+    // both as a step and in the "what remains" summary, and a text assertion
+    // that has to disambiguate them is fragile in a way this is not.
+    await page.goto(`${PORTAL}/setup`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/Requirements complete/i).first()).toBeVisible({ timeout: 20_000 });
+    const doneBefore = await page.locator(".step.done").count();
+    expect(await page.locator("body").innerText()).toMatch(/remains? incomplete/i);
+
+    // Create a group through the API, then reload: the step must tick on its
+    // own, because the checklist is derived and not stored.
+    const ownerToken = await login(request, ownerEmail);
+    const created = await request.post(`${API}/org/groups`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      data: { name: `Everyone ${suffix}` },
+    });
+    expect(created.status()).toBe(201);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByText(/Requirements complete/i).first()).toBeVisible({ timeout: 20_000 });
+    const doneAfter = await page.locator(".step.done").count();
+    expect(doneAfter, "the groups step did not tick after a group was created").toBe(doneBefore + 1);
+  });
 });

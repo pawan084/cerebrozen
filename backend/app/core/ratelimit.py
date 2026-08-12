@@ -20,4 +20,16 @@ def client_ip(request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=client_ip, enabled=os.getenv("TESTING") != "1")
+# Two ways to switch this off, both for test suites and neither for production:
+#
+#   TESTING=1            pytest — many sign-ups from one client.
+#   RATE_LIMIT_ENABLED=0 the Playwright stack, which has the same problem: every
+#                        browser test shares one IP, so a suite that signs up a
+#                        dozen accounts trips a 10/minute signup limit and goes
+#                        flaky. It surfaced as exactly that (2026-08-13).
+#
+# `Settings._guard_production` refuses to boot with RATE_LIMIT_ENABLED=0 when
+# ENV=production, so this cannot be left off by accident on a real deploy.
+_enabled = os.getenv("TESTING") != "1" and os.getenv("RATE_LIMIT_ENABLED", "1") not in ("0", "false", "False")
+
+limiter = Limiter(key_func=client_ip, enabled=_enabled)

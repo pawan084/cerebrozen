@@ -39,6 +39,7 @@ from app.schemas.organization import (
     GroupTotalsOut,
     MembershipCreate,
     MembershipOut,
+    OrgAdminOut,
     OrgOut,
     OrgSettingsUpdate,
     OrgSummaryOut,
@@ -154,6 +155,45 @@ async def group_totals(
     """
     totals = await org_service.all_group_totals(db, ctx[1])
     return [t.__dict__ for t in totals]
+
+
+@router.get("/admins", response_model=list[OrgAdminOut])
+async def list_admins(
+    ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Who administers this organisation, for the quarterly access review.
+
+    Readable by any role including analyst: knowing who can see the reports is
+    part of the governance story, not a privileged action. Changing the list is
+    not exposed here at all — adding or removing an administrator goes through
+    provisioning, so a compromised analyst session cannot grant itself company.
+    """
+    org = ctx[1]
+    rows = list(
+        (
+            await db.scalars(
+                select(OrgAdmin).where(OrgAdmin.org_id == org.id).order_by(OrgAdmin.role)
+            )
+        ).all()
+    )
+    out: list[dict] = []
+    for row in rows:
+        user = await db.get(User, row.user_id)
+        # A deleted account leaves its admin row behind briefly; skip rather
+        # than render a nameless entry in an access review.
+        if user is None:
+            continue
+        out.append(
+            {
+                "id": row.id,
+                "email": user.email,
+                "name": user.name or "",
+                "role": row.role,
+                "attested_on": row.attested_on,
+            }
+        )
+    return out
 
 
 @router.get("/members", response_model=list[MembershipOut])

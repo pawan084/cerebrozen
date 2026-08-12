@@ -584,3 +584,50 @@ async def test_provisioning_rejects_unknown_fields(client):
         json={"name": "Strict Ltd", "admin_email": owner_email, "manager_dashboards": True},
     )
     assert r.status_code == 422
+
+async def test_the_admin_list_names_officers_but_says_nothing_about_them_as_users(client):
+    """ROL-02's access review.
+
+    Identity IS returned here, unlike MembershipOut, and the difference is
+    deliberate: attesting an administrator is meaningless without knowing who is
+    being attested. What must NOT leak is anything about that person as a
+    CereBro user — holding an admin role does not make their own account the
+    organisation's business.
+    """
+    owner_email, _ = await _signup(client, "owner21")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Roster Ltd", admin_email=owner_email)
+
+    r = await client.get("/org/admins")
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["email"] == owner_email
+    assert row["role"] == ROLE_BENEFITS_OWNER
+    # Nothing about the person's own use of the product.
+    for forbidden in ("subscription_tier", "user_id", "streak", "mood", "consent"):
+        assert forbidden not in row
+
+
+async def test_an_analyst_may_read_the_admin_list(client):
+    """Knowing who can see the reports is governance, not a privileged fact."""
+    admin_email, _ = await _signup(client, "analyst2")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Analyst Ltd", admin_email=admin_email, role=ROLE_ANALYST)
+
+    assert (await client.get("/org/admins")).status_code == 200
+
+
+async def test_the_admin_list_is_scoped_to_one_organisation(client):
+    owner_email, _ = await _signup(client, "owner22")
+    other_email, _ = await _signup(client, "owner23")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Mine Ltd", admin_email=owner_email)
+        await _make_org(db, name="Theirs Ltd", admin_email=other_email)
+
+    r = await client.post("/auth/login", data={"username": owner_email, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    emails = [a["email"] for a in (await client.get("/org/admins")).json()]
+    assert emails == [owner_email]
+    assert other_email not in emails

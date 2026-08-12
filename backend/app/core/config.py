@@ -1,6 +1,8 @@
 import logging
 from functools import lru_cache
 
+import os
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -178,6 +180,8 @@ class Settings(BaseSettings):
             problems.append("ADMIN_PASSWORD must be set to a real value")
         if self.seed_demo_data:
             problems.append("SEED_DEMO_DATA must be false in production")
+        if os.getenv("RATE_LIMIT_ENABLED", "1") in ("0", "false", "False"):
+            problems.append("RATE_LIMIT_ENABLED must not be off in production")
         if "*" in self.cors_origins_raw:
             problems.append("CORS_ORIGINS must list explicit origins (no wildcard)")
         if not self.trusted_hosts or "*" in self.trusted_hosts:

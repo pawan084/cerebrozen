@@ -176,11 +176,43 @@ everything below is open.
       input is **gone rather than left inert**: a file picker that silently does nothing is
       worse than an honest absence, so the card says the importer is not built and states the
       rule it will have to keep
-- [ ] **26 portal screens still render `lib/mock.ts`** and every one says so in a warning
+- [x] **Four more screens went live** (2026-08-13): administrator access (new
+      `GET /org/admins`), the launch checklist, group detail, and — the interesting one —
+      **the checklist is DERIVED, not stored**. Six booleans in a table can say "eligibility
+      connected" while the organisation has no seats; it now asks each question against real
+      state, so a step cannot be ticked by editing a row and cannot drift from what is
+      configured. An e2e test creates a group through the API and asserts the step ticks
+      itself on reload.
+      `GET /org/admins` returns identity, unlike the seat list, and the asymmetry is the
+      point: attesting an administrator is meaningless without knowing who is being attested,
+      while a member is not an officer of anything. It still says nothing about that person
+      as a CereBro *user* — holding an admin role does not make their own account the
+      organisation's business, and a test pins that
+- [x] **The e2e suite was quietly flaky, and the summary line hid it** (2026-08-13). A run
+      reported "44 passed" while 45 tests were declared — the difference was **1 flaky**: a
+      test that failed, retried and passed, which Playwright counts as passed. Comparing
+      declared against passed is the only reason it surfaced; do that rather than reading the
+      summary.
+      The cause was real and would have hit CI: signup is capped at **10/minute per IP**,
+      every browser test shares one IP, and the portal spec creates about eight accounts, so
+      the suite trips its own limiter partway through. `ratelimit.py` already had a documented
+      off-switch for pytest for exactly this reason and the Playwright stack had none, so it
+      now has `RATE_LIMIT_ENABLED`, set to `0` only in `docker-compose.e2e.yml`.
+      Because that is an off-switch on a security control, `Settings._guard_production`
+      **refuses to boot** when it is disabled with `ENV=production` — verified in both
+      directions. No e2e test asserts rate-limiting behaviour, so nothing is lost by
+      disabling it there; the alternative (fewer signups, shared fixtures) was rejected
+      because it would make the tests depend on each other
+- [ ] **23 portal screens still render `lib/mock.ts`** and every one says so in a warning
       notice above the fold. That banner is load-bearing while the portal is part live: the
       wired and unwired screens look identical, so an administrator who cannot tell them apart
       would read invented figures as their own. Delete the banner per screen as it becomes
-      true. Campaigns and the pathway builder need an API before their forms can do anything
+      true.
+      What is left needs data that does not exist rather than wiring: **campaigns** and the
+      **pathway builder** have no model at all; **engagement** and **outcomes** would need
+      behavioural aggregates the product deliberately does not collect per member, so they
+      need a genuine design answer (survey responses? session counts above threshold?) before
+      they can be anything but a mock; **member preview** is static by nature
 - [ ] **No SSO, so the portal stays off a public host** — `deploy/Caddyfile` keeps
       `portal.cerebrozen.in` commented out. Password auth alone is not enough for an
       administration console, and the OIDC plumbing cannot be *verified* without a real

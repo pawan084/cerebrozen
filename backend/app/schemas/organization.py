@@ -166,3 +166,25 @@ class OrgProvision(BaseModel):
     seats_licensed: int = Field(default=0, ge=0, le=1_000_000)
     contract_start: date | None = None
     contract_end: date | None = None
+
+
+class OrgAdminOut(BaseModel):
+    """One administrator of this organisation.
+
+    Identity IS returned here, unlike `MembershipOut`, and the difference is the
+    point: an administrator is a named officer of the organisation, and a
+    quarterly access review is meaningless without knowing who is being
+    attested. A member is not, which is why seats carry no name at all.
+
+    What is still absent: nothing about this person as a CereBro *user*. Whether
+    an administrator also keeps a journal is not the organisation's business
+    merely because they hold an admin role.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    name: str
+    role: str
+    attested_on: date | None
