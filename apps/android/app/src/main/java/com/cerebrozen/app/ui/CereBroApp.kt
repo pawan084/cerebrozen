@@ -80,9 +80,6 @@ import com.cerebrozen.app.ui.screens.CheckInDetailScreen
 import com.cerebrozen.app.ui.screens.WeeklyInsightsScreen
 import com.cerebrozen.app.ui.screens.ReferenceTrendsScreen
 import com.cerebrozen.app.ui.screens.ReferencePatternsScreen
-import com.cerebrozen.app.ui.screens.ReferenceGoalDetailScreen
-import com.cerebrozen.app.ui.screens.PatternDetailScreen
-import com.cerebrozen.app.ui.screens.ReferenceDailyPlanScreen
 import com.cerebrozen.app.ui.screens.ReferenceSleepInsightsScreen
 import com.cerebrozen.app.ui.screens.AuroraBackground
 import com.cerebrozen.app.ui.screens.SceneVideo
@@ -190,7 +187,13 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    route in setOf("home", "explore", "practice-library", "notice-change", "cbt", "body-scan-detail", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "patterndetail", "dailyplan", "goals", "goaldetailcalmer", "goaldetailwind", "baseline", "reminders")
+    // NAV-02: this set had grown entries for routes that no longer exist —
+    // notice-change, body-scan-detail, patterndetail, dailyplan and the two
+    // goaldetail* routes were all listed here while nothing could reach them,
+    // and `cbt` now renders a screen with its own frame. A stale name here is
+    // invisible: it never matches, so it never shows a bar, and it survives
+    // every refactor. Keep this list to routes that exist.
+    route in setOf("home", "explore", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -609,11 +612,14 @@ fun CereBroApp() {
             BottomNavBar(
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
-                    current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "patterndetail" || current == "dailyplan" || current == "goals" || current == "goaldetailcalmer" || current == "goaldetailwind" || current == "baseline" -> Tab.Home.route
+                    // NAV-02: patterndetail, dailyplan and the two goaldetail*
+                    // routes are gone; their names lingered here for routes the
+                    // graph no longer defines.
+                    current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "goals" || current == "baseline" -> Tab.Home.route
                     // `sleep` is gone from this list: it left shouldShowBottomBar
                     // when it became a pushed screen, so this branch could never
                     // be reached — the bar is not drawn on that route at all.
-                    current == "practice-library" || current == "notice-change" || current == "cbt" || current == "body-scan-detail" || current == "gratitude" || current == "sleepinsights" -> Tab.Explore.route
+                    current == "practice-library" || current == "gratitude" || current == "sleepinsights" -> Tab.Explore.route
                     current == "reminders" -> Tab.You.route
                     else -> current
                 },
@@ -727,9 +733,7 @@ fun CereBroApp() {
             composable("plan") { PlanScreen(onBack = back) }
             composable("search") { SearchScreen(onBack = back) }
             composable("patterns") { ReferencePatternsScreen(onBack = back, onOpen = open) }
-            composable("patterndetail") { PatternDetailScreen(onBack = back, onOpen = open) }
             composable("sleepinsights") { ReferenceSleepInsightsScreen(onBack = back, onOpen = open) }
-            composable("dailyplan") { ReferenceDailyPlanScreen(onBack = back, onOpen = open) }
             composable("trends") {
                 ReferenceTrendsScreen(
                     onBack = back,
@@ -746,9 +750,12 @@ fun CereBroApp() {
             // out that this exact bug was found and fixed once; the Reference
             // copy brought it back. GoalsScreen asks for resolved goals, can
             // change a goal's status both ways, and carries habits.
+            // NAV-01/NAV-05: goaldetailcalmer and goaldetailwind are gone.
+            // Nothing navigated to either, and both passed a literal goal title
+            // ("A calmer evening", "Wind down before 10 PM") into the same mock
+            // detail screen — a per-goal screen that could only ever show two
+            // goals, neither of them yours. GoalsScreen owns goal detail now.
             composable("goals") { GoalsScreen(onBack = back) }
-            composable("goaldetailcalmer") { ReferenceGoalDetailScreen("A calmer evening", onBack = back, onOpen = open) }
-            composable("goaldetailwind") { ReferenceGoalDetailScreen("Wind down before 10 PM", onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
             // steps and saved deep-links keep landing somewhere real.
@@ -806,6 +813,18 @@ fun CereBroApp() {
             // else. Routed to the screen whose numbers are actually read.
             composable("baseline") { BaselineScreen(onBack = back) }
             composable("breathing") { BreathingScreen(onBack = back) }
+            // NOT deleted, though nothing navigates here. These two were
+            // deliberately salvaged from PR #2 and are pinned by
+            // SalvagedToolsTest, which asserts their copy comes from resources
+            // and each states why it works. Their doors were taken by the
+            // journal composer's quick-entry chips (JournalScreen.kt:140) and
+            // by widgetRoute mapping "one_good_thing"/"intention_set" to
+            // "journal" — so the tools were superseded without anyone deciding
+            // to retire them. Whether to relink or retire is an owner call, not
+            // a nav cleanup; deleting tested, intentional work on that basis
+            // would be the wrong way round.
+            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
+            composable("intention") { IntentionScreen(onBack = back) }
             // Both real tools, both previously shadowed by a mock on their own
             // route while sitting imported-but-unrouted a few lines above.
             // CbtReframeScreen writes a real journal entry through
@@ -814,8 +833,6 @@ fun CereBroApp() {
             // mock that was its only entrance.
             composable("cbt") { CbtReframeScreen(onBack = back) }
             composable("tipp") { TippScreen(onBack = back) }
-            composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
-            composable("intention") { IntentionScreen(onBack = back) }
             composable("crisis") { UrgentSupportScreen(onBack = back, onOpen = open) }
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("language") { LanguageScreen(onBack = back) }
