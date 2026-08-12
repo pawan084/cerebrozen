@@ -1,0 +1,435 @@
+# CereBro Android — Audit Report
+Branch: redesign/light-dawn @ 66238026 (upstream/main)
+Scope: apps/android — 70 screens, ~40 routes, full nav graph
+Date: 2026-08-12
+
+Root cause for most of this: commit 947955ba ("Android: bring the light dawn
+redesign to the core journey") swapped nav-graph routes from the old
+API-wired screens to new `Reference*` design screens. Commit 901a127c
+("Android API: wire redesigned data flows end to end") wired SOME of them.
+The rest are still design mocks, and the old real screens are now orphaned.
+
+================================================================================
+SECTION 1 — BUGS
+================================================================================
+
+--------------------------------------------------------------------------------
+BUG-01  [CRASH]  Notification inbox "Open" navigates to a route that doesn't exist
+--------------------------------------------------------------------------------
+Files:
+  notify/NotificationLog.kt:128        routeFor("checkin") -> "today"
+  notify/Reminders.kt:104              records the daily nudge with route "today"
+  notify/Push.kt:152                   same map for server nudges
+  ui/screens/NotificationInbox.kt:134  onOpen(route)
+  ui/CereBroApp.kt:657                 navController.navigate(route)  <- no guard
+
+Problem:
+  There is NO composable("today") in the graph. The Home tab route is "home"
+  (Tab.Home at CereBroApp.kt:188). navigate("today") throws
+  IllegalArgumentException: "Navigation destination that matches route today
+  cannot be found" -> app crashes.
+
+Repro:
+  Settings > Reminders > turn daily reminder on > let it fire (or trigger
+  ReminderReceiver) > open Notifications inbox > tap "Open" on the check-in row.
+
+Extra:
+  app/src/test/java/com/cerebrozen/app/notify/NotificationLogTest.kt:96
+  asserts assertEquals("today", routeFor("checkin")) — the test PINS the bug,
+  so it must be updated together with the fix.
+
+Fix:
+  NotificationLog.kt:128 -> "home"
+  Also add a guard in CereBroApp.kt open(): ignore a route not in the graph
+  instead of crashing.
+
+--------------------------------------------------------------------------------
+BUG-02  [HIGH]  Daily plan screen: eternal "Loading your plan…" when no plan exists
+--------------------------------------------------------------------------------
+File: ui/screens/TodayScreen.kt:2747-2751, 2802  (ReferenceDailyPlanScreen)
+
+Problem:
+  Api.activePlan() is `runCatching{...}.getOrNull()` (net/Session.kt:853) — it
+  NEVER throws. So `.onFailure { error = ... }` can never fire. No plan (or a
+  network failure) returns null, plan stays null, and the branch
+  `plan == null -> Text("Loading your plan…")` renders forever. No empty state,
+  no retry.
+
+Note:
+  The real PlanScreen.kt:72 has an explicit comment "retry instead of an eternal
+  'Loading…'" and a `loadError` flag. The Reference copy reintroduced the exact
+  bug that was already fixed once.
+
+Fix:
+  Add a `loaded` boolean set after the LaunchedEffect, and branch:
+  !loaded -> loading; loaded && plan == null -> empty state + retry.
+
+--------------------------------------------------------------------------------
+BUG-03  [HIGH]  "Begin next unfinished step" marks the step DONE instead of opening it
+--------------------------------------------------------------------------------
+File: ui/screens/TodayScreen.kt:2816-2821  (ReferenceDailyPlanScreen)
+
+Problem:
+  The CTA finds the first not-done step and calls toggle(next), which is
+  Api.togglePlanStep(id, done = true). The button says "Begin" but it ticks the
+  step off without the user doing anything.
+
+Fix:
+  Route to the step's surface (planStepRoute(symbol), TodayScreen.kt:225) and
+  leave completion to the row's own tap.
+
+--------------------------------------------------------------------------------
+BUG-04  [HIGH]  Reminders screen saves nothing — and the inbox reads what it never wrote
+--------------------------------------------------------------------------------
+File: ui/screens/TodayScreen.kt:2573-2639  (ReferenceRemindersScreen, route "reminders")
+
+Problem:
+  a) All 5 toggles are local `remember` state.
+  b) Times are hardcoded strings: "20:30", "21:15", "19:00", "13:00",
+     "10:00 PM–7:00 AM".
+  c) "Save reminder schedule" (line 2636) has an EMPTY body: `{ }`.
+  d) It never writes prefs "reminder_on" / "reminder_hour", never calls
+     Reminders.schedule(), never requests POST_NOTIFICATIONS.
+
+  Consequence: NotificationInbox.kt:55-56 READS reminder_on/reminder_hour.
+  User toggles reminders on -> inbox still says "no reminder scheduled" ->
+  and no notification ever fires.
+
+  The real working screen — RemindersScreen (ui/screens/Settings.kt:556) with
+  permission flow, TimePickerDialog, Reminders.schedule(), on-resume
+  revoked-permission banner — is IMPORTED at CereBroApp.kt:140 but NEVER ROUTED.
+  6 places in the app link to "reminders".
+
+Fix:
+  CereBroApp.kt:781 -> composable("reminders") { RemindersScreen(onBack = back) }
+  (or port the Dawn visual onto the real screen's logic).
+
+--------------------------------------------------------------------------------
+BUG-05  [HIGH]  Baseline saves to a prefs key nothing reads
+--------------------------------------------------------------------------------
+Files:
+  ui/screens/TodayScreen.kt:3032, 3072  (ReferenceBaselineScreen, route "baseline")
+  ui/screens/Baseline.kt:64             (BaselineScreen — orphaned)
+  ui/screens/Extras.kt:629              (InsightsScreen reads BaselineStore)
+
+Problem:
+  The routed screen writes 4 sliders (1-10) into SharedPreferences
+  "personal_baseline". Grep shows nothing else in the app reads that key.
+  Insights' "Your starting point" card reads BaselineStore (Stores.kt:38),
+  which is only written by the ORPHANED BaselineScreen (imported at
+  CereBroApp.kt:71, never routed).
+  Result: the baseline card on Insights can never populate. 3 links point at
+  the broken screen.
+
+Also a scale mismatch: Reference uses 1-10 with 4 dimensions
+(stress/sleep/mood/energy); BaselineStore + Insights use 1-5 with 2
+(stress/sleep).
+
+Fix:
+  Route "baseline" to BaselineScreen, or make ReferenceBaselineScreen write
+  BaselineStore.set() on the 1-5 scale.
+
+--------------------------------------------------------------------------------
+BUG-06  [MEDIUM]  Sleep insights passes a day-count into a row-limit parameter
+--------------------------------------------------------------------------------
+File: ui/screens/TodayScreen.kt:2461-2465  (ReferenceSleepInsightsScreen)
+
+Problem:
+  `Api.sleepLogs(days)` — but the signature is sleepLogs(limit: Int?) and it
+  builds "/sleep?limit=N" (net/Session.kt:664). limit = number of ROWS, not days.
+  Selecting "Week" fetches the 7 most recent logs regardless of their dates —
+  if the user logged 7 nights spread over 2 months, "Week" shows 2 months.
+  Api.sleepSummary(days) on the next line IS day-based, so the stat tiles and
+  the bar chart describe different windows.
+
+Fix:
+  Either add a days parameter to /sleep on the client, or filter client-side
+  by date before charting.
+
+--------------------------------------------------------------------------------
+BUG-07  [MEDIUM]  Goals screen hides resolved goals with no way to see them
+--------------------------------------------------------------------------------
+File: ui/screens/TodayScreen.kt:2842  (ReferenceGoalsScreen)
+
+Problem:
+  Calls Api.goals() with the default includeResolved = false. The API doc at
+  net/Session.kt:768-773 explicitly says the client-only-asks-for-active bug was
+  already fixed once because "Done"/"Let it go" made a user-authored goal vanish
+  with no way back. The Reference screen brought it back — and it has no
+  Done/Let-go buttons at all, so a goal can only be created, never resolved.
+
+Fix:
+  Route "goals" to the real GoalsScreen (imported CereBroApp.kt:132, never
+  routed) which has status changes AND habits.
+
+--------------------------------------------------------------------------------
+BUG-08  [MEDIUM]  Breathing prep screen's three settings do nothing
+--------------------------------------------------------------------------------
+File: ui/screens/PracticeLibraryScreen.kt:142-195  (PracticeBreathingScreen,
+      route "breathing-intro")
+
+Problem:
+  "Soft chime", "Haptics", "Keep screen awake" are local `remember` booleans.
+  They never write Chime.breatheChimeEnabled (audio/Chime.kt:43), never persist,
+  and keep-awake is never applied to the window. The real chime toggle lives
+  inside the session at Breathe.kt:474 — so the prep screen and the session
+  disagree.
+
+Fix:
+  Wire the toggles to Chime.breatheChimeEnabled / a prefs-backed store, or drop
+  them from the prep screen.
+
+--------------------------------------------------------------------------------
+BUG-09  [MEDIUM]  Guest mode shows network errors instead of a guest state
+--------------------------------------------------------------------------------
+Files: net/Session.kt:50, 522-531; ui/CereBroApp.kt:517
+
+Problem:
+  Session.guestMode only gates the auth screen. Inside the app every Api.* call
+  hits ensureAccess(), which for a guest throws ApiException(401, "Signed out").
+  Server-backed screens then render their failure copy, e.g.
+  "Couldn't load patterns. Please try again." / "Couldn't load goals."
+  A guest who never signed in is told the network failed.
+  Session.kt:48 promises guest mode "only opens the offline-capable product
+  shell" — no screen implements that distinction.
+
+Fix:
+  Branch on Session.guestMode before the fetch and render a "sign in to save
+  this" state instead of an error.
+
+================================================================================
+SECTION 2 — NAVIGATION ISSUES
+================================================================================
+
+NAV-01  Unreachable routes (defined in the graph, ZERO inbound navigation)
+        Verified by grepping every onOpen("…") / open("…") / openTool("…") /
+        navigate("…") call site.
+
+          patterndetail      CereBroApp.kt:722   -> PatternDetailScreen
+          sleepinsights      CereBroApp.kt:723   -> ReferenceSleepInsightsScreen
+          goaldetailcalmer   CereBroApp.kt:734   -> ReferenceGoalDetailScreen
+          goaldetailwind     CereBroApp.kt:735   -> ReferenceGoalDetailScreen
+          guidedimagery      CereBroApp.kt:751   -> dup of route "imagery"
+          onegoodthing       CereBroApp.kt:774   -> OneGoodThingScreen
+          intention          CereBroApp.kt:775   -> IntentionScreen
+          tools              CereBroApp.kt:748   -> dup of route "toolkit"
+
+        Note: onegoodthing/intention look intentional-but-broken —
+        TalkScreen widgetRoute() (TalkScreen.kt:154) maps "one_good_thing" and
+        "intention_set" to "journal", so their own screens can never open.
+
+NAV-02  Dead entries in the chrome config for those unreachable routes
+          CereBroApp.kt:201  shouldShowBottomBar set lists sleepinsights,
+                             patterndetail, goaldetailcalmer, goaldetailwind
+          CereBroApp.kt:620-621  tab-highlight mapping lists the same
+
+NAV-03  navigate() has no unknown-route guard
+          CereBroApp.kt:655-666. Any bad route string (see BUG-01) crashes the
+          app instead of being ignored. Routes now arrive from dynamic sources:
+          NotificationLog.routeFor, TalkScreen.widgetRoute, planStepRoute, and
+          the toolkit_recent pref (Extras.kt:2137).
+
+NAV-04  Two routes for one screen
+          "imagery" (CereBroApp.kt:762, GuidedImageryScreen with onOpen) and
+          "guidedimagery" (line 751, same screen without onOpen).
+          "toolkit" (line 739) and "tools" (line 748) both -> ToolkitScreen.
+
+NAV-05  Goal titles hardcoded in the nav graph itself
+          CereBroApp.kt:734-735 pass literal "A calmer evening" and
+          "Wind down before 10 PM" into ReferenceGoalDetailScreen.
+          A per-goal detail screen should take an id argument.
+
+================================================================================
+SECTION 3 — HARDCODED DATA (fake content shown as if it were the user's)
+================================================================================
+
+HC-01  PatternDetailScreen — 100% invented    ui/screens/TodayScreen.kt:2670
+       No API call at all. Renders:
+         "Evening grounding and calmer check-ins."
+         "CereBro observed an association across four evenings."
+         Examples: "4 evenings" | Average change: "−1 intensity level"
+                              | Confidence: "Early signal"
+       This presents a fabricated clinical-shaped observation as a finding
+       about the user. Violates docs/CLAIMS_MAP.md.
+       Currently UNREACHABLE (NAV-01) — so not user-visible today, but it is
+       one nav link away from shipping a lie. Delete or wire to Api.patterns().
+
+HC-02  ReferenceGoalDetailScreen — fake chart  ui/screens/TodayScreen.kt:2970
+       Bar chart = listOf(38, 69, 0, 88, 59, 77, 0) hardcoded.
+       Day labels = listOf("W","T","","F","S","M","T") hardcoded.
+       "Resume goal" (line 3018) has an empty body { }.
+       "Delete goal" (line 3024) only calls onBack() — deletes nothing.
+       Also currently unreachable.
+
+HC-03  ReferenceRemindersScreen — fake times   see BUG-04
+HC-04  ReferenceBaselineScreen — dead store    see BUG-05
+HC-05  PracticeBreathingScreen — fake toggles  see BUG-08
+
+HC-06  Practice content baked into code        ui/screens/PracticeLibraryScreen.kt
+       PracticeLibraryScreen (:71), PracticeTippScreen (:198),
+       NoticeChangeScreen (:248), UntangleThoughtScreen (:277),
+       PracticeBodyScanScreen (:325), BodyScanContentDetailScreen (:390)
+       — every title, step and body sentence is a Kotlin string literal.
+       Api.content(kind) exists (net/Session.kt:691) and is used by
+       SearchScreen/SoundsScreen/TodayScreen's rail, but not here.
+
+================================================================================
+SECTION 4 — HARDCODED UI COPY (i18n broken)
+================================================================================
+
+values/strings.xml      = 1608 strings
+values-hi/strings.xml   = 1047 strings
+Anything below is a Kotlin literal and will NEVER translate.
+
+  Screen                          English literals / stringResource
+  ------------------------------------------------------------------
+  UrgentSupportScreen  (crisis)            17 / 2     <-- HIGHEST PRIORITY
+  ExploreScreen                            19 / 2
+  GroundingIntroScreen                     15 / 0
+  WeeklyInsightsScreen                     15 / 3
+  CheckInDetailScreen                      14 / 0
+  ReferenceGoalsScreen                     14 / 0
+  PracticeLibraryScreen                    14 / 0
+  PracticeTippScreen                       12 / 0
+  ReferenceDailyPlanScreen                 12 / 0
+  PatternDetailScreen                      12 / 0
+  ReferenceSleepInsightsScreen             10 / 0
+  ReferenceRemindersScreen                 10 / 0
+  UntangleThoughtScreen                    10 / 0
+  PracticeBreathingScreen                   9 / 0
+  ReferenceGoalDetailScreen                 9 / 0
+  ReferenceTrendsScreen                     8 / 0
+  ReferencePatternsScreen                   8 / 0
+  ReferenceBaselineScreen                   8 / 0
+  NoticeChangeScreen                        8 / 0
+  BodyScanContentDetailScreen               8 / 0
+  PracticeBodyScanScreen                    6 / 0
+  GratitudeReflectionScreen                 6 / 7
+
+I18N-01 [SAFETY]  The crisis screen lost its Hindi.
+  Route "crisis" (CereBroApp.kt:776) -> UrgentSupportScreen
+  (PracticeLibraryScreen.kt:512), which hardcodes:
+    "If there is immediate danger, call … now."
+    "CereBro is not an emergency service and cannot monitor your safety."
+    "Human help comes first."
+    "Contact my trusted person" / "I cannot call" / "Change region"
+  The OLD localized CrisisScreen (Extras.kt:2756, 15 stringResource) is
+  imported at CereBroApp.kt:119 and never routed.
+  All 16 crisis_* Hindi strings ALREADY EXIST in values-hi/strings.xml —
+  they are simply unused. A Hindi user in crisis gets an English screen.
+  31 places in the app link to "crisis".
+  This also contradicts commit 2ecb599c ("the language you pick is the
+  language the button promises").
+
+================================================================================
+SECTION 5 — HARDCODED COLOURS (design-token rule)
+================================================================================
+
+CLAUDE.md hard rule: design tokens only, never raw hex in screens
+(ui/theme/Tokens.kt, Color.kt).
+
+  ui/screens/PracticeLibraryScreen.kt      134  raw Color(0xFF……)
+  ui/screens/TodayScreen.kt                 29  (16 of them in the Reference block)
+  ui/screens/ExploreScreen.kt               11
+  ui/screens/SleepScreen.kt                 10
+  ui/screens/Extras.kt                       8
+  ui/screens/PremiumFrames.kt                7
+  ui/screens/OnboardingScreen.kt             6
+  ui/screens/Common.kt                       4
+                                    total  ~209
+
+Practical effect: these screens ignore the Night/dark theme entirely —
+they are painted for the light Dawn arm only.
+
+================================================================================
+SECTION 6 — ORPHANED CODE (real screens no longer routed)
+================================================================================
+
+Imported in ui/CereBroApp.kt but never used in any composable(...):
+
+  line 140  RemindersScreen        Settings.kt:556      <- see BUG-04
+  line 128  PatternScreen          PatternScreen.kt:92  <- see below
+  line 132  GoalsScreen            GoalsScreen.kt:109   <- see BUG-07
+  line 129  TrendsScreen           TrendsScreen.kt:181
+  line  71  BaselineScreen         Baseline.kt:41       <- see BUG-05
+  line 119  CrisisScreen           Extras.kt:2756       <- see I18N-01
+  (also BodyScanScreen, CbtReframeScreen, GratitudeGardenScreen,
+   InsightsScreen, TippScreen — these have adequate routed replacements,
+   so they are dead code only, no feature loss)
+
+ORPH-01  Backend features with ZERO reachable UI on Android
+  These 14 Api helpers are called ONLY from PatternScreen.kt and GoalsScreen.kt,
+  both orphaned. The endpoints exist server-side and have backend tests:
+
+    Api.habits()                  Api.memories()
+    Api.addHabit()                Api.addMemory()
+    Api.setHabitToday()           Api.editMemory()
+    Api.setGoalStatus()           Api.deleteOneMemory()
+                                  Api.recommendations()
+                                  Api.resolveRecommendation()
+                                  Api.suppressPattern()
+
+  So: habit tracking, per-item AI memory (view/edit/delete), personalised
+  recommendations, and goal completion are all unreachable in the shipped app.
+
+ORPH-02  docs/TODO.md:179 is now stale
+  It states: "Already built and needing nothing: PVR-04 memory list (it is
+  PatternScreen.kt, with inspect/edit/delete)". PatternScreen is orphaned —
+  that claim is no longer true.
+
+ORPH-03  Api.pushStatus() (net/Session.kt:743) is never called
+  Its own doc says "the Settings toggle asks first — a switch that silently
+  does nothing is worse than an honest explanation." There is no push toggle
+  in Settings at all.
+
+================================================================================
+SECTION 7 — CONFIRMED NOT A PROBLEM (don't "fix" these)
+================================================================================
+
+  ui/screens/ConsentNotice.kt      deliberate 7-language DPDP notice table
+  ui/screens/CrisisDirectory.kt    region helplines = documented hand-duplicated
+                                   cross-stack contract (CLAUDE.md)
+  Settings.kt PremiumScreen        prices in strings.xml + honest
+                                   "billing not configured" note (Play Console
+                                   is an external blocker, already in TODO.md)
+  ui/games/*, ui/breathing/*,      content is offline-by-design
+  ui/offline/*
+  talk/live + talk/chat routes     deliberate legacy aliases, documented
+  InsightReelScreen                owner ruling 2026-08-06: UI shell only
+
+  Properly wired screens (no action): TodayScreen (10 endpoints), TalkScreen
+  (11), JournalScreen (7), SleepScreen (5), Onboarding (4), SoundsScreen,
+  ProgramsScreen, PlanScreen, SafetyPlanScreen, TrustedContactScreen,
+  SearchScreen, YouScreen, PrivacyScreen, DataExportScreen,
+  AccountDeletionScreen, NotificationInboxScreen, InsightsScreen.
+
+================================================================================
+SECTION 8 — SUGGESTED ORDER OF WORK
+================================================================================
+
+P0 — user-visible breakage / safety
+  1. BUG-01  "today" route crash  (+ update NotificationLogTest.kt:96)
+  2. I18N-01 crisis screen Hindi  (route -> CrisisScreen, or move
+             UrgentSupportScreen's copy into strings.xml)
+  3. BUG-04  reminders screen saves nothing
+  4. NAV-03  unknown-route guard in open()
+
+P1 — features silently missing
+  5. BUG-07 / ORPH-01  route goals -> GoalsScreen (restores habits +
+                       goal completion)
+  6. ORPH-01           route patterns -> PatternScreen (restores AI memory
+                       CRUD + recommendations)
+  7. BUG-05            baseline store mismatch
+  8. BUG-02 / BUG-03   daily plan loading state + Begin button
+
+P2 — correctness / cleanup
+  9. BUG-06  sleepLogs limit-vs-days
+ 10. BUG-08  breathing prep toggles
+ 11. BUG-09  guest-mode empty states
+ 12. NAV-01/02/04/05  delete unreachable routes + dup routes, or link them
+
+P3 — debt
+ 13. I18N table — move ~250 literals into strings.xml, backfill values-hi
+ 14. ~209 raw hex -> ui/theme/Tokens.kt (also fixes dark theme on those screens)
+ 15. HC-06 practice content -> Api.content()
+ 16. Update docs/TODO.md (ORPH-02) and docs/CLAIMS_MAP.md
