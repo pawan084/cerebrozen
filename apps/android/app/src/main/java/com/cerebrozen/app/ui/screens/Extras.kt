@@ -2174,8 +2174,12 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             // the only onOpen("games") lived in the retired legacy Toolkit, so
             // a whole shipped hub (engine, registry, tests) was unreachable
             // from the UI — caught walking the emulator, not by any gate.
+            // `mg_subtitle` is the full sentence and belongs on the Mindful
+            // Games screen, where it has the width for it. In this card it ran
+            // past the 2-line cap and clipped mid-word — "never a measurement
+            // of y…" — so the door gets a line sized for a door.
             ToolkitExerciseCard(
-                stringResource(R.string.mg_title), stringResource(R.string.mg_subtitle),
+                stringResource(R.string.mg_title), stringResource(R.string.mg_door_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
                 Icons.Outlined.SportsEsports, Ok, 2,
             ) { openTool("games") }

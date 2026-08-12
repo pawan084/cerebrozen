@@ -2914,8 +2914,13 @@ fun ReferenceGoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                         .clickable { showCreateGoal = true }, contentAlignment = Alignment.Center,
                 ) { Text("+", style = MaterialTheme.typography.titleMedium, color = Periwinkle) }
             }
+            // Goals are not patterns. This used to read "Understand patterns
+            // cautiously without diagnosis or causal claims." — the
+            // Trends/Patterns disclaimer, pasted onto a screen that makes no
+            // claim about either. A caveat repeated where it does not apply is
+            // how it becomes wallpaper on the screens where it does.
             Text(
-                "Understand patterns cautiously without diagnosis or causal claims.",
+                "Something to move towards, at whatever pace it takes.",
                 style = MaterialTheme.typography.bodyLarge, color = TextSoft,
             )
             when {
@@ -3029,7 +3034,12 @@ fun ReferenceGoalDetailScreen(title: String, onBack: () -> Unit, onOpen: (String
                 if (title == "A calmer evening") "A calmer\nevening" else "Wind down\nbefore 10 PM",
                 style = MaterialTheme.typography.displayMedium.copy(fontFamily = serif), color = TextPrimary,
             )
-            Text("Understand patterns cautiously without diagnosis or causal claims.", style = MaterialTheme.typography.bodyLarge, color = TextSoft)
+            // Same paste as the Goals list had — a goal detail makes no claim
+            // about patterns or diagnosis, so it said something it does not do.
+            Text(
+                "Small steps count. Skipping a day does not undo them.",
+                style = MaterialTheme.typography.bodyLarge, color = TextSoft,
+            )
             Column(
                 Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(26.dp)).background(CardFill).padding(18.dp),
                 verticalArrangement = Arrangement.Bottom,
