@@ -203,7 +203,27 @@ everything below is open.
       directions. No e2e test asserts rate-limiting behaviour, so nothing is lost by
       disabling it there; the alternative (fewer signups, shared fixtures) was rejected
       because it would make the tests depend on each other
-- [ ] **23 portal screens still render `lib/mock.ts`** and every one says so in a warning
+- [x] **The audit log was recording the wrong person** (2026-08-13). `add_member` already
+      binds a local `user` to the *member being looked up*, which shadowed the injected caller
+      dependency — so every "seat added" row named **the member as the administrator who
+      acted**, turning the trail into precisely the payroll→account mapping the seat list is
+      designed not to be. Caught by a test asserting the member's address never appears in the
+      trail. The dependency is `actor` in all five mutating routes now, with the reason
+      written above it
+- [x] **AUD-01 is live, and its promise is now true** (2026-08-13). The screen said "trace
+      every administrative action" while **nothing recorded org-admin actions at all** — it
+      was the one surface its own claim was false for. `admin_audit_logs` gained a nullable
+      `org_id` (migration `b2d5e8a1c473`), every mutating `/org` route writes a row, and
+      `GET /org/audit` filters on an id stamped at write time, so a client cannot request
+      another organisation's trail because it never supplies the id. CereBro staff actions
+      keep a NULL `org_id` and stay out of a customer's trail — what we do is our trail, not
+      theirs. Four backend tests plus an e2e that acts through the UI and reads it back
+- [x] **Billing and the data map are live for what the model knows** (2026-08-13). Billing
+      shows seats, activation and contract dates and **deliberately shows no invoice table**:
+      there is no billing integration, and a plausible-looking invoice list is the kind of
+      fiction someone forwards to finance. The data map's last row carries no retention
+      period, because personal wellbeing content has no arrow out of the member account
+- [ ] **20 portal screens still render `lib/mock.ts`** and every one says so in a warning
       notice above the fold. That banner is load-bearing while the portal is part live: the
       wired and unwired screens look identical, so an administrator who cannot tell them apart
       would read invented figures as their own. Delete the banner per screen as it becomes

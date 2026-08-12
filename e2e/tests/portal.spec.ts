@@ -32,6 +32,10 @@ const GUARDED = [
   "/setup",
   "/members/group",
   "/roles/admins",
+  // Wired 2026-08-13 (second pass).
+  "/audit",
+  "/billing",
+  "/privacy/data-map",
 ];
 
 const ROUTES = [
@@ -45,7 +49,6 @@ const ROUTES = [
   "/engagement",
   "/outcomes",
   "/reports",
-  "/privacy/data-map",
   "/safety",
   "/safety/runbook",
   "/evidence",
@@ -53,8 +56,6 @@ const ROUTES = [
   "/integrations",
   "/integrations/detail",
   "/roles",
-  "/audit",
-  "/billing",
   "/billing/contract",
   "/support",
   "/notifications",

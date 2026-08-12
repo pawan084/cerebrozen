@@ -47,6 +47,15 @@ class AdminAuditLog(Base):
     action: Mapped[str] = mapped_column(String(64), index=True)
     target_type: Mapped[str] = mapped_column(String(32), default="")
     target_id: Mapped[str] = mapped_column(String(64), default="")
+    # The organisation whose portal the action was taken in, when it was an
+    # ORG administrator acting rather than a CereBro operator. NULL for
+    # platform actions. This is what makes `GET /org/audit` safe: an
+    # organisation reads only rows stamped with its own id, so one customer's
+    # trail can never surface in another's — the same "scope from the session,
+    # never from the request" rule the rest of /org follows.
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=True
+    )
     # Operator-supplied reason, where the action asks for one.
     reason: Mapped[str] = mapped_column(Text, default="")
     detail: Mapped[dict] = mapped_column(JSONB, default=dict)

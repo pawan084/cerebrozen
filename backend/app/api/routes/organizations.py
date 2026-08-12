@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.models.admin_audit import AdminAuditLog
 from app.models.organization import (
     ROLES_CAN_WRITE,
     STATUS_ACTIVE,
@@ -40,13 +41,14 @@ from app.schemas.organization import (
     MembershipCreate,
     MembershipOut,
     OrgAdminOut,
+    OrgAuditOut,
     OrgOut,
     OrgSettingsUpdate,
     OrgSummaryOut,
     SponsorshipCreate,
     SponsorshipOut,
 )
-from app.services import organizations as org_service
+from app.services import admin_audit, organizations as org_service
 
 router = APIRouter(prefix="/org", tags=["organizations"])
 
@@ -91,6 +93,7 @@ async def update_org(
     body: OrgSettingsUpdate,
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
     db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_current_user),
 ) -> Organization:
     admin, org = ctx
     _require_write(admin)
@@ -101,6 +104,12 @@ async def update_org(
         data["reporting_threshold"] = org_service.clamp_threshold(data["reporting_threshold"])
     for field, value in data.items():
         setattr(org, field, value)
+    await admin_audit.record(
+        db, actor, "org.settings_update",
+        target_type="organization", target_id=org.id,
+        detail={"fields": sorted(data.keys()), "threshold": org.reporting_threshold},
+        org_id=org.id,
+    )
     await db.commit()
     await db.refresh(org)
     return org
@@ -132,11 +141,19 @@ async def create_group(
     body: GroupCreate,
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
     db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_current_user),
 ) -> EligibilityGroup:
     admin, org = ctx
     _require_write(admin)
     group = EligibilityGroup(org_id=org.id, **body.model_dump())
     db.add(group)
+    await db.flush()
+    await admin_audit.record(
+        db, actor, "org.group_create",
+        target_type="eligibility_group", target_id=group.id,
+        detail={"name": group.name},
+        org_id=org.id,
+    )
     await db.commit()
     await db.refresh(group)
     return group
@@ -196,6 +213,32 @@ async def list_admins(
     return out
 
 
+@router.get("/audit", response_model=list[OrgAuditOut])
+async def read_audit(
+    ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminAuditLog]:
+    """This organisation's own administrative trail.
+
+    Filtered on `org_id`, which is stamped from the session at write time — a
+    client cannot ask for another organisation's rows because it never supplies
+    the id. Platform-operator actions have a NULL `org_id` and are therefore
+    invisible here, which is correct: what CereBro staff do is CereBro's trail,
+    not a customer's.
+
+    Newest first, capped. There is no delete route and nothing in the app
+    updates these rows: the point of a trail is that the person being trailed
+    cannot edit it.
+    """
+    rows = await db.scalars(
+        select(AdminAuditLog)
+        .where(AdminAuditLog.org_id == ctx[1].id)
+        .order_by(AdminAuditLog.created_at.desc())
+        .limit(200)
+    )
+    return list(rows.all())
+
+
 @router.get("/members", response_model=list[MembershipOut])
 async def list_members(
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
@@ -220,6 +263,9 @@ async def add_member(
     body: MembershipCreate,
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
     db: AsyncSession = Depends(get_db),
+    # Named `actor`, not `user`: add_member already binds `user` to the member being looked up,
+    # and a shadowed dependency recorded the MEMBER as the administrator who acted.
+    actor: User = Depends(get_current_user),
 ) -> OrgMembership:
     """Grant sponsorship to the account with this email.
 
@@ -261,6 +307,15 @@ async def add_member(
         access_end=body.access_end,
     )
     db.add(membership)
+    await db.flush()
+    # The reference the organisation chose, never the member's address: the
+    # trail must not become the roster the seat list deliberately is not.
+    await admin_audit.record(
+        db, actor, "org.seat_add",
+        target_type="org_membership", target_id=membership.id,
+        detail={"external_ref": membership.external_ref},
+        org_id=org.id,
+    )
     await db.commit()
     await db.refresh(membership)
     return membership
@@ -271,6 +326,7 @@ async def end_membership(
     membership_id: uuid.UUID,
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
     db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_current_user),
 ) -> OrgMembership:
     """End a sponsorship. The account and its history are untouched.
 
@@ -284,6 +340,12 @@ async def end_membership(
     if membership is None or membership.org_id != org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
     membership.status = STATUS_ENDED
+    await admin_audit.record(
+        db, actor, "org.seat_end",
+        target_type="org_membership", target_id=membership.id,
+        detail={"external_ref": membership.external_ref},
+        org_id=org.id,
+    )
     await db.commit()
     await db.refresh(membership)
     return membership
@@ -307,6 +369,7 @@ async def sponsor_programme(
     body: SponsorshipCreate,
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
     db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_current_user),
 ) -> SponsoredProgramme:
     """Fund a programme for a group. It makes the programme available; it does
     not enrol anyone, and no completion is reported back."""
@@ -318,6 +381,13 @@ async def sponsor_programme(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     sponsorship = SponsoredProgramme(org_id=org.id, **body.model_dump())
     db.add(sponsorship)
+    await db.flush()
+    await admin_audit.record(
+        db, actor, "org.programme_sponsor",
+        target_type="sponsored_programme", target_id=sponsorship.id,
+        detail={"programme_slug": sponsorship.programme_slug},
+        org_id=org.id,
+    )
     await db.commit()
     await db.refresh(sponsorship)
     return sponsorship

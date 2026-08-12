@@ -33,6 +33,7 @@ async def record(
     target_id: str | uuid.UUID = "",
     reason: str = "",
     detail: dict | None = None,
+    org_id: uuid.UUID | None = None,
 ) -> None:
     """Append one operator action. Flushed with the caller's transaction so
     the record and the change it describes land together."""
@@ -46,6 +47,7 @@ async def record(
                 target_id=str(target_id or ""),
                 reason=(reason or "")[:2000],
                 detail=detail or {},
+                org_id=org_id,
             )
         )
         await db.flush()

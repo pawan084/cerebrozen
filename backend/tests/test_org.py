@@ -631,3 +631,86 @@ async def test_the_admin_list_is_scoped_to_one_organisation(client):
     emails = [a["email"] for a in (await client.get("/org/admins")).json()]
     assert emails == [owner_email]
     assert other_email not in emails
+
+# ---------------------------------------------------------------- audit
+
+
+async def test_administrative_actions_are_recorded(client):
+    """AUD-01 promises "trace every administrative action".
+
+    Nothing recorded what an ORG administrator did until 2026-08-13, so the
+    screen making that promise was the one surface it was false for.
+    """
+    owner_email, _ = await _signup(client, "owner24")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Traced Ltd", admin_email=owner_email)
+
+    assert (await client.patch("/org", json={"retention_months": 12})).status_code == 200
+    assert (await client.post("/org/groups", json={"name": "Everyone"})).status_code == 201
+    assert (await client.post("/org/programmes", json={"programme_slug": "calm-workdays"})).status_code == 201
+
+    rows = (await client.get("/org/audit")).json()
+    actions = {r["action"] for r in rows}
+    assert {"org.settings_update", "org.group_create", "org.programme_sponsor"} <= actions
+    # Newest first.
+    assert rows[0]["action"] == "org.programme_sponsor"
+    # Every row names the administrator who acted.
+    assert all(r["admin_email"] == owner_email for r in rows)
+
+
+async def test_the_audit_trail_never_carries_a_member_address(client):
+    """A trail that records who holds a seat becomes the roster the seat list
+    deliberately is not."""
+    owner_email, _ = await _signup(client, "owner25")
+    member_email, _ = await _signup(client, "member8")
+    r = await client.post("/auth/login", data={"username": owner_email, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    async with SessionLocal() as db:
+        await _make_org(db, name="Quiet Ltd", admin_email=owner_email)
+
+    added = await client.post("/org/members", json={"email": member_email, "external_ref": "EMP-9"})
+    assert added.status_code == 201
+
+    rows = (await client.get("/org/audit")).json()
+    seat = next(r for r in rows if r["action"] == "org.seat_add")
+    assert seat["detail"] == {"external_ref": "EMP-9"}
+    assert member_email not in str(rows)
+
+
+async def test_one_organisation_cannot_read_anothers_trail(client):
+    owner_a, _ = await _signup(client, "owner26")
+    owner_b, _ = await _signup(client, "owner27")
+    async with SessionLocal() as db:
+        await _make_org(db, name="Alpha Ltd", admin_email=owner_a)
+        await _make_org(db, name="Beta Ltd", admin_email=owner_b)
+
+    # B acts.
+    r = await client.post("/auth/login", data={"username": owner_b, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    assert (await client.post("/org/groups", json={"name": "Beta group"})).status_code == 201
+
+    # A sees nothing of it.
+    r = await client.post("/auth/login", data={"username": owner_a, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    rows = (await client.get("/org/audit")).json()
+    assert rows == []
+    assert "Beta group" not in str(rows)
+
+
+async def test_platform_operator_actions_are_not_in_an_organisation_trail(client):
+    """What CereBro staff do is CereBro's trail, not a customer's.
+
+    Provisioning writes an audit row with a NULL org_id, so it must not appear
+    in the organisation it created.
+    """
+    owner_email, _ = await _signup(client, "owner28")
+    await _platform_admin(client, "staff6")
+    created = await client.post(
+        "/admin/organizations", json={"name": "Fresh Ltd", "admin_email": owner_email}
+    )
+    assert created.status_code == 201
+
+    r = await client.post("/auth/login", data={"username": owner_email, "password": "password123"})
+    client.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+    rows = (await client.get("/org/audit")).json()
+    assert [x for x in rows if x["action"] == "organization.provision"] == []

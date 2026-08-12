@@ -259,4 +259,47 @@ test.describe("Portal ↔ backend", () => {
     const doneAfter = await page.locator(".step.done").count();
     expect(doneAfter, "the groups step did not tick after a group was created").toBe(doneBefore + 1);
   });
+
+  test("the audit log shows the administrator's own actions and nobody else's", async ({
+    page,
+    request,
+  }) => {
+    // AUD-01 promised "trace every administrative action" while nothing recorded
+    // what an org administrator did. This walks the promise: act, then read the
+    // trail back through the UI.
+    const suffix = unique();
+    const ownerEmail = `portal-audit-${suffix}@test.app`;
+    await signUp(request, ownerEmail);
+    const staffToken = await login(request, STAFF_EMAIL, STAFF_PASSWORD);
+    await request.post(`${API}/admin/organizations`, {
+      headers: { Authorization: `Bearer ${staffToken}` },
+      data: { name: `Audit Co ${suffix}`, admin_email: ownerEmail },
+    });
+
+    await page.goto(`${PORTAL}/signin`, { waitUntil: "networkidle" });
+    await page.locator("input[type=email]").fill(ownerEmail);
+    await page.locator("input[type=password]").fill(PASSWORD);
+    await page.locator("button[type=submit]").click();
+    await page.waitForURL((u) => !u.pathname.includes("/signin"), { timeout: 20_000 });
+
+    // Nothing has happened yet.
+    await page.goto(`${PORTAL}/audit`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/Nothing recorded yet/i)).toBeVisible({ timeout: 20_000 });
+
+    // Do something administrative through the portal itself.
+    await page.goto(`${PORTAL}/cohorts/new`, { waitUntil: "networkidle" });
+    await page.getByLabel("Cohort name").fill(`Audited group ${suffix}`);
+    await page.getByRole("button", { name: /Create cohort/i }).click();
+    await expect(page.getByText(/created\./i)).toBeVisible({ timeout: 20_000 });
+
+    await page.goto(`${PORTAL}/audit`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/Created an eligibility group/i)).toBeVisible({ timeout: 20_000 });
+    const body = await page.locator("body").innerText();
+    // Attributed to the administrator who acted...
+    expect(body).toContain(ownerEmail);
+    // ...and the platform's own provisioning action is not in a customer's trail.
+    expect(body, "a CereBro staff action leaked into an organisation's trail").not.toMatch(
+      /organization\.provision/i,
+    );
+  });
 });

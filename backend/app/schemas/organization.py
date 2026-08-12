@@ -6,7 +6,7 @@ this file that names one person's behaviour, the model behind it has gone wrong.
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -188,3 +188,22 @@ class OrgAdminOut(BaseModel):
     name: str
     role: str
     attested_on: date | None
+
+
+class OrgAuditOut(BaseModel):
+    """One administrative action taken in this organisation's portal.
+
+    `detail` carries operational specifics only — a threshold value, a group
+    name — and never anything about a member. The trail records that a seat was
+    added, not who holds it.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    created_at: datetime
+    admin_email: str
+    action: str
+    target_type: str
+    target_id: str
+    detail: dict

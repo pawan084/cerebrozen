@@ -355,3 +355,21 @@ export async function getLaunchState(): Promise<LaunchState> {
     ],
   };
 }
+
+export type AuditRow = {
+  id: string;
+  created_at: string;
+  admin_email: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  detail: Record<string, unknown>;
+};
+
+export const getAudit = () => api<AuditRow[]>("/org/audit");
+
+/** Billing reads the organisation and its seat usage together. */
+export async function getBilling() {
+  const [org, summary] = await Promise.all([getOrg(), getSummary()]);
+  return { org, summary };
+}
