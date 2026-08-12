@@ -323,6 +323,21 @@ everything below is open.
       sites, so the one screen that avoided the component avoided the check. It now also
       fails on a raw `Switch(` anywhere outside `Common.kt`, and the detection was verified
       against the original defective line rather than assumed
+- [x] **`CLAIMS_MAP` cited a test that did not exist** (2026-08-12). §2's "Not a therapist,
+      diagnosis, or crisis service" row named `DisclosureCopyTest` (Android) as its
+      mechanism, and there was no such file anywhere in the tree — the row cited a guarantee
+      nobody had written. `ScreenLogicTest` covers *when* the disclosure re-shows (the 3-hour
+      cadence); nothing covered *what it says*. Found while auditing which tests actually ran
+      during the merge gate rather than trusting the row. Written rather than softened, since
+      the whole point of that file is that a row without a test is an intention: it now pins
+      that the Talk pill names all three denials (AI, not a therapist, not a crisis service),
+      that every AI surface disclaims medical care, and that none of this copy uses a banned
+      medical verb except as a denial — "never diagnoses or prescribes" has to stay legal
+      while "treats depression" does not
+- [ ] **Audit the rest of `CLAIMS_MAP`'s test citations the same way.** One row named a file
+      that never existed; the others have never been checked mechanically. A script that
+      resolves every `Test`/`tests/` reference in that table to a real symbol would turn the
+      file's own rule into something enforced rather than promised
 - [ ] **Two screens are registered but unreachable, and two more are aliases** (2026-08-12,
       found by checking all 58 static routes for a navigation reference rather than by eye).
       `guidedimagery` has **zero** references anywhere outside its own `composable(...)` —
