@@ -138,7 +138,16 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium,
                     color = if (selected) ChipSelectedInk else TextSoft)
-                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // The title already flips to ChipSelectedInk on select; the
+                // subtitle did not, so it kept a page-ink token on the filled
+                // accent row and measured 1.26:1 — the selected option was the
+                // one you could not read. Softened rather than equal so the
+                // title still leads.
+                if (subtitle.isNotBlank()) Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (selected) ChipSelectedInk.copy(alpha = 0.82f) else TextMuted,
+                )
             }
             if (selected) Icon(
                 Icons.Outlined.Check,
