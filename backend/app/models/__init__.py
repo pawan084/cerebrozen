@@ -17,6 +17,13 @@ from app.models.insight import Insight
 from app.models.intervention import InterventionRecommendation
 from app.models.memory import ContextMemory
 from app.models.oracle_audit import OracleToolCall
+from app.models.organization import (
+    EligibilityGroup,
+    Organization,
+    OrgAdmin,
+    OrgMembership,
+    SponsoredProgramme,
+)
 from app.models.safety import SafetyEvent
 from app.models.safety_plan import SafetyPlan
 from app.models.sleep import SleepLog

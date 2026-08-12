@@ -15,6 +15,7 @@ from app.api.routes import (
     media,
     moods,
     oracle,
+    organizations,
     plans,
     programs,
     recommendations,
@@ -29,6 +30,7 @@ from app.api.routes import (
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
+api_router.include_router(organizations.router)
 api_router.include_router(assessment.router)
 api_router.include_router(moods.router)
 api_router.include_router(sleep.router)

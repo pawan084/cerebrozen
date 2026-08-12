@@ -124,11 +124,39 @@ everything below is open.
       `\uXXXX` into JSX **text**, where backslash-u is not an escape — 21 pages rendered
       "anyone\u2019s safety" verbatim. Invisible in a diff and in `tsc`; caught by reading the
       served HTML. `portal.spec.ts` now asserts no page renders a literal escape
-- [ ] **The portal is still a front end with no backend** — 36 screens over fixed sample data
-      in `lib/mock.ts`. Nothing fetches, nothing persists, and no organisation, sponsorship,
-      entitlement or cohort model exists server-side (see the B2B2C entry). Building the
-      screens has made the shape reviewable and the copy auditable; it has not made the portal
-      functional, and it should not be shown to a customer as though it were
+- [x] **The organisation model exists** (2026-08-12). `models/organization.py` +
+      `a1c4f7e2b930`: `organizations`, `org_admins`, `eligibility_groups`, `org_memberships`,
+      `sponsored_programmes`. `services/organizations.py` owns the reporting rules and
+      `/org` is the API. 19 tests in `tests/test_org.py`; migration verified with
+      `alembic upgrade head` against a real database, not just `create_all` in fixtures.
+      **The design is mostly about what is absent.** There is no per-member activity table
+      and no `manager_dashboards` column — the portal's Settings screen tells administrators
+      that individual reporting is "not a feature that exists in a disabled state", and a
+      column by that name would make the sentence false the moment somebody flipped it in
+      psql. `OrgMembership` is an entitlement row with no `last_active`, no `sessions` and no
+      `programme_progress`. `MembershipOut` returns no user id, email or name, so no employer
+      is handed a payroll→CereBro mapping.
+      Cross-tenant reads are prevented structurally rather than by a check: every route
+      resolves the organisation from the signed-in user and **no route takes an `org_id`**, so
+      the request cannot be expressed. A test asserts that. Another asserts the org model,
+      service and routes import no wellbeing model at all — if someone adds
+      `from app.models.mood import MoodLog`, the join is one line away and the suite fails
+      first. Being a CereBro platform admin grants nothing here; they are different jobs
+- [ ] **The portal and the organisation model are not joined yet** — the screens still render
+      `lib/mock.ts` constants and the API they now have goes unused. That is the next piece of
+      work, and it is where the honest-failure-state discipline has to be applied: each form
+      needs the optimistic-then-reconciled treatment the consent toggles got, and each
+      suppressed figure needs to render as "too small to report" rather than as a blank
+- [ ] **Sponsorship does not yet grant premium anywhere in the product** —
+      `organizations.is_sponsored()` computes entitlement correctly and nothing calls it. The
+      subscription checks still read `user.subscription_tier` alone, so a sponsored member
+      gets a row in the database and no benefit from it. Wire it where the tier is resolved,
+      not at each call site
+- [ ] **Eligibility import is one member at a time** — `POST /org/members` takes a single
+      address; the portal's MEM-02 offers a CSV. The rejection rule matters more than the
+      loop: `MembershipCreate` is `extra="forbid"`, so a column called `mood` or `diagnosis`
+      fails loudly instead of being dropped silently, and a bulk importer must keep that
+      property rather than skipping unknown columns
 - [ ] **Portal forms are inert by design, and that will need revisiting** — selects, date
       fields and text areas across the invite, cohort, pathway and campaign builders hold
       `defaultValue` and do nothing. That is honest for a design surface, but once a backend
@@ -553,7 +581,9 @@ everything below is open.
       run (needs the docker stack); run `docker-compose.e2e.yml` before trusting it
 - [ ] Owner decisions blocking IA work — see REDESIGN_V2.md §6 (Sleep as a top-level tab,
       iOS/`apps/app` standing vs an Android-only spec, en-GB spelling, cohort floor)
-- [ ] **B2B2C is unbuilt end to end** — no organisation, sponsorship, entitlement or cohort
+- [ ] **B2B2C is unbuilt end to end** *(partly closed 2026-08-12: the backend model and
+      `/org` API now exist — see the organisation-model entry above. What remains is the
+      join to the portal, entitlement enforcement, and everything commercial.)* — no organisation, sponsorship, entitlement or cohort
       model; RBAC is one boolean where the portal needs 7 roles; `apps/admin` is an internal
       staff console, not the org portal, and should stay one
 
