@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | "No ads, ever · no third-party trackers" | Zero ad/analytics SDKs in any client; first-party `/events` with an allow-list | `tests/test_events.py` |
 | "Usage counts are anonymous and optional" | Random install id, never account-linked; opt-out toggle | `tests/test_events.py` |
-| "Employer/support sees counts, never content" | Admin views project counts only; excerpts are a separate, logged, per-row GET | `tests/test_admin_metrics.py` (incl. `context_memories` coverage) |
+| "Support tooling shows counts and account state, not your words. One exception: if an entry is flagged as a crisis, a reviewer can open that entry — and every time one is opened, that is recorded" | Admin views project counts only; `admin.read_safety_excerpt` is the single path to verbatim text, is per-row and deliberate, and writes an `admin_audit` row naming the admin. Android said "never the words" until 2026-08-12 — an absolute this endpoint disproves. The path is defensible; denying it was not | `tests/test_admin_metrics.py` (incl. `context_memories` coverage), `tests/test_admin_audit_log.py` |
 | "Export or delete everything from inside the app" | `GET /users/me/export` enumerates every user-scoped table; `DELETE /users/me` cascades | `tests/test_account.py`, `tests/test_memory.py`, `tests/test_safety_plan.py` |
 | "Turn memory off and it forgets" | `ai_memory` gates reads/writes of `context_memories`; deletion is never gated | `tests/test_memory.py::test_consent_off_blocks_reads_and_writes_but_never_deletion` |
 | "Delete all memory" | Wipe clears chat, insights, saved notes and the Oracle checkpoint | `tests/test_memory.py::test_wipe_all_removes_memories_too` |

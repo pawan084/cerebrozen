@@ -278,12 +278,38 @@ everything below is open.
       *on* also implied a setting to turn off, and there isn't one.
       *Lesson for the gate*: a phrase list catches recidivism, not invention. Both of these
       needed a screen walk to find, which is the argument for finishing the remaining ~18
-- [ ] **The Android screen review stopped at 46 of ~64 screens** (2026-08-12). Every bug
-      below came out of the first 46, at a fairly steady rate, so the remaining ~18 should be
+- [x] **Screen review wave: settings, search and the games** (2026-08-12, 46 → 51 of ~64).
+      **Every switch in the app was anonymous to a screen reader.** Found on Zen ripples,
+      whose water-drop toggle rendered with no text and no content description — but it was
+      never a Zen ripples bug: `AppSwitch` took no label, and a Compose `Switch` has no text
+      of its own, so on all fourteen call sites the visible label was a *sibling* `Text` and
+      therefore a separate semantics node. Twelve of the fourteen were bare; two (Breathe,
+      Rituals) already cleared the switch's semantics and made the row the accessible toggle,
+      which is why this needed checking rather than assuming. The bare twelve included all
+      seven DPDP consent toggles, the 18-or-older age gate, the journal lock, the
+      trusted-contact crisis permission and the analytics opt-out — where "specific and
+      informed" is a legal standard, and where a control with no accessible name fails
+      WCAG 4.1.2 outright. `label` is now required so the compiler catches the next one, and
+      `SwitchLabelTest` guards that it is real and localized rather than an English literal
+      **Search claimed the whole app and indexed a fifth of it.** "Everything served to the
+      apps is searchable" — `SEARCH_KINDS` is five `/content` kinds, so searching "ground"
+      returned nothing while the app carried a grounding family, a crisis-grounding screen
+      and a 5-4-3-2-1 practice. The placeholder on the same screen already said the true
+      thing ("Sounds, stories, programs…"); the body copy over-claimed past it
+      **The privacy policy denied an audited read path.** "Support tooling sees counts and
+      account state — never the words", but `admin.read_safety_excerpt` serves the verbatim
+      text behind a flagged event. That path is deliberate, per-row and writes an
+      `admin_audit` row naming the admin — defensible, which is exactly why the copy should
+      describe it instead of denying it. Same failure shape as the trusted-contact line: an
+      absolute privacy claim that a real code path contradicts. `CLAIMS_MAP` §1 carried the
+      same absolute and was corrected with it
+      *Clean on this pass*: Human support (names its coach directory as roadmap rather than
+      implying it exists), delete account, crisis region, gratitude, CBT reframe
+- [ ] **The Android screen review stopped at 51 of ~64 screens** (2026-08-12). Every bug
+      below came out of the first 51, at a fairly steady rate, so the remaining ~13 should be
       assumed to hold more rather than to be clean. Not yet walked: `cbti`, `mbct`, `imagery`,
       `guidedimagery`, `ritual`, `breathing-intro`, `onegoodthing`, `intention`, `insightreel`,
-      `search`, `delete`, `privacypolicy`, `talk/live`, `humansupport`, `zenripples`,
-      `patternglow`, `mindfulgame/{gameId}`. Three method notes for whoever resumes, all learned
+      `talk/live`, `patternglow`, `mindfulgame/{gameId}`. Three method notes for whoever resumes, all learned
       the hard way — a frozen emulator framebuffer yields *plausible* screenshots of the last
       good frame (hash two captures ~10s apart to catch it), and distinct file hashes do not
       mean distinct screens: seven "successful" deeplink captures were all Today, because the

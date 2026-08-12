@@ -646,7 +646,7 @@
     <string name="privacypolicy_eyebrow">हम आपका डेटा कैसे सँभालते हैं</string>
     <string name="privacypolicy_title">निजता नीति</string>
     <string name="privacypolicy_private_title">निजता, डिज़ाइन से</string>
-    <string name="privacypolicy_private_body">आपका जर्नल, चैट और नींद की सामग्री आपकी ही रहती है। सपोर्ट टूलिंग को सिर्फ़ गिनती और खाते की स्थिति दिखती है — शब्द कभी नहीं।</string>
+    <string name="privacypolicy_private_body">आपका जर्नल, चैट और नींद की सामग्री आपकी ही रहती है। सपोर्ट टूलिंग को गिनती और खाते की स्थिति दिखती है, आपके शब्द नहीं। एक अपवाद: अगर कोई एंट्री संकट के रूप में चिह्नित हो, तो समीक्षक उसे खोल सकता है — और हर बार खोलने का रिकॉर्ड रखा जाता है।</string>
     <string name="privacypolicy_controls_title">आपके नियंत्रण</string>
     <string name="privacypolicy_controls_body">निजता और मेमोरी में तय करें कि क्या याद रहे, कभी भी पूरी कॉपी निर्यात करें, या सब कुछ स्थायी रूप से मिटाएँ।</string>
     <string name="privacypolicy_noselling_title">बेचना नहीं, कभी नहीं</string>
@@ -818,7 +818,7 @@
     <string name="search_title">खोज</string>
     <string name="search_field_label">ध्वनियाँ, कहानियाँ, प्रोग्राम…</string>
     <string name="search_clear_cd">खोज साफ़ करें</string>
-    <string name="search_hint">बस दो-एक अक्षर लिखें — ऐप में जो कुछ है, सब खोजा जा सकता है।</string>
+    <string name="search_hint">बस दो-एक अक्षर लिखें — साउंड, स्लीप स्टोरीज़, मेडिटेशन और प्रोग्राम।</string>
     <string name="search_loading">लाइब्रेरी में खोज रहे हैं…</string>
     <string name="search_error">लाइब्रेरी लोड नहीं हो पाई — कनेक्शन देखें और फिर कोशिश करें।</string>
     <string name="search_no_match">\"%1$s\" से कुछ नहीं मिला — कोई और शब्द आज़माएँ।</string>

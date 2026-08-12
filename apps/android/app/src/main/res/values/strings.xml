@@ -1008,7 +1008,12 @@
     <string name="privacypolicy_eyebrow">How we handle your data</string>
     <string name="privacypolicy_title">Privacy policy</string>
     <string name="privacypolicy_private_title">Private by design</string>
-    <string name="privacypolicy_private_body">Your journal, chat and sleep contents stay yours. Support tooling sees counts and account state — never the words.</string>
+    <!-- Names the one real exception. "never the words" was an absolute that
+         admin.read_safety_excerpt disproves: a reviewer CAN open the verbatim
+         text behind a flagged safety event. That path is deliberate, audited
+         and defensible — which is exactly why the copy should describe it
+         rather than deny it. -->
+    <string name="privacypolicy_private_body">Your journal, chat and sleep contents stay yours. Support tooling shows counts and account state, not your words. One exception: if an entry is flagged as a crisis, a reviewer can open that entry — and every time one is opened, that is recorded.</string>
     <string name="privacypolicy_controls_title">Your controls</string>
     <string name="privacypolicy_controls_body">Toggle what\'s remembered in Privacy &amp; memory, export a full copy any time, or delete everything permanently.</string>
     <string name="privacypolicy_noselling_title">No selling, ever</string>
@@ -1251,7 +1256,11 @@
     <string name="search_title">Search</string>
     <string name="search_field_label">Sounds, stories, programs…</string>
     <string name="search_clear_cd">Clear search</string>
-    <string name="search_hint">Type a couple of letters — everything served to the apps is searchable.</string>
+    <!-- Says what is actually indexed. Was "everything served to the apps is
+         searchable": SEARCH_KINDS is five /content kinds, so the practice
+         library, the games and the tools are not in it — searching "ground"
+         returned nothing while the app had a whole grounding family. -->
+    <string name="search_hint">Type a couple of letters — sounds, sleep stories, meditations and programmes.</string>
     <string name="search_loading">Searching the library…</string>
     <string name="search_error">Couldn\'t load the library — check your connection and try again.</string>
     <string name="search_no_match">Nothing matches \"%1$s\" — try a different word.</string>
