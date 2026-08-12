@@ -1,7 +1,32 @@
 # CereBro Android — Audit Report
-Branch: redesign/light-dawn @ 66238026 (upstream/main)
-Scope: apps/android — 70 screens, ~40 routes, full nav graph
-Date: 2026-08-12
+STATUS: RESOLVED 2026-08-12. Everything below was found on redesign/light-dawn
+and has been fixed unless a line says otherwise. Kept as the record of what was
+wrong and why, since several items were regressions of things fixed once before.
+
+WHAT CHANGED SINCE THIS WAS WRITTEN
+  - BUG-13 (new, worst): Home rendered five hardcoded rows including "Morning
+    check-in · Completed at 9:12 AM" while the real plan, the presence week
+    ring, the milestone line and recent check-ins all sat behind `if (false)`.
+    Both blocks removed.
+  - BUG-10/11/12 (new): the CBT save button had no click handler at all, "Play
+    body scan" had an empty body over a frozen "2:41", TIPP was a static list.
+    All three routes now reach the real screens.
+  - Two more mocks deleted rather than kept: NoticeChangeScreen (four choices
+    that were not clickable, one promising "CereBro will suggest a different
+    next step") and BodyScanContentDetailScreen (hardcoded metadata). They are
+    NOT reimplemented — an honest gap, not a fake feature.
+  - BUG-01..09 fixed or removed with the mock that carried them.
+  - I18N-01 fixed: the crisis screen's copy is in strings.xml with Hindi.
+  - Nine top bars -> one CereBroTopBar; 14 call sites, 0 hand-rolled left.
+  - Raw hex outside the token file: 209 -> 19.
+
+STILL OPEN (honest remainder, not fixed here)
+  - TodayScreen.kt ~65 English literals and ExploreScreen.kt ~17 are still
+    Kotlin strings, so those two surfaces stay English under a Hindi locale.
+    The crisis, practice, breathing and gratitude screens were done.
+  - 19 raw hex remain across Explore/Sleep/Onboarding/Today/Common/Extras.
+  - Api.pushStatus() is still uncalled and Settings still has no push toggle.
+
 
 Root cause for most of this: commit 947955ba ("Android: bring the light dawn
 redesign to the core journey") swapped nav-graph routes from the old

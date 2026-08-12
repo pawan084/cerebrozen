@@ -174,6 +174,36 @@ everything below is open.
       been a quiet lie. `NotificationLogTest` (9 tests). **Today's header lost its search
       pill and initial-letter avatar** to match TOD-01's single trailing bell; both
       destinations survive (search is Explore's trailing icon, profile is the You tab)
+- [x] **Android: the Dawn pass shipped nine mock screens; they are gone** (`ANDROID_AUDIT.txt`
+      is the full record). Home was the worst of it: five rows hardcoded into "Your day" —
+      "Morning check-in · Completed at 9:12 AM" for every user on every launch — with the
+      real plan, the presence week ring, the milestone line and recent check-ins all
+      switched off behind `if (false)`, while the summary above them read the true counts.
+      Nine routes had been pointed at `Reference*` screens that either never called the API
+      or had lost what they replaced: `reminders` (Save button with an empty body, so the
+      inbox that reads its prefs always said "no reminder scheduled"), `cbt` (a save button
+      that was a painted Box with no click handler — the thought record was discarded),
+      `bodyscan` (frozen "2:41" over an empty Play), `tipp`, `baseline` (wrote a prefs key
+      nothing read, so Insights' "Your starting point" could never fill), `goals` (no
+      habits, no way to finish one), `patterns` (read-only, leaving per-item memory and
+      recommendations with no reachable UI at all), `trends`, `dailyplan`. All now route to
+      the real screens. `NoticeChangeScreen` and `BodyScanContentDetailScreen` were deleted
+      rather than kept — an honest gap beats four un-clickable choices, one of which
+      promised "CereBro will suggest a different next step". `one_good_thing`/`intention_set`
+      pointed at the bare Journal composer, leaving both tools' screens unreachable.
+      **Crash fixed**: `NotificationLog.routeFor("checkin")` returned `"today"`, a route the
+      graph never had, so the inbox's Open button called `navigate()` on nothing; the nudge
+      map is now checked against `EXTERNAL_ROUTES`, the set the deeplink resolver already
+      vets. The old test asserted `"today"` — it pinned the crash instead of catching it.
+      **Nine top bars became one** (`CereBroTopBar` in `Common.kt`, 14 call sites, none
+      hand-rolled): leading back-or-brand-mark, serif title over a quiet subtitle, crisis
+      door last and in the same pixels everywhere. Every tap target regained `Role.Button`,
+      a content description and press feedback. The crisis screen's copy moved to
+      strings.xml with Hindi (all 16 `crisis_*` Hindi strings already existed and went
+      unused), as did the practice/breathing/gratitude family. Raw hex outside the token
+      file 209 → 19. 464 unit tests, `:app:lintDebug` and `check-claims.mjs` green.
+      *Still open*: ~65 literals in `TodayScreen.kt` and ~17 in `ExploreScreen.kt` are
+      still English-only; `Api.pushStatus()` is uncalled and Settings has no push toggle
 - [ ] **Android gaps still open vs `ref/mobile.html`** — verified against the prototype,
       *not* the whole list the first read suggested. Already built and needing nothing:
       PVR-04 memory list (it is `PatternScreen.kt`, with inspect/edit/delete), SND-01/03/04

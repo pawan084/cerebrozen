@@ -72,8 +72,6 @@ import com.cerebrozen.app.ui.screens.BaselineScreen
 import com.cerebrozen.app.ui.screens.ExploreScreen
 import com.cerebrozen.app.ui.screens.PracticeLibraryScreen
 import com.cerebrozen.app.ui.screens.PracticeBreathingScreen
-import com.cerebrozen.app.ui.screens.NoticeChangeScreen
-import com.cerebrozen.app.ui.screens.BodyScanContentDetailScreen
 import com.cerebrozen.app.ui.screens.GratitudeReflectionScreen
 import com.cerebrozen.app.ui.screens.UrgentSupportScreen
 import com.cerebrozen.app.ui.screens.GroundingScreen
@@ -180,7 +178,7 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // `sleep` is deliberately absent: it is a pushed screen now, and showing
     // the pill on a route no tab owns leaves five unlit tabs and no way to
     // tell where you are.
-    route in setOf("home", "explore", "practice-library", "notice-change", "cbt", "body-scan-detail", "gratitude", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "dailyplan", "goals", "baseline", "reminders")
+    route in setOf("home", "explore", "practice-library", "cbt", "gratitude", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "dailyplan", "goals", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -617,7 +615,7 @@ fun CereBroApp() {
                     // `sleep` is gone from this list: it left shouldShowBottomBar
                     // when it became a pushed screen, so this branch could never
                     // be reached — the bar is not drawn on that route at all.
-                    current == "practice-library" || current == "notice-change" || current == "cbt" || current == "body-scan-detail" || current == "gratitude" -> Tab.Explore.route
+                    current == "practice-library" || current == "cbt" || current == "gratitude" -> Tab.Explore.route
                     current == "reminders" -> Tab.You.route
                     else -> current
                 },
@@ -761,7 +759,6 @@ fun CereBroApp() {
             // progress ring, a frozen "2:41", and a Play button whose body was
             // empty. This is the one that actually narrates and can be paused.
             composable("bodyscan") { BodyScanScreen(onBack = back) }
-            composable("body-scan-detail") { BodyScanContentDetailScreen(onBack = back, onUrgent = { open("crisis") }, onBegin = { open("bodyscan") }) }
             composable("crisisgrounding") { CrisisGroundingScreen(onBack = back) { open("breathe/box") } }
             composable("insightreel") { InsightReelScreen(onBack = back) }
             composable("cbti") { CbtIOfflineScreen(onBack = back) }
@@ -789,7 +786,6 @@ fun CereBroApp() {
             // `tipp` was a static list of the four skills; this is the walkthrough
             // that keeps your place and says why each step works.
             composable("tipp") { TippScreen(onBack = back) }
-            composable("notice-change") { NoticeChangeScreen(onBack = back, onUrgent = { open("crisis") }) }
             composable("onegoodthing") { OneGoodThingScreen(onBack = back) }
             composable("intention") { IntentionScreen(onBack = back) }
             composable("crisis") { UrgentSupportScreen(onBack = back, onOpen = open) }

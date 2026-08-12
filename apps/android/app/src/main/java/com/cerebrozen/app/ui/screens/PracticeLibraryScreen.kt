@@ -59,9 +59,24 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.ui.theme.ButtonDisabled
 import com.cerebrozen.app.ui.theme.CardFill
+import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.DangerSoft
+import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.LineStroke
+import com.cerebrozen.app.ui.theme.Night
+import com.cerebrozen.app.ui.theme.Ok
+import com.cerebrozen.app.ui.theme.OkSoft
+import com.cerebrozen.app.ui.theme.OnPrimary
+import com.cerebrozen.app.ui.theme.Periwinkle
+import com.cerebrozen.app.ui.theme.TextMuted
+import com.cerebrozen.app.ui.theme.TextPrimary
+import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.Warm
+import com.cerebrozen.app.ui.theme.WarmSoft
 import kotlinx.coroutines.launch
 
 
@@ -70,69 +85,44 @@ import kotlinx.coroutines.launch
 @Composable
 fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    Column(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFFFFCF8), Color(0xFFF6F0EA))),
-        ),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
-                .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
-        ) {
-            CircleAction(Color(0xFFF3EDF7), onBack) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    "Practice library", maxLines = 1,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontFamily = serif, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
-                    ),
-                    color = Color(0xFF292323),
-                )
-                Text(
-                    "Five clear families", maxLines = 1,
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
-                    color = Color(0xFF6F6666),
-                )
-            }
-            CircleAction(Color(0xFFFFE8E6), { onOpen("crisis") }) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
-            }
-        }
-
+    Column(Modifier.fillMaxSize().background(Night)) {
+        CereBroTopBar(
+            title = stringResource(R.string.practicelib_title),
+            // Was "Five clear families" over six rows.
+            subtitle = stringResource(R.string.practicelib_subtitle),
+            onBack = onBack,
+            onUrgent = { onOpen("crisis") },
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 20.dp),
         ) {
             Text(
-                "FIVE PRACTICE FAMILIES",
+                stringResource(R.string.practicelib_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Color(0xFFB13D57),
+                color = Warm,
             )
             Text(
-                "Choose\nby what\nyou need.",
+                stringResource(R.string.practicelib_hero),
                 modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 43.sp, lineHeight = 39.sp,
                 ),
-                color = Color(0xFF292323),
+                color = TextPrimary,
             )
             Text(
-                "Every family is short, offline-friendly and stops\nwhenever you do.",
+                stringResource(R.string.practicelib_intro),
                 modifier = Modifier.padding(top = 14.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 23.sp),
-                color = Color(0xFF655C5C),
+                color = TextMuted,
             )
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                PracticeFamilyRow(Icons.Outlined.Spa, "Breathe", "Slow and regulate", Color(0xFFE5F0E9), Color(0xFF4B775E)) { onOpen("breathing-intro") }
-                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, "Ground", "Return attention to your surroundings", Color(0xFFF9E7EC), Color(0xFFC75270)) { onOpen("groundingintro") }
-                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, "Reset your body", "TIPP and sensory skills", Color(0xFFF9E7EC), Color(0xFFC75270)) { onOpen("tipp") }
-                PracticeFamilyRow(Icons.Outlined.Psychology, "Work with thoughts", "Guided reframing", Color(0xFFF9E7EC), Color(0xFFC75270)) { onOpen("cbt") }
-                PracticeFamilyRow(Icons.Outlined.Bedtime, "Prepare for sleep", "Body scan and imagery", Color(0xFFE5F0E9), Color(0xFF4B775E)) { onOpen("bodyscan") }
-                PracticeFamilyRow(Icons.Outlined.AutoAwesome, "Positive reflection", "Gratitude without pressure", Color(0xFFF9E7EC), Color(0xFFC75270)) { onOpen("gratitude") }
+                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Ok) { onOpen("breathing-intro") }
+                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Warm) { onOpen("groundingintro") }
+                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Warm) { onOpen("tipp") }
+                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Warm) { onOpen("cbt") }
+                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Ok) { onOpen("bodyscan") }
+                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Warm) { onOpen("gratitude") }
             }
         }
     }
@@ -141,275 +131,64 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 @Composable
 fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: () -> Unit) {
     val serif = FontFamily(Font(R.font.newsreader))
-    var chime by remember { mutableStateOf(true) }
-    var haptics by remember { mutableStateOf(true) }
-    var keepAwake by remember { mutableStateOf(true) }
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        Row(
-            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
-                .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
-        ) {
-            CircleAction(Color(0xFFF3EDF7), onBack) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Breathing", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = Color(0xFF292323))
-                Text("Prepare session", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6F6666))
-            }
-            CircleAction(Color(0xFFFFE8E6), onUrgent) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
-            }
-        }
+    // Read from — and written back to — the settings the breathing session
+    // actually consults. These were three `remember` booleans that the session
+    // never saw, so the screen let you turn the chime off and then rang it.
+    // "Keep screen awake" is gone rather than fixed: it had no setting behind it
+    // either, and the loop screen holds the screen on unconditionally, so an
+    // off position was never going to be honoured.
+    var chime by remember { mutableStateOf(Chime.breatheChimeEnabled) }
+    var haptics by remember { mutableStateOf(Chime.breatheHapticsEnabled) }
+    Column(Modifier.fillMaxSize().background(Night)) {
+        CereBroTopBar(
+            title = stringResource(R.string.breathing_title),
+            subtitle = stringResource(R.string.breathprep_subtitle),
+            onBack = onBack,
+            onUrgent = onUrgent,
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
         ) {
-            Text("BREATHING", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
             Text(
-                "In for four,\nout for six.", modifier = Modifier.padding(top = 7.dp),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
-                color = Color(0xFF292323),
+                stringResource(R.string.breathprep_eyebrow),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
+                color = Warm,
             )
             Text(
-                "A longer exhale may help settle physical activation. Stop if you feel dizzy or uncomfortable.",
+                stringResource(R.string.breathprep_hero), modifier = Modifier.padding(top = 7.dp),
+                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
+                color = TextPrimary,
+            )
+            Text(
+                stringResource(R.string.breathprep_intro),
                 modifier = Modifier.padding(top = 13.dp, bottom = 16.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C),
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
             )
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(Color(0xFFF5EDF7)).padding(horizontal = 18.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(FieldFill).padding(horizontal = 18.dp),
             ) {
-                BreathingSetting("Soft chime", "A quiet cue at each transition.", chime) { chime = it }
-                BreathingSetting("Haptics", "Gentle vibration at phase changes.", haptics) { haptics = it }
-                BreathingSetting("Keep screen awake", "Prevents dimming during this session.", keepAwake, showDivider = false) { keepAwake = it }
+                BreathingSetting(
+                    stringResource(R.string.breathprep_chime_title),
+                    stringResource(R.string.breathprep_chime_sub),
+                    chime,
+                ) { chime = it; Chime.breatheChimeEnabled = it }
+                BreathingSetting(
+                    stringResource(R.string.breathprep_haptics_title),
+                    stringResource(R.string.breathprep_haptics_sub),
+                    haptics, showDivider = false,
+                ) { haptics = it; Chime.breatheHapticsEnabled = it }
             }
             Box(
                 Modifier.fillMaxWidth().padding(top = 11.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(Color(0xFF854078)).clickable(onClick = onBegin),
+                    .background(Periwinkle).clickable(onClick = onBegin),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Begin 2-minute breathing", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(stringResource(R.string.breathprep_begin), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = OnPrimary)
             }
         }
     }
 }
 
-@Composable
-fun PracticeTippScreen(onBack: () -> Unit, onUrgent: () -> Unit, onTryStep: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("TIPP", "Body reset", serif, onBack, onUrgent)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 23.dp, vertical = 15.dp),
-        ) {
-            Text("TIPP SKILL", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
-            Text(
-                "Reset\nintense body\nactivation.", modifier = Modifier.padding(top = 7.dp),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
-                color = Color(0xFF292323),
-            )
-            Text(
-                "Choose one safe step. Avoid cold exposure if a health condition makes it unsafe.",
-                modifier = Modifier.padding(top = 13.dp, bottom = 17.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                TippStep(1, "Temperature", "Use cool water on your face or hold a cool cloth.", onTryStep)
-                TippStep(2, "Intense movement", "Move vigorously for 30–60 seconds if safe.", onTryStep)
-                TippStep(3, "Paced breathing", "Make the exhale longer than the inhale.", onTryStep)
-                TippStep(4, "Paired relaxation", "Tense, then gently release muscle groups.", onTryStep)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TippStep(number: Int, title: String, subtitle: String, onTryStep: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(28.dp).clip(CircleShape).background(Color(0xFF6C2768)), contentAlignment = Alignment.Center) {
-            Text(number.toString(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
-        }
-        Column(
-            Modifier.weight(1f).height(136.dp).clip(RoundedCornerShape(25.dp))
-                .background(Brush.horizontalGradient(listOf(Color(0xFFF7EDF7), Color(0xFFF3EBF7))))
-                .padding(horizontal = 19.dp, vertical = 17.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-            Text(subtitle, modifier = Modifier.padding(top = 5.dp), style = MaterialTheme.typography.bodySmall, color = Color(0xFF74666F))
-            Text(
-                "Try this step →", modifier = Modifier.padding(top = 22.dp).clickable(onClick = onTryStep),
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768),
-            )
-        }
-    }
-}
-
-@Composable
-fun NoticeChangeScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("Notice the change", "Private reflection", serif, onBack, onUrgent)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 19.dp, vertical = 15.dp),
-        ) {
-            Text("PRIVATE REFLECTION", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
-            Text(
-                "What do you\nnotice now?", modifier = Modifier.padding(top = 8.dp),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
-                color = Color(0xFF292323),
-            )
-            Text(
-                "This is not a test. “No change” is useful information too.",
-                modifier = Modifier.padding(top = 13.dp, bottom = 17.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                NoticeChoice("↘", "A little more settled")
-                NoticeChoice("—", "About the same")
-                NoticeChoice("↗", "More activated", "CereBro will suggest a different next step")
-                NoticeChoice("…", "Not sure")
-            }
-        }
-    }
-}
-
-@Composable
-fun UntangleThoughtScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    var thought by remember { mutableStateOf("") }
-    var supports by remember { mutableStateOf("") }
-    var against by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("Untangle a thought", "Guided reflection", serif, onBack, onUrgent)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 23.dp, vertical = 15.dp),
-        ) {
-            Text("UNTANGLE A THOUGHT", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
-            Text(
-                "Separate the\nthought from\nthe facts.", modifier = Modifier.padding(top = 7.dp),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 39.sp, lineHeight = 38.sp),
-                color = Color(0xFF292323),
-            )
-            Text(
-                "Write freely. This stays on this device unless you choose to save it elsewhere.",
-                modifier = Modifier.padding(top = 13.dp, bottom = 14.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C),
-            )
-            ThoughtField("What is the thought?", "I am going to fail at everything...", thought) { thought = it }
-            ThoughtField("What facts support it?", "Only what you can verify...", supports) { supports = it }
-            ThoughtField("What facts do not support it?", "Evidence that the thought may be incomplete...", against) { against = it }
-            Box(
-                Modifier.fillMaxWidth().padding(top = 4.dp).height(51.dp).clip(RoundedCornerShape(25.dp)).background(Color(0xFF854078)),
-                contentAlignment = Alignment.Center,
-            ) { Text("Create a balanced statement", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White) }
-        }
-    }
-}
-
-@Composable
-private fun ThoughtField(label: String, placeholder: String, value: String, onValueChange: (String) -> Unit) {
-    Text(label, modifier = Modifier.padding(start = 3.dp, bottom = 6.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color(0xFF756D73))
-    OutlinedTextField(
-        value = value, onValueChange = onValueChange, placeholder = { Text(placeholder, color = Color(0xFF817980)) },
-        modifier = Modifier.fillMaxWidth().height(78.dp),
-        shape = RoundedCornerShape(18.dp), minLines = 2, maxLines = 3,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFFFFDFC), unfocusedContainerColor = Color(0xFFFFFDFC),
-            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
-        ),
-    )
-    Spacer(Modifier.height(10.dp))
-}
-
-@Composable
-fun PracticeBodyScanScreen(onBack: () -> Unit, onUrgent: () -> Unit, onTranscript: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("Body scan", "Audio practice", serif, onBack, onUrgent)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 30.dp, vertical = 15.dp),
-        ) {
-            Text("BODY SCAN", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
-            Text(
-                "Notice\nwithout\nneeding\nto change.", modifier = Modifier.padding(top = 7.dp),
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
-                color = Color(0xFF292323),
-            )
-            // This screen is a static layout: no timer runs, no audio plays and
-            // nothing is cached, so "12 minutes · Audio and text · Available
-            // offline" described a feature that isn't here. The body scan that
-            // DOES work offline is ui/offline/BodyScanScreen, which this route
-            // displaced — see docs/TODO.md. Restore the strapline when the
-            // mechanism behind it is restored.
-            Spacer(Modifier.height(13.dp))
-            Column(
-                Modifier.fillMaxWidth().height(296.dp).shadow(8.dp, RoundedCornerShape(25.dp), ambientColor = Color.Black.copy(alpha = .06f))
-                    .clip(RoundedCornerShape(25.dp)).background(Color(0xFFFFFDFC)),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(Modifier.padding(top = 42.dp).size(120.dp), contentAlignment = Alignment.Center) {
-                    Canvas(Modifier.fillMaxSize()) {
-                        val stroke = 10.dp.toPx()
-                        drawCircle(Color(0xFFF1E9F3), style = Stroke(stroke))
-                        drawArc(
-                            color = Color(0xFF6C2768),
-                            startAngle = -90f,
-                            sweepAngle = 180f,
-                            useCenter = false,
-                            style = Stroke(stroke),
-                        )
-                    }
-                    Text("2:41", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color(0xFF201C20))
-                }
-                Text(
-                    "Bring attention to your jaw. Notice pressure, warmth or\nmovement.",
-                    modifier = Modifier.padding(top = 48.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF74666F),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            PracticeButton("Play body scan", filled = true) { }
-            Spacer(Modifier.height(3.dp))
-            PracticeButton("View transcript", filled = false, onClick = onTranscript)
-        }
-    }
-}
-
-@Composable
-private fun PracticeButton(text: String, filled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp))
-            .background(if (filled) Color(0xFF854078) else Color(0xFFFFFDFC))
-            .then(if (filled) Modifier else Modifier.border(1.dp, Color(0xFFE0D6D0), RoundedCornerShape(25.dp)))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = if (filled) Color.White else Color(0xFF6C2768)) }
-}
-
-@Composable
-fun BodyScanContentDetailScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: () -> Unit) {
-    val serif = FontFamily(Font(R.font.newsreader))
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("Content detail", "Purpose, format and access", serif, onBack, onUrgent)
-        Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 15.dp)) {
-            Text("PRACTICE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
-            Text("Body scan", modifier = Modifier.padding(top = 7.dp), style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp), color = Color(0xFF292323))
-            Text("A carefully structured wellness experience with a clear purpose, duration and privacy boundary.", modifier = Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C))
-            Column(Modifier.fillMaxWidth().padding(top = 17.dp).clip(RoundedCornerShape(25.dp)).background(Color(0xFFF5EDF7)).padding(horizontal = 18.dp)) {
-                DetailRow("Estimated time", "12 min")
-                DetailRow("Offline", "Available")
-                DetailRow("Audio", "Included", divider = false)
-            }
-            Spacer(Modifier.height(12.dp))
-            PracticeButton("Begin", filled = true, onClick = onBegin)
-            Spacer(Modifier.height(3.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.weight(1f)) { PracticeButton("Remove favourite", false) { } }
-                Box(Modifier.weight(1f)) { PracticeButton("Download", false) { } }
-            }
-        }
-    }
-}
 
 @Composable
 fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
@@ -418,40 +197,44 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        PracticeHeader("Gratitude", "Positive reflection", serif, onBack, onUrgent)
+    Column(Modifier.fillMaxSize().background(Night)) {
+        PracticeHeader(
+            stringResource(R.string.practice_gratitude_title),
+            stringResource(R.string.practice_gratitude_subtitle),
+            onBack, onUrgent,
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 15.dp),
         ) {
             Text(
-                "GRATITUDE REFLECTION",
+                stringResource(R.string.practice_gratitude_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Color(0xFFB13D57),
+                color = Warm,
             )
             Text(
-                "Notice one\nthing—not\neverything.",
+                stringResource(R.string.practice_gratitude_hero),
                 modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp,
                 ),
-                color = Color(0xFF292323),
+                color = TextPrimary,
             )
             Text(
-                "This is not about forcing positivity. A small neutral or supportive detail is enough.",
+                stringResource(R.string.practice_gratitude_intro),
                 modifier = Modifier.padding(top = 13.dp, bottom = 17.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp),
-                color = Color(0xFF655C5C),
+                color = TextMuted,
             )
             OutlinedTextField(
                 value = reflection,
                 onValueChange = { reflection = it; status = null },
-                placeholder = { Text("One thing that made today slightly easier...", color = Color(0xFF817980)) },
+                placeholder = { Text(stringResource(R.string.practice_gratitude_placeholder), color = TextMuted) },
                 modifier = Modifier.fillMaxWidth().height(78.dp),
                 shape = RoundedCornerShape(18.dp),
                 minLines = 2,
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFFFFDFC), unfocusedContainerColor = Color(0xFFFFFDFC),
+                    focusedContainerColor = CardFill, unfocusedContainerColor = CardFill,
                     focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
                 ),
             )
@@ -466,7 +249,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             val enabled = !busy && reflection.isNotBlank()
             Box(
                 Modifier.fillMaxWidth().padding(top = 17.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(if (enabled) Color(0xFF854078) else Color(0xFFB89AB2))
+                    .background(if (enabled) Periwinkle else ButtonDisabled)
                     .clickable(enabled = enabled) {
                         busy = true; status = null
                         scope.launch {
@@ -496,13 +279,13 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             status?.let {
                 Text(
                     it, modifier = Modifier.padding(top = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium, color = Color(0xFF655C5C),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
             Text(
                 stringResource(R.string.practice_gratitude_skip),
                 modifier = Modifier.padding(start = 7.dp, top = 20.dp).clickable(onClick = onBack),
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF5F255D),
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle,
             )
         }
     }
@@ -516,49 +299,88 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     val emergency = regional.firstOrNull { it.target in setOf("112", "911", "999", "000", "111") } ?: regional.first()
     val mental = primaryCrisisLine(region)
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().background(Color(0xFFFBF7F1))) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFF3EDF7)).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFFA52F50), modifier = Modifier.size(23.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Urgent support", style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif), color = Color(0xFF292323))
-                Text("Human help comes first", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6F6666))
-            }
-        }
+    Column(Modifier.fillMaxSize().background(Night)) {
+        CereBroTopBar(
+            title = stringResource(R.string.crisis_title),
+            subtitle = stringResource(R.string.urgent_subtitle),
+            onBack = onBack,
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color(0xFFFFE4E1)).padding(18.dp)) {
-                Text("If there is immediate danger, call ${emergency.target} now.", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-                Text("CereBro is not an emergency service and cannot monitor your safety.", style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = Color(0xFF542D34))
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(DangerSoft).padding(18.dp)) {
+                Text(
+                    stringResource(R.string.urgent_danger_title, emergency.target),
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary,
+                )
+                Text(
+                    stringResource(R.string.urgent_danger_body),
+                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = TextSoft,
+                )
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("${stringResource(regionLabelRes(region)).uppercase()} · ENGLISH", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Color(0xFFB13D57))
-                Box(Modifier.clip(CircleShape).background(Color(0xFFE7F1E8)).padding(horizontal = 13.dp, vertical = 7.dp)) {
-                    Text("Verified", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF3D684D))
+                // Region only. This used to read "INDIA · ENGLISH" with the
+                // language hardcoded, which was wrong for anyone who had picked
+                // Hindi and told them nothing about the numbers either way.
+                Text(
+                    stringResource(regionLabelRes(region)).uppercase(),
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Warm,
+                )
+                Box(Modifier.clip(CircleShape).background(OkSoft).padding(horizontal = 13.dp, vertical = 7.dp)) {
+                    Text(stringResource(R.string.urgent_verified), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Ok)
                 }
             }
-            Text("Human help\ncomes first.", style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp), color = Color(0xFF292323))
-            Text("Reach verified human support quickly with offline fallbacks.", style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = Color(0xFF655C5C))
-            UrgentAction("Call emergency services", "${emergency.target} · police, fire, health and other emergencies", Icons.Outlined.Call, primary = true) { openSupportTarget(context, emergency.target) }
-            UrgentAction("Call ${stringResource(mental.nameRes)}", mental.target + if (region == "IN") " · free 24/7 mental-health support in 20 languages" else " · verified mental-health support", Icons.Outlined.FavoriteBorder) { openSupportTarget(context, mental.target) }
-            UrgentAction("Contact my trusted person", "Someone you selected; CereBro never contacts them automatically", Icons.Outlined.FavoriteBorder) { onOpen("trustedcontact") }
-            UrgentAction("I cannot call", "See text, in-person and grounding alternatives", Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
+            Text(
+                stringResource(R.string.urgent_hero),
+                style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
+                color = TextPrimary,
+            )
+            Text(
+                stringResource(R.string.urgent_intro),
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
+            )
+            UrgentAction(
+                stringResource(R.string.urgent_emergency_title),
+                stringResource(R.string.urgent_emergency_detail, emergency.target),
+                Icons.Outlined.Call, primary = true,
+            ) { openSupportTarget(context, emergency.target) }
+            UrgentAction(
+                stringResource(R.string.urgent_call_line, stringResource(mental.nameRes)),
+                stringResource(
+                    if (region == "IN") R.string.urgent_line_detail_in else R.string.urgent_line_detail_other,
+                    mental.target,
+                ),
+                Icons.Outlined.FavoriteBorder,
+            ) { openSupportTarget(context, mental.target) }
+            UrgentAction(
+                stringResource(R.string.urgent_trusted_title),
+                stringResource(R.string.urgent_trusted_detail),
+                Icons.Outlined.FavoriteBorder,
+            ) { onOpen("trustedcontact") }
+            UrgentAction(
+                stringResource(R.string.urgent_cannot_call_title),
+                stringResource(R.string.urgent_cannot_call_detail),
+                Icons.Outlined.Spa, sage = true,
+            ) { onOpen("crisisgrounding") }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
-            Text("Cached support details", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFF6F6666))
-            Text("Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.", style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = Color(0xFF776E6E))
-            Text("Change region", modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768))
+            Text(stringResource(R.string.urgent_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)
+            Text(
+                stringResource(R.string.urgent_cached_body),
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = TextMuted,
+            )
+            Text(
+                stringResource(R.string.crisis_region_change),
+                modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") },
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle,
+            )
             Box(
-                Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(Color(0xFFFFFDFC))
+                Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(CardFill)
                     .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { onOpen("safetyplan") },
                 contentAlignment = Alignment.Center,
-            ) { Text("Open my safety plan", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768)) }
+            ) { Text(stringResource(R.string.urgent_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle) }
             Spacer(Modifier.height(6.dp))
         }
     }
@@ -570,44 +392,18 @@ private fun UrgentAction(title: String, detail: String, icon: ImageVector, prima
     Row(
         Modifier.fillMaxWidth().heightIn(min = if (primary) 86.dp else 94.dp)
             .shadow(7.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
-            .background(if (primary) Color(0xFFD93B36) else Color(0xFFFFFDFC))
+            .background(if (primary) Danger else CardFill)
             .then(if (primary) Modifier else Modifier.border(.5.dp, LineStroke.copy(alpha = .7f), shape))
             .clickable(onClick = onClick).padding(horizontal = 17.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(43.dp).clip(CircleShape).background(if (primary) Color(0xFFFFE9E7) else if (sage) Color(0xFFE6F0E8) else Color(0xFFFFE8E9)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = if (primary) Color(0xFFE34B4B) else if (sage) Color(0xFF4B775E) else Color(0xFFD45369), modifier = Modifier.size(22.dp))
+        Box(Modifier.size(43.dp).clip(CircleShape).background(if (primary) DangerSoft else if (sage) OkSoft else DangerSoft), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = if (primary) Danger else if (sage) Ok else Danger, modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = if (primary) Color.White else Color(0xFF292323))
-            Text(detail, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = if (primary) Color.White.copy(alpha = .92f) else Color(0xFF74666F))
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = if (primary) Color.White else TextPrimary)
+            Text(detail, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = if (primary) Color.White.copy(alpha = .92f) else TextMuted)
         }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String, divider: Boolean = true) {
-    Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Color(0xFF4F474D))
-        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-    }
-}
-
-@Composable
-private fun NoticeChoice(symbol: String, title: String, subtitle: String? = null) {
-    Row(
-        Modifier.fillMaxWidth().height(if (subtitle == null) 72.dp else 82.dp)
-            .shadow(7.dp, RoundedCornerShape(22.dp), ambientColor = Color.Black.copy(alpha = .06f))
-            .clip(RoundedCornerShape(22.dp)).background(Color(0xFFFFFDFC)).padding(horizontal = 27.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(21.dp),
-    ) {
-        Text(symbol, style = MaterialTheme.typography.titleMedium, color = Color(0xFF6C2768))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFF74666F)) }
-        }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
     }
 }
 
@@ -615,28 +411,9 @@ private fun NoticeChoice(symbol: String, title: String, subtitle: String? = null
 private fun PracticeHeader(
     title: String,
     subtitle: String,
-    serif: FontFamily,
     onBack: () -> Unit,
     onUrgent: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
-            .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 17.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-    ) {
-        CircleAction(Color(0xFFF3EDF7), onBack) {
-            Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, maxLines = 1, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = Color(0xFF292323))
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6F6666))
-        }
-        CircleAction(Color(0xFFFFE8E6), onUrgent) {
-            Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
-        }
-    }
-}
+) = CereBroTopBar(title = title, subtitle = subtitle, onBack = onBack, onUrgent = onUrgent)
 
 @Composable
 private fun BreathingSetting(
@@ -651,22 +428,14 @@ private fun BreathingSetting(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A637E))
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         Switch(
             checked = checked, onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF71306C)),
+            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Periwinkle),
         )
     }
-}
-
-@Composable
-private fun CircleAction(fill: Color, onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(
-        Modifier.size(47.dp).clip(CircleShape).background(fill).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { content() }
 }
 
 @Composable
@@ -681,7 +450,7 @@ private fun PracticeFamilyRow(
     Row(
         Modifier.fillMaxWidth().height(77.dp)
             .shadow(9.dp, RoundedCornerShape(23.dp), ambientColor = Color.Black.copy(alpha = .08f))
-            .clip(RoundedCornerShape(23.dp)).background(Color(0xFFFFFDFC))
+            .clip(RoundedCornerShape(23.dp)).background(CardFill)
             .clickable(onClick = onClick).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp),
@@ -690,9 +459,9 @@ private fun PracticeFamilyRow(
             Icon(icon, null, tint = iconTint, modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF292323))
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF776E6E), maxLines = 1)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
+        Text("›", style = MaterialTheme.typography.titleLarge, color = Periwinkle)
     }
 }

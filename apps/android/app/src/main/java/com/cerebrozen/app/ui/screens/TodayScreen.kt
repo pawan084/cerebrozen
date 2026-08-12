@@ -1957,29 +1957,12 @@ fun GroundingIntroScreen(
     onUrgent: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "5-4-3-2-1 grounding",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Practice introduction", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onUrgent() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.groundingintro_title),
+            subtitle = stringResource(R.string.groundingintro_subtitle),
+            onBack = onBack,
+            onUrgent = { onUrgent() },
+        )
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -2083,29 +2066,12 @@ fun CheckInDetailScreen(
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Check in",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Takes about 20 seconds", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onUrgent() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.checkindetail_title),
+            subtitle = stringResource(R.string.checkindetail_subtitle),
+            onBack = onBack,
+            onUrgent = { onUrgent() },
+        )
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -2222,29 +2188,12 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
         loading = false
     }
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .97f))
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Periwinkle.copy(alpha = .07f))
-                    .clickable { onBack() }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle) }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "Insights",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
-                    color = TextPrimary,
-                )
-                Text("Summary, trends and plan", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
-                    .clickable { onOpen("crisis") }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.weeklyinsights_title),
+            subtitle = stringResource(R.string.weeklyinsights_subtitle),
+            onBack = onBack,
+            onUrgent = { onOpen("crisis") },
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 14.dp).padding(bottom = 20.dp),
