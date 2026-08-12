@@ -95,7 +95,10 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                 "Find a suitable tool quickly by need,\nformat and time.",
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 23.sp), color = TextMuted,
             )
-            ExploreHero { onOpen("breathe/reset") }
+            // Explore is a discovery surface: open the Breath Loops picker and
+            // let the user choose/start a pattern. The direct `breathe/reset`
+            // route intentionally starts immediately for explicit reset links.
+            ExploreHero { onOpen("breathe/box") }
             Spacer(Modifier.height(15.dp))
             ExploreSectionTitle("Start by need", serif)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

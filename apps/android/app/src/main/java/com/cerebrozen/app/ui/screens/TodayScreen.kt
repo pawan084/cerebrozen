@@ -687,7 +687,7 @@ private fun ContentRail(
             Column(
                 Modifier.width(150.dp)
                     .glass(RoundedCornerShape(16.dp))
-                    .clickable { playItem(title)  }
+                    .clickable { playItem(title) }
                     .padding(0.dp),
             ) {
                 Box(Modifier.fillMaxWidth().size(width = 150.dp, height = 84.dp)) {

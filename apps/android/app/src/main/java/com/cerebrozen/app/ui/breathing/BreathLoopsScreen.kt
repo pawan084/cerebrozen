@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Pause
@@ -65,10 +64,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -81,6 +76,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.screens.Celebrations
+import com.cerebrozen.app.ui.screens.CereBroTopBar
 import com.cerebrozen.app.ui.screens.PrimaryButton
 import com.cerebrozen.app.ui.screens.rememberReduceMotion
 import com.cerebrozen.app.ui.theme.Accent2
@@ -228,22 +224,17 @@ fun BreathLoopsScreen(onBack: () -> Unit, startPattern: BreathPattern? = null) {
 
 @Composable
 private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel, onBack: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Column(Modifier.fillMaxSize()) {
+        CereBroTopBar(
+            title = stringResource(R.string.breath_loops_title),
+            subtitle = stringResource(R.string.breath_loops_subtitle),
+            onBack = onBack,
+        )
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            HeaderButton(onBack)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.breath_loops_title), style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
-                Text(stringResource(R.string.breath_loops_subtitle), style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            }
-        }
         BreathPattern.entries.forEach { pattern ->
             val selected = pattern == state.core.selectedPattern
             PatternCard(pattern, selected) { model.select(pattern) }
@@ -281,6 +272,7 @@ private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel,
             state.history.forEach { record -> HistoryRow(record) }
         }
         Spacer(Modifier.height(18.dp))
+        }
     }
 }
 
@@ -376,29 +368,19 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
     val muteVoiceDescription = stringResource(R.string.breath_mute_voice)
     val enableVoiceDescription = stringResource(R.string.breath_enable_voice)
 
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            HeaderButton(model::stop)
-            Text(
-                stringResource(R.string.breath_round_progress, position.displayRound, position.pattern.rounds),
-                color = TextMuted, style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
-            )
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(VeilWell).clickable { model.toggleVoice() }
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = if (state.voiceEnabled) muteVoiceDescription else enableVoiceDescription
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(if (state.voiceEnabled) Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,
-                    null, tint = TextPrimary, modifier = Modifier.size(22.dp))
-            }
-        }
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        CereBroTopBar(
+            title = patternName(position.pattern),
+            subtitle = stringResource(R.string.breath_round_progress, position.displayRound, position.pattern.rounds),
+            onBack = model::stop,
+            trailing = if (state.voiceEnabled) Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,
+            trailingLabel = if (state.voiceEnabled) muteVoiceDescription else enableVoiceDescription,
+            onTrailingClick = model::toggleVoice,
+        )
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
 
         Column(
             Modifier.weight(1f).fillMaxWidth(),
@@ -497,6 +479,7 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                 Text(stringResource(R.string.breath_stop), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             }
         }
+        }
     }
 }
 
@@ -523,17 +506,6 @@ private fun CompletionScreen(pattern: BreathPattern, model: BreathLoopsViewModel
             style = MaterialTheme.typography.bodyMedium, color = TextMuted, textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp, bottom = 28.dp))
         PrimaryButton(stringResource(R.string.common_done), modifier = Modifier.fillMaxWidth(), onClick = model::done)
-    }
-}
-
-@Composable
-private fun HeaderButton(onClick: () -> Unit) {
-    Box(
-        Modifier.size(44.dp).clip(CircleShape).background(VeilWell).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Outlined.ArrowBackIosNew, stringResource(R.string.common_back), tint = TextPrimary,
-            modifier = Modifier.size(20.dp))
     }
 }
 
