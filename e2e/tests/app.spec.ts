@@ -381,4 +381,28 @@ test.describe("Web app (authenticated client)", () => {
 
     await expect(page).toHaveURL(new RegExp(`^${APP}/home`), { timeout: 20_000 });
   });
+  test("every chip is a tap target, not a decoration", async ({ page }) => {
+    // `.chip` and `.ui-chip` are buttons everywhere they appear — chat retry
+    // and suggestions, the ritual cue picker, journal tag filters, the
+    // appearance picker. They stood 31px and 42px tall against the 48px floor
+    // the rest of globals.css keeps, which made the easiest things to mis-tap
+    // the ones people reach for while distracted.
+    const email = `e2e-tap-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    // Two screens that render these unconditionally: the ritual cue picker
+    // (`.chip`, from a static list) and the appearance picker (`.ui-chip`).
+    for (const path of ["/games/ritual", "/account"]) {
+      await page.goto(`${APP}${path}`, { waitUntil: "networkidle" });
+      const chips = page.locator(".chip:visible, .ui-chip:visible");
+      const count = await chips.count();
+      expect(count, `${path} rendered no chips — this check would pass vacuously`)
+        .toBeGreaterThan(0);
+      for (let i = 0; i < count; i++) {
+        const chip = chips.nth(i);
+        const box = await chip.boundingBox();
+        expect(box!.height, `${path} chip "${await chip.innerText()}"`).toBeGreaterThanOrEqual(48);
+      }
+    }
+  });
 });

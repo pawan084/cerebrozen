@@ -17,6 +17,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +39,10 @@ from app.schemas.organization import (
     GroupCreate,
     GroupOut,
     GroupTotalsOut,
+    ImportResultOut,
+    ImportRowOut,
     MembershipCreate,
+    MembershipImport,
     MembershipOut,
     OrgAdminOut,
     OrgAuditOut,
@@ -48,7 +52,7 @@ from app.schemas.organization import (
     SponsorshipCreate,
     SponsorshipOut,
 )
-from app.services import admin_audit, organizations as org_service
+from app.services import admin_audit, eligibility_csv, organizations as org_service
 
 router = APIRouter(prefix="/org", tags=["organizations"])
 
@@ -256,6 +260,102 @@ async def list_members(
         .order_by(OrgMembership.external_ref)
     )
     return list(rows.all())
+
+
+@router.post("/members/import", response_model=ImportResultOut)
+async def import_members(
+    body: MembershipImport,
+    ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> ImportResultOut:
+    """Add many seats from an eligibility CSV. One member at a time was not an
+    onboarding path for a contract sold in hundreds of seats.
+
+    Three properties this shares with the single-invite route, deliberately
+    rather than by coincidence — each row is validated by the SAME
+    ``MembershipCreate`` model, so the two paths cannot drift on what a seat may
+    contain, no account is ever created, and nothing about a person's wellbeing
+    can enter through it.
+
+    **The file is rejected whole, or imported per row.** A bad header means
+    nothing is written; a bad row is reported and skipped while the rest go in.
+    Failing 400 valid rows because one address was mistyped would push
+    administrators towards splitting files until it works, which is worse for
+    everybody than a report they can act on.
+    """
+    admin, org = ctx
+    _require_write(admin)
+
+    if body.group_id is not None:
+        group = await db.get(EligibilityGroup, body.group_id)
+        if group is None or group.org_id != org.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+
+    try:
+        parsed = eligibility_csv.parse(body.csv)
+    except eligibility_csv.CsvRejected as exc:
+        # 422 with the reason in plain words: this is read by an administrator
+        # deciding what to change about their export, not by a program.
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from None
+
+    results: list[ImportRowOut] = []
+    added = 0
+    for row in parsed:
+        try:
+            member = MembershipCreate(**row.values, group_id=body.group_id)
+        except ValidationError as exc:
+            results.append(ImportRowOut(
+                line=row.line,
+                external_ref=row.values.get("external_ref", ""),
+                outcome="invalid",
+                detail="; ".join(e["msg"] for e in exc.errors()[:3]),
+            ))
+            continue
+
+        report = ImportRowOut(line=row.line, external_ref=member.external_ref, outcome="added")
+        user = await db.scalar(select(User).where(User.email == str(member.email).lower()))
+        if user is None:
+            report.outcome = "no_account"
+            report.detail = "No CereBro account for that address yet — the person signs up first"
+            results.append(report)
+            continue
+
+        existing = await db.scalar(
+            select(OrgMembership).where(
+                OrgMembership.org_id == org.id, OrgMembership.user_id == user.id
+            )
+        )
+        if existing is not None:
+            report.outcome = "already_member"
+            report.detail = "Already holds a seat"
+            results.append(report)
+            continue
+
+        db.add(OrgMembership(
+            org_id=org.id,
+            user_id=user.id,
+            group_id=member.group_id,
+            external_ref=member.external_ref,
+            status=STATUS_ACTIVE,
+            access_start=member.access_start,
+            access_end=member.access_end,
+        ))
+        added += 1
+        results.append(report)
+
+    # ONE audit row, not one per seat. The administrator performed one action,
+    # and five hundred identical rows would bury every other entry in the trail
+    # — an audit log nobody can read is not accountability. Counts only: the
+    # addresses were never stored and are not stored here either.
+    await admin_audit.record(
+        db, actor, "org.seat_import",
+        target_type="organization", target_id=org.id,
+        detail={"added": added, "skipped": len(results) - added, "rows": len(parsed)},
+        org_id=org.id,
+    )
+    await db.commit()
+    return ImportResultOut(added=added, skipped=len(results) - added, rows=results)
 
 
 @router.post("/members", response_model=MembershipOut, status_code=status.HTTP_201_CREATED)

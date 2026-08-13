@@ -1,8 +1,12 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+
+from tests.dates import account_day, account_iso
 
 
 def _iso(days_ago: int) -> str:
-    return (date.today() - timedelta(days=days_ago)).isoformat()
+    """The account's own day, not the container's — /sleep windows are
+    computed in the user's timezone (see tests/dates)."""
+    return account_iso(days_ago)
 
 
 async def test_sleep_upsert_and_list(auth_client):
@@ -136,7 +140,7 @@ async def test_sleep_mood_link_appears_when_supported(auth_client):
     uid = uuid.UUID((await auth_client.get("/auth/me")).json()["id"])
     async with SessionLocal() as s:
         for days_ago, intensity in ((1, 5), (2, 4), (3, 2), (4, 2)):
-            d = date.today() - timedelta(days=days_ago)
+            d = account_day(days_ago)
             s.add(MoodLog(user_id=uid, mood="Anxious", intensity=intensity,
                           created_at=datetime.combine(d, time(10, 0), tzinfo=timezone.utc)))
         await s.commit()

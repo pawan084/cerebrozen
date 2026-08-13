@@ -373,8 +373,13 @@ input:focus, textarea:focus { outline: 2px solid var(--lav); border-color: trans
 }
 .widgetcard strong { display: block; margin: 4px 0 2px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+/* Every `.chip` in this app is a BUTTON — chat retry, chat suggestions, the
+   ritual cue picker, journal tag filters. At `padding: 7px 14px` they stood
+   31px tall, well under the 48px floor the rest of this file keeps, which made
+   the smallest targets the ones people tap while distracted. */
 .chip {
-  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+  display: inline-flex; align-items: center; min-height: 48px;
+  padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); color: var(--soft); font-size: 13px;
 }
 .composer { display: flex; gap: 10px; }
@@ -716,7 +721,9 @@ select option { color: var(--ink); }
 .ui-row-chevron { color: var(--muted-2); font-size: 20px; }
 
 .ui-chips { display: flex; flex-wrap: wrap; gap: 10px; }
-.ui-chip { padding: 10px 16px; border-radius: 13px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-weight: 600; font-size: 14px; }
+/* Same floor as `.chip` above: the appearance picker and the explore
+   shortcuts are both tap targets, and both stood at 42px. */
+.ui-chip { display: inline-flex; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 13px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-weight: 600; font-size: 14px; }
 .ui-chip.active { background: var(--cream); color: var(--ink); border-color: transparent; }
 
 .week-dots { display: flex; gap: 10px; }

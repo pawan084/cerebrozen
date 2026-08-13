@@ -46,7 +46,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
         <div className="review-pill">Design review · illustrative aggregate data</div>
 
-        <nav aria-label="Portal sections">
+        <nav id="portal-nav" aria-label="Portal sections">
           {NAV.map((group) => (
             <div key={group.title}>
               <div className="nav-section">{group.title}</div>
@@ -97,7 +97,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             type="button"
             className="icon-btn mobile-menu"
             aria-expanded={menuOpen}
-            aria-label="Open navigation"
+            // The label follows the state. It read "Open navigation" while the
+            // drawer was open, so a screen reader announced "Open navigation,
+            // expanded" — an instruction to do the thing already done.
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-controls="portal-nav"
             onClick={() => setMenuOpen(!menuOpen)}
           >
             ☰

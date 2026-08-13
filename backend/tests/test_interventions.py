@@ -4,12 +4,13 @@ The decision half is pure (`Signals` → `Offer`), so most of this needs no
 database at all; that is the point of splitting it out.
 """
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest_asyncio
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
+from app.core.localtime import local_today
 from app.models.consent import Consent
 from app.models.intervention import InterventionRecommendation
 from app.models.mood import MoodLog
@@ -121,7 +122,9 @@ def test_bedtime_spread_anchors_at_noon():
 
 # ── consent gating ──────────────────────────────────────────────────────
 async def test_sleep_signals_are_withheld_without_sleep_consent(db, user):
-    today = date.today()
+    # The engine reads the USER's calendar (services/interventions), so the
+    # fixture is built in it too — see tests/dates.
+    today = local_today(user.timezone)
     for i in range(4):
         db.add(SleepLog(user_id=user.id, date=today - timedelta(days=i),
                         bedtime=datetime(2026, 1, 1, 23, 0).time(),
@@ -147,7 +150,7 @@ async def test_mood_signals_are_withheld_without_mood_consent(db, user):
     await db.commit()
     await db.refresh(user)
 
-    signals = await interventions.gather_signals(db, user, today=date.today())
+    signals = await interventions.gather_signals(db, user, today=local_today(user.timezone))
     assert signals.low_mood_days is None
 
 
@@ -181,7 +184,7 @@ async def test_mood_counts_days_not_entries(db, user):
 
 # ── persistence + lifecycle ─────────────────────────────────────────────
 async def _seed_rough_sleep(db, user):
-    today = date.today()
+    today = local_today(user.timezone)
     for i in range(4):
         db.add(SleepLog(user_id=user.id, date=today - timedelta(days=i),
                         bedtime=datetime(2026, 1, 1, 23, 0).time(),
@@ -238,7 +241,7 @@ async def test_reason_is_frozen_not_recomputed(db, user):
     original = rec.reason
     # More bad nights arrive; the already-shown offer keeps its wording, so
     # history reflects what the user was actually told.
-    db.add(SleepLog(user_id=user.id, date=date.today() - timedelta(days=9),
+    db.add(SleepLog(user_id=user.id, date=local_today(user.timezone) - timedelta(days=9),
                     bedtime=datetime(2026, 1, 1, 23, 0).time(),
                     wake_time=datetime(2026, 1, 1, 7, 0).time(),
                     quality=1, awakenings=0, source="manual"))

@@ -4,7 +4,9 @@ Register C19-C21, C26-C28, C30-C32, C53, C86-C88 — every case here used to be
 a Postgres DataError, an uncaught ValueError or a wildcard leak.
 """
 import uuid
-from datetime import date, timedelta
+from datetime import timedelta
+
+from tests.dates import account_day, account_iso
 
 import pytest
 
@@ -96,19 +98,19 @@ async def test_devices_platform_is_a_closed_set(auth_client):
 
 async def test_sleep_rejects_implausible_dates(auth_client):
     base = {"bedtime": "23:00:00", "wake_time": "07:00:00", "quality": 3}
-    future = (date.today() + timedelta(days=30)).isoformat()
-    ancient = (date.today() - timedelta(days=1000)).isoformat()
+    future = (account_day(-30)).isoformat()
+    ancient = (account_day(1000)).isoformat()
     assert (await auth_client.post("/sleep", json={"date": future, **base})).status_code == 422
     assert (await auth_client.post("/sleep", json={"date": ancient, **base})).status_code == 422
     # Tomorrow is allowed (client clock skew).
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    tomorrow = (account_day(-1)).isoformat()
     assert (await auth_client.post("/sleep", json={"date": tomorrow, **base})).status_code in (200, 201)
 
 
 async def test_sleep_rejects_a_zero_minute_night(auth_client):
     r = await auth_client.post(
         "/sleep",
-        json={"date": date.today().isoformat(), "bedtime": "23:00:00", "wake_time": "23:00:00"},
+        json={"date": account_iso(), "bedtime": "23:00:00", "wake_time": "23:00:00"},
     )
     assert r.status_code == 422
 

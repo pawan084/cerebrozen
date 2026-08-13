@@ -422,10 +422,21 @@ tr:last-child td { border-bottom: 0; }
      last thing in the panel, so it survives the smallest viewport. */
   .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; width: var(--sidebar-w);
-    height: 100dvh; transform: translateX(-105%); transition: transform 0.25s var(--ease);
+    height: 100dvh; transform: translateX(-105%);
     box-shadow: var(--shadow-lg);
+    /* `visibility` is what takes the closed drawer out of the tab order and
+       out of the accessibility tree. A translate alone only moves it: it stays
+       focusable, so tabbing from the topbar used to land in a menu nobody
+       could see. Delayed by the length of the slide on the way out, instant on
+       the way in, so the animation still plays. */
+    visibility: hidden;
+    transition: transform 0.25s var(--ease), visibility 0s linear 0.25s;
   }
-  .app.menu .sidebar { transform: none; }
+  .app.menu .sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.25s var(--ease), visibility 0s;
+  }
   .mobile-menu { display: grid; }
   .backdrop {
     display: block; position: fixed; inset: 0; z-index: 35; border: 0; width: 100%;

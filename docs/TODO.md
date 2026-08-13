@@ -269,19 +269,39 @@ everything below is open.
       bug on the app side; the tests were the last consumers still asking the container what
       day it is. They now ask the account (`/users/me` → `local_today(tz)`), and the streak
       fixture stamps instants that land on the intended *local* day and never in the future
-- [ ] **`date.today()` still seeds fixtures in five more test files** — `test_sleep`,
-      `test_trends`, `test_interventions`, `test_input_bounds` and `test_admin_metrics`'s
-      sleep POST. None fail today because they either assert within their own frame or only
-      check a status code, but they carry the same time bomb as the three above
+- [x] **`date.today()` is now banned in the backend suite** (2026-08-13). The five remaining
+      files migrated to `tests/dates.py` (`account_today` / `account_day` / `account_iso`, or
+      `local_today(user.timezone)` where the test holds the row), and
+      `test_local_days::test_no_test_seeds_a_fixture_from_the_containers_clock` walks every
+      test file's **AST** — so the explanations in the docstrings do not read as violations —
+      and fails naming `file:line`. Mutation-checked: a probe file with one `date.today()` is
+      caught. A second pin asserts `User.timezone`'s column default still equals the constant
+      `tests/dates` computes from, because if the default moved, every fixture in the suite
+      would quietly start describing the wrong day
 - [ ] **Sponsored members are invisible to `/admin/metrics`** — the premium count is
       `subscription_tier IN (...)`, so a sponsored seat reads as a free user there. Arguably
       right (it is not subscription revenue) but it is currently accidental rather than
       decided, and B2B seats need their own line once there is more than one organisation
-- [ ] **Eligibility import is one member at a time** — `POST /org/members` takes a single
-      address; the portal's MEM-02 offers a CSV. The rejection rule matters more than the
-      loop: `MembershipCreate` is `extra="forbid"`, so a column called `mood` or `diagnosis`
-      fails loudly instead of being dropped silently, and a bulk importer must keep that
-      property rather than skipping unknown columns
+- [x] **Bulk eligibility import** (2026-08-13). `POST /org/members/import` takes the CSV as
+      **text**, unparsed: had the portal split it into rows first, the promise that an
+      unrecognised column is rejected would be a promise made by a browser, and the header row
+      is exactly where it has to hold. `services/eligibility_csv.py` is an **allowlist** over
+      the header, not a denylist of alarming words — `mood` and `diagnosis` are rejected, but
+      so are `wellbeing_score` and `eap_referral` and whatever nobody has thought of yet. The
+      file is rejected **whole**: dropping the offending column would teach the administrator
+      that sending it was fine. Each row is then validated by the same `MembershipCreate` the
+      single-invite route uses, so the two paths cannot drift on what a seat may contain, and
+      a bad row is reported and skipped while the rest import — failing 400 valid rows over one
+      typo pushes people towards splitting files until it works.
+      The portal checks the header **before reading the file past its first line and before
+      sending anything**, so an export carrying a diagnosis column never leaves the
+      administrator's machine; the server checks again, because the browser's copy is a
+      privacy measure and not the guarantee. An e2e watches the wire to prove the refusal
+      makes no request. The report identifies rows by line number and the organisation's own
+      `external_ref`, **never by email** — an import report is part of the seat list, and the
+      seat list is deliberately not a roster. One `org.seat_import` audit row per import
+      rather than one per seat: five hundred identical entries would bury every other action,
+      and a trail nobody can read is not accountability. 15 backend tests + 1 e2e
 - [ ] **Portal forms are inert by design, and that will need revisiting** — selects, date
       fields and text areas across the invite, cohort, pathway and campaign builders hold
       `defaultValue` and do nothing. That is honest for a design surface, but once a backend
@@ -310,11 +330,35 @@ everything below is open.
       until those exist
 - [x] **`apps/portal` is in CI** (2026-08-12) — its own tsc + lint step, and
       `check-csp-sync.mjs` now pins four middlewares because the portal finally has one
-- [ ] **Portal responsive/a11y unverified** — the ≤820px sidebar drawer was never seen at a
-      real narrow viewport (only the media queries confirmed present), `prefers-reduced-motion`
-      was not exercised, and no axe run was done
-- [ ] **`.chip` is 31px tall in `apps/app`** (`padding: 7px 14px`, no `min-height`) — below
-      the 48px floor. A pre-existing defect in shipped screens, not just the design surface
+- [x] **Portal responsive/a11y verified, and it found two defects** (2026-08-13).
+      `e2e/tests/portal-a11y.spec.ts` drives the portal at 390×844 with axe
+      (`@axe-core/playwright`, serious+critical, WCAG 2.1 AA tags) on sign-in, the dashboard
+      and members-on-a-phone: **no serious or critical violations**. No page scrolls sideways
+      at phone width (wide tables scroll inside their own `.table-wrap`), and reduced motion
+      is honoured in the computed styles rather than merely declared in a media query.
+      The two defects reading the media queries could never have found:
+      **(1) the closed drawer was still tabbable.** `transform: translateX(-105%)` moves an
+      element; it does not hide it. The off-canvas nav stayed in the tab order and in the
+      accessibility tree, so tabbing from the topbar landed in a menu nobody could see. Fixed
+      with `visibility: hidden` (delayed by the length of the slide on the way out, instant on
+      the way in, so the animation still plays). The test asserts the link is in the DOM, not
+      visible, **and absent from the accessibility tree** — mutation-checked by reverting the
+      CSS, which fails it with "Received: visible".
+      **(2) the toggle's label lied.** `aria-label="Open navigation"` was fixed while
+      `aria-expanded` flipped, so a screen reader announced "Open navigation, expanded" — an
+      instruction to do the thing already done. It now follows the state and carries
+      `aria-controls`.
+      Two of my own test bugs on the way in are worth remembering: a role locator naming a
+      link "Members" (the label is "Members & seats") matched nothing, and `not.toBeVisible()`
+      passes for a locator that matches nothing — so the first version was a **false pass**;
+      and `getByRole` skips the accessibility tree, so it cannot prove DOM presence
+- [x] **`.chip` and `.ui-chip` now meet the 48px floor in `apps/app`** (2026-08-13). Both are
+      buttons everywhere they appear — chat retry and suggestions, the ritual cue picker,
+      journal tag filters, the appearance picker — and stood at 31px and 42px against the
+      floor the rest of `globals.css` keeps, which made the easiest things to mis-tap the ones
+      people reach for while distracted. `app.spec.ts::every chip is a tap target, not a
+      decoration` measures every visible chip on two screens that render them unconditionally,
+      and fails if a screen renders none rather than passing vacuously
 - [ ] **Night cannot be pinned per-subtree from `design/tokens.css`** — it is scoped
       `:root[data-theme="night"]`. `apps/app` works around this with its own `.theme-night`
       class. If any client needs a night-pinned subtree, that mechanism has to move into the

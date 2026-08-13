@@ -261,6 +261,40 @@ export const addMember = (body: {
 export const endMembership = (id: string) =>
   api<Membership>(`/org/members/${id}`, { method: "DELETE" });
 
+export type ImportRow = {
+  line: number;
+  external_ref: string;
+  /** "added" | "no_account" | "already_member" | "invalid" */
+  outcome: string;
+  detail: string;
+};
+
+export type ImportResult = { added: number; skipped: number; rows: ImportRow[] };
+
+/**
+ * The columns an eligibility file may contain — mirrors
+ * `services/eligibility_csv.ALLOWED_COLUMNS` on the backend.
+ *
+ * Duplicated on purpose. The server's copy is the one that decides, but this
+ * one lets the portal refuse a file WITHOUT UPLOADING IT: an HR export with a
+ * `diagnosis` column should never leave the administrator's machine, and a
+ * check that runs after the upload has already failed at that.
+ */
+export const ELIGIBILITY_COLUMNS = ["access_end", "access_start", "email", "external_ref"] as const;
+
+/** Header names are matched forgivingly on form, strictly on meaning. */
+export function unknownColumns(csvText: string): string[] {
+  const header = csvText.split(/\r?\n/, 1)[0] ?? "";
+  const allowed = new Set<string>(ELIGIBILITY_COLUMNS);
+  return header
+    .split(",")
+    .map((c) => c.trim().toLowerCase().replace(/\s+/g, "_").replace(/^﻿/, ""))
+    .filter((c) => c && !allowed.has(c));
+}
+
+export const importMembers = (body: { csv: string; group_id?: string | null }) =>
+  api<ImportResult>("/org/members/import", { method: "POST", body: JSON.stringify(body) });
+
 export const sponsorProgramme = (body: {
   programme_slug: string;
   group_id?: string | null;

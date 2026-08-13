@@ -6,7 +6,9 @@ as zero reads as "I felt terrible", and two points always correlate perfectly.
 Every test here is about refusing to say something the data does not support.
 """
 import uuid
-from datetime import date, timedelta
+from datetime import timedelta
+
+from tests.dates import account_day
 
 from sqlalchemy import select
 
@@ -141,7 +143,7 @@ async def test_correlation_is_withheld_until_enough_nights_overlap(client):
 
     async with SessionLocal() as db:
         for offset in range(3):
-            day = date.today() - timedelta(days=offset + 1)
+            day = account_day(offset + 1)
             db.add(SleepLog(
                 user_id=user.id, date=day, bedtime=time(23, 0), wake_time=time(7, 0),
                 quality=4, awakenings=0, source="manual", note="",
@@ -168,7 +170,7 @@ async def test_a_flat_series_reports_no_variation_rather_than_zero(client):
 
     async with SessionLocal() as db:
         for offset in range(1, 10):
-            day = date.today() - timedelta(days=offset)
+            day = account_day(offset)
             db.add(SleepLog(
                 user_id=user.id, date=day, bedtime=time(23, 0), wake_time=time(7, 0),
                 quality=4, awakenings=0, source="manual", note="",
@@ -195,7 +197,7 @@ async def test_a_real_link_is_reported_with_its_direction(client):
         # (register C63 — this used to place the mood a day later, matching
         # the off-by-one the fix removed).
         for offset in range(1, 11):
-            day = date.today() - timedelta(days=offset)
+            day = account_day(offset)
             hours = 5 if offset % 2 else 9
             db.add(SleepLog(
                 user_id=user.id, date=day, bedtime=time(23, 0),

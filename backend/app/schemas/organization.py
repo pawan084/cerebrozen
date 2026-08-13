@@ -11,6 +11,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.organization import MIN_REPORTING_THRESHOLD
+from app.services import eligibility_csv
 
 
 class OrgOut(BaseModel):
@@ -108,6 +109,42 @@ class MembershipOut(BaseModel):
     status: str
     access_start: date | None
     access_end: date | None
+
+
+class MembershipImport(BaseModel):
+    """A whole eligibility file, as text.
+
+    The CSV arrives unparsed on purpose. If the portal split it into rows first,
+    the promise that an unrecognised column is rejected would be a promise made
+    by a browser — and the header row is exactly where that promise has to hold.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    csv: str = Field(min_length=1, max_length=eligibility_csv.MAX_BYTES)
+    #: Applied to every row. Not a column — see services/eligibility_csv.
+    group_id: uuid.UUID | None = None
+
+
+class ImportRowOut(BaseModel):
+    """What happened to one line.
+
+    Identified by line number and the organisation's own reference. **Never by
+    email**: an import report that listed addresses would turn the seat list
+    into the roster it is carefully not.
+    """
+
+    line: int
+    external_ref: str = ""
+    #: "added" | "no_account" | "already_member" | "invalid"
+    outcome: str
+    detail: str = ""
+
+
+class ImportResultOut(BaseModel):
+    added: int
+    skipped: int
+    rows: list[ImportRowOut]
 
 
 class SponsorshipCreate(BaseModel):

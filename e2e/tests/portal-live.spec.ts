@@ -305,6 +305,74 @@ test.describe("Portal ↔ backend", () => {
     );
   });
 
+  test("an eligibility file with a health column is refused without being uploaded", async ({
+    page,
+    request,
+  }) => {
+    const suffix = unique();
+    const ownerEmail = `import-owner-${suffix}@test.app`;
+    const memberEmail = `import-member-${suffix}@test.app`;
+    await signUp(request, ownerEmail);
+    await signUp(request, memberEmail);
+
+    const staffToken = await login(request, STAFF_EMAIL, STAFF_PASSWORD);
+    await request.post(`${API}/admin/organizations`, {
+      headers: { Authorization: `Bearer ${staffToken}` },
+      data: { name: `Import Co ${suffix}`, admin_email: ownerEmail, seats_licensed: 100 },
+    });
+
+    await page.goto(`${PORTAL}/signin`, { waitUntil: "networkidle" });
+    await page.locator("input[type=email]").fill(ownerEmail);
+    await page.locator("input[type=password]").fill(PASSWORD);
+    await page.locator("button[type=submit]").click();
+    await page.waitForURL((u) => !u.pathname.includes("/signin"), { timeout: 20_000 });
+
+    // The claim under test is that the file does not leave the machine, so
+    // watch the wire rather than the wording.
+    const uploads: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/org/members/import")) uploads.push(r.method());
+    });
+
+    await page.goto(`${PORTAL}/members/invite`, { waitUntil: "networkidle" });
+    await page.locator("input[type=file]").setInputFiles({
+      name: "eligibility.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(`email,external_ref,diagnosis\n${memberEmail},EMP-1,F41.1\n`),
+    });
+
+    await expect(page.getByText(/Not imported, and not uploaded/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/diagnosis/)).toBeVisible();
+    expect(uploads, "a file with a health column was sent to the server").toHaveLength(0);
+
+    // The clean version of the same file goes through, and the row for an
+    // address with no CereBro account is reported rather than silently missing.
+    const stranger = `import-stranger-${suffix}@test.app`;
+    await page.locator("input[type=file]").setInputFiles({
+      name: "eligibility.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        `email,external_ref\n${memberEmail},EMP-1\n${stranger},EMP-2\n`,
+      ),
+    });
+    await expect(page.getByText(/Import finished/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/1 seat added/i)).toBeVisible();
+    await expect(page.getByRole("cell", { name: "EMP-2" })).toBeVisible();
+
+    // The report identifies rows by line and reference — never by address.
+    const shown = await page.locator("body").innerText();
+    expect(shown, "the import report echoed an email address").not.toContain(stranger);
+    expect(shown).not.toContain(memberEmail);
+
+    // And the seat is really there.
+    const ownerToken = await login(request, ownerEmail);
+    const members = await request.get(`${API}/org/members`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    });
+    const refs = (await members.json()).map((m: { external_ref: string }) => m.external_ref);
+    expect(refs).toEqual(["EMP-1"]);
+  });
+
   // The member's side of the same transaction. It lives in this file rather
   // than app.spec.ts because it needs an organisation, and this is where the
   // provisioning helpers are — but what it checks is what a PERSON sees after

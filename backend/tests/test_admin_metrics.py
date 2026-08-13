@@ -1,5 +1,6 @@
 import uuid
-from datetime import date
+
+from tests.dates import account_iso
 
 
 async def test_metrics_overview_aggregates(admin_client):
@@ -8,7 +9,7 @@ async def test_metrics_overview_aggregates(admin_client):
     assert r.status_code == 201
     r = await admin_client.post(
         "/sleep",
-        json={"date": date.today().isoformat(), "bedtime": "23:00:00", "wake_time": "07:00:00", "quality": 4},
+        json={"date": account_iso(), "bedtime": "23:00:00", "wake_time": "07:00:00", "quality": 4},
     )
     assert r.status_code in (200, 201)
 
