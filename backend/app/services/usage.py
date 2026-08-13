@@ -18,8 +18,7 @@ from app.core.config import settings
 from app.core.database import utcnow
 from app.models.chat import ChatMessage
 from app.models.user import User
-
-_UNLIMITED_TIERS = {"premium", "premium_human"}
+from app.services import entitlements
 
 # The machine-readable marker clients branch on. Kept as a constant because it
 # is a cross-stack contract: iOS, Android and web all match this string.
@@ -62,7 +61,10 @@ async def enforce_quota(db: AsyncSession, user: User) -> None:
     both wrong and manipulative, so the distinction is explicit rather than
     inferred from which JSON key happens to be present.
     """
-    if user.subscription_tier in _UNLIMITED_TIERS:
+    # Resolved, not read off the column: an organisation-sponsored member is
+    # unlimited too, and reading `user.subscription_tier` here was the gate
+    # that made sponsorship grant nothing.
+    if (await entitlements.resolve(db, user)).is_paid:
         return
     used = await messages_today(db, user.id)
     if used >= settings.free_daily_messages:

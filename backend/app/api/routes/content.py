@@ -7,23 +7,26 @@ from app.core.deps import get_optional_user
 from app.models.content import ContentItem
 from app.models.user import User
 from app.schemas.content_data import ContentOut
-from app.services import media
+from app.services import entitlements, media
 from app.services.textsearch import escape_like
 
 router = APIRouter(prefix="/content", tags=["content"])
 
 
-def _serialize(item: ContentItem, user: User | None) -> ContentOut:
-    """Render one catalogue row for this caller.
+def _serialize(item: ContentItem, tier: str) -> ContentOut:
+    """Render one catalogue row for a caller on ``tier``.
 
     ``audio_url`` is replaced rather than passed through: the stored value is a
     bare path, and what a client should receive is a signed, expiring grant —
     or nothing at all, if they aren't entitled to this item's narration. The
     override is applied to the response model, never to the ORM row, so the
     session can't flush a token into the database.
+
+    Takes the resolved tier, not the user: entitlement is one query per
+    request, not one per catalogue row.
     """
     return ContentOut.model_validate(item).model_copy(
-        update={"audio_url": media.playback_url(item, user)}
+        update={"audio_url": media.playback_url(item, tier)}
     )
 
 
@@ -52,4 +55,5 @@ async def list_content(
             ContentItem.subtitle.ilike(like, escape="\\"),
         ))
     rows = await db.scalars(stmt.order_by(ContentItem.title))
-    return [_serialize(item, user) for item in rows.all()]
+    tier = await entitlements.effective_tier(db, user)
+    return [_serialize(item, tier) for item in rows.all()]

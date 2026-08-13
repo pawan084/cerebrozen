@@ -49,7 +49,16 @@ class UserOut(BaseModel):
     motivations: list[str] = []
     timezone: str
     region: str = ""
+    #: The tier the server will actually enforce for this caller — which is not
+    #: always the stored column. See services/entitlements.user_out: an
+    #: organisation can sponsor premium, and the client must be told the same
+    #: answer the quota gate will give it.
     subscription_tier: str = "free"
+    #: True when the tier above is paid for by an organisation. A client that
+    #: ignores this offers a cancel-subscription link for something the member
+    #: cannot cancel. Defaults False so an admin listing (which reports the
+    #: stored billing truth, not the effective tier) never claims sponsorship.
+    sponsored: bool = False
     subscription_expires_at: datetime | None = None
     email_nudges: bool = False
     age_confirmed_at: datetime | None = None

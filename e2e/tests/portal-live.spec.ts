@@ -2,6 +2,8 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 
 const PORTAL = process.env.PORTAL_URL || "http://portal:3003";
 const API = process.env.API_URL || "http://api:8000";
+// The member's own client — the far end of a sponsored seat.
+const APP = process.env.APP_URL || "http://app:3002";
 
 // The portal talking to the real backend (2026-08-12).
 //
@@ -301,5 +303,53 @@ test.describe("Portal ↔ backend", () => {
     expect(body, "a CereBro staff action leaked into an organisation's trail").not.toMatch(
       /organization\.provision/i,
     );
+  });
+
+  // The member's side of the same transaction. It lives in this file rather
+  // than app.spec.ts because it needs an organisation, and this is where the
+  // provisioning helpers are — but what it checks is what a PERSON sees after
+  // their employer buys them a seat.
+  test("a sponsored seat reaches the member, and offers nothing to cancel", async ({ page, request }) => {
+    const suffix = unique();
+    const ownerEmail = `sponsor-owner-${suffix}@test.app`;
+    const memberEmail = `sponsored-${suffix}@test.app`;
+
+    await signUp(request, ownerEmail);
+    await signUp(request, memberEmail);
+
+    // Signed in as themselves, before anyone pays: the ordinary free account.
+    await page.goto(`${APP}/signin`, { waitUntil: "networkidle" });
+    await page.locator('input[type="email"]').fill(memberEmail);
+    await page.locator('input[type="password"]').fill(PASSWORD);
+    // The password submit is "Continue with email" — "Sign in" would also match
+    // the tab and the Apple button.
+    await page.getByRole("button", { name: "Continue with email" }).click();
+    await page.waitForURL((u) => !u.pathname.includes("/signin"), { timeout: 20_000 });
+
+    await page.goto(`${APP}/account`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("button", { name: /Upgrade to Premium/i })).toBeVisible({ timeout: 20_000 });
+
+    // Their employer buys the seat.
+    const staffToken = await login(request, STAFF_EMAIL, STAFF_PASSWORD);
+    await request.post(`${API}/admin/organizations`, {
+      headers: { Authorization: `Bearer ${staffToken}` },
+      data: { name: `Sponsor Co ${suffix}`, admin_email: ownerEmail, seats_licensed: 10 },
+    });
+    const ownerToken = await login(request, ownerEmail);
+    const added = await request.post(`${API}/org/members`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      data: { email: memberEmail },
+    });
+    expect(added.status(), await added.text()).toBe(201);
+
+    // Same account, same session — premium arrives without them doing anything.
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByText(/Premium is provided by your organisation/i)).toBeVisible({ timeout: 20_000 });
+
+    // ...and neither of the other two billing branches is showing. A cancel
+    // link here would open Stripe's portal on a customer that does not exist,
+    // and an upgrade button would sell them what they already have.
+    await expect(page.getByRole("button", { name: /Upgrade to Premium/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Manage or cancel subscription/i })).toHaveCount(0);
   });
 });

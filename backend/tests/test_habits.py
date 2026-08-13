@@ -10,6 +10,8 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 
+from app.core.localtime import local_today
+
 from app.core.database import SessionLocal, utcnow
 from app.models.habit import Goal, Habit, HabitCompletion
 from app.models.plan import Plan
@@ -116,6 +118,21 @@ async def test_goals_are_exported_and_cascade(client):
 
 # ── Habits ──────────────────────────────────────────────────────────────
 
+
+async def _their_today(client) -> str:
+    """The day the SERVER will call today for this account.
+
+    Not `date.today()`: that is the container's zone (UTC in CI and compose),
+    while every habit/streak endpoint answers in the user's own timezone —
+    `Asia/Kolkata` by default. The two disagree for five and a half hours every
+    evening, which made these assertions fail between 18:30 and 24:00 UTC and
+    pass the rest of the day. See app/core/localtime, whose docstring names
+    exactly this bug on the app side.
+    """
+    tz = (await client.get("/users/me")).json()["timezone"]
+    return local_today(tz).isoformat()
+
+
 async def test_habit_crud_and_completion_toggle(client):
     await _signup(client)
     created = await client.post(
@@ -128,7 +145,7 @@ async def test_habit_crud_and_completion_toggle(client):
 
     done = await client.post(f"/habits/{hid}/complete")
     assert done.json()["done_today"] is True
-    assert done.json()["recent_days"] == [date.today().isoformat()]
+    assert done.json()["recent_days"] == [await _their_today(client)]
 
     # A mis-tap must never be permanent.
     undone = await client.delete(f"/habits/{hid}/complete")
@@ -140,7 +157,7 @@ async def test_completing_twice_is_still_one_day(client):
     hid = (await client.post("/habits", json={"title": "Water"})).json()["id"]
     await client.post(f"/habits/{hid}/complete")
     second = await client.post(f"/habits/{hid}/complete")
-    assert second.json()["recent_days"] == [date.today().isoformat()]
+    assert second.json()["recent_days"] == [await _their_today(client)]
 
 
 async def test_recent_days_is_a_window_not_a_streak(client):

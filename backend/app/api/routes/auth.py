@@ -42,7 +42,7 @@ from app.schemas.auth import (
     TokenPair,
 )
 from app.schemas.user import UserOut
-from app.services import apple, email, google, nudges
+from app.services import apple, email, entitlements, google, nudges
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -398,5 +398,10 @@ async def reset_password(request: Request, payload: ResetPasswordRequest, db: As
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(get_current_user)):
-    return user
+async def me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Same resolution as /users/me — these two must never disagree about what
+    # the caller is entitled to (services/entitlements).
+    return await entitlements.user_out(db, user)

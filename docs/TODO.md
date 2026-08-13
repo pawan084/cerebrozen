@@ -238,11 +238,45 @@ everything below is open.
       administration console, and the OIDC plumbing cannot be *verified* without a real
       identity provider configured. Shipping unverifiable auth here would be the one mistake
       this whole surface has been built to avoid
-- [ ] **Sponsorship does not yet grant premium anywhere in the product** —
-      `organizations.is_sponsored()` computes entitlement correctly and nothing calls it. The
-      subscription checks still read `user.subscription_tier` alone, so a sponsored member
-      gets a row in the database and no benefit from it. Wire it where the tier is resolved,
-      not at each call site
+- [x] **Sponsorship grants premium now** (2026-08-13). `organizations.is_sponsored()` was
+      correct and unused: an organisation could pay for a seat and the member got a database
+      row and nothing else. New `services/entitlements.py` is the one place that answers "what
+      may this account use today", and the two gates that decided it — `usage.enforce_quota`
+      and `media.is_entitled` — no longer read `user.subscription_tier` at all. Both used to
+      keep their own private copy of the paid-tier set, which is exactly how a third gate
+      would have been written that sponsorship again did not reach; `media.is_entitled` now
+      takes the *resolved tier* rather than a user, so it structurally cannot read the column.
+      **The grant is never written back.** One line would have set the tier on the user row
+      and it would have been wrong: sponsorships end, and a stored tier would leave that
+      account premium forever with nobody paying. `test_entitlements` pins the column
+      untouched after a sponsored member has used premium.
+      `/users/me` and `/auth/me` report the *effective* tier, because a client showing a
+      paywall the server would let the member walk past is the same lie in the other
+      direction — plus a new `sponsored` flag, since the difference that matters to a member
+      is whether they can cancel it. `apps/app`'s account screen has a third branch on it: no
+      upgrade button, no Stripe portal (that would open on a customer who does not exist),
+      and a sentence saying who pays and what they can see. `/admin/users` deliberately keeps
+      showing the stored column — staff answering a billing question need the purchase, not
+      the employer's grant. **iOS and Android still branch on tier alone** (`BackendService
+      .isPremium`), so they unlock correctly but would offer a sponsored member a cancel link;
+      that is the remaining client work
+- [x] **Three tests only passed before 18:30 UTC** (2026-08-13, found by running the suite
+      at 23:30 UTC). `test_habits` (×2) and `test_admin_metrics::test_streak_endpoint_mirrors
+      _ios_rules` built their fixtures from `date.today()` — the *container's* zone, UTC —
+      and compared them against endpoints that answer in the user's own timezone, which
+      defaults to `Asia/Kolkata`. For the five and a half hours after 18:30 UTC the two are
+      different days and all three failed. `app/core/localtime`'s docstring names this exact
+      bug on the app side; the tests were the last consumers still asking the container what
+      day it is. They now ask the account (`/users/me` → `local_today(tz)`), and the streak
+      fixture stamps instants that land on the intended *local* day and never in the future
+- [ ] **`date.today()` still seeds fixtures in five more test files** — `test_sleep`,
+      `test_trends`, `test_interventions`, `test_input_bounds` and `test_admin_metrics`'s
+      sleep POST. None fail today because they either assert within their own frame or only
+      check a status code, but they carry the same time bomb as the three above
+- [ ] **Sponsored members are invisible to `/admin/metrics`** — the premium count is
+      `subscription_tier IN (...)`, so a sponsored seat reads as a free user there. Arguably
+      right (it is not subscription revenue) but it is currently accidental rather than
+      decided, and B2B seats need their own line once there is more than one organisation
 - [ ] **Eligibility import is one member at a time** — `POST /org/members` takes a single
       address; the portal's MEM-02 offers a CSV. The rejection rule matters more than the
       loop: `MembershipCreate` is `extra="forbid"`, so a column called `mood` or `diagnosis`

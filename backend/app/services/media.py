@@ -12,6 +12,7 @@ import uuid
 from pathlib import Path
 
 from app.core.config import settings
+from app.services import entitlements
 
 _NARRATION_DIR = "narration"
 _ASSET_DIR = "assets"
@@ -215,21 +216,23 @@ def delete_asset(key: str) -> None:
 # minted here (where the entitlement is known) and checked in app.main's
 # media guard (where the file is about to be served).
 
-_ENTITLED_TIERS = {"premium", "premium_human"}
-
-
-def is_entitled(user, item) -> bool:
-    """Whether this person may play this item's narration.
+def is_entitled(item, tier: str) -> bool:
+    """Whether a caller on ``tier`` may play this item's narration.
 
     Free items are open to everyone, signed in or not. Premium narration needs
     a paid tier — the same tier set that unlocks unlimited chat.
+
+    Takes the *resolved* tier rather than a user, so this cannot read the
+    stored column and miss an organisation-sponsored member. Callers get it
+    from ``services.entitlements.resolve`` once per request; see the note in
+    that module about why the two values differ.
     """
     if not item.premium:
         return True
-    return user is not None and user.subscription_tier in _ENTITLED_TIERS
+    return tier in entitlements.PAID_TIERS
 
 
-def playback_url(item, user) -> str:
+def playback_url(item, tier: str) -> str:
     """The ``audio_url`` to hand a client for this item, or "" if it gets none.
 
     Returning "" for un-entitled premium narration is deliberate and matches how
@@ -243,7 +246,7 @@ def playback_url(item, user) -> str:
     # Absolute URLs point at someone else's CDN — not ours to sign or gate.
     if stored.startswith("http://") or stored.startswith("https://"):
         return stored
-    if not is_entitled(user, item):
+    if not is_entitled(item, tier):
         return ""
     from app.core.security import create_media_token  # local: avoids an import cycle
 

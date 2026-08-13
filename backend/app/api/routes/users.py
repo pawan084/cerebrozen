@@ -66,7 +66,7 @@ from app.schemas.user import (
     WebPushSubscriptionOut,
 )
 from app.core.config import settings
-from app.services import appstore, metrics, safety
+from app.services import appstore, entitlements, metrics, safety
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -81,8 +81,14 @@ async def my_streak(
 
 
 @router.get("/me", response_model=UserOut)
-async def get_me(user: User = Depends(get_current_user)):
-    return user
+async def get_me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Serialized through entitlements, not returned raw: the tier a client is
+    # told must be the tier the server will enforce, and an organisation can
+    # sponsor premium without the stored column changing.
+    return await entitlements.user_out(db, user)
 
 
 @router.patch("/me", response_model=UserOut)
@@ -95,7 +101,7 @@ async def update_me(
         setattr(user, field, value)
     await db.commit()
     await db.refresh(user)
-    return user
+    return await entitlements.user_out(db, user)
 
 
 @router.post("/me/attest", response_model=UserOut)
@@ -119,7 +125,7 @@ async def attest(
         user.ai_disclosure_ack_at = now
     await db.commit()
     await db.refresh(user)
-    return user
+    return await entitlements.user_out(db, user)
 
 
 @router.post("/me/subscription/verify", response_model=UserOut)
@@ -172,7 +178,7 @@ async def verify_subscription(
     user.subscription_expires_at = expires
     await db.commit()
     await db.refresh(user)
-    return user
+    return await entitlements.user_out(db, user)
 
 
 @router.get("/me/trusted-contact", response_model=TrustedContactOut | None)
@@ -251,7 +257,9 @@ async def export_my_data(
 
     return {
         "exported_at": utcnow().isoformat(),
-        "profile": UserOut.model_validate(user).model_dump(mode="json"),
+        # Resolved, so the export cannot state a tier the product would not
+        # honour — and `sponsored` tells the reader why it says what it says.
+        "profile": (await entitlements.user_out(db, user)).model_dump(mode="json"),
         "moods": await rows(MoodLog, MoodOut, MoodLog.created_at),
         "journal": await rows(JournalEntry, JournalOut, JournalEntry.created_at),
         "chat": await rows(ChatMessage, ChatOut, ChatMessage.created_at),
@@ -599,7 +607,7 @@ async def set_push_token(
     user.push_token = payload.push_token
     await db.commit()
     await db.refresh(user)
-    return user
+    return await entitlements.user_out(db, user)
 
 
 @router.get("/me/devices", response_model=PushStatusOut)

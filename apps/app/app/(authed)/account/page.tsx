@@ -291,6 +291,20 @@ export default function Account() {
               <button className="btn" onClick={upgrade}>Upgrade to Premium</button>
               {billingMsg && <p className="footnote" role="status">{billingMsg}</p>}
             </div>
+          ) : me.sponsored ? (
+            /* Premium paid for by an organisation. Neither branch below fits:
+               there is nothing to upgrade, and the Stripe portal would open on
+               a customer that does not exist. Saying who pays also answers the
+               question this screen otherwise raises — an employer funds the
+               seat and is told nothing about how it is used. */
+            <div style={{ marginTop: 12 }}>
+              <p className="footnote">
+                Premium is provided by your organisation, so there is nothing to
+                pay or cancel here. They can see that a seat is used; they never
+                see what you write, log or say. If the sponsorship ends, your
+                account stays — it returns to the free tier.
+              </p>
+            </div>
           ) : (
             <div style={{ marginTop: 12 }}>
               {/* Stripe's own portal rather than a hand-rolled cancel: proration,

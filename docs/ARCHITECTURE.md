@@ -136,7 +136,13 @@ screen says so rather than letting the user assume it follows their account.
   is the loss framing REDESIGN removed when streaks became presence; a test pins its
   absence. Rules live in code (prompt-registry precedent); DB-backed overrides are a
   possible follow-up.
-- `usage.py` — free-tier daily message quota (429; premium tiers unlimited).
+- `entitlements.py` — the single answer to "what may this account use today". Two things
+  buy premium: the person (`users.subscription_tier`, set by StoreKit/Stripe) and their
+  employer (an active `OrgMembership` in an org with `grants_premium`). Resolution is
+  **computed per request and never written back** — a stored grant would outlive the
+  contract that paid for it. Every gate takes the resolved tier; none reads the column.
+- `usage.py` — free-tier daily message quota (429; premium tiers unlimited, including
+  sponsored ones — it calls `entitlements.resolve`, not the column).
 - `appstore.py` — StoreKit2 JWS verification (ES256 chain; root-pinned only when
   `APPSTORE_ROOT_CERT_PATH` is set) + notification → tier mapping.
 - `nudges.py`/`notifications.py`/`webpush.py` — scheduling + APNs + Web Push. Delivery runs
@@ -303,6 +309,7 @@ region and companion style.
 | Sleep diary schema | `schemas.SleepLogCreate` (`/sleep`) | `SleepEntry` + `APIClient.upsertSleep` |
 | Streak rules (grace day, today optional) | `services/metrics.user_streak` | `AppState.currentStreak` |
 | Subscription products | `appstore.py` tier map | `Products.storekit` (`com.cerebrozen.premium.{monthly,annual}`, `.premiumhuman.{monthly,annual}`) |
+| **The tier on the wire is the EFFECTIVE tier, not the stored column** — `/users/me` and `/auth/me` report what the server will enforce, so a client can never render a paywall the backend would let the member walk past. The companion `sponsored` flag says who paid, because that decides whether the member can cancel | `services/entitlements.user_out` (`PAID_TIERS` is the canonical set; `/admin/users` deliberately reports the STORED column instead — staff need the purchase, not the employer's grant) | web `apps/app/.../account/page.tsx` has a third billing branch on `sponsored` (no upgrade, no Stripe portal, says who pays) ⇄ **iOS `BackendService.isPremium` and Android still branch on tier alone** — they unlock correctly but would offer a sponsored member a cancel link |
 | Onboarding funnel step names | `services/metrics.ONBOARDING_STEPS` | `OnboardingFlow.stepNames` |
 | Consent categories (6 flags, per-purpose) | `models/consent.py` + read-site gates | `Models.Consent` + Consent/Privacy screens (web: account page labels) |
 | Consent-notice translations (DPDP s.5(3): 13 languages, keys = consent columns) | — (client-side text) | `Trust/ConsentNotice.swift` ⇄ web `apps/app/lib/consentNotice.ts` ⇄ android `ui/screens/ConsentNotice.kt` |

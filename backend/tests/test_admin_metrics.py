@@ -113,14 +113,29 @@ async def test_streak_endpoint_mirrors_ios_rules(auth_client):
     from datetime import datetime, time, timedelta, timezone
 
     from app.core.database import SessionLocal
+    from app.core.localtime import local_today, tz_for
     from app.models.mood import MoodLog
 
-    uid = _uuid.UUID((await auth_client.get("/auth/me")).json()["id"])
+    me = (await auth_client.get("/users/me")).json()
+    uid = _uuid.UUID(me["id"])
+    # The streak is computed in the USER's timezone (Asia/Kolkata by default),
+    # so the fixture has to be built there too. Seeding from `date.today()` —
+    # the container's zone, UTC here — put "today" on the previous local day
+    # for the five and a half hours after 18:30 UTC, and this test failed every
+    # evening. app/core/localtime's docstring names the same bug on the app side.
+    tz = tz_for(me["timezone"])
+    today = local_today(me["timezone"])
+
+    def _during(day):
+        """A UTC instant that lands on this LOCAL day, never in the future."""
+        if day == today:
+            return datetime.now(timezone.utc)
+        return datetime.combine(day, time(12, 0), tzinfo=tz).astimezone(timezone.utc)
+
     async with SessionLocal() as s:
         for days_ago in (0, 2):
-            d = date.today() - timedelta(days=days_ago)
             s.add(MoodLog(user_id=uid, mood="Good", intensity=2,
-                          created_at=datetime.combine(d, time(10, 0), tzinfo=timezone.utc)))
+                          created_at=_during(today - timedelta(days=days_ago))))
         await s.commit()
 
     body = (await auth_client.get("/users/me/streak")).json()

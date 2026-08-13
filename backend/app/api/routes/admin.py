@@ -93,7 +93,13 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
 ):
     """Newest-first accounts. ``q`` filters by email or name (case-insensitive)
-    so support can find one account among many without paging through them all."""
+    so support can find one account among many without paging through them all.
+
+    ``subscription_tier`` here is the STORED column, unlike ``/users/me`` — the
+    staff view should show what this account bought, not what an organisation
+    currently sponsors for it (``services/entitlements``). Resolving it per row
+    would also be a query per user. ``sponsored`` is therefore always false in
+    this listing rather than unresolved-and-wrong."""
     stmt = select(User).order_by(User.created_at.desc())
     if q and (term := q.strip()):
         # Escaped like journal search always was (register C88). Also matches
