@@ -193,14 +193,20 @@ class GameEngineTest {
 
     @Test
     fun calm_games_are_not_scored() {
-        listOf("breathing-rhythm", "zen-sand", "still-point").forEach {
+        listOf("breathing-rhythm", "still-point").forEach {
             assertFalse("scoring calm is the pressure loop the redesign ruled out", isScored(it))
         }
+        // `zen-sand` was retired with the menu (2026-08-13) but still arrives
+        // from old deeplinks and saved cards. It resolves to a calm game, and
+        // must not arrive at a scored one.
+        assertFalse(isScored("zen-sand"))
     }
 
     @Test
     fun every_other_game_is_scored() {
-        assertEquals(9, scoredGames.size)
+        // Eight games, two of them calm. This count is the thing that noticed
+        // the menu had changed — keep it literal.
+        assertEquals(6, scoredGames.size)
         scoredGames.forEach { assertTrue(isScored(it)) }
     }
 

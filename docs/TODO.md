@@ -4,6 +4,40 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Open — merged from `v2` (Abhimanyu, 2026-08-13)
+
+`355deb8d` "Android: fix onboarding, navigation and mindful tools" — fast-forwarded into
+`main`. Compiles; `:app:check :app:assembleDebug :app:lintVitalRelease` green after the
+fix below. What it changed and what it leaves open:
+
+- [x] **The mindful menu is eight games, not twelve** — `object-tray`, `path-memory`,
+      `mirror-tap` and `zen-sand` were retired and aliased onto the survivors, and four
+      mechanics (`ChangeSpotting`, `PathRecall`, `BilateralTap`, `SandDraw`) went with
+      them. **This broke `GameEngineTest::every_other_game_is_scored`**, which pinned nine
+      scored games and now sees six — the count doing exactly the job it was written for.
+      Fixed, and `isScored` now reads `GameCategory.Calm` off the registry instead of
+      holding its own list of ids: that list still named `zen-sand` after the game was
+      gone, and stayed correct only because the retired id happens to alias to another
+      calm game. A category declared once cannot drift when the menu changes
+- [ ] **The bottom nav bar takes `navigationBarsPadding()` again** (`CereBroApp.kt:290`),
+      reversing a documented decision — the comment it replaced said Scaffold already owns
+      that slot and an extra inset lifted the capsule "much too high". One of the two is
+      wrong on any given device and only a device can say which. **Needs an emulator/phone
+      check on both gesture and three-button navigation** before this is trusted
+- [ ] **In-app language switching writes through deprecated `Resources.updateConfiguration`**
+      (`applyOnboardingLanguage`, OnboardingScreen.kt) rather than per-app locales
+      (`AppCompatDelegate.setApplicationLocales` / API 33 `LocaleManager`) — which is why it
+      needs `restoreAppLanguage()` called from `MainActivity.onCreate` to survive a restart.
+      It works and is `@Suppress`ed; it is worth moving to the platform API, and it silently
+      maps every language other than Hindi to English chrome (correct today — only `values-hi`
+      exists — but it is a mapping nobody will remember to extend)
+- [ ] **The three onboarding intro cards all call `next()`** — three tappable cards with one
+      destination, described in the comment as each opening "the next required step". Either
+      they should route to distinct steps or read as one control
+- [ ] **`mg_object_tray`, `mg_path_memory`, `mg_mirror_tap`, `mg_zen_sand`** (and their
+      `_desc` pairs) are now unreferenced strings. No Hindi regression: the `mg_*` keys were
+      never in `values-hi`, so that surface already falls back to English
+
 ## Open — Light Dawn redesign (`ref/`, started 2026-08-06)
 
 Spec: [REDESIGN_V2.md](REDESIGN_V2.md). Phase 1 (token inversion) is done and verified;

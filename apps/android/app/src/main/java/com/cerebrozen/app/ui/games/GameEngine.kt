@@ -294,8 +294,15 @@ private fun calmStep(level: Level): Round = Round(
     timeLimitMs = null,
 )
 
-/** Whether a game keeps score at all. The calm ones do not, on purpose. */
-fun isScored(gameId: String): Boolean = gameId !in setOf("breathing-rhythm", "zen-sand", "still-point")
+/** Whether a game keeps score at all. The calm ones do not, on purpose.
+ *
+ * Read off the registry rather than held as a second list of ids. The list
+ * still named `zen-sand` after that game was retired, and only stayed correct
+ * by luck — the retired id aliases to another calm game. The category is
+ * already declared once, so it cannot drift when the menu changes. An id the
+ * registry does not know stays scored, exactly as before. */
+fun isScored(gameId: String): Boolean =
+    MindfulGameRegistry.find(gameId)?.category != GameCategory.Calm
 
 /**
  * The closing line for a session.
