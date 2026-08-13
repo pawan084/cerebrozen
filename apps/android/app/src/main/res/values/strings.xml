@@ -1721,14 +1721,14 @@
     <string name="ombct_m6">Responding with care</string><string name="ombct_m6_body">A deliberate response can replace an automatic reaction.</string><string name="ombct_m6_practice">Pause and choose one supportive action you can realistically take.</string>
     <string name="ombct_m7">Caring for capacity</string><string name="ombct_m7_body">Pleasant and mastery activities can support a balanced routine.</string><string name="ombct_m7_practice">Schedule one nourishing and one manageable activity.</string>
     <string name="ombct_m8">Continuing practice</string><string name="ombct_m8_body">A sustainable practice can be brief and flexible.</string><string name="ombct_m8_practice">Choose when, where, and how long your next three practices will be.</string>
-    <string name="mg_eyebrow">Offline and unscored</string><string name="mg_title">Mindful Games</string><string name="mg_door_subtitle">Twelve small games of noticing — offline and unscored</string><string name="mg_subtitle">Small games of noticing — offline, unscored, and never a measurement of you</string>
+    <string name="mg_eyebrow">Offline and unscored</string><string name="mg_title">Mindful Games</string><string name="mg_door_subtitle">Eight small games of noticing — offline and unscored</string><string name="mg_subtitle">Small games of noticing — offline, unscored, and never a measurement of you</string>
     <string name="mg_cat_focus">Noticing</string><string name="mg_cat_memory">Remembering</string><string name="mg_cat_resilience">Reframing</string><string name="mg_cat_flexibility">Switching</string><string name="mg_cat_calm">Settling</string>
     <string name="mg_color_tap">Color Tap</string><string name="mg_color_tap_desc">Tap only the target colour while distractions appear.</string>
     <string name="mg_freeze_switch">Freeze Switch</string><string name="mg_freeze_switch_desc">Switch carefully between move and freeze.</string>
     <string name="mg_pattern_recall">Pattern Recall</string><string name="mg_pattern_recall_desc">Remember a short sequence of symbols.</string>
     <string name="mg_object_tray">Object Tray</string><string name="mg_object_tray_desc">Notice objects, then recall which one was present.</string>
     <string name="mg_path_memory">Path Memory</string><string name="mg_path_memory_desc">Watch a short path and choose its final direction.</string>
-    <string name="mg_thought_sort">Thought Sort</string><string name="mg_thought_sort_desc">Sort thoughts as helpful, unhelpful, or uncertain.</string>
+    <string name="mg_thought_sort">Thought Sort</string><string name="mg_thought_sort_desc">Notice whether a sample thought traps you or supports a workable next step.</string>
     <string name="mg_rule_switch">Rule Switch</string><string name="mg_rule_switch_desc">Respond as the rule changes between rounds.</string>
     <string name="mg_breathing_rhythm">Breathing Rhythm</string><string name="mg_breathing_rhythm_desc">Follow expanding and settling circles.</string>
     <string name="mg_zen_sand">Zen Sand</string><string name="mg_zen_sand_desc">Create a slow pattern through deliberate taps.</string>

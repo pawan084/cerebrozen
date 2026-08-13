@@ -26,20 +26,12 @@ enum class GameMechanic {
     GoNoGo,
     /** Watch a sequence of cells, repeat it. Span grows. */
     SequenceRecall,
-    /** A tray of items; one is new. Spot it. */
-    ChangeSpotting,
-    /** A walkable path across the grid, replayed. */
-    PathRecall,
     /** The rule flips unpredictably; follow the current one. */
     RuleSwitch,
-    /** Follow the side that lights, at a quickening pace. */
-    BilateralTap,
     /** Sort a written thought as a familiar unhelpful pattern or a workable one. */
     ThoughtSort,
     /** Paced breathing, unscored. */
     BreathPace,
-    /** Sensory drawing, unscored. */
-    SandDraw,
     /** Hold attention on one point, unscored. */
     StillPoint,
 }
@@ -65,7 +57,7 @@ data class MindfulGame(
 
 object MindfulGameRegistry {
     /**
-     * Twelve games, one mechanic each.
+     * Eight distinct games, one mechanic each.
      *
      * Removed rather than kept as filler (2026-08-01): `sound-hunter` and
      * `distraction-dodge` (Color Tap with different props), `emotion-match` and
@@ -81,13 +73,9 @@ object MindfulGameRegistry {
         game("stroop-flow", R.string.mg_stroop_flow, R.string.mg_stroop_flow_desc, R.string.mg_inhibitory_control, GameCategory.Focus, "S", GameMechanic.Stroop),
         game("freeze-switch", R.string.mg_freeze_switch, R.string.mg_freeze_switch_desc, R.string.mg_reaction_control, GameCategory.Focus, "🛑", GameMechanic.GoNoGo),
         game("pattern-recall", R.string.mg_pattern_recall, R.string.mg_pattern_recall_desc, R.string.mg_working_memory, GameCategory.Memory, "🔢", GameMechanic.SequenceRecall),
-        game("object-tray", R.string.mg_object_tray, R.string.mg_object_tray_desc, R.string.mg_visual_memory, GameCategory.Memory, "🍽", GameMechanic.ChangeSpotting),
-        game("path-memory", R.string.mg_path_memory, R.string.mg_path_memory_desc, R.string.mg_spatial_memory, GameCategory.Memory, "🗺", GameMechanic.PathRecall),
         game("thought-sort", R.string.mg_thought_sort, R.string.mg_thought_sort_desc, R.string.mg_cognitive_reframing, GameCategory.Resilience, "🧩", GameMechanic.ThoughtSort),
         game("rule-switch", R.string.mg_rule_switch, R.string.mg_rule_switch_desc, R.string.mg_mental_flexibility, GameCategory.Flexibility, "🔀", GameMechanic.RuleSwitch),
-        game("mirror-tap", R.string.mg_mirror_tap, R.string.mg_mirror_tap_desc, R.string.mg_coordination, GameCategory.Flexibility, "↔", GameMechanic.BilateralTap),
         game("breathing-rhythm", R.string.mg_breathing_rhythm, R.string.mg_breathing_rhythm_desc, R.string.mg_calm_focus, GameCategory.Calm, "◯", GameMechanic.BreathPace),
-        game("zen-sand", R.string.mg_zen_sand, R.string.mg_zen_sand_desc, R.string.mg_relaxation, GameCategory.Calm, "🏖", GameMechanic.SandDraw),
         game("still-point", R.string.mg_still_point, R.string.mg_still_point_desc, R.string.mg_relaxation, GameCategory.Calm, "•", GameMechanic.StillPoint),
     )
 
@@ -105,6 +93,10 @@ object MindfulGameRegistry {
         "storm-balance" to "thought-sort",
         "cloud-drift" to "still-point",
         "who-are-you" to "still-point",
+        "object-tray" to "pattern-recall",
+        "path-memory" to "pattern-recall",
+        "mirror-tap" to "rule-switch",
+        "zen-sand" to "still-point",
     )
 
     fun find(id: String?): MindfulGame? =

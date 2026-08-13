@@ -16,8 +16,8 @@ import org.junit.Test
 class MindfulGameRegistryTest {
 
     @Test
-    fun twelve_games_each_with_a_mechanic_of_its_own() {
-        assertEquals(12, MindfulGameRegistry.games.size)
+    fun eight_games_each_with_a_mechanic_of_its_own() {
+        assertEquals(8, MindfulGameRegistry.games.size)
         assertEquals(
             "two games sharing a mechanic is a longer menu, not more to do",
             MindfulGameRegistry.games.size,
@@ -53,6 +53,10 @@ class MindfulGameRegistryTest {
         assertEquals("pattern-recall", MindfulGameRegistry.find("emotion-match")?.id)
         assertEquals("thought-sort", MindfulGameRegistry.find("growth-garden")?.id)
         assertEquals("still-point", MindfulGameRegistry.find("who-are-you")?.id)
+        assertEquals("pattern-recall", MindfulGameRegistry.find("object-tray")?.id)
+        assertEquals("pattern-recall", MindfulGameRegistry.find("path-memory")?.id)
+        assertEquals("rule-switch", MindfulGameRegistry.find("mirror-tap")?.id)
+        assertEquals("still-point", MindfulGameRegistry.find("zen-sand")?.id)
     }
 
     @Test

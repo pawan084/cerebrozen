@@ -44,7 +44,7 @@ import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -812,7 +812,7 @@ internal fun CereBroTopBar(
         }
         onUrgent?.let {
             TopBarAction(
-                icon = Icons.Outlined.WarningAmber,
+                icon = Icons.Outlined.HealthAndSafety,
                 label = stringResource(R.string.common_urgent_support),
                 well = Danger.copy(alpha = .09f),
                 tint = Danger,

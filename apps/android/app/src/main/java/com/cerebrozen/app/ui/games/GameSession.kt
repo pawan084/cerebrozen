@@ -338,14 +338,11 @@ private fun RoundBody(
         GameMechanic.ColorTap -> ColorTapBody(round, onAnswer)
         GameMechanic.Stroop -> StroopBody(round, onAnswer)
         GameMechanic.GoNoGo -> GoNoGoBody(round, onAnswer)
-        GameMechanic.SequenceRecall, GameMechanic.PathRecall ->
+        GameMechanic.SequenceRecall ->
             SequenceBody(game.id, round, accent, reduceMotion, onAnswer)
-        GameMechanic.ChangeSpotting -> ChangeSpottingBody(game.id, round, accent, reduceMotion, onAnswer)
         GameMechanic.RuleSwitch -> RuleSwitchBody(round, accent, onAnswer)
-        GameMechanic.BilateralTap -> BilateralBody(round, accent, onAnswer)
         GameMechanic.ThoughtSort -> ThoughtSortBody(round, onAnswer)
         GameMechanic.BreathPace -> BreathPaceBody(game.id, accent, reduceMotion, onAnswer)
-        GameMechanic.SandDraw -> SandDrawBody(game.id, accent, onAnswer)
         GameMechanic.StillPoint -> StillPointBody(game.id, accent, reduceMotion, onAnswer)
     }
 }

@@ -287,9 +287,9 @@ internal fun BottomNavBar(
         Modifier
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, NavScrim.copy(alpha = 0.96f))))
-            // The supplied phone reference places the floating capsule almost
-            // on the lower edge. Scaffold already owns this bottom slot, so an
-            // additional navigationBarsPadding lifted it much too high.
+            // Edge-to-edge does not reserve Android's gesture/three-button
+            // navigation area for this custom bar; keep the app tabs above it.
+            .navigationBarsPadding()
             .padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 3.dp),
     ) {
         Row(

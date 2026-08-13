@@ -10,6 +10,7 @@ import com.cerebrozen.app.ui.CereBroApp
 import com.cerebrozen.app.ui.DeeplinkBus
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.ui.theme.CereBroTheme
+import com.cerebrozen.app.ui.screens.restoreAppLanguage
 
 // FragmentActivity (still a ComponentActivity) so androidx.biometric can
 // attach its prompt — needed by the journal lock.
@@ -21,6 +22,7 @@ class MainActivity : FragmentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        restoreAppLanguage(applicationContext)
         Session.init(applicationContext)
         Haptics.init(applicationContext)
         // The nudge's promise: Push.kt attaches the deeplink to this intent;

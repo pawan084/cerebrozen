@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.LocaleList
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -352,6 +354,11 @@ private fun imeVisible(): Boolean = WindowInsets.isImeVisible
 fun Onboarding() {
     var signIn by rememberSaveable { mutableStateOf(false) }
     var urgentSupport by rememberSaveable { mutableStateOf(false) }
+    // Keep the current funnel step alive while a full-screen child is open.
+    // Declaring it below either early return disposed the state holder, so Back
+    // from urgent support recreated onboarding at Welcome instead of returning
+    // to the screen that opened it (most noticeably Honesty first).
+    var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     if (urgentSupport) {
         androidx.activity.compose.BackHandler { urgentSupport = false }
         CrisisScreen(onBack = { urgentSupport = false })
@@ -363,7 +370,6 @@ fun Onboarding() {
         return
     }
 
-    var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     val order = listOf(
         OStep.Welcome, OStep.Language, OStep.Intro, OStep.Disclosure, OStep.State,
         OStep.Reset, OStep.Reflection, OStep.Consent, OStep.Notify, OStep.Guest, OStep.Ready,
@@ -459,9 +465,12 @@ fun Onboarding() {
         ) {
             Text(stringResource(R.string.ob_intro_section),
                 style = MaterialTheme.typography.titleLarge.copy(fontFamily = OnboardingSerif), color = TextPrimary)
-            OnboardingFeatureCard("♧", stringResource(R.string.ob_intro_settle), stringResource(R.string.ob_intro_settle_sub))
-            OnboardingFeatureCard("□", stringResource(R.string.ob_intro_talk), stringResource(R.string.ob_intro_talk_sub))
-            OnboardingFeatureCard("▣", stringResource(R.string.ob_intro_write), stringResource(R.string.ob_intro_write_sub))
+            // These are navigation cards, not decorative feature bullets. Each
+            // opens the next required onboarding step; the chevron also makes
+            // their tap affordance explicit and keeps the funnel order intact.
+            OnboardingFeatureCard("♧", stringResource(R.string.ob_intro_settle), stringResource(R.string.ob_intro_settle_sub), onClick = { next() })
+            OnboardingFeatureCard("□", stringResource(R.string.ob_intro_talk), stringResource(R.string.ob_intro_talk_sub), onClick = { next() })
+            OnboardingFeatureCard("▣", stringResource(R.string.ob_intro_write), stringResource(R.string.ob_intro_write_sub), onClick = { next() })
         }
 
         OStep.Disclosure -> Funnel(
@@ -545,7 +554,10 @@ fun Onboarding() {
                                 ""
                             },
                             selected = language == option.id,
-                        ) { language = option.id }
+                        ) {
+                            language = option.id
+                            applyOnboardingLanguage(context, option.id)
+                        }
                     }
                     if (showAll) {
                         rest.forEach { option ->
@@ -557,7 +569,10 @@ fun Onboarding() {
                                     ""
                                 },
                                 selected = language == option.id,
-                            ) { language = option.id }
+                            ) {
+                                language = option.id
+                                applyOnboardingLanguage(context, option.id)
+                            }
                         }
                     } else {
                         LanguageCard(
@@ -1065,6 +1080,37 @@ internal fun detectedLanguageId(iso: String): String? = when (iso.lowercase()) {
     else -> null
 }
 
+/** Apply the languages for which this APK actually contains localized UI.
+ * Other listed languages remain valid companion-language preferences, but do
+ * not falsely switch the app chrome when no matching resource bundle exists. */
+@Suppress("DEPRECATION")
+internal fun applyOnboardingLanguage(context: Context, language: String) {
+    val tag = when (language) {
+        "Hindi" -> "hi"
+        else -> "en"
+    }
+    val locale = java.util.Locale.forLanguageTag(tag)
+    context.applicationContext.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
+        .edit().putString("app_language", language).apply()
+    java.util.Locale.setDefault(locale)
+    listOf(context.resources, context.applicationContext.resources).distinct().forEach { resources ->
+        val configuration = android.content.res.Configuration(resources.configuration)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            configuration.setLocales(LocaleList(locale))
+        } else {
+            configuration.locale = locale
+        }
+        resources.updateConfiguration(configuration, resources.displayMetrics)
+    }
+}
+
+/** Restore the explicit in-app language before the first Compose frame. */
+internal fun restoreAppLanguage(context: Context) {
+    val saved = context.applicationContext.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
+        .getString("app_language", null) ?: return
+    applyOnboardingLanguage(context, saved)
+}
+
 /**
  * ONB-01's option row: a paper card with a title, an optional caption, and
  * either a tick (selected) or a chevron (everything else).
@@ -1189,7 +1235,7 @@ private fun OnboardingAppBar(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Outlined.WarningAmber,
+                    Icons.Outlined.HealthAndSafety,
                     contentDescription = null,
                     tint = Danger,
                     modifier = Modifier.size(20.dp),

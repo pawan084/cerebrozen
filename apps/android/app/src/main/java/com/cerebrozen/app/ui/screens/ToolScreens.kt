@@ -1,8 +1,11 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -45,6 +49,7 @@ import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.VeilWell
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 // Native tools (iOS ToolsViews + MicroActivities parity): the journaling
 // breathing practice, CBT reframe, and DBT TIPP. Written work mirrors to the
@@ -99,6 +104,7 @@ fun BreathingScreen(onBack: () -> Unit) {
 
 /** A small tool that writes its result to the journal (title + composed body). */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun JournalingTool(
     eyebrow: String,
     title: String,
@@ -126,6 +132,7 @@ private fun JournalingTool(
         AmbienceToggle()
         SectionCard(quiet = true) {
             fields.forEachIndexed { i, (label, _) ->
+                val bringIntoView = remember { BringIntoViewRequester() }
                 Column(
                     Modifier.fillMaxWidth().padding(bottom = if (i < fields.lastIndex) 4.dp else 0.dp),
                     verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -157,6 +164,16 @@ private fun JournalingTool(
                         label = "",
                         minLines = 2,
                         placeholderText = stringResource(R.string.tool_field_hint),
+                        modifier = Modifier
+                            .bringIntoViewRequester(bringIntoView)
+                            .onFocusChanged { focus ->
+                                if (focus.isFocused) scope.launch {
+                                    // Wait for the IME inset animation, then
+                                    // move the full field above the keyboard.
+                                    delay(250)
+                                    bringIntoView.bringIntoView()
+                                }
+                            },
                     )
                 }
             }

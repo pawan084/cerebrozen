@@ -236,6 +236,7 @@ fun CompanionStyleScreen(onBack: () -> Unit) {
  */
 @Composable
 fun LanguageScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
     // null = not yet known, the same honesty rule the companion and region
     // pickers follow: a failed read must select nothing rather than render
     // "English" as a confident answer the screen never actually learned.
@@ -266,11 +267,15 @@ fun LanguageScreen(onBack: () -> Unit) {
             ) {
                 val prev = current
                 current = option.id
+                applyOnboardingLanguage(context, option.id)
                 scope.launch {
                     // The wire value stays the English string (cross-stack
                     // contract with iOS/web); only the label localizes.
                     runCatching { Api.updateProfile(JSONObject().put("language", option.id)) }
-                        .onFailure { current = prev }   // never show a choice the server refused
+                        .onFailure {
+                            current = prev
+                            prev?.let { applyOnboardingLanguage(context, it) }
+                        }   // never show a choice the server refused
                 }
             }
         }

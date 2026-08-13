@@ -30,7 +30,6 @@ import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Spa
-import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -111,7 +110,7 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 )
             }
             CircleAction(DangerSoft, { onOpen("crisis") }) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+                Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
             }
         }
 
@@ -188,7 +187,7 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
                 Text("Prepare session", style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             CircleAction(DangerSoft, onUrgent) {
-                Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+                Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
             }
         }
         Column(
@@ -513,7 +512,7 @@ private fun PracticeHeader(
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         CircleAction(DangerSoft, onUrgent) {
-            Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+            Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
         }
     }
 }

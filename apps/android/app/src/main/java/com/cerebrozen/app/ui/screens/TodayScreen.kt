@@ -40,7 +40,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
-import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -2345,7 +2345,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Box(
                 Modifier.size(46.dp).clip(CircleShape).background(Danger.copy(alpha = .09f))
                     .clickable { onOpen("crisis") }, contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Outlined.WarningAmber, "Urgent support", tint = Danger) }
+            ) { Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Danger) }
         }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())

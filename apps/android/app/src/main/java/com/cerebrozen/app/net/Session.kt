@@ -630,6 +630,12 @@ object Session {
     fun signOut() {
         access = null
         storage.remove(REFRESH_KEY)
+        // Sign out is also the exit from the local-only guest shell. Leaving
+        // this flag persisted kept the root UI inside the app and made the
+        // sign-out row appear broken for guests instead of showing onboarding.
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.edit()?.putBoolean(GUEST_KEY, false)?.apply()
+        guestMode = false
         clearCache()
         servedStale = false
         signedIn = false
