@@ -4,6 +4,146 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Open — full-codebase review (2026-08-13, gates run)
+
+Backend 617 passed / **2 failed** / 2 skipped, coverage 95.58% (gate ≥95% holds). Android
+`:app:check :app:assembleDebug :app:lintVitalRelease` green. Four Next apps: tsc + lint clean.
+All six static gates green. **Playwright e2e run 2026-08-13: 53 passed in 2.0m, exit 0** (full
+`docker-compose.e2e.yml` stack — web + admin + app + portal + api + db). **iOS not compiled**
+(no Xcode on this host), and neither client has been walked on a device this pass.
+
+- [x] **SAF-10 · The crisis directory is now gated, not just consistent** (2026-08-13, `WC-32`).
+      `CLAUDE.md` lists crisis regions among the contracts kept in sync **by hand**, and unlike
+      tokens, CSP, prices and claims, nothing enforced it — while this is the one where drift is
+      measured in human harm: a member in crisis is shown these numbers by the client and told
+      them again by the server (`crisis.reply_suffix`). Audited first: backend, iOS and Android
+      already agree on all **7 regions** (US/CA/GB/IE/AU/NZ/IN), their number *order*, and the
+      unknown-region fallback. They agreed by discipline; `scripts/check-crisis-lines.mjs` is
+      what keeps them agreeing, and it is now CI's seventh gate.
+      Order is asserted, not just membership — "Tele-MANAS leads every crisis surface"
+      (REDESIGN §2.3) is a design rule, so a reordered list is a real regression.
+      **Mutation-checked**: one digit changed in Android's Tele-MANAS number fails the gate with
+      both lists printed; the file was restored byte-identical in the same command.
+      Two things learned building it, both kept in the script's comments: URL spelling is
+      normalized (backend stores `https://findahelpline.com`, Android the bare host — a real
+      difference in representation, not in what gets dialled), and the gate **distinguishes "I
+      could not parse this" from "these disagree"**. The first version mis-read iOS's `default:`
+      branch and confidently reported a fallback drift that did not exist — a gate that cries
+      wolf about crisis numbers gets muted, and a muted gate is worse than none
+- [x] **SEC-02 · Production booted with no administrator** (found and fixed 2026-08-13).
+      `is_admin` is written in exactly one place in the backend — `seed._ensure_user` — and no
+      route grants or revokes it, so an installation that never runs that line can only reach
+      its own admin console through an `UPDATE` against Postgres. Production was exactly that
+      installation: the call sat **below** `if not settings.seed_demo_data: return`, and
+      `_guard_production` **requires** `SEED_DEMO_DATA=false`, so the two rules cancelled each
+      other out and every real deploy came up locked out — while `ADMIN_EMAIL`/`ADMIN_PASSWORD`
+      sat in the environment, validated by the boot guard, looking like they had provisioned
+      someone. Nothing caught it because nothing ran the production seed path.
+      The administrator now seeds **above** the guard, alongside `_seed_media`, which is there
+      for the same reason (structural, not demo). Safe on both counts that matter: the boot
+      guard already refuses to start while `ADMIN_PASSWORD` is the demo value, so this cannot
+      mint a known-password admin in production; and `_ensure_user` returns an existing row
+      untouched, so a rotated `ADMIN_PASSWORD` does not silently reset the account on the next
+      reboot. `tests/test_seed_admin.py` pins all three properties (admin exists after a
+      demo-data-off boot; the demo account did *not* follow it up; a reboot is not a password
+      reset) and was mutation-checked by moving the call back below the guard — 2 of the 3 fail.
+      **Still open underneath this:** `REDESIGN_V2.md` §141 notes RBAC is one binary column
+      where the portal's design needs seven roles, so `is_admin` is due a rethink regardless
+- [x] **SEC-01 · Rate limits were bypassable with a forged header** (fixed 2026-08-13).
+      `client_ip` now counts back from the **end** of `X-Forwarded-For` instead of reading the
+      front. Caddy appends the peer it saw rather than replacing the header, so the first entry
+      is a string the caller typed and only trailing entries are ours. New
+      `settings.trusted_proxy_hops` says how many are ours — explicit, because the bug it
+      replaces was an *implicit* trust assumption ("set by the Caddy reverse proxy"; it is
+      appended, not set).
+      **It defaults to 0, not 1**, because the two ways to misconfigure it fail very
+      differently: too high reads a caller-supplied hop and every request mints its own bucket
+      (silent — the original bug); too low keys real users onto one shared address and they
+      collect 429s (loud — reported within the hour). The default is the one that cannot be
+      quietly wrong on a box nobody configured, and `_guard_production` now refuses to boot
+      production until it is declared. `TRUSTED_PROXY_HOPS=1` added to
+      `backend/.env.production.example` — **the deploy must set it**.
+      `tests/test_ratelimit_key.py` (7 cases) pins the direction of the count, the rotating-
+      forged-prefix attack landing on one key, the short-chain fallback (claiming two proxies
+      while one answers must not slide back to `parts[0]`), the two-proxy case, hops=0, and the
+      production boot guard.
+      **Caveat — not mutation-checked.** SEC-02's fix was verified by reintroducing the bug and
+      watching the tests fail; the same check here was blocked by the tool permission classifier
+      twice, so the tests are known-passing against correct code but have not been proven to
+      fail against the broken version. Worth someone re-running: flip `parts[-hops]` to
+      `parts[0]` in `client_ip` and confirm `test_a_forged_prefix_cannot_move_the_bucket` goes
+      red. *(Original finding, retained for the record:)* `core/ratelimit.client_ip`
+      keys the limiter on the **first** `X-Forwarded-For` hop. Caddy *appends* the real client to
+      any incoming XFF rather than replacing it, and `deploy/Caddyfile` sets no `trusted_proxies`,
+      so the first hop is whatever the caller sent. **Confirmed against the running API**: 26
+      logins carrying one spoofed XFF hit 429 at the cap; 30 logins rotating the spoofed value
+      returned 30×401 and never tripped it. That defeats the limiter on ~20 endpoints — login
+      brute-force, OTP request, password reset, and the LLM/TTS cost guards on `/chat`,
+      `/oracle`, `/habits` and admin narration. The docstring says the header is "set by the
+      Caddy reverse proxy", which is the mistake: Caddy appends, it does not set. Fix is the
+      **last** hop (`fwd.split(",")[-1]`) for a one-proxy deployment, or `trusted_proxies` in
+      Caddy plus `request.client.host`. Whichever is chosen, pin it with a test that sends a
+      forged XFF and asserts the bucket does not move
+- [x] **TEST-01 · The backend suite was not hermetic** (fixed 2026-08-13, `WC-4`/`WC-91`).
+      `conftest` now blanks `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` beside the existing
+      `TESTING=1` line, before any app import. Set rather than `setdefault`, so an exported key
+      in the developer's shell loses too — pydantic-settings ranks the environment above the
+      `.env` file, so this beats both. `tests/test_hermetic.py` is the tripwire and asserts the
+      *effect* (`ai_provider == "none"`, `oracle_available is False`, `complete()` returns None)
+      rather than the mechanism, so it still fires if provider selection changes shape instead
+      of the two lines being deleted.
+      Verified the way that matters: the full suite now runs green **with the live key still in
+      `backend/.env`** and no blanking on the command line — the exact condition that was
+      failing. 638 passed, coverage 95.52%
+- [x] **TZ-01 · The sleep-date bound survived the C59-C65 timezone sweep** (found and fixed
+      2026-08-13, surfaced by TEST-01's verification run). `SleepLogCreate._plausible_night`
+      still asked `datetime.now(utc).date()` what day it was, while `core/localtime`'s docstring
+      claims every "what day is it for this user" question goes through it. A pydantic validator
+      has no user, so it *cannot* consult localtime — which makes a day-precise bound the wrong
+      shape for it, not just the wrong implementation. Local dates span UTC-12..UTC+14, so a
+      member's today sits up to a day either side of UTC's, and **a real Asia/Kolkata member had
+      their tomorrow rejected for the 5.5 hours a day when IST is already on the next date**.
+      The bound is now loose by one further day in each direction (`+2` future, `-731` past),
+      which keeps register C26's actual intent — reject 1970 and 2099 — true in every zone,
+      and leaves the day-precise question to the per-user code that has a timezone to consult.
+      Caught because the verification run crossed 18:30 UTC: the identical window that broke
+      the three tests fixed earlier under "date.today() is banned in the backend suite".
+      `tests/test_sleep_date_bounds.py` (6 cases) pins it against **UTC offsets rather than
+      wall-clock time**, so it asserts the same thing at 03:00 and 23:00 — which
+      `test_input_bounds::test_sleep_rejects_implausible_dates`, the test that failed, cannot.
+      Still open nearby: `services/organizations.py:156` also takes `utcnow().date()`, but for
+      contract access windows, where a UTC boundary is arguably correct — **[decide]**
+- [ ] **TEST-01 · The backend suite is not hermetic** — `services/ai.complete` picks its provider
+      from *key presence*, never from `TESTING`, and `backend/.env` carries a live
+      `OPENAI_API_KEY`. So a local `pytest` run makes **real OpenAI calls**: billable, slow, and
+      non-deterministic. Two tests fail as a direct result —
+      `test_habits::test_decompose_names_the_goal_even_without_an_llm_key` and
+      `test_safety_plan::test_crisis_reply_is_unchanged_with_and_without_a_plan` — both of which
+      exist to pin the "degrades without keys" contract. **Confirmed**: both pass when the run is
+      given blank keys. The contract is therefore only ever verified on CI, and a developer
+      running the suite locally sees red on two tests that are not broken. `conftest` should
+      blank the provider keys when `TESTING=1`, so hermetic is the default rather than a property
+      of CI's environment
+- [ ] **DOC-01 · `CLAUDE.md` understates iOS readiness** — its gotcha says Sign in with
+      Apple/Google are inert with "no `.entitlements` file yet; no `GIDClientID`".
+      `apps/ios/CereBro/CereBro.entitlements` **exists** and declares
+      `com.apple.developer.applesignin`, `com.apple.developer.healthkit` and `aps-environment`.
+      The `GIDClientID` half is still accurate (read in `GoogleAuth.swift`, absent from
+      `Info.plist`). Split the claim so the file's existence is not denied
+- [ ] **WEB-01 · Two `react-hooks/exhaustive-deps` warnings in `apps/app`** —
+      `(authed)/journal/page.tsx:71` (missing `reload`) and `onboarding/page.tsx:317` (missing
+      `PHASES`). `next lint` exits 0 on warnings so CI is green, which is exactly how a stale
+      closure reaches production
+
+**Checked and found sound** (recorded so the next review does not re-derive them): the
+safety-never-blocks rule holds end to end — `ai.complete` catches broadly so the keyword floor
+still classifies when the LLM is down, and `email.send_email`/`sms.send_sms` are explicitly
+non-raising, so a failing ops alert cannot 500 a crisis reply. `Settings._guard_production`
+covers secret, admin password, seed data, rate-limit switch, CORS wildcard and trusted hosts.
+The admin router guards every route at the router level. The one f-string SQL
+(`users.py:347`) takes its table name from a literal tuple and binds the rest. No `.env`,
+`.p8`, `.jks` or service-account JSON has ever been committed on any branch.
+
 ## Open — merged from `v2` (Abhimanyu, 2026-08-13)
 
 `355deb8d` "Android: fix onboarding, navigation and mindful tools" — fast-forwarded into

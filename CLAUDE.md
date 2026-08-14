@@ -12,6 +12,7 @@ Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system map, backend/iOS/web layers, data flows, cross-stack contracts
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) — setup, env vars, testing, CI/CD, deploy, conventions
 - [docs/TODO.md](docs/TODO.md) — prioritized known debt + open work (update it when you fix or find something)
+- [docs/WORLD_CLASS.md](docs/WORLD_CLASS.md) — 300-point roadmap from the 2026-08-13 full review; §0 is the ~25 that actually gate "world class", the rest is downstream. Items are citable as `WC-114`
 - [docs/RELEASE_PLAN.md](docs/RELEASE_PLAN.md) / [docs/SHIP_READINESS.md](docs/SHIP_READINESS.md) / [docs/PRIVACY_LABELS.md](docs/PRIVACY_LABELS.md) — launch runbooks
 - [docs/SLEEP_TRACKING.md](docs/SLEEP_TRACKING.md) / [docs/WEB_APP_PLAN.md](docs/WEB_APP_PLAN.md) / [docs/INVESTOR_READINESS.md](docs/INVESTOR_READINESS.md) / [docs/DPDP_COMPLIANCE.md](docs/DPDP_COMPLIANCE.md) — research-validated plans (sleep module, web client + admin v2, investor benchmarks/gaps, India data-protection checklist)
 - [docs/CLAIMS_MAP.md](docs/CLAIMS_MAP.md) — every doubtable user-facing claim → the mechanism + test that makes it true; `scripts/check-claims.mjs` fails CI on a banned phrase across web/app/iOS/Android copy
