@@ -178,22 +178,33 @@ the signing-key clash recorded in July is gone, `adb install -r` succeeds.
       iOS reads `Locale.current.region`, which on iOS is the user's explicit Region setting
       rather than the language — a genuinely different signal, so probably correct. **Unverified
       — confirm on a device before assuming**
-- [ ] **UX-01 · The primary CTA on sign-in is a button that cannot work.** "Continue with
+- [x] **UX-01 · The primary CTA on sign-in is a button that cannot work.** "Continue with
       Google" is the full-width filled purple control; email sits below a divider as the
       secondary. Google sign-in is inert (no `GIDClientID` in the app; see the iOS gotcha in
       `CLAUDE.md`). Until it is configured, the most prominent control on the sign-in screen
       does nothing — either configure it or demote it below email
-- [ ] **UX-02 · The password placeholder renders as eight dots**, visually identical to a
+- [x] **UX-02 · The password placeholder renders as eight dots**, visually identical to a
       saved password. A member landing on sign-in sees what looks like a filled field, and the
       correctly-disabled "Continue with email" therefore looks broken rather than waiting. Use
       a text placeholder, or none
-- [ ] **UX-03 · The password field sits under the keyboard on sign-in.** `ToolScreens.kt` got
+- [x] **UX-03 · The password field sits under the keyboard on sign-in.** `ToolScreens.kt` got
       a `BringIntoViewRequester` for exactly this problem in `355deb8d`; the auth screen never
       did. Same fix, different screen
-- [ ] **UX-04 · Today's sleep prompt truncates mid-word** — "A 20-second check-i…". The row
+- [x] **UX-04 · Today's sleep prompt truncates mid-word** — "A 20-second check-i…". The row
       gives "Log it" and the dismiss ✕ their full width and lets the subtitle clip
-- [ ] **UX-05 · Appearance subtitle reads "System default · switches with your phone or your
+- [x] **UX-05 · Appearance subtitle reads "System default · switches with your phone or your
       call"** — "your call" appears to be a copy error
+      **All five fixed 2026-08-14**, and four re-verified on the same handset by screenshot:
+      the Google button and its divider now render only when `GOOGLE_WEB_CLIENT_ID` is
+      non-blank (the same call audit H1 made on the paywall's dead "Start free trial" —
+      removed rather than left to apologise for itself, and it returns with no further change
+      once the client id lands); the placeholder reads "Your password"; the sleep banner's
+      `maxLines` goes 2 → 3, which fits because three lines of `bodyMedium` plus the row's
+      12dp padding lands at ~72dp, the ceiling the action box is already sized against — so
+      the copy did not have to be cut, and truncating the reassurance out of a prompt asking
+      someone to act was the wrong thing to drop; the Appearance idiom is now unambiguous.
+      **UX-03 is implemented but NOT visually re-verified** — it needs the field focused with
+      the IME up, and the shot budget was spent. Treat as implemented-not-verified.
 - [x] **Verified good on device**: the bottom-nav `navigationBarsPadding()` change from
       `355deb8d` is **correct** on gesture navigation — the bar clears the gesture area with
       proper spacing. That was the open device-only question from the merge, now settled.

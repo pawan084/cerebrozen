@@ -549,7 +549,16 @@ internal fun InfoBanner(
             text,
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
-            maxLines = 2,
+            // Three, not two. At 720px the text column is what is left after the
+            // icon, an action label and a 48dp dismiss target, and the sleep
+            // banner — "How was last night? A 20-second check-in." — clipped
+            // mid-word to "A 20-second check-i…" on a real handset. Truncating
+            // the reassurance out of a prompt asking someone to do something is
+            // the wrong thing to drop.
+            // Still inside the banner's height budget: three lines of bodyMedium
+            // plus this Row's 12dp of vertical padding lands at ~72dp, which is
+            // the ceiling the action Box below is already sized against.
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )

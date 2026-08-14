@@ -604,7 +604,11 @@
     <string name="you_group_safety">Privacy &amp; safety</string>
     <string name="you_reminder_state_on">On · a gentle daily check-in</string>
     <string name="you_reminder_state_off">Off · tap to set one</string>
-    <string name="you_appearance_state">%1$s · switches with your phone or your call</string>
+    <!-- "or your call" read as a telephone call sitting right beside the word
+         "phone". The idiom (your call = your decision) is also the kind that
+         lands badly for the many Indian users reading English as a second
+         language. Same meaning, no ambiguity. -->
+    <string name="you_appearance_state">%1$s · switches with your phone, or your choice</string>
     <string name="journal_lock_state_on">Lock is on · manage privacy</string>
     <string name="journal_lock_state_off">Lock is off · manage privacy</string>
     <plurals name="journal_month_count">
@@ -723,6 +727,11 @@
     <string name="auth_name_placeholder">Your name</string>
     <string name="auth_email_label">Email</string>
     <string name="auth_email_placeholder">you@email.com</string>
+    <!-- Was a literal "••••••••", which is exactly what a *filled* password
+         field looks like. A member landing on sign-in saw what appeared to be a
+         saved password, so the correctly-disabled submit button read as broken
+         rather than waiting for input. Words, not dots. -->
+    <string name="auth_password_placeholder">Your password</string>
     <string name="auth_password_label">Password</string>
     <string name="auth_hide_password">Hide password</string>
     <string name="auth_show_password">Show password</string>

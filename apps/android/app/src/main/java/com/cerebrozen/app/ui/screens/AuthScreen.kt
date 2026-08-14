@@ -37,6 +37,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +115,7 @@ internal suspend fun signUpThenPersonalize(
  * Google. Same backend flows as iOS and the web app; Google degrades gracefully
  * until a web client id is configured. */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)   // BringIntoViewRequester, as in ToolScreens
 fun AuthScreen(
     onBack: (() -> Unit)? = null,
     initialCreating: Boolean = false,
@@ -185,22 +191,34 @@ fun AuthScreen(
             modifier = Modifier.appear(2),
         )
 
-        AuthWhiteButton(
-            text = stringResource(R.string.auth_google_cta),
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().appear(3),
-        ) {
-            run {
-                val result = googleIdToken(context, clientId)
-                if (result == null) {
-                    error = googleNotSetup
-                } else {
-                    Session.signInWithGoogle(result.first, result.second)
+        // Only offered when it can actually work. `GOOGLE_WEB_CLIENT_ID` is blank
+        // until the OAuth client exists, and this button was rendered anyway — as
+        // the full-width filled control, i.e. the most prominent thing on the
+        // sign-in screen was the one thing that could not sign anyone in. Tapping
+        // it surfaced "not set up", which is an apology, not a feature.
+        //
+        // Same call the paywall already made (audit H1): the permanently-disabled
+        // "Start free trial" button was removed rather than left to explain
+        // itself. When the client id lands, this and its divider come back with
+        // no further change.
+        if (clientId.isNotBlank()) {
+            AuthWhiteButton(
+                text = stringResource(R.string.auth_google_cta),
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().appear(3),
+            ) {
+                run {
+                    val result = googleIdToken(context, clientId)
+                    if (result == null) {
+                        error = googleNotSetup
+                    } else {
+                        Session.signInWithGoogle(result.first, result.second)
+                    }
                 }
             }
-        }
 
-        AuthDivider(if (mode == AuthMode.Password) stringResource(R.string.auth_divider_email) else stringResource(R.string.auth_divider_otp))
+            AuthDivider(if (mode == AuthMode.Password) stringResource(R.string.auth_divider_email) else stringResource(R.string.auth_divider_otp))
+        }
 
         when (mode) {
             AuthMode.Password -> {
@@ -232,7 +250,25 @@ fun AuthScreen(
                         keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
                 }
                 AuthFieldLabel(stringResource(R.string.auth_password_label)) {
-                    AppTextField(password, { password = it }, "", placeholderText = "••••••••", singleLine = true,
+                    // Sits at the bottom of the form, so the IME covers it the
+                    // moment it takes focus — you type a password you cannot see
+                    // into a field you cannot see. `ToolScreens.kt` solved this
+                    // for the journaling tools; the auth screen never got it,
+                    // and this is the field where it matters most.
+                    val bringIntoView = remember { BringIntoViewRequester() }
+                    AppTextField(password, { password = it }, "",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .bringIntoViewRequester(bringIntoView)
+                            .onFocusChanged { focusState ->
+                                if (focusState.isFocused) scope.launch {
+                                    // Wait out the IME inset animation, then lift
+                                    // the whole field above the keyboard.
+                                    delay(250)
+                                    bringIntoView.bringIntoView()
+                                }
+                            },
+                        placeholderText = stringResource(R.string.auth_password_placeholder), singleLine = true,
                         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { submitPw() }),
