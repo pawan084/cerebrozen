@@ -253,8 +253,31 @@ internal fun restingFloat(
     return value
 }
 
+/**
+ * Test-only override for [rememberReduceMotion]. Null in every real run.
+ *
+ * Instrumented tests need the app's infinite animations stilled or Espresso
+ * never sees the main looper go idle and `ActivityScenario.launch` hangs — the
+ * same trap `CLAUDE.md` records for the iOS suite ("keep new animated/async
+ * features gated the same way or the suite hangs"), which reached Android only
+ * because Android had no suite to hang until 2026-08-14.
+ *
+ * It exists as a variable rather than a device setting because the device
+ * setting is not always available to us: zeroing `animator_duration_scale` over
+ * adb is refused on ColorOS, which demands `WRITE_SECURE_SETTINGS`. A test hook
+ * that depends on a permission the handset withholds is not a hook. This also
+ * makes CI deterministic — the suite no longer cares what the runner's animation
+ * settings happen to be.
+ *
+ * androidTest runs in the app's own process, so a plain variable is enough and
+ * keeps test libraries out of `main`.
+ */
+@Volatile
+internal var reduceMotionOverrideForTests: Boolean? = null
+
 @Composable
 internal fun rememberReduceMotion(): Boolean {
+    reduceMotionOverrideForTests?.let { return it }
     val context = LocalContext.current
     // Observed, not sampled once: toggling "Remove animations" in Settings used
     // to have no effect until the Activity was recreated. Settings.Global is a
