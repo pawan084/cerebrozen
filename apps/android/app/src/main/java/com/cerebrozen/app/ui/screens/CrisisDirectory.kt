@@ -1,11 +1,14 @@
 package com.cerebrozen.app.ui.screens
 
+import android.content.Context
+import android.telephony.TelephonyManager
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.cerebrozen.app.R
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.net.Session
@@ -79,10 +82,46 @@ internal fun primaryCrisisLine(regionRaw: String?): CrisisLine =
     crisisLinesFor(regionRaw).first { it.isCrisisLine }
 
 /** Effective crisis region: the explicit profile override when set, else the
- * device locale's country — same resolution the server documents. */
+ * country the device reports. */
 internal fun effectiveRegion(stored: String?, deviceCountry: String?): String {
     val explicit = normalizeRegion(stored)
     return if (explicit.isNotEmpty()) explicit else normalizeRegion(deviceCountry)
+}
+
+/**
+ * Where this phone actually is — **not** what language its UI is set to.
+ *
+ * This used to read `Locale.getDefault().country`, and that is a question about
+ * language, not geography. Found on a real handset (2026-08-14): a OnePlus sold
+ * in India ships `persist.sys.locale=en-GB` out of the box, while its SIM,
+ * network and timezone all said `IN`. The You screen therefore offered
+ * "Samaritans · 116 123" — a UK number that does not answer from India — to a
+ * user standing in India, and Tele-MANAS, which the design rule says leads
+ * every crisis surface (REDESIGN §2.3), was nowhere on the screen.
+ *
+ * en-GB is a factory default across OnePlus, Oppo, Xiaomi and Realme handsets
+ * sold in India, so this was not an edge case in the primary market.
+ *
+ * The order is deliberate:
+ *  - **network** first — where the handset is registered *right now*, so a
+ *    visitor gets the numbers that work where they are standing rather than the
+ *    ones from home;
+ *  - **SIM** next — right whenever there is no service, which is exactly when
+ *    someone may be reaching for an emergency number;
+ *  - **locale** last, because it is better than nothing and is all a wifi-only
+ *    tablet has.
+ *
+ * Every lookup is wrapped: `TelephonyManager` is absent on non-telephony
+ * devices and some OEM builds throw from these getters. A crisis surface must
+ * degrade to a worse answer, never to a crash.
+ */
+internal fun deviceCrisisCountry(context: Context): String {
+    val tm = runCatching { context.getSystemService(TelephonyManager::class.java) }.getOrNull()
+    val network = runCatching { tm?.networkCountryIso }.getOrNull()
+    val sim = runCatching { tm?.simCountryIso }.getOrNull()
+    return normalizeRegion(network)
+        .ifEmpty { normalizeRegion(sim) }
+        .ifEmpty { normalizeRegion(Locale.getDefault().country) }
 }
 
 @StringRes
@@ -104,18 +143,23 @@ internal fun regionLabelRes(regionRaw: String?): Int = when (normalizeRegion(reg
  */
 @Composable
 internal fun rememberCrisisRegion(): State<String> {
+    val context = LocalContext.current
+    // Resolved once and reused for both the seed and the refresh: two calls
+    // could disagree mid-flight (a SIM registering while the profile loads) and
+    // flip the helpline under the user's thumb.
+    val device = remember(context) { deviceCrisisCountry(context) }
     val region = remember {
         mutableStateOf(
             effectiveRegion(
                 runCatching { Session.prefGet(CRISIS_REGION_PREF) }.getOrNull(),
-                Locale.getDefault().country,
+                device,
             ),
         )
     }
     LaunchedEffect(Unit) {
         runCatching { Api.me().optString("region") }.onSuccess { stored ->
             runCatching { Session.prefPut(CRISIS_REGION_PREF, stored) }
-            region.value = effectiveRegion(stored, Locale.getDefault().country)
+            region.value = effectiveRegion(stored, device)
         }
     }
     return region

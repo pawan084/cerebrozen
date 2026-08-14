@@ -144,6 +144,62 @@ The admin router guards every route at the router level. The one f-string SQL
 (`users.py:347`) takes its table name from a literal tuple and binds the rest. No `.env`,
 `.p8`, `.jks` or service-account JSON has ever been committed on any branch.
 
+## Open — first real-device walk (2026-08-14, OnePlus CPH2681, Android 14)
+
+The Android app had **never been run on a device or emulator** by any automated or manual
+pass — 49 unit-test files, zero instrumented tests. This is the first walk: sign-in through
+Today and You against a live local backend (`adb reverse`). Six screenshots. The emulator is
+broken on this machine (crashes on `opengl32sw`), so the phone is the smoke device now — and
+the signing-key clash recorded in July is gone, `adb install -r` succeeds.
+
+- [x] **SAF-11 · The crisis region followed the UI language, not the phone's location**
+      (found and fixed 2026-08-14). `rememberCrisisRegion` resolved via
+      `Locale.getDefault().country`, which answers "what language is this UI in", not "where
+      is this handset". The device ships `persist.sys.locale=en-GB` from the factory while its
+      **SIM, network and timezone all reported IN** — so the You screen offered
+      **"Samaritans · 116 123", a UK number that does not answer from India**, and Tele-MANAS
+      was nowhere, in direct violation of "Tele-MANAS leads every crisis surface"
+      (REDESIGN §2.3). en-GB is a factory default across OnePlus, Oppo, Xiaomi and Realme
+      handsets sold in India, so the primary market was the one getting it wrong.
+      New `deviceCrisisCountry(context)` resolves **network → SIM → locale**: network first so
+      a visitor gets the numbers that answer where they are standing; SIM next because it is
+      right exactly when there is no service, which is when someone may be reaching for a
+      helpline; locale last, since it is all a wifi-only tablet has. Every getter is wrapped —
+      `TelephonyManager` is absent on non-telephony devices and some OEM builds throw — because
+      a crisis surface must degrade to a worse answer, never to a crash. Resolved once and
+      reused for seed and refresh, so a SIM registering mid-load cannot flip the helpline under
+      the user's thumb. `effectiveRegion` stays pure, so an explicit profile choice still wins.
+      **Verified on the same handset**: the row now reads "Tele-MANAS — real people, 24/7 ·
+      14416". `CrisisCountryResolutionTest` (6 cases) pins the order; mutation-checked by
+      reverting to locale-first, which fails 3 of 6.
+      **This is the gap in SAF-10's gate**: `check-crisis-lines.mjs` proves the three stacks
+      agree on *what each region's numbers are*, and structurally cannot catch *the wrong
+      region being picked*. Different bug, and only a device found it.
+      iOS reads `Locale.current.region`, which on iOS is the user's explicit Region setting
+      rather than the language — a genuinely different signal, so probably correct. **Unverified
+      — confirm on a device before assuming**
+- [ ] **UX-01 · The primary CTA on sign-in is a button that cannot work.** "Continue with
+      Google" is the full-width filled purple control; email sits below a divider as the
+      secondary. Google sign-in is inert (no `GIDClientID` in the app; see the iOS gotcha in
+      `CLAUDE.md`). Until it is configured, the most prominent control on the sign-in screen
+      does nothing — either configure it or demote it below email
+- [ ] **UX-02 · The password placeholder renders as eight dots**, visually identical to a
+      saved password. A member landing on sign-in sees what looks like a filled field, and the
+      correctly-disabled "Continue with email" therefore looks broken rather than waiting. Use
+      a text placeholder, or none
+- [ ] **UX-03 · The password field sits under the keyboard on sign-in.** `ToolScreens.kt` got
+      a `BringIntoViewRequester` for exactly this problem in `355deb8d`; the auth screen never
+      did. Same fix, different screen
+- [ ] **UX-04 · Today's sleep prompt truncates mid-word** — "A 20-second check-i…". The row
+      gives "Log it" and the dismiss ✕ their full width and lets the subtitle clip
+- [ ] **UX-05 · Appearance subtitle reads "System default · switches with your phone or your
+      call"** — "your call" appears to be a copy error
+- [x] **Verified good on device**: the bottom-nav `navigationBarsPadding()` change from
+      `355deb8d` is **correct** on gesture navigation — the bar clears the gesture area with
+      proper spacing. That was the open device-only question from the merge, now settled.
+      Light Dawn renders cleanly, the crisis door is present top-right on Today, and sign-in
+      works end to end against a local backend
+
 ## Open — merged from `v2` (Abhimanyu, 2026-08-13)
 
 `355deb8d` "Android: fix onboarding, navigation and mindful tools" — fast-forwarded into
