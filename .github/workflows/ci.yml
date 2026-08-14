@@ -151,6 +151,14 @@ jobs:
       # weaken while the other two look fine.
       - name: CSP floor check
         run: node scripts/check-csp-sync.mjs
+      # The crisis directory is hand-duplicated across backend, iOS and Android
+      # like the contracts above — but it is the one where drift is measured in
+      # human harm. A member in crisis is shown these numbers by the client and
+      # told them again by the server (crisis.reply_suffix). They agreed on
+      # 2026-08-13 by discipline alone; this keeps them agreeing. Order counts:
+      # "Tele-MANAS leads every crisis surface" is a design rule, not a taste.
+      - name: Crisis directory consistency
+        run: node scripts/check-crisis-lines.mjs
       - name: Typecheck + lint web
         working-directory: apps/web
         run: |
