@@ -227,10 +227,26 @@ class SleepLogCreate(BaseModel):
         # night in 1970 or 2099, which then anchored weekly summaries, trends
         # and the wind-down nudge. Tomorrow is allowed for clock skew; two
         # years of backfill is generous for any real diary.
+        #
+        # The bound is deliberately loose by one further day in each direction,
+        # and that slack is load-bearing rather than sloppy. A pydantic schema
+        # has no user, so it cannot ask `core/localtime` whose day this is — it
+        # only has the container's UTC date. Local dates run from UTC-12 to
+        # UTC+14, so a member's "today" can legitimately sit a day either side
+        # of UTC's. Without the slack this validator rejected a real Asia/
+        # Kolkata member's tomorrow for the 5.5 hours a day when IST is already
+        # on the next date — the same off-by-one-day-east class as C59-C65,
+        # which this line survived. It also failed
+        # `test_input_bounds::test_sleep_rejects_implausible_dates` in that same
+        # window, since the suite asks the *account* what day it is.
+        #
+        # Precision is not this check's job: it exists to reject 1970 and 2099,
+        # and the exact day boundary belongs to the per-user code that has a
+        # timezone to consult. Widening keeps C26 true in every zone.
         today = datetime.now(dt_timezone.utc).date()
-        if v > today + timedelta(days=1):
+        if v > today + timedelta(days=2):      # 1 skew + 1 timezone
             raise ValueError("That date is in the future.")
-        if v < today - timedelta(days=730):
+        if v < today - timedelta(days=731):    # 730 backfill + 1 timezone
             raise ValueError("That date is too far in the past to record.")
         return v
 
