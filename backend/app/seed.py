@@ -492,11 +492,27 @@ async def seed(db: AsyncSession) -> None:
     # before they can upload into them. So it seeds above the demo-data guard.
     await _seed_media(db)
 
+    # The administrator is structural for the same reason, and for a sharper one:
+    # `is_admin` is written **nowhere else in the backend** — no route grants or
+    # revokes it — so an installation that never reaches this line cannot reach its
+    # own admin console short of an UPDATE against Postgres. Production was exactly
+    # that installation: `_guard_production` *requires* SEED_DEMO_DATA=false, and
+    # while this call sat below the demo guard, every real deploy came up with no
+    # admin account at all while ADMIN_EMAIL/ADMIN_PASSWORD sat in the environment
+    # looking like they had provisioned one.
+    #
+    # Safe above the guard on both counts that matter: the boot guard already
+    # refuses to start when ADMIN_PASSWORD is still the demo value, so this cannot
+    # mint a known-password admin in production; and `_ensure_user` returns an
+    # existing row untouched, so rotating ADMIN_PASSWORD in the environment does
+    # not silently reset the account on the next reboot (change it in the product,
+    # not by restarting the container).
+    await _ensure_user(db, settings.admin_email, settings.admin_password, name="Admin", admin=True)
+
     if not settings.seed_demo_data:
         await db.commit()
         return
 
-    await _ensure_user(db, settings.admin_email, settings.admin_password, name="Admin", admin=True)
     await _ensure_user(db, "pawan@cerebro.app", "demo12345", name="Pawan", admin=False)
 
     # Additive by title: new catalogue entries reach existing dev DBs on boot,
