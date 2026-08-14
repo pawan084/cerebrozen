@@ -1743,20 +1743,16 @@
     <string name="mg_color_tap">Color Tap</string><string name="mg_color_tap_desc">Tap only the target colour while distractions appear.</string>
     <string name="mg_freeze_switch">Freeze Switch</string><string name="mg_freeze_switch_desc">Switch carefully between move and freeze.</string>
     <string name="mg_pattern_recall">Pattern Recall</string><string name="mg_pattern_recall_desc">Remember a short sequence of symbols.</string>
-    <string name="mg_object_tray">Object Tray</string><string name="mg_object_tray_desc">Notice objects, then recall which one was present.</string>
-    <string name="mg_path_memory">Path Memory</string><string name="mg_path_memory_desc">Watch a short path and choose its final direction.</string>
     <string name="mg_thought_sort">Thought Sort</string><string name="mg_thought_sort_desc">Notice whether a sample thought traps you or supports a workable next step.</string>
     <string name="mg_rule_switch">Rule Switch</string><string name="mg_rule_switch_desc">Respond as the rule changes between rounds.</string>
     <string name="mg_breathing_rhythm">Breathing Rhythm</string><string name="mg_breathing_rhythm_desc">Follow expanding and settling circles.</string>
-    <string name="mg_zen_sand">Zen Sand</string><string name="mg_zen_sand_desc">Create a slow pattern through deliberate taps.</string>
-    <string name="mg_selective_attention">Find one thing among many</string><string name="mg_reaction_control">Sometimes the move is not moving</string><string name="mg_working_memory">Hold a sequence in mind</string><string name="mg_visual_memory">Notice what changed</string><string name="mg_spatial_memory">Retrace the path</string>
+    <string name="mg_selective_attention">Find one thing among many</string><string name="mg_reaction_control">Sometimes the move is not moving</string><string name="mg_working_memory">Hold a sequence in mind</string>
     <string name="mg_cognitive_reframing">Name the thought pattern</string><string name="mg_mental_flexibility">Follow the rule as it changes</string><string name="mg_calm_focus">A breath to follow</string><string name="mg_relaxation">Nothing to win here</string><string name="mg_round">Round %1$d of %2$d</string><string name="mg_score">Noticed %1$d</string><string name="mg_play_again">Play again</string><string name="mg_back_games">Back to games</string>
     <string name="mg_result_eyebrow">Activity complete</string><string name="mg_result_title">Beautifully done</string>
     <string name="mg_result_score">%1$d of %2$d mindful responses</string><string name="mg_result_message">You stayed with the activity through every round. Progress comes from returning, not perfection.</string>
     <string name="mg_stroop_flow">Stroop Flow</string><string name="mg_stroop_flow_desc">Name the ink colour, not the written word.</string>
-    <string name="mg_mirror_tap">Mirror Tap</string><string name="mg_mirror_tap_desc">Alternate left and right with a steady rhythm.</string>
     <string name="mg_still_point">Still Point</string><string name="mg_still_point_desc">Follow a quiet pulse and let attention settle.</string>
-    <string name="mg_inhibitory_control">Hold back the easy answer</string><string name="mg_coordination">Left, right, keep the beat</string>
+    <string name="mg_inhibitory_control">Hold back the easy answer</string>
     <string name="mg_ink_prompt">Tap the ink colour</string><string name="mg_left">Left</string><string name="mg_right">Right</string>
     <string name="mg_follow_side">Follow the glowing side</string><string name="mg_colour_green">Green</string><string name="mg_colour_cyan">Cyan</string><string name="mg_colour_purple">Purple</string>
     <string name="mg_rule_prompt">Use the rule: %1$s</string><string name="mg_rule_small">Tap the smaller number</string><string name="mg_rule_large">Tap the larger number</string>

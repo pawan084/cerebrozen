@@ -174,9 +174,19 @@ fix below. What it changed and what it leaves open:
 - [ ] **The three onboarding intro cards all call `next()`** — three tappable cards with one
       destination, described in the comment as each opening "the next required step". Either
       they should route to distinct steps or read as one control
-- [ ] **`mg_object_tray`, `mg_path_memory`, `mg_mirror_tap`, `mg_zen_sand`** (and their
-      `_desc` pairs) are now unreferenced strings. No Hindi regression: the `mg_*` keys were
-      never in `values-hi`, so that surface already falls back to English
+- [x] **The retired games' strings are gone** (2026-08-14, `WC-195`). Eleven, not the eight
+      first counted: the four titles and their `_desc` pairs, plus three faculty labels
+      (`mg_coordination`, `mg_spatial_memory`, `mg_visual_memory`) that lost their only users
+      when the mechanics went. Found by scanning every `mg_*` key for a `R.string.` reference
+      rather than by listing the games from memory, and safe to delete because the codebase
+      contains **zero `getIdentifier` calls** — nothing could be reaching them dynamically.
+      Re-scanned after: no `mg_*` string is unreferenced. `:app:check` green
+- [ ] **Mindful Games is entirely untranslated — 56 `mg_*` strings in `values`, 0 in
+      `values-hi`** (`WC-194`). Every game title, description and faculty label falls back to
+      English for a Hindi user, which is the largest single localisation hole on Android.
+      Deliberately **not** done in bulk by an agent: 56 strings of mental-health copy is a
+      content task where a bad translation is worse than the English fallback. Needs a native
+      speaker, or a reviewer who is one
 
 ## Open — Light Dawn redesign (`ref/`, started 2026-08-06)
 
