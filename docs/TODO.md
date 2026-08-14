@@ -211,6 +211,36 @@ the signing-key clash recorded in July is gone, `adb install -r` succeeds.
       Light Dawn renders cleanly, the crisis door is present top-right on Today, and sign-in
       works end to end against a local backend
 
+## Open — instrumented tests exist, and do not yet pass unattended (2026-08-14, `WC-281`)
+
+- [x] **The `androidTest` source set exists for the first time.** Runner + dependencies wired
+      (`testInstrumentationRunner`, `androidx.test` ext/runner/rules/uiautomator, Compose
+      `ui-test-junit4`). Verified working end to end on the phone: `connectedDebugAndroidTest`
+      discovered and started **3 tests on CPH2681 — 1 completed, 0 failed**. The infrastructure
+      is real, not scaffolded.
+      `DeviceSmokeTest` covers only what a JVM cannot answer — the APK actually starting on
+      Android, surviving recreation, and the crisis region resolving from **real** telephony
+      rather than a shadow. Everything assertable off-device stays in `src/test` on Robolectric,
+      which runs everywhere and costs no emulator
+- [ ] **The two `ActivityScenario` tests hang — the app never goes idle.** Espresso waits for
+      the main looper to quiesce and the app's infinite Compose animations (the sheen, the
+      breathing orb) never let it. This is **the same gotcha `CLAUDE.md` already documents for
+      iOS** — "`-resetState YES` … skips the splash and the real audio engine — keep new
+      animated/async features gated the same way or the suite hangs" — arriving on Android
+      because Android never had a suite to hang.
+      The usual mitigation (`adb shell settings put global animator_duration_scale 0`) is
+      **refused by this handset**: ColorOS requires `WRITE_SECURE_SETTINGS` and denies it to
+      adb, so device settings cannot be the answer here even manually.
+      The fix is the one iOS already made — a hook **in the app** that stills infinite
+      animations under test, rather than depending on a device setting. `rememberReduceMotion()`
+      is the natural seam: it already observes `ANIMATOR_DURATION_SCALE`, so give it a
+      test-only override (instrumentation argument or a debug `BuildConfig` flag) and both
+      tests should settle. Until then the launch tests are written but not runnable unattended
+- [ ] **Not wired into CI yet, deliberately.** A suite that hangs would turn a 10-minute job
+      into a timeout and teach everyone to ignore it. Wire it once the animation hook lands —
+      and note CI has no device, so it needs Gradle Managed Devices or
+      `reactivecircus/android-emulator-runner`, not the phone
+
 ## Open — merged from `v2` (Abhimanyu, 2026-08-13)
 
 `355deb8d` "Android: fix onboarding, navigation and mindful tools" — fast-forwarded into

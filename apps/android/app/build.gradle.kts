@@ -61,6 +61,14 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
+        // Instrumented tests. Until 2026-08-14 this app had none at all — 49 JVM
+        // test files and nothing that had ever rendered a screen on hardware.
+        // The first device walk then found five real defects in under an hour,
+        // one of them a UK helpline being offered to Indian users, because each
+        // lived in a path that *guesses* (the locale, the build config, the
+        // available width) and every JVM test passes those in explicitly.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         // Same backend as iOS/web. Debug talks to the dev machine via the
         // emulator's host loopback (cleartext allowed only in the debug
         // manifest overlay); release is pinned to production HTTPS.
@@ -370,4 +378,15 @@ dependencies {
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // On-device tests. These cover only what a JVM cannot answer: a real IME
+    // with real insets, a real NavHost between real screens, and real telephony.
+    // Anything assertable off-device stays in `src/test` with Robolectric —
+    // that suite runs everywhere and costs no emulator.
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
