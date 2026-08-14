@@ -211,6 +211,45 @@ the signing-key clash recorded in July is gone, `adb install -r` succeeds.
       Light Dawn renders cleanly, the crisis door is present top-right on Today, and sign-in
       works end to end against a local backend
 
+## Open — SEC-03 · The organisation roles are stored and never consulted (2026-08-14)
+
+**This is an authorization gap on the B2B surface, not a modelling gap.** Scoping RBAC turned
+up the opposite of what `REDESIGN_V2` §141 says ("RBAC is **binary** — `User.is_admin`; the
+portal needs 7 roles"). That line is stale. Four least-privilege roles already exist and are
+already persisted:
+
+    ROLE_BENEFITS_OWNER · ROLE_PROGRAMME_ADMIN · ROLE_ANALYST · ROLE_PRIVACY_REVIEWER
+
+`OrgMembership.role` / `OrgAdmin.role` carry them (`models/organization.py:106`, defaulting to
+the least-privileged `analyst`), `POST /admin/organizations` assigns `benefits_owner` to the
+first owner, and `ORG_ROLES` bounds the set.
+
+**Nothing checks them.** Across the whole backend the only appearance of `role` outside the
+model is an `ORDER BY` in `organizations.py:197` and the assignment in `admin.py:893`. There is
+no `require_role`, no dependency, no comparison. So **every org admin holds every power** — an
+`analyst` can invite and remove seats, edit the privacy centre and change the reporting
+threshold exactly like a `benefits_owner`. The roles are decoration: the portal shows a
+least-privilege model that the API does not implement.
+
+Same shape as the sponsorship bug fixed on 2026-08-13 — a correct concept, modelled, stored,
+and never consulted — and worth reading as a pattern rather than two incidents: this codebase's
+characteristic failure is *building the right thing and not wiring it up*. Grep for
+"defined but never referenced" before assuming any model field is enforced.
+
+- [ ] **Build the enforcement layer.** A `require_org_role(*roles)` dependency beside
+      `get_current_admin`, then apply it per route. The scoping is a **product decision** and
+      should be written down before code: which of the four may invite a seat, remove one,
+      change `reporting_threshold`, edit the privacy centre, read the audit trail, run an
+      eligibility import? `apps/portal` ROL-01 is the design source
+- [ ] **Then test it as authorization, not as happy path.** `tests/test_org.py` has no 403
+      assertions at all today. Every role needs a test that it *cannot* do what it must not —
+      the cheap version is one parametrised test per protected route × role
+- [ ] **Correct `REDESIGN_V2` §141** once the above lands; "binary, needs 7 roles" is no longer
+      an accurate description of either the model or the gap
+- [ ] **Open question for the owner:** the design called for 7 roles and 4 exist. Are the other
+      three still wanted, or did the model settle deliberately at four? **[decide]** — do not
+      add three empty roles to match an old table
+
 ## Open — instrumented tests exist, and do not yet pass unattended (2026-08-14, `WC-281`)
 
 - [x] **The `androidTest` source set exists for the first time.** Runner + dependencies wired
