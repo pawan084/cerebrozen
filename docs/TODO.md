@@ -211,44 +211,44 @@ the signing-key clash recorded in July is gone, `adb install -r` succeeds.
       Light Dawn renders cleanly, the crisis door is present top-right on Today, and sign-in
       works end to end against a local backend
 
-## Open — SEC-03 · The organisation roles are stored and never consulted (2026-08-14)
+## Closed — SEC-03 was wrong. Org RBAC is implemented and enforced (2026-08-14)
 
-**This is an authorization gap on the B2B surface, not a modelling gap.** Scoping RBAC turned
-up the opposite of what `REDESIGN_V2` §141 says ("RBAC is **binary** — `User.is_admin`; the
-portal needs 7 roles"). That line is stale. Four least-privilege roles already exist and are
-already persisted:
+**Retraction.** The entry filed here earlier today claimed the organisation roles were "stored
+and never consulted" and that "every org admin holds every power". **That was false**, and it
+was published to `main` and `v2` before anyone checked it. What is actually true:
 
-    ROLE_BENEFITS_OWNER · ROLE_PROGRAMME_ADMIN · ROLE_ANALYST · ROLE_PRIVACY_REVIEWER
+* `_require_write(admin)` guards **all six** write routes in `api/routes/organizations.py`
+  (lines 103, 151, 288, 378, 438, 477).
+* `ROLES_CAN_WRITE = {benefits_owner, programme_admin}`, so `analyst` and `privacy_reviewer`
+  are read-only — which is exactly the matrix the owner specified when asked.
+* `test_org.py::test_analyst_can_read_but_not_write` already covered it.
 
-`OrgMembership.role` / `OrgAdmin.role` carry them (`models/organization.py:106`, defaulting to
-the least-privileged `analyst`), `POST /admin/organizations` assigns `benefits_owner` to the
-first owner, and `ORG_ROLES` bounds the set.
+**How the error was made, since the method matters more than the incident.** Three greps, three
+false negatives, each because the pattern searched for was imagined rather than read:
+`grep "role" | grep -E "403|!=|=="` missed `admin.role not in ROLES_CAN_WRITE`; a search for
+`require_role` missed `_require_write` (a name I invented, not one in the codebase); and
+`grep "role" | grep "403"` required both tokens on one *line*, so it missed a test whose name
+says "not write" and whose assertion is three lines below. Reading the file would have taken
+less time than any of them. **A grep that finds nothing is evidence about the grep.**
 
-**Nothing checks them.** Across the whole backend the only appearance of `role` outside the
-model is an `ORDER BY` in `organizations.py:197` and the assignment in `admin.py:893`. There is
-no `require_role`, no dependency, no comparison. So **every org admin holds every power** — an
-`analyst` can invite and remove seats, edit the privacy centre and change the reporting
-threshold exactly like a `benefits_owner`. The roles are decoration: the portal shows a
-least-privilege model that the API does not implement.
-
-Same shape as the sponsorship bug fixed on 2026-08-13 — a correct concept, modelled, stored,
-and never consulted — and worth reading as a pattern rather than two incidents: this codebase's
-characteristic failure is *building the right thing and not wiring it up*. Grep for
-"defined but never referenced" before assuming any model field is enforced.
-
-- [ ] **Build the enforcement layer.** A `require_org_role(*roles)` dependency beside
-      `get_current_admin`, then apply it per route. The scoping is a **product decision** and
-      should be written down before code: which of the four may invite a seat, remove one,
-      change `reporting_threshold`, edit the privacy centre, read the audit trail, run an
-      eligibility import? `apps/portal` ROL-01 is the design source
-- [ ] **Then test it as authorization, not as happy path.** `tests/test_org.py` has no 403
-      assertions at all today. Every role needs a test that it *cannot* do what it must not —
-      the cheap version is one parametrised test per protected route × role
-- [ ] **Correct `REDESIGN_V2` §141** once the above lands; "binary, needs 7 roles" is no longer
-      an accurate description of either the model or the gap
-- [ ] **Open question for the owner:** the design called for 7 roles and 4 exist. Are the other
-      three still wanted, or did the model settle deliberately at four? **[decide]** — do not
-      add three empty roles to match an old table
+- [x] **The real gap — enforcement was covered on 1 of 6 write routes** — is closed.
+      `tests/test_org_roles.py` asserts the matrix: every write route × every read-only role
+      returns **403 specifically** (not 404, not 422 — a route that refuses by accident would
+      pass a looser assertion while leaving the hole open), plus the mirror image that a
+      `benefits_owner` is *not* refused (a `_require_write` that raised unconditionally would
+      satisfy every other assertion and break the product), plus a pin on `ROLES_CAN_WRITE`
+      itself so widening it is a deliberate, reviewed act. 16 tests.
+      Worth knowing for the next route: **FastAPI validates the body before the route function
+      runs**, so an invalid body returns 422 without reaching `_require_write`. The matrix uses
+      valid bodies deliberately; a test with a sloppy one passes for the wrong reason.
+- [ ] **`programme_admin` and `privacy_reviewer` are both simply "write" and "read"** — the
+      names promise more granularity than `ROLES_CAN_WRITE` delivers. A `privacy_reviewer`
+      cannot edit the privacy centre, and a `programme_admin` can change the reporting
+      threshold and remove seats. Whether that matters is a product call **[decide]**; the
+      current behaviour is at least least-privilege in the safe direction
+- [ ] **Correct `REDESIGN_V2` §141** — "RBAC is binary — `User.is_admin`; the portal needs 7
+      roles" describes neither the model (4 roles, enforced) nor the gap. It is the line that
+      set this whole detour going
 
 ## Open — instrumented tests exist, and do not yet pass unattended (2026-08-14, `WC-281`)
 
