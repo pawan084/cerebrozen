@@ -2,6 +2,24 @@ import os
 import tempfile
 
 os.environ["TESTING"] = "1"  # must be set before importing the app/engine
+
+# The suite must never reach a real model provider. `services/ai.complete` picks
+# its provider from *key presence* alone — it does not consult TESTING — so a
+# developer with a working `backend/.env` was running the whole suite against
+# live OpenAI: billable, slow, and non-deterministic. Worse, the two tests that
+# exist to pin the "everything degrades without keys" contract
+# (`test_habits::test_decompose_names_the_goal_even_without_an_llm_key`,
+# `test_safety_plan::test_crisis_reply_is_unchanged_with_and_without_a_plan`)
+# failed for exactly the reason they were written to catch, so the contract was
+# only ever verified on CI — where the keys happen to be blank — and looked
+# broken everywhere else.
+#
+# Set rather than `setdefault`: an exported key in the developer's shell must
+# lose to this too, and pydantic-settings ranks the environment above the
+# `.env` file, so blanking here beats both. A test that wants the AI path
+# monkeypatches the provider; nothing legitimately needs the network.
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["ANTHROPIC_API_KEY"] = ""
 # Isolated media dir — app.main mounts StaticFiles(MEDIA_ROOT) at import time,
 # and narration tests write real files there.
 os.environ.setdefault("MEDIA_ROOT", tempfile.mkdtemp(prefix="cerebro-media-"))
