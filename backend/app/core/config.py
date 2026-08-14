@@ -40,6 +40,23 @@ class Settings(BaseSettings):
         validation_alias="TRUSTED_HOSTS",
     )
 
+    #: How many reverse proxies sit in front of the API, and therefore how many
+    #: trailing `X-Forwarded-For` entries were appended by infrastructure we run
+    #: rather than typed by the caller. `core/ratelimit.client_ip` counts back
+    #: this many hops from the END of the header; anything earlier is
+    #: attacker-controlled and must never be keyed on. `deploy/Caddyfile`'s
+    #: topology (Caddy → api) is 1; a CDN in front of Caddy makes it 2.
+    #:
+    #: **Defaults to 0 — trust the socket, ignore the header** — because the two
+    #: ways to get this wrong fail very differently. Set too high, the limiter
+    #: reads a hop the caller supplied and every request can mint its own bucket:
+    #: silent, and the exact bug this setting exists to close. Set too low, it
+    #: keys real users onto a shared proxy address and they collect 429s: loud,
+    #: and someone reports it within the hour. So the default is the one that
+    #: cannot be quietly wrong on a box nobody remembered to configure, and
+    #: `_guard_production` below refuses to boot production until it is declared.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=10)
+
     # AI / proactive. Provider is chosen at runtime: OpenAI when its key is set,
     # else Anthropic when its key is set, else deterministic local fallbacks.
     anthropic_api_key: str = ""
@@ -182,6 +199,13 @@ class Settings(BaseSettings):
             problems.append("SEED_DEMO_DATA must be false in production")
         if os.getenv("RATE_LIMIT_ENABLED", "1") in ("0", "false", "False"):
             problems.append("RATE_LIMIT_ENABLED must not be off in production")
+        if self.trusted_proxy_hops < 1:
+            # Production always serves through Caddy. At 0 the limiter ignores
+            # X-Forwarded-For and keys every request on the proxy's own address,
+            # so the whole internet shares one bucket and real users start
+            # collecting 429s. A rate limiter that is on but wrong is worse than
+            # one that is off, because nothing looks broken.
+            problems.append("TRUSTED_PROXY_HOPS must be >= 1 in production (the API runs behind Caddy)")
         if "*" in self.cors_origins_raw:
             problems.append("CORS_ORIGINS must list explicit origins (no wildcard)")
         if not self.trusted_hosts or "*" in self.trusted_hosts:

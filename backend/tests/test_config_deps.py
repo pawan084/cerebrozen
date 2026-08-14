@@ -22,6 +22,11 @@ def test_production_guard_accepts_secure():
     s = Settings(
         _env_file=None, env="production", secret_key="k" * 40,
         admin_password="A-strong-pass-123", seed_demo_data=False,
+        # Declared, not defaulted: `trusted_proxy_hops` defaults to 0 (trust the
+        # socket) so an unconfigured box cannot silently key the rate limiter on
+        # a caller-supplied header. Production runs behind Caddy, so a *secure*
+        # production config is one that says so — see SEC-01 in docs/TODO.md.
+        trusted_proxy_hops=1,
     )
     assert s.is_production   # secure config boots without raising
 
