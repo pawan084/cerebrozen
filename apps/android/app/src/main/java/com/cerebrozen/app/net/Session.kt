@@ -30,6 +30,8 @@ object Session {
     private const val PREFS = "cerebro"
     private const val REFRESH_KEY = "refresh_token"
     private const val GUEST_KEY = "guest_mode"
+    private const val ENTITLEMENT_TIER = "entitlement_tier"
+    private const val ENTITLEMENT_SPONSORED = "entitlement_sponsored"
     private const val LOG_TAG = "CereBroApi"
     // Keys whose values are masked in DEBUG response logs (never log secrets).
     private val SENSITIVE_KEYS = setOf(
@@ -378,6 +380,29 @@ object Session {
     internal fun prefPut(key: String, value: String) { storage.putString(key, value) }
     internal fun prefRemove(key: String) { storage.remove(key) }
 
+    // ── Entitlement, as last reported by the server ──────────────────────
+    // The server resolves what an account may use (a purchase, or an
+    // organisation sponsoring the seat) and says so on /auth/me. It is
+    // remembered here for one reason: without it, a member whose employer pays
+    // is shown a price list every time the profile read fails. Defaulting to
+    // "free" while offline is wrong far more often than the last answer is.
+    //
+    // Never an authorization decision — the server enforces the quota and the
+    // media gate regardless of what this device believes. It decides only what
+    // to say on a screen.
+
+    /** Remember what the server just reported. */
+    internal fun rememberEntitlement(tier: String, sponsored: Boolean) {
+        storage.putString(ENTITLEMENT_TIER, tier)
+        storage.putString(ENTITLEMENT_SPONSORED, sponsored.toString())
+    }
+
+    /** The last tier the server reported; "free" until one has been. */
+    internal fun cachedTier(): String = storage.getString(ENTITLEMENT_TIER) ?: "free"
+
+    /** Whether that tier came from an organisation rather than a purchase. */
+    internal fun cachedSponsored(): Boolean = storage.getString(ENTITLEMENT_SPONSORED) == "true"
+
     // ── Oracle SSE ──────────────────────────────────────────────────────
     /** SSE transport seam — (url, jsonBody, authToken) → (status, byte stream).
      * Real impl streams over HttpURLConnection; tests feed ByteArrayInputStreams. */
@@ -636,6 +661,11 @@ object Session {
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             ?.edit()?.putBoolean(GUEST_KEY, false)?.apply()
         guestMode = false
+        // The entitlement belonged to the account that just left. Devices are
+        // shared, and inheriting it would tell the next person their employer
+        // pays for a seat that is not theirs.
+        storage.remove(ENTITLEMENT_TIER)
+        storage.remove(ENTITLEMENT_SPONSORED)
         clearCache()
         servedStale = false
         signedIn = false

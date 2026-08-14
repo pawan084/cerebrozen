@@ -48,6 +48,38 @@ class SessionStoreTest {
     }
 
     @Test
+    fun the_entitlement_is_remembered_and_does_not_outlive_the_account() {
+        Session.init(context)
+        assertEquals("nothing known yet is not a claim of premium", "free", Session.cachedTier())
+        assertFalse(Session.cachedSponsored())
+
+        // What the server said, kept so a failed profile read does not show a
+        // sponsored member the price list for a seat their employer pays for.
+        Session.rememberEntitlement("premium", sponsored = true)
+        assertEquals("premium", Session.cachedTier())
+        assertTrue(Session.cachedSponsored())
+
+        // Devices are shared. Inheriting this would tell the next person their
+        // employer pays for a seat that is not theirs.
+        Session.signOut()
+        assertEquals("free", Session.cachedTier())
+        assertFalse("sponsorship belonged to the account that left", Session.cachedSponsored())
+    }
+
+    @Test
+    fun a_purchase_is_remembered_without_claiming_an_organisation_pays() {
+        Session.init(context)
+        Session.rememberEntitlement("premium", sponsored = false)
+
+        // The two halves are independent: premium says what is unlocked,
+        // sponsored says who pays for it. A client that collapses them offers
+        // a cancel link to someone with nothing to cancel, or hides one from
+        // someone paying every month.
+        assertEquals("premium", Session.cachedTier())
+        assertFalse(Session.cachedSponsored())
+    }
+
+    @Test
     fun debug_logging_redacts_secrets_in_objects_arrays_and_survives_junk() = runTest {
         val store = object : Session.Store {
             val m = mutableMapOf("refresh_token" to "r1")

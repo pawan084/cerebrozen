@@ -78,6 +78,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
     // makes every check a round-trip.
     var trustedLine by remember { mutableStateOf<String?>(null) }
     var signOutAsked by remember { mutableStateOf(false) }
+    // Same three-state entitlement the Premium screen branches on, so the row
+    // that opens it does not promise an upsell the screen will not deliver.
+    var tier by remember { mutableStateOf(Session.cachedTier()) }
+    var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -86,6 +90,9 @@ fun YouScreen(onOpen: (String) -> Unit) {
             companion = me.optString("companion")
             language = me.optString("language")
             region = me.optString("region")
+            tier = me.optString("subscription_tier").ifBlank { "free" }
+            sponsored = me.optBoolean("sponsored")
+            Session.rememberEntitlement(tier, sponsored)
         }
         runCatching {
             trustedLine = Api.trustedContact()?.let { tc ->
@@ -295,9 +302,18 @@ fun YouScreen(onOpen: (String) -> Unit) {
 
         // The one upsell surface carries an occasional sheen (iOS parity) — the
         // rest of You stays still, which is what makes this row read as the
-        // offer rather than as another setting.
-        Box(Modifier.sheen().padding(top = 8.dp)) {
-            PremiumNavRow(stringResource(R.string.you_premium_title), stringResource(R.string.you_premium_subtitle),
+        // offer rather than as another setting. Which is precisely why it must
+        // stop moving once there is nothing to offer: a member who already has
+        // premium, sponsored or bought, gets the plain row and a subtitle that
+        // says what the screen behind it will actually say.
+        val premiumSubtitle = when {
+            sponsored -> stringResource(R.string.you_premium_subtitle_sponsored)
+            tier != "free" -> stringResource(R.string.you_premium_subtitle_active)
+            else -> stringResource(R.string.you_premium_subtitle)
+        }
+        val offering = !sponsored && tier == "free"
+        Box((if (offering) Modifier.sheen() else Modifier).padding(top = 8.dp)) {
+            PremiumNavRow(stringResource(R.string.you_premium_title), premiumSubtitle,
                 icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
         }
 

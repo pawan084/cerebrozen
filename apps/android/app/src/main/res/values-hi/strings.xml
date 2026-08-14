@@ -370,6 +370,8 @@
     <string name="you_patterns_subtitle">AI ने जो सीखा · कभी भी मिटाएँ</string>
     <string name="you_premium_title">प्रीमियम प्लान</string>
     <string name="you_premium_subtitle">पूरी लाइब्रेरी खोलें</string>
+    <string name="you_premium_subtitle_sponsored">आपके संगठन द्वारा दिया गया</string>
+    <string name="you_premium_subtitle_active">सक्रिय · पूरी लाइब्रेरी खुली है</string>
     <string name="you_legal_header">कानूनी और खाता</string>
     <string name="you_export_subtitle">पूरी कॉपी डाउनलोड करें</string>
     <string name="you_delete_subtitle">सब कुछ स्थायी रूप से मिटाएँ</string>
@@ -633,6 +635,16 @@
     <string name="premium_monthly_note">कभी भी रद्द करें</string>
     <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
     <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी।</string>
+    <string name="premium_sponsored_eyebrow">आपके संगठन द्वारा भुगतान</string>
+    <string name="premium_sponsored_title">पहले से खुला हुआ</string>
+    <string name="premium_sponsored_intro">इस सीट का भुगतान आपका संगठन करता है, इसलिए यहाँ कुछ खरीदना या रद्द करना नहीं है। पूरी लाइब्रेरी और असीमित दैनिक बातचीत इस खाते पर पहले से खुली हैं।</string>
+    <string name="premium_sponsored_seen_title">आपका संगठन क्या देख सकता है</string>
+    <string name="premium_sponsored_seen_body">सिर्फ़ यह कि एक सीट इस्तेमाल हो रही है — आप क्या लिखते, दर्ज करते या कहते हैं, वह कभी नहीं। उन्हें केवल समूह के कुल आँकड़े मिलते हैं, और वे भी सिर्फ़ इतने बड़े समूहों के कि उनमें से किसी एक व्यक्ति को अलग न पहचाना जा सके।</string>
+    <string name="premium_sponsored_ends_title">अगर प्रायोजन खत्म हो जाए</string>
+    <string name="premium_sponsored_ends_body">आपका खाता बना रहता है। वह मुफ़्त टियर पर लौट आता है, और आपका लिखा हुआ सब कुछ आपका ही रहता है।</string>
+    <string name="premium_active_intro">आपकी सदस्यता सक्रिय है — पूरी लाइब्रेरी और असीमित दैनिक बातचीत इस खाते पर खुली हैं।</string>
+    <string name="premium_active_manage_title">बदलना या रद्द करना</string>
+    <string name="premium_active_manage_body">जहाँ से खरीदा था वहीं से प्रबंधित करें: iPhone पर App Store, या वेब पर अपना खाता। Android पर Play Billing अभी जुड़ी नहीं है, इसलिए यह डिवाइस सदस्यता नहीं बदल सकता।</string>
     <string name="reminders_eyebrow">एक हल्की-सी रोज़ की याद</string>
     <string name="reminders_title">दैनिक रिमाइंडर</string>
     <string name="reminders_toggle_title">दैनिक चेक-इन रिमाइंडर</string>

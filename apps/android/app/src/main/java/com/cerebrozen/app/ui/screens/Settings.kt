@@ -518,22 +518,84 @@ fun PrivacyScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PremiumScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.premium_eyebrow), stringResource(R.string.premium_title), onBack) {
-    // First-party paywall funnel count (anonymous, opt-out; mirrors iOS).
-    LaunchedEffect(Unit) { Analytics.track("paywall_view") }
-    Text(stringResource(R.string.premium_intro),
-        style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-    PlanCard(stringResource(R.string.premium_annual), stringResource(R.string.premium_annual_price),
-        stringResource(R.string.premium_annual_note), featured = true)
-    PlanCard(stringResource(R.string.premium_monthly), stringResource(R.string.premium_monthly_price),
-        stringResource(R.string.premium_monthly_note), featured = false)
-    // No dead CTA: the permanently-disabled "Start free trial" button walked
-    // users into a paywall where nothing could be bought (audit H1). Until
-    // Play Billing is configured, the honest state is pricing for
-    // transparency + the note — a PrimaryButton returns with the Play
-    // Console setup (external blocker, ledgered in TODO.md).
-    Text(stringResource(R.string.premium_billing_note),
-        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+fun PremiumScreen(onBack: () -> Unit) {
+    // Three states, not two. Premium can be bought, or an organisation can
+    // sponsor the seat — and this screen used to show the same price list to
+    // everyone, which invites a member whose employer already pays to pay
+    // again. The server resolves which it is (services/entitlements.py) and
+    // reports it on /auth/me; the client only has to stop assuming.
+    //
+    // Seeded from the last known answer so a failed profile read does not
+    // demote a sponsored member back to a paywall. Nothing is unlocked on the
+    // strength of it — the quota and media gates are enforced server-side
+    // whatever this device believes.
+    var tier by remember { mutableStateOf(Session.cachedTier()) }
+    var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
+    var resolved by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        runCatching { Api.me() }.onSuccess { me ->
+            tier = me.optString("subscription_tier").ifBlank { "free" }
+            sponsored = me.optBoolean("sponsored")
+            Session.rememberEntitlement(tier, sponsored)
+        }
+        resolved = true
+    }
+    // Only an actual paywall counts as a paywall view (anonymous, opt-out;
+    // mirrors iOS). This used to fire for everyone who opened the screen,
+    // which put members who could not convert — because they already have
+    // premium — into the denominator of the conversion rate. Held until the
+    // tier resolves so the cached guess is never what fires it.
+    LaunchedEffect(resolved, tier, sponsored) {
+        if (resolved && !sponsored && tier == "free") Analytics.track("paywall_view")
+    }
+
+    PremiumSubPage(
+        eyebrow = if (sponsored) stringResource(R.string.premium_sponsored_eyebrow)
+                  else stringResource(R.string.premium_eyebrow),
+        title = if (sponsored) stringResource(R.string.premium_sponsored_title)
+                else stringResource(R.string.premium_title),
+        onBack = onBack,
+    ) {
+        when {
+            sponsored -> {
+                // Nothing here is for sale to this member, so the price list
+                // would be an invitation to buy what they already have. What
+                // takes its place is the question this screen raises the
+                // moment an employer is named: who pays, and what do they see.
+                Text(stringResource(R.string.premium_sponsored_intro),
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                InfoCard(stringResource(R.string.premium_sponsored_seen_title),
+                    stringResource(R.string.premium_sponsored_seen_body))
+                InfoCard(stringResource(R.string.premium_sponsored_ends_title),
+                    stringResource(R.string.premium_sponsored_ends_body))
+            }
+            tier != "free" -> {
+                // Bought, but not on this device — Android can neither sell
+                // nor cancel a subscription yet, so the honest thing is to
+                // name where it can be changed rather than show prices again.
+                Text(stringResource(R.string.premium_active_intro),
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                InfoCard(stringResource(R.string.premium_active_manage_title),
+                    stringResource(R.string.premium_active_manage_body))
+            }
+            else -> {
+                Text(stringResource(R.string.premium_intro),
+                    style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                PlanCard(stringResource(R.string.premium_annual), stringResource(R.string.premium_annual_price),
+                    stringResource(R.string.premium_annual_note), featured = true)
+                PlanCard(stringResource(R.string.premium_monthly), stringResource(R.string.premium_monthly_price),
+                    stringResource(R.string.premium_monthly_note), featured = false)
+                // No dead CTA: the permanently-disabled "Start free trial"
+                // button walked users into a paywall where nothing could be
+                // bought (audit H1). Until Play Billing is configured, the
+                // honest state is pricing for transparency + the note — a
+                // PrimaryButton returns with the Play Console setup (external
+                // blocker, ledgered in TODO.md).
+                Text(stringResource(R.string.premium_billing_note),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        }
+    }
 }
 
 @Composable

@@ -6,66 +6,103 @@ struct PremiumView: View {
     @EnvironmentObject var backend: BackendService
     @StateObject private var store = SubscriptionManager()
 
+    /// The server's answer, not StoreKit's — see `BackendService.isSponsored`.
+    private var sponsored: Bool { backend.isSponsored }
+
     var body: some View {
-        ScreenScaffold(eyebrow: "Subscription funnel", title: "CereBro Premium", trailingSystemImage: "crown") {
-            HeroCard(tag: store.isPremium ? "Active" : "Upgrade",
-                     title: store.isPremium ? "You're Premium" : "Unlock your calmest self",
-                     subtitle: "The full sleep library, richer voice sessions, and deeper personalization.",
-                     cta: store.isPremium ? "You're all set" : "Choose a plan",
-                     imageURL: Dummy.Img.sleep) { chooseFeaturedPlan() }
-                .sheen(period: 6)   // occasional shine sweep (ref cbSheen)
-
-            if store.available {
-                // Real StoreKit products (App Store Connect configured).
-                ForEach(store.products, id: \.id) { product in
-                    Button {
-                        Analytics.track("paywall_cta", step: product.id)
-                        Task {
-                            await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? ""))
-                            await syncEntitlement()
-                        }
-                    } label: {
-                        StoreProductCard(product: product)
-                    }
-                    .buttonStyle(.pressable)
-                    .disabled(store.isPremium)
-                }
-                SecondaryButton(title: "Restore purchases", systemImage: "arrow.clockwise") {
-                    Task { await store.restore(); await syncEntitlement() }
-                }
-            } else {
-                // Graceful fallback until in-app purchases are set up.
-                ForEach(Dummy.plans) { plan in PriceCard(plan: plan) }
-                InsightCard(label: "Coming soon",
-                            title: "In-app subscriptions aren't available yet.",
-                            detail: "Everything here runs free for now — Premium unlocks once billing is enabled.")
-            }
-
-            if let msg = store.message {
-                Text(msg).appFont(12).foregroundStyle(Theme.Palette.muted)
-                    .frame(maxWidth: .infinity)
-            }
-
-            // Cancelling must be as reachable as subscribing (OECD dark-pattern
-            // checklist) — Apple's manage-subscriptions page, right on the paywall.
-            if let manageURL = URL(string: "https://apps.apple.com/account/subscriptions") {
-                Link(destination: manageURL) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.uturn.left")
-                        Text("Manage or cancel anytime in your Apple ID subscriptions")
-                    }
-                    .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
-                    .frame(maxWidth: .infinity)
-                }
-            }
+        ScreenScaffold(eyebrow: sponsored ? "Paid for by your organisation" : "Subscription funnel",
+                       title: "CereBro Premium", trailingSystemImage: "crown") {
+            if sponsored { sponsoredState } else { purchaseState }
 
             NavRow(title: "Human support option", subtitle: "Real helplines and counsellors", systemImage: "person.2", imageURL: Dummy.Img.support) { HumanSupportView() }
         }
-        .task {
+        // Keyed on the entitlement: the profile can land after this screen is
+        // already open, and when it does the member must stop being counted in
+        // the funnel and stop being shown products.
+        .task(id: sponsored) {
+            guard !sponsored else { return }
             // Anonymous funnel: the paywall was seen (no products, no account).
             Analytics.track("paywall_view")
             await store.load()
             await syncEntitlement()
+        }
+    }
+
+    /// Premium granted by an employer. Everything the paywall offers is wrong
+    /// here: buying would charge for what the member already has, and the
+    /// manage-or-cancel link — correct on a paywall, and deliberately as
+    /// reachable as subscribing — would open Apple's subscriptions page on an
+    /// account with nothing on it. That reads either as a lie or as a charge
+    /// they cannot find, and hunting for a charge you cannot see is a worse
+    /// afternoon than never being offered the link.
+    ///
+    /// What replaces it is the question this screen starts raising the moment
+    /// an employer is named: who pays, and what do they get to see.
+    @ViewBuilder private var sponsoredState: some View {
+        InsightCard(label: "Active",
+                    title: "Premium is provided by your organisation",
+                    detail: "There is nothing to pay or cancel here. The full sleep library, richer voice sessions and unlimited daily conversations are already unlocked on this account.")
+        InsightCard(label: "What your organisation can see",
+                    title: "That a seat is used — never what you write, log or say",
+                    detail: "They are billed for the seat and receive group totals only, and only for groups large enough that no one person can be picked out of them.")
+        InsightCard(label: "If the sponsorship ends",
+                    title: "Your account stays",
+                    detail: "It returns to the free tier, and everything you have written stays yours.")
+    }
+
+    /// The paywall, for everyone who could actually buy something.
+    @ViewBuilder private var purchaseState: some View {
+        HeroCard(tag: store.isPremium ? "Active" : "Upgrade",
+                 title: store.isPremium ? "You're Premium" : "Unlock your calmest self",
+                 subtitle: "The full sleep library, richer voice sessions, and deeper personalization.",
+                 cta: store.isPremium ? "You're all set" : "Choose a plan",
+                 imageURL: Dummy.Img.sleep) { chooseFeaturedPlan() }
+            .sheen(period: 6)   // occasional shine sweep (ref cbSheen)
+
+        if store.available {
+            // Real StoreKit products (App Store Connect configured).
+            ForEach(store.products, id: \.id) { product in
+                Button {
+                    Analytics.track("paywall_cta", step: product.id)
+                    Task {
+                        await store.purchase(product, appAccountToken: UUID(uuidString: backend.user?.id ?? ""))
+                        await syncEntitlement()
+                    }
+                } label: {
+                    StoreProductCard(product: product)
+                }
+                .buttonStyle(.pressable)
+                .disabled(store.isPremium)
+            }
+            SecondaryButton(title: "Restore purchases", systemImage: "arrow.clockwise") {
+                Task { await store.restore(); await syncEntitlement() }
+            }
+        } else {
+            // Graceful fallback until in-app purchases are set up.
+            ForEach(Dummy.plans) { plan in PriceCard(plan: plan) }
+            InsightCard(label: "Coming soon",
+                        title: "In-app subscriptions aren't available yet.",
+                        detail: "Everything here runs free for now — Premium unlocks once billing is enabled.")
+        }
+
+        if let msg = store.message {
+            Text(msg).appFont(12).foregroundStyle(Theme.Palette.muted)
+                .frame(maxWidth: .infinity)
+        }
+
+        // Cancelling must be as reachable as subscribing (OECD dark-pattern
+        // checklist) — Apple's manage-subscriptions page, right on the paywall.
+        // Deliberately absent from `sponsoredState`: it is only honest when
+        // there is a subscription behind it.
+        if let manageURL = URL(string: "https://apps.apple.com/account/subscriptions") {
+            Link(destination: manageURL) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.uturn.left")
+                    Text("Manage or cancel anytime in your Apple ID subscriptions")
+                }
+                .appFont(12, weight: .semibold).foregroundStyle(Theme.Palette.muted)
+                .frame(maxWidth: .infinity)
+            }
         }
     }
 

@@ -291,9 +291,32 @@ everything below is open.
       upgrade button, no Stripe portal (that would open on a customer who does not exist),
       and a sentence saying who pays and what they can see. `/admin/users` deliberately keeps
       showing the stored column — staff answering a billing question need the purchase, not
-      the employer's grant. **iOS and Android still branch on tier alone** (`BackendService
-      .isPremium`), so they unlock correctly but would offer a sponsored member a cancel link;
-      that is the remaining client work
+      the employer's grant. *iOS and Android closed 2026-08-13, below*
+- [x] **The two native clients stopped selling premium to people who already have it**
+      (2026-08-13). They branched on tier alone, so a sponsored member unlocked correctly and
+      was then shown the thing they cannot act on: on iOS a paywall plus "Manage or cancel
+      anytime in your Apple ID subscriptions", which opens a page with nothing on it — read
+      as either a lie or a charge they cannot find, and hunting for a charge you cannot see
+      is a worse afternoon than never being offered the link. On Android, a price list for a
+      seat their employer pays for.
+      Both now branch on the server's `sponsored` flag. iOS `PremiumView` splits into
+      `sponsoredState` (no products, no purchase CTA, no Apple link) and `purchaseState`
+      (unchanged), and the You row stops promising "Manage your subscription". Android's
+      `PremiumScreen` gets three states — sponsored, bought-elsewhere, and the paywall — and
+      the You row drops its sheen when there is nothing to offer, because that animation is
+      what makes the row read as an offer rather than a setting.
+      **Two things fell out of doing it.** `paywall_view` fired for everyone who opened the
+      screen, putting members who *could not convert* into the denominator of the conversion
+      rate; it now waits for the tier to resolve and fires only on an actual paywall. And
+      Android had nowhere to remember an entitlement, so a failed profile read would have
+      demoted a sponsored member back to a price list — `Session.rememberEntitlement` keeps
+      the last answer and `signOut` drops it, since devices are shared and inheriting it
+      would tell the next person their employer pays for a seat that is not theirs. It
+      decides what a screen *says*, never what an account may *use*
+- [ ] **The sponsored branches are unverified on a device** — Android is JVM-verified only
+      (`:app:check` green, 2 new `SessionStoreTest` cases) and iOS is static-only on this
+      Windows host: not compiled, not run. Both need a walk against a live backend with a
+      sponsored account before this is trusted. iOS additionally needs `xcodebuild` on a Mac
 - [x] **Three tests only passed before 18:30 UTC** (2026-08-13, found by running the suite
       at 23:30 UTC). `test_habits` (×2) and `test_admin_metrics::test_streak_endpoint_mirrors
       _ios_rules` built their fixtures from `date.today()` — the *container's* zone, UTC —

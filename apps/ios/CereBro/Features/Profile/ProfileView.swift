@@ -74,7 +74,12 @@ struct ProfileView: View {
             NavRow(title: "Weekly insights", subtitle: "Your progress and patterns", systemImage: "chart.line.uptrend.xyaxis", imageURL: Dummy.Img.calm) { InsightsView() }
             NavRow(title: "Privacy & memory", subtitle: "Control what CereBro remembers", systemImage: "lock", imageURL: Dummy.Img.privacy) { PrivacyView() }
             NavRow(title: "Pattern dashboard", subtitle: "What the AI has learned · delete anytime", systemImage: "brain.head.profile", imageURL: Dummy.Img.privacy) { PatternDashboardView() }
-            NavRow(title: "Premium plan", subtitle: "Manage your subscription", systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }
+            // "Manage your subscription" is a promise the screen behind it
+            // cannot keep for a sponsored member — there is no subscription of
+            // theirs to manage.
+            NavRow(title: "Premium plan",
+                   subtitle: backend.isSponsored ? "Provided by your organisation" : "Manage your subscription",
+                   systemImage: "crown", imageURL: Dummy.Img.premium) { PremiumView() }
             // Written when things are steady, so it sits with the calm settings
             // rather than filed under crisis, where nobody browses.
             NavRow(title: "My safety plan", subtitle: "Yours, in your words · works offline", systemImage: "shield.lefthalf.filled", imageURL: Dummy.Img.privacy) { SafetyPlanView() }

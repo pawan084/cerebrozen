@@ -642,6 +642,8 @@
     <string name="you_patterns_subtitle">What the AI has learned · delete anytime</string>
     <string name="you_premium_title">Premium plan</string>
     <string name="you_premium_subtitle">Unlock the full library</string>
+    <string name="you_premium_subtitle_sponsored">Provided by your organisation</string>
+    <string name="you_premium_subtitle_active">Active · the full library is open</string>
     <string name="you_crisisregion_title">Crisis region</string>
     <string name="you_crisisregion_subtitle">Which helplines to show</string>
     <string name="you_humansupport_subtitle">Directories to real people, when you want one</string>
@@ -999,6 +1001,21 @@
     <string name="premium_monthly_note">Cancel anytime</string>
     <string name="premium_cta">Start free trial</string>
     <string name="premium_billing_note">Billing isn\'t wired on Android yet — Play Billing lands with Play Console setup.</string>
+    <!-- Premium paid for by an organisation. No prices, because there is
+         nothing for this member to buy, and no cancel link, because there is
+         nothing they can cancel. -->
+    <string name="premium_sponsored_eyebrow">Paid for by your organisation</string>
+    <string name="premium_sponsored_title">Already unlocked</string>
+    <string name="premium_sponsored_intro">Your organisation pays for this seat, so there is nothing to buy or cancel here. The full library and unlimited daily conversations are already open on this account.</string>
+    <string name="premium_sponsored_seen_title">What your organisation can see</string>
+    <string name="premium_sponsored_seen_body">That a seat is being used — never what you write, log or say. They receive group totals only, and only for groups large enough that no one person can be picked out of them.</string>
+    <string name="premium_sponsored_ends_title">If the sponsorship ends</string>
+    <string name="premium_sponsored_ends_body">Your account stays. It returns to the free tier, and everything you have written stays yours.</string>
+    <!-- Premium the member bought themselves, on another platform. Android
+         cannot sell or cancel it, so this says where it can be changed. -->
+    <string name="premium_active_intro">Your subscription is active — the full library and unlimited daily conversations are open on this account.</string>
+    <string name="premium_active_manage_title">Changing or cancelling</string>
+    <string name="premium_active_manage_body">Manage it where you bought it: the App Store on iPhone, or your account on the web. Play Billing isn\'t wired on Android yet, so this device can\'t change a subscription.</string>
     <string name="reminders_eyebrow">A gentle daily nudge</string>
     <string name="reminders_title">Daily reminder</string>
     <string name="reminders_toggle_title">Daily check-in reminder</string>

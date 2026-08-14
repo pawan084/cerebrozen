@@ -62,6 +62,13 @@ final class BackendService: ObservableObject {
     /// Subscription entitlement from the server profile.
     var subscriptionTier: String { user?.subscription_tier ?? "free" }
     var isPremium: Bool { ["premium", "premium_human"].contains(subscriptionTier) }
+    /// Premium the member did not buy — their employer sponsors the seat.
+    /// StoreKit cannot know this: there is no transaction on this device for a
+    /// grant made server-side. What it changes here is not what unlocks (the
+    /// tier above already handles that) but what may be *offered*: a purchase
+    /// would charge for what they already have, and Apple's manage-subscriptions
+    /// page would open on an account with nothing on it.
+    var isSponsored: Bool { user?.sponsored == true }
 
     init() {
         Task { await bootstrap() }

@@ -15,8 +15,14 @@ struct RemoteUser: Codable, Identifiable {
     let motivations: [String]?
     /// Effective crisis region (optional for older responses).
     let region: String?
-    /// Subscription entitlement ("free" | "premium" | "premium_human").
+    /// Subscription entitlement ("free" | "premium" | "premium_human"). The
+    /// tier the server will *enforce*, which is not always the stored column:
+    /// an organisation can sponsor a seat.
     let subscription_tier: String?
+    /// True when the tier above is paid for by an organisation rather than
+    /// bought. Optional so a response without it decodes as "not sponsored"
+    /// rather than failing the whole profile.
+    let sponsored: Bool?
     /// Compliance attestation timestamps (ISO8601), nil until recorded.
     let age_confirmed_at: String?
     let ai_disclosure_ack_at: String?
