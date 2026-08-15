@@ -279,6 +279,28 @@ Second real-device walk. Debug build against a local backend over `adb reverse`.
       support instead
 - [x] **Instrumented suite still runs on hardware**: 3 tests started, 1 real, 2 `@Ignore`d
       (the `ActivityScenario`-cannot-reach-RESUMED blocker, unchanged)
+- [x] **Feature-by-feature walk found two defects a build could not.** The five tabs were
+      exercised against a live backend, not just launched.
+      **(1) A guest who types into Talk was told to retry something that can never work.**
+      `Session.ensureAccess` deliberately refuses the call — a guest never signed in, so the
+      client does not make a doomed request, and it says so honestly: "Sign in to keep this.
+      You're looking around as a guest." Directly beneath that, `TalkScreen` offered **"Try
+      sending again"**, because `failedText` is set on *any* exception. Retrying a guest 401
+      cannot succeed. It now offers **"Sign in / Sign up"**, routing to the `auth` route that
+      only exists because of this week's guest work — the failure finally has somewhere to go.
+      Verified on the device: chip appears in place of the retry, and opens Sign in.
+      **(2) "1 seconds remaining."** Every breathing round counts down through one, so this was
+      on screen twice a round, in the app's most-used tool. Now a `<plurals>` — the repo
+      already had 13 — read on the device as "1 second remaining". Both `Breathe.kt` and
+      `BreathLoopsScreen.kt` used the same string; both fixed.
+- [x] **Confirmed working on hardware, feature by feature**: the 4-in/6-out breathing contract
+      (the one that has been reverted five times) reads "In for four, out for six" on device;
+      **the active breathing session — recorded here since 2026-08-12 as "the one screen still
+      unseen" — was watched through a full round**, ring, phase label, pause and end all
+      behaving; Explore's seven practice families; Journal's prompt and its honest empty
+      history; Today's six-mood check-in with truthful guest messaging ("nothing is saved
+      yet"); You's Tele-MANAS-first support row and the guest sign-in row; and the 18+ gate,
+      whose under-18 branch refuses to create an adult account and offers urgent support
 - [ ] **CORRECTION — the guest card's accessibility fix is NOT proven, and the commit that
       shipped it overstated the case.** `416b655f` says the shared card "merges descendants,
       declares the role" so a screen reader meets one control. On the device, `uiautomator`

@@ -311,6 +311,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // it verbatim — the composer clears on send, so without this a network blip
     // meant retyping from memory.
     var failedText by remember { mutableStateOf<String?>(null) }
+    /** The last send failed because a guest has no account — offer the door, not a retry. */
+    var signInBlocked by remember { mutableStateOf(false) }
     // Auto-scroll the conversation to the newest reply / streaming tokens.
     val chatScroll = rememberScrollState()
     // Regulatory UX (mirrors iOS AIDisclosure): tappable always-visible pill +
@@ -511,7 +513,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
     fun send(text: String, speak: Boolean = false) {
         if (text.isBlank() || busy) return
-        busy = true; status = null; failedText = null
+        busy = true; status = null; failedText = null; signInBlocked = false
         // Clear the composer up front so the sent text doesn't linger in the box
         // during streaming (and can't be wiped if the user starts a follow-up).
         draft = ""
@@ -571,7 +573,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 freeLimit = e
             } catch (e: Exception) {
                 status = e.userMessage(sendFailed)
-                failedText = text.trim()
+                // A guest's 401 is not a transient failure and retrying can never
+                // clear it — `Session.ensureAccess` refuses the call outright,
+                // by design, because a guest never signed in. Offering "Try
+                // sending again" beneath a message that says "sign in" invites
+                // someone to tap a button that cannot work; found on a device
+                // walk 2026-08-15. The door is offered instead, which exists now
+                // that guest mode has an `auth` route to send people to.
+                val guestBlocked = Session.guestMode &&
+                    e is Session.ApiException && e.code == 401
+                failedText = if (guestBlocked) null else text.trim()
+                signInBlocked = guestBlocked
             } finally {
                 busy = false
             }
@@ -737,6 +749,14 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             // A failed send keeps its words: one tap resends verbatim.
             failedText?.let { t ->
                 PickChip(selected = false, label = stringResource(R.string.talk_retry)) { send(t) }
+            }
+            // …unless the only thing that would fix it is an account, in which
+            // case offer that instead of a retry that cannot succeed.
+            if (signInBlocked) {
+                PickChip(
+                    selected = false,
+                    label = stringResource(R.string.guest_sign_in_action),
+                ) { onOpen("auth") }
             }
             // Chat can't queue offline (a conversation needs its other half) —
             // say so where the typing happens, not only in the top banner.

@@ -1154,7 +1154,13 @@
     <string name="breathe_estimated_time">Estimated time • 2 min</string>
     <string name="breathe_pace_title">Breathing pace</string>
     <string name="breathe_settings_title">Guidance</string>
-    <string name="breathe_seconds_remaining">seconds remaining</string>
+    <!-- The number is drawn separately, above this label, so the plural carries
+         only the word. Seen on a device 2026-08-15 reading "1 seconds remaining"
+         — and every breathing round ends by counting through 1. -->
+    <plurals name="breathe_seconds_remaining">
+        <item quantity="one">second remaining</item>
+        <item quantity="other">seconds remaining</item>
+    </plurals>
     <string name="breathe_color_eyebrow">Follow the glow</string>
     <string name="breathe_color_title">Color breathing</string>
     <string name="breathe_color_intro">Let your breath follow the orb as the glow shifts with each phase.</string>
