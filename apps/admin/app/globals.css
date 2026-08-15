@@ -160,12 +160,17 @@ h1, h2, h3, .serif { font-family: var(--font-serif), Georgia, serif; font-weight
 .brand .dot { width: 20px; height: 20px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff, var(--lav) 55%, var(--lav-2));
   box-shadow: 0 0 16px rgba(138, 123, 240,0.8); }
+/* Shared by the sidebar's <a> section links and its <button> sign-out, so it
+   carries the resets an anchor needs (no underline, inherited colour) as well
+   as the ones a button needs (no border/background). */
 .navitem {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: none; border: 0; color: var(--muted); cursor: pointer;
   padding: 11px 12px; border-radius: 11px; font-size: 14px; font-weight: 600;
+  text-decoration: none; font-style: normal; font-family: inherit;
 }
-.navit em { font-style: normal; }
+/* Was `.navit em` — a typo that silently matched nothing for as long as it has
+   existed. The declaration it meant to make now sits in the rule above. */
 .navitem:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 .navitem.active { color: var(--text); background: rgba(138, 123, 240,0.16); }
 .sidebar .logout { margin-top: 8px; color: var(--muted); }
@@ -198,8 +203,21 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 .btn:hover { transform: translateY(-1px); }
 .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-ink); }
 .btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--line); }
-.btn-sm { padding: 6px 11px; font-size: 12px; }
+/* Register E62. The audit measured these against a 44px floor; that floor is
+   WCAG 2.5.5, level AAA, and forcing it would make every dense table row a
+   third taller for an operator working a triage queue on a desktop. The
+   binding requirement is 2.5.8 (AA): 24x24 CSS px. These sat at ~26-30px, so
+   they passed — the real defect the audit found was the second half of its own
+   sentence: "dense danger buttons sit flush beside safe ones", where the cost
+   of a mis-tap is a deleted content item, not a mild annoyance.
+   So: a 32px floor (comfortably clear of AA, honest about not being AAA), and
+   a real gap enforced between adjacent row actions below. */
+.btn-sm { padding: 6px 11px; font-size: 12px; min-height: 32px; }
 .btn svg { vertical-align: -3px; margin-right: 3px; }
+
+/* Adjacent row actions never touch — the separation is the safeguard when a
+   destructive control shares a cluster with a harmless one. */
+td .btn + .btn { margin-left: 8px; }
 
 /* Login */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
@@ -215,8 +233,14 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 .login p { text-align: center; color: var(--muted); margin-bottom: 22px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+/* `outline: none` was unconditional here, and admin defined no :focus-visible
+   anywhere (register E60) — so keyboard focus was completely invisible on the
+   credential form, the one screen where a keyboard user has no landmarks to
+   navigate by. Dropping the outline only for MOUSE focus keeps the calm look
+   without blinding the keyboard: :focus-visible below restores a real ring. */
 .field input { width: 100%; padding: 12px 14px; border-radius: 12px;
-  background: rgba(255,255,255,0.08); border: 1px solid var(--line); color: var(--text); font-size: 14px; outline: none; }
+  background: rgba(255,255,255,0.08); border: 1px solid var(--line); color: var(--text); font-size: 14px; }
+.field input:focus:not(:focus-visible) { outline: none; }
 .err { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; min-height: 18px; }
 .hint { color: var(--muted); font-size: 12px; text-align: center; margin-top: 16px; }
 /* Explanatory note under a single form control — left-aligned and tight to the
@@ -243,7 +267,27 @@ td.mono { font-family: ui-monospace, Menlo, monospace; color: var(--soft); }
 
 /* Search box (users tab) */
 .search { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); color: var(--muted); max-width: 360px; width: 100%; }
-.search input { border: none; background: none; color: var(--text); outline: none; width: 100%; font: inherit; padding: 0; }
+.search input { border: none; background: none; color: var(--text); width: 100%; font: inherit; padding: 0; }
+.search input:focus:not(:focus-visible) { outline: none; }
+
+/* ── Accessibility primitives (register E60/E61/E63) ─────────────────────
+   Admin shipped without either of these while apps/portal has had both; a
+   staff console is not exempt from being operable by keyboard. */
+
+/* One visible focus ring for the whole console. Amber rather than the accent,
+   because the accent IS the background of the primary buttons — a ring in the
+   same family disappears on exactly the controls most worth seeing.
+   `--amber` (not a raw hex — tokens only) already carries a light and a dark
+   value, so the ring stays visible in both themes. */
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; border-radius: 4px; }
+
+/* Names a control for a screen reader without drawing anything: used for
+   action columns whose <th> would otherwise be an unlabelled empty cell. */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
 .search input::placeholder { color: var(--muted-2); }
 .search svg { flex: 0 0 auto; }
 .sidebar .navitem svg { flex: 0 0 auto; }

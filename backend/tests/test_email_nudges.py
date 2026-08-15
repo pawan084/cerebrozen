@@ -35,7 +35,7 @@ async def test_due_nudge_emailed_when_opted_in(client):
     email_service.sent_outbox.clear()
 
     async with SessionLocal() as s:
-        sent = await nudges.dispatch_due(s)
+        sent = (await nudges.dispatch_due(s)).sent
     assert sent >= 1
     delivered = [m for m in email_service.sent_outbox if m["to"] == addr]
     assert delivered and delivered[-1]["subject"] == "Round-4 email nudge"

@@ -423,6 +423,40 @@ async def oracle_audit_trail(limit: int = 20, db: AsyncSession = Depends(get_db)
     return list(await oracle_audit.recent(db, limit=max(1, min(200, limit))))
 
 
+@router.post("/oracle/pending/{call_id}/expire", response_model=OracleToolCallOut)
+async def expire_oracle_pending(
+    call_id: uuid.UUID,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Close a confirmation that can no longer be answered (register E57).
+
+    The Oracle tab could list stuck confirmations with their age and do nothing
+    about them — it diagnosed the exact condition it warned about (a MemorySaver
+    restart drops the graph state and strands the row) and had no way to resolve
+    it, so the queue only ever grew.
+
+    This closes the *record*. It does not approve, execute, or resume anything:
+    the write it describes needs the user's own confirmation inside their own
+    thread, and an operator must never stand in for that. Logged like every
+    other operator action, because "who cleared this" is exactly the question
+    someone will ask later.
+    """
+    row = await oracle_audit.expire(db, call_id=call_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No pending confirmation with that id")
+    await admin_audit.record(
+        db,
+        admin,
+        "oracle.pending.expire",
+        target_type="oracle_tool_call",
+        target_id=call_id,
+        detail={"tool": row.tool, "thread_id": row.thread_id},
+    )
+    await db.commit()
+    return row
+
+
 # ── Media catalogue (the sounds/videos clients resolve by key) ───────────
 # Uploads are held in memory before being written, so cap them. Ambient loops
 # are the big ones (~700 KB/minute at our bitrate) and scene videos larger
@@ -465,8 +499,29 @@ async def update_media(asset_id: uuid.UUID, payload: MediaAssetUpdate, db: Async
     fields = payload.model_dump(exclude_unset=True)
     if "kind" in fields and fields["kind"] not in MEDIA_KINDS:
         raise HTTPException(status_code=422, detail=f"Kind must be one of {', '.join(MEDIA_KINDS)}")
+    # Register E51: the admin's "Clear" button PATCHes `url: ""`, and the bytes
+    # stayed on disk forever — `delete_asset` ran only on row DELETE, which the
+    # UI never calls (clearing is deliberately not a schema change). Every
+    # cleared upload leaked a file nothing could ever reach again.
+    #
+    # Keyed on the URL moving AWAY from our own assets dir, not just on being
+    # emptied, because repointing an asset at a CDN orphans the local copy just
+    # as completely. The file exists only to serve that URL; once the row stops
+    # naming it, it is unreachable by construction.
+    # Both are captured BEFORE the update: a PATCH may rename the key in the
+    # same call, and `delete_asset` removes by key — deleting the new key's file
+    # would destroy a live asset while still leaking the old one.
+    previous_url = asset.url or ""
+    previous_key = asset.key
     for field, value in fields.items():
         setattr(asset, field, value)
+    if (
+        previous_url.startswith("/media/assets/")
+        and (asset.url or "") != previous_url
+    ):
+        # Best-effort and after the DB is the source of truth: an unlinked file
+        # that the row no longer references is tidy-up, never correctness.
+        media.delete_asset(previous_key)
     await db.commit()
     await db.refresh(asset)
     return asset
@@ -693,8 +748,13 @@ async def list_nudges(
 # this automatically every NUDGE_DISPATCH_INTERVAL_MINUTES) ───────────────
 @router.post("/nudges/dispatch")
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
-    sent = await nudges.dispatch_due(db)
-    return {"sent": sent}
+    # Returns all three tallies, not just `sent` (register E58): the Nudges tab
+    # promises "honest sent/skipped/failed outcomes" and could not show two of
+    # them. `skipped` is a reach question (nobody to deliver to), `failed` is a
+    # delivery one (a registered device refused) — an operator chases those
+    # differently, so they are never summed.
+    outcome = await nudges.dispatch_due(db)
+    return {"sent": outcome.sent, "skipped": outcome.skipped, "failed": outcome.failed}
 
 
 @router.get("/agent-actions")

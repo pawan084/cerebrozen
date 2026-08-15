@@ -31,6 +31,12 @@ AUTO = "auto"
 PENDING = "pending"
 APPROVED = "approved"
 DECLINED = "declined"
+#: Closed by an operator because the confirmation can no longer be answered —
+#: the usual cause is a MemorySaver restart, which drops the graph state while
+#: leaving this row behind (register E57). Deliberately its own value rather
+#: than reusing DECLINED: the user declined nothing, and a trail that says they
+#: did would be a false record of someone's choice about their own data.
+EXPIRED = "expired"
 
 READ = "read"
 WRITE = "write"
@@ -107,6 +113,29 @@ async def resolve(db: AsyncSession, *, thread_id: str, tool: str, approved: bool
     row.decision = APPROVED if approved else DECLINED
     row.resolved_at = utcnow()
     await db.commit()
+
+
+async def expire(db: AsyncSession, *, call_id: uuid.UUID) -> OracleToolCall | None:
+    """Close a stuck pending row. Returns the row, or None if it isn't pending.
+
+    **This approves nothing and executes nothing.** It only marks the audit row
+    as unanswerable, so the "Awaiting a decision" queue stops showing a
+    confirmation that no longer has a graph behind it to resume. The Oracle's
+    write tools run from the user's own approval inside their thread; there is
+    no path from here to a write, and there must never be one — an operator
+    closing a record is a different act from an operator writing to someone's
+    journal, and only the first is defensible.
+
+    Refuses anything already resolved, so a double-click cannot rewrite a real
+    approve/decline into "expired".
+    """
+    row = await db.get(OracleToolCall, call_id)
+    if row is None or row.decision != PENDING:
+        return None
+    row.decision = EXPIRED
+    row.resolved_at = utcnow()
+    await db.commit()
+    return row
 
 
 async def recent(db: AsyncSession, *, limit: int = 20) -> Sequence[OracleToolCall]:

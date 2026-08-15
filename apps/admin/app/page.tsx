@@ -19,6 +19,28 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "waitlist", label: "Waitlist" },
 ];
 
+/** The tab named by the URL hash, or null if it names nothing we have.
+ *
+ * Tabs used to be pure component state (register E55): a refresh always dropped
+ * the operator back on Overview, no view could be bookmarked or sent to a
+ * colleague, and the browser Back button left the dashboard entirely — from the
+ * Safety queue, mid-triage.
+ *
+ * The hash rather than a query param, deliberately: `useSearchParams()` in the
+ * App Router forces this whole client component behind a Suspense boundary,
+ * and a dashboard shell does not need a server round-trip to remember which of
+ * ten local views is open. The hash is bookmarkable, shareable, survives a
+ * reload, and gives Back/Forward the right meaning for free.
+ *
+ * Validated against TABS rather than cast: `#nonsense` in a pasted URL must
+ * land on Overview, not render an empty shell.
+ */
+function tabFromHash(): Tab | null {
+  if (typeof window === "undefined") return null;
+  const key = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  return TABS.some((t) => t.key === key) ? (key as Tab) : null;
+}
+
 function fmtDate(s: string) {
   // `new Date("garbage")` never throws — it returns Invalid Date, so the old
   // try/catch was dead code and malformed input printed "Invalid Date"
@@ -36,12 +58,40 @@ export default function AdminPage() {
   const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
-    // The access token is memory-only now, so a reload never has one — a
-    // stored refresh token is what says "signed in"; the first API call
-    // rotates it into a fresh access token.
-    setAuthed(hasSession());
-    setReady(true);
+    // Both tokens are now unreadable from JS (register E40), so "am I signed
+    // in?" is a question only the server can answer: `hasSession()` attempts one
+    // rotation against the httpOnly cookie. `ready` gates the first paint until
+    // it comes back, so nobody sees the shell flash before the login screen.
+    let alive = true;
+    // Read the hash here rather than in useState's initializer: the server
+    // renders "overview" and reading `window` during the first render would be
+    // a hydration mismatch. `ready` gates paint, so nothing flickers.
+    const fromUrl = tabFromHash();
+    if (fromUrl) setTab(fromUrl);
+    // `ready` is set only inside the callback — setting it alongside the call
+    // would paint the login screen for as long as the round-trip takes, and
+    // then replace it, which reads as "signed out, no wait, signed in".
+    void hasSession().then((ok) => {
+      if (!alive) return;
+      setAuthed(ok);
+      setReady(true);
+    });
+    return () => { alive = false; };
   }, []);
+
+  // Back/Forward move between tabs instead of leaving the dashboard. Both
+  // events are needed: popstate covers our own pushState entries, hashchange
+  // covers someone editing the fragment in the address bar.
+  useEffect(() => {
+    const sync = () => setTab(tabFromHash() ?? "overview");
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!navOpen) return;
@@ -78,20 +128,33 @@ export default function AdminPage() {
         <div className="brand">
           <BrandMark size={26} /> CereBro
         </div>
-        {TABS.map((t) => {
-          // Fallback glyph: a missing icon must never take down the dashboard.
-          const I = Icon[t.key] ?? Icon.overview;
-          return (
-            <button
-              key={t.key}
-              className={`navitem ${tab === t.key ? "active" : ""}`}
-              aria-current={tab === t.key ? "page" : undefined}
-              onClick={() => { setTab(t.key); setNavOpen(false); }}
-            >
-              <I /> {t.label}
-            </button>
-          );
-        })}
+        {/* Links, not buttons (register E61). The audit's reading was that
+            `aria-current="page"` is a link semantic on a non-link — true when it
+            was written, because a click changed nothing but component state.
+            Now that each view has its own URL, the honest fix is the other
+            direction: make them real anchors, which makes `aria-current="page"`
+            correct rather than removing it, and hands back middle-click, "open
+            in new tab" and "copy link address" — things an operator sharing a
+            queue with a colleague actually reaches for. A `tablist` would have
+            taken all three away again.
+            The browser writes the history entry, so there is nothing to push. */}
+        <nav aria-label="Sections">
+          {TABS.map((t) => {
+            // Fallback glyph: a missing icon must never take down the dashboard.
+            const I = Icon[t.key] ?? Icon.overview;
+            return (
+              <a
+                key={t.key}
+                href={`#${t.key}`}
+                className={`navitem ${tab === t.key ? "active" : ""}`}
+                aria-current={tab === t.key ? "page" : undefined}
+                onClick={() => setNavOpen(false)}
+              >
+                <I /> {t.label}
+              </a>
+            );
+          })}
+        </nav>
         <button
           className="navitem logout"
           onClick={async () => {
@@ -300,8 +363,6 @@ function actionMessage(e: unknown, fallback: string) {
 
 function Overview() {
   const { data, err, reload } = useData<Record<string, number>>(() => api("/admin/stats"));
-  const [nudgeMsg, setNudgeMsg] = useState("");
-  const [nudgeBusy, setNudgeBusy] = useState(false);
   const cards = [
     { l: "Users", k: "users" },
     { l: "Mood logs", k: "mood_logs" },
@@ -309,19 +370,6 @@ function Overview() {
     { l: "Content items", k: "content_items" },
     { l: "Open safety", k: "open_safety_events" },
   ];
-
-  async function dispatchNudges() {
-    setNudgeBusy(true);
-    setNudgeMsg("");
-    try {
-      const res = await api<{ sent: number }>("/admin/nudges/dispatch", { method: "POST" });
-      setNudgeMsg(`${res.sent} dispatched`);
-    } catch (e: any) {
-      setNudgeMsg(actionMessage(e, "Dispatch didn't go through — try again."));
-    } finally {
-      setNudgeBusy(false);
-    }
-  }
 
   return (
     <>
@@ -336,13 +384,102 @@ function Overview() {
           </div>
         ))}
       </div>
-      <div className="toolbar inline-actions stack">
-        <button className="btn btn-primary" onClick={dispatchNudges} disabled={nudgeBusy}>
-          {nudgeBusy ? "Dispatching…" : "Dispatch due nudges"}
-        </button>
-        {nudgeMsg && <span className="page-sub flush">{nudgeMsg}</span>}
-      </div>
     </>
+  );
+}
+
+/** Queue this week's digest for every active user.
+ *
+ * `POST /admin/digest/run` shipped with no UI at all (register E56), which is a
+ * problem specifically for deployments running with
+ * `NUDGE_DISPATCH_INTERVAL_MINUTES=0` — the in-process loop is off there, so
+ * this manual pass is *the* way the weekly digest goes out, and it was reachable
+ * only by curl. Idempotent per ISO week, so a second click in the same week
+ * queues nothing rather than double-sending; the copy says so, because a button
+ * that looks like it did nothing invites a third click.
+ */
+function RunWeeklyDigest({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function run() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await api<{ queued: number }>("/admin/digest/run", { method: "POST" });
+      setMsg(
+        r.queued === 0
+          ? "Nothing queued — this week's digest has already gone out."
+          : `Queued for ${r.queued} user${r.queued === 1 ? "" : "s"}.`,
+      );
+      onDone();
+    } catch (e: any) {
+      setMsg(actionMessage(e, "The digest pass didn't run — try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="toolbar inline-actions stack">
+      <button className="btn" onClick={run} disabled={busy}>
+        {busy ? "Running…" : "Run weekly digest"}
+      </button>
+      <span className="page-sub flush" role="status">
+        {msg || "Once per ISO week — running it twice queues nothing the second time."}
+      </span>
+    </div>
+  );
+}
+
+/** Run the dispatch pass and report what it actually did.
+ *
+ * Lives on the Nudges tab, beside authoring and the queue it drains (register
+ * E58) — it used to sit alone on Overview, two clicks from anything it relates
+ * to, so an operator who had just queued an announcement had to leave the page
+ * to send it and then come back to see whether it moved.
+ *
+ * It reports all three tallies because the Nudges tab promises "honest
+ * sent/skipped/failed outcomes" and the response used to carry only `sent`.
+ * They are never summed: `skipped` means nobody was reachable (no push token,
+ * no browser subscription, no email opt-in) — a reach question — while `failed`
+ * means a device we hold a token for refused, which is the one worth chasing.
+ */
+function DispatchDue({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function run() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await api<{ sent: number; skipped: number; failed: number }>(
+        "/admin/nudges/dispatch",
+        { method: "POST" },
+      );
+      const total = r.sent + r.skipped + r.failed;
+      setMsg(
+        total === 0
+          ? "Nothing was due."
+          : `${r.sent} sent · ${r.skipped} skipped (nobody reachable) · ${r.failed} failed`,
+      );
+      onDone();
+    } catch (e: any) {
+      setMsg(actionMessage(e, "Dispatch didn't go through — try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="toolbar inline-actions stack">
+      <button className="btn btn-primary" onClick={run} disabled={busy}>
+        {busy ? "Dispatching…" : "Dispatch due nudges"}
+      </button>
+      {/* Announced: an operator who clicks and reads elsewhere on the page still
+          learns the outcome. */}
+      {msg && <span className="page-sub flush" role="status">{msg}</span>}
+    </div>
   );
 }
 
@@ -428,7 +565,7 @@ function Analytics() {
           <div className="panel">
             <h3 className="serif">Retention (signup cohorts, last 35 days)</h3>
             <table>
-              <thead><tr><th>Window</th><th>Cohort</th><th>Retained</th><th>Rate</th></tr></thead>
+              <thead><tr><th scope="col">Window</th><th scope="col">Cohort</th><th scope="col">Retained</th><th scope="col">Rate</th></tr></thead>
               <tbody>
                 {(["d1", "d7", "d30"] as const).map((k) => (
                   <tr key={k}>
@@ -544,6 +681,7 @@ function UserDetail({ id, onClose }: { id: string; onClose: () => void }) {
 const USERS_PAGE = 50;
 
 function Users() {
+  const uid = useId();
   const [q, setQ] = useState("");
   // Real offset pagination (register E46): "Load more" used to grow `limit`
   // and refetch the entire result set from row zero — each click
@@ -619,13 +757,25 @@ function Users() {
   return (
     <>
       <h1 className="page-title serif">Users</h1>
-      <div className="page-sub">
+      {/* Register E63: a screen-reader user typing here got no announcement that
+          the result count had changed — the filter appeared to do nothing.
+          `role="status"` (polite) rather than `alert`: results updating is
+          information, not an interruption, and this text changes on every
+          keystroke. */}
+      <div className="page-sub" role="status">
         {loading ? "Loading…" : `${data?.length ?? 0} shown${q ? ` · matching "${q}"` : ""}`}
       </div>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <div className="search">
           <Icon.search />
+          {/* A real label, visually hidden: the placeholder disappears the
+              moment anyone types, taking the field's only description with it. */}
+          <label htmlFor={`${uid}-user-search`} className="sr-only">
+            Search users by email, name, or user id
+          </label>
           <input
+            id={`${uid}-user-search`}
+            type="search"
             placeholder="Search by email, name, or user id…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -638,7 +788,7 @@ function Users() {
         <table>
           <thead>
             <tr>
-              <th>Email</th><th>Name</th><th>Companion</th><th>Role</th><th>Status</th><th>Joined</th><th></th>
+              <th scope="col">Email</th><th scope="col">Name</th><th scope="col">Companion</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Joined</th><th scope="col"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -924,9 +1074,9 @@ function Media() {
           <table className="table">
             <thead>
               <tr>
-                <th>Key</th>
-                <th>Title</th>
-                <th>Asset</th>
+                <th scope="col">Key</th>
+                <th scope="col">Title</th>
+                <th scope="col">Asset</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -1205,7 +1355,7 @@ function Content() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>Art</th><th>Title</th><th>Kind</th><th>Duration</th><th>Tier</th><th>Audio</th><th>Status</th><th></th></tr>
+            <tr><th scope="col">Art</th><th scope="col">Title</th><th scope="col">Kind</th><th scope="col">Duration</th><th scope="col">Tier</th><th scope="col">Audio</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr>
           </thead>
           <tbody>
             {(data || []).map((c) => (
@@ -1458,7 +1608,7 @@ function PromptsTab() {
           )}
           {p.versions.length > 0 && (
             <table style={{ marginTop: 12 }}>
-              <thead><tr><th>Version</th><th>Notes</th><th>Created</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th scope="col">Version</th><th scope="col">Notes</th><th scope="col">Created</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
               <tbody>
                 {p.versions.map((v: any) => (
                   <tr key={v.version}>
@@ -1526,6 +1676,8 @@ function NudgesTab() {
         Author a one-off announcement for every active user; delivery runs through the
         existing scheduler (honest sent/skipped/failed outcomes).
       </div>
+      <DispatchDue onDone={reload} />
+      <RunWeeklyDigest onDone={reload} />
       <form className="card cform" onSubmit={send}>
         <div className="full">
           <label htmlFor={`${uid}-title`}>Title</label>
@@ -1564,7 +1716,7 @@ function NudgesTab() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>Title</th><th>User</th><th>Kind</th><th>Status</th><th>Scheduled</th></tr>
+            <tr><th scope="col">Title</th><th scope="col">User</th><th scope="col">Kind</th><th scope="col">Status</th><th scope="col">Scheduled</th></tr>
           </thead>
           <tbody>
             {(data || []).map((n) => (
@@ -1665,7 +1817,7 @@ function Safety() {
         <table>
           <thead>
             <tr>
-              <th>Source</th><th>Risk</th><th>Reason</th><th>What they wrote</th><th>When</th><th></th>
+              <th scope="col">Source</th><th scope="col">Risk</th><th scope="col">Reason</th><th scope="col">What they wrote</th><th scope="col">When</th><th scope="col"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -1870,7 +2022,7 @@ function WaitlistTab() {
       <Problem err={err} onRetry={reload} />
       <div className="card">
         <table>
-          <thead><tr><th>Email</th><th>Source</th><th>Joined</th></tr></thead>
+          <thead><tr><th scope="col">Email</th><th scope="col">Source</th><th scope="col">Joined</th></tr></thead>
           <tbody>
             {(data || []).map((w) => (
               // Email is unique server-side — a stable key, unlike the array
@@ -1925,10 +2077,34 @@ function decisionTag(decision: string) {
   return <span className={`tag ${cls}`}>{decision}</span>;
 }
 
+type AgentToolStat = { tool: string; proposed: number; approved: number; declined: number };
+
 function OracleTab() {
   const { data: status, err: statusErr } = useData<any>(() => api("/admin/oracle/status"));
-  const { data: pending, err: pendingErr } = useData<OracleCall[]>(() => api("/admin/oracle/pending"));
-  const { data: trail, err: trailErr } = useData<OracleCall[]>(() => api("/admin/oracle/audit?limit=25"));
+  const { data: pending, err: pendingErr, reload: reloadPending } = useData<OracleCall[]>(() => api("/admin/oracle/pending"));
+  const { data: trail, err: trailErr, reload: reloadTrail } = useData<OracleCall[]>(() => api("/admin/oracle/audit?limit=25"));
+  // Register E56: `/admin/agent-actions` existed and was reachable only by
+  // curl — the half of this page that says whether people actually WANT what
+  // the agent proposes. The audit trail below shows individual calls; this
+  // shows the pattern across them.
+  const { data: tools, err: toolsErr } = useData<AgentToolStat[]>(() => api("/admin/agent-actions"));
+  const [expiring, setExpiring] = useState<string | null>(null);
+  const [expireMsg, setExpireMsg] = useState("");
+
+  async function expirePending(id: string, tool: string) {
+    setExpiring(id);
+    setExpireMsg("");
+    try {
+      await api(`/admin/oracle/pending/${id}/expire`, { method: "POST" });
+      setExpireMsg(`Closed the stuck ${tool} record — nothing was written.`);
+      reloadPending();
+      reloadTrail();
+    } catch (e: any) {
+      setExpireMsg(actionMessage(e, "That record didn't close — try again."));
+    } finally {
+      setExpiring(null);
+    }
+  }
 
   return (
     <>
@@ -1961,11 +2137,68 @@ function OracleTab() {
         </div>
       )}
 
+      <h3 className="serif" style={{ marginBottom: 10 }}>How often each tool is accepted</h3>
+      <div className="page-sub" style={{ marginBottom: 10 }}>
+        Counts only — never the arguments. A tool people keep declining is the signal
+        here: it is proposing something they do not want written.
+      </div>
+      <Problem err={toolsErr} />
+      <div className="card" style={{ marginBottom: 24 }}>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Proposed</th>
+              <th scope="col">Approved</th>
+              <th scope="col">Declined</th>
+              <th scope="col">Accepted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(tools || []).map((t) => {
+              // Of the calls actually DECIDED — a pending confirmation is not a
+              // decline, and counting it as one would make a quiet week look
+              // like a rejected feature.
+              const decided = t.approved + t.declined;
+              return (
+                <tr key={t.tool}>
+                  <td className="mono">{t.tool}</td>
+                  <td>{t.proposed}</td>
+                  <td>{t.approved}</td>
+                  <td>{t.declined}</td>
+                  <td>{decided === 0 ? "—" : `${Math.round((t.approved / decided) * 100)}%`}</td>
+                </tr>
+              );
+            })}
+            {tools?.length === 0 && (
+              <tr><td colSpan={5} className="page-sub">No tool calls recorded yet.</td></tr>
+            )}
+            {!tools && !toolsErr && (
+              <tr><td colSpan={5} className="page-sub">Loading…</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       <h3 className="serif" style={{ marginBottom: 10 }}>Awaiting a decision</h3>
+      <div className="page-sub" style={{ marginBottom: 10 }}>
+        Closing one here only clears the record — it never approves the write. The
+        member&apos;s own confirmation, in their own thread, is the only thing that can
+        do that.
+      </div>
       <Problem err={pendingErr} />
+      {expireMsg && <div className="page-sub" role="status">{expireMsg}</div>}
       <div className="card">
         <table>
-          <thead><tr><th>Tool</th><th>Arguments</th><th>Thread</th><th>Waiting</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Arguments</th>
+              <th scope="col">Thread</th>
+              <th scope="col">Waiting</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
           <tbody>
             {(pending || []).map((r) => (
               <tr key={r.id}>
@@ -1973,6 +2206,15 @@ function OracleTab() {
                 <td className="mono">{r.arg_keys.join(", ") || "—"}</td>
                 <td className="mono">{r.thread_id}</td>
                 <td>{ago(r.created_at)}</td>
+                <td>
+                  <button
+                    className="btn btn-sm"
+                    disabled={expiring === r.id}
+                    onClick={() => expirePending(r.id, r.tool)}
+                  >
+                    {expiring === r.id ? "Closing…" : "Close record"}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1984,7 +2226,7 @@ function OracleTab() {
       <Problem err={trailErr} />
       <div className="card">
         <table>
-          <thead><tr><th>Tool</th><th>Tier</th><th>Decision</th><th>Arguments</th><th>When</th></tr></thead>
+          <thead><tr><th scope="col">Tool</th><th scope="col">Tier</th><th scope="col">Decision</th><th scope="col">Arguments</th><th scope="col">When</th></tr></thead>
           <tbody>
             {(trail || []).map((r) => (
               <tr key={r.id}>

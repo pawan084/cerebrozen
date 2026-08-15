@@ -178,3 +178,56 @@ async def test_audit_rows_die_with_the_user(auth_client, db):
     assert (await auth_client.delete("/users/me")).status_code == 204
     db.expire_all()
     assert not any(r.thread_id == "gone" for r in await oracle_audit.recent(db, limit=50))
+
+
+async def test_an_operator_can_close_a_stuck_confirmation_without_approving_it(admin_client, db):
+    """Register E57: the Oracle tab could list stuck confirmations and do nothing.
+
+    The dangerous version of this feature is an "Approve" button — an operator
+    writing to a member's journal on their behalf. What ships closes the RECORD
+    only, and the decision it leaves behind is `expired`, not `approved` and not
+    `declined`: the member decided nothing, and a trail claiming otherwise would
+    be a false record of someone's choice about their own data.
+    """
+    me = await admin_client.get("/users/me")
+    uid = uuid.UUID(me.json()["id"])
+    await oracle_audit.open_pending(db, user_id=uid, thread_id="stuck-1", tool="save_journal")
+
+    row = next(
+        r for r in (await admin_client.get("/admin/oracle/pending")).json()
+        if r["thread_id"] == "stuck-1"
+    )
+
+    r = await admin_client.post(f"/admin/oracle/pending/{row['id']}/expire")
+    assert r.status_code == 200, r.text
+    assert r.json()["decision"] == "expired"
+
+    # Gone from the queue it was clogging…
+    assert not any(
+        p["thread_id"] == "stuck-1"
+        for p in (await admin_client.get("/admin/oracle/pending")).json()
+    )
+    # …still in the trail, so the history is not rewritten.
+    assert any(
+        t["thread_id"] == "stuck-1" and t["decision"] == "expired"
+        for t in (await admin_client.get("/admin/oracle/audit", params={"limit": 50})).json()
+    )
+
+
+async def test_expiring_twice_cannot_rewrite_a_real_decision(admin_client, db):
+    """A second click must not turn an approve/decline into "expired"."""
+    me = await admin_client.get("/users/me")
+    uid = uuid.UUID(me.json()["id"])
+    await oracle_audit.open_pending(db, user_id=uid, thread_id="stuck-2", tool="log_mood")
+    row = next(
+        r for r in (await admin_client.get("/admin/oracle/pending")).json()
+        if r["thread_id"] == "stuck-2"
+    )
+
+    assert (await admin_client.post(f"/admin/oracle/pending/{row['id']}/expire")).status_code == 200
+    # Already resolved — refused rather than silently re-stamped.
+    assert (await admin_client.post(f"/admin/oracle/pending/{row['id']}/expire")).status_code == 404
+
+
+async def test_expiring_an_unknown_id_is_a_404(admin_client):
+    assert (await admin_client.post(f"/admin/oracle/pending/{uuid.uuid4()}/expire")).status_code == 404

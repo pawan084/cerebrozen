@@ -140,6 +140,63 @@ async def test_reupload_with_a_new_extension_drops_the_old_file(admin_client):
     assert (Path(settings.media_root) / "assets" / f"{asset['key']}.ogg").read_bytes() == b"second"
 
 
+async def test_clearing_the_url_removes_the_file_too(admin_client):
+    """Register E51: the admin's "Clear" leaked every upload it ever cleared.
+
+    Clear PATCHes `url: ""` rather than deleting the row — the key is a contract
+    the clients resolve against, so removing it would be a schema change, not a
+    content one. But cleanup ran only on row DELETE, so the bytes stayed in
+    MEDIA_ROOT with nothing on earth able to reach them again.
+    """
+    asset = await _create(admin_client, kind="ambience")
+    await admin_client.post(
+        f"/admin/media/{asset['id']}/upload",
+        files={"file": ("bed.m4a", b"cleared-bytes", "audio/mp4")},
+    )
+    disk = Path(settings.media_root) / "assets" / f"{asset['key']}.m4a"
+    assert disk.exists()
+
+    r = await admin_client.patch(f"/admin/media/{asset['id']}", json={"url": "", "mime": ""})
+    assert r.status_code == 200, r.text
+    assert r.json()["url"] == ""
+    assert not disk.exists(), "clearing the pointer left the bytes orphaned on disk"
+    # The row survives — clearing is not deleting, and the clients fall back to
+    # their bundled sound for a key that exists with no file.
+    assert any(a["key"] == asset["key"] for a in (await admin_client.get("/admin/media")).json())
+
+
+async def test_repointing_a_url_elsewhere_also_drops_the_local_file(admin_client):
+    """Moving an asset to a CDN orphans the local copy exactly as completely."""
+    asset = await _create(admin_client, kind="ambience")
+    await admin_client.post(
+        f"/admin/media/{asset['id']}/upload",
+        files={"file": ("bed.m4a", b"local-bytes", "audio/mp4")},
+    )
+    disk = Path(settings.media_root) / "assets" / f"{asset['key']}.m4a"
+    assert disk.exists()
+
+    r = await admin_client.patch(
+        f"/admin/media/{asset['id']}", json={"url": "https://cdn.example.com/bed.m4a"}
+    )
+    assert r.status_code == 200, r.text
+    assert not disk.exists()
+
+
+async def test_a_patch_that_does_not_touch_the_url_keeps_the_file(admin_client):
+    """The guard must be about the URL moving, not about any PATCH at all —
+    renaming a title should never delete audio."""
+    asset = await _create(admin_client, kind="ambience")
+    await admin_client.post(
+        f"/admin/media/{asset['id']}/upload",
+        files={"file": ("bed.m4a", b"kept-bytes", "audio/mp4")},
+    )
+    disk = Path(settings.media_root) / "assets" / f"{asset['key']}.m4a"
+
+    r = await admin_client.patch(f"/admin/media/{asset['id']}", json={"title": "Renamed"})
+    assert r.status_code == 200, r.text
+    assert disk.read_bytes() == b"kept-bytes"
+
+
 async def test_upload_rejects_unsupported_format(admin_client):
     asset = await _create(admin_client)
     r = await admin_client.post(

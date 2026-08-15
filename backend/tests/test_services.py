@@ -4,6 +4,7 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import select
 
 from app.core.database import SessionLocal, utcnow
 from app.core.security import hash_password
@@ -88,8 +89,43 @@ async def test_dispatch_due_sends_past_nudges():
         s.add(Nudge(user_id=user.id, kind="checkin", title="t", body="b",
                     deeplink="cerebro://x", scheduled_for=utcnow() - timedelta(minutes=5)))
         await s.commit()
-        sent = await nudges.dispatch_due(s)
+        sent = (await nudges.dispatch_due(s)).sent
         assert sent >= 1
+
+
+async def test_dispatch_reports_skipped_separately_from_sent():
+    """Register E58: the admin promised sent/skipped/failed and got only `sent`.
+
+    A user with no push token, no browser subscription and no email opt-in is
+    *skipped* — there is nobody to deliver to. That is a reach problem, and it
+    must not be reported as a failure (which would send an operator hunting a
+    delivery bug) nor folded into `sent` (which would claim a delivery that did
+    not happen). The tally is asserted against the stored statuses too, because
+    the number an operator reads has to match the rows they would go and open.
+    """
+    async with SessionLocal() as s:
+        reachable = await _make_user(s, push_token="tok-reachable")
+        # No push token, no browser subscription, and `email_nudges` already
+        # defaults to False on the model — nobody to deliver to.
+        unreachable = await _make_user(s)
+        for user in (reachable, unreachable):
+            s.add(Nudge(user_id=user.id, kind="checkin", title="t", body="b",
+                        deeplink="cerebro://x", scheduled_for=utcnow() - timedelta(minutes=5)))
+        await s.commit()
+
+        outcome = await nudges.dispatch_due(s)
+
+    assert outcome.sent == 1, outcome
+    assert outcome.skipped == 1, outcome
+    assert outcome.failed == 0, outcome
+    # Not summed anywhere: three separate questions for the operator.
+    assert outcome.considered == 2
+
+    async with SessionLocal() as s:
+        rows = (await s.scalars(select(Nudge).where(Nudge.user_id.in_(
+            [reachable.id, unreachable.id])))).all()
+    statuses = sorted(n.status for n in rows)
+    assert statuses == ["sent", "skipped"], statuses
 
 
 # ── Notifications (APNs disabled → log fallback) ────────────────────────

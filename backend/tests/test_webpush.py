@@ -98,7 +98,7 @@ async def test_dispatch_prefers_web_push_over_email(client, monkeypatch):
 
     monkeypatch.setattr(nudges.webpush, "send_web_push", fake_send)
     async with SessionLocal() as s:
-        sent = await nudges.dispatch_due(s)
+        sent = (await nudges.dispatch_due(s)).sent
     assert sent >= 1 and addr in calls
     assert all(m["to"] != addr for m in email_service.sent_outbox)  # email untouched
 

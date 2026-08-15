@@ -53,9 +53,17 @@ async def _nudge_dispatcher() -> None:
             logger.exception("Weekly digest pass failed")
         try:
             async with SessionLocal() as db:
-                sent = await nudges_service.dispatch_due(db)
-            if sent:
-                logger.info("Nudge dispatcher: %d sent", sent)
+                outcome = await nudges_service.dispatch_due(db)
+            # Log all three: a pass that skips everything looks identical to a
+            # quiet night when only `sent` is printed, and those are very
+            # different operational states.
+            if outcome.considered:
+                logger.info(
+                    "Nudge dispatcher: %d sent, %d skipped, %d failed",
+                    outcome.sent,
+                    outcome.skipped,
+                    outcome.failed,
+                )
         except Exception:  # noqa: BLE001 - keep the loop alive
             logger.exception("Nudge dispatch pass failed")
         # Offline-queue replay records age out here rather than on a timer of

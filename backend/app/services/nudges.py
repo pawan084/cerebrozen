@@ -7,6 +7,7 @@ manually or by a cron.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -142,8 +143,37 @@ async def schedule_wind_down(db: AsyncSession, user: User) -> Nudge | None:
     return nudge
 
 
-async def dispatch_due(db: AsyncSession) -> int:
-    """Send all scheduled nudges whose time has arrived. Returns count sent."""
+@dataclass(frozen=True)
+class DispatchOutcome:
+    """What one dispatch pass actually did.
+
+    The loop below has always distinguished three endings — delivered, nobody to
+    deliver to, and a registered device that refused — and wrote each one to
+    ``Nudge.status`` honestly. It then returned only ``sent``, so the admin
+    dashboard, whose Nudges tab promises "honest sent/skipped/failed outcomes",
+    had two thirds of that sentence unavailable to it (register E58).
+
+    ``skipped`` is not a failure and the two must not be added together: it means
+    the person has no push token, no browser subscription and no email opt-in —
+    an ops question about reach, not about delivery. ``failed`` means a device we
+    hold a token for would not take it, which is the one an operator should chase.
+    """
+
+    sent: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+    @property
+    def considered(self) -> int:
+        return self.sent + self.skipped + self.failed
+
+
+async def dispatch_due(db: AsyncSession) -> DispatchOutcome:
+    """Send all scheduled nudges whose time has arrived.
+
+    Returns the full :class:`DispatchOutcome`; callers that only care about
+    deliveries read ``.sent``.
+    """
     now = utcnow()
     due = (
         await db.scalars(
@@ -153,7 +183,6 @@ async def dispatch_due(db: AsyncSession) -> int:
             .with_for_update(skip_locked=True)
         )
     ).all()
-    sent = 0
     for nudge in due:
         user = await db.get(User, nudge.user_id)
         if user is None:
@@ -164,7 +193,6 @@ async def dispatch_due(db: AsyncSession) -> int:
         if await notifications.deliver(db, user, nudge):
             nudge.status = "sent"
             nudge.sent_at = now
-            sent += 1
             continue
         if not user.push_token:
             # No native install took it. Browser push next (subscriptions
@@ -175,17 +203,24 @@ async def dispatch_due(db: AsyncSession) -> int:
             if await webpush.send_web_push(db, user, nudge):
                 nudge.status = "sent"
                 nudge.sent_at = now
-                sent += 1
             elif user.email_nudges:
                 await email.send_email(user.email, nudge.title, nudge.body)
                 nudge.status = "sent"
                 nudge.sent_at = now
-                sent += 1
             else:
                 nudge.status = "skipped"
             continue
         # A registered token that would not take it: a real delivery failure,
         # not a routing question. `deliver` already tried it.
         nudge.status = "failed"
+    # Tallied from the statuses rather than counted in the branches above: every
+    # nudge leaves this loop with exactly one terminal status, so deriving the
+    # numbers from the rows makes it impossible for the report to disagree with
+    # the record an operator would go and read.
+    outcome = DispatchOutcome(
+        sent=sum(1 for n in due if n.status == "sent"),
+        skipped=sum(1 for n in due if n.status == "skipped"),
+        failed=sum(1 for n in due if n.status == "failed"),
+    )
     await db.commit()
-    return sent
+    return outcome
