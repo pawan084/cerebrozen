@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import Waitlist from "@/components/Waitlist";
+import MobileNav from "@/components/MobileNav";
 import AppStoreBadge from "@/components/AppStoreBadge";
 import { BrandMark } from "@/components/BrandMark";
 import { appHref } from "@/lib/appUrl";
@@ -65,8 +66,15 @@ const SPACES = [
   // sleep is still the first thing behind this door, so the copy leads with it.
   { tab: "Explore", route: "/explore", body: "Find a tool by what would help — sleep, sounds, grounding or thought work." },
   { tab: "Talk", route: "/chat", body: "A voice and text AI companion that listens, reflects, and acts." },
-  { tab: "Journal", route: "/journal", body: "Private reflection with gentle prompts — lock it behind Face ID if you like." },
-  { tab: "You", route: "/account", body: "Insights from your real check-ins, privacy controls, and real support." },
+  // Every door here opens the BROWSER app, so every promise has to be true of
+  // the browser app. Two were not: "lock it behind Face ID" describes an iOS
+  // feature reached by a button that goes to the web (and iOS is not
+  // downloadable), and "real support" was un-inventoried phrasing with no
+  // mechanism behind it. If a capability is mobile-only, the copy has to carry
+  // the surface with it — there is no version of this page where an unreachable
+  // feature sells honestly.
+  { tab: "Journal", route: "/journal", body: "Private reflection with gentle prompts, and a search that only you can run." },
+  { tab: "You", route: "/account", body: "Insights from your own check-ins, privacy controls, and the crisis lines one tap away." },
 ];
 
 const STEPS = [
@@ -124,7 +132,13 @@ const COMPARE_CEREBRO = [
   "The reason shown, and alternatives offered",
   "Memory you can read, edit and switch off",
   "Crisis resources built into the experience",
-  "Presence, not streaks — a missed day dims, it never resets",
+  // Was "a missed day dims, it never resets". The second half was false for the
+  // client this page's doors actually open: `metrics.user_streak` forgives one
+  // missed day and then does start over, and the browser app renders that count.
+  // The forgiveness is real and worth claiming; "never resets" was not, and a
+  // guarantee about how gently you are treated is exactly the kind a person
+  // notices breaking.
+  "A day missed is forgiven, never counted against you",
 ];
 
 const PLANS = [
@@ -143,16 +157,27 @@ const PLANS = [
     ],
   },
   {
+    // Every line here is something the backend actually gates. Premium unlocks
+    // exactly two things in code — the daily message cap comes off
+    // (`services/usage.py`) and narrated audio is served for items flagged
+    // premium (`services/media.playback_url`) — so the list is two lines long
+    // and says so.
+    //
+    // Removed 2026-08-15 rather than reworded, because no mechanism existed:
+    // "Richer voice sessions" (voice is not metered or tier-gated anywhere) and
+    // "Daily plans that adapt to your check-ins" (the adaptive plan ships to
+    // every tier — pricing it as Premium implied a gate that does not exist).
+    // A pricing table is the one surface where an aspirational line is a
+    // charge for something the buyer will not receive.
     tier: "Premium",
-    blurb: "For deeper sleep support, longer sessions and plans that adapt.",
+    blurb: "For unlimited conversations and narrated sessions.",
     amount: "₹499",
     note: "/month",
     featured: true,
     items: [
       "Everything in Free",
-      "The full sleep library and layered mixing",
-      "Richer voice sessions",
-      "Daily plans that adapt to your check-ins",
+      "Unlimited conversations — Free has a daily message limit",
+      "Narrated audio for the sleep and calm sessions that have it",
       "Export and delete, exactly as on Free",
     ],
   },
@@ -170,10 +195,10 @@ const RECEIPTS = [
 const FAQ: FaqEntry[] = [
   { q: "Is CereBro a therapist?", a: "No. CereBro is wellness support — it can listen, reflect, and guide gentle exercises, but it never diagnoses, prescribes, or replaces professional care or emergency help." },
   { q: "Is my data private?", a: "Yes. Memory is consent-first and off-limits unless you allow it. There are no ads or third-party trackers, and you can export or permanently delete everything from inside the app." },
-  { q: "When does it launch?", a: "The browser version is open now — create an account at app.cerebrozen.in and use it today, free. The iOS app has no public date yet, and we'd rather say that than invent one; the waitlist hears first." },
-  { q: "Does it work without a connection?", a: "In the mobile apps, core tools — breathing, grounding, journaling, and the on-device soundscapes — work without a connection. The browser version needs to be online, and the AI companion always does." },
-  { q: "What platforms is it on?", a: "Any modern browser today, at app.cerebrozen.in. iOS is next, with Android to follow — join the waitlist and we'll send a calm note the moment it's ready." },
-  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a private journal, and weekly insights. Premium adds the full sleep library and richer voice sessions. Crisis resources stay free on both." },
+  { q: "When does it launch?", a: "The browser version is open now — create an account at app.cerebrozen.in and use it today, free. The iOS app has no public date yet, and we'd rather say that than invent one; the waitlist hears first.", cta: { label: "Open CereBro in your browser →", href: appHref("/") } },
+  { q: "Does it work without a connection?", a: "The browser version — the one you can use today — needs to be online, and the AI companion always does. Offline breathing, grounding, journaling and on-device soundscapes are built in the mobile apps, which aren't publicly installable yet, so that isn't something we can offer you right now." },
+  { q: "What platforms is it on?", a: "Any modern browser today, at app.cerebrozen.in. iOS is next, with Android to follow — join the waitlist and we'll send a calm note the moment it's ready.", cta: { label: "Open CereBro in your browser →", href: appHref("/") } },
+  { q: "Is there a free plan?", a: "Yes — free forever, with daily check-ins, breathing and grounding tools, a private journal, weekly insights, and the adaptive daily plan. Premium lifts the daily message limit on conversations and unlocks narrated audio for the sessions that have it. Crisis resources stay free on both." },
 ];
 
 // Search engines read the FAQ from the same array the page renders, so the two
@@ -257,18 +282,17 @@ export default async function Home() {
             <a className="nav-signin" href={appHref("/signin")}>Sign in</a>
             <a className="btn btn-primary" href={appHref("/")}>{APP_CTA}</a>
 
-            {/* Mobile only (CSS): a native disclosure — no JS, no motion. */}
-            <details className="nav-menu">
-              <summary>Menu</summary>
-              <div className="nav-menu-panel">
-                {NAV_LINKS.map((l) => (
-                  <a href={l.href} key={l.href}>{l.label}</a>
-                ))}
-                <a href={appHref("/signin")}>Sign in</a>
-                <a className="btn btn-primary" href={appHref("/")}>{APP_CTA}</a>
-                <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
-              </div>
-            </details>
+            {/* Mobile only (CSS): still a native disclosure — no motion, and it
+                opens with JavaScript off. MobileNav adds only the dismissals it
+                never had (link, outside click, Escape). */}
+            <MobileNav>
+              {NAV_LINKS.map((l) => (
+                <a href={l.href} key={l.href}>{l.label}</a>
+              ))}
+              <a href={appHref("/signin")}>Sign in</a>
+              <a className="btn btn-primary" href={appHref("/")}>{APP_CTA}</a>
+              <a className="btn btn-ghost" href="#waitlist">{CTA}</a>
+            </MobileNav>
           </div>
         </div>
       </nav>
@@ -567,9 +591,15 @@ export default async function Home() {
                 </article>
               ))}
             </div>
+            {/* "Cancel at any time" described a flow that cannot start: there is
+                no web billing and no store app, so nothing on this page is
+                purchasable today. Saying so is better copy anyway — the free tier
+                needing no card is the actual selling point. */}
             <p className="price-note reveal">
-              Launch pricing for India, shown in ₹. Cancel at any time from inside
-              the app — the <a href="/refunds">refunds page</a> spells out how.
+              Launch pricing for India, shown in ₹. Premium isn&apos;t on sale yet —
+              the free plan needs no payment details, and we&apos;ll say plainly when
+              paid plans open. The <a href="/refunds">refunds page</a> is written
+              already.
             </p>
           </div>
         </section>
