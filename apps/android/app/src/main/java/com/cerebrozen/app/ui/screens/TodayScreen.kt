@@ -1213,25 +1213,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 stringResource(R.string.today_lede),
                 style = MaterialTheme.typography.bodyMedium, color = TextMuted,
             )
-            if (Session.guestMode) {
-                SectionCard(onClick = { onOpen("auth") }) {
-                    Text(
-                        stringResource(R.string.guest_sign_in_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSoft,
-                    )
-                    Text(
-                        stringResource(R.string.guest_sign_in_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted,
-                    )
-                    Text(
-                        stringResource(R.string.guest_sign_in_action),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Periwinkle,
-                    )
-                }
-            }
+            if (Session.guestMode) GuestSignInCard(onOpen)
             // One quiet thread of continuity: if there is a check-in from today
             // (or yesterday's, through the small hours), say it back — the
             // greeting stops being generic the moment the app knows something.

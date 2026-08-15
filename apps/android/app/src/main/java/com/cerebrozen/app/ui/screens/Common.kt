@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Spacer
@@ -971,6 +972,43 @@ internal fun SectionCard(
         mod.padding(cardPadding()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
+}
+
+/**
+ * The one door from guest mode to an account.
+ *
+ * Guest mode is a real app shell, and until 2026-08-15 there was no way to sign
+ * in from inside it — you had to clear the session to find the auth screen.
+ * Three surfaces answer that now (Today, Goals, and the You row), so the card
+ * itself lives here rather than being written out three times: the copy is a
+ * promise about what signing in buys, and it should be one sentence in one
+ * place, not three that drift.
+ *
+ * Accessibility is the other reason it is shared. [SectionCard]'s `clickable`
+ * carries no `Role.Button` and does not merge its children, so three loose Text
+ * nodes and an invisible click target is what a screen reader would meet — the
+ * exact shape the audit's `Role.Button` sweep was about. Merging here fixes all
+ * three call sites at once, and rules out the other trap: a nested button inside
+ * a clickable card, which gives TalkBack two overlapping targets for one action.
+ */
+@Composable
+internal fun GuestSignInCard(onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
+    val title = stringResource(R.string.guest_sign_in_title)
+    val subtitle = stringResource(R.string.guest_sign_in_subtitle)
+    val action = stringResource(R.string.guest_sign_in_action)
+    SectionCard(
+        onClick = { onOpen("auth") },
+        modifier = modifier.semantics(mergeDescendants = true) {
+            role = Role.Button
+            // Announced as one control saying what it does, in the order a
+            // person needs it: the offer, then the outcome.
+            contentDescription = "$action. $title $subtitle"
+        },
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Text(action, style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+    }
 }
 
 /** Primary CTA — a near-white pill with dark, bold text. Reads as the one action

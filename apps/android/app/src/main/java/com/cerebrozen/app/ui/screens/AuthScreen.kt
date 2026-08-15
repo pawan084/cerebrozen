@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -158,7 +159,26 @@ fun AuthScreen(
             .background(Gradients.night),
     ) {
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
+        // `imePadding()` BEFORE `verticalScroll`, so it shrinks the scroll
+        // viewport rather than padding the content inside it.
+        //
+        // UX-03 was fixed here on 2026-08-14 with a BringIntoViewRequester alone
+        // (copied from ToolScreens) and recorded as "implemented but not visually
+        // verified" — it almost certainly did not work. `MainActivity` calls
+        // `enableEdgeToEdge()`, which sets `decorFitsSystemWindows = false`, and
+        // that overrides the manifest's `adjustResize`: the window keeps its full
+        // height when the keyboard opens. So the viewport still believed it was
+        // full-height, and `bringIntoView()` could happily scroll the password
+        // field to a position *behind* the IME — the request was honoured and the
+        // field was still hidden.
+        //
+        // Credit where due: this is Abhimanyu's diagnosis from `PremiumFrames.kt`
+        // ("BringIntoView alone cannot create that space when the edge-to-edge
+        // window is not resized"), applied to the screen that needed it just as
+        // badly. The requester below is kept — it handles scrolling the focused
+        // field into a viewport that is now the right size.
+        Modifier.fillMaxSize().statusBarsPadding().imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 30.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
