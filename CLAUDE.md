@@ -70,8 +70,14 @@ Dev logins (dev only; prod boot guard rejects them): `admin@cerebro.app/admin123
   macOS runs show skips).
 - iOS DEBUG talks to `http://localhost:8000` (ATS `NSAllowsLocalNetworking`); Release is
   hardcoded to `https://api.cerebrozen.in` (`Networking/APIClient.swift`).
-- Sign in with Apple / Google are code-complete but **inert until configured** (no
-  `.entitlements` file yet; no `GIDClientID`) — buttons degrade gracefully.
+- Sign in with Apple / Google are code-complete but **inert until configured**. The two
+  halves differ: `apps/ios/CereBro/CereBro.entitlements` **does exist** and declares
+  `applesignin`, `healthkit` and `aps-environment` — what is missing is the capability
+  enabled on the Apple Developer portal. `GIDClientID` is genuinely absent (read in
+  `GoogleAuth.swift`, never set in `Info.plist`). iOS buttons degrade gracefully;
+  **Android hides its Google button** rather than showing a dead one, whenever
+  `GOOGLE_WEB_CLIENT_ID` is blank (`AuthScreen.kt`) — it returns with no code change
+  once the id lands.
 - Oracle (LangGraph agent) needs `ORACLE_ENABLED=true` + an LLM key; it checkpoints to
   Postgres (`AsyncPostgresSaver`), falling back to in-process MemorySaver only when the
   DB checkpointer can't init (logged).

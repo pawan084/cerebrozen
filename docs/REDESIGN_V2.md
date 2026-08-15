@@ -132,19 +132,33 @@ prototype's flow map before adding anything new.
 Campaigns, Referrals, Analytics, Governance, Commercial and a member-experience preview.
 Against that, this repo has:
 
-| Concept | Status today |
-|---|---|
-| Organisation / tenant | **absent** — no model, field or FK anywhere |
-| Sponsorship | **absent** — billing hangs directly off `User` |
-| Entitlement / seat | **absent** — only `User.subscription_tier` as a string |
-| Cohort | **absent** as a model (a computed grouping in `services/metrics.py` only) |
-| RBAC | **binary** — `User.is_admin`; the portal needs 7 roles |
-| Programme | present (`ProgramEnrollment` → `ContentItem`) |
+**Corrected 2026-08-14 — the table below was a snapshot of a gap that has since been built,
+and reading it as current cost a day.** Every "absent" row was true when this section was
+written and false by the time anyone acted on it: `backend/app/models/organization.py` and
+Alembic `a1c4f7e2b930_add_organizations` landed the whole layer. The RBAC row did real damage
+— it was cited as evidence for an audit finding ("roles are stored and never consulted") that
+was published to `main` and `v2` before anyone opened the routes, which enforce them on all
+six write paths. The status column is therefore **dated**, so the next reader can tell a
+snapshot from a fact.
+
+| Concept | Then (2026-07) | Now (2026-08-14, verified in code) |
+|---|---|---|
+| Organisation / tenant | **absent** — no model, field or FK anywhere | `Organization` — region, contract dates, seats, reporting settings |
+| Sponsorship | **absent** — billing hangs directly off `User` | `SponsoredProgramme` (org funds a programme for a group; never enrols anyone) |
+| Entitlement / seat | **absent** — only `User.subscription_tier` as a string | `OrgMembership` — deliberately thin: org, user, dates, status, no behavioural field |
+| Cohort | **absent** as a model (a computed grouping in `services/metrics.py` only) | `EligibilityGroup` — describes eligibility, never anything a member did |
+| RBAC | **binary** — `User.is_admin`; the portal needs 7 roles | **4 org roles, enforced.** `ORG_ROLES` = benefits_owner / programme_admin / analyst / privacy_reviewer; `ROLES_CAN_WRITE` gates all six write routes via `_require_write`, pinned by `tests/test_org_roles.py` (16 cases). `User.is_admin` remains a separate, still-binary flag for the *staff* console |
+| Programme | present (`ProgramEnrollment` → `ContentItem`) | unchanged |
+
+Two caveats the "now" column should not overstate: `programme_admin` and `privacy_reviewer`
+are both simply "write" today — the names promise granularity `ROLES_CAN_WRITE` does not
+deliver (a product call, tracked in `TODO.md`) — and the portal's own screens are still
+largely `lib/mock.ts`.
 
 `apps/admin` is **not** this portal. It is a single ~2000-line client component with a
 `useState` tab switcher, gated by one boolean, scoped to the whole platform (all users, all
 content, prompts, safety events). It is an internal staff console and should stay one; the
-organisation portal is a **new surface**.
+organisation portal is a **new surface** — since built as `apps/portal`.
 
 ---
 

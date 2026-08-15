@@ -12,6 +12,28 @@ All six static gates green. **Playwright e2e run 2026-08-13: 53 passed in 2.0m, 
 `docker-compose.e2e.yml` stack — web + admin + app + portal + api + db). **iOS not compiled**
 (no Xcode on this host), and neither client has been walked on a device this pass.
 
+> **Re-run 2026-08-14/15, after the fixes below landed: backend 654 passed / 2 skipped /
+> **0 failed**, coverage 96%, exit 0.** The "2 failed" above was TEST-01's hermetic pair and is
+> now closed — and this run is its proof, because it was made **with the live `OPENAI_API_KEY`
+> still in `backend/.env`**: blanking the keys by hand would have tested nothing. Playwright
+> re-run: 53 passed in 2.1m, exit 0. Four Next apps clean at `--max-warnings=0`. iOS still
+> uncompiled; the Android device walk did happen and has its own section below.
+>
+> **A trap worth writing down, because it cost an hour and looked exactly like a real
+> regression.** An earlier run in this same session reported **14 failures** across seven
+> unrelated files — duplicate-key 409s, off-by-N counts, replay guards tripping. Every one of
+> those files passed in isolation. The cause was not the code and not the suite: a previous
+> `docker compose run` had been killed from the host, **and the container kept running**
+> (verified deliberately: kill the client, `docker ps` still shows the container up). Two
+> pytest processes were then sharing one test database, and `conftest._ensure_test_db` DROPs
+> and CREATEs that database at the start of every run — so the newcomer pulled the schema out
+> from under the one still executing. Tells: the bad run took 330s against a normal 200s, and
+> the failures were all *state-shaped* rather than logic-shaped.
+> **So: stop the container, not just the command** (`docker rm -f cerebrosg-api-run-*`) before
+> re-running, and never trust a suite result taken while another run might be alive.
+> Second, smaller tell from the same hour: `pytest ... | tail -30` reports the **exit code of
+> `tail`**, so a failing suite announces success. Use `${PIPESTATUS[0]}` or redirect to a file.
+
 - [x] **SAF-10 · The crisis directory is now gated, not just consistent** (2026-08-13, `WC-32`).
       `CLAUDE.md` lists crisis regions among the contracts kept in sync **by hand**, and unlike
       tokens, CSP, prices and claims, nothing enforced it — while this is the one where drift is
@@ -113,7 +135,13 @@ All six static gates green. **Playwright e2e run 2026-08-13: 53 passed in 2.0m, 
       `test_input_bounds::test_sleep_rejects_implausible_dates`, the test that failed, cannot.
       Still open nearby: `services/organizations.py:156` also takes `utcnow().date()`, but for
       contract access windows, where a UTC boundary is arguably correct — **[decide]**
-- [ ] **TEST-01 · The backend suite is not hermetic** — `services/ai.complete` picks its provider
+- [x] **TEST-01 · The backend suite is not hermetic** — **fixed 2026-08-14 in `43d7af0a`**,
+      and left unticked here for thirteen commits, which is its own small lesson: a ledger
+      nobody closes stops being evidence. `backend/tests/conftest.py` now **sets** (not
+      `setdefault`s) `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` to empty before the app is
+      imported, so an exported key in the developer's shell loses too — pydantic-settings ranks
+      the environment above `.env`, so blanking there beats both. Hermetic is the default now
+      rather than a property of CI's environment. *(Original finding:)* `services/ai.complete` picks its provider
       from *key presence*, never from `TESTING`, and `backend/.env` carries a live
       `OPENAI_API_KEY`. So a local `pytest` run makes **real OpenAI calls**: billable, slow, and
       non-deterministic. Two tests fail as a direct result —
@@ -124,16 +152,33 @@ All six static gates green. **Playwright e2e run 2026-08-13: 53 passed in 2.0m, 
       running the suite locally sees red on two tests that are not broken. `conftest` should
       blank the provider keys when `TESTING=1`, so hermetic is the default rather than a property
       of CI's environment
-- [ ] **DOC-01 · `CLAUDE.md` understates iOS readiness** — its gotcha says Sign in with
-      Apple/Google are inert with "no `.entitlements` file yet; no `GIDClientID`".
+- [x] **DOC-01 · `CLAUDE.md` understates iOS readiness** (fixed 2026-08-14) — its gotcha said
+      Sign in with Apple/Google are inert with "no `.entitlements` file yet; no `GIDClientID`".
       `apps/ios/CereBro/CereBro.entitlements` **exists** and declares
-      `com.apple.developer.applesignin`, `com.apple.developer.healthkit` and `aps-environment`.
-      The `GIDClientID` half is still accurate (read in `GoogleAuth.swift`, absent from
-      `Info.plist`). Split the claim so the file's existence is not denied
-- [ ] **WEB-01 · Two `react-hooks/exhaustive-deps` warnings in `apps/app`** —
-      `(authed)/journal/page.tsx:71` (missing `reload`) and `onboarding/page.tsx:317` (missing
-      `PHASES`). `next lint` exits 0 on warnings so CI is green, which is exactly how a stale
-      closure reaches production
+      `com.apple.developer.applesignin`, `com.apple.developer.healthkit` and `aps-environment`;
+      what is actually missing is the capability enabled on the Apple Developer portal (already
+      tracked under "needs the owner's accounts"). The `GIDClientID` half was accurate (read in
+      `GoogleAuth.swift`, absent from `Info.plist`) and stays. The claim is now split rather
+      than blanket, and picked up a third fact worth stating in the same breath: **Android
+      hides** its Google button when `GOOGLE_WEB_CLIENT_ID` is blank (UX-01, `AuthScreen.kt`)
+      rather than degrading it, so "buttons degrade gracefully" was true of only one client
+- [x] **WEB-01 · Two `react-hooks/exhaustive-deps` warnings in `apps/app`** (fixed
+      2026-08-14). Neither was fixable by adding the named dependency — doing so would have
+      changed behaviour in both cases, which is why they had sat there:
+      `(authed)/journal/page.tsx` declared `reload` with **state-defaulted parameters**
+      (`q = query, tag = tagFilter`), so it was a new function every render and naming it would
+      have refetched the journal on every keystroke. It is now a `useCallback` taking both
+      arguments explicitly, capturing nothing, and the four call sites pass what they always
+      resolved to. It also had to **move above** the effect that calls it: the old
+      `function reload` hoisted and a `const` does not — caught by `tsc`, not by eye.
+      `onboarding/page.tsx` built `PHASES` inside `FirstReset`, so naming it would have
+      re-armed the breathing timeout every render and stretched the 4s/6s phases; hoisted to
+      module scope, where a constant that never varies per instance belongs.
+      **The half that matters more:** `next lint` exits 0 on warnings, so the rule whose entire
+      job is catching stale closures was advisory. All four Next apps were at zero warnings, so
+      CI now runs `next lint --max-warnings=0` on **web, admin, app and portal**.
+      Mutation-checked: reintroducing the missing `reload` dependency exits 1 and names the
+      rule; the file was restored byte-identical from a backup in the same command
 
 **Checked and found sound** (recorded so the next review does not re-derive them): the
 safety-never-blocks rule holds end to end — `ai.complete` catches broadly so the keyword floor
@@ -143,6 +188,252 @@ covers secret, admin password, seed data, rate-limit switch, CORS wildcard and t
 The admin router guards every route at the router level. The one f-string SQL
 (`users.py:347`) takes its table name from a literal tuple and binds the rest. No `.env`,
 `.p8`, `.jks` or service-account JSON has ever been committed on any branch.
+
+## Done — Abhimanyu's guest sign-in commit, reviewed and built on (2026-08-15)
+
+`bc08a21b` on `origin/v2` (his, 07:31) adds the door guest mode never had: a `composable("auth")`
+route reachable from Today, Goals and You, a `YouScreen` effect that stops calling `Api.me()`
+while signed out, and `imePadding()` on `PremiumFrame`. Reviewed rather than merged on sight —
+this stream has a recorded history of landing code that does not compile — and it holds up:
+every symbol and import resolves, `RouteReachabilityTest` is satisfied (`onOpen("auth")` is a
+real navigator), `MissingTranslation` is deliberately disabled so the English-only strings are
+fine, and the coverage gate measures `net/**`, not `ui/screens/**`. Applied here with
+`cherry-pick -n`, uncommitted, per the usual arrangement.
+
+- [x] **His `imePadding()` fix is worth far more than its commit message says.** It reads as
+      "notably Reframe's balanced-thought field"; `PremiumFrame` is what `PremiumSubPage` wraps,
+      and **13 screens** use `PremiumSubPage` — Search, Trusted contact, every tool screen,
+      Patterns, Games, Rituals. One line, thirteen screens.
+- [x] **UX-03 is now actually fixed, and was not before** (`AuthScreen.kt`). Yesterday's fix
+      gave the sign-in screen a `BringIntoViewRequester` copied from ToolScreens, and the
+      entry was filed "implemented but NOT visually re-verified". His diagnosis explains why it
+      could not have worked: `MainActivity` calls `enableEdgeToEdge()`, which sets
+      `decorFitsSystemWindows = false` and **overrides the manifest's `adjustResize`** — the
+      window keeps full height when the keyboard opens, so the viewport still believed it was
+      full-height and `bringIntoView()` could scroll the password field to a spot *behind* the
+      IME. The request was honoured and the field was still hidden.
+      `imePadding()` added **before** `verticalScroll`, so it shrinks the viewport rather than
+      padding content inside it. The requester stays — it now scrolls within a correctly sized
+      viewport. Compiles; still needs the device shot with the IME up.
+      Worth noting: `Common.kt`'s shared `Page`/`SubPage` scaffold **already had this**, with a
+      comment stating the same insight. The knowledge was in the codebase; the two screens that
+      built their own root container (`AuthScreen`, `PremiumFrame`) were the two that missed it.
+      That is the pattern to watch — a bespoke root is a bespoke inset bug
+- [x] **Three copies of the guest card became one `GuestSignInCard`** (`Common.kt`), which
+      fixes two things his version shipped with:
+      **(a)** Goals had a `TextButton` nested inside an already-clickable `SectionCard`, both
+      firing `onOpen("auth")` — one action, two overlapping targets, and a button inside a
+      button to TalkBack. **(b)** `SectionCard`'s `clickable` sets no `Role.Button` and does
+      not merge children, so the card announced as three loose Text nodes with an invisible
+      click target — exactly what the audit's `Role.Button` sweep existed to prevent. The
+      shared component merges its descendants, declares the role, and builds a
+      `contentDescription` that leads with the *action* ("Sign in / Sign up") rather than the
+      offer, since "Want to keep your progress?" does not tell a screen-reader user what
+      activating it does. The You row stays a row — a card would be the wrong shape there
+- [x] **`GuestSignInCardTest` (3 cases)** — the flow shipped untested, and
+      `RouteReachabilityTest` only proves the route has *a* caller, not that a guest can find
+      one. Pins that the door leads to `auth` **and nowhere else**, that it exposes exactly one
+      click target with `Role.Button`, and that the announced label names the action.
+      Mutation-checked: turning the merge off and dropping the role fails 1 of 3
+- [x] **A three-line test took the whole Android suite down, and the cause was mine.**
+      Worth the space, because the failure was maximally misleading. `:app:check` came back
+      **12 failed / 500**, all `AppNotIdleException` ("Compose did not get idle after ~4 million
+      attempts in 60 SECONDS"), in `ReduceMotionComposeTest`, `ThemeTokensTest` and
+      `NowPlayingDotTest` — three classes with no connection to anything that changed. Every one
+      of them **passed in isolation**, and so did every small combination tried, including the
+      new test beside all three.
+      What isolated it was one honest comparison. The first baseline was invalid — three classes
+      on clean `main` against a full 500-test run on the working tree — and it pointed the
+      finger the wrong way. A like-for-like full run on clean `main` gave **497 / 0**;
+      **his commit alone** gave 497 / 0; the working tree minus one file gave 497 / 0. That file
+      was `GuestSignInCardTest`, written an hour earlier to raise the bar on somebody else's
+      code.
+      Mechanism: `performClick()` on a `SectionCard` starts `pressScale`, an underdamped spring
+      (dampingRatio 0.62). The test asserted and ended while it was still in flight, and
+      Compose's test rule registers its clock as an Espresso idling resource in a registry that
+      is **process-global** — so an unsettled clock outlived the class and poisoned every
+      Compose test that ran after it in the same JVM. Hence "in isolation it's fine", and hence
+      the alphabetical pattern nobody would think to look for: all twelve failures sort *after*
+      `GuestSignInCardTest`.
+      One `compose.waitForIdle()` after the click fixes it: **500 / 0 in 35s**, down from 12
+      minutes of 60-second timeouts.
+      **The rule this leaves behind:** a Compose test that clicks anything with a spring must
+      settle before it ends, or it charges its mess to the next test. And when a suite fails
+      only in full, compare full against full — a narrower baseline will confidently blame the
+      wrong change
+- [ ] **The Today guest card never dismisses** — a guest who has decided not to sign in yet
+      meets it on every launch, forever. Not changed: whether a sign-in prompt should be
+      dismissible (and for how long) is a product call **[decide]**
+- [ ] **Three new strings are English-only** (`guest_sign_in_*`). Consistent with current
+      practice and lint-exempt, but they join the `values-hi` queue. Not machine-translated on
+      purpose
+
+## Done — web + admin wave (2026-08-15, audit E)
+
+Owner scoped this run to "web and admin" and made two calls up front: **remove landing
+claims that aren't built** (rather than reword or label them "coming soon"), and take
+**E40 (httpOnly refresh) now, E39 (admin MFA) later**.
+
+**Checked first, and already closed by later work** — recorded so the next pass doesn't
+re-derive them: E2's ₹1,499 "Premium + Human" tier is gone from `PLANS`; E23 (pricing cards
+had no CTA) now has "Start free" / "See Premium in the app"; E7's pattern-shift nudge pill no
+longer exists; E18's oversized LCP hero is moot — the v2 rebuild draws its device mocks in
+markup (`PhoneMock.tsx`) and **there is no `<img>` element anywhere in `apps/web`**; E26's
+three competing hero CTAs are now two; E59's missing Oracle glyph exists. E29 was overstated:
+the favicon is 64px, not 32px.
+
+- [x] **SAF-12 · The page the footer calls "Crisis support" had no crisis number on it**
+      (audit E10 — the most serious thing in either list). `/support` told a person in crisis
+      to "contact your local emergency services or a crisis hotline in your region" — i.e. to
+      go and find one — while the homepage promised region-correct lines "always a tap away".
+      A marketing site is where someone who has not signed up lands, which makes it the
+      *first* surface, not an afterthought.
+      New `apps/web/lib/crisis.ts` + `components/CrisisLines.tsx` mirror the member app's
+      India-first list exactly (same markup, same aria wording), and the section now sits
+      **above** contact and billing, because someone arriving through a link labelled "Crisis
+      support" is answered before anything else. The "what CereBro isn't" section was rewritten
+      to point *up* at real numbers instead of standing in for them.
+      **The gate was extended rather than the copy trusted**: `check-crisis-lines.mjs` covered
+      backend/iOS/Android, and both web copies (`apps/web`, `apps/app`) were a fourth and fifth
+      hand-copy with nothing checking them. They are now gated by a rule that fits what they
+      are — a static page has no region to resolve, so it must **lead with the backend's IN
+      list in the backend's order** and may only append numbers the backend publishes
+      somewhere. Flat equality would have failed honest code and taught everyone to delete the
+      check. **Mutation-checked three ways** (one digit changed in Tele-MANAS; Tele-MANAS
+      demoted from first; an invented helpline appended) — each fails with a specific message,
+      and the real exit code was verified as 1, not just the printed output
+- [x] **The subprocessor list was only being kept in one direction** (E1). "Nothing here that
+      isn't wired in `backend/app/services`" was true; the reverse was not. **Twilio**
+      (`services/sms.py`, trusted-contact SMS escalation) and the **SMTP relay**
+      (`services/email.py`, verification and password resets) were both live and named on
+      neither `/subprocessors` nor the privacy policy. A disclosure page is judged on what it
+      omits, so the direction nobody was checking was the one that mattered. Both added, with
+      what each receives; privacy §4 renamed to "AI, voice & delivery providers" and given the
+      matching paragraph
+- [x] **Terms and refunds contradicted each other on billing** (E9). Terms §6 said paid plans
+      "are managed through your app-store account"; `/refunds` said plainly that web billing
+      is not live and there are no store apps. Terms now leads with **nothing is on sale yet**
+      and describes the future state as future. Same fix on the landing's price note (E11):
+      "Cancel at any time" described a flow that cannot start
+- [x] **The privacy policy documented a collection nobody can trigger** (E12) — "an Apple
+      identifier if you use Sign in with Apple", which is built but not switched on. Now says
+      so, rather than describing a data path a reader has no way to cause
+- [x] **The pricing table charged for two things the backend does not gate** (E2/E3/E4, owner
+      decision: remove). Premium unlocks exactly **two** things in code — the daily message cap
+      comes off (`services/usage.py`) and narrated audio is served for premium-flagged items
+      (`services/media.playback_url`) — so the list is now two lines and says so. Removed:
+      "Richer voice sessions" (voice is not metered or tier-gated anywhere) and "Daily plans
+      that adapt to your check-ins" (the adaptive plan ships to every tier — pricing it as
+      Premium implied a gate that does not exist). Both added to CLAIMS_MAP's **banned
+      phrases**, alongside a standing rule: check `entitlements.PAID_TIERS` before putting a
+      bullet in a price column
+- [x] **"A missed day dims, it never resets" was false for the client the page links to**
+      (E8). `metrics.user_streak` forgives **one** missed day and then does start over, and
+      the browser app renders that count. The forgiveness is real and worth claiming; the
+      absolute was not. Now "A day missed is forgiven, never counted against you", with a
+      CLAIMS_MAP row citing `test_streak_endpoint_mirrors_ios_rules`.
+      **My first draft of that row cited `tests/test_streak.py`, which does not exist** —
+      caught by `check-claims-tests.mjs`, the gate that exists for exactly that
+- [x] **Offline capability was described in the present tense for apps nobody can install**
+      (E6). Now leads with what the reader can actually use today
+- [x] **Face ID and "real support"** (E5/E28) — every door in that section opens the *browser*
+      app, so every promise in it has to be true of the browser app. Two were not
+- [x] **SEO: every legal page shared to social as the homepage** (E13). Next merges metadata
+      **shallowly**, so a page exporting only title/description/canonical inherited the root
+      `openGraph` wholesale — `og:url=https://cerebrozen.in` on all ten. Fixed with
+      `lib/pageMeta.ts` and applied to every subpage, as a helper rather than a comment
+      because the failure mode is *omission*: the old arrangement broke the moment someone
+      added a page and wrote the obvious three fields
+- [x] **`keywords` meta removed** (E14) — dead to every major engine since ~2009.
+      **og:image is now genuinely 1200×630** (E15): it was declared 628 and *was* 628, so the
+      asset was rescaled rather than the number edited — declaring a size the file does not
+      have would have been the worse repair. It also dropped 176 KB → 103 KB
+- [x] **Sitemap dates are derived, not remembered** (E17). `lastModified` was one constant
+      with a comment asking the next person to bump it; that is a process, and processes of
+      that shape fail silently. Now each URL reads its own `page.tsx` mtime, falling back to
+      the old constant
+- [x] **296 KB of dead, actively wrong imagery deleted** (E19, and the ledger's own standing
+      instruction to "delete or regenerate when the client redesign lands"):
+      `brand/banner-hero.jpg` and all three `screens/*.webp` — unreferenced since the v2
+      rebuild, and showing the retired indigo palette plus a **"3-day streak"**, an affordance
+      both the spec and the design skill ban, so they could not have been reused for the store
+      either. `brand/cerebro-lockup.svg` is also unreferenced but **kept**: a brand lockup is
+      plausibly wanted off-site, and 4 KB is not worth a unilateral deletion
+- [x] **Waitlist field has a visible label** (E20); **the mobile menu now closes** (E21) on
+      link, outside click and Escape — it is still a native `<details>`, so it still opens
+      with JavaScript off, and the wrapper adds only the dismissals; **the two converting FAQ
+      answers link to the app** instead of printing a URL to retype (E25), via an optional
+      `cta` field so the FAQPage JSON-LD keeps its plain-text answer
+- [x] **Admin: tabs live in the URL** (E55). Refresh no longer dumps an operator back on
+      Overview, a queue can be bookmarked or sent to a colleague, and Back moves between tabs
+      instead of leaving the dashboard. The hash rather than a query param — `useSearchParams()`
+      would push this whole client component behind a Suspense boundary for something that is
+      ten local views
+- [x] **Admin: the sidebar is links, not buttons** (E61). The audit read `aria-current="page"`
+      on a `<button>` as a link semantic on a non-link — true when written, because a click
+      changed only component state. With each view now addressable the honest fix is the other
+      direction: real anchors, which makes `aria-current` correct *and* restores middle-click,
+      open-in-new-tab and copy-link-address. A `tablist` would have taken all three away
+- [x] **Admin: two operator endpoints got a UI** (E56). `/admin/agent-actions` is now the
+      Oracle tab's accept-rate table (with the acceptance percentage computed over *decided*
+      calls — counting a pending confirmation as a decline would make a quiet week look like a
+      rejected feature), and `/admin/digest/run` is a button, which matters because
+      cron-only deployments (`NUDGE_DISPATCH_INTERVAL_MINUTES=0`) have no other way to send
+      the weekly digest and it was reachable only by curl
+- [x] **Admin: dispatch reports what it actually did** (E58). `dispatch_due` always
+      distinguished delivered / nobody-to-deliver-to / device-refused and wrote each to
+      `Nudge.status`, then returned only `sent` — so the Nudges tab's promise of "honest
+      sent/skipped/failed outcomes" was two thirds unavailable to it. Now a `DispatchOutcome`,
+      **tallied from the stored statuses** rather than counted in the branches, so the number
+      an operator reads cannot disagree with the rows they would open. `skipped` and `failed`
+      are never summed: one is a reach question, the other a delivery one. Dispatch also moved
+      to the Nudges tab, beside the queue it drains. Pinned + mutation-checked
+- [x] **Admin: a stuck Oracle confirmation can be closed** (E57) — it could be listed with its
+      age and nothing else, so the tab diagnosed the exact condition it warned about and the
+      queue only grew. The decision recorded is **`expired`, not `declined`**: the member
+      decided nothing, and a trail saying otherwise would be a false record of someone's choice
+      about their own data. It approves and executes nothing, and there must never be a path
+      from here to a write. Audit-logged, refuses to re-stamp an already-resolved row
+- [x] **Admin: "Clear" no longer orphans files forever** (E51). It PATCHes `url: ""` while
+      cleanup ran only on row DELETE, which the UI never calls. Keyed on the URL moving *away*
+      from our assets dir (repointing to a CDN orphans the local copy just as completely), and
+      the key is captured **before** the update, since a PATCH can rename it — deleting by the
+      new key would destroy a live asset and still leak the old one
+- [x] **Admin accessibility** (E60/E62/E63): a real `:focus-visible` ring (admin defined none
+      anywhere, and the login inputs set `outline: none`, so keyboard focus was invisible on
+      the credential form); `.sr-only`; `scope="col"` on all 42 headers and named action
+      columns; a labelled search with a live result count. On E62 the audit measured row
+      actions against 44px — that is WCAG **2.5.5 AAA**; the binding requirement is 2.5.8 AA
+      at 24×24, which they already met. The real defect was the second half of its own
+      sentence ("danger buttons sit flush beside safe ones"), so: a 32px floor and an enforced
+      gap between adjacent row actions, rather than making every triage row a third taller
+- [x] **Admin: the refresh token left localStorage** (E40, owner-approved). The access token
+      was moved to memory *because* XSS can read storage, and the longer-lived rotating
+      credential — the one worth stealing — was left behind in it. It is now an httpOnly
+      cookie scoped to `/auth` (so it is not attached to ordinary API calls), `SameSite=Lax`
+      (console and API are same-site in production and in dev), rotated on every refresh, and
+      deleted on logout *as well as* revoked server-side. Additive: the token is still in the
+      JSON body, so iOS, Android and the member web app are untouched — pinned by a test.
+      Consequence worth knowing: nothing in JS can see the session now, so `hasSession()` asks
+      the server instead of checking a key — strictly more truthful, since the old check only
+      proved a string existed, not that it worked. **Mutation-checked** (`httponly=False` fails)
+- [ ] **E16 · `force-dynamic` on the marketing site — assessed, deliberately not changed.**
+      The whole site is per-request SSR to mint a CSP nonce, with no Cache-Control or CDN
+      story, so crawl budget and TTFB pay for the nonce on every hit. The alternative is a
+      hash-based CSP or edge-caching the HTML. Left alone because it is a real
+      architecture decision touching the CSP contract that `check-csp-sync.mjs` gates, and I
+      could not verify CDN behaviour from here — changing it on a guess risks the security
+      header to save milliseconds. **Needs a decision, not a patch**
+- [ ] **E29 · a web manifest + 192/512 icons** for high-DPI pinned tabs. Not done because the
+      only source is a 180px PNG and a 64px icon; upscaling either would ship a blurry icon,
+      which is worse than the current one. Needs the SVG mark rasterised properly
+- [ ] **E22 · the FAQ is still one-open-at-a-time.** The original defect (a native `name="faq"`
+      exclusive accordion with no ARIA) is gone — it is now buttons with `aria-expanded`,
+      `aria-controls` and an `inert` closed panel. What remains is a stated design choice, not
+      an accessibility failure, so changing it is the owner's call
+- [ ] **E39 · admin MFA** — deferred by owner decision this run. A single password still
+      guards every user email, the crisis excerpts, and prompt control over risk detection.
+      Needs enrolment UI, recovery codes, and a TOTP-vs-WebAuthn call
 
 ## Open — first real-device walk (2026-08-14, OnePlus CPH2681, Android 14)
 
@@ -246,9 +537,20 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       cannot edit the privacy centre, and a `programme_admin` can change the reporting
       threshold and remove seats. Whether that matters is a product call **[decide]**; the
       current behaviour is at least least-privilege in the safe direction
-- [ ] **Correct `REDESIGN_V2` §141** — "RBAC is binary — `User.is_admin`; the portal needs 7
-      roles" describes neither the model (4 roles, enforced) nor the gap. It is the line that
-      set this whole detour going
+- [x] **Correct `REDESIGN_V2` §141** (done 2026-08-14) — "RBAC is binary — `User.is_admin`;
+      the portal needs 7 roles" described neither the model (4 roles, enforced) nor the gap. It
+      is the line that set this whole detour going.
+      Correcting only that row would have been the worse repair: **four of its five siblings
+      were equally stale** — Organisation, Sponsorship, Entitlement/seat and Cohort were all
+      marked "absent — no model, field or FK anywhere" while `models/organization.py` and
+      Alembic `a1c4f7e2b930_add_organizations` have shipped all four
+      (`Organization`, `SponsoredProgramme`, `OrgMembership`, `EligibilityGroup`). A table with
+      one freshly-verified row among five wrong ones reads as verified throughout.
+      §3.3 now carries **dated columns** — "Then (2026-07)" beside "Now (2026-08-14, verified
+      in code)" — so the next reader can tell a snapshot from a fact, plus a note that this
+      table's staleness is what produced the false finding. The two things the new column must
+      not overstate are stated with it: the write/read split is coarser than the role names
+      suggest, and the portal's screens are still largely `lib/mock.ts`
 
 ## Open — instrumented tests exist, and do not yet pass unattended (2026-08-14, `WC-281`)
 
@@ -261,7 +563,17 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       Android, surviving recreation, and the crisis region resolving from **real** telephony
       rather than a shadow. Everything assertable off-device stays in `src/test` on Robolectric,
       which runs everywhere and costs no emulator
-- [ ] **The two `ActivityScenario` tests hang — the app never goes idle.** Espresso waits for
+- [x] **The two `ActivityScenario` tests hang — the app never goes idle.** **Fixed the same
+      day in `16d23e08`**, and this entry was left describing the old world (noted 2026-08-14
+      while truing the ledger up — the commit changed two Kotlin files and no docs).
+      `rememberReduceMotion()` now consults a `@Volatile internal var
+      reduceMotionOverrideForTests`, null in every real run, which `DeviceSmokeTest`'s `@Before`
+      sets and its `@After` clears. The hook is **in the app** precisely because the device
+      setting was unavailable — and CI gains determinism from it too, since the suite no longer
+      depends on what a runner's animation settings happen to be. The hanging tests now return
+      a verdict in 0.8s.
+      **What is actually still open is a different failure**, tracked immediately below.
+      *(Original finding:)* Espresso waits for
       the main looper to quiesce and the app's infinite Compose animations (the sheen, the
       breathing orb) never let it. This is **the same gotcha `CLAUDE.md` already documents for
       iOS** — "`-resetState YES` … skips the splash and the real audio engine — keep new
@@ -275,6 +587,18 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       is the natural seam: it already observes `ANIMATOR_DURATION_SCALE`, so give it a
       test-only override (instrumentation argument or a debug `BuildConfig` flag) and both
       tests should settle. Until then the launch tests are written but not runnable unattended
+- [ ] **`ActivityScenario` cannot bring `MainActivity` to RESUMED on CPH2681, and says
+      nothing about why.** This is the real remaining blocker, and it is *not* the hang: both
+      launch tests now return a verdict in ~0.8s and both **fail with an empty failure body**,
+      so they carry `@Ignore` in `DeviceSmokeTest` — written and visible rather than deleted or
+      left red, so the suite can be wired into CI while the gap stays on the page.
+      Next step is to run them from Android Studio, where the instrumentation failure detail is
+      readable, or to install a crash handler that surfaces the cause. Worth checking first
+      whether the launch trips something the walk never did — a `MainActivity` that expects an
+      intent extra, or first-run state the manual walk had already satisfied.
+      **Blocked on the handset**: the phone is not attached (`adb devices` is empty as of this
+      entry) and the emulator on this machine crashes on `opengl32sw`, so this needs a device
+      session, not a code session
 - [ ] **Not wired into CI yet, deliberately.** A suite that hangs would turn a 10-minute job
       into a timeout and teach everyone to ignore it. Wire it once the animation hook lands —
       and note CI has no device, so it needs Gradle Managed Devices or
