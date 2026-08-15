@@ -9,6 +9,50 @@
 > Companions: [PRD.md](PRD.md) (what ships today, with honest status),
 > [ARCHITECTURE.md](ARCHITECTURE.md) (cross-stack contracts), [TODO.md](TODO.md).
 
+## 0.2 Reviewed 2026-08-15 (agent/coaching pass, prompted by the `/work` feature)
+
+The sibling designed and partly built the exact class of feature `/work` starts:
+`AGENT-FLOW-PLAN.md` + `api/app/ai/graph/` is a staged coach (intake → challenge → core →
+actions → role-play/scenario → feedback) with hardening notes marked "each born from a live
+incident". Six findings, ranked; none previously harvested.
+
+1. **Rule-based multilingual crisis PRE-filter** (`ai/graph/crisis.py`) — zero-latency,
+   runs before any LLM, fails OPEN toward flagging. The lexicon structure solves exactly
+   the defect our own walk found on 2026-08-03 (the keyword floor missing progressive
+   forms): Latin terms word-bounded against a diacritic/apostrophe-stripped casefold
+   ("can't go on" matches "cant go on"; "die" never fires inside "diet"), non-Latin terms
+   by raw substring against unstripped text, patterns compiled longest-first. **Directly
+   portable to `services/safety.py`** — the highest-value item here. Their own header
+   warns: new locales need native-speaker review before shipping.
+2. **Org-level AI recommendations for the portal** (`domains/hr_recommendations`) — a
+   weekly synthesis loop whose load-bearing, test-asserted invariant is *sanitize before
+   the LLM payload is built* (drop every field with `users_n < 5`). Maps cleanly onto our
+   portal: we already have `reporting_threshold` (floor 20) and small-cell suppression, so
+   the same loop could feed org admins 1–5 recommendations without the LLM ever seeing a
+   small cell. Includes an honest deterministic fallback and acted_on/dismissed audit.
+3. **The control envelope + safety nets** for any staged agent (their `envelope.py`,
+   incident-born): `_truthy()` (json_repair can turn a truncated `tru` into a truthy
+   string), prose-around-JSON salvage, empty-reply retry → neutral fallback, completion
+   floor (defer early completion, ≤2 re-prompts), completion ceiling (force handoff after
+   N same-step loops), stuck-stage watchdog. `/work`'s extraction is one `complete_json`
+   today; if it grows stages, this is the checklist.
+4. **Action check-ins close the loop** (`coach_action_checkin`, seeded at session entry;
+   HeyCere has the same `repeat_user_checkin_agent`). Both mature references treat
+   "open with a check-in on last time's actions" as a first-class stage. **Our `/work`
+   plan currently has no follow-through beat** — the obvious next slice.
+5. **Prompt-registry hardening contract** (their plan §prompt registry): content-hash
+   version doubling as the LLM cache key, validation that BLOCKS saving an enabled agent
+   with no prompt, reload-failure keeps previous prompts and marks the registry degraded,
+   audit with actor + version before/after. Our `prompt_templates` has versions + admin
+   CRUD; the validation/degraded-reload/hash bits are the portable delta.
+6. **Role-play / scenario stages** for rehearsing difficult conversations — "conversations"
+   is literally one of `/work`'s five focus values, and their sticky two-turn offer→route
+   gate is the interaction pattern to copy when we build it.
+
+Also noted, not adopted: their placeholder rule ("unresolved context token → blanked,
+never leaks `{token}`") and the system-prompt composition order (constraints → flow →
+role, constraint-framing so the model never answers *as* the environment agent).
+
 ## 0.1 Harvested 2026-08-04 (chat deep-comparison — see the Talk audit)
 
 Adopted from the sibling's Oracle chat, on our contracts:

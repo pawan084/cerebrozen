@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import uuid
 from datetime import datetime
@@ -824,12 +825,18 @@ async def list_prompts(db: AsyncSession = Depends(get_db)):
     for name in sorted(set(prompt_registry.registered()) | set(by_name)):
         versions = by_name.get(name, [])
         active = next((v for v in versions if v.active), None)
+        live = active.template if active else prompt_registry.default_for(name)
         out.append({
             "name": name,
             "source": "registry" if active else "code_default",
             "active_version": active.version if active else None,
-            "template": active.template if active else prompt_registry.default_for(name),
+            "template": live,
             "default_template": prompt_registry.default_for(name),
+            # Audit J#4: a short content hash of what production is actually
+            # serving, so "does prod match the reviewed prompt?" is a glance at
+            # two hex strings instead of a diff of two paragraphs. Doubles as a
+            # stable prompt-cache key for providers that support one.
+            "content_hash": hashlib.sha256(live.encode("utf-8")).hexdigest()[:12],
             "versions": [_prompt_row(v) for v in versions],
         })
     return out
@@ -848,6 +855,18 @@ async def save_prompt(
     versions = (await db.scalars(select(PromptTemplate).where(PromptTemplate.name == name))).all()
     if not known and not versions:
         raise HTTPException(status_code=404, detail="Unknown prompt")
+    # Audit J#4 (the sibling registry's save-blocking validation): activating a
+    # BLANK template silently replaces a live system prompt with nothing — the
+    # LLM call still "works", it just runs unguided, which for the safety
+    # classifier or the Oracle persona is a production incident with no error
+    # anywhere. The safety_classifier acknowledgement flow guards *which* prompt
+    # you edit; this guards emptiness for all of them. Reverting to the code
+    # default is the supported way to clear an override.
+    if not payload.template.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="An empty template cannot be activated — use Revert to return to the code default.",
+        )
     for row in versions:
         row.active = False
     new = PromptTemplate(

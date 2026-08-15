@@ -97,3 +97,25 @@ async def test_wired_caller_uses_override(admin_client, monkeypatch):
     assert captured["system"] == "REGISTRY SYSTEM PROMPT"
     assert source == "rule" and topics  # fallback still delivers
     await _clean("assessment_topics")
+
+async def test_a_blank_template_cannot_be_activated(admin_client):
+    """Audit J#4: a whitespace-only save would replace a live system prompt
+    with nothing — the call still 'works', just unguided, and nothing errors
+    anywhere. Revert is the supported way back to the code default."""
+    r = await admin_client.post("/admin/prompts/safety_classifier", json={"template": "   \n  "})
+    assert r.status_code == 422
+    assert "Revert" in r.json()["detail"]
+
+
+async def test_prompt_listing_carries_a_content_hash(admin_client):
+    rows = (await admin_client.get("/admin/prompts")).json()
+    assert rows, "no prompts registered?"
+    for row in rows:
+        assert len(row["content_hash"]) == 12, row["name"]
+    # The hash tracks the LIVE template: activating an override changes it.
+    name = rows[0]["name"]
+    before = rows[0]["content_hash"]
+    save = await admin_client.post(f"/admin/prompts/{name}", json={"template": "A distinct new template body."})
+    assert save.status_code == 201, save.text
+    after = next(r for r in (await admin_client.get("/admin/prompts")).json() if r["name"] == name)
+    assert after["content_hash"] != before

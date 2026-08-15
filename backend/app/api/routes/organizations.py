@@ -119,6 +119,21 @@ async def update_org(
     return org
 
 
+@router.get("/recommendations")
+async def org_recommendations_route(
+    ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Counts-only AI recommendations (audit J#3a). Readable by every role —
+    including analyst — because it derives from the same suppressed totals the
+    reports show; see services/org_recommendations.py for why it deliberately
+    does NOT aggregate wellbeing, and what widening that would require (an
+    owner decision, portal copy changes included)."""
+    from app.services import org_recommendations
+
+    return await org_recommendations.recommend(db, ctx[1])
+
+
 @router.get("/summary", response_model=OrgSummaryOut)
 async def read_summary(
     ctx: tuple[OrgAdmin, Organization] = Depends(current_org_admin),

@@ -305,6 +305,128 @@ The ones worth remembering:
       TalkBack pass), #24 (chip clipping is documented intent — owner may overrule), #25
       (emoji sleep scale — needs glyph design, not a patch)
 
+## Done — WorkCoachScreen design pass (2026-08-15, same session)
+
+The screen shipped function-first without the `mobile-design` skill review every other
+surface has had. The review found two review-blocking defects by the design system's own
+rules, both fixed:
+
+- [x] **§6 "one primary action per screen"** — the composer row had TWO white pills (Send +
+      "Turn this into a plan") shouting over each other. The plan is the screen's job, so it
+      alone keeps the pill; Send became the circular composer control — and per §5
+      ("duplicating a shared component is a defect"), Talk's private `SendButton` was
+      **lifted into `Common.kt`** rather than copied. Side effect worth noting: the shared
+      version's busy state is three small dots instead of the chat-bubble `TypingDots`,
+      which was transcript chrome rendering *clipped* inside the 52dp circle on Talk all
+      along — lifting it fixed a small Talk defect nobody had filed.
+- [x] **§6 "state a user typed survives rotation/process death"** — `draft` and `turns` used
+      `remember`. "Losing user writing is the worst defect class in this app", and a
+      coaching transcript the server deliberately never stores is exactly that. Both are
+      `rememberSaveable` now (turns via a flat `[role, text, …]` listSaver; MAX_TURNS keeps
+      the bundle far under the transaction limit).
+- [x] Checked and already conforming: crisis door ≤2 taps (`onUrgent` + flagged-turn chip),
+      tokens only, no new animations (Reduce Motion moot), honest empty state, copy tone,
+      48dp targets, consent-free surface. Docs completed in the same pass: ARCHITECTURE
+      gained the `/org/recommendations` row and the PRD a "Work coaching (B2B2C)" section
+      with honest statuses (Android door "not yet walked on a device"; iOS/web ⚪).
+
+## Done — audit J implemented, five waves (2026-08-15, same session)
+
+All six deep-dive points from `docs/audit/J-sibling-agent-deep-dive.md`, built as approved —
+with one deliberate exception: **#3's boundary-widening variant was NOT built autonomously.**
+"Without human intervention" does not extend to dismantling a test-pinned privacy contract;
+the counts-only version shipped instead, and widening remains an owner decision.
+
+- [x] **W1 · Crisis floor: folding + multilingual lexicon** (`services/safety.py`). Terms now
+      match a folded copy (casefold, diacritics stripped, five apostrophe variants stripped),
+      word-bounded and longest-first; non-Latin terms (Devanagari/zh/ja/ko/ar) match by
+      substring against the raw text; romanised-Hindi seeds included. Closes the two
+      demonstrable gaps: "I can’t cope" with a phone keyboard's curly apostrophe now matches,
+      and the India-first product has a non-English floor at all. The floor itself can no
+      longer crash silent — any exception flags `elevated`. Hindi/non-Latin seeds are
+      structure-verified only and NEED native/clinical review before claiming coverage (the
+      `values-hi` precedent). **Found and fixed a latent bug the sibling's own implementation
+      carries**: U+00B4 (´) decomposes under NFKD into a space + combining accent, so
+      stripping apostrophes *after* normalising leaves "can t go on" unsplit-matchable —
+      apostrophes are stripped first here. 9 tests; mutation-checked (reverting the fold
+      fails 3).
+- [x] **W2 · The work plan became a loop** (`workcoach.reply`). A FRESH `/work/chat`
+      conversation with an active work plan injects the plan (title + step done/open states)
+      into the system prompt and the coach opens by asking about one open step —
+      mid-conversation turns never re-inject. Stays inside statelessness: read fresh, stored
+      nowhere, pinned at the prompt boundary by monkeypatching `ai.complete`.
+- [x] **W3 · Prompt-registry hardening** (`routes/admin.py`). A whitespace-only template can
+      no longer be activated (422 pointing at Revert — blanking a live system prompt "works",
+      just unguided, with no error anywhere); `GET /admin/prompts` carries a 12-hex
+      `content_hash` of the LIVE template so "does prod match the reviewed prompt?" is a
+      glance, not a diff. Degraded-reload machinery deliberately not ported (wrong shape for
+      per-call Postgres reads).
+- [x] **W4 · Org recommendations, counts-only** (`services/org_recommendations.py`,
+      `GET /org/recommendations`). 1–3 administrative suggestions over the aggregates the
+      portal already may see — suppression applied *upstream* at the org's threshold, and
+      `_sanitize` strips suppressed groups entirely before any prompt exists (nulls would
+      themselves disclose "a group is hidden"). Prompt forbids wellbeing speculation;
+      priorities cap at "advisory" (a count is not an emergency); keyless fallback never
+      leaves the dashboard empty. The load-bearing invariant is test-asserted at the prompt
+      boundary: a suppressed group's name and counts never reach the LLM payload. On-demand
+      and unstored — no scheduler, no table, no retention question. Readable by analysts
+      (derived from reports they already see).
+- [x] **W5 · Rehearsal-lite + the envelope lessons** (`workcoach.py`). The coach may offer —
+      once, never re-offered after a decline — to rehearse a difficult conversation in-chat,
+      carrying the sibling's *measured* turn budgets in prompt form (don't bail after setup;
+      ~8 exchanges then a structured debrief). And the JSON-mode lesson is now structural: a
+      test pins that `complete_json` appears in this module ONLY on the extraction path,
+      because their eval showed JSON mode makes routing gates silently skip-route.
+- [ ] **Owner decision, restated:** widen the org boundary to wellbeing-derived aggregates
+      (the sibling's stress/engagement loop) — requires changing the test-pinned no-wellbeing
+      contract *and* portal copy — or keep counts-only. `docs/audit/J…#3` has both sides.
+- [ ] Full staged coach sessions (#5/#6 heavy versions) stay parked until `/work` usage
+      justifies the machinery.
+
+## Done — work coaching for corporate members (2026-08-15, `/work` + Android door)
+
+The agent review the feature asked for, and what it concluded: cerebroSG's Oracle is a
+tool-loop companion; HeyCere (`~/Desktop/HeyCere-main`, CereBroZen) is a staged deterministic
+coaching engine whose one directly transferable idea is **actions/insights extraction** —
+conversation in, structured committed actions out (`dynamic_actions_insights_agent` + a
+per-agent prompt workbook). The feature is that pattern grafted onto models cerebroSG already
+has: nothing new in the schema, nothing removed from the consumer product.
+
+- [x] **`services/workcoach.py` + `POST /work/chat` / `POST /work/plan`.** Sponsored members
+      talk a work problem through, then one call turns the transcript into a `Plan` +
+      `PlanStep` task list — the same tables the Today hero and plan screen already render,
+      with the same honest `source` column ("ai" | "rule"). Focus values are a frozen work set
+      (workload/focus/conversations/boundaries/growth) so the one-active-work-plan rule can
+      never retire a wellness plan — pinned by a test.
+- [x] **The boundaries are the design.** Work turns are *stateless* — the client holds the
+      transcript, no `chat_messages` rows exist, so work content never reaches wellness
+      memory/insights/export and no org report could aggregate it. The gate is
+      `entitlements.resolve(...).sponsored` (personal premium is deliberately not enough, with
+      an honest 403 detail). Safety scans every turn and never blocks; crisis appends the
+      region-correct lines. Keyless, both endpoints degrade honestly — the fallback plan's
+      rationale says "not drawn from your conversation".
+- [x] **Prompts in the live registry** (`workcoach_system`, `workcoach_extract`) — admin-
+      editable like the Oracle's, cerebroSG's equivalent of HeyCere's editable workbook.
+- [x] **Android door**: `WorkCoachScreen` (route `work`) — transcript bubbles, composer,
+      "Turn this into a plan", inline task list, "Open your day" → plan screen; privacy line
+      first ("your organisation … never sees what you write here" — a description of the
+      backend boundary, not marketing) and a crisis chip when a turn is flagged. Reached from
+      a You row that renders only for sponsored accounts (`Session.cachedSponsored()`); the
+      server enforces regardless.
+- [x] **`tests/test_workcoach.py` (7)**: the gate + honest refusal; personal premium ≠
+      corporate; no chat rows leak; crisis gets Tele-MANAS (region set explicitly — a fresh
+      account has none and correctly falls back to the international lines); keyless plan is
+      `source="rule"` with an honest rationale; work plans never retire wellness plans;
+      prompts registered. Backend full suite 673/0; Android `:app:check` 500/0
+      (RouteReachabilityTest covers the new route via the You row).
+- [x] **The slowapi trap, reproduced and re-documented**: `work.py` shipped with
+      `from __future__ import annotations` + `@limiter.limit` and every body became a missing
+      query param — the exact wave-16 ledger gotcha, now also recorded in the file's docstring.
+- [ ] Follow-ups, deliberately not in this slice: iOS/web doors for `/work`; extraction-path
+      test with a mocked LLM (the "ai" branch is exercised only keylessly today); process-death
+      transcript survival on Android (rememberSaveable for turns); PRD row + CLAIMS_MAP row if
+      landing copy ever mentions the feature.
+
 ## Done — icon & image sweep (2026-08-15, same session)
 
 A relevance-and-gaps pass over the app's 89 distinct Material icons and its drawables,
