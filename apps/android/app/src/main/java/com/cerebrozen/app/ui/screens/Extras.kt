@@ -48,6 +48,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -713,7 +714,11 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         }
         // The offline insight reel had zero inbound links (audit A9) — quiet
         // local cards, exactly the read-only pause this screen already sells.
-        NavRow(stringResource(R.string.oir_title), stringResource(R.string.oir_subtitle)) {
+        // Icon audit: the three education/reel rows were the only bare rows on
+        // their screens — every sibling carries a 44dp icon well, so these read
+        // as unfinished rather than quiet.
+        NavRow(stringResource(R.string.oir_title), stringResource(R.string.oir_subtitle),
+            icon = Icons.Outlined.AutoStories) {
             onOpen("insightreel")
         }
         Text(stringResource(R.string.insights_privacy_footer),
@@ -1013,10 +1018,15 @@ fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         // their natural home, and they need neither account nor network.
         Text(stringResource(R.string.programs_offline_header),
             style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        // Subject icons, not a shared "education" glyph: the header above
+        // already says these are offline education — the icon's job is telling
+        // the two apart at a glance.
         NavRow(stringResource(R.string.ocbti_title),
-            stringResource(R.string.programs_offline_cbti_sub)) { onOpen("cbti") }
+            stringResource(R.string.programs_offline_cbti_sub),
+            icon = Icons.Outlined.Bedtime) { onOpen("cbti") }
         NavRow(stringResource(R.string.ombct_title),
-            stringResource(R.string.programs_offline_mbct_sub)) { onOpen("mbct") }
+            stringResource(R.string.programs_offline_mbct_sub),
+            icon = Icons.Outlined.SelfImprovement) { onOpen("mbct") }
     }
 }
 

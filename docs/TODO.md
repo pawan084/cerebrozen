@@ -261,6 +261,82 @@ fine, and the coverage gate measures `net/**`, not `ui/screens/**`. Applied here
       settle before it ends, or it charges its mess to the next test. And when a suite fails
       only in full, compare full against full — a narrower baseline will confidently blame the
       wrong change
+## Done — audit I fix pass (2026-08-15): 22 of 26, each re-verified on the handset
+
+The 26-point screenshot audit (`docs/audit/I-android-device-2026-08-15.md`) was fixed the
+same day in three waves — safety/honesty, P2 defects, polish — with a compile per wave, the
+full `:app:check` at the end, and the visible fixes re-screenshotted on the device.
+
+The ones worth remembering:
+
+- [x] **The Today hero was a mock wearing dynamic clothes.** `HeroKind`
+      (PLAN_STEP / PLAN_DONE / FALLBACK) was computed and **never rendered** — every
+      non-loading state showed one hardcoded card whose subtitle claimed it was "chosen from
+      your recent evening check-in", on sessions with no check-in. Every honest string and
+      helper already existed unused (`heroWhyRes`, `today_hero_why_fallback`,
+      `today_hero_done_*`, `planStepRoute`); the fix was wiring the render to the state it
+      already computed. A plan step now shows its own title/detail and deep-links to its
+      surface; done says done and offers no dead button; the fallback says "the same for
+      everyone". The forced `\n` title breaks became `LineBreak.Heading`
+- [x] **Tele-MANAS leads the urgent screen** (I#20) — the red 112 card sat first, against the
+      REDESIGN §2.3 contract the crisis gate asserts across three stacks but structurally
+      cannot see in a *layout*. The immediate-danger case is kept first by the banner, which
+      is now **dialable itself** (it said "call 112 now" and was not tappable). Reversible if
+      the owner rules emergency-first for this screen — say so in the contract if so
+- [x] **I#9's "empty heading" was the scroll fold**, not missing content: "Try together" and
+      its chips were a two-row unit and the fold on 720×1604 landed exactly between them. Label
+      and chips are now one inline, unsplittable rail
+- [x] **A guest's Talk composer now says it can't send BEFORE the attempt** (I#13), the failed
+      send offers "Sign in / Sign up" instead of a retry that cannot work, the You profile row
+      says "Guest" instead of rendering the screen's own name over an empty avatar (I#17), and
+      the crisis screen's trusted-person card says "Set up a trusted person" when none can
+      exist (I#21) with its own icon instead of borrowing Tele-MANAS's heart (I#22)
+- [x] Rest of the sweep: Explore's cards align structurally (IntrinsicSize + a reserved
+      subtitle slot — they only ever aligned by luck of copy length), its hero door finally
+      has words on it, its glyphs are real icons, "Watch and learn" is a list row like its
+      siblings; Journal has one primary action (the blank page states its difference), both
+      "Try another" labels wear their surface's token; Talk's header stops being a third
+      microphone, dead-send stops outweighing the live mic, the broken-looking 56dp art tile
+      is gone; Sleep's quality chips sit next to the question they answer (the HC card keeps
+      its unclamped owner-decision text and its above-the-times position), and the ±30m
+      steppers look like the buttons they always were; the You support "Call" pill grows from
+      ~33px to a 48dp target with `Role.Button`
+- [ ] **Still open from audit I:** #4 (guest-card a11y node split — blocked on a hand-enabled
+      TalkBack pass), #24 (chip clipping is documented intent — owner may overrule), #25
+      (emoji sleep scale — needs glyph design, not a patch)
+
+## Done — icon & image sweep (2026-08-15, same session)
+
+A relevance-and-gaps pass over the app's 89 distinct Material icons and its drawables,
+screenshot-verified where visible.
+
+- [x] **Two dead drawables deleted**: `ic_tab_home.xml` and `ic_tab_sleep.xml` had zero
+      references — orphaned when the redesign renamed Home→Today and gave Sleep's tab slot to
+      Explore. The four `guided_*.png` scene images are live and stay
+- [x] **The Health Connect card no longer wears the crisis shield.** `HealthAndSafety` is the
+      crisis mark on You's support row, the urgent door and the Talk banner — and the same
+      glyph fronted a data-permission card, teaching the shield two unrelated meanings. Now
+      `MonitorHeart`, same Cyan
+- [x] **Four genuinely icon-less rows got subject icons** (their siblings all carry 44dp
+      wells, so bare rows read as unfinished): Insight Reel → `AutoStories`, CBT-I overview →
+      `Bedtime`, MBCT overview → `SelfImprovement` (the "offline education" header already
+      states the class; the icon's job is telling the two apart), Talk's Quick SOS reset →
+      `Spa` — deliberately *not* the crisis shield, since the row opens the calm toolkit, and
+      an urgency mark on a grounding door would overpromise. A fifth candidate (Today's
+      Weekly insights) turned out to already have its icon — the audit scan's 7-line window
+      missed a trailing named arg, and briefly produced a duplicate-argument bug that the
+      compile caught
+- [x] **Three empty-space cards got icon wells in the app's row language**: the guest sign-in
+      card (`PersonAddAlt`, decorative to TalkBack since the card's merged label already leads
+      with the action), Talk's empty-state card (`ChatBubbleOutline` — the honest replacement
+      for the broken-looking generative tile removed in audit I#11), and Sleep's check-in
+      header, whose new glyph follows the card's existing time-of-day framing
+      (`LightMode` mornings, `Bedtime` evenings)
+      Deliberately NOT iconed: Journal's quiet recent-empty card — not every card needs one,
+      and over-iconing is its own disease
+- [x] Gate after the sweep: `:app:check` green, 500/0; Today + Talk re-screenshotted on the
+      handset
+
 ## Device walk — 2026-08-15, OnePlus CPH2681 (guest sign-in + the IME fix)
 
 Second real-device walk. Debug build against a local backend over `adb reverse`.
@@ -319,7 +395,27 @@ Second real-device walk. Debug build against a local backend over `adb reverse`.
       A Robolectric assertion is not evidence about a screen reader.
       **Owed:** a pass with TalkBack actually switched on, to establish whether the split
       matters in practice or is a `uiautomator` flattening artefact. Until then this is
-      unproven, not fixed
+      unproven, not fixed.
+      **TalkBack pass attempted 2026-08-15 and BLOCKED.** Enabling it over adb needs
+      `WRITE_SECURE_SETTINGS`, which ColorOS refuses — the same denial already recorded above
+      for `animator_duration_scale`. All five `settings put` calls threw SecurityException and
+      the values are confirmed unchanged (`null/0/0`), so nothing on the handset was altered.
+      **It needs the owner to switch TalkBack on by hand**; everything after that can be driven
+      from here.
+      Four fixes were tried against the two-node split and **none of them merged it**:
+      (1) `semantics(mergeDescendants = true)` on the caller's modifier; (2) `role = Role.Button`
+      moved onto `SectionCard`'s own `clickable`; (3) a plain `semantics { contentDescription }`
+      applied *after* the clickable, copying `TopBarAction` exactly; (4) `clearAndSetSemantics`
+      on the card's content to stop the three `Text`s emitting nodes.
+      **(2) and (3) are kept** — both are right regardless, and (2) gives every clickable
+      `SectionCard` in the app the button role it never declared. **(4) was reverted on
+      purpose:** with no TalkBack evidence, silencing the three lines could trade a clumsy
+      announcement for no announcement at all, and an unverified change that can only make
+      things worse is not worth carrying.
+      The likely difference from the working control: `TopBarAction` wraps a single `Icon`
+      with `contentDescription = null` and no text descendants, so nothing competes to form a
+      merged node. A card with three `Text` children is a different problem, and guessing at
+      it four times was already one or two times too many
 - [ ] **The Today guest card never dismisses** — a guest who has decided not to sign in yet
       meets it on every launch, forever. Not changed: whether a sign-in prompt should be
       dismissible (and for how long) is a product call **[decide]**

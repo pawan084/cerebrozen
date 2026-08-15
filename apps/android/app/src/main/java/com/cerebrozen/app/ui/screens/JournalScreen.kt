@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Save
@@ -346,7 +347,7 @@ fun JournalScreen(
                     TextButton(
                         onClick = { promptIdx = (promptIdx + 1) % prompts.size },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                    ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
+                    ) { Text(stringResource(R.string.journal_try_another), color = Periwinkle /* the light-card action colour everywhere else; Cyan was a stray (audit I#15) */) }
                 }
                 // W10: a small honest reassurance when the composer opens with a
                 // restored draft — dismissible, plain state, never persisted.
@@ -637,7 +638,7 @@ fun JournalScreen(
                         else promptIdx = (promptIdx + 1) % prompts.size
                     },
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                ) { Text(stringResource(R.string.journal_try_another), color = Cyan) }
+                ) { Text(stringResource(R.string.journal_try_another), color = com.cerebrozen.app.ui.theme.ArtTextSoft /* on-art token, matching the WRITE pill beside it (audit I#15) */) }
                 Box(
                     Modifier.clip(RoundedCornerShape(50))
                         .border(1.dp, com.cerebrozen.app.ui.theme.ArtTextSoft.copy(alpha = 0.5f), RoundedCornerShape(50))
@@ -652,11 +653,17 @@ fun JournalScreen(
             }
         }
 
-        // Writing is what this tab is FOR — it gets the one primary button.
-        // History and Private stay quiet rows.
-        PrimaryButton(
-            text = stringResource(R.string.journal_new_title),
-            modifier = Modifier.fillMaxWidth(),
+        // ONE primary action, and it is the hero (audit I#14). The prompt card
+        // and this control both opened the composer — an outlined "WRITE" pill
+        // and a full-width filled button, stacked, shouting over each other —
+        // and the real difference between them (the hero prefills the prompt as
+        // the title; this opens a blank page) was stated nowhere. The blank
+        // page is now a quiet row alongside History and Private, and its
+        // subtitle says what makes it different.
+        NavRow(
+            stringResource(R.string.journal_new_title),
+            stringResource(R.string.journal_new_row_sub),
+            Icons.Outlined.EditNote,
         ) { mode = JournalMode.Entry }
 
         val monthCount = entriesThisMonth(entries, LocalDate.now())
@@ -735,11 +742,16 @@ fun JournalScreen(
             }
         } else {
             // The section exists before the first entry too — an anchored
-            // promise instead of silent nothing.
-            Text(
-                stringResource(R.string.journal_recent_empty),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
+            // promise instead of silent nothing. In a quiet card, not bare text
+            // (audit I#16): as a floating caption it was the last thing on the
+            // page, stranded above ~250px of dead space, reading as a sentence
+            // that lost its card — the shape every other empty state here wears.
+            SectionCard(quiet = true) {
+                Text(
+                    stringResource(R.string.journal_recent_empty),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                )
+            }
         }
 
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }

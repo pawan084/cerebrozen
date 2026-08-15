@@ -70,6 +70,13 @@
     <string name="explore_mindful_subtitle">Grounding, imagery, body scan and other small steadying things.</string>
     <string name="explore_programmes_title">Programmes</string>
     <string name="explore_programmes_subtitle">Longer guided journeys you move through at your own pace.</string>
+    <!-- The insight-reel row on Explore, unified with its list siblings (audit I#8). -->
+    <!-- The Explore hero door (audit I#7): a tappable panel that carried no
+         words — the largest element above the fold said nothing about the tap. -->
+    <string name="explore_hero_eyebrow">Quick reset</string>
+    <string name="explore_hero_title">Two minutes of box breathing</string>
+    <string name="explore_watch_title">Watch and learn</string>
+    <string name="explore_watch_subtitle">Short explainers, one idea at a time</string>
     <string name="explore_support_title">Urgent support</string>
     <string name="explore_support_subtitle">Real people, any hour. Always here, never behind a plan.</string>
 
@@ -265,6 +272,11 @@
     <string name="talk_sos_title">Quick SOS reset</string>
     <string name="talk_sos_subtitle">Fast anxiety/stress reset — 2 minutes</string>
     <string name="talk_type_instead">Type instead</string>
+    <!-- Shown under the composer in guest mode, BEFORE a send is attempted:
+         every guest send is refused by design (Session.ensureAccess), so an
+         enabled composer with no warning was a promise the tap would break
+         (audit I#13). -->
+    <string name="talk_guest_compose">Chatting needs an account — as a guest, messages can\'t be sent yet.</string>
     <string name="talk_type_message">Type a message</string>
     <string name="talk_field_label">Message</string>
     <string name="talk_send_failed">Couldn\'t send.</string>
@@ -593,6 +605,10 @@
     <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
     <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
+    <!-- The blank-page row under the prompt hero. Both open the composer; the
+         difference (hero prefills the prompt, this starts blank) was stated
+         nowhere while both wore primary-action clothes (audit I#14). -->
+    <string name="journal_new_row_sub">A blank page — no prompt</string>
     <string name="journal_recent_header">Recent</string>
     <string name="toolkit_recent_chip">Pick up where you left off · %1$s</string>
     <string name="ground_done_title">That\'s the practice</string>
@@ -655,6 +671,11 @@
     <string name="you_export_subtitle">Download a full copy</string>
     <string name="you_delete_subtitle">Permanently erase everything</string>
     <string name="you_signout">Sign out</string>
+    <!-- The guest profile row (You tab). Without these it fell back to
+         you_default_name ("You") over an empty avatar — a placeholder that
+         shipped (audit I#17). -->
+    <string name="you_guest_name">Guest</string>
+    <string name="you_guest_sub">Not signed in — tap to sign in or create an account</string>
     <string name="guest_sign_in_title">Want to keep your progress?</string>
     <string name="guest_sign_in_subtitle">Sign in or create an account to sync your plan, journal and check-ins.</string>
     <string name="guest_sign_in_action">Sign in / Sign up</string>
@@ -1630,7 +1651,7 @@
     <string name="safetyplan_eyebrow">Yours, in your words</string>
     <string name="safetyplan_title">My safety plan</string>
     <string name="safetyplan_intro">A plan you write while things are steady, so a harder day has fewer decisions in it. Fill in as much or as little as you like — a part-written plan still helps.</string>
-    <!-- Crisis verification. A badge is a claim: it may only appear where we have actually checked the numbers against a named source. India is that region today; the ref/ audit found the opposite bug, Indian numbers badged Verified for every country. --><string name="crisis_screen_title">Urgent support</string><string name="crisis_screen_subtitle">Human help comes first</string><string name="crisis_headline">Human help\ncomes first.</string><string name="crisis_immediate_danger">If there is immediate danger, call %1$s now.</string><string name="crisis_not_emergency">CereBro is not an emergency service and cannot monitor your safety.</string><string name="crisis_region_language">%1$s · ENGLISH</string><string name="crisis_reach_verified">Reach verified human support quickly with offline fallbacks.</string><string name="crisis_reach_plain">Reach human support quickly, with offline fallbacks.</string><string name="crisis_call_emergency">Call emergency services</string><string name="crisis_emergency_detail">%1$s · police, fire, health and other emergencies</string><string name="crisis_call_line">Call %1$s</string><string name="crisis_mental_india">%1$s · free 24/7 mental-health support in 20 languages</string><string name="crisis_mental_other">%1$s · 24/7 mental-health support</string><string name="crisis_trusted_title">Contact my trusted person</string><string name="crisis_trusted_detail">Someone you selected; reached automatically only if you switched that on</string><string name="crisis_cannot_call">I cannot call</string><string name="crisis_cannot_call_detail">See text, in-person and grounding alternatives</string><string name="crisis_cached_title">Cached support details</string><string name="crisis_sources">Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.</string><string name="crisis_change_region">Change region</string><string name="crisis_open_safety_plan">Open my safety plan</string><string name="crisis_verified">Verified</string><string name="crisis_not_verified">Not verified yet</string><string name="crisis_unverified_note">We haven’t checked these against an official source. Please confirm the number locally if you can.</string><string name="crisis_mental_generic">24/7 mental-health support</string><!-- Guest mode: a guest never signed in, so a 401 from a server-backed screen is the product working as designed, not a network failure. --><string name="net_guest_mode">Sign in to keep this. You’re looking around as a guest, so nothing is saved yet.</string><string name="sleep_insights_link">See the longer view →</string><string name="safetyplan_loading">Opening your plan…</string><string name="goals_loading">Opening your goals…</string><string name="trends_window_loading">Updating the range…</string><string name="safetyplan_privacy_note">CereBro doesn\'t read this back to you as advice, score it, or share it.</string>
+    <!-- Crisis verification. A badge is a claim: it may only appear where we have actually checked the numbers against a named source. India is that region today; the ref/ audit found the opposite bug, Indian numbers badged Verified for every country. --><string name="crisis_screen_title">Urgent support</string><string name="crisis_screen_subtitle">Human help comes first</string><string name="crisis_headline">Human help\ncomes first.</string><string name="crisis_immediate_danger">If there is immediate danger, call %1$s now.</string><string name="crisis_not_emergency">CereBro is not an emergency service and cannot monitor your safety.</string><string name="crisis_region_language">%1$s · ENGLISH</string><string name="crisis_reach_verified">Reach verified human support quickly with offline fallbacks.</string><string name="crisis_reach_plain">Reach human support quickly, with offline fallbacks.</string><string name="crisis_call_emergency">Call emergency services</string><string name="crisis_emergency_detail">%1$s · police, fire, health and other emergencies</string><string name="crisis_call_line">Call %1$s</string><string name="crisis_mental_india">%1$s · free 24/7 mental-health support in 20 languages</string><string name="crisis_mental_other">%1$s · 24/7 mental-health support</string><string name="crisis_trusted_title">Contact my trusted person</string><string name="crisis_trusted_detail">Someone you selected; reached automatically only if you switched that on</string><!-- Guest / signed-out: no trusted person can exist yet, so the card says it is a setup door rather than presenting a contact that is not there (audit I#21). --><string name="crisis_trusted_setup_title">Set up a trusted person</string><string name="crisis_trusted_setup_detail">Someone you choose — not set up yet</string><string name="crisis_cannot_call">I cannot call</string><string name="crisis_cannot_call_detail">See text, in-person and grounding alternatives</string><string name="crisis_cached_title">Cached support details</string><string name="crisis_sources">Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.</string><string name="crisis_change_region">Change region</string><string name="crisis_open_safety_plan">Open my safety plan</string><string name="crisis_verified">Verified</string><string name="crisis_not_verified">Not verified yet</string><string name="crisis_unverified_note">We haven’t checked these against an official source. Please confirm the number locally if you can.</string><string name="crisis_mental_generic">24/7 mental-health support</string><!-- Guest mode: a guest never signed in, so a 401 from a server-backed screen is the product working as designed, not a network failure. --><string name="net_guest_mode">Sign in to keep this. You’re looking around as a guest, so nothing is saved yet.</string><string name="sleep_insights_link">See the longer view →</string><string name="safetyplan_loading">Opening your plan…</string><string name="goals_loading">Opening your goals…</string><string name="trends_window_loading">Updating the range…</string><string name="safetyplan_privacy_note">CereBro doesn\'t read this back to you as advice, score it, or share it.</string>
     <string name="safetyplan_offline">Showing the copy saved on this device — we couldn\'t reach the server.</string>
     <string name="safetyplan_load_failed_title">We couldn\u0027t load your plan</string>
     <string name="safetyplan_load_failed_body">There is no copy saved on this device yet, so the boxes below are empty. Nothing has been deleted — your plan is still on your account.</string>
@@ -1893,6 +1914,15 @@
     <string name="today_hero_done_title">Everything you planned for today is done.</string>
     <string name="today_hero_done_why">Blank space from here is simply blank — there is nothing left to keep up.</string>
     <string name="today_hero_begin">Begin grounding</string>
+    <string name="today_hero_start">Start</string>
+    <!-- The no-plan fallback card. The title used to be hardcoded in Kotlin with
+         forced line breaks, and its subtitle claimed the practice was "chosen
+         from your recent evening check-in" — false on any session with no
+         check-in, and always false in guest mode (audit I#1). The fallback is
+         the same for everyone, and now says so. -->
+    <string name="today_hero_fallback_title">Make room around loud thoughts</string>
+    <string name="today_hero_fallback_sub">A three-minute grounding practice — brief, steady, and the same for everyone.</string>
+    <string name="today_hero_chip_3min">3 min</string>
     <string name="today_hero_open_day">Look at your day</string>
     <string name="today_hero_alt">Choose another option</string>
     <string name="today_fold_day">Your day</string>

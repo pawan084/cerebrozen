@@ -47,6 +47,7 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Spa
@@ -571,21 +572,23 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             // feel?" is a morning question asked at night. Same card, honest
             // words for the hour (checkInLeadsAt is the tested boundary).
             val morning = checkInLeadsAt(LocalTime.now().hour)
-            Text(
-                stringResource(if (morning) R.string.sleep_checkin_title else R.string.sleep_checkin_title_evening),
-                style = MaterialTheme.typography.titleMedium, color = TextSoft,
-            )
-            Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            // Health Connect prefill sits ABOVE the times it prefills — it used
-            // to interrupt between the inputs and Save.
-            if (hcAvailable) {
-                HealthConnectCard(onClick = {
-                    scope.launch {
-                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
-                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
-                    }
-                })
+            // Icon audit: the card's framing already flips by hour; a small
+            // time-of-day glyph beside the title carries that state visually
+            // instead of leaving the card's header bare text.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (morning) Icons.Outlined.LightMode else Icons.Outlined.Bedtime,
+                    contentDescription = null, tint = PeriwinkleSoft, modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    stringResource(if (morning) R.string.sleep_checkin_title else R.string.sleep_checkin_title_evening),
+                    style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                )
             }
+            Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
             // Edge-bled chip rail: the last chip is cut by the SCREEN, not the
             // card padding — the only reliable "there's more this way".
             Row(
@@ -600,6 +603,20 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                         SleepMoodChip(index = i, label = word, selected = quality == i + 1) { quality = i + 1 }
                     }
                 }
+            }
+            // Health Connect prefill sits ABOVE the times it prefills and BELOW
+            // the quality chips (audit I#23): it prefills bed/wake, never the
+            // rested feeling, yet its seven-line consent hint sat between "How
+            // rested do you feel?" and the chips that answer it. The earlier
+            // decision stands too — it must not interrupt between the inputs
+            // and Save, and its boundary text stays unclamped (owner call).
+            if (hcAvailable) {
+                HealthConnectCard(onClick = {
+                    scope.launch {
+                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
+                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
+                    }
+                })
             }
             TimeRow(stringResource(R.string.sleep_inbed_label), bed, { bed = it })
             TimeRow(stringResource(R.string.sleep_wake_label), wake, { wake = it })
@@ -1215,7 +1232,12 @@ private fun HealthConnectCard(onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.HealthAndSafety, contentDescription = null, tint = Cyan, modifier = Modifier.size(26.dp))
+        // MonitorHeart, not HealthAndSafety (icon audit): that glyph is the
+        // CRISIS shield everywhere else in the app — You's support row, the
+        // urgent door, the Talk banner. A data-permission card wearing the
+        // crisis mark taught the shield to mean two unrelated things on the
+        // same screen.
+        Icon(Icons.Outlined.MonitorHeart, contentDescription = null, tint = Cyan, modifier = Modifier.size(26.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             // Unclamped: the consent boundary is an owner decision — cutting it
@@ -1446,6 +1468,12 @@ private fun TimeStep(
         Modifier
             .size(52.dp, 48.dp)
             .clip(RoundedCornerShape(12.dp))
+            // The target was always 52×48; the VISUAL was bare coloured text
+            // (audit I#26) — the same "coloured bare text didn't say tappable"
+            // problem the time pill between these two already fixed for itself.
+            // Same quiet fill + hairline, so all three read as one control set.
+            .background(Color.White.copy(alpha = 0.06f))
+            .border(1.dp, LineStroke, RoundedCornerShape(12.dp))
             .pressRepeat(scope) { current.value() }
             .semantics { contentDescription = contentDesc },
         contentAlignment = Alignment.Center,

@@ -34,10 +34,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -719,7 +722,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     Page(
         stringResource(R.string.talk_eyebrow),
         stringResource(R.string.talk_title),
-        trailing = Icons.Outlined.Mic,
+        // GraphicEq, not a third microphone (audit I#10): the screen had mic
+        // glyphs in the header, on the orb and in the composer, and only the
+        // orb's said which one records. The header icon is identity, not a
+        // control — so it wears a voice glyph that cannot be mistaken for one.
+        trailing = Icons.Outlined.GraphicEq,
         accent = Cyan,
         scrollState = chatScroll,
         // The composer stays put while the transcript scrolls under it. It used
@@ -762,6 +769,15 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             // say so where the typing happens, not only in the top banner.
             if (Session.servedStale) {
                 Text(stringResource(R.string.talk_offline_compose),
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            }
+            // The same honesty for a guest, BEFORE they type (audit I#13): the
+            // composer was fully enabled for an account state in which every
+            // send is refused by design — the truth arrived only after the
+            // failed attempt. One quiet line, in the slot the offline truth
+            // already uses.
+            if (Session.guestMode && !Session.signedIn) {
+                Text(stringResource(R.string.talk_guest_compose),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted)
             }
             Row(
@@ -1012,10 +1028,27 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
 
         if (messages.isEmpty()) {
             SectionCard {
-                // W24: a small one-shot art illustration above the copy.
-                EmptyStateArt(kind = "talk")
-                Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // No EmptyStateArt here (audit I#11, reversing W24 for this one
+                // card): at 56dp the generative motif rendered as an empty dark
+                // square — a broken image — beneath the orb that already IS the
+                // art. Icon audit: what earns the slot instead is a plain
+                // 44dp icon well in the app's row language, cheap and unambiguous.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(Cyan.copy(alpha = 0.11f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = Cyan, modifier = Modifier.size(22.dp))
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                        Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                    }
+                }
             }
             if (starters.isNotEmpty() || todayMoodTalk != null) {
                 Text(stringResource(R.string.talk_starters_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
@@ -1258,7 +1291,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         // the full card duplicated the Toolkit door in prime transcript space.
         if (!crisis) {
             if (messages.isEmpty()) {
-                NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle)) { onOpen("toolkit") }
+                NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle),
+                    // Spa, deliberately not the crisis shield (icon audit): this
+                    // row opens the calm toolkit, not the crisis screen, and an
+                    // urgency mark on a grounding door would overpromise.
+                    icon = Icons.Outlined.Spa) { onOpen("toolkit") }
             } else {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     PickChip(selected = false, label = stringResource(R.string.talk_sos_title)) { onOpen("toolkit") }
@@ -1419,7 +1456,13 @@ private fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
         Modifier
             .size(52.dp)
             .clip(CircleShape)
-            .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(ButtonDisabled, ButtonDisabled)))
+            // Disabled = outline, like the mic beside it (audit I#12). The old
+            // solid grey fill made the UNAVAILABLE control the visually
+            // heaviest thing on the row — the mic, which works, wore a quiet
+            // white outline while dead-send sat there in a filled circle
+            // reading as the primary action.
+            .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(CardFill, CardFill)))
+            .then(if (enabled) Modifier else Modifier.border(1.dp, LineStroke, CircleShape))
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = sendCd },
         contentAlignment = Alignment.Center,
@@ -1442,19 +1485,25 @@ private fun TryTogetherRow(
     onOpen: (String) -> Unit,
     order: List<String> = listOf("reframe", "breathe", "ground"),
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // ONE line, label inline with its chips (audit I#9). As a two-row unit —
+    // label above, chips below — the scroll fold on a 720×1604 landing landed
+    // exactly between them, so the last visible thing on Talk was a heading
+    // with nothing under it, reading as content that failed to load. A heading
+    // and its children must be unsplittable, and inline they are — with the
+    // side benefit that the whole rail is ~35px shorter and more likely to fit
+    // above the fold at all.
+    Row(
+        Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+            .padding(horizontal = pageHorizontalPadding()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(stringResource(R.string.talk_try_together), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-        Row(
-            Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
-                .padding(horizontal = pageHorizontalPadding()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            order.forEach { kindKey ->
-                when (kindKey) {
-                    "reframe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
-                    "breathe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
-                    "ground" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("ground") }
-                }
+        order.forEach { kindKey ->
+            when (kindKey) {
+                "reframe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }
+                "breathe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_breathe)) { onOpen("breathe/box") }
+                "ground" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_ground)) { onOpen("ground") }
             }
         }
     }

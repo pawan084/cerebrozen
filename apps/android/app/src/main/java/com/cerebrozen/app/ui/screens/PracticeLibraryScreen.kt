@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
@@ -57,6 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cerebrozen.app.R
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.net.Api
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
@@ -376,7 +378,15 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(DangerSoft).padding(18.dp)) {
+            // The banner is the immediate-danger answer, so it dials (audit
+            // I#20): it told someone in immediate danger to "call 112 now" and
+            // was not itself tappable — the instruction and the action were on
+            // different parts of the screen.
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(DangerSoft)
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button) { openSupportTarget(context, emergency.target) }
+                    .padding(18.dp),
+            ) {
                 Text(stringResource(R.string.crisis_immediate_danger, emergency.target), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Text(stringResource(R.string.crisis_not_emergency), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = Color(0xFF542D34))
             }
@@ -415,7 +425,14 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 stringResource(if (verifiedRegion) R.string.crisis_reach_verified else R.string.crisis_reach_plain),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
             )
-            UrgentAction(stringResource(R.string.crisis_call_emergency), stringResource(R.string.crisis_emergency_detail, emergency.target), Icons.Outlined.Call, primary = true) { openSupportTarget(context, emergency.target) }
+            // Tele-MANAS LEADS (audit I#20). This stack had emergency services
+            // first as the only red-filled card, with the helpline beneath it —
+            // while the documented contract (REDESIGN §2.3, the ordering
+            // check-crisis-lines.mjs asserts across three stacks) is that the
+            // mental-health line leads every crisis surface. The gate could not
+            // see this screen because it reads the *directory*, not a layout.
+            // The immediate-danger case is not demoted: the banner above answers
+            // it before any card, and is now dialable itself.
             // Outside India this said "· verified mental-health support" — the
             // same unearned claim as the badge, on the line carrying the number
             // someone would actually dial.
@@ -426,8 +443,21 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     mental.target,
                 ),
                 Icons.Outlined.FavoriteBorder,
+                primary = true,
             ) { openSupportTarget(context, mental.target) }
-            UrgentAction(stringResource(R.string.crisis_trusted_title), stringResource(R.string.crisis_trusted_detail), Icons.Outlined.FavoriteBorder) { onOpen("trustedcontact") }
+            UrgentAction(stringResource(R.string.crisis_call_emergency), stringResource(R.string.crisis_emergency_detail, emergency.target), Icons.Outlined.Call) { openSupportTarget(context, emergency.target) }
+            // A door with an honest label (audit I#21/#22). A guest cannot have
+            // a trusted person, yet this card read "Contact my trusted person"
+            // identically to the two that work — on a crisis surface, a door
+            // that opens onto a setup form must say it is one. And it no longer
+            // borrows Tele-MANAS's heart: a public helpline and a named
+            // individual are different kinds of help, and here that matters.
+            val hasAccount = Session.signedIn
+            UrgentAction(
+                stringResource(if (hasAccount) R.string.crisis_trusted_title else R.string.crisis_trusted_setup_title),
+                stringResource(if (hasAccount) R.string.crisis_trusted_detail else R.string.crisis_trusted_setup_detail),
+                Icons.Outlined.PersonAddAlt,
+            ) { onOpen("trustedcontact") }
             UrgentAction(stringResource(R.string.crisis_cannot_call), stringResource(R.string.crisis_cannot_call_detail), Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
             Text(stringResource(R.string.crisis_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)

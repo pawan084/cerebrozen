@@ -48,6 +48,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -107,7 +109,12 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // The profile row was the page's one dead card — it now opens the
         // companion/language settings (the closest thing to a profile editor)
         // and wears the same initial-letter avatar Home's header uses.
-        SectionCard(onClick = { onOpen("companion") }) {
+        // In guest mode there is no profile to edit and no name to show: the
+        // fallback rendered a row titled "You" (the screen's own name) over an
+        // empty avatar — a placeholder that shipped (audit I#17). A guest's
+        // profile row IS the sign-in door, and says so.
+        val isGuest = Session.guestMode && !Session.signedIn
+        SectionCard(onClick = { onOpen(if (isGuest) "auth" else "companion") }) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -125,11 +132,16 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     )
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(name.ifBlank { stringResource(R.string.you_default_name) }, style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(
+                        if (isGuest) stringResource(R.string.you_guest_name)
+                        else name.ifBlank { stringResource(R.string.you_default_name) },
+                        style = MaterialTheme.typography.titleMedium, color = TextSoft,
+                    )
+                    Text(
+                        if (isGuest) stringResource(R.string.you_guest_sub)
                         // Known taxonomy values localize for DISPLAY; the
                         // server-side values stay English (contract).
-                        run {
+                        else run {
                             val comp = companion.ifBlank { "Calm Guide" }
                             val lang = language.ifBlank { "English" }
                             val compLabel = companionLabelRes(comp)?.let { stringResource(it) } ?: comp
@@ -182,17 +194,32 @@ fun YouScreen(onOpen: (String) -> Unit) {
                         if (supportIsUrl) stringResource(R.string.crisis_open_cd, stringResource(supportLine.nameRes))
                         else stringResource(R.string.you_support_call_cd,
                             stringResource(supportLine.nameRes), supportLine.target)
+                    // 48dp floor + Role.Button (audit I#18). This pill sat at
+                    // ~33px on a 320dpi handset — the smallest target on the
+                    // screen was the one that opens the dialler on a crisis
+                    // line, two finger-widths from a chevron that merely
+                    // navigates. The consequence of a mis-tap is contained
+                    // (ACTION_DIAL pre-fills, it never places the call), but a
+                    // control this consequential does not get to be the one
+                    // below the floor. The visual pill keeps its size; the
+                    // TARGET grows around it.
                     Box(
-                        Modifier.clip(RoundedCornerShape(50))
-                            .border(1.dp, Warm.copy(alpha = 0.5f), RoundedCornerShape(50))
-                            .clickable { openSupportTarget(ctx, supportLine.target) }
-                            .semantics { contentDescription = callCd }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        Modifier
+                            .heightIn(min = 48.dp)
+                            .clip(RoundedCornerShape(50))
+                            .clickable(role = Role.Button) { openSupportTarget(ctx, supportLine.target) }
+                            .semantics { contentDescription = callCd },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             if (supportIsUrl) stringResource(R.string.you_support_open)
                             else stringResource(R.string.you_support_call),
-                            style = MaterialTheme.typography.labelLarge, color = Warm)
+                            style = MaterialTheme.typography.labelLarge, color = Warm,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .border(1.dp, Warm.copy(alpha = 0.5f), RoundedCornerShape(50))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
                     }
                 }
                 // The same AutoMirrored chevron every NavRow on this screen uses.
@@ -217,7 +244,10 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 val comp = companion.ifBlank { "Calm Guide" }
                 companionLabelRes(comp)?.let { stringResource(it) } ?: comp
             }),
-            icon = Icons.Outlined.ChatBubbleOutline, emphasis = true) { onOpen("companion") }
+            // No `emphasis` (audit I#19): the flag tints the icon well Cyan,
+            // which at 11% alpha on the light card read as grey-blue — the one
+            // well on the page that looked unstyled rather than emphasised.
+            icon = Icons.Outlined.ChatBubbleOutline) { onOpen("companion") }
         // Onboarding asked for a language and nothing could change the answer:
         // the profile card above SHOWED it ("Calm Guide · Hindi") but opened the
         // companion picker, so a mistyped first run was permanent.

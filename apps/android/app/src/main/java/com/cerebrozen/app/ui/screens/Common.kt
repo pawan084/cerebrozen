@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -990,14 +991,17 @@ internal fun SectionCard(
                 indication = null,
                 role = Role.Button,
             ) { Haptics.soft(0.4f); onClick() }
-            // AFTER the clickable, so the merged node is the one that carries the
-            // click. Declared before it, the label and the action end up on two
-            // different nodes and a screen reader gets neither whole.
+            // A PLAIN `semantics` after the clickable — not `mergeDescendants`.
+            // That flag was the bug: it starts a new merged semantics node, so
+            // the label landed on one accessibility node and the click stayed on
+            // another (seen on a device: two nodes, identical bounds, one
+            // clickable with no label and one labelled with no click).
+            // `TopBarAction` in this same file has always done it this way, and
+            // its "Urgent support" control renders as a single
+            // `android.widget.Button` carrying its label — the shape to copy.
             .then(
                 if (contentDescription == null) Modifier
-                else Modifier.semantics(mergeDescendants = true) {
-                    this.contentDescription = contentDescription
-                },
+                else Modifier.semantics { this.contentDescription = contentDescription },
             )
     } else {
         modifier.fillMaxWidth().surface()
@@ -1039,9 +1043,37 @@ internal fun GuestSignInCard(onOpen: (String) -> Unit, modifier: Modifier = Modi
         contentDescription = "$action. $title $subtitle",
         modifier = modifier,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-        Text(action, style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+        // The three lines keep their own semantics on purpose. `clearAndSetSemantics`
+        // was tried here and did NOT merge the card into one node either — and
+        // without a TalkBack pass to prove otherwise, silencing them risks making
+        // things worse: if a screen reader is currently reading these three lines,
+        // hiding them trades a clumsy announcement for no announcement at all.
+        // Icon audit: a 44dp well like every NavRow's, so the card speaks the
+        // same visual language as the rows that navigate — it was the one
+        // tappable card on Today with nothing but text in it. Decorative to
+        // TalkBack (null description; the card's own label already leads with
+        // the action).
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(Periwinkle.copy(alpha = 0.11f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    androidx.compose.material.icons.Icons.Outlined.PersonAddAlt,
+                    contentDescription = null, tint = Periwinkle,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Text(action, style = MaterialTheme.typography.labelLarge, color = Periwinkle)
+            }
+        }
     }
 }
 

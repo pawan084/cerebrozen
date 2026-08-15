@@ -823,6 +823,9 @@ internal fun heroKindFor(planLoaded: Boolean, hasPlan: Boolean, hasNextStep: Boo
 internal val OFFLINE_HERO_ROUTES = setOf(
     "toolkit", "breathe/reset", "breathe/box", "ground", "tipp",
     "imagery", "ritual", "gratitude", "cbt", "safetyplan",
+    // The intro screen for `ground` — the practice it starts runs offline, so
+    // the fallback hero's offline chip stays true rather than disappearing.
+    "groundingintro",
 )
 
 internal fun heroWorksOffline(route: String): Boolean = route in OFFLINE_HERO_ROUTES
@@ -1183,7 +1186,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 // greeting finally gets the width the reference gives it.
             }
             val friend = stringResource(R.string.today_friend)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // Top-aligned, not centered (audit I#3): centered against a
+            // two-line 42sp greeting, the bell floated at the title's vertical
+            // middle — visually inside the text block, reading as a stray
+            // element rather than a control anchored to the header line.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Text(
                     stringResource(R.string.today_greeting_format, greeting(), userName.ifBlank { friend }),
                     style = MaterialTheme.typography.displayLarge.copy(
@@ -1354,31 +1361,71 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             // pop in whole a beat later and shove the check-in down mid-read.
             ShimmerBox(Modifier.fillMaxWidth().height(210.dp), shape = RoundedCornerShape(Radius.hero))
         } else {
-            // What the button will actually run. A plan step deep-links to the
-            // surface that runs it; with no plan we offer the shortest steady
-            // practice there is, and say plainly that it is not personalised.
-            val heroRoute = "groundingintro"
+            // The hero renders the STATE, not a mock of one (device audit I#1).
+            // HeroKind was computed above and then ignored: every non-loading
+            // state showed one hardcoded grounding card whose subtitle claimed
+            // it was "chosen from your recent evening check-in" — on a fresh
+            // guest session with no check-in, under a "Good morning" greeting.
+            // The provenance sentence is the one sentence on this screen that
+            // must never be decorative; heroWhyRes and the honest fallback
+            // strings existed all along and were simply never wired in.
+            val heroTitle: String
+            val heroSub: String?
+            val heroWhy: String
+            val heroRoute: String?
+            val heroCta: String?
+            when (heroKind) {
+                HeroKind.PLAN_STEP -> {
+                    val step = nextStep!!
+                    heroTitle = step.optString("title")
+                    heroSub = step.optString("detail").trim().ifBlank { null }
+                    // The sentence branches on the plan's real generator — the
+                    // AI path reads journal titles, the rule path never does.
+                    heroWhy = stringResource(heroWhyRes(plan?.optString("source").orEmpty()))
+                    heroRoute = planStepRoute(step.optString("symbol")) ?: "plan"
+                    heroCta = stringResource(R.string.today_hero_start)
+                }
+                HeroKind.PLAN_DONE -> {
+                    heroTitle = stringResource(R.string.today_hero_done_title)
+                    heroSub = null
+                    heroWhy = stringResource(R.string.today_hero_done_why)
+                    heroRoute = null   // nothing left to begin, so no button pretends otherwise
+                    heroCta = null
+                }
+                else -> {
+                    // No plan yet: the shortest steady practice, and honest about
+                    // being the same for everyone.
+                    heroTitle = stringResource(R.string.today_hero_fallback_title)
+                    heroSub = stringResource(R.string.today_hero_fallback_sub)
+                    heroWhy = stringResource(R.string.today_hero_why_fallback)
+                    heroRoute = "groundingintro"
+                    heroCta = stringResource(R.string.today_hero_begin)
+                }
+            }
             FocusCard(accent = Accent.home, pastel = true) {
                 Text(
                     stringResource(R.string.today_hero_eyebrow).uppercase(),
                     style = MaterialTheme.typography.labelSmall, color = Periwinkle,
                 )
                 Text(
-                    "Make room\naround\nloud thoughts",
+                    heroTitle,
                     // displaySmall is the serif display face (Type.kt) — the
                     // recommendation is the one title on this screen that gets it.
+                    // LineBreak.Heading balances the wrap (audit I#2: the forced
+                    // \n version broke as "Make room / around / loud thoughts",
+                    // one orphaned word per 720px line).
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontFamily = FontFamily(Font(R.font.newsreader)),
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
                     ),
                     color = TextPrimary,
                     maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 // The step's own description, when the generator wrote one.
-                Text(
-                    "A three-minute grounding practice chosen from your recent evening check-in.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextSoft,
-                )
+                heroSub?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+                }
                 // Facts, not decoration: a duration only when one is known, an
                 // offline promise only for practices that really run offline,
                 // and "nothing to score" — which is true everywhere, because
@@ -1390,23 +1437,27 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    MetaChip("3 min")
-                    MetaChip("Offline")
-                    MetaChip("No score")
+                    if (heroKind == HeroKind.FALLBACK) MetaChip(stringResource(R.string.today_hero_chip_3min))
+                    if (heroRoute != null && heroWorksOffline(heroRoute)) {
+                        MetaChip(stringResource(R.string.today_hero_chip_offline))
+                    }
+                    MetaChip(stringResource(R.string.today_hero_chip_no_score))
                 }
-                // The goal this serves — the framing rotates by day so week six
-                // does not read like day one (eyebrowTemplateRes). Shown only
-                // when a plan actually built itself around the goal.
-                // WHY this, and what it did NOT read. See heroWhyRes: the
-                // provenance sentence follows the plan's real generator.
+                // WHY this, and what it did NOT read — heroWhyRes keeps the
+                // sentence true for the generator that actually ran.
+                Text(heroWhy, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 // ONE primary action, and a quiet way out of it.
-                ReferenceAction(stringResource(R.string.today_hero_begin)) { onOpen(heroRoute) }
+                if (heroRoute != null && heroCta != null) {
+                    ReferenceAction(heroCta) { onOpen(heroRoute) }
+                }
                 TextButton(
-                    onClick = { onOpen("toolkit") },
+                    onClick = { onOpen(if (heroKind == HeroKind.PLAN_STEP || heroKind == HeroKind.PLAN_DONE) "plan" else "toolkit") },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        stringResource(R.string.today_hero_alt),
+                        if (heroKind == HeroKind.PLAN_STEP || heroKind == HeroKind.PLAN_DONE)
+                            stringResource(R.string.today_hero_open_day)
+                        else stringResource(R.string.today_hero_alt),
                         style = MaterialTheme.typography.labelLarge, color = TextMuted,
                     )
                 }

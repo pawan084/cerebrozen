@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -30,6 +31,8 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
@@ -99,13 +102,19 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             ExploreHero { onOpen("breathe/box") }
             Spacer(Modifier.height(15.dp))
             ExploreSectionTitle("Start by need", serif)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                NeedCard("○", "Calm now", "Breathing and\ngrounding", Modifier.weight(1f)) { onOpen("practice-library") }
-                NeedCard("☾", "Sleep", "Tonight and CBT-I", Modifier.weight(1f)) { onOpen("sleep") }
+            // height(IntrinsicSize.Max) + fillMaxHeight in NeedCard: the four
+            // cards were vertically misaligned (audit I#5) — the two-line
+            // subtitle grew one card past the 136dp floor and the SpaceBetween
+            // anchoring dragged its title ~34px above its neighbour's. Row two
+            // aligned only because both subtitles happened to fit one line, so
+            // the bug was invisible until someone edited copy.
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                NeedCard(Icons.Outlined.SelfImprovement, "Calm now", "Breathing and\ngrounding", Modifier.weight(1f)) { onOpen("practice-library") }
+                NeedCard(Icons.Outlined.Bedtime, "Sleep", "Tonight and CBT-I", Modifier.weight(1f)) { onOpen("sleep") }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                NeedCard("⌁", "Thoughts", "Reframe and reflect", Modifier.weight(1f)) { onOpen("cbt") }
-                NeedCard("♫", "Sound", "Audio and mixer", Modifier.weight(1f)) { onOpen("sounds") }
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                NeedCard(Icons.Outlined.Psychology, "Thoughts", "Reframe and reflect", Modifier.weight(1f)) { onOpen("cbt") }
+                NeedCard(Icons.Outlined.MusicNote, "Sound", "Audio and mixer", Modifier.weight(1f)) { onOpen("sounds") }
             }
             Spacer(Modifier.height(12.dp))
             ExploreSectionTitle("Keep exploring", serif)
@@ -119,7 +128,15 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             // claims gate missed it because it matches literal phrases and this was
             // the same promise in different words. Deleted rather than reworded: a
             // second row to one destination is not worth honest copy.
-            ExploreAccordion("Watch and learn") { onOpen("insightreel") }
+            // A list row like its two siblings (audit I#8): this was a tinted
+            // "accordion" with a "+" that never expanded anything — it
+            // navigates, exactly like the rows above it, and now looks like it.
+            ExploreListCard(
+                Icons.Outlined.PlayCircleOutline,
+                stringResource(R.string.explore_watch_title),
+                stringResource(R.string.explore_watch_subtitle),
+                Warm,
+            ) { onOpen("insightreel") }
 
             // Existing safety feature retained as an extra card below the
             // canonical reference content.
@@ -144,10 +161,16 @@ private fun ExploreTopBar(onUrgent: () -> Unit) = CereBroTopBar(
 @Composable
 private fun ExploreHero(onClick: () -> Unit) {
     val shape = RoundedCornerShape(29.dp)
+    // Words on the door (audit I#7). This was the single largest element above
+    // the fold on a screen promising "find a tool quickly" — and it carried no
+    // information at all, because it is actually a TAPPABLE door to box
+    // breathing that nothing labelled: an invisible control dressed as
+    // decoration, with no accessibility semantics either. The pixels now say
+    // what the tap does, which is cheaper than the height was.
     Box(
         Modifier.fillMaxWidth().height(160.dp).background(
             Brush.linearGradient(listOf(Color(0xFFFFE2D6), AccentSoft, Color(0xFFE1CDEA))), shape,
-        ).clip(shape).clickable(onClick = onClick),
+        ).clip(shape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(Color(0x25FFFFFF), radius = 105.dp.toPx(), center = Offset(size.width * .90f, size.height * .95f))
@@ -155,6 +178,19 @@ private fun ExploreHero(onClick: () -> Unit) {
             drawCircle(
                 Brush.radialGradient(listOf(Color.White, FieldFill, Color(0xFFD5B8E1))),
                 radius = 34.dp.toPx(), center = Offset(58.dp.toPx(), 60.dp.toPx()),
+            )
+        }
+        Column(
+            Modifier.align(Alignment.BottomStart).padding(start = 20.dp, bottom = 18.dp, end = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                stringResource(R.string.explore_hero_eyebrow).uppercase(),
+                style = MaterialTheme.typography.labelSmall, color = Color(0xFF6C2768),
+            )
+            Text(
+                stringResource(R.string.explore_hero_title),
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary,
             )
         }
     }
@@ -167,18 +203,23 @@ private fun ExploreSectionTitle(title: String, serif: FontFamily) = Text(
 )
 
 @Composable
-private fun NeedCard(glyph: String, title: String, subtitle: String, modifier: Modifier, onClick: () -> Unit) {
+private fun NeedCard(icon: ImageVector, title: String, subtitle: String, modifier: Modifier, onClick: () -> Unit) {
     Column(
-        modifier.heightIn(min = 136.dp).background(FieldFill, RoundedCornerShape(22.dp))
+        modifier.fillMaxHeight().heightIn(min = 136.dp).background(FieldFill, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick).padding(15.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(Modifier.size(38.dp).background(CardFill, CircleShape), contentAlignment = Alignment.Center) {
-            Text(glyph, color = Periwinkle, style = MaterialTheme.typography.titleMedium)
+            // Real icons, not text glyphs (audit I#6): "○" and "⌁" rendered as
+            // placeholder marks beside a confident crescent and note — and
+            // beside the filled Material icons of the list rows below.
+            Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(20.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 17.sp), color = TextMuted)
+            // minLines 2 = a reserved subtitle slot, so sibling titles stay
+            // level whether the copy wraps or not (audit I#5).
+            Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 17.sp), color = TextMuted, minLines = 2)
         }
     }
 }
@@ -202,14 +243,3 @@ private fun ExploreListCard(icon: ImageVector, title: String, subtitle: String, 
     }
 }
 
-@Composable
-private fun ExploreAccordion(title: String, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(60.dp).background(FieldFill, RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Periwinkle)
-        Text("+", style = MaterialTheme.typography.titleLarge, color = Periwinkle)
-    }
-}
