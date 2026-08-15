@@ -261,6 +261,43 @@ fine, and the coverage gate measures `net/**`, not `ui/screens/**`. Applied here
       settle before it ends, or it charges its mess to the next test. And when a suite fails
       only in full, compare full against full — a narrower baseline will confidently blame the
       wrong change
+## Device walk — 2026-08-15, OnePlus CPH2681 (guest sign-in + the IME fix)
+
+Second real-device walk. Debug build against a local backend over `adb reverse`.
+
+- [x] **UX-03 is finally verified, and it was broken until today.** The password field now sits
+      focused and fully visible above the keyboard, with "Continue with email" still on screen.
+      Yesterday's entry said "implemented but NOT visually re-verified"; it was implemented and
+      **not working**, exactly as `imePadding()` predicted. Screenshot taken with the IME up.
+      Also confirmed on the same screen: **UX-01** — no "Continue with Google" button at all
+      (hidden while `GOOGLE_WEB_CLIENT_ID` is blank, rather than offered and dead) — and
+      **UX-02**, the placeholder reads "Your password" instead of eight dots
+- [x] **The guest sign-in flow works end to end.** Walked all ten onboarding steps as a guest:
+      the card renders on Today ("Want to keep your progress?"), tapping it opens the new
+      `auth` route, and the sign-in screen loads. The 18+ gate works, and the under-18 branch
+      is a proper safety screen that refuses to create an adult account and offers urgent
+      support instead
+- [x] **Instrumented suite still runs on hardware**: 3 tests started, 1 real, 2 `@Ignore`d
+      (the `ActivityScenario`-cannot-reach-RESUMED blocker, unchanged)
+- [ ] **CORRECTION — the guest card's accessibility fix is NOT proven, and the commit that
+      shipped it overstated the case.** `416b655f` says the shared card "merges descendants,
+      declares the role" so a screen reader meets one control. On the device, `uiautomator`
+      shows the card as **two nodes with identical bounds**: one `clickable="true"` with an
+      **empty** label, and one carrying the merged `content-desc` with `clickable="false"`.
+      Contrast "Urgent support" on the same screen, which is a proper `android.widget.Button`
+      *with* its label.
+      Two fixes were tried and neither merged them: `role = Role.Button` moved onto
+      `SectionCard`'s own `clickable` (kept — every clickable card should declare it), and the
+      label moved into a new `contentDescription` parameter applied **after** the clickable so
+      the merge cannot close before the action exists (kept — it is the right shape). Same
+      two-node result.
+      **Why the test did not catch it:** `GuestSignInCardTest` asserts against Compose's
+      semantics tree, where there genuinely is one node with one click action and
+      `Role.Button`. TalkBack consumes the Android accessibility tree, and the two disagree.
+      A Robolectric assertion is not evidence about a screen reader.
+      **Owed:** a pass with TalkBack actually switched on, to establish whether the split
+      matters in practice or is a `uiautomator` flattening artefact. Until then this is
+      unproven, not fixed
 - [ ] **The Today guest card never dismisses** — a guest who has decided not to sign in yet
       meets it on every launch, forever. Not changed: whether a sign-in prompt should be
       dismissible (and for how long) is a product call **[decide]**

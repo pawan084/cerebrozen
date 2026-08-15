@@ -953,6 +953,17 @@ internal fun SectionCard(
     onClick: (() -> Unit)? = null,
     /** Secondary content: the same card, without the lift. See [Modifier.quiet]. */
     quiet: Boolean = false,
+    /**
+     * Announce the whole card as ONE control with this label.
+     *
+     * A parameter rather than something a caller can put on [modifier], because
+     * the order is what makes it work and only this function controls it:
+     * `modifier` is applied *before* the `clickable` below, so a merge declared
+     * out there closes before the click action exists, and the two land on
+     * separate accessibility nodes — a labelled node that cannot be activated
+     * and a clickable node that says nothing. Verified on a device.
+     */
+    contentDescription: String? = null,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -964,7 +975,30 @@ internal fun SectionCard(
         modifier.fillMaxWidth()
             .pressScale(pressed, down = 0.985f)
             .surface()
-            .clickable(interactionSource = interaction, indication = null) { Haptics.soft(0.4f); onClick() }
+            // `role` belongs on the clickable itself, not in a separate
+            // `semantics {}` block. Found on a device (2026-08-15): with the role
+            // declared elsewhere, uiautomator showed the card as TWO nodes — the
+            // clickable one carrying an empty label, and the label on a node that
+            // was not clickable. TalkBack focuses the first and announces
+            // nothing. A Robolectric test can pass straight through that, because
+            // it reads Compose's semantics tree while TalkBack reads the Android
+            // accessibility tree, and they disagree here.
+            // Every clickable SectionCard in the app gains the role — each one is
+            // a button, and none of them said so.
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+            ) { Haptics.soft(0.4f); onClick() }
+            // AFTER the clickable, so the merged node is the one that carries the
+            // click. Declared before it, the label and the action end up on two
+            // different nodes and a screen reader gets neither whole.
+            .then(
+                if (contentDescription == null) Modifier
+                else Modifier.semantics(mergeDescendants = true) {
+                    this.contentDescription = contentDescription
+                },
+            )
     } else {
         modifier.fillMaxWidth().surface()
     }
@@ -998,12 +1032,12 @@ internal fun GuestSignInCard(onOpen: (String) -> Unit, modifier: Modifier = Modi
     val action = stringResource(R.string.guest_sign_in_action)
     SectionCard(
         onClick = { onOpen("auth") },
-        modifier = modifier.semantics(mergeDescendants = true) {
-            role = Role.Button
-            // Announced as one control saying what it does, in the order a
-            // person needs it: the offer, then the outcome.
-            contentDescription = "$action. $title $subtitle"
-        },
+        // Both the role and the label are SectionCard's to apply, because both
+        // have to land on the node that owns the click — see its parameters.
+        // Announced as one control saying what it does, in the order a person
+        // needs it: the action, then why.
+        contentDescription = "$action. $title $subtitle",
+        modifier = modifier,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
