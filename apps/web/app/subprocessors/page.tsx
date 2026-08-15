@@ -1,16 +1,25 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Subprocessors — CereBro",
+export const metadata: Metadata = pageMeta({
+  title: "Subprocessors",
   description: "The third-party processors CereBro uses, what they receive, and why.",
-  alternates: { canonical: "/subprocessors" },
-};
+  path: "/subprocessors",
+});
 
 // The same list the privacy policy names, in table form with the "what they
-// get" column — nothing here that isn't wired in backend/app/services.
+// get" column.
+//
+// The rule is BOTH directions, and only one of them was being kept: nothing here
+// that isn't wired in backend/app/services, *and* nothing wired there that isn't
+// here. Twilio (`services/sms.py`, trusted-contact escalation) and the SMTP relay
+// (`services/email.py`, verification and password resets) were both live and
+// named on neither this page nor the privacy policy — a disclosure page is judged
+// on what it omits, so the direction nobody was checking was the one that mattered.
+// Adding a provider means adding a row here in the same commit.
 const ROWS: { name: string; purpose: string; receives: string }[] = [
   {
     name: "OpenAI / Anthropic",
@@ -26,6 +35,17 @@ const ROWS: { name: string; purpose: string; receives: string }[] = [
     name: "ElevenLabs",
     purpose: "Text-to-speech for the voice companion",
     receives: "The reply text to be spoken — never your recordings",
+  },
+  {
+    name: "Twilio",
+    purpose: "SMS to a trusted contact you have named",
+    receives:
+      "Your trusted contact's phone number and a short message saying you asked to be reached — never your journal, chats, or check-ins",
+  },
+  {
+    name: "Our email relay (SMTP)",
+    purpose: "Transactional email — address verification and password resets",
+    receives: "Your email address and the contents of that one message. No marketing, no wellness data",
   },
   {
     name: "Apple App Store / Google Play (at store launch)",

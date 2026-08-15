@@ -37,6 +37,27 @@ const SOURCES = {
 };
 
 /**
+ * The two web copies, checked by a different rule than the three above.
+ *
+ * They are static, India-first lists rather than region maps: a marketing page
+ * and a signed-out app shell have no region to resolve and no permission to ask
+ * for one, so they ship the launch market's numbers and say so in words. A flat
+ * equality against the seven-region directory would therefore be the wrong
+ * assertion — it would fail honest code and teach everyone to delete the check.
+ *
+ * What must hold instead is narrower and still catches the accident that
+ * matters: a web copy must LEAD with the backend's IN list, in the backend's
+ * order (Tele-MANAS first, REDESIGN §2.3), and anything it appends must be a
+ * number the backend already publishes somewhere. That makes an invented,
+ * mistyped or reordered helpline a build failure, which is the whole point,
+ * while leaving "which regions does a static page cover" a product decision.
+ */
+const WEB_SOURCES = {
+  "web (landing)": "apps/web/lib/crisis.ts",
+  "web (member app)": "apps/app/lib/crisis.ts",
+};
+
+/**
  * Compare what is dialled, not how it is written.
  *
  * The stacks legitimately spell the helpline finder differently — the backend
@@ -105,11 +126,25 @@ function parseIos(src) {
   return { regions, fallback };
 }
 
+/** `{ name: "…", number: "14416" }` entries of the exported CRISIS_LINES array. */
+function parseWeb(src) {
+  const block = /CRISIS_LINES:\s*CrisisLine\[\]\s*=\s*\[([\s\S]*?)\n\];/.exec(src);
+  if (!block) return [];
+  return [...block[1].matchAll(/number:\s*"([^"]+)"/g)].map((m) => normalize(m[1]));
+}
+
 const parsed = {
   backend: parseBackend(readFileSync(join(root, SOURCES.backend), "utf8")),
   android: parseAndroid(readFileSync(join(root, SOURCES.android), "utf8")),
   ios: parseIos(readFileSync(join(root, SOURCES.ios), "utf8")),
 };
+
+const web = Object.fromEntries(
+  Object.entries(WEB_SOURCES).map(([label, path]) => [
+    label,
+    parseWeb(readFileSync(join(root, path), "utf8")),
+  ]),
+);
 
 const problems = [];
 
@@ -154,6 +189,34 @@ if (problems.length === 0) {
     }
   }
 
+  // The two web copies: lead with IN, in order; append only numbers the backend
+  // already publishes. See WEB_SOURCES for why this rule and not equality.
+  const indiaLines = parsed.backend.regions.IN ?? [];
+  const known = new Set([...Object.values(parsed.backend.regions).flat(), ...parsed.backend.fallback]);
+  for (const [label, lines] of Object.entries(web)) {
+    if (lines.length === 0) {
+      problems.push(
+        `${label}: parsed 0 crisis lines from ${WEB_SOURCES[label]} — broken parser, not a product state. ` +
+          `This gate stopped checking a page that shows crisis numbers to the public.`,
+      );
+      continue;
+    }
+    const lead = lines.slice(0, indiaLines.length);
+    if (lead.join(" | ") !== indiaLines.join(" | ")) {
+      problems.push(
+        `${label}: leads with [${lead.join(", ")}] but the backend's IN region is [${indiaLines.join(", ")}]. ` +
+          `Order counts — Tele-MANAS leads every crisis surface (REDESIGN §2.3).`,
+      );
+    }
+    const unknown = lines.slice(indiaLines.length).filter((n) => !known.has(n));
+    if (unknown.length) {
+      problems.push(
+        `${label}: offers [${unknown.join(", ")}], which the backend publishes for no region and in no fallback. ` +
+          `A number that exists only in web copy has never been checked by anyone.`,
+      );
+    }
+  }
+
   const fallbacks = Object.entries(parsed).map(([stack, { fallback }]) => [stack, fallback]);
   const [, expectedFallback] = fallbacks[0];
   for (const [stack, actual] of fallbacks.slice(1)) {
@@ -170,8 +233,8 @@ if (problems.length) {
   console.error("✗ Crisis directory has drifted across stacks:\n");
   for (const p of problems) console.error(`  ${p}`);
   console.error(
-    "\nThese numbers are dialled by people in crisis. Fix the mismatch in all three sources:\n" +
-      Object.values(SOURCES).map((s) => `  ${s}`).join("\n"),
+    "\nThese numbers are dialled by people in crisis. Fix the mismatch at the source:\n" +
+      [...Object.values(SOURCES), ...Object.values(WEB_SOURCES)].map((s) => `  ${s}`).join("\n"),
   );
   process.exit(1);
 }
@@ -179,5 +242,5 @@ if (problems.length) {
 const regionCount = Object.keys(parsed.backend.regions).length;
 console.log(
   `✓ Crisis directory agrees across backend, iOS and Android ` +
-    `(${regionCount} regions + fallback, order included).`,
+    `(${regionCount} regions + fallback, order included), and both web copies lead with IN.`,
 );

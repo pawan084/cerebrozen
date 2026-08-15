@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Terms of Use — CereBro",
+export const metadata: Metadata = pageMeta({
+  title: "Terms of Use",
   description: "The terms governing your use of CereBro.",
-  alternates: { canonical: "/terms" },
-};
+  path: "/terms",
+});
 
 const UPDATED = "29 June 2026";
 
@@ -65,8 +66,16 @@ export default function Terms() {
 
           <h2>6. Subscriptions</h2>
           <p>
-            Paid plans renew per the terms shown at purchase and are managed through your app-store
-            account. You can cancel anytime; access continues until the end of the billing period.
+            <strong>Nothing is on sale yet.</strong> There is no web billing and no store app, so
+            today there is no way to pay us and no subscription to cancel. The browser app&apos;s
+            free tier asks for no payment details.
+          </p>
+          <p>
+            When paid plans do launch, they will renew per the terms shown at purchase; purchases
+            made through an app store will be managed through that store account, and you will be
+            able to cancel anytime with access continuing to the end of the billing period. Our{" "}
+            <Link href="/refunds">refunds page</Link> holds the detail and is the page we will
+            update first.
           </p>
 
           <h2>7. Disclaimers &amp; liability</h2>

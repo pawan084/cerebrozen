@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — CereBro",
+export const metadata: Metadata = pageMeta({
+  title: "Privacy Policy",
   description: "How CereBro collects, uses, and protects your data. Privacy by design.",
-  alternates: { canonical: "/privacy" },
-};
+  path: "/privacy",
+});
 
 const UPDATED = "4 July 2026";
 
@@ -57,7 +58,7 @@ export default function Privacy() {
 
           <h2>2. Data we collect</h2>
           <ul>
-            <li><strong>Account</strong> — email, name, and a securely hashed password (or an Apple identifier if you use Sign in with Apple).</li>
+            <li><strong>Account</strong> — email, name, and a securely hashed password. (Sign in with Apple is built but <strong>not yet switched on</strong>; when it is, we would receive an Apple identifier instead of a password. Today there is no way for you to trigger that, and we say so rather than describe a collection you cannot cause.)</li>
             <li><strong>Onboarding choices</strong> — language, companion style, and your self-reflection (motivations and goals) used to personalize your plan and conversation starters.</li>
             <li><strong>Wellness data you create</strong> — mood check-ins, journal entries, chat messages, and plan progress.</li>
             <li><strong>Voice</strong> — when you use the voice companion, audio is transcribed to text. Audio storage is <strong>off by default</strong> and only retained if you explicitly enable it.</li>
@@ -74,7 +75,7 @@ export default function Privacy() {
             <li>We use your content to train models <strong>only</strong> if you opt in via the model-training consent flag. It is off by default.</li>
           </ul>
 
-          <h2>4. AI &amp; voice providers</h2>
+          <h2>4. AI, voice &amp; delivery providers</h2>
           <p>
             To generate replies and process voice, we send the minimum necessary text to trusted
             processors: <strong>OpenAI</strong> or <strong>Anthropic</strong> (language),
@@ -82,6 +83,15 @@ export default function Privacy() {
             These providers process data on our behalf under their terms and do not use it to train
             their models when used through our API integrations. The app runs with graceful local
             fallbacks, so core features work even when AI is disabled.
+          </p>
+          <p>
+            Two more providers carry messages rather than content. <strong>Twilio</strong> sends an
+            SMS to a trusted contact <em>you</em> have named, and receives that contact&apos;s number
+            and a short message saying you asked to be reached — never your journal, chats or
+            check-ins. Our <strong>email relay</strong> sends address verification and password
+            resets, and receives your email address and that message. Neither is used for marketing.
+            The full list, with what each one receives, is at{" "}
+            <Link href="/subprocessors">/subprocessors</Link>.
           </p>
 
           <h2>5. Your controls &amp; rights</h2>
