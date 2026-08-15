@@ -205,7 +205,9 @@ class Settings(BaseSettings):
             # so the whole internet shares one bucket and real users start
             # collecting 429s. A rate limiter that is on but wrong is worse than
             # one that is off, because nothing looks broken.
-            problems.append("TRUSTED_PROXY_HOPS must be >= 1 in production (the API runs behind Caddy)")
+            problems.append(
+                "TRUSTED_PROXY_HOPS must be >= 1 in production (the API runs behind Caddy)"
+            )
         if "*" in self.cors_origins_raw:
             problems.append("CORS_ORIGINS must list explicit origins (no wildcard)")
         if not self.trusted_hosts or "*" in self.trusted_hosts:
