@@ -33,7 +33,11 @@ class TokenPair(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    #: Optional so a client can rotate using the httpOnly cookie instead
+    #: (register E40). Native clients and the member web app keep sending it in
+    #: the body; the admin console no longer holds a copy it *could* send.
+    #: The route rejects a call that supplies neither.
+    refresh_token: str | None = None
 
 
 class TokenBody(BaseModel):

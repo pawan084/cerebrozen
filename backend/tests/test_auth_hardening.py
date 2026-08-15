@@ -121,3 +121,79 @@ async def test_login_unknown_email_answer_matches_wrong_password(client):
     wrong = await client.post("/auth/login", data={"username": email, "password": "not-the-password"})
     assert unknown.status_code == wrong.status_code == 401
     assert unknown.json()["detail"] == wrong.json()["detail"]
+
+
+# ── Refresh cookie (register E40) ────────────────────────────────────────
+# The admin console moved its ACCESS token into memory because XSS can lift
+# anything in storage, and then left the longer-lived ROTATING refresh token in
+# localStorage — the credential actually worth stealing. It now rides in an
+# httpOnly cookie. These pin the properties that make that worth doing.
+
+async def _login(client, email, password="password123"):
+    return await client.post("/auth/login", data={"username": email, "password": password})
+
+
+async def test_login_sets_an_httponly_refresh_cookie(client):
+    email, _ = await _signup(client)
+    r = await _login(client, email)
+    assert r.status_code == 200, r.text
+
+    cookie = r.cookies.get("cerebro_refresh")
+    assert cookie, "login did not set the refresh cookie"
+
+    # The attributes are the entire security value — assert them, not just the
+    # cookie's existence. A cookie without HttpOnly is localStorage with extra
+    # steps, and one without a Path is sent on every API call there is.
+    raw = next(v for k, v in r.headers.items() if k.lower() == "set-cookie" and "cerebro_refresh" in v)
+    assert "HttpOnly" in raw, raw
+    assert "Path=/auth" in raw, raw
+    assert "SameSite=lax" in raw.replace("samesite", "SameSite"), raw
+
+
+async def test_refresh_works_from_the_cookie_with_no_token_in_the_body(client):
+    """The whole point: a client that holds no readable copy can still rotate."""
+    email, _ = await _signup(client)
+    assert (await _login(client, email)).status_code == 200
+
+    # Empty body — only the cookie the test client is now carrying.
+    r = await client.post("/auth/refresh", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["access_token"]
+    # …and the cookie rotates with it, or a browser would keep replaying the
+    # first token forever while the body half rotated, defeating single-use.
+    assert r.cookies.get("cerebro_refresh")
+
+
+async def test_refresh_still_accepts_a_body_token(client):
+    """iOS, Android and the member web app must be untouched by this."""
+    email, _ = await _signup(client)
+    login = await _login(client, email)
+    body_token = login.json()["refresh_token"]
+    client.cookies.clear()
+
+    r = await client.post("/auth/refresh", json={"refresh_token": body_token})
+    assert r.status_code == 200, r.text
+    assert r.json()["access_token"]
+
+
+async def test_refresh_with_neither_a_body_token_nor_a_cookie_is_401(client):
+    client.cookies.clear()
+    r = await client.post("/auth/refresh", json={})
+    assert r.status_code == 401, r.text
+
+
+async def test_logout_deletes_the_cookie_and_revokes_it(client):
+    email, access = await _signup(client)
+    assert (await _login(client, email)).status_code == 200
+    stolen = client.cookies.get("cerebro_refresh")
+    assert stolen
+
+    r = await client.post("/auth/logout", headers={"Authorization": f"Bearer {access}"})
+    assert r.status_code == 204
+
+    # Removed from the browser…
+    assert not client.cookies.get("cerebro_refresh")
+    # …and revoked server-side, which is the half that still holds if someone
+    # copied the value first. Replaying it by hand must fail.
+    client.cookies.clear()
+    assert (await client.post("/auth/refresh", json={"refresh_token": stolen})).status_code == 401

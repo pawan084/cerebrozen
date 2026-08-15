@@ -1,13 +1,24 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const REFRESH_KEY = "cerebro_admin_refresh";
-
-// The ACCESS token lives in memory only — the same model as the user-facing
-// web app (apps/app/lib/api.ts): XSS can't lift what storage doesn't hold.
-// Until 2026-08-03 it sat in localStorage; an admin token is the worst one to
-// leave lying around. The refresh token stays in localStorage so sessions
-// survive a reload — a fresh load starts token-less and rotates on first use.
+// Neither token is readable by JavaScript any more.
+//
+// The ACCESS token lives in memory only — the same model as the user-facing web
+// app (apps/app/lib/api.ts): XSS can't lift what storage doesn't hold. Until
+// 2026-08-03 it sat in localStorage; an admin token is the worst one to leave
+// lying around.
+//
+// The REFRESH token used to stay in localStorage so sessions survived a reload,
+// which register E40 called out as the contradiction it was: the access token
+// was moved out of storage *because* XSS can read storage, and the longer-lived,
+// rotating credential — the one actually worth stealing — was left behind in it.
+// It now lives in an httpOnly cookie set by `/auth/login` (backend
+// `auth.REFRESH_COOKIE`, scoped to `/auth`), so a script on this origin cannot
+// read it, and every auth call sends `credentials: "include"` to carry it.
+//
+// Consequence worth knowing: nothing in JS can now *look* at the session, so
+// `hasSession()` asks the server instead of inspecting a key. That is strictly
+// more truthful — the old check only proved a string existed, not that it worked.
 let accessToken: string | null = null;
 
 export function getToken(): string | null {
@@ -16,9 +27,10 @@ export function getToken(): string | null {
 export function setToken(t: string) {
   accessToken = t;
 }
+/** Drop the in-memory access token. The refresh cookie is httpOnly, so only the
+ * server can remove it — `logout()` is what actually ends a session. */
 export function clearToken() {
   accessToken = null;
-  if (typeof window !== "undefined") window.localStorage.removeItem(REFRESH_KEY);
 }
 
 /** Sign out for real: revoke server-side, then clear locally.
@@ -41,12 +53,18 @@ export async function logout(): Promise<void> {
   }
 }
 
-/** Whether a (possibly stale) session exists — the login-screen gate. The
- * access token being memory-only means a reload always starts without one;
- * what decides "signed in" is having a refresh token to rotate. */
-export function hasSession(): boolean {
+/** Whether a usable session exists — the login-screen gate.
+ *
+ * Now an async round-trip rather than a localStorage lookup, because the
+ * refresh token is httpOnly and deliberately unreadable here. It attempts one
+ * rotation: success means the cookie is present AND still valid, which is a
+ * stronger claim than the old check could make (a revoked or expired token
+ * still "existed" in storage, so the console would render the whole shell and
+ * then throw the operator out on the first request).
+ */
+export async function hasSession(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(REFRESH_KEY) !== null;
+  return tryRefresh();
 }
 
 /**
@@ -79,6 +97,10 @@ export async function login(email: string, password: string): Promise<string> {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
+      // Required for the browser to STORE the httpOnly refresh cookie the
+      // response sets — without it the Set-Cookie is silently dropped on a
+      // cross-origin response and every reload would land back on sign-in.
+      credentials: "include",
     });
   } catch {
     // A dead backend must never be reported as bad credentials — an operator
@@ -96,8 +118,9 @@ export async function login(email: string, password: string): Promise<string> {
     );
   }
   const data = await res.json();
-  // Keep the refresh token so sessions outlive the 30-minute access token.
-  window.localStorage.setItem(REFRESH_KEY, data.refresh_token as string);
+  // The response body still carries a refresh token, for the native clients
+  // that need it. This one deliberately drops it on the floor: the cookie the
+  // same response set is the copy this console will use, and it cannot read it.
   return data.access_token as string;
 }
 
@@ -111,15 +134,16 @@ let refreshInFlight: Promise<boolean> | null = null;
 function tryRefresh(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
-    const refresh =
-      typeof window === "undefined" ? null : window.localStorage.getItem(REFRESH_KEY);
-    if (!refresh) return false;
     let res: Response;
     try {
+      // No body: the token travels as the httpOnly cookie, which `credentials:
+      // "include"` attaches. The backend reads body-first and falls back to the
+      // cookie, so this is the same endpoint every other client uses.
       res = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refresh }),
+        body: JSON.stringify({}),
+        credentials: "include",
       });
     } catch {
       return false;
@@ -127,7 +151,8 @@ function tryRefresh(): Promise<boolean> {
     if (!res.ok) return false;
     const data = await res.json();
     setToken(data.access_token as string);
-    window.localStorage.setItem(REFRESH_KEY, data.refresh_token as string);
+    // The rotated refresh token arrives as a fresh Set-Cookie; there is nothing
+    // for us to store, which is the entire point.
     return true;
   })().finally(() => { refreshInFlight = null; });
   return refreshInFlight;
@@ -143,6 +168,11 @@ export async function api<T = any>(
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
+      // Needed so the browser accepts the Set-Cookie that DELETES the refresh
+      // cookie on `/auth/logout`. Safe to send on every call: the cookie is
+      // scoped to `/auth`, so it is not actually attached to ordinary API
+      // requests, and authorization still comes from the Bearer header.
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

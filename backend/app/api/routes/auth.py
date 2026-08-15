@@ -74,6 +74,51 @@ def _tokens(user: User) -> TokenPair:
     )
 
 
+#: Where the browser keeps a refresh token it is not allowed to read.
+#:
+#: Register E40: the admin console moved its ACCESS token into memory precisely
+#: because XSS can lift anything in storage — and then left the longer-lived,
+#: rotating REFRESH token sitting in localStorage, which is the credential worth
+#: stealing. This cookie closes that gap for browser clients.
+#:
+#: Scoped to ``/auth`` so it rides along only on the two endpoints that need it
+#: (refresh and logout) and is absent from every ordinary API call — a cookie
+#: sent everywhere is a CSRF surface everywhere.
+REFRESH_COOKIE = "cerebro_refresh"
+_REFRESH_COOKIE_PATH = "/auth"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    """Attach the rotating refresh token as an httpOnly cookie.
+
+    Additive on purpose: the token is still in the JSON body, so iOS, Android
+    and the member web app carry on exactly as before and simply ignore a cookie
+    they never read. Only the admin console stops keeping its own copy.
+
+    ``SameSite=Lax`` rather than ``None``: in production the console and the API
+    are subdomains of one registrable domain (admin/api.cerebrozen.in), and in
+    development both are localhost, so every request that needs this cookie is
+    same-site. Lax also means it is not attached to cross-site form posts, which
+    is the CSRF shape that matters for a credential like this.
+    """
+    response.set_cookie(
+        REFRESH_COOKIE,
+        token,
+        httponly=True,
+        secure=settings.env == "production",  # http://localhost has no TLS to require
+        samesite="lax",
+        path=_REFRESH_COOKIE_PATH,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    """Delete it with the SAME path it was set with — a mismatched path silently
+    leaves the original cookie in place, which would look like a working sign-out
+    while the credential survived."""
+    response.delete_cookie(REFRESH_COOKIE, path=_REFRESH_COOKIE_PATH)
+
+
 @router.post("/signup", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def signup(request: Request, payload: SignupRequest, db: AsyncSession = Depends(get_db)):
@@ -104,7 +149,12 @@ async def signup(request: Request, payload: SignupRequest, db: AsyncSession = De
 
 @router.post("/login", response_model=TokenPair)
 @limiter.limit("20/minute")
-async def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(
+    request: Request,
+    response: Response,
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+):
     # OAuth2 form uses `username` for the email.
     user = await db.scalar(select(User).where(User.email == form.username.lower()))
     _bad = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
@@ -142,7 +192,11 @@ async def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), d
         user.failed_login_count = 0
         user.locked_until = None
         await db.commit()
-    return _tokens(user)
+    pair = _tokens(user)
+    # Browser clients can rotate from the cookie and keep nothing readable;
+    # everyone else keeps using the body and ignores this header.
+    _set_refresh_cookie(response, pair.refresh_token)
+    return pair
 
 
 @router.post("/apple", response_model=TokenPair)
@@ -315,15 +369,30 @@ async def otp_verify(request: Request, payload: OtpVerifyBody, db: AsyncSession 
 
 @router.post("/refresh", response_model=TokenPair)
 @limiter.limit("30/minute")
-async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    data = decode_token(payload.refresh_token, expected_type=REFRESH)
+async def refresh(
+    request: Request,
+    response: Response,
+    payload: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # Body first, cookie second (register E40). Body-first keeps every existing
+    # client behaving identically; the cookie is the path for a browser that
+    # deliberately holds no copy of this token. A caller with neither gets the
+    # same 401 as a caller with a bad one — "you have no session" and "your
+    # session is invalid" are the same answer here.
+    token = payload.refresh_token or request.cookies.get(REFRESH_COOKIE)
+    data = decode_token(token, expected_type=REFRESH) if token else None
     if not data or "sub" not in data:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     user = await db.get(User, uuid.UUID(data["sub"]))
     # Reject tokens revoked by a later logout / password reset.
     if not user or not user.is_active or data.get("ver", 0) != user.token_version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-    return _tokens(user)
+    pair = _tokens(user)
+    # Rotate the cookie too, or the browser would keep replaying the token it
+    # first received while the body half rotated — defeating single-use.
+    _set_refresh_cookie(response, pair.refresh_token)
+    return pair
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -333,7 +402,13 @@ async def logout(request: Request, user: User = Depends(get_current_user), db: A
     the token version (server-side revocation, not just client-side discard)."""
     user.token_version += 1
     await db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # The version bump already makes the cookie's token useless; deleting it as
+    # well means a shared machine is not left holding a credential-shaped thing
+    # at all. Both matter: revocation is the security property, removal is the
+    # one a person can verify.
+    out = Response(status_code=status.HTTP_204_NO_CONTENT)
+    _clear_refresh_cookie(out)
+    return out
 
 
 @router.post("/verify/request")
