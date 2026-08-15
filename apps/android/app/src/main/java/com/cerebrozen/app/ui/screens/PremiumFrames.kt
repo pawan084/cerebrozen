@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
@@ -201,7 +202,10 @@ private fun PremiumFrame(
     header: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(Night)) {
+    // Tool fields near the end of a page (notably Reframe's balanced-thought
+    // field) need the scroll viewport to end above the IME. BringIntoView alone
+    // cannot create that space when the edge-to-edge window is not resized.
+    Column(Modifier.fillMaxSize().background(Night).imePadding()) {
         header()
         Column(
             Modifier.fillMaxWidth().weight(1f).widthIn(max = 840.dp)

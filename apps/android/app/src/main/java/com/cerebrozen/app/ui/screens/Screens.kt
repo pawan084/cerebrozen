@@ -83,7 +83,8 @@ fun YouScreen(onOpen: (String) -> Unit) {
     var tier by remember { mutableStateOf(Session.cachedTier()) }
     var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(Session.signedIn) {
+        if (!Session.signedIn) return@LaunchedEffect
         runCatching {
             val me = Api.me()
             name = me.optString("name")
@@ -342,11 +343,15 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // accidental tap took the cached reads and any unsaved draft with it.
         // Now a row that looks like a control, and one question first.
         NavRow(
-            stringResource(R.string.you_signout),
-            stringResource(R.string.you_signout_subtitle),
+            if (Session.guestMode) stringResource(R.string.guest_sign_in_action)
+            else stringResource(R.string.you_signout),
+            if (Session.guestMode) stringResource(R.string.guest_sign_in_subtitle)
+            else stringResource(R.string.you_signout_subtitle),
             icon = Icons.AutoMirrored.Outlined.Logout,
-        ) { signOutAsked = true }
-        if (signOutAsked) {
+        ) {
+            if (Session.guestMode) onOpen("auth") else signOutAsked = true
+        }
+        if (signOutAsked && !Session.guestMode) {
             AlertDialog(
                 onDismissRequest = { signOutAsked = false },
                 title = { Text(stringResource(R.string.you_signout_confirm_title)) },

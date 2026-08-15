@@ -655,6 +655,9 @@
     <string name="you_export_subtitle">Download a full copy</string>
     <string name="you_delete_subtitle">Permanently erase everything</string>
     <string name="you_signout">Sign out</string>
+    <string name="guest_sign_in_title">Want to keep your progress?</string>
+    <string name="guest_sign_in_subtitle">Sign in or create an account to sync your plan, journal and check-ins.</string>
+    <string name="guest_sign_in_action">Sign in / Sign up</string>
     <string name="you_signout_subtitle">End this session on this device</string>
     <string name="you_signout_confirm_title">Sign out?</string>
     <string name="you_signout_confirm_body">Your account and everything in it stays safe. This device forgets its copy — including anything you have typed but not saved.</string>

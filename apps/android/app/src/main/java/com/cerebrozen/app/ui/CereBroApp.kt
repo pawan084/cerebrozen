@@ -128,6 +128,7 @@ import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TrustedContactScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
+import com.cerebrozen.app.ui.screens.AuthScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
 import com.cerebrozen.app.ui.screens.WindDownRitualScreen
 import com.cerebrozen.app.ui.screens.YouScreen
@@ -710,6 +711,14 @@ fun CereBroApp() {
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
             composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
             composable(Tab.You.route) { YouScreen(onOpen = open) }
+            // Guest mode is a real app shell, so authentication must be
+            // reachable without signing the local session out first.
+            composable("auth") {
+                LaunchedEffect(Session.signedIn) {
+                    if (Session.signedIn) navController.popBackStack()
+                }
+                AuthScreen(onBack = back)
+            }
             composable("insights") { WeeklyInsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back, onOpen = open) }
             composable("trustedcontact") { TrustedContactScreen(onBack = back) }

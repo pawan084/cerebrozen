@@ -148,9 +148,12 @@ fun GoalsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Danger) }
 
         if (!Session.signedIn) {
-            SectionCard {
+            SectionCard(onClick = { onOpen("auth") }) {
                 Text(stringResource(R.string.goals_signed_out),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                TextButton(onClick = { onOpen("auth") }) {
+                    Text(stringResource(R.string.guest_sign_in_action), color = Periwinkle)
+                }
             }
             return@SubPage
         }
