@@ -136,4 +136,59 @@ test.describe("Admin dashboard", () => {
     await nav(page, "Waitlist").click();
     await expect(page.getByText(/signups from the landing/i)).toBeVisible();
   });
+
+  // ── Session, tabs and sign-out ────────────────────────────────────────
+  // These exist because the nine tests above could all pass while the session
+  // mechanism was completely broken. Every one of them signs in fresh, and the
+  // access token lives in memory — so within a single test the refresh
+  // credential is never needed, and a cross-origin Set-Cookie that the browser
+  // silently dropped would look exactly like success.
+
+  test("a reload keeps the operator signed in", async ({ page }) => {
+    // The refresh token moved from localStorage to an httpOnly cookie, which
+    // means the browser holds the only copy and the console cannot read it.
+    // A reload is the sole path that proves the cookie was accepted, is sent
+    // back, and rotates into a working access token — the one thing the
+    // backend's own tests cannot show, because they never involve a browser.
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Sign in" })).toHaveCount(0);
+
+    // And the credential is genuinely out of reach of any script on the page —
+    // which is the entire point of moving it.
+    const readable = await page.evaluate(() =>
+      JSON.stringify({ ls: { ...window.localStorage }, cookie: document.cookie }),
+    );
+    expect(readable).not.toContain("cerebro_refresh");
+    expect(readable.toLowerCase()).not.toContain("refresh_token");
+  });
+
+  test("a tab is a real URL — reload and deep link both land on it", async ({ page }) => {
+    await nav(page, "Safety").click();
+    await expect(page).toHaveURL(/#safety$/);
+
+    // Refreshing mid-triage used to drop the operator back on Overview.
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Safety review" })).toBeVisible({ timeout: 20_000 });
+
+    // A colleague pasting the link lands where they were sent.
+    await page.goto(`${ADMIN}/#waitlist`, { waitUntil: "networkidle" });
+    await expect(page.getByText(/signups from the landing/i)).toBeVisible({ timeout: 20_000 });
+
+    // Nonsense in the fragment must not render an empty shell.
+    await page.goto(`${ADMIN}/#not-a-tab`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({ timeout: 20_000 });
+  });
+
+  test("signing out ends the session for real", async ({ page }) => {
+    await page.locator(".navitem", { hasText: "Sign out" }).click();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible({ timeout: 20_000 });
+
+    // The half that matters: a reload must NOT walk back in. Clearing the
+    // client while leaving a valid cookie on the machine would look identical
+    // to signing out, right up until the next person opened the browser.
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "Overview" })).toHaveCount(0);
+  });
 });

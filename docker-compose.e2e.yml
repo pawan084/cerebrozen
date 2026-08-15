@@ -17,12 +17,31 @@ services:
 
   api:
     build: ./backend
+    # `api.cerebro.test` alongside the plain `api` name, so the admin console can
+    # reach the API on a host that is SAME-SITE with its own (register E40).
+    #
+    # Production serves admin.cerebrozen.in and api.cerebrozen.in — two hosts
+    # under one registrable domain — so the admin's httpOnly refresh cookie,
+    # SameSite=Lax, is sent on every refresh. This stack used the service names
+    # `admin` and `api`, which are two *different* sites, so Lax correctly
+    # withheld the cookie and a reload signed the operator out. The environment
+    # was the thing that did not match production, so it is the environment that
+    # changed: weakening the cookie to SameSite=None would have made the suite
+    # pass by testing something the product does not do.
+    #
+    # `.test` is a reserved TLD and not on the Public Suffix List, so browsers
+    # treat `cerebro.test` as the registrable domain and the two subdomains as
+    # same-site — the exact relationship cerebrozen.in has in production.
+    networks:
+      default:
+        aliases:
+          - api.cerebro.test
     env_file:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@db:5432/cerebro
       # Browsers in the e2e network load pages from these origins.
-      CORS_ORIGINS: http://web:3000,http://admin:3001,http://app:3002,http://portal:3003
+      CORS_ORIGINS: http://web:3000,http://admin:3001,http://app:3002,http://portal:3003,http://admin.cerebro.test:3001
       # Every browser test shares one IP, so the 10/minute signup limit trips
       # partway through a suite and makes it flaky rather than catching abuse.
       # Production refuses to boot with this off (Settings._guard_production).
@@ -47,7 +66,13 @@ services:
     build:
       context: ./apps/admin
       args:
-        NEXT_PUBLIC_API_URL: http://api:8000
+        # Same-site with the admin's own host below, so the refresh cookie
+        # behaves here exactly as it will behind Caddy in production.
+        NEXT_PUBLIC_API_URL: http://api.cerebro.test:8000
+    networks:
+      default:
+        aliases:
+          - admin.cerebro.test
     depends_on:
       - api
 
@@ -77,7 +102,9 @@ services:
     environment:
       API_URL: http://api:8000
       WEB_URL: http://web:3000
-      ADMIN_URL: http://admin:3001
+      # The admin is driven on its same-site host so the browser sees the
+      # production cookie relationship (see the api service's aliases).
+      ADMIN_URL: http://admin.cerebro.test:3001
       APP_URL: http://app:3002
       PORTAL_URL: http://portal:3003
     depends_on:
