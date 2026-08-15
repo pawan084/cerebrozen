@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { API_URL } from "@/lib/api";
 
 export default function Waitlist() {
+  const emailId = useId();
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
   // Success swaps the form out entirely, so there's no half-filled field left to
@@ -87,13 +88,19 @@ export default function Waitlist() {
             pointerEvents: "none",
           }}
         />
+        {/* A real, visible label (audit E20). `aria-label` alone served screen
+            readers and left everyone else with a placeholder — which disappears
+            on the first keystroke, taking the field's only description with it.
+            That is hardest on exactly the people least able to recover it: a
+            distracted or cognitively loaded reader who looks away mid-form. */}
+        <label className="wl-label" htmlFor={emailId}>Email address</label>
         <input
+          id={emailId}
           type="email"
           required
           placeholder="you@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          aria-label="Email address"
         />
         <button className="btn btn-primary" type="submit" disabled={busy}>
           {busy ? "Joining…" : "Join the waitlist"}

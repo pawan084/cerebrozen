@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "For organizations — CereBro",
-  description:
-    "Sponsor private member access without receiving personal wellness data. The privacy boundary, in full.",
-  alternates: { canonical: "/organizations" },
-};
+export const metadata: Metadata = pageMeta({
+  title: "For organizations",
+  description: "Sponsor private member access without receiving personal wellness data. The privacy boundary, in full.",
+  path: "/organizations",
+});
 
 // Structure and copy follow ref/landing.html's `organizations` page, including
 // its two-column "never shared / potentially reportable" boundary — that table

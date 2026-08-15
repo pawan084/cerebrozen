@@ -2,7 +2,21 @@
 
 import { useState } from "react";
 
-export type FaqEntry = { q: string; a: string };
+export type FaqEntry = {
+  q: string;
+  a: string;
+  /**
+   * An optional link rendered under the answer (audit E25).
+   *
+   * The two answers most likely to convert a ready visitor — "when does it
+   * launch?" and "what platforms?" — named `app.cerebrozen.in` as plain text,
+   * so the reader had to retype a URL at the exact moment they had decided to
+   * act. It is a separate field rather than markup inside `a` because the same
+   * `a` string is serialized into the FAQPage JSON-LD, where an anchor tag would
+   * be wrong: structured data wants the answer, not the markup.
+   */
+  cta?: { label: string; href: string };
+};
 
 // `inert` is not in React 18's DOM typings (it landed in React 19), but the
 // browser reads the bare attribute fine. Spreading `{ inert: "" }` renders
@@ -50,6 +64,11 @@ export default function Faq({ items }: { items: FaqEntry[] }) {
             >
               <div>
                 <p>{f.a}</p>
+                {f.cta && (
+                  <p className="faq-cta">
+                    <a href={f.cta.href}>{f.cta.label}</a>
+                  </p>
+                )}
               </div>
             </div>
           </div>

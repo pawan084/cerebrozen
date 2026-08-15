@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Delete your account — CereBro",
-  description:
-    "How to permanently delete your CereBro account and all associated data — from inside the app, or by email without installing it.",
-  alternates: { canonical: "/delete-account" },
-};
+export const metadata: Metadata = pageMeta({
+  title: "Delete your account",
+  description: "How to permanently delete your CereBro account and all associated data — from inside the app, or by email without installing it.",
+  path: "/delete-account",
+});
 
 // Google Play requires a publicly reachable URL where a user can request account
 // and data deletion WITHOUT installing the app (Play Console → App content →

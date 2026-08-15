@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Security — CereBro",
+export const metadata: Metadata = pageMeta({
+  title: "Security",
   description: "How CereBro protects your data, and how to report a vulnerability.",
-  alternates: { canonical: "/security" },
-};
+  path: "/security",
+});
 
 // Every claim on this page names a mechanism that exists in this repo — the
 // CLAIMS_MAP rule applies to security copy the same as marketing copy.

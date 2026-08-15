@@ -22,20 +22,29 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://cerebrozen.in"),
   title,
   description,
-  keywords: [
-    "mental wellness", "calm", "sleep", "meditation", "journal", "anxiety",
-    "stress", "mindfulness", "AI companion", "breathing",
-  ],
+  // `keywords` removed 2026-08-15 (audit E14): no major engine has used the meta
+  // keywords tag since roughly 2009. It was ten generic terms of pure payload.
+  //
   // Home's canonical. Every other route sets its own (child metadata wins), so
   // add one to any new page you create.
   alternates: { canonical: "/" },
   openGraph: {
     title,
     description,
+    // Home's og:url. Next merges metadata SHALLOWLY, so a child page that sets
+    // only title/description/canonical inherits this whole object — which is how
+    // /privacy, /terms and /support each shared as the homepage (audit E13).
+    // Every page that overrides metadata now passes `openGraph` too; the helper
+    // in `lib/pageMeta.ts` exists so that is one argument rather than a habit
+    // someone has to remember.
     url: "https://cerebrozen.in",
     siteName: "CereBro",
     type: "website",
-    images: [{ url: "/brand/banner-social.jpg", width: 1200, height: 628, alt: title }],
+    // 1200x630 is the documented recommendation and now the file's real size —
+    // it was declared 628 and *was* 628 (audit E15). The asset was rescaled
+    // rather than the number edited: declaring a size the file does not have
+    // would have been the worse repair.
+    images: [{ url: "/brand/banner-social.jpg", width: 1200, height: 630, alt: title }],
   },
   twitter: {
     card: "summary_large_image",

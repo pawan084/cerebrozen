@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 import { appHref } from "@/lib/appUrl";
 
-export const metadata: Metadata = {
-  title: "Safety centre — CereBro",
-  description:
-    "How CereBro makes urgent-support pathways visible, what it cannot do, and where to get human help now.",
-  alternates: { canonical: "/safety" },
-};
+export const metadata: Metadata = pageMeta({
+  title: "Safety centre",
+  description: "How CereBro makes urgent-support pathways visible, what it cannot do, and where to get human help now.",
+  path: "/safety",
+});
 
 // Structure follows ref/landing.html's `safety` page. The prototype is written
 // in the future tense ("in the intended mobile product") because it is a design

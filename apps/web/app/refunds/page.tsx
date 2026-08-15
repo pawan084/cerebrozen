@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Cancellations & refunds — CereBro",
+export const metadata: Metadata = pageMeta({
+  title: "Cancellations & refunds",
   description: "How cancelling CereBro Premium works, and how refunds are handled.",
-  alternates: { canonical: "/refunds" },
-};
+  path: "/refunds",
+});
 
 // Honest about the current state: paid billing ships with the store apps.
 // This page exists BEFORE billing so the promise is written down first and the

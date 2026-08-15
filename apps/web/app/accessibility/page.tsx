@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/pageMeta";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { SiteFooter } from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
-  title: "Accessibility — CereBro",
-  description:
-    "What CereBro's interfaces do for accessibility today, and what still needs testing with disabled users.",
-  alternates: { canonical: "/accessibility" },
-};
+export const metadata: Metadata = pageMeta({
+  title: "Accessibility",
+  description: "What CereBro's interfaces do for accessibility today, and what still needs testing with disabled users.",
+  path: "/accessibility",
+});
 
 // Structure follows ref/landing.html's `accessibility` page. The prototype
 // separates "website reference" from "production validation"; that split is the
