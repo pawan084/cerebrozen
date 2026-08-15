@@ -300,15 +300,21 @@ function StateCheck({
 
 /* ---------- 4 · First reset (breathing) ---------- */
 
+// The cross-client Reset: in 4 / out 6, no hold — the long exhale is the part
+// of slow breathing with real vagal-tone evidence, and every client breathes
+// this same shape (iOS/Android Reset, /games Breathe, the wind-down settle).
+// A 4-2-4 with a hold shipped here once already; don't reintroduce it.
+//
+// Module scope, not the component body (WEB-01): a fresh array each render is
+// a dependency the breathing timer's effect cannot honestly declare — naming it
+// would re-arm the timeout on every render and stretch the phase past its 4s/6s.
+// A constant that never varies per instance has no business being rebuilt.
+const PHASES = [
+  { label: "Breathe in", ms: 4000 },
+  { label: "Breathe out", ms: 6000 },
+];
+
 function FirstReset({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
-  // The cross-client Reset: in 4 / out 6, no hold — the long exhale is the part
-  // of slow breathing with real vagal-tone evidence, and every client breathes
-  // this same shape (iOS/Android Reset, /games Breathe, the wind-down settle).
-  // A 4-2-4 with a hold shipped here once already; don't reintroduce it.
-  const PHASES = [
-    { label: "Breathe in", ms: 4000 },
-    { label: "Breathe out", ms: 6000 },
-  ];
   const [phase, setPhase] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {

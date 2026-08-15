@@ -159,24 +159,30 @@ jobs:
       # "Tele-MANAS leads every crisis surface" is a design rule, not a taste.
       - name: Crisis directory consistency
         run: node scripts/check-crisis-lines.mjs
+      # --max-warnings=0 on all four: `next lint` exits 0 on warnings, so
+      # react-hooks/exhaustive-deps — the rule whose whole job is catching stale
+      # closures — was advisory here, and two of them sat in apps/app through a
+      # green CI (WEB-01). All four apps were at zero warnings when this landed,
+      # so the gate costs nothing today and refuses the next one. Verified by
+      # reintroducing a missing dependency in apps/app: exit 1, rule named.
       - name: Typecheck + lint web
         working-directory: apps/web
         run: |
           npm ci
           npx tsc --noEmit
-          npx next lint
+          npx next lint --max-warnings=0
       - name: Typecheck + lint admin
         working-directory: apps/admin
         run: |
           npm ci
           npx tsc --noEmit
-          npx next lint
+          npx next lint --max-warnings=0
       - name: Typecheck + lint app
         working-directory: apps/app
         run: |
           npm ci
           npx tsc --noEmit
-          npx next lint
+          npx next lint --max-warnings=0
       # The portal built cleanly for weeks while nothing ran it. It is a
       # deployed surface now, so it fails the build like its three siblings.
       - name: Typecheck + lint portal
@@ -184,7 +190,7 @@ jobs:
         run: |
           npm ci
           npx tsc --noEmit
-          npx next lint
+          npx next lint --max-warnings=0
 
   # ── iOS: SwiftUI UITests (Simulator) ──────────────────────────────────
   # The two live-backend tests (testCloudSync / testCloudChatAndPlan) self-skip

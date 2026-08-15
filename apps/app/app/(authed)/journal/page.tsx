@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { CrisisLines } from "@/components/CrisisLines";
@@ -48,8 +48,28 @@ export default function Journal() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [searched, setSearched] = useState(false);
 
+  // Takes its query and tag as required arguments rather than defaulting them
+  // from state (WEB-01). The defaults made every render a new `reload`, which
+  // is why the mount effect below had to omit it from its dependencies and
+  // earn an exhaustive-deps warning — the shape a stale closure ships in.
+  // With no component values captured, the identity is stable and the effect
+  // can name it honestly. It has to sit above that effect, too: the old
+  // `function reload` hoisted, a `const` does not.
+  const reload = useCallback(async (q: string, tag: string) => {
+    const params = new URLSearchParams();
+    if (q.trim()) params.set("q", q.trim());
+    if (tag) params.set("tag", tag);
+    const qs = params.toString();
+    try {
+      setEntries(await api<Entry[]>(`/journal${qs ? `?${qs}` : ""}`));
+      setSearched(Boolean(qs));
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    void reload();
+    // Unfiltered on mount — the search box and tag chips start empty, so this
+    // is exactly what the old default-argument call resolved to.
+    void reload("", "");
     api<string[]>("/journal/tags").then(setAllTags).catch(() => {});
     // Same /moods feed Home reads — only today's check-in tunes the prompt (mirrors
     // iOS); a stale or Good/none check-in keeps the default.
@@ -68,7 +88,7 @@ export default function Journal() {
         }
       }
     } catch {}
-  }, []);
+  }, [reload]);
 
   // Mirror the draft on change; remove the key once everything is empty.
   useEffect(() => {
@@ -80,16 +100,6 @@ export default function Journal() {
     }
   }, [open, title, body, tags]);
 
-  async function reload(q = query, tag = tagFilter) {
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    if (tag) params.set("tag", tag);
-    const qs = params.toString();
-    try {
-      setEntries(await api<Entry[]>(`/journal${qs ? `?${qs}` : ""}`));
-      setSearched(Boolean(qs));
-    } catch {}
-  }
   const tuned = mood ? TUNED.find((t) => t.match.test(mood)) : undefined;
 
   async function save(e: React.FormEvent) {
@@ -98,7 +108,7 @@ export default function Journal() {
       const entry = await api<Entry>("/journal", { method: "POST", body: JSON.stringify({ title, body, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), symbol: "book" }) });
       setSupport(["elevated", "crisis"].includes(entry.risk_level));
       window.localStorage.removeItem(DRAFT_KEY);
-      setTitle(""); setBody(""); setTags(""); setOpen(false); await reload();
+      setTitle(""); setBody(""); setTags(""); setOpen(false); await reload(query, tagFilter);
       api<string[]>("/journal/tags").then(setAllTags).catch(() => {});
     } catch {
       // Register D5: the draft survived but nothing said why the entry never
@@ -178,7 +188,7 @@ export default function Journal() {
             <form
               className="row"
               style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}
-              onSubmit={(e) => { e.preventDefault(); void reload(); }}
+              onSubmit={(e) => { e.preventDefault(); void reload(query, tagFilter); }}
               role="search"
               aria-label="Search journal"
             >
