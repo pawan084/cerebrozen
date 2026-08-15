@@ -731,6 +731,16 @@ object Api {
     suspend fun deleteSleep(date: String) { Session.api("/sleep/$date", "DELETE") }
 
     suspend fun chat(): JSONArray = JSONArray(Session.api("/chat"))
+    // ── Work coaching (organisation-sponsored members; /work) ────────────
+    // Stateless by design: the client holds the transcript, the server keeps
+    // no chat rows — a work conversation never enters the wellness history.
+    suspend fun workChat(history: JSONArray, message: String): JSONObject =
+        JSONObject(Session.api("/work/chat", "POST",
+            JSONObject().put("message", message).put("history", history)))
+
+    suspend fun workPlan(history: JSONArray): JSONObject =
+        JSONObject(Session.api("/work/plan", "POST", JSONObject().put("history", history)))
+
     suspend fun sendChat(text: String): JSONObject =
         JSONObject(Session.api("/chat/messages", "POST", JSONObject().put("text", text)))
 

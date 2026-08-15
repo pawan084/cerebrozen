@@ -126,6 +126,7 @@ import com.cerebrozen.app.ui.screens.SleepScreen
 import com.cerebrozen.app.ui.screens.SoundsScreen
 import com.cerebrozen.app.ui.screens.TalkScreen
 import com.cerebrozen.app.ui.screens.TrustedContactScreen
+import com.cerebrozen.app.ui.screens.WorkCoachScreen
 import com.cerebrozen.app.ui.screens.TippScreen
 import com.cerebrozen.app.ui.screens.TodayScreen
 import com.cerebrozen.app.ui.screens.AuthScreen
@@ -721,6 +722,9 @@ fun CereBroApp() {
             }
             composable("insights") { WeeklyInsightsScreen(onBack = back, onOpen = open) }
             composable("programs") { ProgramsScreen(onBack = back, onOpen = open) }
+            // Work coaching — sponsored members only; the server enforces the
+            // gate (403), the You row only SHOWS for them.
+            composable("work") { WorkCoachScreen(onBack = back, onOpen = open) }
             composable("trustedcontact") { TrustedContactScreen(onBack = back) }
             // Sounds is the one audio hub (REDESIGN §3.4): Library + Mixer behind
             // a pill switch. `sounds/mixer` deep-links straight to the Mixer (the

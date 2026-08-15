@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.Icon
@@ -232,6 +233,18 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     modifier = Modifier.size(22.dp),
                 )
             }
+        }
+
+        // Work coaching — only when an organisation sponsors this account.
+        // Session.cachedSponsored() mirrors the server's entitlement resolve;
+        // the backend still enforces the gate (403) whatever this cache says,
+        // so the row can never unlock anything by itself.
+        if (Session.cachedSponsored()) {
+            PremiumNavRow(
+                stringResource(R.string.you_work_row_title),
+                stringResource(R.string.you_work_row_sub),
+                icon = Icons.Outlined.WorkOutline,
+            ) { onOpen("work") }
         }
 
         // Group headers: eighteen visually identical rows scrolled as one

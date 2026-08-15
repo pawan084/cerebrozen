@@ -1440,46 +1440,6 @@ internal fun fmtSession(seconds: Int): String = "%d:%02d".format(seconds / 60, s
 
 /** A quiet row of structured exercises the companion can do with you — CBT
  * reframe, paced breathing, grounding (the evidenced spine; chat is the glue). */
-/** The circular send control beside the composer.
- *
- * A round icon button rather than the full-width PrimaryButton pill the composer
- * used to stack beneath the field: pinned above the keyboard, a 56dp pill for
- * one word wastes the height the transcript needs, and "Send" belongs next to
- * what it sends. Disabled until there is something to send, so the control never
- * lies about being actionable.
- */
-@Composable
-private fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
-    // The description tells the truth about the disabled state.
-    val sendCd = stringResource(if (enabled) R.string.common_send else R.string.talk_send_disabled_cd)
-    Box(
-        Modifier
-            .size(52.dp)
-            .clip(CircleShape)
-            // Disabled = outline, like the mic beside it (audit I#12). The old
-            // solid grey fill made the UNAVAILABLE control the visually
-            // heaviest thing on the row — the mic, which works, wore a quiet
-            // white outline while dead-send sat there in a filled circle
-            // reading as the primary action.
-            .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(CardFill, CardFill)))
-            .then(if (enabled) Modifier else Modifier.border(1.dp, LineStroke, CircleShape))
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics { contentDescription = sendCd },
-        contentAlignment = Alignment.Center,
-    ) {
-        if (busy) {
-            TypingDots()
-        } else {
-            Icon(
-                Icons.AutoMirrored.Outlined.Send,
-                contentDescription = null,
-                tint = if (enabled) OnPrimary else TextMuted,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
 @Composable
 private fun TryTogetherRow(
     onOpen: (String) -> Unit,

@@ -122,6 +122,17 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 | AI boundary messaging everywhere | ✅ | Banner + periodic re-disclosure |
 | Admin safety queue (review + resolve) | ✅ ‡ | Private text never travels with the queue: `SafetyEventOut` carries `excerpt_chars`, not `excerpt`, so the list shows "N characters, hidden". Reading one person's words is a separate `GET /admin/safety/{id}/excerpt` that emits an audit line naming the admin. `PATCH …/resolve` requires a non-blank note (whitespace-only is refused by a validator) and writes `resolved_by`/`resolved_at`/`resolution_note` — migration `c7a4e91b6d38`. Test-covered end to end in `test_admin.py` |
 
+### Work coaching (B2B2C — organisation-sponsored members)
+| Feature | Status | Notes |
+|---|---|---|
+| Work-coaching chat (`POST /work/chat`) | ✅ | Sponsored members only (`entitlements.resolve(...).sponsored`; personal premium deliberately insufficient). Stateless turns — client holds the transcript, no `chat_messages` rows, so work content never reaches wellness memory/insights/export or any org aggregate. Safety scans every turn (`source="work"`), never blocks; crisis appends region-correct lines. Keyless → deterministic coaching prompts |
+| Conversation → plan + task list (`POST /work/plan`) | ✅ | Extraction into the existing `Plan`/`PlanStep` models (work-scoped focus set; retiring a work plan can never touch a wellness plan — pinned). Honest `source` "ai"/"rule"; keyless fallback's rationale says it was not drawn from the conversation |
+| Plan check-in loop | ✅ | A fresh conversation with an active work plan opens by asking about one open step (prompt-injected, stored nowhere) |
+| In-chat rehearsal of difficult conversations | ✅ | Offered once, never re-offered after a decline; turn budgets from the sibling's measured role-play stage |
+| Android door (`WorkCoachScreen`, route `work`) | ✅ | You-tab row renders only for sponsored accounts; server enforces regardless. Privacy line first; crisis chip on flagged turns; transcript + draft survive process death. **Not yet walked on a device** (needs a genuinely sponsored account; dev seed creates none) |
+| Org-admin AI recommendations (`GET /org/recommendations`) | ✅ | Counts-only by design — see ARCHITECTURE; widening to wellbeing aggregates is an explicit owner decision, not a default |
+| iOS / web doors | ⚪ | Backend is client-agnostic; no UI on either yet |
+
 ### Accounts, sync, platform
 | Feature | Status | Notes |
 |---|---|---|

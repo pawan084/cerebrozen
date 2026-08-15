@@ -40,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -141,6 +142,7 @@ import com.cerebrozen.app.ui.theme.TextSecondary
 import com.cerebrozen.app.ui.theme.TextSoft
 
 private val CardShape = RoundedCornerShape(23.dp)
+private val SendGlyph = Icons.AutoMirrored.Outlined.Send
 
 // Responsive sizing helpers — pages and cards breathe a little tighter on small
 // phones and a touch more generously on large ones, instead of one fixed inset.
@@ -1073,6 +1075,55 @@ internal fun GuestSignInCard(onOpen: (String) -> Unit, modifier: Modifier = Modi
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 Text(action, style = MaterialTheme.typography.labelLarge, color = Periwinkle)
             }
+        }
+    }
+}
+
+/**
+ * The circular send control beside a composer — SHARED (design system §5).
+ *
+ * Lifted from TalkScreen when WorkCoachScreen needed the same anatomy: a round
+ * icon button pinned next to the field, because a full-width pill for one word
+ * wastes the height a transcript needs, and "Send" belongs beside what it
+ * sends. Disabled = quiet outline (audit I#12 — the unavailable control must
+ * never be the heaviest thing on the row). Busy = three small pulsing dots,
+ * reduce-motion aware — deliberately NOT the chat-bubble TypingDots, which is
+ * transcript chrome and rendered clipped inside this 52dp circle.
+ */
+@Composable
+internal fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
+    val sendCd = stringResource(if (enabled) R.string.common_send else R.string.talk_send_disabled_cd)
+    Box(
+        Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(CardFill, CardFill)))
+            .then(if (enabled) Modifier else Modifier.border(1.dp, LineStroke, CircleShape))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = sendCd },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (busy) {
+            val reduceMotion = rememberReduceMotion()
+            val t = rememberInfiniteTransition(label = "sendDots")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { i ->
+                    val animatedAlpha by t.animateFloat(
+                        initialValue = 0.25f, targetValue = 1f,
+                        animationSpec = infiniteRepeatable(tween(600, delayMillis = i * 160), RepeatMode.Reverse),
+                        label = "sendDot$i",
+                    )
+                    val a = if (reduceMotion) 0.6f else animatedAlpha
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(OnPrimary.copy(alpha = a)))
+                }
+            }
+        } else {
+            Icon(
+                SendGlyph,
+                contentDescription = null,
+                tint = if (enabled) OnPrimary else TextMuted,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

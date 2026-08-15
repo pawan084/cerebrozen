@@ -674,6 +674,25 @@
     <!-- The guest profile row (You tab). Without these it fell back to
          you_default_name ("You") over an empty avatar — a placeholder that
          shipped (audit I#17). -->
+    <!-- Work coaching (organisation-sponsored members): talk a work problem
+         through, then turn it into a plan with a task list. The privacy line is
+         a description of the backend boundary (stateless turns, no org read
+         path), not marketing. -->
+    <string name="work_eyebrow">Work coaching</string>
+    <string name="work_title">Talk it through,\nleave with a plan.</string>
+    <string name="work_privacy_line">Private to you. Your organisation pays for access and never sees what you write here.</string>
+    <string name="work_empty_title">What\'s heavy at work right now?</string>
+    <string name="work_empty_sub">Workload, focus, a hard conversation, boundaries, growth — start anywhere. When you\'re ready, one tap turns the conversation into a plan.</string>
+    <string name="work_composer_hint">Describe what\'s going on…</string>
+    <string name="work_make_plan">Turn this into a plan</string>
+    <string name="work_plan_ready">Your plan</string>
+    <string name="work_open_plan">Open your day</string>
+    <string name="work_crisis_chip">Urgent support — real people</string>
+    <string name="work_send_failed">That didn\'t send — your words are still here. Try again.</string>
+    <string name="work_plan_failed">Couldn\'t build the plan just now — the conversation is still here. Try again.</string>
+    <string name="work_boundary_note">Coaching, not therapy or HR advice — for those, a qualified professional or your own HR team.</string>
+    <string name="you_work_row_title">Work coaching</string>
+    <string name="you_work_row_sub">Talk it through, leave with a plan — part of your sponsored access</string>
     <string name="you_guest_name">Guest</string>
     <string name="you_guest_sub">Not signed in — tap to sign in or create an account</string>
     <string name="guest_sign_in_title">Want to keep your progress?</string>
