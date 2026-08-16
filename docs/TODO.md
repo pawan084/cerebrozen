@@ -134,6 +134,111 @@ presence grid; journal mood-pills; richer nav active-pill treatment.
   repeat as the signal to bisect (execution order is recoverable from the
   test-results XML timestamps).
 
+## V3 SHIPPED — chat-first + proactive (2026-08-16, uncommitted)
+
+All six waves implemented, gated (`:app:check :app:assembleDebug` REAL_EXIT:0,
+517 tests, coverage 96.17%, claims gate green across 207 files) and device-walked
+in **both themes**.
+
+- **V3-a IA shell**: tabs 5→3 (**Home · Chat · Sleep**), app **opens on Chat**
+  (`startDestination = Tab.Talk.route`). You → the **gear** in every tab root's
+  top bar (`CereBroTopBar.onSettings`); Journal → a chat tool + a room doored
+  from Home (route kept, lights Home). `you`/`reminders` leave the bottom-bar
+  set (settings rooms are full-screen pushes). NavigationChromeTest re-pinned
+  (`theTabsAreTheV3Three`, `youAndJournalSurviveAsRoutesNotTabs`); BottomNavImeTest
+  labels updated.
+- **V3-b Home**: journey hero (greeting · presence sentence · program day ·
+  progress bar · Tonight pill) + **Today's care** (progress ring, ≤3 rows, the
+  plan's next step with its honest provenance) + mood card (6 wire moods, week
+  strip) + **sleep graph** (7 day-slots, newest solid) + quiet-days
+  re-engagement + "what CereBro remembers".
+- **V3-c Chat core**: the companion **speaks first** — deterministic opener (no
+  LLM): morning asks about sleep and **logs the night from chat** (the form is
+  no longer the only path), then the mood ask, whose answer earns a
+  **next-best-action card**. The **＋ tools tray** carries 8 tools inside the
+  conversation.
+- **V3-d honesty + ladder**: **ask again / this didn't help** under every reply
+  the user asked for; a **middle escalation rung** (`soundsHeavy`) between a
+  normal reply and the full crisis banner — warm, one pathway (Tele-MANAS),
+  dismissible, and **suppressed whenever the server's crisis scan already fired**
+  (verified on device: typing "hopeless" produced the server's Call-14416 card
+  and the rung correctly stood down).
+- **V3-e proactive**: notification **quick actions** (Check in → `QuickLogActivity`,
+  a translucent dialog that logs a mood **without opening the app**; Open →
+  the app), **one nudge a day** and **quiet hours** (default 22–07, wrapping
+  midnight, same-hour = quiet all day) — both enforced in `shouldPost` and
+  pinned; Settings gained a quiet-hours picker; the test-nudge button passes
+  `force = true` so an explicitly requested test always arrives.
+- **V3-f**: ~75 new strings EN+HI, `CompanionFirstTest` + Reminders pins, full
+  gate, device walk.
+
+**Reference-fidelity pass** (owner: "compare each component — icons, graph,
+quick check-in, widget, theme", ref `~/Downloads/Archive/complete.html`):
+themed hero (**Dawn now wears the reference's peach→lilac pane with serif
+italic greeting**; Night keeps deep plum), mood tiles fill with the **mood's own
+hue** when chosen (OnPrimary ink), circular accent-mist **icon wells** on care
+rows + tool tiles, the **progress ring**, the **NBA card** rebuilt as an
+accent pane + solid icon badge + one full-width pill, sleep graph in the
+reference's bar language. Deliberate divergences recorded below.
+
+**Deliberate divergences from the reference** (each is a CereBro rule, not an
+oversight): no per-message "Safety checked" chip (it would claim live scanning
+under every reply — our one persistent AI-disclosure pill is the honest form,
+and the crisis scan announces itself when it fires); **chat is never paused**
+when a safety service is unreachable (the reference disables its composer —
+ours must never block, only add support); no streak/percentage "consistency"
+score (presence framing: sentences, never scores); quick-log never renders over
+the lock screen (family-context privacy, §9).
+
+**The four deferred items — all CLOSED 2026-08-16** (owner: "why are u asking
+for approval, instead do all of them without"):
+- [x] **Mood-sparkline mapping — RESOLVED by refusing the mapping.** A sparkline
+      needs every mood to have a height, and "Anxious" is not objectively lower
+      than "Tired"; inventing that order is precisely the scoring this product
+      refuses. Trends now carries **"Which feelings showed up"** — per-mood
+      **counts** with share-bars ("2 check-ins in the last 30 days — counted,
+      never scored"), the reference's moods-detail component. The 1–5 ease line
+      above it stays the SERVER's own measure, gap-broken and gated on
+      `enough_data`. Pinned: `moods are counted, never scored`.
+- [x] **You "Your month"** — a 30-dot presence grid + "You showed up on N days
+      this month". Presence framing only: no streak, no percentage, no gap
+      called out, nothing resets. Pinned: `presence month counts days shown up
+      and nothing else` (two check-ins on one day = one lit dot).
+- [x] **Journal mood pills** — the feeling chosen in the composer now also rides
+      as a `mood:<wire>` **tag** (existing `tags` field, no migration), and the
+      entry rows wear it as a tinted pill. It shows **only what the writer
+      picked** — never a mood inferred from the words, never one borrowed from
+      that day's check-in. Unknown/hand-written tags render no pill rather than
+      raw text. Pinned: `a journal mood pill shows only what the writer chose`.
+- [x] **`ConsentNotice.kt` localization — CORRECTLY NOT DONE.** The item was
+      mis-scoped when written. That file holds the DPDP §5(3) notice in **13
+      languages at once**, and the requirement is that a Hindi speaker can read
+      the Hindi notice *whatever the app locale is*. Moving those literals into
+      `values-xx/` would make each notice visible only in its own locale and
+      **break the legal requirement**. The literals stay in code by design (the
+      file says so; it is a hand-duplicated cross-stack contract with web/iOS).
+      The genuinely open localization work is the remaining ten Eighth-Schedule
+      languages + professional review — owner items, listed under audit L6.
+
+**Open after V3**: the AppNotIdle Robolectric flake (see V2-f note above); the
+Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
+
+## Open — V3 direction: chat-first + proactive (owner call, 2026-08-16)
+
+Post-V2 owner feedback: features relevant, still cluttered / not user-friendly; **focus on
+chat first; the app should be proactive.** Owner supplied two references — a tracker-home
+screenshot and the **Aira design gallery** (`~/Downloads/Archive/complete.html`: warm ivory
+light world, deep-plum hero, floating dark nav pill, chat with memory chip / next-best-action
+card / ＋ tools tray / uncertainty labels + reply controls / inline escalation ladder;
+quick-action notifications, quick-log popup, notification inbox + quiet hours, supportive
+re-engagement). Proposal prototype (interactive, mobile-first, light Dawn world):
+claude.ai/code/artifact/51a16216-aa14-434c-8164-19fe3f070200 — **awaiting owner/Deepak
+approval before implementation.** Headlines: tabs 5→3 (Home · Chat · Sleep; You→gear,
+Journal→chat tool + room), chat logs sleep + mood conversationally, next-best-action card,
+tools tray in-conversation, proactive rules (1 nudge/day, discreet lock screen "A moment
+for you", quick-log without opening the app, inbox). CereBro deltas from Aira kept on
+purpose: safety never blocks (no chat pause), Tele-MANAS-first ladder, 6-mood wire taxonomy.
+
 ## Open — audit L: declutter/verbosity review from first outside-tester feedback (2026-08-15)
 
 Full report: [audit/L-declutter-feedback-2026-08-15.md](audit/L-declutter-feedback-2026-08-15.md).

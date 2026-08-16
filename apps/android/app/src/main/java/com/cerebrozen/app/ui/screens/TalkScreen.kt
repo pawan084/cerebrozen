@@ -36,6 +36,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.CloudOff
@@ -69,6 +79,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -162,6 +173,30 @@ internal fun widgetRoute(kind: String): String? = when (kind) {
     "intention_set" -> "intention"
     "dbt_skill" -> "tipp"
     else -> null
+}
+
+/** V3-c: the deterministic next-best-action after a chat check-in — the same
+ * one-per-behavior surfaces the tools tray offers, chosen by what the mood
+ * says the body needs first (mirrors tryTogetherOrder's reading). Pure. */
+internal fun moodNbaKind(mood: String): String = when (mood.lowercase(java.util.Locale.ROOT)) {
+    "anxious" -> "grounding"
+    "overwhelmed" -> "breathing"
+    "low" -> "one_good_thing"
+    "tired" -> "sleep_checkin"
+    "good" -> "intention_set"
+    else -> "breathing"
+}
+
+/** V3-d: the middle rung's ear — concerning-but-not-red-flag language. The
+ * words here are deliberately NOT the crisis vocabulary (the server's scan owns
+ * that and outranks this); these are the heavy-day phrases that deserve a warm
+ * pathway card without a full crisis takeover. Pure. */
+internal fun soundsHeavy(text: String): Boolean {
+    val t = text.lowercase(java.util.Locale.ROOT)
+    return listOf(
+        "can't cope", "cant cope", "hopeless", "no point", "give up",
+        "worthless", "hate myself", "can't do this anymore", "cant do this anymore",
+    ).any { it in t }
 }
 
 internal fun parseChat(rows: JSONArray): List<Msg> =
@@ -428,6 +463,52 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
     // Agentic Oracle (SSE) when the server has it; deterministic /chat otherwise.
     var useOracle by remember { mutableStateOf(false) }
+    // ── V3-c: the companion speaks first (owner-approved prototype) ──────
+    // Deterministic opener, no LLM: morning asks about sleep and logs the
+    // night from chat; then the mood ask, whose answer earns a next-best-
+    // action card (rendered by the existing WidgetCard machinery). Stage is
+    // saveable so a tab hop never re-asks a question already answered.
+    var openerStage by rememberSaveable { mutableStateOf("idle") } // idle|sleep|mood|done
+    var openerArmed by remember { mutableStateOf(false) }
+    var showTools by remember { mutableStateOf(false) }
+    // V3-d: reply controls show only under a reply the user actually asked for
+    // (never under opener bubbles), and the concern card shows once per thread.
+    var lastWasSend by remember { mutableStateOf(false) }
+    var concernPending by rememberSaveable { mutableStateOf(false) }
+    var concernDismissed by rememberSaveable { mutableStateOf(false) }
+    val hourTalk = remember { java.time.LocalTime.now().hour }
+    val opHello = stringResource(
+        when {
+            hourTalk in 5..11 -> R.string.talk_op_hello_morning
+            hourTalk in 12..16 -> R.string.talk_op_hello_day
+            else -> R.string.talk_op_hello_evening
+        },
+    )
+    val opSleepQ = stringResource(R.string.talk_op_sleep_q)
+    val opSleepDone = stringResource(R.string.talk_op_sleep_done)
+    val opSleepGuest = stringResource(R.string.talk_op_sleep_guest)
+    val opSleepFailed = stringResource(R.string.talk_op_sleep_failed)
+    val opMoodQ = stringResource(R.string.talk_op_mood_q)
+    val opMoodAck = stringResource(R.string.talk_op_mood_ack)
+    val opMoodAckGood = stringResource(R.string.talk_op_mood_ack_good)
+    val opGuestNote = stringResource(R.string.talk_op_guest_note)
+    val opEvening = stringResource(R.string.talk_op_evening)
+    val nbaTitles = mapOf(
+        "grounding" to stringResource(R.string.talk_nba_ground),
+        "breathing" to stringResource(R.string.talk_nba_breathe),
+        "one_good_thing" to stringResource(R.string.talk_nba_onegood),
+        "intention_set" to stringResource(R.string.talk_nba_intention),
+        "sleep_checkin" to stringResource(R.string.talk_nba_sleep),
+    )
+    // The description IS the practice's one-line provenance (the copy-dieted
+    // why-strings) — the card explains itself the way every tool here does.
+    val nbaDescs = mapOf(
+        "grounding" to stringResource(R.string.ground_why),
+        "breathing" to stringResource(R.string.breathe_why),
+        "one_good_thing" to stringResource(R.string.onegood_why),
+        "intention_set" to stringResource(R.string.intention_why),
+        "sleep_checkin" to stringResource(R.string.sleep_cbti_why),
+    )
     var streamText by remember { mutableStateOf("") }
     var confirmReq by remember { mutableStateOf<Pair<String, String>?>(null) } // threadId → summary
     // W10: only bubbles that arrive AFTER the restored history animate in — the
@@ -456,6 +537,40 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             val v = Api.voiceStatus()
             v.optBoolean("stt") && v.optBoolean("tts")
         }.getOrDefault(false)
+        // V3-c: on an empty thread the companion opens the day. The opener
+        // bubbles are LOCAL (the server keeps the mood/sleep rows, not the
+        // pleasantries) and they animate in past the settled-history floor.
+        if (messages.isEmpty()) {
+            val lastNightLogged = runCatching {
+                val logs = Api.sleepLogs()
+                hasLastNightLog(
+                    (0 until logs.length()).map { logs.getJSONObject(it).optString("date") },
+                    LocalDate.now(),
+                )
+            }.getOrDefault(true)
+            if (openerStage == "idle") {
+                openerStage = when {
+                    hourTalk in 5..11 && !lastNightLogged -> "sleep"
+                    todayMoodTalk == null -> "mood"
+                    else -> "done"
+                }
+            }
+            val greet = mutableListOf(Msg("assistant", opHello))
+            when {
+                openerStage == "sleep" -> greet += Msg("assistant", opSleepQ)
+                openerStage == "mood" -> greet += Msg("assistant", opMoodQ)
+                openerStage == "done" && hourTalk >= 17 -> greet += Msg(
+                    "assistant", opEvening,
+                    widget = ChatWidget(
+                        "sleep_checkin",
+                        nbaTitles["sleep_checkin"].orEmpty(),
+                        nbaDescs["sleep_checkin"].orEmpty(),
+                    ),
+                )
+            }
+            messages = greet + messages
+            openerArmed = true
+        }
     }
 
     // After a spoken reply, pick the mic back up so the conversation flows turn by
@@ -514,7 +629,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         return final
     }
 
-    fun send(text: String, speak: Boolean = false) {
+    fun send(text: String, speak: Boolean = false, echo: Boolean = true) {
         if (text.isBlank() || busy) return
         busy = true; status = null; failedText = null; signInBlocked = false
         // Clear the composer up front so the sent text doesn't linger in the box
@@ -525,7 +640,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 if (useOracle) {
                     // Agentic path: SSE tokens + inline widgets + confirm-before-write.
                     // The server persists both sides; thread defaults to the user id.
-                    messages = messages + Msg("user", text.trim())
+                    if (echo) messages = messages + Msg("user", text.trim())
                     chips = emptyList()
                     val final = try {
                         consume("/oracle/messages", JSONObject().put("text", text.trim()))
@@ -554,7 +669,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     // Optimistic bubble: your words appear the moment you send
                     // — they used to vanish from the composer and appear
                     // NOWHERE for the whole round-trip.
-                    messages = messages + Msg("user", text.trim())
+                    if (echo) messages = messages + Msg("user", text.trim())
                     val reply: JSONObject = Api.sendChat(text.trim())
                     val replyText = reply.getJSONObject("reply").getString("text")
                     messages = messages + Msg("assistant", replyText)
@@ -589,6 +704,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 signInBlocked = guestBlocked
             } finally {
                 busy = false
+                lastWasSend = true
+                // V3-d middle rung: heavy-day language earns the warm pathway
+                // card — unless the server's crisis scan already answered with
+                // the full banner, which outranks it.
+                if (!crisis && !concernDismissed && soundsHeavy(text)) concernPending = true
             }
         }
     }
@@ -722,17 +842,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     Page(
         stringResource(R.string.talk_eyebrow),
         stringResource(R.string.talk_title),
-        // GraphicEq, not a third microphone (audit I#10): the screen had mic
-        // glyphs in the header, on the orb and in the composer, and only the
-        // orb's said which one records. The header icon is identity, not a
-        // control — so it wears a voice glyph that cannot be mistaken for one.
-        trailing = Icons.Outlined.GraphicEq,
+        // V3-f device walk: the GraphicEq identity glyph gave its slot back —
+        // with the V3 gear + shield beside it, three wells ellipsized the
+        // title to "How are yo…". Identity lost to legibility, correctly.
         accent = Cyan,
         scrollState = chatScroll,
         // V2-a: the shield in the same pixels here too — Talk relied on the
         // sticky in-thread crisis card, so its top bar was the only tab root
         // without the door.
         onUrgent = { onOpen("crisis") },
+        // V3-a: You left the tab pill; the gear is its door on every tab root.
+        onSettings = { onOpen("you") },
         // The composer stays put while the transcript scrolls under it. It used
         // to be the last item of the scrolling body, so after any real
         // conversation you had to scroll to the bottom to type — and the
@@ -789,6 +909,22 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                // V3-c: the ＋ tray — eight real tools inside the conversation
+                // (the Aira pattern). Browsing the Practices hub becomes the
+                // exception, not the path.
+                val toolsCd = stringResource(R.string.talk_tools_cd)
+                Box(
+                    // 44dp, not 52: three 52dp wells beside the field squeezed
+                    // it to ~150dp on a 360dp device (walk 2026-08-16).
+                    Modifier.size(44.dp).clip(CircleShape)
+                        .background(CardFill)
+                        .border(1.dp, LineStroke, CircleShape)
+                        .clickable { showTools = true }
+                        .semantics { contentDescription = toolsCd },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("+", style = MaterialTheme.typography.titleLarge, color = PeriwinkleDeep)
+                }
                 AppTextField(
                     // A guard before the server's limit, not a 422 after it.
                     draft, { draft = it.take(2000) },
@@ -816,7 +952,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 if ((voice.available || cloudVoice) && !Session.servedStale) {
                     val micCd = stringResource(R.string.talk_mic_composer_cd)
                     Box(
-                        Modifier.size(52.dp).clip(CircleShape)
+                        Modifier.size(44.dp).clip(CircleShape)
                             .background(CardFill)
                             .border(1.dp, LineStroke, CircleShape)
                             .clickable { onOrbTap() }
@@ -967,6 +1103,45 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                             if (pillIsUrl) stringResource(pillLine.nameRes)
                             else stringResource(R.string.talk_crisis_call, pillLine.target),
                             style = MaterialTheme.typography.labelLarge, color = Danger)
+                    }
+                }
+            }
+        }
+
+        // V3-d: the middle escalation rung — between a normal reply and the
+        // full crisis takeover. Warm, one real pathway, dismissible, and never
+        // rendered while the crisis banner (which outranks it) is up.
+        if (concernPending && !concernDismissed && !crisis) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardFill)
+                    .border(1.dp, com.cerebrozen.app.ui.theme.Warm.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(stringResource(R.string.talk_concern_title),
+                    style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                Text(stringResource(R.string.talk_concern_body),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val rungRegion by rememberCrisisRegion()
+                    val rungLine = primaryCrisisLine(rungRegion)
+                    val rungIsUrl = isSupportUrl(rungLine.target)
+                    Box(
+                        Modifier.clip(RoundedCornerShape(50))
+                            .border(1.dp, com.cerebrozen.app.ui.theme.Warm.copy(alpha = 0.6f), RoundedCornerShape(50))
+                            .clickable { openSupportTarget(context, rungLine.target) }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            if (rungIsUrl) stringResource(rungLine.nameRes)
+                            else stringResource(R.string.talk_crisis_call, rungLine.target),
+                            style = MaterialTheme.typography.labelLarge, color = TextSoft,
+                        )
+                    }
+                    TextButton(onClick = { concernPending = false; concernDismissed = true }) {
+                        Text(stringResource(R.string.talk_concern_keep), color = TextMuted)
                     }
                 }
             }
@@ -1150,6 +1325,35 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         }
                     }
                 }
+                // V3-d: every asked-for reply can be re-rolled or flagged as
+                // unhelpful — no reply pretends to be final. "Ask again" resends
+                // the same words without repeating your bubble; "didn't help"
+                // answers honestly and surfaces the structured offers.
+                if (lastWasSend && messages.lastOrNull()?.role == "assistant" && !busy && streamText.isBlank()) {
+                    val lastUserText = messages.lastOrNull { it.role == "user" }?.text
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (lastUserText != null) {
+                            Text(
+                                stringResource(R.string.talk_regen),
+                                style = MaterialTheme.typography.labelMedium, color = Periwinkle,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                    .clickable { send(lastUserText, echo = false) }
+                                    .padding(vertical = 4.dp, horizontal = 2.dp),
+                            )
+                        }
+                        val didntHelpAck = stringResource(R.string.talk_didnthelp_ack)
+                        Text(
+                            stringResource(R.string.talk_didnt_help),
+                            style = MaterialTheme.typography.labelMedium, color = TextMuted,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    messages = messages + Msg("assistant", didntHelpAck)
+                                    lastWasSend = false
+                                }
+                                .padding(vertical = 4.dp, horizontal = 2.dp),
+                        )
+                    }
+                }
                 // Live reply: streamed tokens with a blinking caret, or a typing
                 // indicator while the companion is composing its answer.
                 if (streamText.isNotBlank()) {
@@ -1165,7 +1369,76 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 // One rail, one source at a time: when the server sent chips
                 // they lead; Try-together fills the quiet turns (two stacked
                 // chip rows from different sources read as chip soup).
-                if (chips.isEmpty() &&
+                // V3-c: the opener's answer chips — sleep words first thing in
+                // the morning, then the six wire moods. Answers append real
+                // bubbles; the rows retire the moment their question is done.
+                if (openerArmed && openerStage == "sleep") {
+                    val words = sleepWords()
+                    Row(
+                        Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                            .padding(horizontal = pageHorizontalPadding()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        words.forEachIndexed { qi, word ->
+                            PickChip(selected = false, label = word) {
+                                if (busy) return@PickChip
+                                messages = messages + Msg("user", word)
+                                scope.launch {
+                                    val saved = runCatching {
+                                        Api.logSleep(LocalDate.now().toString(), "23:00", "07:00", qi + 1)
+                                    }
+                                    messages = messages + Msg(
+                                        "assistant",
+                                        when {
+                                            saved.isSuccess -> opSleepDone
+                                            saved.exceptionOrNull()?.isGuestGate() == true -> opSleepGuest
+                                            else -> opSleepFailed
+                                        },
+                                    )
+                                    if (todayMoodTalk == null) {
+                                        messages = messages + Msg("assistant", opMoodQ)
+                                        openerStage = "mood"
+                                    } else {
+                                        openerStage = "done"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (openerArmed && openerStage == "mood") {
+                    Row(
+                        Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                            .padding(horizontal = pageHorizontalPadding()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        MOODS.forEach { mood ->
+                            val moodLabel = stringResource(mood.labelRes)
+                            PickChip(selected = false, label = moodLabel) {
+                                if (busy) return@PickChip
+                                messages = messages + Msg("user", moodLabel)
+                                scope.launch {
+                                    // A guest's answer still earns the card (it
+                                    // is computed on-device); only the ROW needs
+                                    // an account — the same ruling as Home.
+                                    val gate = runCatching {
+                                        Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
+                                    }.exceptionOrNull()
+                                    val kind = moodNbaKind(mood.name)
+                                    messages = messages + Msg(
+                                        "assistant",
+                                        (if (mood.name == "Good") opMoodAckGood else opMoodAck) +
+                                            (if (gate != null && gate.isGuestGate()) "\n" + opGuestNote else ""),
+                                        widget = ChatWidget(kind, nbaTitles[kind].orEmpty(), nbaDescs[kind].orEmpty()),
+                                    )
+                                    openerStage = "done"
+                                    com.cerebrozen.app.ui.Haptics.success()
+                                }
+                            }
+                        }
+                    }
+                }
+                if (chips.isEmpty() && openerStage !in setOf("sleep", "mood") &&
                     showTryTogether(messages.size, messages.lastOrNull()?.role, busy, streamText.isNotBlank())
                 ) {
                     TryTogetherRow(
@@ -1307,6 +1580,69 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
         }
 
+    }
+
+    // ── V3-c tools tray: a bottom sheet without the experimental API ─────
+    if (showTools) {
+        Box(
+            Modifier.fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable { showTools = false }
+                .zIndex(24f),
+        )
+        Column(
+            Modifier.align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(CardFill)
+                .padding(18.dp)
+                .zIndex(25f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(stringResource(R.string.talk_tools_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            Text(stringResource(R.string.talk_tools_title), style = MaterialTheme.typography.titleLarge, color = TextSoft)
+            // Reference tool tiles: a circular accent-mist icon well above the
+            // label (the as-built Dawn rounds every well to a circle).
+            data class TrayTool(val icon: ImageVector, val titleRes: Int, val subRes: Int, val route: String)
+            val tools = listOf(
+                TrayTool(Icons.Outlined.Favorite, R.string.talk_tool_checkin, R.string.talk_tool_checkin_sub, "checkin"),
+                TrayTool(Icons.Outlined.SelfImprovement, R.string.talk_tool_breathe, R.string.talk_tool_breathe_sub, "breathe/reset"),
+                TrayTool(Icons.Outlined.Spa, R.string.talk_tool_ground, R.string.talk_tool_ground_sub, "ground"),
+                TrayTool(Icons.Outlined.Edit, R.string.talk_tool_journal, R.string.talk_tool_journal_sub, "journal/new"),
+                TrayTool(Icons.Outlined.Headphones, R.string.talk_tool_sounds, R.string.talk_tool_sounds_sub, "sounds"),
+                TrayTool(Icons.Outlined.NotificationsNone, R.string.talk_tool_reminder, R.string.talk_tool_reminder_sub, "reminders"),
+                TrayTool(Icons.Outlined.Mic, R.string.talk_tool_voice, R.string.talk_tool_voice_sub, ""),
+                TrayTool(Icons.Outlined.Extension, R.string.talk_tool_game, R.string.talk_tool_game_sub, "games"),
+            )
+            tools.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { tool ->
+                        Column(
+                            Modifier.weight(1f)
+                                .clip(RoundedCornerShape(18.dp))
+                                .border(1.dp, LineStroke, RoundedCornerShape(18.dp))
+                                .clickable {
+                                    showTools = false
+                                    if (tool.route.isBlank()) onOrbTap() else onOpen(tool.route)
+                                }
+                                .padding(13.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Box(
+                                Modifier.size(34.dp).clip(CircleShape)
+                                    .background(com.cerebrozen.app.ui.theme.AccentSoft),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(tool.icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(17.dp))
+                            }
+                            Text(stringResource(tool.titleRes), style = MaterialTheme.typography.titleSmall, color = TextSoft)
+                            Text(stringResource(tool.subRes), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                    if (pair.size == 1) Box(Modifier.weight(1f))
+                }
+            }
+        }
     }
 
     // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
@@ -1505,32 +1841,60 @@ private fun WidgetCard(
         }
         return
     }
-    Row(
+    // Reference fidelity (Aira NBA card, as-built Dawn): an accent-mist pane,
+    // a solid 40dp icon badge, the serif title, and ONE full-width primary
+    // pill — the suggested step is the loudest thing in the thread, exactly
+    // once. The old form was a quiet bordered row with a text link.
+    Column(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(CardFill)
-            .border(1.dp, LineStroke, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .clip(RoundedCornerShape(22.dp))
+            .background(com.cerebrozen.app.ui.theme.AccentSoft)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // The card wears the exercise's art like every door in the app —
-        // it was the one bare-text tile on the surface.
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))) {
-            ContentArt(title = w.title, kind = widgetArtKind(w.kind), modifier = Modifier.fillMaxSize())
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.talk_suggested_activity), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
-            Text(w.title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(w.description, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            if (route != null) {
-                TextButton(onClick = { onOpened?.invoke(); onOpen(route) }) {
-                    Text(stringResource(R.string.common_open), color = Cyan)
-                }
-            } else {
-                Text(stringResource(R.string.talk_ios_only), style = MaterialTheme.typography.bodySmall, color = TextMuted2)
+        Row(horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(Periwinkle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    widgetIcon(w.kind), contentDescription = null,
+                    tint = OnPrimary, modifier = Modifier.size(19.dp),
+                )
             }
+            Text(stringResource(R.string.talk_suggested_activity), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+        }
+        Text(
+            w.title,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = androidx.compose.ui.text.font.FontFamily(
+                    androidx.compose.ui.text.font.Font(R.font.newsreader),
+                ),
+            ),
+            color = com.cerebrozen.app.ui.theme.TextPrimary,
+        )
+        Text(w.description, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        if (route != null) {
+            PrimaryButton(
+                stringResource(R.string.common_open),
+                modifier = Modifier.fillMaxWidth(),
+            ) { onOpened?.invoke(); onOpen(route) }
+        } else {
+            Text(stringResource(R.string.talk_ios_only), style = MaterialTheme.typography.bodySmall, color = TextMuted2)
         }
     }
+}
+
+/** The icon a widget kind's badge wears (reference NBA badge language). */
+internal fun widgetIcon(kind: String): ImageVector = when (kind) {
+    "breathing" -> Icons.Outlined.SelfImprovement
+    "grounding" -> Icons.Outlined.Spa
+    "one_good_thing" -> Icons.Outlined.LightMode
+    "intention_set" -> Icons.Outlined.Flag
+    "sleep_checkin" -> Icons.Outlined.Bedtime
+    "mini_journal", "journal" -> Icons.Outlined.Edit
+    "dbt_skill" -> Icons.Outlined.Bolt
+    else -> Icons.Outlined.ChatBubbleOutline
 }
 
 /** One chat bubble. [animate] arms a one-shot 150ms rise+fade for bubbles that

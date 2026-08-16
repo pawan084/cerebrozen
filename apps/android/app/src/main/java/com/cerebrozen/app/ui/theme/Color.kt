@@ -325,6 +325,18 @@ val Ink = Color(0xFF211D20)         // --text
 val ArtScrim = Color(0xFF171019)
 val ArtTextSoft = Color(0xFFDED4E0)
 
+// ── V3 journey hero (companion-first reference, owner-approved 2026-08-16) ──
+// THEMED, per the reference's as-built Dawn block (complete.html §Dawn):
+// the light face wears a warm peach→lilac pane with deep-plum ink
+// (#FBE3D3→#E2CFEF / ink #3B1C3F — the reference's exact values, which sit on
+// our own Dawn family); Night keeps the deep plum pane with pale ink. Ink
+// pairs hold ≥7:1 on both faces.
+val HeroPlumTop: Color get() = if (AppTheme.isNight) Color(0xFF3A2150) else Color(0xFFFBE3D3)
+val HeroPlumBottom: Color get() = if (AppTheme.isNight) Color(0xFF251035) else Color(0xFFE2CFEF)
+val HeroInk: Color get() = if (AppTheme.isNight) Color(0xFFF5EDFA) else Color(0xFF3B1C3F)
+val HeroInkMuted: Color get() = if (AppTheme.isNight) Color(0xFFC9B4D9) else Color(0xFF7A5680)
+val HeroPale: Color get() = if (AppTheme.isNight) Color(0xFFE5CDF2) else Color(0xFF5A2B5C)
+
 // List-thumbnail gradient floors (UI chrome for content-row artwork). The tops
 // reuse the brand accents (Periwinkle/Cyan/Warm/Iris); these are the darker
 // gradient partners — the light-theme (deep) end of each tonal role.

@@ -67,8 +67,8 @@ class BottomNavImeTest {
         scaffoldWithNav(imeVisible = true)
 
         assertEquals(0f, reservedSlotDp(), 0.5f)
-        compose.onNodeWithText("Today").assertDoesNotExist()
-        compose.onNodeWithText("Talk").assertDoesNotExist()
+        compose.onNodeWithText("Home").assertDoesNotExist()
+        compose.onNodeWithText("Chat").assertDoesNotExist()
     }
 
     @Test
@@ -78,9 +78,8 @@ class BottomNavImeTest {
         // The pill is 78dp tall plus the container's 4dp vertical padding; assert
         // the slot is real rather than pinning the exact design value.
         assertTrue("expected a reserved nav slot, got ${reservedSlotDp()}dp", reservedSlotDp() >= 72f)
-        // "Today", not "Home" — the first tab was relabelled in the five-tab
-        // pass (its route is still `home`).
-        compose.onNodeWithText("Today").assertIsDisplayed()
-        compose.onNodeWithText("Talk").assertIsDisplayed()
+        // V3-a labels: Home · Chat · Sleep (routes stay home/talk/sleep).
+        compose.onNodeWithText("Home").assertIsDisplayed()
+        compose.onNodeWithText("Chat").assertIsDisplayed()
     }
 }

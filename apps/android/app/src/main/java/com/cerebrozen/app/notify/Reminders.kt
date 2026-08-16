@@ -24,6 +24,31 @@ object Reminders {
     private const val HOUR_KEY = "reminder_hour"
     const val DEFAULT_HOUR = 9
 
+    // ── V3-e: the proactive rules, enforced in code ──────────────────────
+    // The companion-first design promises three things about nudges, and a
+    // promise the code doesn't keep is the kind of thing this product cannot
+    // afford: (1) at most ONE a day, (2) never inside quiet hours, (3) every
+    // one lands in the inbox. (3) already held (NotificationLog); these keys
+    // and the pure helpers below make (1) and (2) true.
+    private const val LAST_POSTED_KEY = "nudge_last_posted"   // ISO local date
+    private const val QUIET_START_KEY = "quiet_hours_start"
+    private const val QUIET_END_KEY = "quiet_hours_end"
+    const val DEFAULT_QUIET_START = 22
+    const val DEFAULT_QUIET_END = 7
+
+    fun quietHours(context: Context): Pair<Int, Int> {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return p.getInt(QUIET_START_KEY, DEFAULT_QUIET_START).coerceIn(0, 23) to
+            p.getInt(QUIET_END_KEY, DEFAULT_QUIET_END).coerceIn(0, 23)
+    }
+
+    fun setQuietHours(context: Context, startHour: Int, endHour: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(QUIET_START_KEY, startHour.coerceIn(0, 23))
+            .putInt(QUIET_END_KEY, endHour.coerceIn(0, 23))
+            .apply()
+    }
+
     /** The hour the user chose (onboarding chip or the Reminders screen). */
     fun storedHour(context: Context): Int =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -79,11 +104,33 @@ object Reminders {
         context.getSystemService(AlarmManager::class.java).cancel(alarmPending(context))
     }
 
-    /** Post the reminder now (fired by the alarm; also used for a test tap). */
-    fun show(context: Context) {
+    /** Post the reminder now (fired by the alarm; also used for a test tap).
+     *
+     * [force] bypasses the once-a-day cap and quiet hours — that is the
+     * Settings "send a test" tap, which the user asked for explicitly and must
+     * always be answered, or the button looks broken. */
+    fun show(context: Context, force: Boolean = false) {
+        if (!force) {
+            val (qs, qe) = quietHours(context)
+            val nowHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val today = java.time.LocalDate.now().toString()
+            val last = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(LAST_POSTED_KEY, null)
+            if (!shouldPost(lastPostedDate = last, today = today, hour = nowHour, quietStart = qs, quietEnd = qe)) return
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString(LAST_POSTED_KEY, today).apply()
+        }
         ensureChannel(context)
         val open = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        // V3-e: "Check in" opens the quick-log popup, not the app — one tap
+        // logs a mood over whatever is on screen (QuickLogActivity). The
+        // notification face itself stays discreet: "A moment for you", never
+        // the why (design rule §9).
+        val quickLog = PendingIntent.getActivity(
+            context, 1, Intent(context, QuickLogActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = Notification.Builder(context, CHANNEL_ID)
@@ -92,6 +139,20 @@ object Reminders {
             .setContentText(context.getString(com.cerebrozen.app.R.string.reminder_body))
             .setAutoCancel(true)
             .setContentIntent(open)
+            .addAction(
+                Notification.Action.Builder(
+                    null,
+                    context.getString(com.cerebrozen.app.R.string.reminder_action_checkin),
+                    quickLog,
+                ).build(),
+            )
+            .addAction(
+                Notification.Action.Builder(
+                    null,
+                    context.getString(com.cerebrozen.app.R.string.reminder_action_open),
+                    open,
+                ).build(),
+            )
             .build()
         context.getSystemService(NotificationManager::class.java).notify(NOTIF_ID, notification)
         // The daily alarm is the one nudge that works with no account and no
@@ -104,6 +165,35 @@ object Reminders {
             route = NotificationLog.routeFor("checkin"),
         )
     }
+}
+
+/**
+ * Whether a nudge may be posted right now. Pure + unit-tested.
+ *
+ * Two rules, both promises the design makes out loud:
+ *  - **one a day** — [lastPostedDate] equal to [today] means the day already
+ *    had its nudge (a re-armed alarm, a reboot, a second dispatcher must not
+ *    stack a second one).
+ *  - **quiet hours** — the window wraps midnight (22 → 7 by default), and a
+ *    start equal to end means "quiet all day", which is how a user switches
+ *    nudges off without hunting for a toggle. The nudge is DROPPED, never
+ *    queued to fire later: a check-in nudge that arrives at 07:00 for
+ *    yesterday is noise, and the inbox already keeps what was missed.
+ */
+internal fun shouldPost(
+    lastPostedDate: String?,
+    today: String,
+    hour: Int,
+    quietStart: Int,
+    quietEnd: Int,
+): Boolean {
+    if (lastPostedDate == today) return false
+    val quiet = when {
+        quietStart == quietEnd -> true                        // quiet all day
+        quietStart < quietEnd -> hour in quietStart until quietEnd
+        else -> hour >= quietStart || hour < quietEnd         // wraps midnight
+    }
+    return !quiet
 }
 
 class ReminderReceiver : BroadcastReceiver() {

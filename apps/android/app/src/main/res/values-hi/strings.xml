@@ -64,9 +64,11 @@
 
     <!-- ── Bottom tabs ─────────────────────────────────────────────────── -->
     <string name="tab_today">आज</string>
+    <string name="tab_home">होम</string>
+    <string name="common_you_door">आप — प्रोफ़ाइल और सेटिंग्स</string>
     <string name="tab_explore">खोजें</string>
     <string name="tab_sleep">नींद</string>
-    <string name="tab_talk">बात</string>
+    <string name="tab_talk">बातचीत</string>
     <string name="tab_journal">जर्नल</string>
     <string name="tab_you">आप</string>
 
@@ -1346,4 +1348,83 @@
     <string name="si_shown">आपकी डायरी से %1$d रातें। छूटी रातें खाली रहती हैं — यह रिकॉर्ड है, निदान नहीं।</string>
     <string name="si_reminders_link">विंड-डाउन रिमाइंडर देखें →</string>
     <string name="si_load_failed">नींद की इनसाइट्स लोड नहीं हो सकीं।</string>
+
+    <!-- ══ V3 (2026-08-16): companion-first — Home, chat opener, tools tray,
+         concern rung, quick-log. Same DRAFT status as the rest of this file;
+         the concern-card copy is safety-adjacent and shares the standing
+         clinical-review flag at the top of the crisis section. ══ -->
+    <string name="home_hero_day">दिन</string>
+    <string name="home_care_eyebrow">आज की देखभाल</string>
+    <string name="home_care_details">विवरण</string>
+    <string name="home_care_done">%2$d में से %1$d पूरे</string>
+    <string name="home_care_provenance">आपके साथ चुने गए — आपके लिए नहीं</string>
+    <string name="home_mood_eyebrow">आज आप कैसे हैं?</string>
+    <string name="home_mood_history">इतिहास</string>
+    <string name="home_mood_again">फिर से चेक-इन करें</string>
+    <string name="home_sleep_eyebrow">आपकी नींद</string>
+    <string name="home_sleep_nights">इस हफ़्ते डायरी में %1$d रातें — पूरी तस्वीर नींद टैब में है।</string>
+    <string name="home_sleep_empty">अभी कोई रात दर्ज नहीं — चैट एक टैप में आज रात नोट कर सकती है।</string>
+    <string name="home_quiet_title">कुछ दिन शांत रहे</string>
+    <string name="home_quiet_body">कोई दबाव नहीं — हफ़्तों में ऐसे दिन आते हैं। जब मन करे, दस सेकंड का चेक-इन आपके हफ़्ते को सच्चा रखता है। कुछ पूरा करने को नहीं है, बस आज।</string>
+    <string name="home_quiet_cta">आज मैं कैसा महसूस कर रहा हूँ?</string>
+    <string name="home_remembers">CereBro क्या याद रखता है</string>
+
+    <string name="talk_op_hello_morning">सुप्रभात — जब भी बात करनी हो, मैं यहीं हूँ।</string>
+    <string name="talk_op_hello_day">नमस्ते — जब भी बात करनी हो, मैं यहीं हूँ।</string>
+    <string name="talk_op_hello_evening">शुभ संध्या — जब भी बात करनी हो, मैं यहीं हूँ।</string>
+    <string name="talk_op_sleep_q">सबसे पहले — नींद कैसी रही?</string>
+    <string name="talk_op_sleep_done">नोट कर लिया — बीती रात आपकी डायरी में, आपके सामान्य समय पर। रात अलग रही हो तो नींद टैब में बदल लें।</string>
+    <string name="talk_op_sleep_guest">बिना अकाउंट के मैं रात सहेज नहीं सकता — पर सुन रहा हूँ।</string>
+    <string name="talk_op_sleep_failed">यह सर्वर तक नहीं पहुँचा — ऑनलाइन होने पर नींद टैब में दर्ज कर लें।</string>
+    <string name="talk_op_mood_q">और अभी — आप कैसे हैं?</string>
+    <string name="talk_op_mood_ack">बताने के लिए शुक्रिया। एक छोटा क़दम, यहीं:</string>
+    <string name="talk_op_mood_ack_good">सुनकर अच्छा लगा। चाहें तो इसे थोड़ा सहेज लें:</string>
+    <string name="talk_op_guest_note">(मेहमान के तौर पर जवाब सहेजा नहीं जाता — होम से साइन इन करें।)</string>
+    <string name="talk_op_evening">आज रात का विंड-डाउन तैयार है — और सोने से पहले डायरी की एक पंक्ति भी मायने रखती है।</string>
+    <string name="talk_nba_ground">एक मिनट ग्राउंडिंग</string>
+    <string name="talk_nba_breathe">साँस धीमी करें</string>
+    <string name="talk_nba_onegood">एक अच्छी बात</string>
+    <string name="talk_nba_intention">कल का इरादा</string>
+    <string name="talk_nba_sleep">आज रात का विंड-डाउन</string>
+    <string name="talk_tools_cd">टूल — बातचीत में जो-जो हो सकता है</string>
+    <string name="talk_tools_eyebrow">इस बातचीत के टूल</string>
+    <string name="talk_tools_title">अभी क्या मदद करेगा?</string>
+    <string name="talk_tool_checkin">चेक-इन</string>
+    <string name="talk_tool_checkin_sub">मूड और एक नोट</string>
+    <string name="talk_tool_breathe">साँस</string>
+    <string name="talk_tool_breathe_sub">दो शांत मिनट</string>
+    <string name="talk_tool_ground">ग्राउंडिंग</string>
+    <string name="talk_tool_ground_sub">5-4-3-2-1, यहीं</string>
+    <string name="talk_tool_journal">एक पंक्ति</string>
+    <string name="talk_tool_journal_sub">डायरी में एक एंट्री</string>
+    <string name="talk_tool_sounds">आवाज़ें</string>
+    <string name="talk_tool_sounds_sub">बारिश, हवा, शांत मिक्स</string>
+    <string name="talk_tool_reminder">रिमाइंडर</string>
+    <string name="talk_tool_reminder_sub">एक कोमल दैनिक याद</string>
+    <string name="talk_tool_voice">आवाज़ से</string>
+    <string name="talk_tool_voice_sub">टाइप की जगह बोलें</string>
+    <string name="talk_tool_game">एक शांत खेल</string>
+    <string name="talk_tool_game_sub">एक सजग मिनट</string>
+
+    <string name="talk_regen">फिर से पूछें</string>
+    <string name="talk_didnt_help">इससे मदद नहीं मिली</string>
+    <string name="talk_didnthelp_ack">ठीक है — कहने के लिए शुक्रिया। नीचे कुछ आज़माएँ, या बस बात करते रहें?</string>
+    <string name="talk_concern_title">यह भारी लग रहा है</string>
+    <string name="talk_concern_body">मैं सुन रहा हूँ — और असली लोग भी इसे आपके साथ थाम सकते हैं। टेली-मानस मुफ़्त है, किसी भी समय, आपकी भाषा में।</string>
+    <string name="talk_concern_keep">यहीं बात करते रहें</string>
+
+    <string name="quicklog_title">झटपट चेक-इन</string>
+    <string name="quicklog_sub">आपके रिमाइंडर से — जैसा महसूस हो टैप करें, या ज़्यादा के लिए बातचीत खोलें।</string>
+    <string name="quicklog_open_app">बातचीत खोलें</string>
+    <string name="quicklog_not_now">अभी नहीं</string>
+    <string name="quicklog_saved">%1$s दर्ज — यह मायने रखता है। यह खुद बंद हो जाएगा।</string>
+    <string name="reminder_action_checkin">चेक-इन</string>
+    <string name="reminder_action_open">खोलें</string>
+    <string name="reminders_quiet_title">शांत घंटे</string>
+    <string name="reminders_quiet_hint">इस अवधि में कोई नज नहीं। दोनों समय एक ही रखें तो पूरे दिन शांति।</string>
+    <string name="reminders_once_a_day">दिन में ज़्यादा से ज़्यादा एक नज, और कुछ भी रीसेट नहीं होता।</string>
+    <string name="you_month_title">आपका महीना</string>
+    <string name="you_month_sentence">इस महीने आप %1$d दिन आए।</string>
+    <string name="trends_moods_title">कौन-सी भावनाएँ आईं</string>
+    <string name="trends_moods_total">पिछले %2$d दिनों में %1$d चेक-इन — गिने गए, आँके नहीं गए।</string>
 </resources>

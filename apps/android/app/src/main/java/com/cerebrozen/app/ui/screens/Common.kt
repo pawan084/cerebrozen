@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonAddAlt
@@ -722,6 +723,8 @@ internal fun Page(
      * Journal used [Page]/[PremiumPage] without it, which made the shield's
      * position screen-dependent — the exact property the rule exists to buy. */
     onUrgent: (() -> Unit)? = null,
+    /** V3-a: the You door (gear) on tab roots — see [CereBroTopBar.onSettings]. */
+    onSettings: (() -> Unit)? = null,
     /** Pinned below the scrolling body, outside [scrollState].
      *
      * For a composer that must not travel with the transcript. Talk had its
@@ -763,6 +766,7 @@ internal fun Page(
         trailingLabel = trailingLabel,
         onTrailingClick = onTrailingClick,
         onUrgent = onUrgent,
+        onSettings = onSettings,
     )
     Column(
         Modifier
@@ -812,6 +816,7 @@ internal fun PageHeader(
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
     onUrgent: (() -> Unit)? = null,
+    onSettings: (() -> Unit)? = null,
 ) = CereBroTopBar(
     title = title,
     subtitle = eyebrow,
@@ -820,6 +825,7 @@ internal fun PageHeader(
     trailingLabel = trailingLabel,
     onTrailingClick = onTrailingClick,
     onUrgent = onUrgent,
+    onSettings = onSettings,
 )
 
 /**
@@ -855,6 +861,10 @@ internal fun CereBroTopBar(
     trailing: ImageVector? = null,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+    /** V3-a: You left the tab pill; the gear in the corner is its one door on
+     * every tab root (the Aira pattern the owner approved). Sits before the
+     * shield so urgent support keeps the outermost, always-same pixels. */
+    onSettings: (() -> Unit)? = null,
     accent: Color = Accent.default,
 ) {
     Row(
@@ -906,6 +916,15 @@ internal fun CereBroTopBar(
                 well = accent.copy(alpha = .09f),
                 tint = TextSoft,
                 onClick = onTrailingClick,
+            )
+        }
+        onSettings?.let {
+            TopBarAction(
+                icon = Icons.Outlined.Settings,
+                label = stringResource(R.string.common_you_door),
+                well = FieldFill,
+                tint = TextSoft,
+                onClick = it,
             )
         }
         onUrgent?.let {

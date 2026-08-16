@@ -60,6 +60,16 @@
             </intent-filter>
         </activity>
 
+        <!-- V3-e: the quick-log popup a notification action opens — a small
+             dialog window, never the full app. No launcher entry, no recents
+             footprint, gone when done. -->
+        <activity
+            android:name=".notify.QuickLogActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.CereBro.QuickLog" />
+
         <receiver
             android:name=".notify.ReminderReceiver"
             android:exported="false" />

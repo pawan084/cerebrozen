@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,9 +64,18 @@ class RemindersTest {
         assertTrue(alarm.triggerAtMs > System.currentTimeMillis())
     }
 
+    /** A quiet-hours window that cannot contain the wall-clock hour this test
+     * happens to run at — otherwise the suite would fail every evening. */
+    private fun quietElsewhere() {
+        val now = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        Reminders.setQuietHours(context, (now + 1) % 24, (now + 2) % 24)
+    }
+
     @Test
     fun show_posts_the_gentle_notification() {
-        Reminders.show(context)
+        // force = true is the Settings "send a test" path: an explicitly
+        // requested notification must arrive whatever the hour.
+        Reminders.show(context, force = true)
         val posted = shadowOf(notificationManager).allNotifications
         assertEquals(1, posted.size)
         val n = posted[0]
@@ -75,9 +85,63 @@ class RemindersTest {
     }
 
     @Test
+    fun the_notification_carries_the_quick_log_action() {
+        // V3-e: "Check in" logs a mood from a small popup — the app never has
+        // to open. The second action is the plain Open door.
+        Reminders.show(context, force = true)
+        val n = shadowOf(notificationManager).allNotifications.single()
+        assertEquals(2, n.actions.size)
+        assertEquals("Check in", n.actions[0].title)
+        assertEquals("Open", n.actions[1].title)
+    }
+
+    @Test
     fun the_alarm_receiver_posts_the_notification() {
+        quietElsewhere()
         ReminderReceiver().onReceive(context, Intent())
         assertEquals(1, shadowOf(notificationManager).allNotifications.size)
+    }
+
+    @Test
+    fun the_alarm_posts_at_most_one_nudge_a_day() {
+        // The promise the design makes out loud. A re-armed alarm, a reboot or
+        // a second dispatcher must not stack a second nudge on the same day.
+        quietElsewhere()
+        ReminderReceiver().onReceive(context, Intent())
+        ReminderReceiver().onReceive(context, Intent())
+        ReminderReceiver().onReceive(context, Intent())
+        assertEquals(1, shadowOf(notificationManager).allNotifications.size)
+    }
+
+    @Test
+    fun quiet_hours_drop_the_nudge_entirely() {
+        // Quiet means quiet: dropped, never queued to arrive at 07:00 asking
+        // about yesterday. The inbox already keeps what was missed.
+        val now = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        Reminders.setQuietHours(context, now, (now + 1) % 24)
+        ReminderReceiver().onReceive(context, Intent())
+        assertTrue(shadowOf(notificationManager).allNotifications.isEmpty())
+    }
+
+    @Test
+    fun shouldPost_enforces_both_rules_including_the_midnight_wrap() {
+        // one a day
+        assertFalse(shouldPost("2026-08-16", "2026-08-16", hour = 9, quietStart = 22, quietEnd = 7))
+        assertTrue(shouldPost("2026-08-15", "2026-08-16", hour = 9, quietStart = 22, quietEnd = 7))
+        assertTrue(shouldPost(null, "2026-08-16", hour = 9, quietStart = 22, quietEnd = 7))
+        // the default window wraps midnight: 22, 23, 0…6 quiet; 7 and 21 open
+        listOf(22, 23, 0, 3, 6).forEach {
+            assertFalse("$it should be quiet", shouldPost(null, "d", it, 22, 7))
+        }
+        listOf(7, 12, 21).forEach {
+            assertTrue("$it should be open", shouldPost(null, "d", it, 22, 7))
+        }
+        // a same-hour window is "quiet all day" — how someone switches nudges
+        // off without hunting for a toggle
+        (0..23).forEach { assertFalse(shouldPost(null, "d", it, 9, 9)) }
+        // a non-wrapping window behaves like the plain range it looks like
+        assertFalse(shouldPost(null, "d", 14, 13, 17))
+        assertTrue(shouldPost(null, "d", 18, 13, 17))
     }
 
     @Test

@@ -48,9 +48,13 @@
          of `tab_today`; Sleep left the tab bar and now lives under Explore, so
          `tab_sleep` is only the Explore row label and the screen title. -->
     <string name="tab_today">Today</string>
+    <!-- V3-a: the tab is Home now (Today's jobs moved into the hero + care card);
+         tab_today stays for the screens that still cite the old name. -->
+    <string name="tab_home">Home</string>
+    <string name="common_you_door">You — profile &amp; settings</string>
     <string name="tab_explore">Explore</string>
     <string name="tab_sleep">Sleep</string>
-    <string name="tab_talk">Talk</string>
+    <string name="tab_talk">Chat</string>
     <string name="tab_journal">Journal</string>
     <string name="tab_you">You</string>
 
@@ -2067,6 +2071,92 @@ everything.</string>
     <string name="today_qh_games">Games</string>
     <string name="today_week_sentence">You showed up %1$d of the last 7 days</string>
     <string name="today_guest_line">save your progress · sign in</string>
+
+    <!-- V3-b Home (companion-first): journey hero + Today's care + mood card +
+         sleep sentence. Chat is the primary check-in now; Home summarises. -->
+    <string name="home_hero_day">Day</string>
+    <string name="home_care_eyebrow">Today\'s care</string>
+    <string name="home_care_details">Details</string>
+    <string name="home_care_done">%1$d of %2$d done</string>
+    <string name="home_care_provenance">picked with you, not for you</string>
+    <string name="home_mood_eyebrow">How are you today?</string>
+    <string name="home_mood_history">History</string>
+    <string name="home_mood_again">check in again</string>
+    <string name="home_sleep_eyebrow">Your sleep</string>
+    <string name="home_sleep_nights">%1$d nights in your diary this week — the full picture lives in Sleep.</string>
+    <string name="home_sleep_empty">No nights logged yet — the chat can note tonight in one tap.</string>
+    <string name="home_quiet_title">It\'s been a few quiet days</string>
+    <string name="home_quiet_body">No pressure — weeks have days like that. Whenever you\'re ready, a ten-second check-in keeps your week honest. Nothing to catch up on, just today.</string>
+    <string name="home_quiet_cta">How am I feeling today?</string>
+    <string name="home_remembers">what CereBro remembers</string>
+
+    <!-- V3-c Chat opener (the companion speaks first — deterministic, no LLM)
+         + the ＋ tools tray. Opener bubbles are local; only the mood/sleep ROWS
+         reach the server, through the same APIs the forms use. -->
+    <string name="talk_op_hello_morning">good morning — I\'m here whenever you want to talk.</string>
+    <string name="talk_op_hello_day">good afternoon — I\'m here whenever you want to talk.</string>
+    <string name="talk_op_hello_evening">good evening — I\'m here whenever you want to talk.</string>
+    <string name="talk_op_sleep_q">before anything — how did you sleep?</string>
+    <string name="talk_op_sleep_done">noted — that\'s last night in your diary at your usual times. If the night ran different, adjust it in Sleep.</string>
+    <string name="talk_op_sleep_guest">I can\'t save a night without an account — but I\'m still listening.</string>
+    <string name="talk_op_sleep_failed">that didn\'t reach the server — the Sleep tab can take it when you\'re back online.</string>
+    <string name="talk_op_mood_q">and right now — how are you?</string>
+    <string name="talk_op_mood_ack">thanks for telling me. one small step, right here:</string>
+    <string name="talk_op_mood_ack_good">good to hear. if you want to bank a bit of it:</string>
+    <string name="talk_op_guest_note">(as a guest the answer isn\'t saved — sign in from Home to keep it.)</string>
+    <string name="talk_op_evening">tonight\'s wind-down is ready when you are — and one line in your journal before bed counts.</string>
+    <string name="talk_nba_ground">A minute of grounding</string>
+    <string name="talk_nba_breathe">Slow the breath</string>
+    <string name="talk_nba_onegood">One good thing</string>
+    <string name="talk_nba_intention">Tomorrow\'s intention</string>
+    <string name="talk_nba_sleep">Tonight\'s wind-down</string>
+    <string name="talk_tools_cd">Tools — everything the conversation can do</string>
+    <string name="talk_tools_eyebrow">Tools in this conversation</string>
+    <string name="talk_tools_title">What would help now?</string>
+    <string name="talk_tool_checkin">Check in</string>
+    <string name="talk_tool_checkin_sub">mood and a note</string>
+    <string name="talk_tool_breathe">Breathe</string>
+    <string name="talk_tool_breathe_sub">two calm minutes</string>
+    <string name="talk_tool_ground">Ground</string>
+    <string name="talk_tool_ground_sub">5-4-3-2-1, right here</string>
+    <string name="talk_tool_journal">One line</string>
+    <string name="talk_tool_journal_sub">a journal entry</string>
+    <string name="talk_tool_sounds">Sounds</string>
+    <string name="talk_tool_sounds_sub">rain, wind, quiet mixes</string>
+    <string name="talk_tool_reminder">Reminder</string>
+    <string name="talk_tool_reminder_sub">a gentle daily nudge</string>
+    <string name="talk_tool_voice">Voice</string>
+    <string name="talk_tool_voice_sub">talk instead of type</string>
+    <string name="talk_tool_game">A quiet game</string>
+    <string name="talk_tool_game_sub">one mindful minute</string>
+
+    <!-- V3-d Chat honesty + the middle escalation rung. The concern card sits
+         BETWEEN a normal reply and the full crisis banner: warm, one pathway,
+         never blocking — the server's crisis scan stays the authority above it. -->
+    <string name="talk_regen">ask again</string>
+    <string name="talk_didnt_help">this didn\'t help</string>
+    <string name="talk_didnthelp_ack">fair — thanks for saying so. Want to try something structured below, or just keep talking?</string>
+    <string name="talk_concern_title">That sounds heavy</string>
+    <string name="talk_concern_body">I\'m listening — and real people can hold this with you too. Tele-MANAS is free, any hour, in your language.</string>
+    <string name="talk_concern_keep">keep talking here</string>
+
+    <!-- V3-e quick-log popup + notification quick action. The notification's
+         lock-screen face stays "A moment for you" — the WHY never leaves the
+         app (design rule §9, family-context privacy). -->
+    <string name="quicklog_title">Quick check-in</string>
+    <string name="quicklog_sub">From your reminder — tap how you feel, or open the conversation for more.</string>
+    <string name="quicklog_open_app">open the conversation</string>
+    <string name="quicklog_not_now">not now</string>
+    <string name="quicklog_saved">Logged %1$s — that counts. This closes itself.</string>
+    <string name="reminder_action_checkin">Check in</string>
+    <string name="reminder_action_open">Open</string>
+    <string name="reminders_quiet_title">Quiet hours</string>
+    <string name="reminders_quiet_hint">No nudges in this window. Set both ends the same to stay quiet all day.</string>
+    <string name="reminders_once_a_day">At most one nudge a day, and nothing ever resets.</string>
+    <string name="you_month_title">Your month</string>
+    <string name="you_month_sentence">You showed up on %1$d days this month.</string>
+    <string name="trends_moods_title">Which feelings showed up</string>
+    <string name="trends_moods_total">%1$d check-ins in the last %2$d days — counted, never scored.</string>
 
     <!-- V2-d part 2: the Sleep split (Tonight / Your sleep) -->
     <string name="sleep_sounds_door_sub">Rain, wind and quiet mixes</string>

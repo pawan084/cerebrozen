@@ -1,12 +1,16 @@
 package com.cerebrozen.app.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
@@ -174,6 +178,9 @@ internal fun TrendsScreen(onBack: () -> Unit) {
     var emptyBodyRes by remember { mutableIntStateOf(R.string.trends_empty_body) }
 
     var reloadKey by remember { mutableIntStateOf(0) }
+    // V3: the per-mood tally for the window (counts, not a scale — see the
+    // comment on MoodBreakdownCard). A failed read simply hides the card.
+    var moodTally by remember { mutableStateOf<List<Pair<String, Int>>>(emptyList()) }
     val loadFailed = stringResource(R.string.trends_load_failed)
     LaunchedEffect(days, reloadKey) {
         loading = true
@@ -181,6 +188,8 @@ internal fun TrendsScreen(onBack: () -> Unit) {
         runCatching { parseTrends(Api.trends(days)) }
             .onSuccess { trends = it }
             .onFailure { error = it.userMessage(loadFailed) }
+        moodTally = runCatching { moodCounts(Api.moods(), days, java.time.LocalDate.now()) }
+            .getOrDefault(emptyList())
         loading = false
     }
     LaunchedEffect(Unit) {
@@ -302,11 +311,124 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                     notEnough = stringResource(R.string.trends_sleep_not_enough, data.sleep.logged),
                 )
 
+                // V3: which feelings actually showed up, as COUNTS.
+                //
+                // This is the resolution of the "mood sparkline" question the
+                // V2 redesign left open (docs/TODO.md). A sparkline needs each
+                // mood to have a height, and "Anxious" is not objectively
+                // lower than "Tired" — inventing that order would be exactly
+                // the scoring this product refuses. Counting is honest: it
+                // says what happened without ranking how you felt. The ease
+                // line above stays the server's own 1–5 measure, which is
+                // gap-broken and gated on `enough_data`.
+                MoodBreakdownCard(counts = moodTally, days = days)
+
                 LinkCard(data.link)
 
                 WhyThisWorks(stringResource(R.string.trends_why))
             }
         }
+    }
+}
+
+/**
+ * Per-mood counts over the window, newest-heaviest first. Pure + unit-tested.
+ *
+ * Counting is the honest alternative to ranking: it needs no opinion about
+ * whether "Anxious" sits above or below "Tired". Rows outside the window or
+ * without a mood are skipped rather than bucketed into a default.
+ */
+internal fun moodCounts(
+    moods: org.json.JSONArray,
+    days: Int,
+    today: java.time.LocalDate,
+): List<Pair<String, Int>> {
+    val cutoff = today.minusDays((days - 1).coerceAtLeast(0).toLong())
+    val counts = LinkedHashMap<String, Int>()
+    for (i in 0 until moods.length()) {
+        val o = moods.optJSONObject(i) ?: continue
+        val day = runCatching {
+            java.time.OffsetDateTime.parse(o.optString("created_at"))
+                .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDate()
+        }.getOrNull() ?: continue
+        if (day.isBefore(cutoff) || day.isAfter(today)) continue
+        val mood = o.optString("mood").takeIf { it.isNotBlank() } ?: continue
+        counts[mood] = (counts[mood] ?: 0) + 1
+    }
+    return counts.entries.sortedByDescending { it.value }.map { it.key to it.value }
+}
+
+/**
+ * Presence over the last 30 days, oldest first — one flag per day, true when a
+ * check-in landed. Pure + unit-tested.
+ *
+ * Presence framing (design rule §2): this counts the days you showed up and
+ * says nothing about the others. No streak, no percentage, no reset.
+ */
+internal fun presenceMonth(
+    moods: org.json.JSONArray,
+    today: java.time.LocalDate,
+    days: Int = 30,
+): List<Boolean> {
+    val present = HashSet<java.time.LocalDate>()
+    for (i in 0 until moods.length()) {
+        val o = moods.optJSONObject(i) ?: continue
+        runCatching {
+            java.time.OffsetDateTime.parse(o.optString("created_at"))
+                .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDate()
+        }.getOrNull()?.let(present::add)
+    }
+    return ((days - 1) downTo 0).map { back -> today.minusDays(back.toLong()) in present }
+}
+
+/** The reference's moods-detail breakdown: one row per feeling, a bar whose
+ * width is its share, and the count. No scale, no ordering claim. */
+@Composable
+private fun MoodBreakdownCard(counts: List<Pair<String, Int>>, days: Int) {
+    if (counts.isEmpty()) return
+    val total = counts.sumOf { it.second }
+    val top = counts.first().second.coerceAtLeast(1)
+    SectionCard {
+        Text(stringResource(R.string.trends_moods_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        counts.forEach { (wire, count) ->
+            val label = moodLabelResFor(wire)?.let { stringResource(it) } ?: wire
+            // Unknown wire values (a newer server taxonomy) render untinted
+            // rather than crashing — the same rule moodTintFor already keeps.
+            val hue = moodTintFor(wire)?.invoke() ?: Periwinkle
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.Icon(
+                    moodIcon(wire), contentDescription = null,
+                    tint = hue, modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    label, style = MaterialTheme.typography.bodyMedium, color = TextSoft,
+                    maxLines = 1, modifier = Modifier.width(96.dp),
+                )
+                // The bar is a SHARE of the most-common feeling, so the row
+                // reads as "this one, more often" — never as a score.
+                androidx.compose.foundation.layout.Box(
+                    Modifier.weight(1f).height(12.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                        .background(LineStroke.copy(alpha = .25f)),
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.fillMaxWidth(count / top.toFloat())
+                            .height(12.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                            .background(hue.copy(alpha = .75f)),
+                    )
+                }
+                Text("$count", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            }
+        }
+        Text(
+            stringResource(R.string.trends_moods_total, total, days),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted,
+        )
     }
 }
 

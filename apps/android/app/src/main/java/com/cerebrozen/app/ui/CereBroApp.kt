@@ -164,12 +164,17 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 // V2 research found distressed users abandon ("relief, not discovery"). The
 // library survives as the practices hub behind Today's "more options →"; the
 // `explore` route stays registered for deeplinks.
+// V3-a (owner-approved 2026-08-16, companion-first prototype): THREE tabs —
+// Home · Chat · Sleep. The conversation is the flagship and the app opens on
+// it; Home is the one-scroll summary; Sleep keeps its room. Journal is now a
+// chat tool + a room doored from Home (route stays registered); You lives
+// behind the gear in every tab root's top bar (CereBroTopBar.onSettings).
+// Enum constant names Home/Talk keep their historic spelling — routes,
+// deeplinks and ~30 call sites depend on "home"/"talk".
 internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
-    Home("home", R.string.tab_today, R.drawable.ic_tab_today),
-    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
+    Home("home", R.string.tab_home, R.drawable.ic_tab_today),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
-    Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
-    You("you", R.string.tab_you, R.drawable.ic_tab_you),
+    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
 }
 
 internal fun shouldShowBottomBar(route: String?): Boolean =
@@ -177,7 +182,11 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // (deeplink-only), so it leaves this set for the same reason sleep once
     // did — a pill with five unlit tabs says nothing about where you are.
     // V2-e: the talk/live, talk/chat and dailyplan aliases left the graph.
-    route in setOf("home", "sleep", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline", "reminders")
+    // V3-a: `you` and `reminders` leave the set — the settings family is a
+    // full-screen push behind the gear now, and a pill under a settings room
+    // would light nothing. `journal` keeps the pill and lights Home (it is a
+    // content room doored from Home, like gratitude).
+    route in setOf("home", "sleep", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -541,7 +550,7 @@ fun CereBroApp() {
 
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
-    val current = backStack?.destination?.route ?: Tab.Home.route
+    val current = backStack?.destination?.route ?: Tab.Talk.route
     // Honor the notification's promise: navigate to the deeplink the nudge
     // carried. Signed-out sessions never reach this point, so the route waits
     // on the bus until the NavHost exists.
@@ -611,12 +620,11 @@ fun CereBroApp() {
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
                     current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "dailyplan" || current == "goals" || current == "baseline" -> Tab.Home.route
-                    // V2-d: the practice family is reached from Today's hero
-                    // ("more options →"), so those routes light Home; sleep
-                    // insights lights the Sleep tab it belongs to.
-                    current == "practice-library" || current == "gratitude" -> Tab.Home.route
+                    // V2-d: the practice family is reached from Home, so those
+                    // routes light Home; sleep insights lights Sleep.
+                    // V3-a: journal lights Home (its doors live there now).
+                    current == "practice-library" || current == "gratitude" || current == "journal" -> Tab.Home.route
                     current == "sleepinsights" -> Tab.Sleep.route
-                    current == "reminders" -> Tab.You.route
                     else -> current
                 },
                 compact = compactNav,
@@ -635,7 +643,9 @@ fun CereBroApp() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Tab.Home.route,
+            // V3-a: the app opens on the conversation — "chat first" is the
+            // owner's ruling, and the companion's opener is the new check-in.
+            startDestination = Tab.Talk.route,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -709,10 +719,10 @@ fun CereBroApp() {
             // composer pinned below the transcript — so both routes land on it
             // rather than dead-ending anything still pointing at them.
             // V2-e: the talk/live + talk/chat aliases are gone — one Talk, one route.
-            composable(Tab.Journal.route) { JournalScreen(onOpen = open) }
+            composable("journal") { JournalScreen(onOpen = open) }
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
             composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
-            composable(Tab.You.route) { YouScreen(onOpen = open) }
+            composable("you") { YouScreen(onOpen = open) }
             // Guest mode is a real app shell, so authentication must be
             // reachable without signing the local session out first.
             composable("auth") {

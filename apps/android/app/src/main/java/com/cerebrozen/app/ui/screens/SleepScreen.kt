@@ -992,6 +992,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
         modifier = Modifier.align(Alignment.TopCenter).zIndex(20f),
         onBack = onBack,
         onUrgent = { onOpen("crisis") },
+        onSettings = { onOpen("you") },
     )
 }
 
@@ -1094,13 +1095,14 @@ private fun SleepPremiumHeader(
 
 /** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
-private fun SleepFixedTopBar(modifier: Modifier = Modifier, onBack: (() -> Unit)?, onUrgent: () -> Unit) {
+private fun SleepFixedTopBar(modifier: Modifier = Modifier, onBack: (() -> Unit)?, onUrgent: () -> Unit, onSettings: (() -> Unit)? = null) {
     CereBroTopBar(
         title = stringResource(R.string.sleep_title),
         subtitle = stringResource(R.string.sleep_premium_subtitle),
         modifier = modifier,
         onBack = onBack,
         onUrgent = onUrgent,
+        onSettings = onSettings,
     )
 }
 

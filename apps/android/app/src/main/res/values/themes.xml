@@ -7,4 +7,13 @@
         <item name="android:statusBarColor">@color/night</item>
         <item name="android:navigationBarColor">@color/night</item>
     </style>
+
+    <!-- V3-e: the quick-log popup — a translucent dialog window over whatever
+         is on screen, so a notification's "Check in" never opens the full app. -->
+    <style name="Theme.CereBro.QuickLog" parent="android:Theme.Material.Dialog.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

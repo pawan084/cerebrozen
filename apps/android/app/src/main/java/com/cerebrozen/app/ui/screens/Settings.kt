@@ -784,10 +784,51 @@ fun RemindersScreen(onBack: () -> Unit) {
                 }
             }
         }
-        TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context) }) {
+        // V3-e: quiet hours — the window nudges never cross. Two taps, and
+        // setting both ends the same hour means "quiet all day", which is how
+        // someone switches nudges off without hunting for the toggle.
+        var quiet by remember {
+            mutableStateOf(com.cerebrozen.app.notify.Reminders.quietHours(context))
+        }
+        SectionCard(onClick = {
+            android.app.TimePickerDialog(
+                context,
+                { _, startH, _ ->
+                    android.app.TimePickerDialog(
+                        context,
+                        { _, endH, _ ->
+                            com.cerebrozen.app.notify.Reminders.setQuietHours(context, startH, endH)
+                            quiet = startH to endH
+                        },
+                        quiet.second, 0, android.text.format.DateFormat.is24HourFormat(context),
+                    ).show()
+                },
+                quiet.first, 0, android.text.format.DateFormat.is24HourFormat(context),
+            ).show()
+        }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(stringResource(R.string.reminders_quiet_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(stringResource(R.string.reminders_quiet_hint),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+                val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+                Text(
+                    java.time.LocalTime.of(quiet.first, 0).format(fmt) + " – " +
+                        java.time.LocalTime.of(quiet.second, 0).format(fmt),
+                    style = MaterialTheme.typography.titleMedium, color = Periwinkle,
+                )
+            }
+        }
+        // force = true: an explicitly requested test must always arrive, or the
+        // button looks broken inside quiet hours / after the day's one nudge.
+        TextButton(onClick = { com.cerebrozen.app.notify.Reminders.show(context, force = true) }) {
             Text(stringResource(R.string.reminders_test), color = Periwinkle)
         }
         Text(stringResource(R.string.reminders_delivery_note),
+            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(stringResource(R.string.reminders_once_a_day),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }

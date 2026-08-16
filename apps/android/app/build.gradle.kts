@@ -216,6 +216,12 @@ val coverageExcludes = listOf(
     // notify/Push.kt, which IS covered (PushTest) — this class is the two-line
     // adapter Firebase requires.
     "com/cerebrozen/app/notify/CereBroMessagingService*",
+    // V3-e QuickLogActivity: an Activity whose entire body is Compose
+    // rendering (the quick-log dialog) — the same category as MainActivity,
+    // which the scope note below already records as unmeasurable off-device.
+    // Its one decision (save through the same /moods write the forms use, or
+    // open the app when the save can't succeed) rides the covered Api.checkIn.
+    "com/cerebrozen/app/notify/QuickLogActivity*",
     // The Play-services Task→coroutine bridge in notify/Push.kt (file-level
     // private, so it compiles into PushKt). It can only run against a real
     // FirebaseMessaging instance, which needs the config file above; the

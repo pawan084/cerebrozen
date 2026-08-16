@@ -124,13 +124,23 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.AccentSoft
+import com.cerebrozen.app.ui.theme.HeroInk
+import com.cerebrozen.app.ui.theme.HeroInkMuted
+import com.cerebrozen.app.ui.theme.HeroPale
+import com.cerebrozen.app.ui.theme.HeroPlumBottom
+import com.cerebrozen.app.ui.theme.HeroPlumTop
+import com.cerebrozen.app.ui.theme.OnPrimary
+import com.cerebrozen.app.ui.theme.AppTheme
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.fillMaxHeight
 
 /** Mirrors iOS `Dummy.moods` (cross-stack mood taxonomy).
  *
  * [name]/[note]/[symbol] are WIRE VALUES — they go to the backend and are
  * hand-duplicated across iOS/web (see CLAUDE.md), so they are never translated.
  * [labelRes]/[noteRes] are the display copy and localize freely. */
-private data class MoodOption(
+internal data class MoodOption(
     val name: String,
     val note: String,
     val symbol: String,
@@ -162,7 +172,9 @@ private var homeIntroPlayed = false
  * cannot name a feeling from being pushed into naming one wrongly — and the
  * server treats it as neither distress nor contentment.
  */
-private val MOODS = listOf(
+// internal since V3-c: the chat opener asks the same six moods (one taxonomy
+// source; the wire contract comment above applies to every caller).
+internal val MOODS = listOf(
     MoodOption("Good", "Clear", "sparkles", 2, R.string.mood_good, R.string.mood_good_note) { Ok },
     MoodOption("Anxious", "Loud thoughts", "exclamationmark.triangle", 4, R.string.mood_anxious, R.string.mood_anxious_note) { Warm },
     MoodOption("Low", "Heavy", "moon", 4, R.string.mood_low, R.string.mood_low_note) { Periwinkle },
@@ -592,7 +604,11 @@ private fun MoodTile(
 ) {
     val tint = mood.tint()
     val shape = RoundedCornerShape(if (compact) 14.dp else 18.dp)
-    val selectedFill = Periwinkle
+    // Reference fidelity (Aira as-built moodrow): the chosen tile fills with
+    // the MOOD's own colour, not the generic accent — the feeling keeps its
+    // hue when picked. Ink is OnPrimary, the token built for accent fills
+    // (near-white on Dawn's deep tints, dark ink on Night's pale ones).
+    val selectedFill = tint
     val idleFill = FieldFill
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -638,12 +654,12 @@ private fun MoodTile(
                 // The icon well wears the mood's own hue (14% wash) — the
                 // approved prototype's emotion-by-colour language; a plain
                 // CardFill circle read as six grey settings rows.
-                .background(if (marked) Color.White.copy(alpha = .16f) else tint.copy(alpha = .14f)),
+                .background(if (marked) OnPrimary.copy(alpha = .16f) else tint.copy(alpha = .14f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 moodIcon(mood.name), contentDescription = null,
-                tint = if (marked) Color.White else tint,
+                tint = if (marked) OnPrimary else tint,
                 modifier = Modifier.size(if (compact) 15.dp else 19.dp),
             )
         }
@@ -654,11 +670,11 @@ private fun MoodTile(
             // WIDER (it is the eyebrow role, +1.4 tracking). bodySmall is the
             // narrow tracking-free role that fits (device walk, 2026-08-15).
             style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
-            color = if (marked) Color.White else TextSoft, maxLines = 1,
+            color = if (marked) OnPrimary else TextSoft, maxLines = 1,
         )
         if (!compact) {
             Text(stringResource(mood.noteRes), style = MaterialTheme.typography.bodySmall,
-                color = if (marked) Color.White.copy(alpha = .82f) else TextMuted, maxLines = 1)
+                color = if (marked) OnPrimary.copy(alpha = .82f) else TextMuted, maxLines = 1)
         }
     }
 }
@@ -796,6 +812,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     var program by remember { mutableStateOf<JSONObject?>(null) }
     // Optimistically true so the morning banner never flashes before data loads.
     var lastNightLogged by remember { mutableStateOf(true) }
+    // V3-b: the last seven nights as (day-letter, height-fraction) for the
+    // sleep card — same fetch that feeds the morning banner.
+    var sleepBars by remember { mutableStateOf(listOf<Pair<String, Float?>>()) }
     var bloom by remember { mutableIntStateOf(0) }        // E2: one-shot per successful check-in
     // V2-b: the rail, the weekly-metrics tiles and the banner-dismissal tick
     // left with the folds they served — the rail is Explore's (V2-e), the
@@ -846,6 +865,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 (0 until logs.length()).map { logs.getJSONObject(it).optString("date") },
                 LocalDate.now(),
             )
+            sleepBars = sleepBarsFrom(logs, LocalDate.now())
         }
         }
         // Persist the next cold open's first frame.
@@ -906,44 +926,107 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             .padding(horizontal = 24.dp).padding(top = 80.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(Space.item),
     ) {
-        // ── V2-b greeting: the only display-size text, then ONE line ─────
+        // ── V3-b JOURNEY HERO ────────────────────────────────────────────
         //
-        // The date row, bell, lede and guest card that lived here are gone:
-        // the bell duplicated You → Inbox, the lede explained the screen the
-        // layout now explains itself, and the guest ask is one quiet line at
-        // the bottom. The status line rotates one truth at a time — offline
-        // first, else the earlier check-in said back.
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.tight)) {
+        // The approved companion-first reference: one plum pane holding the
+        // greeting, the presence sentence, the active program's day, a quiet
+        // progress bar and Tonight's door. Plum in BOTH themes on purpose —
+        // the one deliberately dark surface of the light world (Color.kt
+        // HeroPlum*), exactly as the reference draws it.
+        val hourNow = LocalTime.now().hour
+        val daysPresent = week.count { it.second }
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.hero))
+                .background(Brush.linearGradient(listOf(HeroPlumTop, HeroPlumBottom)))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.item),
+        ) {
             val friend = stringResource(R.string.today_friend)
             Text(
                 stringResource(R.string.today_greeting_format, greeting(), userName.ifBlank { friend }),
-                style = MaterialTheme.typography.displayLarge.copy(
+                style = MaterialTheme.typography.headlineMedium.copy(
                     fontFamily = FontFamily(Font(R.font.newsreader)),
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
-                    fontSize = 34.sp,
-                    lineHeight = 38.sp,
+                    // The reference's as-built Dawn greets in serif ITALIC —
+                    // the one flourish its light face allows itself. Night
+                    // stays upright (italic on the dark pane read as slant).
+                    fontStyle = if (AppTheme.isNight) FontStyle.Normal else FontStyle.Italic,
+                    fontSize = 26.sp, lineHeight = 31.sp,
                 ),
-                color = TextPrimary,
-                maxLines = 3,
+                color = HeroInk, maxLines = 3,
             )
-            val last = recent.firstOrNull()
-            val lastT = last?.let { relativeTime(it.createdAt, java.time.OffsetDateTime.now()) }
-            when {
-                Session.servedStale -> Text(
-                    stringResource(R.string.today_banner_offline),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+            Text(
+                when {
+                    Session.servedStale -> stringResource(R.string.today_banner_offline)
+                    daysPresent > 0 -> stringResource(R.string.today_week_sentence, daysPresent)
+                    else -> stringResource(R.string.today_presence_empty)
+                },
+                style = MaterialTheme.typography.bodyMedium, color = HeroInkMuted,
+            )
+            program?.let { prog ->
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "${prog.optInt("day")}",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontFamily = FontFamily(Font(R.font.newsreader)),
+                            fontSize = 44.sp, lineHeight = 44.sp,
+                        ),
+                        color = HeroInk,
+                    )
+                    Column {
+                        Text(stringResource(R.string.home_hero_day).uppercase(), style = MaterialTheme.typography.labelSmall, color = HeroInkMuted)
+                        Text(prog.optString("title"), style = MaterialTheme.typography.bodyMedium, color = HeroInk, maxLines = 1)
+                    }
+                }
+            }
+            // Program progress when enrolled; the week's presence otherwise.
+            val heroFraction = program?.let { p ->
+                val days = p.optInt("days").coerceAtLeast(1)
+                p.optInt("day").coerceIn(0, days) / days.toFloat()
+            } ?: (daysPresent / 7f)
+            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(99.dp)).background(HeroInk.copy(alpha = .16f))) {
+                Box(Modifier.fillMaxWidth(heroFraction).fillMaxHeight().clip(RoundedCornerShape(99.dp)).background(HeroPale))
+            }
+            val tonightCd = stringResource(R.string.today_tonight_title)
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HeroInk.copy(alpha = .10f))
+                    .clickable { onOpen("sleep") }
+                    .semantics { contentDescription = tonightCd }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Outlined.Bedtime, contentDescription = null, tint = HeroPale, modifier = Modifier.size(16.dp))
+                Text(
+                    // Just the clock-aware sentence — prefixing the "Tonight"
+                    // title made the pill read "Tonight · Tonight's wind-down"
+                    // (device walk 2026-08-16).
+                    when {
+                        hourNow < 11 && !lastNightLogged -> stringResource(R.string.today_banner_sleep)
+                        com.cerebrozen.app.ui.theme.isWindDownHour(hourNow) -> stringResource(R.string.today_tonight_wind)
+                        else -> stringResource(R.string.today_tonight_ready)
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = HeroInk,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-                last != null && showEarlierLine(lastT, LocalTime.now().hour) && last.line.isNotBlank() -> Text(
-                    stringResource(R.string.today_earlier_line, displayCheckInLine(last)),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = HeroPale, modifier = Modifier.size(16.dp))
             }
         }
 
-        // Offline with queued writes is the one banner that still earns a
-        // surface — it carries the Send-now action. Plain offline is the
-        // status line above; sleep, wind-down and program moved into the
-        // Your-day rows where their doors now live (V2-b).
+        // First-run: one dismissible hint line (V2: no surprise modals).
+        if (showHint) {
+            InfoBanner(
+                icon = Icons.Outlined.SelfImprovement,
+                text = stringResource(R.string.today_hint),
+                onDismiss = { TourState.markDone(); showHint = false },
+            )
+        }
+
+        // Offline with queued writes still earns a surface — it carries Send now.
         val queuedWrites = if (Session.servedStale) com.cerebrozen.app.net.Outbox.count() else 0
         if (queuedWrites > 0) {
             InfoBanner(
@@ -954,14 +1037,11 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        // ── THE recommendation ───────────────────────────────────────────
+        // ── V3-b TODAY'S CARE ────────────────────────────────────────────
         //
-        // One card, at full volume, and it shows its working. Everything below
-        // this point on the screen is deliberately quieter.
-        //
-        // The plan's next step is worked out once here and reused by the "Your
-        // day" fold, so the hero and the list can never disagree about what is
-        // next or how much is done.
+        // The plan's next step is worked out by the same pure helpers the V2
+        // hero used, but renders as the first care row instead of a full-volume
+        // hero — chat is the flagship now; Home summarises. Three rows at most.
         val planSteps = plan?.optJSONArray("steps")
         val stepCount = planSteps?.length() ?: 0
         val stepObjs = remember(plan, stepCount) {
@@ -971,19 +1051,77 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         val nextStep = nextPlanStepIndex(
             titles = stepObjs.map { it.optString("title") },
             done = stepObjs.map { it.optBoolean("done") },
-            hour = LocalTime.now().hour,
+            hour = hourNow,
         )?.let { stepObjs[it] }
-        // A plan with zero steps is not a finished plan — it is no plan. Passing
-        // `plan != null` here would have congratulated the user for completing
-        // an empty list.
         val heroKind = heroKindFor(planLoaded, plan != null && stepCount > 0, nextStep != null)
+        Column(
+            Modifier.fillMaxWidth().quiet(RoundedCornerShape(Radius.card)).padding(cardPadding()),
+            verticalArrangement = Arrangement.spacedBy(Space.item),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_care_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall, color = EyebrowMuted)
+                Text(
+                    stringResource(R.string.home_care_details),
+                    style = MaterialTheme.typography.labelLarge, color = Periwinkle,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onOpen("plan") }.padding(horizontal = 4.dp),
+                )
+            }
+            if (stepCount > 0) {
+                // Reference signature component (Aira hydration ring): a small
+                // arc that fills on entry, beside the honest count. Presence
+                // framing still holds — it shows what IS done and never what
+                // was missed, and nothing resets.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                    ProgressRing(done = doneCount, total = stepCount)
+                    Text(
+                        stringResource(R.string.home_care_done, doneCount, stepCount),
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                    )
+                }
+            }
+            when (heroKind) {
+                HeroKind.LOADING -> ShimmerBox(Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(12.dp))
+                HeroKind.PLAN_STEP -> {
+                    val step = nextStep!!
+                    CareRow(
+                        icon = Icons.Outlined.CalendarMonth,
+                        title = step.optString("title"),
+                        // The provenance sentence stays honest per generator —
+                        // the AI path reads journal titles, the rule path never
+                        // does (heroWhyRes).
+                        sub = stringResource(heroWhyRes(plan?.optString("source").orEmpty())),
+                        actionLabel = stringResource(R.string.today_hero_start),
+                    ) { onOpen(planStepRoute(step.optString("symbol")) ?: "plan") }
+                }
+                HeroKind.PLAN_DONE -> {
+                    Text(stringResource(R.string.today_hero_done_title), style = MaterialTheme.typography.titleSmall, color = TextSoft)
+                    Text(stringResource(R.string.today_hero_done_why), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                else -> {
+                    CareRow(
+                        icon = Icons.Outlined.Spa,
+                        title = stringResource(R.string.today_hero_fallback_title),
+                        sub = stringResource(R.string.today_hero_why_fallback),
+                        actionLabel = stringResource(R.string.today_hero_begin),
+                    ) { onOpen("groundingintro") }
+                }
+            }
+            if (hourNow >= 17) {
+                CareRow(
+                    icon = Icons.Outlined.Edit,
+                    title = stringResource(R.string.today_prompt_title),
+                    sub = stringResource(R.string.today_prompt_sub),
+                    actionLabel = null,
+                ) { onOpen("journal/new") }
+            }
+            Text(stringResource(R.string.home_care_provenance), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
 
-        // ── V2-b THE CARD: the check-in becomes the step ─────────────────
+        // ── V3-b HOW ARE YOU TODAY ───────────────────────────────────────
         //
-        // Balance's fused pattern (REDESIGN_V2 §3.1): the one-tap answer is
-        // what PRODUCES the recommendation, so ask and step share one slot.
-        // No check-in today → the card asks; the moment one lands (or one
-        // already exists) the same slot holds the one next step.
+        // The conversation is the primary check-in now; this card is the
+        // ten-second path, writing the same six wire moods. The 2-across grid
+        // is the device-proven shape (V2 walk: "Overwhelmed" clips at 3-across).
         var reAsk by remember { mutableStateOf(false) }
         val earlierTodayMood = recent.firstOrNull()?.takeIf { last ->
             val t = relativeTime(last.createdAt, java.time.OffsetDateTime.now())
@@ -999,32 +1137,20 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 settled = true
             }
         }
-        // First-run: one dismissible hint line where the 4-stop tour modal was
-        // (V2: no surprise modals over a first launch).
-        if (showHint) {
-            InfoBanner(
-                icon = Icons.Outlined.SelfImprovement,
-                text = stringResource(R.string.today_hint),
-                onDismiss = { TourState.markDone(); showHint = false },
-            )
-        }
         Box {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.item)) {
-        if (asking) {
-            FocusCard(accent = Accent.home, pastel = true, orb = true) {
+        Column(
+            Modifier.fillMaxWidth().quiet(RoundedCornerShape(Radius.card)).padding(cardPadding()),
+            verticalArrangement = Arrangement.spacedBy(Space.item),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_mood_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall, color = EyebrowMuted)
                 Text(
-                    stringResource(R.string.today_checkin_title),
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = FontFamily(Font(R.font.newsreader)),
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                    ),
-                    color = TextPrimary,
-                    // Clear of the orb in the top-right corner (device walk).
-                    modifier = Modifier.padding(end = 56.dp),
+                    stringResource(R.string.home_mood_history),
+                    style = MaterialTheme.typography.labelLarge, color = Periwinkle,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onOpen("trends") }.padding(horizontal = 4.dp),
                 )
-                // 2-across, not 3: "Overwhelmed" clipped at every 3-across type
-                // size on a 720px device, and large font scales would clip
-                // more labels — width is the durable fix, not smaller type.
+            }
+            if (asking) {
                 MOODS.chunked(2).forEachIndexed { row, pair ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         pair.forEachIndexed { col, mood ->
@@ -1048,10 +1174,8 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                                         } catch (e: Exception) {
                                             if (e.isGuestGate()) {
                                                 // Walk defect (2026-08-15): a guest's
-                                                // answer still earns the step — the
-                                                // recommendation is computed on-device;
-                                                // only the ROW needs an account. Morph,
-                                                // and say honestly that nothing saved.
+                                                // answer still counts on-device; only
+                                                // the ROW needs an account.
                                                 Haptics.success()
                                                 if (!reduceMotion) bloom++
                                                 loggedId = null
@@ -1079,140 +1203,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         color = Periwinkle,
                     )
                 }
-            }
-        } else if (heroKind == HeroKind.LOADING) {
-            // The slot holds its height while the plan lands.
-            ShimmerBox(Modifier.fillMaxWidth().height(140.dp), shape = RoundedCornerShape(Radius.hero))
-        } else {
-            // The hero renders the STATE, not a mock of one (device audit I#1).
-            // HeroKind was computed above and then ignored: every non-loading
-            // state showed one hardcoded grounding card whose subtitle claimed
-            // it was "chosen from your recent evening check-in" — on a fresh
-            // guest session with no check-in, under a "Good morning" greeting.
-            // The provenance sentence is the one sentence on this screen that
-            // must never be decorative; heroWhyRes and the honest fallback
-            // strings existed all along and were simply never wired in.
-            val heroTitle: String
-            val heroSub: String?
-            val heroWhy: String
-            val heroRoute: String?
-            val heroCta: String?
-            when (heroKind) {
-                HeroKind.PLAN_STEP -> {
-                    val step = nextStep!!
-                    heroTitle = step.optString("title")
-                    heroSub = step.optString("detail").trim().ifBlank { null }
-                    // The sentence branches on the plan's real generator — the
-                    // AI path reads journal titles, the rule path never does.
-                    heroWhy = stringResource(heroWhyRes(plan?.optString("source").orEmpty()))
-                    heroRoute = planStepRoute(step.optString("symbol")) ?: "plan"
-                    heroCta = stringResource(R.string.today_hero_start)
-                }
-                HeroKind.PLAN_DONE -> {
-                    heroTitle = stringResource(R.string.today_hero_done_title)
-                    heroSub = null
-                    heroWhy = stringResource(R.string.today_hero_done_why)
-                    heroRoute = null   // nothing left to begin, so no button pretends otherwise
-                    heroCta = null
-                }
-                else -> {
-                    // No plan yet: the shortest steady practice, and honest about
-                    // being the same for everyone.
-                    heroTitle = stringResource(R.string.today_hero_fallback_title)
-                    heroSub = stringResource(R.string.today_hero_fallback_sub)
-                    heroWhy = stringResource(R.string.today_hero_why_fallback)
-                    heroRoute = "groundingintro"
-                    heroCta = stringResource(R.string.today_hero_begin)
-                }
-            }
-            FocusCard(accent = Accent.home, pastel = true, orb = true) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.today_hero_eyebrow).uppercase(),
-                        style = MaterialTheme.typography.labelSmall, color = Periwinkle,
-                    )
-                    // V2-b: the plan's progress lives IN the hero's eyebrow (the
-                    // old separate "Today's plan · 2 of 3" row duplicated the
-                    // hero's job); tapping it opens the full plan.
-                    if (heroKind == HeroKind.PLAN_STEP && stepCount > 0) {
-                        Text(
-                            "· " + stringResource(
-                                R.string.today_hero_step_progress,
-                                (doneCount + 1).coerceAtMost(stepCount), stepCount,
-                            ).uppercase(),
-                            style = MaterialTheme.typography.labelSmall, color = TextMuted,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable { onOpen("plan") }
-                                .padding(horizontal = 2.dp),
-                        )
-                    }
-                }
-                Text(
-                    heroTitle,
-                    // displaySmall is the serif display face (Type.kt) — the
-                    // recommendation is the one title on this screen that gets it.
-                    // LineBreak.Heading balances the wrap (audit I#2: the forced
-                    // \n version broke as "Make room / around / loud thoughts",
-                    // one orphaned word per 720px line).
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontFamily = FontFamily(Font(R.font.newsreader)),
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
-                    ),
-                    color = TextPrimary,
-                    maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                // The step's own description, when the generator wrote one.
-                heroSub?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = TextSoft)
-                }
-                // Facts, not decoration: a duration only when one is known, an
-                // offline promise only for practices that really run offline,
-                // and "nothing to score" — which is true everywhere, because
-                // this product scores nothing at all.
-                // FlowRow, not Row: three chips plus a long Hindi translation
-                // will not fit one 360dp line, and a clipped honesty chip is
-                // worse than a wrapped one.
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (heroKind == HeroKind.FALLBACK) MetaChip(stringResource(R.string.today_hero_chip_3min))
-                    if (heroRoute != null && heroWorksOffline(heroRoute)) {
-                        MetaChip(stringResource(R.string.today_hero_chip_offline))
-                    }
-                    MetaChip(stringResource(R.string.today_hero_chip_no_score))
-                }
-                // WHY this, and what it did NOT read — heroWhyRes keeps the
-                // sentence true for the generator that actually ran.
-                Text(heroWhy, style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                // ONE primary action (the house pill) and one quiet tertiary
-                // door to the practices hub — browsing starts when the
-                // recommendation isn't right (V2).
-                if (heroRoute != null && heroCta != null) {
-                    PrimaryButton(heroCta, modifier = Modifier.fillMaxWidth()) { onOpen(heroRoute) }
-                }
-                TextButton(
-                    onClick = { onOpen("toolkit") },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(R.string.today_hero_more),
-                        style = MaterialTheme.typography.labelLarge, color = TextMuted,
-                    )
-                }
-                // The check-in said back inside the same card — undoable for
-                // 8s, then settled into one line that doors to Trends.
-                loggedMood?.let { mood ->
+            } else {
+                val mood = loggedMood
+                if (mood != null) {
+                    // Undoable for 8s, then settled into one quiet line.
                     val undoneMsg = stringResource(R.string.today_checkin_undone)
                     if (settled) {
-                        val trendsCd = stringResource(R.string.today_settled_trends_cd)
                         Row(
-                            Modifier.clip(RoundedCornerShape(12.dp))
-                                .clickable { onOpen("trends") }
-                                .semantics { contentDescription = trendsCd }
-                                .padding(vertical = 2.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -1264,22 +1261,36 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                             ) { Text(stringResource(R.string.today_checkin_undo), color = Periwinkle, maxLines = 1) }
                         }
                     }
+                } else {
+                    // An earlier check-in today, said back, with a re-ask door.
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            recent.firstOrNull()?.let { stringResource(R.string.today_earlier_line, displayCheckInLine(it)) }.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                            maxLines = 2, modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
+                            onClick = { reAsk = true },
+                        ) { Text(stringResource(R.string.home_mood_again), color = Periwinkle, maxLines = 1) }
+                    }
                 }
             }
+            if (week.isNotEmpty()) PresenceWeekRing(week)
+        }
+        if (bloom > 0) BloomRing(bloom, Accent.home, Modifier.matchParentSize())
         }
 
         AnimatedVisibility(visible = status != null) {
             Text(status.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
         }
-        }
-        if (bloom > 0) BloomRing(bloom, Accent.home, Modifier.matchParentSize())
-        }
 
-        // V2-e: the reminders ask, IN CONTEXT — the old Notify onboarding step
-        // asked before a single check-in existed. Now it appears once, right
-        // after a check-in lands, and only while reminders are off. The door
-        // opens Settings → Reminders (the real picker); either answer retires
-        // the ask for good.
+        // V2-e: the reminders ask, in context — once, right after a check-in
+        // lands, and only while reminders are off.
         val appContext = androidx.compose.ui.platform.LocalContext.current
         var reminderAskDone by remember {
             mutableStateOf(
@@ -1305,123 +1316,82 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        // ── Your day ─────────────────────────────────────────────────────
-        //
-        // The stable doors, as quiet rows: Tonight (the Sleep flagship's
-        // permanent home-screen door — its content follows the clock, its slot
-        // never moves), the active program when there is one, the evening
-        // journal prompt, and the build-a-plan door until a plan exists.
-        val hourNow = LocalTime.now().hour
-        Text(
-            stringResource(R.string.today_your_day).uppercase(),
-            style = MaterialTheme.typography.labelSmall, color = EyebrowMuted,
-            modifier = Modifier.padding(top = Space.item),
-        )
-        NavRow(
-            stringResource(R.string.today_tonight_title),
-            when {
-                hourNow < 11 && !lastNightLogged -> stringResource(R.string.today_banner_sleep)
-                com.cerebrozen.app.ui.theme.isWindDownHour(hourNow) -> stringResource(R.string.today_tonight_wind)
-                else -> stringResource(R.string.today_tonight_ready)
-            },
-            icon = Icons.Outlined.Bedtime,
-        ) { onOpen("sleep") }
-        program?.let { prog ->
-            NavRow(
-                prog.optString("title"),
-                stringResource(R.string.today_program_day, prog.optInt("day"), prog.optInt("days")),
-                icon = Icons.Outlined.CalendarMonth,
-            ) { onOpen("programs") }
-        }
-        if (hourNow >= 17) {
-            NavRow(
-                stringResource(R.string.today_prompt_title),
-                stringResource(R.string.today_prompt_sub),
-                icon = Icons.Outlined.Edit,
-            ) { onOpen("journal/new") }
-        }
-        if (plan == null && planLoaded) {
-            NavRow(
-                stringResource(R.string.today_day_plan_title),
-                stringResource(R.string.today_day_plan_subtitle),
-                icon = Icons.Outlined.CalendarMonth,
-            ) { onOpen("plan") }
-        }
-
-        // ── Quick helps: four one-tap doors, icon + one word ─────────────
-        Text(
-            stringResource(R.string.today_quick_helps).uppercase(),
-            style = MaterialTheme.typography.labelSmall, color = EyebrowMuted,
-            modifier = Modifier.padding(top = Space.item),
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickHelp(Icons.Outlined.SelfImprovement, stringResource(R.string.today_qh_breathe), Modifier.weight(1f)) { onOpen("breathe/reset") }
-            QuickHelp(Icons.Outlined.Spa, stringResource(R.string.today_qh_ground), Modifier.weight(1f)) { onOpen("ground") }
-            QuickHelp(Icons.Outlined.Headphones, stringResource(R.string.today_qh_sounds), Modifier.weight(1f)) { onOpen("sounds") }
-            QuickHelp(Icons.Outlined.Extension, stringResource(R.string.today_qh_games), Modifier.weight(1f)) { onOpen("games") }
-        }
-
-        // ── This week: presence, interpreted, one door ───────────────────
-        //
-        // The whole fold-week apparatus (metric tiles, duplicate insights
-        // doors, the recent list) collapsed into one quiet card: dots + a
-        // kind sentence + the milestone when today holds one. Numbers appear
-        // as sentences, never counters (Gentler Streak / F5).
-        val weekCd = stringResource(R.string.today_insights_title)
-        val daysPresent = week.count { it.second }
+        // ── V3-b YOUR SLEEP: seven bars and a sentence, one door ─────────
+        val sleepCd = stringResource(R.string.home_sleep_eyebrow)
         Column(
-            Modifier
-                .padding(top = Space.item)
-                .fillMaxWidth()
-                .quiet(RoundedCornerShape(Radius.card))
-                .clickable { onOpen("insights") }
-                .semantics { contentDescription = weekCd }
+            Modifier.fillMaxWidth().quiet(RoundedCornerShape(Radius.card))
+                .clickable { onOpen("sleep") }
+                .semantics { contentDescription = sleepCd }
                 .padding(cardPadding()),
             verticalArrangement = Arrangement.spacedBy(Space.item),
         ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.today_fold_week).uppercase(),
-                    style = MaterialTheme.typography.labelSmall, color = EyebrowMuted,
-                )
-                Icon(
-                    Icons.Outlined.ChevronRight, contentDescription = null,
-                    tint = TextMuted, modifier = Modifier.size(18.dp),
-                )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_sleep_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall, color = EyebrowMuted)
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
             }
-            if (week.isNotEmpty()) PresenceWeekRing(week)
-            Text(
-                if (daysPresent > 0) stringResource(R.string.today_week_sentence, daysPresent)
-                else stringResource(R.string.today_presence_empty),
-                style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-            )
-            val todayStr = LocalDate.now().toString()
-            val milestonePref = remember { runCatching { Session.prefGet("milestone_celebrated") }.getOrNull() }
-            val milestone = milestoneToShow(streak, milestonePref, todayStr)
-            LaunchedEffect(milestone) {
-                if (milestone != null) {
-                    runCatching { Session.prefPut("milestone_celebrated", "$milestone|$todayStr") }
-                }
-            }
-            milestone?.let {
+            val loggedNights = sleepBars.count { it.second != null }
+            if (loggedNights == 0) {
+                Text(stringResource(R.string.home_sleep_empty), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            } else {
+                // Reference graph language (Aira hgraph): seven day-slots
+                // always, past nights in the quiet wash, the NEWEST logged
+                // night solid — one bar carries the weight, the rest are
+                // context. A day with no night draws no bar at all.
+                val newest = sleepBars.indexOfLast { it.second != null }
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.fillMaxWidth().height(64.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        RadiatingRing(size = 22.dp, color = Cyan)
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(Cyan))
+                    sleepBars.forEachIndexed { bi, (label, frac) ->
+                        val latest = bi == newest
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (frac != null) {
+                                Box(
+                                    Modifier.fillMaxWidth().height((48 * frac).dp)
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
+                                        // A themed wash, not AccentSoft: on Night
+                                        // that token is a dark plum that vanished
+                                        // against the card (device walk).
+                                        .background(if (latest) Periwinkle else Periwinkle.copy(alpha = .30f)),
+                                )
+                            }
+                            Text(
+                                label, style = MaterialTheme.typography.labelSmall,
+                                color = if (latest) Periwinkle else TextMuted, maxLines = 1,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
-                    Text(
-                        stringResource(R.string.today_milestone, it),
-                        style = MaterialTheme.typography.bodyMedium, color = Cyan,
-                    )
                 }
+                Text(
+                    stringResource(R.string.home_sleep_nights, loggedNights),
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted,
+                )
             }
+        }
+
+        // ── V3-b quiet days: supportive re-engagement, never guilt ───────
+        // (Aira "missed 3 days" pattern; presence framing rules apply — no
+        // counters, nothing resets, and the door leads to the conversation.)
+        val quietDays = quietDaysSince(recent.firstOrNull()?.createdAt, java.time.OffsetDateTime.now())
+        if (quietDays != null && quietDays >= 3) {
+            Column(
+                Modifier.fillMaxWidth().quiet(RoundedCornerShape(Radius.card)).padding(cardPadding()),
+                verticalArrangement = Arrangement.spacedBy(Space.item),
+            ) {
+                Text(stringResource(R.string.home_quiet_title), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text(stringResource(R.string.home_quiet_body), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                PrimaryButton(stringResource(R.string.home_quiet_cta), modifier = Modifier.fillMaxWidth()) { onOpen("talk") }
+            }
+        }
+
+        // What the companion remembers — one quiet door to Privacy & memory.
+        TextButton(onClick = { onOpen("privacy") }, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                stringResource(R.string.home_remembers),
+                style = MaterialTheme.typography.labelLarge, color = TextMuted,
+            )
         }
 
         // Guest: one quiet line, not a card — and never twice (V2).
@@ -1444,6 +1414,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     TodayTopBar(
         modifier = Modifier.align(Alignment.TopCenter).zIndex(20f),
         onUrgent = { onOpen("crisis") },
+        onSettings = { onOpen("you") },
     )
     }
 }
@@ -2029,9 +2000,119 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
 
 /** Delegates to [CereBroTopBar] — see the note there on the nine that existed. */
 @Composable
-private fun TodayTopBar(modifier: Modifier = Modifier, onUrgent: () -> Unit) = CereBroTopBar(
-    title = stringResource(R.string.tab_today),
+private fun ProgressRing(done: Int, total: Int, size: androidx.compose.ui.unit.Dp = 38.dp) {
+    // The arc animates from empty on first composition (Reduce Motion snaps to
+    // the value — a ring that never draws would be a blank hole, and this
+    // carries the count beside it either way).
+    val target = if (total <= 0) 0f else (done.toFloat() / total).coerceIn(0f, 1f)
+    val reduceMotion = rememberReduceMotion()
+    val swept = remember { Animatable(0f) }
+    LaunchedEffect(target, reduceMotion) {
+        if (reduceMotion) swept.snapTo(target) else swept.animateTo(target, tween(900, easing = FastOutSlowInEasing))
+    }
+    val track = AccentSoft
+    val arc = Periwinkle
+    Canvas(Modifier.size(size)) {
+        val stroke = Stroke(width = 5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val inset = stroke.width / 2
+        drawArc(
+            color = track, startAngle = 0f, sweepAngle = 360f, useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+            size = androidx.compose.ui.geometry.Size(this.size.width - stroke.width, this.size.height - stroke.width),
+            style = stroke,
+        )
+        if (swept.value > 0f) {
+            drawArc(
+                color = arc, startAngle = -90f, sweepAngle = 360f * swept.value, useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                size = androidx.compose.ui.geometry.Size(this.size.width - stroke.width, this.size.height - stroke.width),
+                style = stroke,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CareRow(
+    icon: ImageVector,
+    title: String,
+    sub: String,
+    actionLabel: String?,
+    onClick: () -> Unit,
+) {
+    // V3-b: one row of the Today's-care card — icon well, title + provenance,
+    // then either a Start pill or a quiet chevron. The whole row is the target.
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            // Circular accent-mist well — the reference's as-built icon
+            // language (its Dawn pass rounded every icon well to a circle).
+            Modifier.size(38.dp).clip(CircleShape).background(AccentSoft),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(18.dp)) }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 2)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2)
+        }
+        if (actionLabel != null) {
+            Text(
+                actionLabel,
+                style = MaterialTheme.typography.labelLarge, color = Periwinkle,
+                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Periwinkle.copy(alpha = .10f))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        } else {
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+/** V3-b: the last seven days as (day-letter, height-fraction) bars for Home's
+ * sleep card. A night's height is its duration against a 10-hour ceiling.
+ *
+ * All SEVEN days are returned, oldest first, so the week keeps its rhythm and
+ * two logged nights don't stretch to half the card each (reference hgraph).
+ * A day with no night carries a **null** fraction — drawn as an empty slot,
+ * never a zero-height bar that would read as "you slept nothing": missing
+ * stays missing, a record and not a diagnosis. */
+internal fun sleepBarsFrom(logs: JSONArray, today: LocalDate): List<Pair<String, Float?>> {
+    val byDate = HashMap<String, Float>()
+    for (i in 0 until logs.length()) {
+        val o = logs.optJSONObject(i) ?: continue
+        val mins = runCatching {
+            val b = java.time.LocalTime.parse(o.optString("bedtime").take(5))
+            val w = java.time.LocalTime.parse(o.optString("wake_time").take(5))
+            ((w.toSecondOfDay() - b.toSecondOfDay() + 86_400) % 86_400) / 60
+        }.getOrNull() ?: continue
+        if (mins > 0) byDate[o.optString("date")] = (mins / 600f).coerceIn(0.12f, 1f)
+    }
+    return (6 downTo 0).map { back ->
+        val d = today.minusDays(back.toLong())
+        d.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) to
+            byDate[d.toString()]
+    }
+}
+
+/** Whole days since the newest check-in; null when there has never been one
+ * (a first day is not a "quiet" day) or the timestamp doesn't parse. */
+internal fun quietDaysSince(createdAt: String?, now: java.time.OffsetDateTime): Int? =
+    createdAt?.let {
+        runCatching {
+            java.time.Duration.between(java.time.OffsetDateTime.parse(it), now).toDays().toInt()
+        }.getOrNull()
+    }
+
+@Composable
+private fun TodayTopBar(modifier: Modifier = Modifier, onUrgent: () -> Unit, onSettings: () -> Unit) = CereBroTopBar(
+    title = stringResource(R.string.tab_home),
     subtitle = stringResource(R.string.topbar_today_subtitle),
     modifier = modifier,
     onUrgent = onUrgent,
+    onSettings = onSettings,
 )

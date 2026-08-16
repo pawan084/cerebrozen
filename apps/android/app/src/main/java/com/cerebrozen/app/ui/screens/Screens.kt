@@ -85,6 +85,8 @@ fun YouScreen(onOpen: (String) -> Unit) {
     // that opens it does not promise an upsell the screen will not deliver.
     var tier by remember { mutableStateOf(Session.cachedTier()) }
     var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
+    // V3 presence grid: one flag per day of the last 30, oldest first.
+    var monthDays by remember { mutableStateOf<List<Boolean>>(emptyList()) }
 
     LaunchedEffect(Session.signedIn) {
         if (!Session.signedIn) return@LaunchedEffect
@@ -104,6 +106,9 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 who.takeIf { it.isNotBlank() }
             }
         }
+        // A failed read leaves the grid hidden rather than drawing 30 empty
+        // dots, which would read as "you were absent all month".
+        runCatching { monthDays = presenceMonth(Api.moods(), java.time.LocalDate.now()) }
     }
 
     PremiumPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
@@ -157,6 +162,34 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     contentDescription = null,
                     tint = TextMuted2,
                     modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        // V3: "Your month" — a presence grid, the last deferred visual from the
+        // V2 walk. Thirty-odd dots, one per day, lit for the days you showed
+        // up. It counts presence and NOTHING else: no streak, no percentage,
+        // no gap called out, nothing that resets. A month is the right window
+        // here because Home already answers "this week".
+        if (!isGuest && monthDays.isNotEmpty()) {
+            SectionCard {
+                Text(stringResource(R.string.you_month_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    monthDays.forEach { present ->
+                        Box(
+                            Modifier.size(14.dp).clip(CircleShape)
+                                .background(if (present) Periwinkle else Periwinkle.copy(alpha = .13f)),
+                        )
+                    }
+                }
+                Text(
+                    stringResource(R.string.you_month_sentence, monthDays.count { it }),
+                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
         }

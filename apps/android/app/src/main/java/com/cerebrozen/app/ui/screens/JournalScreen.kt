@@ -126,13 +126,49 @@ internal fun isToday(iso: String?, today: LocalDate = LocalDate.now()): Boolean 
 
 /** Optional feeling chips for a new entry. Single-select; when chosen the mood is
  * persisted with the entry (appended to the saved body via [Api.createJournal]),
- * so nothing here is decorative — it becomes part of the real, searchable record. */
-@Composable
-private fun journalMoods(): List<String> = listOf(
-    stringResource(R.string.journal_mood_calm), stringResource(R.string.journal_mood_anxious),
-    stringResource(R.string.journal_mood_hopeful), stringResource(R.string.journal_mood_tired),
-    stringResource(R.string.journal_mood_sad), stringResource(R.string.journal_mood_grateful),
+ * so nothing here is decorative — it becomes part of the real, searchable record.
+ *
+ * V3: it is ALSO written as a `mood:<wire>` tag, which is what lets the entry
+ * rows wear a pill. The wire half is a stable lowercase id (never translated,
+ * the same discipline as the check-in taxonomy); the label localizes. */
+internal val JOURNAL_MOODS = listOf(
+    "calm" to R.string.journal_mood_calm,
+    "anxious" to R.string.journal_mood_anxious,
+    "hopeful" to R.string.journal_mood_hopeful,
+    "tired" to R.string.journal_mood_tired,
+    "sad" to R.string.journal_mood_sad,
+    "grateful" to R.string.journal_mood_grateful,
 )
+
+/** The tag a chosen feeling is stored as. */
+internal const val JOURNAL_MOOD_TAG_PREFIX = "mood:"
+
+/** The wire feeling carried by an entry's tags, or null. Pure. */
+internal fun journalMoodTag(tags: List<String>): String? =
+    tags.firstOrNull { it.startsWith(JOURNAL_MOOD_TAG_PREFIX) }
+        ?.removePrefix(JOURNAL_MOOD_TAG_PREFIX)
+        ?.takeIf { wire -> JOURNAL_MOODS.any { it.first == wire } }
+
+/** Display resource for a wire feeling — null when the tag is unknown (a
+ * renamed or hand-written tag hides its pill; it never renders raw). */
+@androidx.annotation.StringRes
+internal fun journalMoodLabelRes(wire: String?): Int? =
+    JOURNAL_MOODS.firstOrNull { it.first == wire }?.second
+
+/** The pill's hue — themed tokens only, matching the check-in tiles' language
+ * (a feeling looks like a feeling). Unknown tags never reach this. */
+@Composable
+internal fun journalMoodTint(wire: String?): androidx.compose.ui.graphics.Color = when (wire) {
+    "calm", "hopeful" -> com.cerebrozen.app.ui.theme.Ok
+    "anxious" -> Warm
+    "tired" -> Cyan
+    "sad" -> Periwinkle
+    "grateful" -> com.cerebrozen.app.ui.theme.Ok
+    else -> Periwinkle
+}
+
+@Composable
+private fun journalMoods(): List<String> = JOURNAL_MOODS.map { stringResource(it.second) }
 
 /** Quick-entry prompts in the composer — the descendants of the retired
  * one-good-thing / intention tool screens (REDESIGN §2.2). */
@@ -404,6 +440,9 @@ fun JournalScreen(
                     }
                 }
                 val feelingTemplate = stringResource(R.string.journal_entry_feeling_format)
+                // Resolved in composable scope so the click handler can turn the
+                // chosen (localized) chip back into its wire id.
+                val moodLabels = journalMoods()
                 val savedStatus = stringResource(R.string.journal_saved)
                 val saveFailed = stringResource(R.string.common_save_failed)
                 PrimaryButton(
@@ -423,9 +462,15 @@ fun JournalScreen(
                             // the support card anyway would be inventing one,
                             // and hiding it forever would be worse — the scan
                             // happens when the entry syncs.
+                            // V3: the feeling also rides as a tag, so the entry
+                            // rows can wear its pill without re-parsing prose.
+                            val moodTags = mood
+                                ?.let { chosen -> JOURNAL_MOODS.getOrNull(moodLabels.indexOf(chosen)) }
+                                ?.let { listOf(JOURNAL_MOOD_TAG_PREFIX + it.first) }
+                                ?: emptyList()
                             val saved = editingId?.let {
-                                Api.updateJournal(it, title.trim(), entryBody)
-                            } ?: Api.createJournal(title.trim(), entryBody)
+                                Api.updateJournal(it, title.trim(), entryBody, moodTags)
+                            } ?: Api.createJournal(title.trim(), entryBody, moodTags)
                             showSupport = saved?.optString("risk_level", "none")
                                 ?.let { it !in listOf("none", "low") } == true
                             title = ""; body = ""; mood = null
@@ -783,7 +828,24 @@ private fun JournalEntryCard(entry: Entry, index: Int, onOpen: () -> Unit) {
                 .background(if (elevated) Warm else Periwinkle),
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(entry.date, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            // V3: date and the feeling the writer chose, on one line. The pill
+            // shows only what they picked themselves — never a mood inferred
+            // from the words, and never one borrowed from that day's check-in.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(entry.date, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                journalMoodLabelRes(journalMoodTag(entry.tags))?.let { labelRes ->
+                    val hue = journalMoodTint(journalMoodTag(entry.tags))
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50)).background(hue.copy(alpha = .14f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(hue))
+                        Text(stringResource(labelRes), style = MaterialTheme.typography.labelSmall, color = hue)
+                    }
+                }
+            }
             Text(entry.title, style = MaterialTheme.typography.titleMedium, color = TextSoft,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (entry.body.isNotBlank()) {
