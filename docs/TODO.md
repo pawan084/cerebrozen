@@ -364,6 +364,27 @@ life, so every later visit opened on a dead transcript.
   eyebrow and title now share one row, the description is bodySmall, and the
   CTA is a wrap-width pill: an offer, not a demand.
 
+### V5 motion pass (2026-08-16) — effects that carry information
+
+Owner asked for "some effect to make it world class". The app already had
+entrance motion (`appear`, `popIn`), press feedback, shimmer, the bloom ring
+and the orb; what it lacked was motion where movement *means* something.
+
+- **`Modifier.grow(index, vertical)`** — a bar that grows from its own baseline,
+  staggered. A bar's height (or width) IS its value, so growing from the
+  baseline shows the value being measured out rather than dropping a finished
+  shape on screen. Applied to Home's seven-slot sleep graph (bottom-anchored,
+  oldest first) and Trends' per-mood counts (left-anchored, heaviest first).
+  420ms / 45ms apart — slower reads as the app being slow. Reduce Motion
+  settles instantly at full size: an animated chart is a nicety, a blank one is
+  a bug.
+- **A scroll-aware top bar** (`CereBroTopBar.scrolled`): a hairline fades in
+  along the bottom edge once content has scrolled beneath a FIXED bar. Without
+  it a scrolled page and the top of the page look identical, and the bar reads
+  as painted on rather than floating over content. Wired on Home (its scroll
+  state is hoisted for this); screens whose bar scrolls with the body leave it
+  false.
+
 **Open after V3/V4/V5**: the AppNotIdle Robolectric flake (see V2-f note above);
 the Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 

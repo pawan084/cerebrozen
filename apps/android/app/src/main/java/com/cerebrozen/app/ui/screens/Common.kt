@@ -369,6 +369,38 @@ internal fun Modifier.appear(index: Int = 0, rise: Float = 20f, durationMs: Int 
     }
 }
 
+/**
+ * A bar that grows from its own baseline, staggered by [index].
+ *
+ * The one animation in this app that *carries information rather than
+ * decorating it*: a bar's height IS its value, so growing from the baseline
+ * shows the value being measured out instead of dropping a finished shape on
+ * screen. Left-anchored ([vertical] = false) for horizontal bars, bottom-
+ * anchored for columns.
+ *
+ * Deliberately quick (420ms, 45ms apart): this reads as the data arriving, and
+ * anything slower reads as the app being slow. Reduce Motion settles instantly
+ * at full size — a chart that animates is a nicety, a chart that is blank is a
+ * bug.
+ */
+@Composable
+internal fun Modifier.grow(index: Int = 0, vertical: Boolean = true): Modifier {
+    val reduceMotion = rememberReduceMotion()
+    val anim = remember { Animatable(0f) }
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) { anim.snapTo(1f); return@LaunchedEffect }
+        kotlinx.coroutines.delay(index * 45L)
+        anim.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+    }
+    return graphicsLayer {
+        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(
+            pivotFractionX = if (vertical) 0.5f else 0f,
+            pivotFractionY = if (vertical) 1f else 0.5f,
+        )
+        if (vertical) scaleY = anim.value else scaleX = anim.value
+    }
+}
+
 /** A gentle one-shot fill: content fades and scales in (0.6 → 1.0) on first
  * composition, staggered [stepMs] apart by [index] — the presence-ring dots'
  * entrance. Under Reduce Motion it settles instantly (static, never blank). */
@@ -945,13 +977,34 @@ internal fun CereBroTopBar(
      * every tab root (the Aira pattern the owner approved). Sits before the
      * shield so urgent support keeps the outermost, always-same pixels. */
     onSettings: (() -> Unit)? = null,
+    /** True once content has scrolled beneath a FIXED bar. Fades in a hairline
+     * along the bottom edge — without it a scrolled page and the top of the
+     * page look identical, and the bar reads as painted-on rather than
+     * floating over content. Screens whose bar scrolls with the body leave
+     * this false. */
+    scrolled: Boolean = false,
     accent: Color = Accent.default,
 ) {
+    val edge by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (scrolled) 1f else 0f,
+        animationSpec = tween(180),
+        label = "topbar-edge",
+    )
     Row(
         modifier
             .fillMaxWidth()
             .height(66.dp)
             .background(CardFill.copy(alpha = .96f))
+            .drawBehind {
+                if (edge > 0f) {
+                    drawLine(
+                        color = LineStroke.copy(alpha = 0.55f * edge),
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                }
+            }
             .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,

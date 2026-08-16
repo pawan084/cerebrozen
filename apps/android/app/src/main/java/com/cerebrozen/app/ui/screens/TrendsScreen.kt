@@ -418,6 +418,9 @@ private fun MoodBreakdownCard(counts: List<Pair<String, Int>>, days: Int) {
                     androidx.compose.foundation.layout.Box(
                         Modifier.fillMaxWidth(count / top.toFloat())
                             .height(12.dp)
+                            // Left-anchored growth, heaviest feeling first: the
+                            // width is the count, so it measures itself out.
+                            .grow(index = counts.indexOfFirst { it.first == wire }, vertical = false)
                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
                             .background(hue.copy(alpha = .75f)),
                     )

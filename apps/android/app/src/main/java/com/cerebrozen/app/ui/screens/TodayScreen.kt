@@ -896,6 +896,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         homeIntroPlayed = true
     }
 
+    // Hoisted so the fixed top bar can tell whether anything has scrolled
+    // underneath it (see TodayTopBar's hairline).
+    val homeScroll = rememberScrollState()
     Box(Modifier.fillMaxSize()) {
     // The refresh indicator wears the design tokens — the M3 default disc
     // ignored the palette and glared on Night.
@@ -920,7 +923,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(homeScroll)
             .graphicsLayer { translationY = rise.value }
             // Scaffold already places this screen below the system status bar.
             // 66dp fixed app bar + 14dp breathing room = 80dp here.
@@ -1387,6 +1390,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                                     // 62% of the column: at full width the bars
                                     // rendered as squares on a 7-slot week.
                                     Modifier.fillMaxWidth(0.62f).height((48 * frac).dp)
+                                        // The week measures itself out, oldest
+                                        // first — the height is the value.
+                                        .grow(index = bi)
                                         .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
                                         // A themed wash, not AccentSoft: on Night
                                         // that token is a dark plum that vanished
@@ -1453,6 +1459,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         modifier = Modifier.align(Alignment.TopCenter).zIndex(20f),
         onUrgent = { onOpen("crisis") },
         onSettings = { onOpen("you") },
+        // The one cue that content continues above the fold. A fixed bar with
+        // no edge leaves a scrolled page looking like the top of the page.
+        scrolled = homeScroll.value > 8,
     )
     }
 }
@@ -2198,10 +2207,16 @@ internal fun quietDaysSince(createdAt: String?, now: java.time.OffsetDateTime): 
     }
 
 @Composable
-private fun TodayTopBar(modifier: Modifier = Modifier, onUrgent: () -> Unit, onSettings: () -> Unit) = CereBroTopBar(
+private fun TodayTopBar(
+    modifier: Modifier = Modifier,
+    onUrgent: () -> Unit,
+    onSettings: () -> Unit,
+    scrolled: Boolean = false,
+) = CereBroTopBar(
     title = stringResource(R.string.tab_home),
     subtitle = stringResource(R.string.topbar_today_subtitle),
     modifier = modifier,
     onUrgent = onUrgent,
     onSettings = onSettings,
+    scrolled = scrolled,
 )
