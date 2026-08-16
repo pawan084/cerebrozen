@@ -808,7 +808,11 @@ fun RemindersScreen(onBack: () -> Unit) {
         }) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                // weight on the label column, maxLines on the value: without
+                // both, this row's long hint squeezed the times to zero width
+                // and Compose wrapped them one character per line, making the
+                // card several hundred dp tall (device walk 2026-08-16).
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.reminders_quiet_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(stringResource(R.string.reminders_quiet_hint),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -818,6 +822,8 @@ fun RemindersScreen(onBack: () -> Unit) {
                     java.time.LocalTime.of(quiet.first, 0).format(fmt) + " – " +
                         java.time.LocalTime.of(quiet.second, 0).format(fmt),
                     style = MaterialTheme.typography.titleMedium, color = Periwinkle,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 12.dp),
                 )
             }
         }
@@ -827,6 +833,8 @@ fun RemindersScreen(onBack: () -> Unit) {
             Text(stringResource(R.string.reminders_test), color = Periwinkle)
         }
         Text(stringResource(R.string.reminders_delivery_note),
+            style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(stringResource(R.string.reminders_quiet_note),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Text(stringResource(R.string.reminders_once_a_day),
             style = MaterialTheme.typography.labelSmall, color = TextMuted)

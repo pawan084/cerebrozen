@@ -220,6 +220,38 @@ for approval, instead do all of them without"):
       The genuinely open localization work is the remaining ten Eighth-Schedule
       languages + professional review — owner items, listed under audit L6.
 
+### V3 follow-up (2026-08-16): demo data + the icon pass
+
+- [x] **A pre-filled demo account for testing.** `pawan@cerebro.app / demo12345`
+      now boots with a month of plausible history — 19 check-ins across 30 days,
+      12 sleep nights, 5 journal entries (each carrying a `mood:` tag, so the new
+      pills are visible), an active 3-step plan with one step done, and a Sleep
+      Reset enrolment on day 4. `backend/app/seed.py` `_seed_demo_journey`,
+      behind `SEED_DEMO_DATA` like the demo password itself. **Idempotent via a
+      marker** (`MoodLog.trigger = "demo-seed"`), not via "does this account have
+      data" — a demo account collects stray taps the moment anyone opens it, and
+      a presence check would then refuse to seed forever. Seeding only INSERTS,
+      so a tester's own rows are never touched. Note: the api image is baked, so
+      changing the seed needs `docker compose up -d --build api`, not `restart`.
+- [x] **Icons that carry information** (owner: "not used relevants and proper
+      icon"). Home drew a **calendar beside every plan step**, so "Nature Walk"
+      wore a date glyph. New `stepIcon(symbol, title)` in Common.kt resolves in
+      three passes: the backend's own symbol vocabulary (`services/agentic.py`
+      `_STEP_LIBRARY`: wind, book, moon.*, bell, leaf, brain, sparkles, target,
+      mic, person.*, heart, figure.walk…), then the step's TITLE (the AI path
+      names things in plain words while its symbols are unpredictable), then a
+      neutral gentle default. Pinned by three tests including the "Nature Walk"
+      regression. Plan-screen numbered thumbnails kept deliberately — order is
+      real information in a plan.
+- [x] **Two defects the demo walk exposed**, both fixed:
+      - Quiet-hours card ~600dp tall with no visible time — its label Column had
+        no `weight`, so the long hint squeezed the value to zero width and
+        Compose wrapped it one character per line.
+      - **The Journal room was unreachable before 17:00.** V3 dropped the Journal
+        tab and left only the evening prompt, so a whole feature sat behind a
+        clock. Home's care card now carries a permanent "Your journal" door
+        (the evening prompt still replaces it after 17:00 — write, then read).
+
 **Open after V3**: the AppNotIdle Robolectric flake (see V2-f note above); the
 Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 

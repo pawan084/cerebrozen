@@ -1421,8 +1421,11 @@
     <string name="reminder_action_checkin">चेक-इन</string>
     <string name="reminder_action_open">खोलें</string>
     <string name="reminders_quiet_title">शांत घंटे</string>
-    <string name="reminders_quiet_hint">इस अवधि में कोई नज नहीं। दोनों समय एक ही रखें तो पूरे दिन शांति।</string>
+    <string name="reminders_quiet_hint">इस अवधि में कोई नज नहीं</string>
+    <string name="reminders_quiet_note">दोनों समय एक ही घंटे पर रखें तो पूरे दिन शांति।</string>
     <string name="reminders_once_a_day">दिन में ज़्यादा से ज़्यादा एक नज, और कुछ भी रीसेट नहीं होता।</string>
+    <string name="today_journal_title">आपकी डायरी</string>
+    <string name="today_journal_sub">जो आपने लिखा है, और लिखने की जगह</string>
     <string name="you_month_title">आपका महीना</string>
     <string name="you_month_sentence">इस महीने आप %1$d दिन आए।</string>
     <string name="trends_moods_title">कौन-सी भावनाएँ आईं</string>

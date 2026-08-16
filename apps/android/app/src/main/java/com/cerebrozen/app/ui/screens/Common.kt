@@ -52,6 +52,24 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Settings
+// V3 icon pass: the vocabulary stepIcon() maps plan-step symbols onto.
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.DirectionsWalk
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonAddAlt
@@ -545,6 +563,68 @@ internal fun moodIcon(name: String): androidx.compose.ui.graphics.vector.ImageVe
     "Tired" -> Icons.Outlined.Bedtime
     "Overwhelmed" -> Icons.Outlined.Waves
     else -> Icons.Outlined.MoreHoriz   // "Not sure", honestly unnamed
+}
+
+/**
+ * The icon a plan step / activity actually deserves.
+ *
+ * Steps carry an SF-Symbols-flavoured [symbol] from the backend
+ * (`services/agentic.py` `_STEP_LIBRARY`: wind, book, moon.stars, moon.zzz,
+ * bell, leaf, brain, sparkles, target, mic, person.2, heart…), and the AI
+ * generator can emit names outside that list entirely. Home used to draw a
+ * CALENDAR beside every one of them, so "Nature Walk" wore a date glyph —
+ * which is how an icon stops being information and becomes decoration.
+ *
+ * Three passes, in order:
+ *  1. the known symbol vocabulary (exact, then prefix — `moon.zzz` is a moon),
+ *  2. the step's own TITLE, because the AI path names things in plain words
+ *     while its symbols are unpredictable,
+ *  3. a neutral leaf — a step is always something gentle to do.
+ *
+ * Pure and unit-tested: the mapping is the kind of thing that rots silently.
+ */
+internal fun stepIcon(symbol: String, title: String = ""): androidx.compose.ui.graphics.vector.ImageVector {
+    val s = symbol.trim().lowercase(java.util.Locale.ROOT)
+    val bySymbol = when {
+        s == "wind" || s.startsWith("wind.") || s == "waveform" -> Icons.Outlined.Air
+        s.startsWith("moon") -> Icons.Outlined.Bedtime
+        s == "book" || s.startsWith("book.") || s == "text.book.closed" -> Icons.Outlined.MenuBook
+        s == "brain" || s.startsWith("brain.") -> Icons.Outlined.Psychology
+        s == "bell" || s.startsWith("bell.") -> Icons.Outlined.NotificationsNone
+        s == "leaf" || s.startsWith("leaf.") -> Icons.Outlined.Spa
+        s == "sparkles" || s == "sun.max" || s == "sun" -> Icons.Outlined.LightMode
+        s == "target" || s == "scope" || s == "flag" -> Icons.Outlined.Flag
+        s == "mic" || s.startsWith("mic.") -> Icons.Outlined.Mic
+        s.startsWith("person") || s == "figure.2" -> Icons.Outlined.People
+        s == "heart" || s.startsWith("heart.") -> Icons.Outlined.FavoriteBorder
+        s.startsWith("figure.walk") || s == "shoeprints.fill" -> Icons.Outlined.DirectionsWalk
+        s.startsWith("figure.mind") || s == "figure.yoga" -> Icons.Outlined.SelfImprovement
+        s == "drop" || s.startsWith("drop.") -> Icons.Outlined.WaterDrop
+        s == "briefcase" || s.startsWith("briefcase.") -> Icons.Outlined.Work
+        s == "headphones" -> Icons.Outlined.Headphones
+        s == "clock" || s.startsWith("clock.") || s == "timer" -> Icons.Outlined.Schedule
+        s == "pencil" || s.startsWith("square.and.pencil") -> Icons.Outlined.Edit
+        s == "phone" || s.startsWith("phone.") -> Icons.Outlined.Call
+        else -> null
+    }
+    if (bySymbol != null) return bySymbol
+
+    val t = title.lowercase(java.util.Locale.ROOT)
+    return when {
+        listOf("walk", "steps", "outside", "stroll").any { it in t } -> Icons.Outlined.DirectionsWalk
+        listOf("breath", "breathe", "inhale").any { it in t } -> Icons.Outlined.Air
+        listOf("sleep", "bed", "night", "wind-down", "wind down").any { it in t } -> Icons.Outlined.Bedtime
+        listOf("journal", "write", "note", "reflect").any { it in t } -> Icons.Outlined.Edit
+        listOf("water", "drink", "hydrate").any { it in t } -> Icons.Outlined.WaterDrop
+        listOf("ground", "5-4-3-2-1", "senses").any { it in t } -> Icons.Outlined.Spa
+        listOf("reframe", "thought", "worry", "cbt").any { it in t } -> Icons.Outlined.Psychology
+        listOf("call", "reach out", "message", "talk", "friend").any { it in t } -> Icons.Outlined.People
+        listOf("reminder", "curfew", "alarm").any { it in t } -> Icons.Outlined.NotificationsNone
+        listOf("gratitude", "thank", "good thing").any { it in t } -> Icons.Outlined.FavoriteBorder
+        listOf("intention", "goal", "plan").any { it in t } -> Icons.Outlined.Flag
+        listOf("sound", "music", "listen", "story").any { it in t } -> Icons.Outlined.Headphones
+        else -> Icons.Outlined.Spa
+    }
 }
 
 /** A quiet, single-purpose banner (W9 B5): SurfaceRaised fill, a soft accent

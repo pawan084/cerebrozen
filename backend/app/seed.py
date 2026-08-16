@@ -4,6 +4,7 @@ Idempotent: safe to run on every startup. Mirrors the iOS app's dummy content.
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
 
 from sqlalchemy import select
@@ -473,6 +474,192 @@ _PRACTICES = [
 ]
 
 
+# ── Demo journey ─────────────────────────────────────────────────────────
+# A month of plausible history for the demo account, so testing the clients
+# shows a LIVED-IN app instead of six empty states. Everything here is
+# obviously synthetic (round times, an even rhythm) and it only ever lands on
+# the demo user, behind SEED_DEMO_DATA — the same guard the demo password is
+# behind, which production's boot guard already refuses to start with.
+#
+# Written relative to "today" at seed time, so a database seeded months ago
+# still shows a current month after a re-seed on a fresh volume.
+
+# Stamped on every seeded check-in so re-seeding can recognise its own work.
+_DEMO_MARKER = "demo-seed"
+
+# (days_ago, mood, note, symbol, intensity) — the wire taxonomy, exactly as a
+# real client would send it (CLAUDE.md: mood names are a cross-stack contract).
+_DEMO_MOODS = [
+    (0, "Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
+    (1, "Good", "Clear", "sparkles", 2),
+    (1, "Tired", "Need rest", "drop", 3),
+    (2, "Overwhelmed", "Too much at once", "exclamationmark.triangle", 5),
+    (3, "Low", "Heavy", "moon", 4),
+    (4, "Good", "Clear", "sparkles", 2),
+    (6, "Tired", "Need rest", "drop", 3),
+    (7, "Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
+    (8, "Good", "Clear", "sparkles", 2),
+    (9, "Not sure", "Closest fit right now", "minus", 3),
+    (11, "Good", "Clear", "sparkles", 2),
+    (12, "Low", "Heavy", "moon", 4),
+    (13, "Tired", "Need rest", "drop", 3),
+    (15, "Good", "Clear", "sparkles", 2),
+    (16, "Anxious", "Loud thoughts", "exclamationmark.triangle", 4),
+    (18, "Good", "Clear", "sparkles", 2),
+    (21, "Tired", "Need rest", "drop", 3),
+    (24, "Good", "Clear", "sparkles", 2),
+    (27, "Low", "Heavy", "moon", 4),
+]
+
+# (days_ago, bedtime, wake, quality) — a wobbly-but-improving fortnight, so the
+# charts have a real shape and the rhythm line has something honest to say.
+_DEMO_SLEEP = [
+    (1, (23, 10), (7, 0), 4),
+    (2, (23, 40), (7, 15), 3),
+    (3, (0, 20), (7, 30), 2),
+    (4, (23, 0), (6, 50), 4),
+    (5, (22, 50), (6, 40), 5),
+    (6, (23, 30), (7, 20), 3),
+    (7, (23, 15), (7, 0), 4),
+    (9, (0, 5), (7, 40), 2),
+    (10, (23, 20), (7, 10), 3),
+    (11, (22, 45), (6, 45), 5),
+    (13, (23, 55), (7, 25), 3),
+    (14, (23, 5), (6, 55), 4),
+]
+
+# (days_ago, title, body, mood tag) — the tag is what makes the V3 journal
+# pills real; entries without one show no pill, which is also worth seeing.
+_DEMO_JOURNAL = [
+    (1, "Slept through for once",
+     "Woke before the alarm and didn't reach for the phone. Kept the curtains open, "
+     "which seems to matter more than I thought.", "calm"),
+    (3, "The 3pm wall again",
+     "Same hour, same slump. Wrote it down rather than pushing through it, and the "
+     "walk afterwards helped more than the coffee would have.", "tired"),
+    (6, "One good thing",
+     "Someone at work said the handover notes were the clearest they'd read. "
+     "Small, but I keep coming back to it.", "grateful"),
+    (10, "Too many tabs open",
+     "Head full. Named the three things that actually need me this week and the rest "
+     "got quieter. Not solved, just sorted.", "anxious"),
+    (17, "A quiet Sunday",
+     "Nothing to report, which is the report.", "hopeful"),
+]
+
+
+async def _seed_demo_journey(db: AsyncSession, user: User) -> None:
+    """Give the demo account a month of history.
+
+    Idempotent via a MARKER on the rows it writes (`MoodLog.trigger`), not via
+    "does this account have any data" — a demo account collects stray taps the
+    moment anyone opens it, and a presence check would then refuse to seed
+    forever. The marker asks the only question that matters: *have I already
+    seeded this account?* A tester's own check-ins are never touched either
+    way, because seeding only ever INSERTS."""
+    from app.models.journal import JournalEntry
+    from app.models.mood import MoodLog
+    from app.models.plan import Plan, PlanStep
+    from app.models.program import ProgramEnrollment
+    from app.models.sleep import SleepLog
+
+    already = await db.scalar(
+        select(MoodLog.id).where(
+            MoodLog.user_id == user.id, MoodLog.trigger == _DEMO_MARKER
+        ).limit(1)
+    )
+    if already:
+        return
+
+    now = dt.datetime.now(dt.timezone.utc)
+    today = now.date()
+
+    for days_ago, mood, note, symbol, intensity in _DEMO_MOODS:
+        # Late-morning stamps: a check-in at 03:00 would read as insomnia data
+        # the rest of the fixture doesn't support.
+        created = (now - dt.timedelta(days=days_ago)).replace(hour=9, minute=20, second=0, microsecond=0)
+        row = MoodLog(
+            user_id=user.id, mood=mood, note=note, symbol=symbol,
+            intensity=intensity, trigger=_DEMO_MARKER,
+        )
+        row.created_at = created
+        db.add(row)
+
+    for days_ago, (bh, bm), (wh, wm), quality in _DEMO_SLEEP:
+        db.add(
+            SleepLog(
+                user_id=user.id,
+                date=today - dt.timedelta(days=days_ago),
+                bedtime=dt.time(bh, bm),
+                wake_time=dt.time(wh, wm),
+                quality=quality,
+                awakenings=0,
+                source="manual",
+            )
+        )
+
+    for days_ago, title, body, mood_tag in _DEMO_JOURNAL:
+        entry = JournalEntry(
+            user_id=user.id,
+            title=title,
+            body=body,
+            tags=[f"mood:{mood_tag}"],
+            symbol="book",
+        )
+        entry.created_at = (now - dt.timedelta(days=days_ago)).replace(hour=21, minute=10, second=0, microsecond=0)
+        db.add(entry)
+
+    # An active plan, one step already done — so Home's care card shows real
+    # progress rather than a fresh, untouched list.
+    plan = Plan(
+        user_id=user.id,
+        title="Sleep deeper",
+        focus="Sleep better",
+        rationale="Shaped from your goal, your recent check-ins and the nights in your diary.",
+        active=True,
+        source="rule",
+    )
+    db.add(plan)
+    await db.flush()
+    for order, (title, detail, symbol, done) in enumerate(
+        [
+            ("Wind-down breathing", "4 min before bed", "wind", True),
+            ("A short walk after lunch", "15 min, outside if you can", "figure.walk", False),
+            ("Screen curfew", "Phone out of the room by 22:30", "bell", False),
+        ]
+    ):
+        db.add(
+            PlanStep(
+                plan_id=plan.id,
+                title=title,
+                detail=detail,
+                symbol=symbol,
+                order=order,
+                done=done,
+                done_at=now if done else None,
+            )
+        )
+
+    # Mid-program, not day 1 and not finished — the state the UI has the most
+    # to say about.
+    sleep_reset = await db.scalar(select(ContentItem).where(ContentItem.title == "Sleep Reset"))
+    if sleep_reset is not None:
+        enrollment = ProgramEnrollment(
+            user_id=user.id,
+            content_id=sleep_reset.id,
+            title=sleep_reset.title,
+            days=7,
+            active=True,
+        )
+        enrollment.started_at = now - dt.timedelta(days=3)
+        db.add(enrollment)
+
+    logger.info(
+        "Seeded demo journey: %d check-ins, %d nights, %d entries, 1 plan",
+        len(_DEMO_MOODS), len(_DEMO_SLEEP), len(_DEMO_JOURNAL),
+    )
+
+
 async def _seed_practices(db: AsyncSession) -> None:
     """Insert-only: never overwrite copy an admin edited."""
     have = set((await db.scalars(select(PracticeCatalog.slug))).all())
@@ -513,7 +700,7 @@ async def seed(db: AsyncSession) -> None:
         await db.commit()
         return
 
-    await _ensure_user(db, "pawan@cerebro.app", "demo12345", name="Pawan", admin=False)
+    demo_user = await _ensure_user(db, "pawan@cerebro.app", "demo12345", name="Pawan", admin=False)
 
     # Additive by title: new catalogue entries reach existing dev DBs on boot,
     # while admin-edited rows are never overwritten.
@@ -589,5 +776,9 @@ async def seed(db: AsyncSession) -> None:
         logger.info("Backfilled day guides on %d content items", guided)
 
     await _seed_practices(db)
+
+    # Last, and after the content catalogue exists — the journey enrolls the
+    # demo user in a seeded program, so it needs those rows to be present.
+    await _seed_demo_journey(db, demo_user)
 
     await db.commit()

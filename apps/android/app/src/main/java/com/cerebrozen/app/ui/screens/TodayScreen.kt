@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -1084,7 +1085,10 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 HeroKind.PLAN_STEP -> {
                     val step = nextStep!!
                     CareRow(
-                        icon = Icons.Outlined.CalendarMonth,
+                        // The step's OWN icon (symbol first, then its title) —
+                        // a calendar beside "Nature Walk" was the icon saying
+                        // nothing at all.
+                        icon = stepIcon(step.optString("symbol"), step.optString("title")),
                         title = step.optString("title"),
                         // The provenance sentence stays honest per generator —
                         // the AI path reads journal titles, the rule path never
@@ -1099,13 +1103,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 }
                 else -> {
                     CareRow(
-                        icon = Icons.Outlined.Spa,
+                        icon = Icons.Outlined.Spa,   // grounding — the fallback step
                         title = stringResource(R.string.today_hero_fallback_title),
                         sub = stringResource(R.string.today_hero_why_fallback),
                         actionLabel = stringResource(R.string.today_hero_begin),
                     ) { onOpen("groundingintro") }
                 }
             }
+            // The evening prompt invites WRITING; the row below is the door to
+            // what you have already written. V3 dropped the Journal tab, and
+            // without this the room was unreachable before 17:00 — a whole
+            // feature behind a clock (found on the demo walk 2026-08-16).
             if (hourNow >= 17) {
                 CareRow(
                     icon = Icons.Outlined.Edit,
@@ -1113,6 +1121,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     sub = stringResource(R.string.today_prompt_sub),
                     actionLabel = null,
                 ) { onOpen("journal/new") }
+            } else {
+                CareRow(
+                    icon = Icons.Outlined.MenuBook,
+                    title = stringResource(R.string.today_journal_title),
+                    sub = stringResource(R.string.today_journal_sub),
+                    actionLabel = null,
+                ) { onOpen("journal") }
             }
             Text(stringResource(R.string.home_care_provenance), style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
@@ -1348,7 +1363,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             if (frac != null) {
                                 Box(
-                                    Modifier.fillMaxWidth().height((48 * frac).dp)
+                                    // 62% of the column: at full width the bars
+                                    // rendered as squares on a 7-slot week.
+                                    Modifier.fillMaxWidth(0.62f).height((48 * frac).dp)
                                         .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
                                         // A themed wash, not AccentSoft: on Night
                                         // that token is a dark plum that vanished

@@ -2151,8 +2151,11 @@ everything.</string>
     <string name="reminder_action_checkin">Check in</string>
     <string name="reminder_action_open">Open</string>
     <string name="reminders_quiet_title">Quiet hours</string>
-    <string name="reminders_quiet_hint">No nudges in this window. Set both ends the same to stay quiet all day.</string>
+    <string name="reminders_quiet_hint">No nudges in this window</string>
+    <string name="reminders_quiet_note">Set both ends to the same hour to stay quiet all day.</string>
     <string name="reminders_once_a_day">At most one nudge a day, and nothing ever resets.</string>
+    <string name="today_journal_title">Your journal</string>
+    <string name="today_journal_sub">What you\'ve written, and a place to write</string>
     <string name="you_month_title">Your month</string>
     <string name="you_month_sentence">You showed up on %1$d days this month.</string>
     <string name="trends_moods_title">Which feelings showed up</string>

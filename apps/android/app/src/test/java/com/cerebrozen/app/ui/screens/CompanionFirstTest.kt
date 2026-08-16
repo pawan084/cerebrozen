@@ -108,6 +108,48 @@ class CompanionFirstTest {
 
     // ── quietDaysSince: the re-engagement card's honesty ──────────────────
 
+    // ── stepIcon: an icon must carry information, not decorate ────────────
+
+    @Test
+    fun `every backend step symbol gets its own meaningful icon`() {
+        // The whole vocabulary from services/agentic.py _STEP_LIBRARY.
+        val library = listOf("wind", "book", "moon.stars", "moon.zzz", "bell", "leaf",
+            "brain", "sparkles", "target", "mic", "person.2", "heart")
+        val icons = library.map { stepIcon(it) }
+        // The vocabulary maps to at least 9 DISTINCT glyphs, so a plan never
+        // reads as one shape repeated down the list.
+        assertTrue("distinct icons: ${icons.distinct().size}", icons.distinct().size >= 9)
+        // Both moons are the same bed glyph — they mean the same thing…
+        assertEquals(stepIcon("moon.stars"), stepIcon("moon.zzz"))
+        // …and things that mean different things look different.
+        assertTrue(stepIcon("wind") != stepIcon("moon.zzz"))
+        assertTrue(stepIcon("mic") != stepIcon("book"))
+        assertTrue(stepIcon("heart") != stepIcon("target"))
+        // `leaf` deliberately SHARES the neutral fallback glyph: the default is
+        // "something gentle to do", which is exactly what a leaf step is.
+        assertEquals(stepIcon("leaf"), stepIcon("totally.unknown", ""))
+    }
+
+    @Test
+    fun `an unknown symbol falls back to the step's own words`() {
+        // The regression this exists for: the AI plan generator emits titles in
+        // plain words with unpredictable symbols, and Home drew a CALENDAR
+        // beside "Nature Walk".
+        assertEquals(stepIcon("figure.walk"), stepIcon("", "Nature Walk"))
+        assertEquals(stepIcon("wind"), stepIcon("zzz-unknown", "Evening breathing"))
+        assertEquals(stepIcon("moon.zzz"), stepIcon("", "Tonight's wind-down"))
+        // "Reflective journal" is a WRITING step, so it takes the pencil rather
+        // than the book the `book` symbol carries — the title is read for what
+        // the step asks you to do, not for its noun.
+        assertEquals(stepIcon("pencil"), stepIcon("", "Reflective journal"))
+    }
+
+    @Test
+    fun `a step with nothing to go on still gets a gentle icon, never a crash`() {
+        assertNotNull(stepIcon("", ""))
+        assertNotNull(stepIcon("totally.unknown.symbol", "asdfgh"))
+    }
+
     // ── moodCounts / presenceMonth / journal pills — the V3 deferred items ──
 
     private fun checkIn(mood: String, at: String): JSONObject =
