@@ -76,8 +76,9 @@
     <!-- Human support: deliberately not translated (English fallback). -->
 
     <!-- ── Talk ────────────────────────────────────────────────────────── -->
-    <string name="talk_eyebrow">AI वॉइस साथी</string>
-    <string name="talk_title">खुलकर बात करें</string>
+    <string name="talk_eyebrow">आपके साथ</string>
+    <string name="talk_title">CereBro</string>
+    <string name="talk_field_followup">CereBro को लिखें…</string>
     <string name="talk_offline_banner">आप ऑफ़लाइन हैं — साथी को इंटरनेट चाहिए। नीचे दी गई टूलकिट अब भी काम करती है।</string>
     <string name="talk_offline_action">टूलकिट</string>
     <string name="talk_hint_hearing">आपको सुन रहे हैं…</string>
@@ -115,8 +116,8 @@
     <string name="talk_end">समाप्त</string>
     <string name="talk_text">टेक्स्ट</string>
     <string name="talk_try_together">साथ में आज़माएँ</string>
-    <string name="talk_chip_breathe">मेरे साथ साँस लें</string>
-    <string name="talk_chip_ground">वर्तमान में लौटें</string>
+    <string name="talk_chip_breathe">साँस</string>
+    <string name="talk_chip_ground">ग्राउंडिंग</string>
     <string name="talk_suggested_activity">सुझाई गई गतिविधि</string>
     <string name="talk_ios_only">यह अभी Android ऐप में नहीं है।</string>
     <string name="talk_orb_stop_cd">सुनना बंद करें</string>
@@ -1087,7 +1088,7 @@
     <string name="talk_disclosure_crisis">संकट सहायता लें</string>
     <string name="talk_sos_title">त्वरित SOS रीसेट</string>
     <string name="talk_sos_subtitle">चिंता/तनाव के लिए तेज़ रीसेट — 2 मिनट</string>
-    <string name="talk_chip_reframe">किसी विचार को नए ढंग से देखें</string>
+    <string name="talk_chip_reframe">नए ढंग से</string>
 
     <!-- Support doors elsewhere in the app -->
     <string name="you_support_title">सहायता, किसी भी समय</string>

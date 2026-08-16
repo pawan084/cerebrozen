@@ -205,8 +205,17 @@
     <string name="humansupport_coach_body">A vetted coach directory for India is on our roadmap. Until it\'s real, the lines above reach real people today.</string>
 
     <!-- ── Talk (TalkScreen.kt) ────────────────────────────────────────── -->
-    <string name="talk_eyebrow">AI voice companion</string>
-    <string name="talk_title">How are you feeling today?</string>
+    <!-- V4: the bar names WHO you are talking to. It used to ask "How are you
+         feeling today?" — a 25-character question in a landmark slot, which
+         ellipsized to "How are you feeling…" next to the gear and the shield.
+         The question belongs in the conversation, and the companion now opens
+         with it. -->
+    <!-- Both of these are measured, not chosen: the bar has ~200dp between the
+         brand mark and two 46dp wells, and the composer's text area is the pill
+         minus its mic and send. Anything longer ellipsizes or wraps, which is
+         what "How are you feeling today?" and "Say what's on your mind…" did. -->
+    <string name="talk_eyebrow">here with you</string>
+    <string name="talk_title">CereBro</string>
     <string name="talk_good_morning">Good morning</string>
     <string name="talk_good_afternoon">Good afternoon</string>
     <string name="talk_good_evening">Good evening</string>
@@ -243,7 +252,7 @@
     <string name="talk_day_yesterday">Yesterday</string>
     <string name="talk_retry">Try sending again</string>
     <string name="talk_copied">Copied</string>
-    <string name="talk_field_followup">Say what\'s on your mind…</string>
+    <string name="talk_field_followup">Message CereBro…</string>
     <string name="talk_empty_title">What\'s on your mind?</string>
     <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>
@@ -285,10 +294,14 @@
     <string name="talk_state_orb">Tap the orb to speak</string>
     <string name="talk_end">End</string>
     <string name="talk_text">Text</string>
+    <!-- V4: verbs, not sentences. The label sits INLINE with these chips (so a
+         scroll fold can never strand a heading over nothing), which left room
+         for exactly one and a half of the old phrases — the third offer was
+         always off the right edge. -->
     <string name="talk_try_together">Try together</string>
-    <string name="talk_chip_reframe">Reframe a thought</string>
-    <string name="talk_chip_breathe">Breathe with me</string>
-    <string name="talk_chip_ground">Ground yourself</string>
+    <string name="talk_chip_reframe">Reframe</string>
+    <string name="talk_chip_breathe">Breathe</string>
+    <string name="talk_chip_ground">Ground</string>
     <string name="talk_suggested_activity">Suggested activity</string>
     <string name="talk_ios_only">This one isn&#8217;t in the Android app yet.</string>
     <string name="talk_orb_stop_cd">Stop listening</string>

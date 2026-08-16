@@ -970,18 +970,24 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 Text(stringResource(R.string.talk_guest_compose),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted)
             }
+            // V4: ONE pill, controls inside it (the reference's inputpill).
+            //
+            // The row used to be [＋ 44][field][mic 44][send 52] with three
+            // 8dp gaps — 164dp of chrome on a 360dp screen, which left the
+            // field too narrow to fit its own placeholder: "Say what's on your
+            // mind…" wrapped onto two lines inside a chat composer. Mic and
+            // send moved INSIDE the field's trailing slot, so the pill spans
+            // the row and the text has somewhere to go.
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                // V3-c: the ＋ tray — eight real tools inside the conversation
-                // (the Aira pattern). Browsing the Practices hub becomes the
+                // V3-c: the ＋ tray — the tools inside the conversation (the
+                // Aira pattern). Browsing the Practices hub becomes the
                 // exception, not the path.
                 val toolsCd = stringResource(R.string.talk_tools_cd)
                 Box(
-                    // 44dp, not 52: three 52dp wells beside the field squeezed
-                    // it to ~150dp on a 360dp device (walk 2026-08-16).
                     Modifier.size(44.dp).clip(CircleShape)
                         .background(CardFill)
                         .border(1.dp, LineStroke, CircleShape)
@@ -991,6 +997,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 ) {
                     Text("+", style = MaterialTheme.typography.titleLarge, color = PeriwinkleDeep)
                 }
+                val micCd = stringResource(R.string.talk_mic_composer_cd)
                 AppTextField(
                     // A guard before the server's limit, not a 422 after it.
                     draft, { draft = it.take(2000) },
@@ -1012,27 +1019,32 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                         onSend = { if (draft.isNotBlank() && !busy) send(draft) },
                     ),
+                    trailingIcon = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            // Voice stays reachable with the keyboard open —
+                            // the orb is off-screen once the composer has focus.
+                            if ((voice.available || cloudVoice) && !Session.servedStale) {
+                                Box(
+                                    Modifier.size(38.dp).clip(CircleShape)
+                                        .clickable { onOrbTap() }
+                                        .semantics { contentDescription = micCd },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(Icons.Outlined.Mic, contentDescription = null,
+                                        tint = PeriwinkleDeep, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            SendButton(
+                                enabled = !busy && draft.isNotBlank() && !Session.servedStale,
+                                busy = busy,
+                                compact = true,
+                            ) { send(draft) }
+                        }
+                    },
                 )
-                // Voice stays reachable with the keyboard open — the orb is
-                // off-screen the moment the composer has focus.
-                if ((voice.available || cloudVoice) && !Session.servedStale) {
-                    val micCd = stringResource(R.string.talk_mic_composer_cd)
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape)
-                            .background(CardFill)
-                            .border(1.dp, LineStroke, CircleShape)
-                            .clickable { onOrbTap() }
-                            .semantics { contentDescription = micCd },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.Mic, contentDescription = null,
-                            tint = PeriwinkleDeep, modifier = Modifier.size(20.dp))
-                    }
-                }
-                SendButton(
-                    enabled = !busy && draft.isNotBlank() && !Session.servedStale,
-                    busy = busy,
-                ) { send(draft) }
             }
         },
     ) {
@@ -1218,21 +1230,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             )
         }
 
-        if (voice.available || cloudVoice) {
-            // Full-size only while the orb is the point (no conversation yet, or
-            // actively in a voice turn). Once a text conversation exists, the orb
-            // was half the viewport pushing the transcript below the fold — it
-            // compacts, and the invitation hint goes quiet with it.
-            val voiceActive = voice.listening || cloud.recording ||
-                voice.speaking || cloud.speaking || transcribing
-            val compactOrb = messages.isNotEmpty() && !voiceActive
+        val voiceActive = voice.listening || cloud.recording ||
+            voice.speaking || cloud.speaking || transcribing
+        // V4: the orb belongs to the moments where it IS the interaction — an
+        // opening screen with nothing to read, or a live turn. Above a real
+        // conversation it was a small disconnected circle floating over the
+        // first bubble, decoration where the mic in the composer already
+        // carries the affordance.
+        if ((voice.available || cloudVoice) && (messages.isEmpty() || voiceActive)) {
             VoiceOrb(
                 listening = voice.listening || cloud.recording,
                 speaking = voice.speaking || cloud.speaking,
                 onTap = { onOrbTap() },
                 thinking = transcribing || busy,
                 level = if (cloud.recording) cloudLevel else voice.level,
-                compact = compactOrb,
+                // It only renders when it IS the interaction, so it is never
+                // the half-size version any more.
+                compact = false,
             )
             val hint = when {
                 transcribing -> stringResource(R.string.talk_hint_hearing)
@@ -1241,7 +1255,8 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 voice.speaking -> stringResource(R.string.talk_hint_speaking)
                 cloud.recording -> stringResource(R.string.talk_hint_listening_done)
                 voice.listening -> stringResource(R.string.talk_hint_listening_stop)
-                compactOrb -> null   // the conversation is the point now
+                // The orb now only renders on an empty screen or in a live
+                // turn, so there is no quiet-hint case left to suppress.
                 cloudVoice -> stringResource(R.string.talk_hint_orb_studio)
                 else -> stringResource(R.string.talk_hint_orb)
             }
@@ -1834,20 +1849,21 @@ private fun TryTogetherRow(
     onOpen: (String) -> Unit,
     order: List<String> = listOf("reframe", "breathe", "ground"),
 ) {
-    // ONE line, label inline with its chips (audit I#9). As a two-row unit —
-    // label above, chips below — the scroll fold on a 720×1604 landing landed
-    // exactly between them, so the last visible thing on Talk was a heading
-    // with nothing under it, reading as content that failed to load. A heading
-    // and its children must be unsplittable, and inline they are — with the
-    // side benefit that the whole rail is ~35px shorter and more likely to fit
-    // above the fold at all.
+    // The label used to sit INLINE with the chips (audit I#9: as a two-row unit
+    // the scroll fold landed between heading and children, stranding a heading
+    // over nothing). V4 removes the visible label instead of moving it back:
+    // it cost ~90dp of a 328dp row, which pushed the third offer off the right
+    // edge on every 360dp phone, and the chips are now single verbs that name
+    // themselves. The meaning survives for screen readers as a group label —
+    // where it never competed for width in the first place.
+    val offersCd = stringResource(R.string.talk_try_together)
     Row(
         Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
-            .padding(horizontal = pageHorizontalPadding()),
+            .padding(horizontal = pageHorizontalPadding())
+            .semantics { contentDescription = offersCd },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.talk_try_together), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
         order.forEach { kindKey ->
             when (kindKey) {
                 "reframe" -> PickChip(selected = false, label = stringResource(R.string.talk_chip_reframe)) { onOpen("cbt") }

@@ -285,6 +285,30 @@ activity → composer, with nothing competing.
   `aLiveVoiceSessionTakesTheWholeScreen`; cleared on dispose so a mid-session
   tab switch can't strand the tabs hidden.
 
+**V4 craft pass (same day, owner: "still not perfect").** Four things on the
+flagship screen were broken rather than debatable, and every one of them was a
+measurement failure — copy written without checking the space it had:
+- the top bar asked **"How are you feeling today?"**, a 25-character question in
+  a landmark slot, which ellipsized to "How are you feeling…" beside the gear
+  and the shield. The bar names WHO you are talking to now (**CereBro · here
+  with you**); the question belongs in the conversation, where the companion's
+  opener already asks it.
+- the composer was **[＋ 44][field][mic 44][send 52]** with three 8dp gaps —
+  164dp of chrome on a 360dp screen, leaving the field too narrow to fit its own
+  placeholder, so "Say what's on your mind…" **wrapped onto two lines inside a
+  chat composer**. Mic and send moved INSIDE the field's trailing slot (the
+  reference's inputpill), and the placeholder became "Message CereBro…".
+  `SendButton` gained `compact` (40dp) for in-pill use.
+- the **orb floated above the thread** as a small disconnected circle over the
+  first bubble — decoration, since the composer's mic already carries voice. It
+  now renders only when it IS the interaction: an empty screen, or a live turn.
+- the **"Try together" label cost ~90dp inline** with its chips, which pushed
+  the third offer off the right edge on every 360dp phone. The chips became
+  verbs (Reframe · Breathe · Ground) and the label moved to the row's
+  `contentDescription` — screen readers keep the grouping, the layout stops
+  paying for it. (The label was inline deliberately, so a scroll fold couldn't
+  strand a heading over nothing; removing it retires that problem too.)
+
 **Open after V3/V4**: the AppNotIdle Robolectric flake (see V2-f note above); the
 Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 

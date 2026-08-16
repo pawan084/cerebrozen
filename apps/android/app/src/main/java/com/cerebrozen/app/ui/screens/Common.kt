@@ -1292,11 +1292,19 @@ internal fun GuestSignInCard(
  * transcript chrome and rendered clipped inside this 52dp circle.
  */
 @Composable
-internal fun SendButton(enabled: Boolean, busy: Boolean, onClick: () -> Unit) {
+internal fun SendButton(
+    enabled: Boolean,
+    busy: Boolean,
+    /** V4: 40dp for the in-pill composer, where the button sits INSIDE the
+     * field's trailing slot rather than beside it. 52dp stays the default for
+     * standalone use. */
+    compact: Boolean = false,
+    onClick: () -> Unit,
+) {
     val sendCd = stringResource(if (enabled) R.string.common_send else R.string.talk_send_disabled_cd)
     Box(
         Modifier
-            .size(52.dp)
+            .size(if (compact) 40.dp else 52.dp)
             .clip(CircleShape)
             .background(if (enabled) Gradients.primary else Brush.horizontalGradient(listOf(CardFill, CardFill)))
             .then(if (enabled) Modifier else Modifier.border(1.dp, LineStroke, CircleShape))
