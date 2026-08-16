@@ -111,6 +111,16 @@ class NavigationChromeTest {
         assertFalse(navVisible("player", imeOpen = true))
     }
 
+    @Test
+    fun aLiveVoiceSessionTakesTheWholeScreen() {
+        // V4: the session overlay is drawn inside Talk and cannot cover the
+        // Scaffold's pill, so a call had three tabs across its bottom edge —
+        // one tap from silently abandoning it. The pill yields to a live
+        // session exactly as it yields to the keyboard.
+        assertTrue(navVisible("talk", imeOpen = false, voiceLive = false))
+        assertFalse(navVisible("talk", imeOpen = false, voiceLive = true))
+    }
+
     // The Sleep-stays-Night pin that lived here was RETIRED 2026-08-04 with
     // the rule itself — owner decision, recorded in docs/TODO.md: appearance
     // is global, changed on every client in the same commit.

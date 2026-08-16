@@ -252,7 +252,40 @@ for approval, instead do all of them without"):
         clock. Home's care card now carries a permanent "Your journal" door
         (the evening prompt still replaces it after 17:00 — write, then read).
 
-**Open after V3**: the AppNotIdle Robolectric flake (see V2-f note above); the
+### V4 (2026-08-16): chat redesign + live voice mode
+
+**Chat is the flagship, so it now carries the least chrome.** Removed from the
+thread: the top **AI-disclosure card** (the screen had THREE disclosures — that
+card, the line above the composer, and the periodic sheet; the composer line is
+now the single persistent one, and it is tappable for the full points, which is
+what design §8 actually asks for), the full-width **save-to-journal row**, and
+the **"Quick SOS reset"** chip (the ＋ tray already carries Ground and Breathe,
+and the crisis shield is in the top bar — one implementation per behaviour).
+The two thread actions moved INTO the tray, where "what can this conversation
+do" is already the question: **Save to journal** and **Start fresh** appear
+there only once a conversation exists. Net: opener → bubbles → suggested
+activity → composer, with nothing competing.
+
+**Live voice mode, properly.**
+- `VoiceEngine` now streams **partial results** (`EXTRA_PARTIAL_RESULTS` was
+  off and `onPartialResults` was an empty override), exposed as `partial` and
+  cleared on every resolution — so the live screen can show you **your own
+  words as you speak them**. Empty on the cloud path by design (Deepgram
+  transcribes the whole take server-side), where the screen falls back to the
+  companion's words.
+- New `VoiceWaveform`: five bars driven by the real mic amplitude. It answers
+  the only question a listening screen is asked — "is it hearing me?" — and it
+  is never a decorative loop: Reduce Motion holds a static resting shape.
+- Two defects found by walking it: the overlay was **translucent** (0.97) so the
+  transcript ghosted through and it read as a dialog over the chat; and the
+  **tab pill drew on top of a live call**, one tap from silently abandoning the
+  session — the overlay lives inside Talk and cannot cover Scaffold chrome.
+  Fixed with `VoiceSessionState.active`, which `navVisible(route, imeOpen,
+  voiceLive)` honours exactly like the keyboard rule. Pinned by
+  `aLiveVoiceSessionTakesTheWholeScreen`; cleared on dispose so a mid-session
+  tab switch can't strand the tabs hidden.
+
+**Open after V3/V4**: the AppNotIdle Robolectric flake (see V2-f note above); the
 Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 
 ## Open — V3 direction: chat-first + proactive (owner call, 2026-08-16)

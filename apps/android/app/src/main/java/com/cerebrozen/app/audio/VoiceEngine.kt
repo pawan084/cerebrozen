@@ -49,6 +49,18 @@ class VoiceEngine(context: Context) {
     var level by mutableStateOf(0f)
         private set
 
+    /**
+     * What the recognizer thinks you are saying, updated mid-utterance.
+     *
+     * Live voice mode shows this back to you: a listening screen that displays
+     * nothing while you talk gives you no way to tell "it hasn't heard me" from
+     * "it heard me and is thinking". Cleared the moment a turn resolves, so a
+     * stale half-sentence never sits under the next answer. Empty on the cloud
+     * path (Deepgram transcribes the whole take server-side, after the fact).
+     */
+    var partial by mutableStateOf("")
+        private set
+
     val available: Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
     private val appContext = context.applicationContext
@@ -120,8 +132,10 @@ class VoiceEngine(context: Context) {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            // Live voice mode reads these back to the user (see [partial]).
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         }
+        partial = ""
         listening = true
         recognizer?.startListening(intent)
     }
@@ -131,6 +145,7 @@ class VoiceEngine(context: Context) {
         onError = null   // a deliberate stop is not a failure
         listening = false
         level = 0f
+        partial = ""
     }
 
     /** Cancel the current take without delivering a final transcript. Used by
@@ -140,6 +155,7 @@ class VoiceEngine(context: Context) {
         recognizer?.cancel()
         listening = false
         level = 0f
+        partial = ""
     }
 
     /** Speak [text]; [onDone] fires once when playback finishes (or errors),
@@ -179,12 +195,18 @@ class VoiceEngine(context: Context) {
         override fun onResults(results: Bundle?) {
             listening = false
             level = 0f
+            partial = ""
             val fail = onError
             onError = null
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
             if (!text.isNullOrBlank()) onFinal?.invoke(text) else fail?.invoke(VoiceError.NoSpeech)
         }
-        override fun onPartialResults(partialResults: Bundle?) {}
+        override fun onPartialResults(partialResults: Bundle?) {
+            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                ?.firstOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { partial = it }
+        }
         override fun onEvent(eventType: Int, params: Bundle?) {}
     }
 }

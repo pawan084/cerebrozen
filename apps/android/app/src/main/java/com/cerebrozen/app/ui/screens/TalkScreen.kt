@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -178,6 +180,19 @@ internal fun widgetRoute(kind: String): String? = when (kind) {
 /** V3-c: the deterministic next-best-action after a chat check-in — the same
  * one-per-behavior surfaces the tools tray offers, chosen by what the mood
  * says the body needs first (mirrors tryTogetherOrder's reading). Pure. */
+/**
+ * Whether a live voice session owns the screen right now.
+ *
+ * The tab pill is drawn by the app Scaffold, outside this screen, so an
+ * overlay inside Talk cannot cover it — a full-screen call sat with three
+ * tabs across its bottom edge, one tap from silently abandoning the session
+ * (device walk 2026-08-16). Same shape as the IME rule the pill already
+ * honours: the chrome yields to what the user is doing.
+ */
+object VoiceSessionState {
+    var active by androidx.compose.runtime.mutableStateOf(false)
+}
+
 internal fun moodNbaKind(mood: String): String = when (mood.lowercase(java.util.Locale.ROOT)) {
     "anxious" -> "grounding"
     "overwhelmed" -> "breathing"
@@ -418,6 +433,11 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     // Immersive live session (ref LIVE VOICE SESSION overlay): opens on the
     // first voice turn, stays up across turns until End/Text.
     var voiceSession by remember { mutableStateOf(false) }
+    // Mirror it out so the app Scaffold can drop the tab pill (see
+    // VoiceSessionState) — and always clear it when Talk leaves composition,
+    // or the tabs would stay hidden after a tab switch mid-session.
+    LaunchedEffect(voiceSession) { VoiceSessionState.active = voiceSession }
+    DisposableEffect(Unit) { onDispose { VoiceSessionState.active = false } }
     var sessionSeconds by remember { mutableStateOf(0) }
     // Live mic level for the cloud recording path (the on-device path uses voice.level).
     var cloudLevel by remember { mutableStateOf(0f) }
@@ -484,6 +504,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             else -> R.string.talk_op_hello_evening
         },
     )
+    val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
+    val savedStatus = stringResource(R.string.talk_saved_status)
+    val saveFailed = stringResource(R.string.talk_save_failed)
+    val transcriptMe = stringResource(R.string.talk_transcript_me) + ": "
+    val transcriptBot = stringResource(R.string.talk_transcript_bot) + ": "
+    val freshMsg = stringResource(R.string.talk_fresh_started)
     val opSleepQ = stringResource(R.string.talk_op_sleep_q)
     val opSleepDone = stringResource(R.string.talk_op_sleep_done)
     val opSleepGuest = stringResource(R.string.talk_op_sleep_guest)
@@ -762,6 +788,35 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
     }
 
+    /** Keep the conversation as a journal entry (was the save row). */
+    fun saveThreadToJournal() {
+        if (messages.isEmpty()) return
+        scope.launch {
+            runCatching {
+                Api.createJournal(
+                    journalEntryTitle,
+                    talkTranscript(messages, mePrefix = transcriptMe, botPrefix = transcriptBot),
+                )
+            }
+                .onSuccess { status = savedStatus }
+                .onFailure { status = saveFailed }
+        }
+    }
+
+    /** Start a new conversation. The VIEW resets; the record stays on the
+     * server, which is what the confirmation says. */
+    fun startFresh() {
+        runCatching { Session.prefPut("talk_clear_before", java.time.OffsetDateTime.now().toString()) }
+        runCatching { Session.prefPut("talk_crisis_sticky", "0") }
+        crisis = false
+        messages = emptyList()
+        chips = emptyList()
+        windowSize = 12
+        openerStage = "idle"
+        status = freshMsg
+        scope.launch { runCatching { starters = parseStarters(Api.starters()) } }
+    }
+
     fun endSession() {
         if (cloud.recording) cloud.stopRecording()   // discard the open take
         cloud.stopPlayback()
@@ -889,6 +944,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     label = stringResource(R.string.guest_sign_in_action),
                 ) { onOpen("auth") }
             }
+            // V4: the one persistent AI disclosure, in the slot the user's eyes
+            // are already in. Tapping it opens the full sheet.
+            Text(
+                stringResource(R.string.talk_disclosure_pill),
+                style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { showDisclosure = true }
+                    .padding(vertical = 4.dp),
+            )
             // Chat can't queue offline (a conversation needs its other half) —
             // say so where the typing happens, not only in the top banner.
             if (Session.servedStale) {
@@ -981,23 +1047,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             )
         }
 
-        // Persistent AI disclosure — always visible, tap for the full points.
-        Row(
-            Modifier.fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .glass(RoundedCornerShape(12.dp))
-                .clickable { showDisclosure = true }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.talk_disclosure_pill),
-                style = MaterialTheme.typography.bodySmall, color = TextMuted,
-                modifier = Modifier.weight(1f),
-            )
-            Text(stringResource(R.string.talk_disclosure_details), style = MaterialTheme.typography.bodySmall, color = Periwinkle)
-        }
+        // V4: the disclosure CARD is gone from the top of the thread. The rule
+        // (design §8) asks for a persistent disclosure plus the periodic sheet,
+        // and this screen had three copies of it: this card, the line above the
+        // composer, and the sheet. The composer line is the persistent one —
+        // it sits where you type, it is always on screen, and it is tappable
+        // for the full points. One disclosure, still always visible.
 
         // Presence + memory honesty + the fresh-start action, ONE header row
         // (reference PresenceHeader, on our tokens). The presence state tells
@@ -1043,24 +1098,15 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         .padding(vertical = 4.dp),
                 )
             }
+            // V4: "Start fresh" is also in the tray; this stays as the quick
+            // reach for anyone already looking at the header.
             if (messages.isNotEmpty()) {
-                val freshMsg = stringResource(R.string.talk_fresh_started)
                 Text(
                     stringResource(R.string.talk_start_fresh),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            runCatching { Session.prefPut("talk_clear_before", java.time.OffsetDateTime.now().toString()) }
-                            runCatching { Session.prefPut("talk_crisis_sticky", "0") }
-                            crisis = false
-                            messages = emptyList()
-                            chips = emptyList()
-                            windowSize = 12
-                            // Reassure: the view resets, the record stays.
-                            status = freshMsg
-                            scope.launch { runCatching { starters = parseStarters(Api.starters()) } }
-                        }
+                        .clickable { startFresh() }
                         .padding(vertical = 4.dp),
                 )
             }
@@ -1450,64 +1496,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     )
                 }
             }
-            val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
-            val savedStatus = stringResource(R.string.talk_saved_status)
-            val saveFailed = stringResource(R.string.talk_save_failed)
-            // The saved entry speaks the UI's language, not hardcoded English
-            // (the transcript name strings predate this — iOS parity).
-            val mePrefix = stringResource(R.string.talk_transcript_me) + ": "
-            val botPrefix = stringResource(R.string.talk_transcript_bot) + ": "
-            // The save row answers itself: once saved it flips to "Saved ·
-            // View" until new messages arrive (then there's new content to save).
-            var savedToJournal by remember(messages.size) { mutableStateOf(false) }
-            // An outlined row with an icon, not bare periwinkle text: unstyled,
-            // it sat between two sections reading as a heading — the same weight
-            // and colour as the "Try together" / "Type instead" labels above and
-            // below it — so the one way to keep a conversation looked like a
-            // caption for the next thing.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .border(
-                        1.dp,
-                        (if (savedToJournal) Cyan else Periwinkle).copy(alpha = 0.45f),
-                        RoundedCornerShape(14.dp),
-                    )
-                    .clickable {
-                        if (savedToJournal) {
-                            onOpen("journal")
-                        } else {
-                            scope.launch {
-                                runCatching {
-                                    Api.createJournal(
-                                        journalEntryTitle,
-                                        talkTranscript(messages, mePrefix = mePrefix, botPrefix = botPrefix),
-                                    )
-                                }
-                                    .onSuccess { status = savedStatus; savedToJournal = true }
-                                    .onFailure { status = saveFailed }
-                            }
-                        }
-                    }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.BookmarkBorder,
-                    contentDescription = null,
-                    tint = if (savedToJournal) Cyan else Periwinkle,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    stringResource(
-                        if (savedToJournal) R.string.talk_saved_view else R.string.talk_save_journal,
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (savedToJournal) Cyan else Periwinkle,
-                )
-            }
         }
 
         // Confirm-before-write: the Oracle paused on a write tool (log_mood,
@@ -1562,24 +1550,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
         }
 
-        // Fast escape hatch when talking feels like too much (mirrors iOS) —
-        // except while the crisis card is up: two urgent doors stacked compete,
-        // and the crisis one must win. Mid-conversation it compacts to a chip:
-        // the full card duplicated the Toolkit door in prime transcript space.
-        if (!crisis) {
-            if (messages.isEmpty()) {
-                NavRow(stringResource(R.string.talk_sos_title), stringResource(R.string.talk_sos_subtitle),
-                    // Spa, deliberately not the crisis shield (icon audit): this
-                    // row opens the calm toolkit, not the crisis screen, and an
-                    // urgency mark on a grounding door would overpromise.
-                    icon = Icons.Outlined.Spa) { onOpen("toolkit") }
-            } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    PickChip(selected = false, label = stringResource(R.string.talk_sos_title)) { onOpen("toolkit") }
-                }
-            }
-        }
-
     }
 
     // ── V3-c tools tray: a bottom sheet without the experimental API ─────
@@ -1604,7 +1574,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             // Reference tool tiles: a circular accent-mist icon well above the
             // label (the as-built Dawn rounds every well to a circle).
             data class TrayTool(val icon: ImageVector, val titleRes: Int, val subRes: Int, val route: String)
-            val tools = listOf(
+            // V4: two THREAD actions live here now, where "what can this
+            // conversation do" is already the question — they used to be a
+            // full-width bordered row and a floating chip stacked under the
+            // transcript, competing with the companion's own offers.
+            val threadTools = buildList {
+                if (messages.isNotEmpty()) {
+                    add(TrayTool(Icons.Outlined.BookmarkBorder, R.string.talk_save_journal, R.string.talk_tool_save_sub, "@save"))
+                    add(TrayTool(Icons.Outlined.Refresh, R.string.talk_start_fresh, R.string.talk_tool_fresh_sub, "@fresh"))
+                }
+            }
+            val tools = threadTools + listOf(
                 TrayTool(Icons.Outlined.Favorite, R.string.talk_tool_checkin, R.string.talk_tool_checkin_sub, "checkin"),
                 TrayTool(Icons.Outlined.SelfImprovement, R.string.talk_tool_breathe, R.string.talk_tool_breathe_sub, "breathe/reset"),
                 TrayTool(Icons.Outlined.Spa, R.string.talk_tool_ground, R.string.talk_tool_ground_sub, "ground"),
@@ -1623,7 +1603,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                                 .border(1.dp, LineStroke, RoundedCornerShape(18.dp))
                                 .clickable {
                                     showTools = false
-                                    if (tool.route.isBlank()) onOrbTap() else onOpen(tool.route)
+                                    when (tool.route) {
+                                        "" -> onOrbTap()
+                                        "@save" -> saveThreadToJournal()
+                                        "@fresh" -> startFresh()
+                                        else -> onOpen(tool.route)
+                                    }
                                 }
                                 .padding(13.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1695,6 +1680,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             thinking = transcribing || busy,
             level = if (cloud.recording) cloudLevel else voice.level,
             caption = streamText.ifBlank { messages.lastOrNull { it.role == "assistant" }?.text.orEmpty() },
+            // On-device recognition streams partials; the cloud path transcribes
+            // the whole take afterwards, so this is empty there and the screen
+            // falls back to the companion's words.
+            heard = voice.partial,
             onOrb = { onOrbTap() },
             onEnd = { endSession() },
             // Returning to the text composer must tear down the live mic/recognizer
@@ -1703,6 +1692,45 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             onText = { endSession() },
         )
     }
+    }
+}
+
+/**
+ * A live waveform — five bars breathing with the mic.
+ *
+ * The reference's listening screen puts this under the transcript, and it is
+ * doing real work: it is the only element that distinguishes "the mic is open
+ * and hearing you" from "the mic is open and hearing nothing", which is the
+ * question a person stares at a listening screen asking. Driven by the real
+ * amplitude, never a decorative loop — under Reduce Motion the bars hold a
+ * static resting shape rather than vanishing.
+ */
+@Composable
+private fun VoiceWaveform(level: Float, active: Boolean, modifier: Modifier = Modifier) {
+    val reduceMotion = rememberReduceMotion()
+    // Each bar reacts at its own weight so the row reads as a voice rather than
+    // five identical sliders.
+    val weights = listOf(0.55f, 0.85f, 1f, 0.8f, 0.5f)
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        weights.forEachIndexed { i, w ->
+            val target = if (!active || reduceMotion) 0.34f else (0.22f + level * w).coerceIn(0.15f, 1f)
+            val h by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = target,
+                animationSpec = androidx.compose.animation.core.tween(if (reduceMotion) 0 else 160),
+                label = "wave-$i",
+            )
+            Box(
+                Modifier
+                    .width(4.dp)
+                    .height((34 * h).dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (active) Cyan else TextMuted2),
+            )
+        }
     }
 }
 
@@ -1717,13 +1745,18 @@ private fun VoiceSessionOverlay(
     thinking: Boolean,
     level: Float,
     caption: String,
+    /** What the recognizer is hearing right now, shown back while you speak. */
+    heard: String,
     onOrb: () -> Unit,
     onEnd: () -> Unit,
     onText: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize()
-            .background(Night.copy(alpha = 0.97f))
+            // Fully opaque: at 0.97 the transcript ghosted through and the
+            // live screen read as a dialog over the chat rather than as the
+            // place you now are (device walk 2026-08-16).
+            .background(Night)
             // Actually swallow taps aimed behind the overlay. A `clickable`
             // would do it too, but it publishes an unlabeled clickable node over
             // the whole background for TalkBack — a raw pointer filter doesn't.
@@ -1737,11 +1770,27 @@ private fun VoiceSessionOverlay(
             Text(stringResource(R.string.talk_live_session), style = MaterialTheme.typography.labelSmall, color = Cyan)
             Text(fmtSession(seconds), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             VoiceOrb(listening = listening, speaking = speaking, onTap = onOrb, thinking = thinking, level = level)
             Text(stateLabel, style = MaterialTheme.typography.titleMedium, color = TextSoft, textAlign = TextAlign.Center)
-            if (caption.isNotBlank()) {
-                Text(
+            // The waveform belongs to LISTENING; while the companion speaks or
+            // thinks, the orb already carries the state and a second animation
+            // would just be noise.
+            VoiceWaveform(level = level, active = listening)
+            when {
+                // Your own words, as they are recognised — in the display serif
+                // and quoted, so it reads as speech rather than as a reply.
+                listening && heard.isNotBlank() -> Text(
+                    "“" + heard.take(160) + "”",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily(
+                            androidx.compose.ui.text.font.Font(R.font.newsreader),
+                        ),
+                    ),
+                    color = TextSoft, textAlign = TextAlign.Center,
+                )
+                // Otherwise the companion's latest words.
+                caption.isNotBlank() -> Text(
                     caption.take(180),
                     style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                     textAlign = TextAlign.Center,

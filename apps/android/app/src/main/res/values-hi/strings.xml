@@ -1405,6 +1405,8 @@
     <string name="talk_tool_voice_sub">टाइप की जगह बोलें</string>
     <string name="talk_tool_game">एक शांत खेल</string>
     <string name="talk_tool_game_sub">एक सजग मिनट</string>
+    <string name="talk_tool_save_sub">यह बातचीत सहेजें</string>
+    <string name="talk_tool_fresh_sub">नई बातचीत</string>
 
     <string name="talk_regen">फिर से पूछें</string>
     <string name="talk_didnt_help">इससे मदद नहीं मिली</string>

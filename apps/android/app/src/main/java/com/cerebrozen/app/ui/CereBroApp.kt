@@ -262,8 +262,12 @@ object DeeplinkBus {
  * composable below additionally checks the live inset itself
  * (`BottomNavImeTest`), so both layers of the rule are pinned.
  */
-internal fun navVisible(route: String?, imeOpen: Boolean): Boolean =
-    shouldShowBottomBar(route) && !imeOpen
+internal fun navVisible(route: String?, imeOpen: Boolean, voiceLive: Boolean = false): Boolean =
+    // V4: a live voice session takes the whole screen, so the pill yields to it
+    // exactly as it yields to the keyboard — the session overlay is drawn
+    // inside Talk and cannot cover chrome the Scaffold owns, which left three
+    // tabs across the bottom of a call.
+    shouldShowBottomBar(route) && !imeOpen && !voiceLive
 
 /**
  * The floating tab bar — and the rule that it yields to the keyboard.
@@ -566,7 +570,10 @@ fun CereBroApp() {
     // here rather than inside the bottomBar lambda so the Scaffold recomposes
     // and reclaims the slot, instead of keeping an empty one.
     val imeOpen = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
-    val showBottomBar = navVisible(current, imeOpen)
+    val showBottomBar = navVisible(
+        current, imeOpen,
+        voiceLive = com.cerebrozen.app.ui.screens.VoiceSessionState.active,
+    )
     SyncSystemBarIcons()
     val compactNav = LocalConfiguration.current.screenWidthDp < 380
     // Aurora hue shifts by section (sleep = violet, talk = cyan, else lavender).

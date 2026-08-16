@@ -2129,6 +2129,8 @@ everything.</string>
     <string name="talk_tool_voice_sub">talk instead of type</string>
     <string name="talk_tool_game">A quiet game</string>
     <string name="talk_tool_game_sub">one mindful minute</string>
+    <string name="talk_tool_save_sub">keep this conversation</string>
+    <string name="talk_tool_fresh_sub">a new conversation</string>
 
     <!-- V3-d Chat honesty + the middle escalation rung. The concern card sits
          BETWEEN a normal reply and the full crisis banner: warm, one pathway,
